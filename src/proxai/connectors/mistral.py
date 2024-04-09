@@ -15,7 +15,7 @@ class MistralConnector(ModelConnector):
 
   def generate_text(self, prompt: str, max_tokens: int) -> str:
     response = self.api.chat(
-        model=self.model_signature.model.value,
+        model=self.provider_model,
         messages=[
             ChatMessage(role='user', content=prompt)
         ],

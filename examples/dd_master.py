@@ -63,10 +63,10 @@ def brainstorm_dd_master_properties():
 
 
 def main():
-  proxai.register_model('openai', 'gpt-3.5-turbo')
+  proxai.set_model(generate_text=('openai', 'gpt-3.5-turbo'))
   brainstorm_dd_master_properties()
 
-  proxai.register_model('claude', 'claude-3-opus-20240229')
+  proxai.set_model(generate_text=('claude', 'claude-3-opus-20240229'))
   brainstorm_dd_master_properties()
 
 

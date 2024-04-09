@@ -7,7 +7,7 @@ from .model_connector import ModelConnector
 
 class GeminiConnector(ModelConnector):
   def init_model(self):
-    return genai.GenerativeModel(self.model_signature.model.value)
+    return genai.GenerativeModel(self.provider_model)
 
   def init_mock_model(self):
     return GeminiMock()

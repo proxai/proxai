@@ -26,7 +26,7 @@ def main():
   print()
   for provider, models in px_types.GENERATE_TEXT_MODELS.items():
     for model_name in models:
-      px.register_model(provider, model_name)
+      px.set_model(generate_text=(provider, model_name))
       start_time = datetime.datetime.now()
       response = ask_model_and_company()
       end_time = datetime.datetime.now()

@@ -14,7 +14,7 @@ class DatabricksConnector(ModelConnector):
 
   def generate_text_proc(self, prompt: str, max_tokens: int) -> str:
     response = self.api.create(
-        model=self.model_signature.model.value,
+        model=self.provider_model,
         messages=[
             {'role': 'system', 'content': 'You are a helpful assistant.'},
             {'role': 'user', 'content': prompt}])
