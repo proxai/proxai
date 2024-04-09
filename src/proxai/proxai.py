@@ -65,7 +65,7 @@ def _get_registered_model_connector() -> ModelConnector:
   return _MODEL_CONNECTOR
 
 
-def local_logging_path(
+def logging_options(
       path: str,
       time: bool = True,
       prompt: bool = True,
