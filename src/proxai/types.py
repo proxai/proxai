@@ -1,6 +1,8 @@
 import dataclasses
 import enum
-from typing import Union
+from typing import Dict, List, Tuple, Type, Union, Optional
+
+GENERATE_TEXT = 'generate_text'
 
 
 class RunType(enum.Enum):
@@ -18,7 +20,11 @@ class Provider(str, enum.Enum):
   HUGGING_FACE = 'hugging_face'
 
 
-class OpenAIModel(str, enum.Enum):
+class ProviderModel(str, enum.Enum):
+  """Base provider model type."""
+
+
+class OpenAIModel(ProviderModel):
   """OpenAI models.
 
   Models provided by OpenAI:
@@ -35,7 +41,7 @@ class OpenAIModel(str, enum.Enum):
   DAVINCI_002 = 'davinci-002'
 
 
-class ClaudeModel(str, enum.Enum):
+class ClaudeModel(ProviderModel):
   """Claude models.
 
   Models provided by Claude:
@@ -47,7 +53,7 @@ class ClaudeModel(str, enum.Enum):
   CLAUDE_3_HAIKU = 'claude-3-haiku-20240307'
 
 
-class GeminiModel(str, enum.Enum):
+class GeminiModel(ProviderModel):
   """Gemini models.
 
   Models provided by Gemini:
@@ -61,7 +67,7 @@ class GeminiModel(str, enum.Enum):
   GEMINI_PRO_VISION = 'models/gemini-pro-vision'
 
 
-class CohereModel(str, enum.Enum):
+class CohereModel(ProviderModel):
   """Cohere models.
 
   Models provided by Cohere:
@@ -74,7 +80,7 @@ class CohereModel(str, enum.Enum):
   COMMAND_R = 'command-r'
 
 
-class DatabricksModel(str, enum.Enum):
+class DatabricksModel(ProviderModel):
   """Databricks models.
 
   Models provided by Databricks:
@@ -85,7 +91,7 @@ class DatabricksModel(str, enum.Enum):
   DATABRICKS_LLAMA_2_70b_CHAT = 'databricks-llama-2-70b-chat'
 
 
-class MistralModel(str, enum.Enum):
+class MistralModel(ProviderModel):
   """Mistral models.
 
   Models provided by Mistral:
@@ -98,7 +104,7 @@ class MistralModel(str, enum.Enum):
   MISTRAL_LARGE_LATEST = 'mistral-large-latest'
 
 
-class HuggingFaceModel(str, enum.Enum):
+class HuggingFaceModel(ProviderModel):
   """Hugging Face models.
 
   Models provided by Hugging Face on HuggingFaceChat:
@@ -116,7 +122,7 @@ class HuggingFaceModel(str, enum.Enum):
   OPENCHAT_3_5 = 'openchat/openchat-3.5-0106'
 
 
-MODEL_MAP = {
+MODEL_MAP: Dict[Provider, Type[ProviderModel]] = {
     Provider.OPENAI: OpenAIModel,
     Provider.CLAUDE: ClaudeModel,
     Provider.GEMINI: GeminiModel,
@@ -127,7 +133,7 @@ MODEL_MAP = {
 }
 
 
-GENERATE_TEXT_MODELS = {
+GENERATE_TEXT_MODELS: Dict[Provider, List[Type[ProviderModel]]] = {
     Provider.OPENAI: [
         OpenAIModel.GPT_4,
         OpenAIModel.GPT_4_TURBO_PREVIEW,
@@ -173,11 +179,9 @@ GENERATE_TEXT_MODELS = {
 }
 
 
+ModelType = Tuple[Provider, ProviderModel]
+
+
 @dataclasses.dataclass
-class ModelSignature:
-  provider: Provider
-  model: Union[
-      OpenAIModel,
-      ClaudeModel,
-      GeminiModel,
-      CohereModel]
+class ValueType:
+  generate_text: ModelType = None

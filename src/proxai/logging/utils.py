@@ -15,8 +15,8 @@ class LocalLoggingOptions:
 
 def log_generate_text(
     logging_options: LocalLoggingOptions,
-    provider,
-    model,
+    provider: str,
+    provider_model: str,
     start_time: datetime,
     end_time: datetime,
     params: Dict = None,
@@ -25,7 +25,7 @@ def log_generate_text(
     error: Optional[str] = None):
   result = {
     'provider': provider,
-    'model': model,
+    'provider_model': provider_model,
     'params': params,
   }
   if logging_options.time:
