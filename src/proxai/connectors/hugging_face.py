@@ -32,5 +32,5 @@ class HuggingFaceConnector(ModelConnector):
 
   def generate_text_proc(self, prompt: str, max_tokens: int) -> str:
     response = self.api.generate_content(
-        prompt, model=self.model_signature.model.value)
+        prompt, model=self.provider_model)
     return response

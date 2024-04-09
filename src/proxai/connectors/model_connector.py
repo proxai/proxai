@@ -1,21 +1,24 @@
 from datetime import datetime
 from typing import Any, Dict, Optional
-from proxai.types import ModelSignature, RunType
+import proxai.types as types
 from proxai.logging.utils import log_generate_text
 
 
 class ModelConnector(object):
-  model_signature: Optional[ModelSignature] = None
-  run_type: RunType
+  model: Optional[types.ModelType] = None
+  provider: Optional[str] = None
+  provider_model: Optional[str] = None
+  run_type: types.RunType
   _api: Optional[Any] = None
   _logging_options: Optional[Dict] = None
 
   def __init__(
       self,
-      signature: ModelSignature,
-      run_type: RunType,
+      model: types.ModelType,
+      run_type: types.RunType,
       logging_options: Optional[dict] = None):
-    self.model_signature = signature
+    self.model = model
+    self.provider, self.provider_model = model
     self.run_type = run_type
     if logging_options:
       self._logging_options = logging_options
@@ -23,7 +26,7 @@ class ModelConnector(object):
   @property
   def api(self):
     if not self._api:
-      if self.run_type == RunType.PRODUCTION:
+      if self.run_type == types.RunType.PRODUCTION:
         self._api = self.init_model()
       else:
         self._api = self.init_mock_model()
@@ -45,8 +48,8 @@ class ModelConnector(object):
     if self._logging_options:
       log_generate_text(
           logging_options=self._logging_options,
-          provider=self.model_signature.provider,
-          model=self.model_signature.model,
+          provider=self.provider,
+          provider_model=self.provider_model,
           start_time=start_time,
           end_time=end_time,
           prompt=prompt,

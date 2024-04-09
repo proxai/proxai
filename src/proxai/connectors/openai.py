@@ -14,7 +14,7 @@ class OpenAIConnector(ModelConnector):
 
   def generate_text_proc(self, prompt: str, max_tokens: int) -> str:
     completion = self.api.chat.completions.create(
-        model=self.model_signature.model.value,
+        model=self.provider_model,
         messages=[
           {'role': 'system', 'content': 'You are an helpful assistant.'},
           {'role': 'user', 'content': prompt}

@@ -15,5 +15,5 @@ class CohereConnector(ModelConnector):
   def generate_text_proc(self, prompt: str, max_tokens: int) -> str:
     response = self.api.chat(
         message=prompt,
-        model=self.model_signature.model.value)
+        model=self.provider_model)
     return response.text

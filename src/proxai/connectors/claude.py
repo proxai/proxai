@@ -14,7 +14,7 @@ class ClaudeConnector(ModelConnector):
 
   def generate_text_proc(self, prompt: str, max_tokens: int) -> str:
     message = self.api.messages.create(
-        model=self.model_signature.model.value,
+        model=self.provider_model,
         max_tokens=1024,
         messages=[
             {'role': 'user', 'content': prompt}

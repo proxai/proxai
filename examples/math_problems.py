@@ -111,7 +111,7 @@ def main():
   print()
   for provider, models in types._MODEL_MAP.items():
     for model_name in models:
-      proxai.register_model(provider, model_name)
+      proxai.set_model(generate_text=(provider, model_name))
       start_time = datetime.datetime.now()
       response = eval_math_questions(provider, model_name)
       end_time = datetime.datetime.now()
