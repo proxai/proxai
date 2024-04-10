@@ -19,8 +19,7 @@ Which company created you and what is your model name?
 
 
 def main():
-  px.logging_options(
-      path=f'{Path.home()}/temp/ask_about_model.log')
+  px.connect(logging_path=f'{Path.home()}/temp/ask_about_model.log')
 
   print(f'{"PROVIDER":10} | {"MODEL":45} | {"DURATION":13} | {"RESPONSE"}')
   print()
