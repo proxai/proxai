@@ -1,3 +1,4 @@
+import dataclasses
 import os
 from typing import Dict, Optional
 import proxai.types as types
@@ -17,9 +18,31 @@ _REGISTERED_VALUES: Dict[str, types.ValueType] = {}
 _INITIALIZED_MODEL_CONNECTORS: Dict[types.ModelType, ModelConnector] = {}
 _LOCAL_LOGGING_OPTIONS: LocalLoggingOptions = LocalLoggingOptions()
 
+
 def _set_run_type(run_type: types.RunType):
   global _RUN_TYPE
   _RUN_TYPE = run_type
+
+
+@dataclasses.dataclass
+class LoggingOptions:
+  time: bool = True
+  prompt: bool = True
+  response: bool = True
+  error: bool = True
+
+
+def connect(
+    logging_path: str=None,
+    logging_options: LoggingOptions=None):
+  global _LOCAL_LOGGING_OPTIONS
+  if logging_path:
+    _LOCAL_LOGGING_OPTIONS.path = logging_path
+  if logging_options:
+    _LOCAL_LOGGING_OPTIONS.time = logging_options.time
+    _LOCAL_LOGGING_OPTIONS.prompt = logging_options.prompt
+    _LOCAL_LOGGING_OPTIONS.response = logging_options.response
+    _LOCAL_LOGGING_OPTIONS.error = logging_options.error
 
 
 def _init_model_connector(model: types.ModelType) -> ModelConnector:
@@ -70,20 +93,6 @@ def _get_model_connector(value_name: str) -> ModelConnector:
   raise ValueError(
       f'Value name not supported: {value_name}.\n'
       'Supported value names: {types.GENERATE_TEXT}')
-
-
-def logging_options(
-      path: str,
-      time: bool = True,
-      prompt: bool = True,
-      response: bool = True,
-      error: bool = True):
-  global _LOCAL_LOGGING_OPTIONS
-  _LOCAL_LOGGING_OPTIONS.path = path
-  _LOCAL_LOGGING_OPTIONS.time = time
-  _LOCAL_LOGGING_OPTIONS.prompt = prompt
-  _LOCAL_LOGGING_OPTIONS.response = response
-  _LOCAL_LOGGING_OPTIONS.error = error
 
 
 def set_model(generate_text: types.ModelType=None):
