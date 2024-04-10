@@ -19,21 +19,23 @@ Which company created you and what is your model name?
 
 
 def main():
-  px.connect(logging_path=f'{Path.home()}/temp/ask_about_model.log')
+  px.connect(logging_path=f'{Path.home()}/logs/ask_about_model.log')
 
   print(f'{"PROVIDER":10} | {"MODEL":45} | {"DURATION":13} | {"RESPONSE"}')
   print()
-  for provider, models in px_types.GENERATE_TEXT_MODELS.items():
-    for model_name in models:
-      px.set_model(generate_text=(provider, model_name))
-      start_time = datetime.datetime.now()
-      response = ask_model_and_company()
-      end_time = datetime.datetime.now()
-      duration = (end_time - start_time).total_seconds() * 1000
-      response = response.strip().split('\n')[0][:100] + (
-        '...' if len(response) > 100 else '')
-      print(f'{provider:10} | {model_name:45} | {duration:10.0f} ms | {response}')
-    print()
+  last_provider = None
+  for provider, provider_model in px.models.generate_text:
+    px.set_model(generate_text=(provider, provider_model))
+    start_time = datetime.datetime.now()
+    response = ask_model_and_company()
+    end_time = datetime.datetime.now()
+    duration = (end_time - start_time).total_seconds() * 1000
+    response = response.strip().split('\n')[0][:100] + (
+      '...' if len(response) > 100 else '')
+    if last_provider and last_provider != provider:
+      print()
+    print(f'{provider:10} | {provider_model:45} | {duration:10.0f} ms | {response}')
+    last_provider = provider
 
 
 if __name__ == '__main__':
