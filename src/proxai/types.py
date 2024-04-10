@@ -132,6 +132,16 @@ MODEL_MAP: Dict[Provider, Type[ProviderModel]] = {
     Provider.HUGGING_FACE: HuggingFaceModel,
 }
 
+_PROVIDER_KEY_MAP: Dict[Provider, List[str]] = {
+    Provider.OPENAI: ['OPENAI_API_KEY'],
+    Provider.CLAUDE: ['ANTHROPIC_API_KEY'],
+    Provider.GEMINI: ['GOOGLE_API_KEY'],
+    Provider.COHERE: ['CO_API_KEY'],
+    Provider.DATABRICKS: ['DATABRICKS_TOKEN', 'DATABRICKS_HOST'],
+    Provider.MISTRAL: ['MISTRAL_API_KEY'],
+    Provider.HUGGING_FACE: ['HUGGINGFACE_API_KEY'],
+}
+
 
 GENERATE_TEXT_MODELS: Dict[Provider, List[Type[ProviderModel]]] = {
     Provider.OPENAI: [

@@ -1,6 +1,7 @@
 import dataclasses
 import os
-from typing import Dict, Optional
+import random
+from typing import Dict, List, Optional, Set
 import proxai.types as types
 import proxai.type_utils as type_utils
 from proxai.connectors.model_connector import ModelConnector
@@ -12,6 +13,7 @@ from proxai.connectors.databricks import DatabricksConnector
 from proxai.connectors.mistral import MistralConnector
 from proxai.connectors.hugging_face import HuggingFaceConnector
 from proxai.logging.utils import LocalLoggingOptions
+import multiprocessing
 
 _RUN_TYPE: types.RunType = types.RunType.PRODUCTION
 _REGISTERED_VALUES: Dict[str, types.ValueType] = {}
@@ -107,3 +109,62 @@ def generate_text(
     max_tokens: int = 100) -> str:
   model_connector = _get_model_connector(types.GENERATE_TEXT)
   return model_connector.generate_text(prompt, max_tokens)
+
+
+class AvailableModels:
+  _generate_text: List[types.ModelType] = []
+  _providers_with_key: List[types.Provider] = []
+  _working_models: Set[types.ModelType] = set()
+  _failed_models: Set[types.ModelType] = set()
+
+  def __init__(self):
+    for provider, provider_key_name in types._PROVIDER_KEY_MAP.items():
+      provider_flag = True
+      for key_name in provider_key_name:
+        if key_name not in os.environ:
+          provider_flag = False
+          break
+      if provider_flag:
+        self._providers_with_key.append(provider)
+
+  @staticmethod
+  def _test_generate_text(
+      model: types.ModelType,
+      model_connector: ModelConnector):
+    try:
+      text = model_connector.generate_text(
+          prompt=f'What can you say about number {random.randint(1, 1000000)} '
+          f'and number {random.randint(1, 1000000)}?',
+          max_tokens=100)
+      return model, True, text
+    except Exception as e:
+      return model, False, str(e)
+
+  @property
+  def generate_text(self):
+    test_models = []
+    for provider, models in types.GENERATE_TEXT_MODELS.items():
+      for provider_model in models:
+        model = (provider, provider_model)
+        if model not in _INITIALIZED_MODEL_CONNECTORS:
+          _INITIALIZED_MODEL_CONNECTORS[model] = _init_model_connector(model)
+        if model not in self._working_models:
+          test_models.append(model)
+
+    pool = multiprocessing.Pool(processes=len(test_models))
+    results = []
+    for test_model in test_models:
+      result = pool.apply_async(
+          self._test_generate_text,
+          args=(test_model, _INITIALIZED_MODEL_CONNECTORS[test_model]))
+      results.append(result)
+    pool.close()
+    pool.join()
+    results = [result.get() for result in results]
+    for model, status, _ in results:
+      if status:
+        self._working_models.add(model)
+      else:
+        self._failed_models.add(model)
+    self._generate_text = sorted(list(self._working_models))
+    return self._generate_text
