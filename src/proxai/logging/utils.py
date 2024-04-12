@@ -1,11 +1,14 @@
+import os
 from datetime import datetime
 from dataclasses import dataclass
 from typing import Dict, Optional
 import json
 
+QUERY_LOGGING_FILE_NAME = 'provider_queries.log'
+
 
 @dataclass
-class LocalLoggingOptions:
+class LoggingOptions:
   path: Optional[str] = None
   time: bool = True
   prompt: bool = True
@@ -14,7 +17,7 @@ class LocalLoggingOptions:
 
 
 def log_generate_text(
-    logging_options: LocalLoggingOptions,
+    logging_options: LoggingOptions,
     provider: str,
     provider_model: str,
     start_time: datetime,
@@ -23,6 +26,7 @@ def log_generate_text(
     prompt: Optional[str] = None,
     response: Optional[str] = None,
     error: Optional[str] = None):
+  file_path = os.path.join(logging_options.path, QUERY_LOGGING_FILE_NAME)
   result = {
     'provider': provider,
     'provider_model': provider_model,
@@ -37,6 +41,6 @@ def log_generate_text(
     result['response'] = response
   if logging_options.error and error is not None:
     result['error'] = error
-  with open(logging_options.path, 'a') as f:
+  with open(file_path, 'a') as f:
     f.write(json.dumps(result) + '\n')
   f.close()

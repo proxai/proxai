@@ -1,12 +1,17 @@
 """Examples of asking about model properties."""
 import csv
+import os
+from pathlib import Path
+from typing import List
 import json
 import datetime
-import proxai
-import proxai.types as types
+import enum
+import dataclasses
+import proxai as px
+import proxai.types as px_types
 
 # https://www.kaggle.com/datasets/thedevastator/mathematical-problems-dataset-various-mathematic
-test_data = [
+TEST_DATA = [
   {'answer': '5',
    'question': 'Suppose 12*q + 42 = q + 42. Solve q = 22*t - 0*t - 110 for t.'},
   {'answer': '-4',
@@ -42,86 +47,126 @@ test_data = [
                'Solve q*g - 2 = -4 for g.'},
   {'answer': '3',
    'question': 'Suppose 2*r - 5*p + 47 = 0, r + 5*p = -7 - 24. Let u = -24 - r. '
-               'Solve -z - u*z = -9 for z.'}]
+               'Solve -z - u*z = -9 for z.'}
+]
 
 
-def _log_result(row):
-  with open('/Users/osmanaka/temp/math_problems_log.jsonl', 'a') as f:
-    f.write(json.dumps(row) + '\n')
-  f.close()
-  return
+def connect_to_proxai():
+  cache_path = f'{Path.home()}/proxai_cache/'
+  logging_path = f'{Path.home()}/proxai_log/math_problems/'
+  os.makedirs(cache_path, exist_ok=True)
+  os.makedirs(logging_path, exist_ok=True)
+  px.connect(cache_path=cache_path, logging_path=logging_path)
+
+
+def get_models(verbose=True):
+  models = px.models.generate_text(verbose=True)
+  if verbose:
+    print('Available models:')
+    for provider, provider_models in models.items():
+      print(f'{provider}:')
+      for provider_model in provider_models:
+        print(f'   {provider_model}')
+    print()
+  return models
+
 
 def get_answer(question):
-  return proxai.generate_text(f"""\
+  return px.generate_text(f"""\
 Can you give me exactly one integer answer to the following question? \
 Nothing else, just the answer.
 Question: {question}
 """)
 
 
-def eval_math_questions(provider, model, try_count=3):
-  correct_answers = 0
-  incorrect_answers = 0
-  model_error = 0
-  for idx, test in enumerate(test_data):
-    correct_flag = False
-    error_count = 0
-    for try_id in range(try_count):
-      row = {
-        'provider': provider,
-        'model': model,
-        'question': test['question'],
-        'answer': test['answer'],
-        'response': '',
-        'time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        'success': '',
-      }
-      try:
-        result = get_answer(test['question'])
-        row['response'] = result
-        if result == test['answer']:
-          row['success'] = 'CORRECT'
-          _log_result(row)
-          correct_flag = True
-          break
-        else:
-          row['success'] = 'INCORRECT'
-          _log_result(row)
-          error_count += 1
-      except Exception as e:
-        row['response'] = str(e)
-        row['success'] = 'MODEL ERROR'
-        _log_result(row)
-        error_count += 1
-    if correct_flag:
-      correct_answers += 1
-    elif error_count != try_count:
-      incorrect_answers += 1
+@dataclasses.dataclass
+class QuestionResult:
+  correct: bool
+  incorrect: int = 0
+  error: int = 0
+
+
+def get_result_for_question(question, answer, try_count) -> QuestionResult:
+  question_result = QuestionResult(correct=False)
+  for _ in range(try_count):
+    try:
+      result = get_answer(question)
+      if result == answer:
+        question_result.correct = True
+        return question_result
+      question_result.incorrect += 1
+    except Exception as e:
+      question_result.error += 1
+  return question_result
+
+
+@dataclasses.dataclass
+class EvalResult:
+  correct: int = 0
+  incorrect: int = 0
+  error: int = 0
+  all_results: List[str] = dataclasses.field(default_factory=list)
+
+
+def eval_math_questions(try_count) -> EvalResult:
+  eval_result = EvalResult()
+  for test in TEST_DATA:
+    question_result = get_result_for_question(
+        question=test['question'],
+        answer=test['answer'],
+        try_count=try_count)
+    if question_result.correct:
+      eval_result.correct += 1
+      eval_result.all_results.append('True')
     else:
-      model_error += 1
+      if question_result.error == try_count:
+        eval_result.error += 1
+        eval_result.all_results.append('Error')
+      else:
+        eval_result.incorrect += 1
+        eval_result.all_results.append('False')
+  return eval_result
 
-  return {
-    'correct_answers': correct_answers,
-    'incorrect_answers': incorrect_answers,
-    'model_error': model_error
-  }
 
-def main():
+def run_test(models, try_count):
   print(f'{"PROVIDER":10} | {"MODEL":35} | {"DURATION":13} | {"RESPONSE"}')
   print()
-  for provider, models in types._MODEL_MAP.items():
-    for model_name in models:
-      proxai.set_model(generate_text=(provider, model_name))
+  all_results = {}
+  for provider, provider_models in models.items():
+    for provider_model in provider_models:
+      px.set_model(generate_text=(provider, provider_model))
       start_time = datetime.datetime.now()
-      response = eval_math_questions(provider, model_name)
+      eval_result = eval_math_questions(try_count=try_count)
       end_time = datetime.datetime.now()
       duration = (end_time - start_time).total_seconds() * 1000
       response = (
-        f'Correct: {response["correct_answers"]:2}, '
-        f'Incorrect: {response["incorrect_answers"]:2}, '
-        f'Model Error: {response["model_error"]:2}')
-      print(f'{provider:10} | {model_name:35} | {duration:10.0f} ms | {response}')
+        f'Correct: {eval_result.correct:2}, '
+        f'Incorrect: {eval_result.incorrect:2}, '
+        f'Error: {eval_result.error:2}')
+      print(f'{provider:10} | {provider_model:35} | {duration:10.0f} ms | {response}')
+      all_results[(provider, provider_model)] = eval_result.all_results
   print()
+  return all_results
+
+
+def print_all_results(all_results):
+  print(f'{"MODEL":40} | '
+        + ' | '.join([f'{idx:5}' for idx in range(1, len(TEST_DATA)+1)]),
+        end=' | ')
+  print()
+  for (provider, provider_model), results in all_results.items():
+    print(f"{f'{provider} / {provider_model}':40} | ", end='')
+    for result in results:
+      print(f'{result:5}', end=' | ')
+    print()
+
+
+def main():
+  _TRY_COUNT = 3
+  connect_to_proxai()
+  models = get_models()
+  all_results = run_test(models, _TRY_COUNT)
+  print_all_results(all_results)
 
 
 if __name__ == '__main__':

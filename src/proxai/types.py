@@ -1,13 +1,15 @@
 import dataclasses
 import enum
-from typing import Dict, List, Tuple, Type, Union, Optional
-
-GENERATE_TEXT = 'generate_text'
+from typing import Dict, List, Tuple, Type, Set
 
 
 class RunType(enum.Enum):
   PRODUCTION = 1
   TEST = 2
+
+
+class CallType(str, enum.Enum):
+  GENERATE_TEXT = 'generate_text'
 
 
 class Provider(str, enum.Enum):
@@ -37,8 +39,8 @@ class OpenAIModel(ProviderModel):
 
   # Updated legacy models (2023)
   GPT_3_5_TURBO_INSTRUCT = 'gpt-3.5-turbo-instruct'
-  BABBAGE_002 = 'babbage-002'
-  DAVINCI_002 = 'davinci-002'
+  BABBAGE = 'babbage-002'
+  DAVINCI = 'davinci-002'
 
 
 class ClaudeModel(ProviderModel):
@@ -116,13 +118,13 @@ class HuggingFaceModel(ProviderModel):
   # META_LLAMA_2_70B_CHAT_HF = 'meta-llama/Llama-2-70b-chat-hf'
   # Requires pro subscription:
   # CODELLAMA_70B_INSTRUCT_HF = 'codellama/CodeLlama-70b-Instruct-hf'
-  MISTRAL_MIXTRAL_8X7B_INSTRUCT_V01 = 'mistralai/Mixtral-8x7B-Instruct-v0.1'
-  MISTRAL_MISTRAL_7B_INSTRUCT_V02 = 'mistralai/Mistral-7B-Instruct-v0.2'
-  NOUS_HERMES_2_MIXTRAL_8X7B_DPO = 'NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO'
+  MISTRAL_MIXTRAL_8X7B_INSTRUCT = 'mistralai/Mixtral-8x7B-Instruct-v0.1'
+  MISTRAL_MISTRAL_7B_INSTRUCT = 'mistralai/Mistral-7B-Instruct-v0.2'
+  NOUS_HERMES_2_MIXTRAL_8X7B = 'NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO'
   OPENCHAT_3_5 = 'openchat/openchat-3.5-0106'
 
 
-MODEL_MAP: Dict[Provider, Type[ProviderModel]] = {
+PROVIDER_MODEL_MAP: Dict[Provider, Type[ProviderModel]] = {
     Provider.OPENAI: OpenAIModel,
     Provider.CLAUDE: ClaudeModel,
     Provider.GEMINI: GeminiModel,
@@ -130,6 +132,16 @@ MODEL_MAP: Dict[Provider, Type[ProviderModel]] = {
     Provider.DATABRICKS: DatabricksModel,
     Provider.MISTRAL: MistralModel,
     Provider.HUGGING_FACE: HuggingFaceModel,
+}
+
+PROVIDER_KEY_MAP: Dict[Provider, List[str]] = {
+    Provider.OPENAI: ['OPENAI_API_KEY'],
+    Provider.CLAUDE: ['ANTHROPIC_API_KEY'],
+    Provider.GEMINI: ['GOOGLE_API_KEY'],
+    Provider.COHERE: ['CO_API_KEY'],
+    Provider.DATABRICKS: ['DATABRICKS_TOKEN', 'DATABRICKS_HOST'],
+    Provider.MISTRAL: ['MISTRAL_API_KEY'],
+    Provider.HUGGING_FACE: ['HUGGINGFACE_API_KEY'],
 }
 
 
@@ -171,9 +183,9 @@ GENERATE_TEXT_MODELS: Dict[Provider, List[Type[ProviderModel]]] = {
     ],
     Provider.HUGGING_FACE: [
         HuggingFaceModel.GOOGLE_GEMMA_7B_IT,
-        HuggingFaceModel.MISTRAL_MIXTRAL_8X7B_INSTRUCT_V01,
-        HuggingFaceModel.MISTRAL_MISTRAL_7B_INSTRUCT_V02,
-        HuggingFaceModel.NOUS_HERMES_2_MIXTRAL_8X7B_DPO,
+        HuggingFaceModel.MISTRAL_MIXTRAL_8X7B_INSTRUCT,
+        HuggingFaceModel.MISTRAL_MISTRAL_7B_INSTRUCT,
+        HuggingFaceModel.NOUS_HERMES_2_MIXTRAL_8X7B,
         HuggingFaceModel.OPENCHAT_3_5,
     ],
 }
@@ -185,3 +197,11 @@ ModelType = Tuple[Provider, ProviderModel]
 @dataclasses.dataclass
 class ValueType:
   generate_text: ModelType = None
+
+
+@dataclasses.dataclass
+class ModelStatus:
+  unprocessed_models: Set[ModelType] = dataclasses.field(default_factory=set)
+  working_models: Set[ModelType] = dataclasses.field(default_factory=set)
+  failed_models: Set[ModelType] = dataclasses.field(default_factory=set)
+  filtered_models: Set[ModelType] = dataclasses.field(default_factory=set)
