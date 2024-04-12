@@ -109,7 +109,7 @@ def eval_math_questions(provider, model, try_count=3):
 def main():
   print(f'{"PROVIDER":10} | {"MODEL":35} | {"DURATION":13} | {"RESPONSE"}')
   print()
-  for provider, models in types._MODEL_MAP.items():
+  for provider, models in types.PROVIDER_MODEL_MAP.items():
     for model_name in models:
       proxai.set_model(generate_text=(provider, model_name))
       start_time = datetime.datetime.now()
