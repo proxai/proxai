@@ -1,4 +1,13 @@
+import datetime
 import proxai.types as types
+
+
+def encode_datetime(dt: datetime.datetime) -> str:
+  return dt.strftime('%Y-%m-%d %H:%M:%S.%f')
+
+
+def decode_datetime(dt_str: str) -> datetime.datetime:
+  return datetime.datetime.strptime(dt_str, '%Y-%m-%d %H:%M:%S.%f')
 
 
 def check_model_type(model: types.ModelType):
