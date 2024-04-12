@@ -1,13 +1,15 @@
 import dataclasses
 import enum
-from typing import Dict, List, Tuple, Type, Union, Optional
-
-GENERATE_TEXT = 'generate_text'
+from typing import Dict, List, Tuple, Type, Union, Optional, Set
 
 
 class RunType(enum.Enum):
   PRODUCTION = 1
   TEST = 2
+
+
+class CallType(str, enum.Enum):
+  GENERATE_TEXT = 'generate_text'
 
 
 class Provider(str, enum.Enum):
@@ -195,3 +197,11 @@ ModelType = Tuple[Provider, ProviderModel]
 @dataclasses.dataclass
 class ValueType:
   generate_text: ModelType = None
+
+
+@dataclasses.dataclass
+class ModelStatus:
+  unprocessed_models: Set[ModelType] = dataclasses.field(default_factory=set)
+  working_models: Set[ModelType] = dataclasses.field(default_factory=set)
+  failed_models: Set[ModelType] = dataclasses.field(default_factory=set)
+  filtered_models: Set[ModelType] = dataclasses.field(default_factory=set)
