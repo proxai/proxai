@@ -21,13 +21,14 @@ Which company created you and what is your model name?
 
 def main():
   cache_path = f'{Path.home()}/proxai_cache/'
-  logging_path = f'{Path.home()}/proxai_log/'
+  logging_path = f'{Path.home()}/proxai_log/ask_about_model/'
   os.makedirs(cache_path, exist_ok=True)
   os.makedirs(logging_path, exist_ok=True)
-
   px.connect(cache_path=cache_path, logging_path=logging_path)
 
-  models = px.models.generate_text(verbose=True)
+  models = px.models.generate_text(
+      only_largest_models=True,
+      verbose=True)
   print('Available models:')
   for provider, provider_models in models.items():
     print(f'{provider}:')

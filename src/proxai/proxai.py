@@ -138,6 +138,7 @@ class AvailableModels:
 
   def generate_text(
       self,
+      only_largest_models: bool = False,
       verbose: bool = False,
       failed_models: bool = False
   ) -> Dict[types.Provider, Set[types.ProviderModel]]:
@@ -146,6 +147,29 @@ class AvailableModels:
     self._get_all_models(models, call_type=types.CallType.GENERATE_TEXT)
     self._filter_by_provider_key(models)
     self._filter_by_cache(models, call_type=types.CallType.GENERATE_TEXT)
+
+    # TODO: This very experimental and require proper design. One alternative is
+    # registering models according to their sizes in px.types. Then, find
+    # working largest model for each provider.
+    if only_largest_models:
+      _allowed_models = set([
+          (types.Provider.OPENAI, types.OpenAIModel.GPT_4),
+          (types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_OPUS),
+          (types.Provider.GEMINI, types.GeminiModel.GEMINI_PRO),
+          (types.Provider.COHERE, types.CohereModel.COMMAND_R),
+          (types.Provider.DATABRICKS,
+           types.DatabricksModel.DATABRICKS_DBRX_INSTRUCT),
+          (types.Provider.MISTRAL, types.MistralModel.MISTRAL_LARGE_LATEST),
+      ])
+      for model in list(models.unprocessed_models):
+        if model not in _allowed_models:
+          models.unprocessed_models.remove(model)
+          models.filtered_models.add(model)
+      for model in list(models.working_models):
+        if model not in _allowed_models:
+          models.working_models.remove(model)
+          models.filtered_models.add(model)
+
     print_flag = bool(verbose and models.unprocessed_models)
     if print_flag:
       print(f'From cache;\n'
@@ -160,6 +184,7 @@ class AvailableModels:
             f'  {len(models.failed_models)} models are failed.')
       duration = (end_time - start_time).total_seconds()
       print(f'Test duration: {duration} seconds.')
+
     if failed_models:
       return self._format_set(models.failed_models)
     return self._format_set(models.working_models)
