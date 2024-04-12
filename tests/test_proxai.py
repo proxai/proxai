@@ -1,6 +1,8 @@
 import proxai.types as types
 from proxai import proxai
 import pytest
+import tempfile
+import proxai.caching.utils as caching_utils
 
 
 class TestRunType:
@@ -57,3 +59,153 @@ class TestGenerateText:
 
   def test_hugging_face(self):
     self._test_generate_text(('hugging_face', 'google/gemma-7b-it'))
+
+
+class TestAvailableModels:
+  def test_filter_by_key(self):
+    proxai._set_run_type(types.RunType.TEST)
+    with tempfile.TemporaryDirectory() as cache_dir:
+      proxai.connect(cache_path=cache_dir)
+      available_models = proxai.AvailableModels()
+      available_models._providers_with_key = [
+          types.Provider.OPENAI, types.Provider.CLAUDE]
+      models = types.ModelStatus()
+      available_models._get_all_models(
+          models, call_type=types.CallType.GENERATE_TEXT)
+      available_models._filter_by_provider_key(models)
+      assert models.unprocessed_models == set([
+          (types.Provider.OPENAI, types.OpenAIModel.GPT_4),
+          (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW),
+          (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO),
+          (types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_HAIKU),
+          (types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_OPUS),
+          (types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_SONNET)])
+
+  def test_filter_by_cache(self):
+    proxai._set_run_type(types.RunType.TEST)
+    with tempfile.TemporaryDirectory() as cache_dir:
+      proxai.connect(cache_path=cache_dir)
+      save_cache = caching_utils.ModelCache(
+          cache_options=caching_utils.CacheOptions(
+              path=cache_dir))
+      data = types.ModelStatus()
+      data.working_models.add(
+        (types.Provider.OPENAI, types.OpenAIModel.GPT_4))
+      data.failed_models.add(
+        (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW))
+      save_cache.update(models=data, call_type=types.CallType.GENERATE_TEXT)
+
+      available_models = proxai.AvailableModels()
+      available_models._providers_with_key = [types.Provider.OPENAI]
+      models = types.ModelStatus()
+      available_models._get_all_models(
+          models, call_type=types.CallType.GENERATE_TEXT)
+      available_models._filter_by_provider_key(models)
+      available_models._filter_by_cache(
+          models, call_type=types.CallType.GENERATE_TEXT)
+      assert models.unprocessed_models == set([
+          (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)])
+      assert models.working_models == set([
+          (types.Provider.OPENAI, types.OpenAIModel.GPT_4)])
+      assert models.failed_models == set([
+          (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW)])
+
+  def test_test_models(self):
+    proxai._set_run_type(types.RunType.TEST)
+    with tempfile.TemporaryDirectory() as cache_dir:
+      proxai.connect(cache_path=cache_dir)
+      available_models = proxai.AvailableModels()
+      available_models._providers_with_key = [types.Provider.OPENAI]
+      models = types.ModelStatus()
+      available_models._get_all_models(
+          models, call_type=types.CallType.GENERATE_TEXT)
+      available_models._filter_by_provider_key(models)
+      proxai._INITIALIZED_MODEL_CONNECTORS[
+          (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)] = (
+              'failing_connector')
+      available_models._test_models(
+          models, call_type=types.CallType.GENERATE_TEXT)
+      assert models.unprocessed_models == set()
+      assert models.working_models == set([
+          (types.Provider.OPENAI, types.OpenAIModel.GPT_4),
+          (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW)])
+      assert models.failed_models == set([
+          (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)])
+
+      load_cache = caching_utils.ModelCache(
+          cache_options=caching_utils.CacheOptions(
+              path=cache_dir))
+      loaded_data = load_cache.get(call_type=types.CallType.GENERATE_TEXT)
+      assert loaded_data.working_models == set([
+          (types.Provider.OPENAI, types.OpenAIModel.GPT_4),
+          (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW)])
+      assert loaded_data.failed_models == set([
+          (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)])
+
+      del proxai._INITIALIZED_MODEL_CONNECTORS[
+          (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)]
+
+  def test_generate_text(self):
+    proxai._set_run_type(types.RunType.TEST)
+    with tempfile.TemporaryDirectory() as cache_dir:
+      proxai.connect(cache_path=cache_dir)
+      available_models = proxai.AvailableModels()
+      available_models._providers_with_key = [types.Provider.OPENAI]
+      models = available_models.generate_text()
+      assert models == {
+          types.Provider.OPENAI: set([
+              types.OpenAIModel.GPT_4,
+              types.OpenAIModel.GPT_4_TURBO_PREVIEW,
+              types.OpenAIModel.GPT_3_5_TURBO])}
+
+  def test_generate_text_filters(self):
+    proxai._set_run_type(types.RunType.TEST)
+    with tempfile.TemporaryDirectory() as cache_dir:
+      proxai.connect(cache_path=cache_dir)
+
+      # _filter_by_cache filter
+      save_cache = caching_utils.ModelCache(
+          cache_options=caching_utils.CacheOptions(
+              path=cache_dir))
+      data = types.ModelStatus()
+      data.failed_models.add(
+          (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW))
+      save_cache.update(models=data, call_type=types.CallType.GENERATE_TEXT)
+
+      # _test_models filter
+      proxai._INITIALIZED_MODEL_CONNECTORS[
+          (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)] = (
+              'failing_connector')
+
+      available_models = proxai.AvailableModels()
+
+      # _filter_by_provider_key filter
+      available_models._providers_with_key = [types.Provider.OPENAI]
+
+      # Check that the failed model was filtered out
+      models = available_models.generate_text()
+      assert models == {
+          types.Provider.OPENAI: set([types.OpenAIModel.GPT_4])}
+
+      # Check cache memory values
+      models = available_models._model_cache.get(
+          call_type=types.CallType.GENERATE_TEXT)
+      assert models.working_models == set([
+          (types.Provider.OPENAI, types.OpenAIModel.GPT_4)])
+      assert models.failed_models == set([
+          (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW),
+          (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)])
+
+      # Check cache file values
+      load_cache = caching_utils.ModelCache(
+          cache_options=caching_utils.CacheOptions(
+              path=cache_dir))
+      models = load_cache.get(call_type=types.CallType.GENERATE_TEXT)
+      assert models.working_models == set([
+          (types.Provider.OPENAI, types.OpenAIModel.GPT_4)])
+      assert models.failed_models == set([
+          (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW),
+          (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)])
+
+      del proxai._INITIALIZED_MODEL_CONNECTORS[
+          (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)]
