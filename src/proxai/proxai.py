@@ -127,7 +127,7 @@ class AvailableModels:
     self._load_provider_keys()
 
   def _load_provider_keys(self):
-    for provider, provider_key_name in types._PROVIDER_KEY_MAP.items():
+    for provider, provider_key_name in types.PROVIDER_KEY_MAP.items():
       provider_flag = True
       for key_name in provider_key_name:
         if key_name not in os.environ:
