@@ -2,22 +2,14 @@ import os
 from datetime import datetime
 from dataclasses import dataclass
 from typing import Dict, Optional
+import proxai.types as types
 import json
 
 QUERY_LOGGING_FILE_NAME = 'provider_queries.log'
 
 
-@dataclass
-class LoggingOptions:
-  path: Optional[str] = None
-  time: bool = True
-  prompt: bool = True
-  response: bool = True
-  error: bool = True
-
-
 def log_generate_text(
-    logging_options: LoggingOptions,
+    logging_options: types.LoggingOptions,
     provider: str,
     provider_model: str,
     start_time: datetime,
