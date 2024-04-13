@@ -1,6 +1,6 @@
 import dataclasses
 import enum
-from typing import Dict, List, Tuple, Type, Set
+from typing import Any, Dict, List, Optional, Tuple, Type, Set
 
 
 class RunType(enum.Enum):
@@ -205,3 +205,22 @@ class ModelStatus:
   working_models: Set[ModelType] = dataclasses.field(default_factory=set)
   failed_models: Set[ModelType] = dataclasses.field(default_factory=set)
   filtered_models: Set[ModelType] = dataclasses.field(default_factory=set)
+
+
+ModelCacheType = Dict[
+    CallType, Dict[Provider, Dict[ProviderModel, Dict[str, Any]]]]
+
+
+@dataclasses.dataclass
+class CacheOptions:
+  path: Optional[str] = None
+  duration: Optional[int] = 24 * 60 * 60
+
+
+@dataclasses.dataclass
+class LoggingOptions:
+  path: Optional[str] = None
+  time: bool = True
+  prompt: bool = True
+  response: bool = True
+  error: bool = True

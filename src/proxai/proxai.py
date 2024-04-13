@@ -12,18 +12,17 @@ from proxai.connectors.cohere_api import CohereConnector
 from proxai.connectors.databricks import DatabricksConnector
 from proxai.connectors.mistral import MistralConnector
 from proxai.connectors.hugging_face import HuggingFaceConnector
-import proxai.caching.utils as cache_utils
-import proxai.logging.utils as logging_utils
+import proxai.caching.model_cache as model_cache
 import multiprocessing
 
 _RUN_TYPE: types.RunType = types.RunType.PRODUCTION
 _REGISTERED_VALUES: Dict[str, types.ModelType] = {}
 _INITIALIZED_MODEL_CONNECTORS: Dict[types.ModelType, ModelConnector] = {}
-_LOGGING_OPTIONS: logging_utils.LoggingOptions = logging_utils.LoggingOptions()
-_CACHE_OPTIONS: cache_utils.CacheOptions = cache_utils.CacheOptions()
+_LOGGING_OPTIONS: types.LoggingOptions = types.LoggingOptions()
+_CACHE_OPTIONS: types.CacheOptions = types.CacheOptions()
 
-CacheOptions = cache_utils.CacheOptions
-LoggingOptions = logging_utils.LoggingOptions
+CacheOptions = types.CacheOptions
+LoggingOptions = types.LoggingOptions
 
 
 def _set_run_type(run_type: types.RunType):
@@ -119,7 +118,7 @@ def generate_text(
 
 
 class AvailableModels:
-  _model_cache: Optional[cache_utils.ModelCache] = None
+  _model_cache: Optional[model_cache.ModelCache] = None
   _generate_text: Dict[types.ModelType, Any] = {}
   _providers_with_key: Set[types.Provider] = set()
 
@@ -222,7 +221,7 @@ class AvailableModels:
     if not _CACHE_OPTIONS.path:
       return
     if not self._model_cache:
-      self._model_cache = cache_utils.ModelCache(_CACHE_OPTIONS)
+      self._model_cache = model_cache.ModelCache(_CACHE_OPTIONS)
     cache_result = self._model_cache.get(call_type=call_type)
 
     def _remove_model(model: types.ModelType):
@@ -292,7 +291,7 @@ class AvailableModels:
     if not _CACHE_OPTIONS.path:
       return
     if not self._model_cache:
-      self._model_cache = cache_utils.ModelCache(_CACHE_OPTIONS)
+      self._model_cache = model_cache.ModelCache(_CACHE_OPTIONS)
     self._model_cache.update(models=update_models, call_type=call_type)
 
   def _format_set(
