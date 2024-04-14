@@ -1,7 +1,7 @@
-from datetime import datetime
+import datetime
 from typing import Any, Dict, Optional
 import proxai.types as types
-from proxai.logging.utils import log_generate_text
+from proxai.logging.utils import log_query_record
 
 
 class ModelConnector(object):
@@ -38,42 +38,61 @@ class ModelConnector(object):
   def init_mock_model(self):
     raise NotImplementedError
 
-  def _log_generate_text(
+  def _get_query_record(
       self,
-      start_time: datetime,
-      end_time: datetime,
+      call_type: types.CallType,
       prompt: Optional[str] = None,
+      max_tokens: Optional[int] = None,
       response: Optional[str] = None,
-      error: Optional[str] = None):
-    if self._logging_options:
-      log_generate_text(
-          logging_options=self._logging_options,
-          provider=self.provider,
-          provider_model=self.provider_model,
-          start_time=start_time,
-          end_time=end_time,
-          prompt=prompt,
-          response=response,
-          error=error)
+      error: Optional[str] = None,
+      start_time: Optional[datetime.datetime] = None,
+      end_time: Optional[datetime.datetime] = None):
+    query_record = types.QueryRecord(
+        call_type=call_type,
+        provider=self.provider,
+        provider_model=self.provider_model)
+    if prompt:
+      query_record.prompt = prompt
+    if max_tokens:
+      query_record.max_tokens = max_tokens
+    if response:
+      query_record.response = response
+    if error:
+      query_record.error = error
+    if start_time:
+      query_record.start_time = start_time
+    if end_time:
+      query_record.end_time = end_time
+    if start_time and end_time:
+      query_record.response_time = end_time - start_time
+    return query_record
 
   def generate_text(self, prompt: str, max_tokens: int) -> str:
-    start_time = datetime.now()
+    start_time = datetime.datetime.now()
     try:
       response =  self.generate_text_proc(prompt, max_tokens)
-    except Exception as e:
-      self._log_generate_text(
-          start_time=start_time,
-          end_time=datetime.now(),
+      query_record = self._get_query_record(
+          call_type=types.CallType.GENERATE_TEXT,
           prompt=prompt,
-          error=str(e))
+          max_tokens=max_tokens,
+          response=response,
+          start_time=start_time,
+          end_time=datetime.datetime.now())
+      log_query_record(
+          logging_options=self._logging_options, query_record=query_record)
+      return response
+    except Exception as e:
+      query_record = self._get_query_record(
+          call_type=types.CallType.GENERATE_TEXT,
+          prompt=prompt,
+          max_tokens=max_tokens,
+          error=str(e),
+          start_time=start_time,
+          end_time=datetime.datetime.now())
+      log_query_record(
+          logging_options=self._logging_options, query_record=query_record)
       raise e
 
-    self._log_generate_text(
-        start_time=start_time,
-        end_time=datetime.now(),
-        prompt=prompt,
-        response=response)
-    return response
 
   def generate_text_proc(self, prompt: str, max_tokens: int) -> dict:
     raise NotImplementedError
