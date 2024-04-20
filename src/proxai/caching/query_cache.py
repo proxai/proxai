@@ -339,10 +339,6 @@ class ShardManager:
     self._light_cache_records_path = None
     self._load_light_cache_records()
 
-  def _check_shard_id(self, shard_id: Union[int, str]):
-    if shard_id not in self.shard_paths:
-      raise ValueError('Invalid shard_id')
-
   @property
   def backlog_shard_path(self):
     if self._backlog_shard_path:
@@ -369,6 +365,10 @@ class ShardManager:
     self._light_cache_records_path = os.path.join(
         self._path, f'light_cache_records_{self._shard_count:05}.json')
     return self._light_cache_records_path
+
+  def _check_shard_id(self, shard_id: Union[int, str]):
+    if shard_id not in self.shard_paths:
+      raise ValueError('Invalid shard_id')
 
   def _update_cache_record(
       self,
