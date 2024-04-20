@@ -84,7 +84,6 @@ def _save_shard_manager(path, records=None):
     return save_shard_manager
 
 
-
 def _create_cache_record(prompt, responses, shard_id, call_count):
   query_record = types.QueryRecord(prompt=prompt)
   query_record.hash_value = (
@@ -184,6 +183,17 @@ def _check_file_json(filepath, expected):
   with open(filepath, 'r') as f:
     for line, expected_data in zip(f, expected):
       assert json.loads(line) == expected_data
+
+
+def _check_light_cache_records_file(
+    filepath, expected):
+  data = {}
+  with open(filepath, 'r') as f:
+    for line in f:
+      record_data = json.loads(line)
+      for hash_value, record in record_data.items():
+        data[hash_value] = record
+  assert data == expected
 
 
 def _check_shard_heap(shard_manager, expected):
@@ -467,23 +477,24 @@ class TestShardManager:
           response_per_file=_RESPONSE_PER_FILE)
       assert (load_shard_manager._light_cache_records ==
               records['light_cache_records'])
-      _check_file_json(
+      _check_light_cache_records_file(
           filepath=load_shard_manager.light_cache_records_path,
-          expected=[records['enc_all_light_cache_records']])
-      assert not os.path.exists(
-          load_shard_manager.light_cache_records_path + '_backup')
+          expected=records['enc_light_cache_records'])
+      _check_light_cache_records_file(
+          filepath=load_shard_manager.light_cache_records_path + '_backup',
+          expected=records['enc_all_light_cache_records'])
       assert load_shard_manager._shard_active_count == {
           0: 1, 1: 2, 2: 3, 'backlog': 2}
       _check_shard_heap(load_shard_manager, [(1, 0), (2, 1), (3, 2)])
 
       # Backup file check
       load_shard_manager._save_light_cache_records()
-      _check_file_json(
+      _check_light_cache_records_file(
           filepath=load_shard_manager.light_cache_records_path,
-          expected=[records['enc_light_cache_records']])
-      _check_file_json(
+          expected=records['enc_light_cache_records'])
+      _check_light_cache_records_file(
           filepath=load_shard_manager.light_cache_records_path + '_backup',
-          expected=[records['enc_all_light_cache_records']])
+          expected=records['enc_light_cache_records'])
 
       # Recovery from backup file check
       os.remove(load_shard_manager.light_cache_records_path)
@@ -498,6 +509,7 @@ class TestShardManager:
       _check_shard_heap(load_shard_manager_2, [(1, 0), (2, 1), (3, 2)])
 
       # No light_cache_records file
+      os.remove(load_shard_manager.light_cache_records_path)
       os.remove(load_shard_manager.light_cache_records_path + '_backup')
       load_shard_manager_3 = query_cache.ShardManager(
           path=temp_dir, shard_count=_SHARD_COUNT,
