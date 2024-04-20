@@ -1090,9 +1090,25 @@ class TestQueryCache:
       assert query_cache_manager._shard_manager._map_shard_to_cache == {
           0: {hash_1}, 1: {hash_2}, 2: {hash_3}, 'backlog': { hash_4}}
 
+# Check when light_cache saved to the file. (Might change to just append,
+# while reading get recents).
+#   -> This solves the error of not saving the light cache file.
+#   -> Currently light cache only saved when backlog is moved to the shard.
 
-# # Test for save record
-# #   -> corner cases like shard count is 1, file count is 1/0/-1, etc.
-# # Different cache, same hash bug
-# # Check when light_cache saved to the file. (Might change to just append, while reading get recents).
-# # If hits to the same hash??!!!
+# _get_hash_value test
+
+# HeapManager: with_size tests
+
+# ShardManager: new methods tests
+
+# QueryCacheManager: add new response to existing record
+      # ? -> when return when return from cache(?) like there is 3 responses
+      # should we add 4? Who will check that?
+
+# Test for save record
+#   -> corner cases like shard count is 1, file count is 1/0/-1, etc.
+
+
+
+# Different cache, same hash bug
+# If hits to the same hash??!!!
