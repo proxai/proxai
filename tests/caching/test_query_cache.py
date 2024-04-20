@@ -421,6 +421,46 @@ class TestHeapManager:
     assert len(heap_manager) == 1
     assert heap_manager.top() == (3, 'a')
 
+  def test_heap_with_size(self):
+    heap_manager = query_cache.HeapManager(with_size=True)
+    assert len(heap_manager) == 0
+    assert heap_manager.top() == (None, None)
+    assert heap_manager.pop() == (None, None)
+
+    heap_manager.push(key='b', value=10, record_size=5)
+    assert len(heap_manager) == 5
+
+    heap_manager.push(key='a', value=1, record_size=10)
+    assert len(heap_manager) == 15
+
+    heap_manager.push(key='c', value=7, record_size=20)
+    assert len(heap_manager) == 35
+    assert heap_manager.top() == (1, 'a')
+    assert len(heap_manager) == 35
+
+    assert heap_manager.pop() == (1, 'a')
+    assert heap_manager.top() == (7, 'c')
+    assert len(heap_manager) == 25
+
+    heap_manager.push(key='a', value=2, record_size=100)
+    assert heap_manager.top() == (2, 'a')
+    assert len(heap_manager) == 125
+
+    heap_manager.push(key='a', value=12, record_size=1000)
+    assert heap_manager.top() == (7, 'c')
+    assert len(heap_manager) == 1025
+
+    assert heap_manager.pop() == (7, 'c')
+    assert heap_manager.pop() == (10, 'b')
+    assert heap_manager.pop() == (12, 'a')
+    assert len(heap_manager) == 0
+    assert heap_manager.top() == (None, None)
+    assert heap_manager.pop() == (None, None)
+
+    heap_manager.push(key='a', value=3, record_size=10)
+    assert len(heap_manager) == 10
+    assert heap_manager.top() == (3, 'a')
+
 
 class TestShardManager:
   def test_shard_names(self):
@@ -1102,12 +1142,6 @@ class TestQueryCache:
       assert query_cache_manager._shard_manager._map_shard_to_cache == {
           0: {hash_1}, 1: {hash_2}, 2: {hash_3}, 'backlog': { hash_4}}
 
-# Check when light_cache saved to the file. (Might change to just append,
-# while reading get recents).
-#   -> This solves the error of not saving the light cache file.
-#   -> Currently light cache only saved when backlog is moved to the shard.
-
-# _get_hash_value test
 
 # HeapManager: with_size tests
 
