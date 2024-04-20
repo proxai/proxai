@@ -253,12 +253,13 @@ class CacheRecord:
       default_factory=list)
   shard_id: Optional[str] = None
   last_access_time: Optional[datetime.datetime] = None
-  call_count: int = 0
+  call_count: Optional[int] = None
 
 
 @dataclasses.dataclass
 class LightCacheRecord:
   query_record_hash: Optional[str] = None
+  query_response_count: Optional[int] = None
   shard_id: Optional[int] = None
   last_access_time: Optional[datetime.datetime] = None
-  call_count: int = 0
+  call_count: Optional[int] = None
