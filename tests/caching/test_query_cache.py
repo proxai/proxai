@@ -235,6 +235,7 @@ def _check_shard_manager_state(
     shard_manager: query_cache.ShardManager,
     light_cache_records=None,
     enc_light_cache_records=None,
+    enc_light_cache_records_backup=None,
     map_shard_to_cache=None,
     shard_active_count=None,
     shard_heap=None,
@@ -246,6 +247,10 @@ def _check_shard_manager_state(
     _check_light_cache_records_file(
         filepath=shard_manager.light_cache_records_path,
         expected=enc_light_cache_records)
+  if enc_light_cache_records_backup:
+    _check_light_cache_records_file(
+        filepath=shard_manager.light_cache_records_path + '_backup',
+        expected=enc_light_cache_records_backup)
   if map_shard_to_cache:
     for k, v in shard_manager._map_shard_to_cache.items():
       if (len(v) == 0 and k in map_shard_to_cache):
@@ -258,7 +263,6 @@ def _check_shard_manager_state(
     _check_shard_heap(shard_manager, shard_heap)
   if loaded_cache_records:
     assert shard_manager._loaded_cache_records == loaded_cache_records
-
 
 
 def _get_cache_record_from_prompt(prompts, records):
@@ -288,6 +292,37 @@ def _get_hash_from_prompt(prompt, records):
     if cache_record.query_record.prompt == prompt:
       return hash
 
+
+def _unpack_records(records):
+  hash_1 = copy.deepcopy(
+      _get_hash_from_prompt(prompt='p1', records=records))
+  light_1 = copy.deepcopy(
+      records['light_cache_records'][hash_1])
+  enc_light_1 = copy.deepcopy(
+      records['enc_light_cache_records'][hash_1])
+  hash_2 = copy.deepcopy(
+      _get_hash_from_prompt(prompt='p2', records=records))
+  light_2 = copy.deepcopy(
+      records['light_cache_records'][hash_2])
+  enc_light_2 = copy.deepcopy(
+      records['enc_light_cache_records'][hash_2])
+  hash_3 = copy.deepcopy(
+      _get_hash_from_prompt(prompt='p3', records=records))
+  light_3 = copy.deepcopy(
+      records['light_cache_records'][hash_3])
+  enc_light_3 = copy.deepcopy(
+      records['enc_light_cache_records'][hash_3])
+  hash_4 = copy.deepcopy(
+      _get_hash_from_prompt(prompt='p4', records=records))
+  light_4 = copy.deepcopy(
+      records['light_cache_records'][hash_4])
+  enc_light_4 = copy.deepcopy(
+      records['enc_light_cache_records'][hash_4])
+  return (
+      hash_1, light_1, enc_light_1,
+      hash_2, light_2, enc_light_2,
+      hash_3, light_3, enc_light_3,
+      hash_4, light_4, enc_light_4)
 
 def _print_state(
     shard_manager: query_cache.ShardManager,
@@ -674,31 +709,36 @@ class TestShardManager:
     with tempfile.TemporaryDirectory() as temp_dir:
       _save_shard_manager(
           path=temp_dir, records=records['all_light_cache_records'])
+      (hash_1, light_1, enc_light_1,
+       hash_2, light_2, enc_light_2,
+       hash_3, light_3, enc_light_3,
+       hash_4, light_4, enc_light_4) = _unpack_records(records=records)
 
       # Regular load check
       load_shard_manager = query_cache.ShardManager(
           path=temp_dir, shard_count=_SHARD_COUNT,
           response_per_file=_RESPONSE_PER_FILE)
-      assert (load_shard_manager._light_cache_records ==
-              records['light_cache_records'])
-      _check_light_cache_records_file(
-          filepath=load_shard_manager.light_cache_records_path,
-          expected=records['enc_light_cache_records'])
-      _check_light_cache_records_file(
-          filepath=load_shard_manager.light_cache_records_path + '_backup',
-          expected=records['enc_all_light_cache_records'])
-      assert load_shard_manager._shard_active_count == {
-          0: 1, 1: 2, 2: 3, 'backlog': 2}
-      _check_shard_heap(load_shard_manager, [(1, 0), (2, 1), (3, 2)])
+      _check_shard_manager_state(
+          load_shard_manager,
+          light_cache_records=records['light_cache_records'],
+          enc_light_cache_records=records['enc_light_cache_records'],
+          enc_light_cache_records_backup=records['enc_all_light_cache_records'],
+          map_shard_to_cache={
+              0: {hash_1}, 1: {hash_2}, 2: {hash_3}, 'backlog': {hash_4}},
+          shard_active_count={0: 1, 1: 2, 2: 3, 'backlog': 2},
+          shard_heap=[(1, 0), (2, 1), (3, 2)])
 
       # Backup file check
       load_shard_manager._save_light_cache_records()
-      _check_light_cache_records_file(
-          filepath=load_shard_manager.light_cache_records_path,
-          expected=records['enc_light_cache_records'])
-      _check_light_cache_records_file(
-          filepath=load_shard_manager.light_cache_records_path + '_backup',
-          expected=records['enc_light_cache_records'])
+      _check_shard_manager_state(
+          load_shard_manager,
+          light_cache_records=records['light_cache_records'],
+          enc_light_cache_records=records['enc_light_cache_records'],
+          enc_light_cache_records_backup=records['enc_light_cache_records'],
+          map_shard_to_cache={
+              0: {hash_1}, 1: {hash_2}, 2: {hash_3}, 'backlog': {hash_4}},
+          shard_active_count={0: 1, 1: 2, 2: 3, 'backlog': 2},
+          shard_heap=[(1, 0), (2, 1), (3, 2)])
 
       # Recovery from backup file check
       os.remove(load_shard_manager.light_cache_records_path)
@@ -706,11 +746,15 @@ class TestShardManager:
           path=temp_dir, shard_count=_SHARD_COUNT,
           response_per_file=_RESPONSE_PER_FILE)
       load_shard_manager_2._load_light_cache_records()
-      assert (load_shard_manager_2._light_cache_records ==
-              records['light_cache_records'])
-      assert load_shard_manager_2._shard_active_count == {
-          0: 1, 1: 2, 2: 3, 'backlog': 2}
-      _check_shard_heap(load_shard_manager_2, [(1, 0), (2, 1), (3, 2)])
+      _check_shard_manager_state(
+          load_shard_manager_2,
+          light_cache_records=records['light_cache_records'],
+          enc_light_cache_records=records['enc_light_cache_records'],
+          enc_light_cache_records_backup=records['enc_light_cache_records'],
+          map_shard_to_cache={
+              0: {hash_1}, 1: {hash_2}, 2: {hash_3}, 'backlog': {hash_4}},
+          shard_active_count={0: 1, 1: 2, 2: 3, 'backlog': 2},
+          shard_heap=[(1, 0), (2, 1), (3, 2)])
 
       # No light_cache_records file
       os.remove(load_shard_manager.light_cache_records_path)
@@ -718,10 +762,14 @@ class TestShardManager:
       load_shard_manager_3 = query_cache.ShardManager(
           path=temp_dir, shard_count=_SHARD_COUNT,
           response_per_file=_RESPONSE_PER_FILE)
-      assert load_shard_manager_3._light_cache_records == {}
-      assert load_shard_manager_3._shard_active_count == {
-          0: 0, 1: 0, 2: 0, 'backlog': 0}
-      _check_shard_heap(load_shard_manager_3, [(0, 0), (0, 1), (0, 2)])
+      _check_shard_manager_state(
+          load_shard_manager_3,
+          light_cache_records={},
+          enc_light_cache_records={},
+          enc_light_cache_records_backup={},
+          map_shard_to_cache={},
+          shard_active_count={0: 0, 1: 0, 2: 0, 'backlog': 0},
+          shard_heap=[(0, 0), (0, 1), (0, 2)])
 
   def test_move_backlog_to_invalid_shard(self):
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -737,15 +785,30 @@ class TestShardManager:
           shard_dir=temp_dir, shard_count=_SHARD_COUNT)
       _save_shard_manager(
           path=temp_dir, records=records['all_light_cache_records'])
+      (hash_1, light_1, enc_light_1,
+       hash_2, light_2, enc_light_2,
+       hash_3, light_3, enc_light_3,
+       hash_4, light_4, enc_light_4) = _unpack_records(records=records)
 
       shard_manager = query_cache.ShardManager(
           path=temp_dir, shard_count=_SHARD_COUNT,
           response_per_file=_RESPONSE_PER_FILE)
       shard_manager._move_backlog_to_shard(shard_id=1)
-      assert not os.path.exists(shard_manager.backlog_shard_path)
-      assert shard_manager._shard_active_count == {
-          0: 1, 1: 4, 2: 3, 'backlog': 0}
-      _check_shard_heap(shard_manager, [(1, 0), (3, 2), (4, 1)])
+      light_4.shard_id = 1
+      enc_light_4 = query_cache.BaseQueryCache._encode_light_cache_record(
+          light_4)
+      _check_shard_manager_state(
+          shard_manager,
+          light_cache_records={
+              hash_1: light_1, hash_2: light_2,
+              hash_3: light_3, hash_4: light_4},
+          enc_light_cache_records={
+              hash_1: enc_light_1, hash_2: enc_light_2,
+              hash_3: enc_light_3, hash_4: enc_light_4},
+          map_shard_to_cache={
+              0: {hash_1}, 1: {hash_2, hash_4}, 2: {hash_3}},
+          shard_active_count={0: 1, 1: 4, 2: 3, 'backlog': 0},
+          shard_heap=[(1, 0), (3, 2), (4, 1)])
 
       prompt_records = _get_cache_record_from_prompt(
           prompts=['p2', 'p4'], records=records)
@@ -761,15 +824,28 @@ class TestShardManager:
       save_shard_manager = _save_shard_manager(
           path=temp_dir, records=records['all_light_cache_records'])
       os.remove(save_shard_manager.shard_paths[1])
+      (hash_1, light_1, enc_light_1,
+       hash_2, light_2, enc_light_2,
+       hash_3, light_3, enc_light_3,
+       hash_4, light_4, enc_light_4) = _unpack_records(records=records)
 
       shard_manager = query_cache.ShardManager(
           path=temp_dir, shard_count=_SHARD_COUNT,
           response_per_file=_RESPONSE_PER_FILE)
       shard_manager._move_backlog_to_shard(shard_id=1)
-      assert not os.path.exists(shard_manager.backlog_shard_path)
-      assert shard_manager._shard_active_count == {
-          0: 1, 1: 2, 2: 3, 'backlog': 0}
-      _check_shard_heap(shard_manager, [(1, 0), (2, 1), (3, 2)])
+      light_4.shard_id = 1
+      enc_light_4 = query_cache.BaseQueryCache._encode_light_cache_record(
+          light_4)
+      _check_shard_manager_state(
+          shard_manager,
+          light_cache_records={
+              hash_1: light_1, hash_3: light_3, hash_4: light_4},
+          enc_light_cache_records={
+              hash_1: enc_light_1, hash_3: enc_light_3, hash_4: enc_light_4},
+          map_shard_to_cache={
+              0: {hash_1}, 1: {hash_4}, 2: {hash_3}},
+          shard_active_count={0: 1, 1: 2, 2: 3, 'backlog': 0},
+          shard_heap=[(1, 0), (2, 1), (3, 2)])
 
       prompt_records = _get_cache_record_from_prompt(
           prompts=['p4'], records=records)
@@ -778,13 +854,6 @@ class TestShardManager:
           filepath=shard_manager.shard_paths[1],
           expected=prompt_records['enc_cache_records'])
 
-      hash_value = _get_hash_from_prompt(prompt='p4', records=records)
-      records['light_cache_records'][hash_value].shard_id = 1
-      hash_value = _get_hash_from_prompt(prompt='p2', records=records)
-      del records['light_cache_records'][hash_value]
-      assert (shard_manager._light_cache_records
-              == records['light_cache_records'])
-
   def test_move_not_existed_backlog_to_shard(self):
     with tempfile.TemporaryDirectory() as temp_dir:
       records = _get_example_records(
@@ -792,15 +861,24 @@ class TestShardManager:
       save_shard_manager = _save_shard_manager(
           path=temp_dir, records=records['all_light_cache_records'])
       os.remove(save_shard_manager.backlog_shard_path)
+      (hash_1, light_1, enc_light_1,
+       hash_2, light_2, enc_light_2,
+       hash_3, light_3, enc_light_3,
+       hash_4, light_4, enc_light_4) = _unpack_records(records=records)
 
       shard_manager = query_cache.ShardManager(
           path=temp_dir, shard_count=_SHARD_COUNT,
           response_per_file=_RESPONSE_PER_FILE)
       shard_manager._move_backlog_to_shard(shard_id=1)
-      assert not os.path.exists(shard_manager.backlog_shard_path)
-      assert shard_manager._shard_active_count == {
-          0: 1, 1: 2, 2: 3, 'backlog': 0}
-      _check_shard_heap(shard_manager, [(1, 0), (2, 1), (3, 2)])
+      _check_shard_manager_state(
+          shard_manager,
+          light_cache_records={
+              hash_1: light_1, hash_2: light_2, hash_3: light_3},
+          enc_light_cache_records={
+              hash_1: enc_light_1, hash_2: enc_light_2, hash_3: enc_light_3},
+          map_shard_to_cache={0: {hash_1}, 1: {hash_2}, 2: {hash_3}},
+          shard_active_count={0: 1, 1: 2, 2: 3, 'backlog': 0},
+          shard_heap=[(1, 0), (2, 1), (3, 2)])
 
       prompt_records = _get_cache_record_from_prompt(
           prompts=['p2'], records=records)
@@ -808,34 +886,40 @@ class TestShardManager:
           filepath=shard_manager.shard_paths[1],
           expected=prompt_records['enc_cache_records'])
 
-      hash_value = _get_hash_from_prompt(prompt='p4', records=records)
-      del records['light_cache_records'][hash_value]
-      assert (shard_manager._light_cache_records
-              == records['light_cache_records'])
-
   def test_add_to_backlog(self):
     with tempfile.TemporaryDirectory() as temp_dir:
       records = _get_example_records(
           shard_dir=temp_dir, shard_count=_SHARD_COUNT)
       _save_shard_manager(
           path=temp_dir, records=records['all_light_cache_records'])
+      (hash_1, light_1, enc_light_1,
+       hash_2, light_2, enc_light_2,
+       hash_3, light_3, enc_light_3,
+       hash_4, light_4, enc_light_4) = _unpack_records(records=records)
 
       shard_manager = query_cache.ShardManager(
           path=temp_dir, shard_count=_SHARD_COUNT,
           response_per_file=_RESPONSE_PER_FILE)
-      cache_record = _create_cache_record(
-          prompt='p8', responses=['r8'], shard_id='not_important', call_count=1)
-      shard_manager._add_to_backlog(copy.deepcopy(cache_record))
-      cache_record.shard_id = 'backlog'
-      assert shard_manager._shard_active_count == {
-          0: 1, 1: 2, 2: 3, 'backlog': 4}
-      assert shard_manager._light_cache_records == {
-          **records['light_cache_records'],
-          cache_record.query_record.hash_value:
-              query_cache.BaseQueryCache._to_light_cache_record(cache_record)}
-      assert shard_manager._loaded_cache_records == {
-          cache_record.query_record.hash_value: cache_record}
-      _check_shard_heap(shard_manager, [(1, 0), (2, 1), (3, 2)])
+      hash_5, record_5, light_5, _, enc_light_5 = _create_cache_record(
+          prompt='p8', responses=['r8'], shard_id='not_important', call_count=1,
+          all_values=True)
+      shard_manager._add_to_backlog(copy.deepcopy(record_5))
+      light_5.shard_id = 'backlog'
+      enc_light_5 = query_cache.BaseQueryCache._encode_light_cache_record(
+          light_5)
+      _check_shard_manager_state(
+          shard_manager,
+          light_cache_records={
+              hash_1: light_1, hash_2: light_2, hash_3: light_3,
+              hash_4: light_4, hash_5: light_5},
+          enc_light_cache_records={
+              hash_1: enc_light_1, hash_2: enc_light_2, hash_3: enc_light_3,
+              hash_4: enc_light_4, hash_5: enc_light_5},
+          map_shard_to_cache={
+              0: {hash_1}, 1: {hash_2}, 2:{hash_3},
+              'backlog': {hash_4, hash_5}},
+          shard_active_count={0: 1, 1: 2, 2: 3, 'backlog': 4},
+          shard_heap=[(1, 0), (2, 1), (3, 2)])
 
   def test_get_cache_record(self):
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -883,22 +967,28 @@ class TestShardManager:
           shard_dir=temp_dir, shard_count=_SHARD_COUNT)
       _save_shard_manager(
           path=temp_dir, records=records['all_light_cache_records'])
-      light_cache_records = copy.deepcopy(records['light_cache_records'])
+      (hash_1, light_1, enc_light_1,
+       hash_2, light_2, enc_light_2,
+       hash_3, light_3, enc_light_3,
+       hash_4, light_4, enc_light_4) = _unpack_records(records=records)
 
       shard_manager = query_cache.ShardManager(
           path=temp_dir, shard_count=_SHARD_COUNT,
           response_per_file=_RESPONSE_PER_FILE)
 
       # Test simple remove via hash value
-      hash_value = _get_hash_from_prompt(prompt='p1', records=records)
-      assert shard_manager.get_cache_record(hash_value) is not None
-      shard_manager.delete_record(hash_value)
-      del light_cache_records[hash_value]
-      assert shard_manager._shard_active_count == {
-          0: 0, 1: 2, 2: 3, 'backlog': 2}
-      assert shard_manager._light_cache_records == light_cache_records
-      _check_shard_heap(shard_manager, [(0, 0), (2, 1), (3, 2)])
-      assert shard_manager.get_cache_record(hash_value) is None
+      assert shard_manager.get_cache_record(hash_1) is not None
+      shard_manager.delete_record(hash_1)
+      assert shard_manager.get_cache_record(hash_1) is None
+      _check_shard_manager_state(
+          shard_manager,
+          light_cache_records={
+              hash_2: light_2, hash_3: light_3, hash_4: light_4},
+          enc_light_cache_records={
+              hash_2: enc_light_2, hash_3: enc_light_3, hash_4: enc_light_4},
+          map_shard_to_cache={1: {hash_2}, 2: {hash_3}, 'backlog': {hash_4}},
+          shard_active_count={0: 0, 1: 2, 2: 3, 'backlog': 2},
+          shard_heap=[(0, 0), (2, 1), (3, 2)])
 
       # Test simple remove via query record
       cache_record = types.CacheRecord(
@@ -906,44 +996,49 @@ class TestShardManager:
       assert shard_manager.get_cache_record(
           cache_record.query_record) is not None
       shard_manager.delete_record(cache_record)
-      del light_cache_records[_get_hash_from_prompt(
-          prompt='p2', records=records)]
-      assert shard_manager._shard_active_count == {
-          0: 0, 1: 0, 2: 3, 'backlog': 2}
-      assert shard_manager._light_cache_records == light_cache_records
-      _check_shard_heap(shard_manager, [(0, 0), (0, 1), (3, 2)])
       assert shard_manager.get_cache_record(
           cache_record.query_record) is None
+      _check_shard_manager_state(
+          shard_manager,
+          light_cache_records={hash_3: light_3, hash_4: light_4},
+          enc_light_cache_records={hash_3: enc_light_3, hash_4: enc_light_4},
+          map_shard_to_cache={2: {hash_3}, 'backlog': {hash_4}},
+          shard_active_count={0: 0, 1: 0, 2: 3, 'backlog': 2},
+          shard_heap=[(0, 0), (0, 1), (3, 2)])
 
       # Test simple remove via query record hash value
-      hash_value = _get_hash_from_prompt(prompt='p3', records=records)
-      assert shard_manager.get_cache_record(hash_value) is not None
-      shard_manager.delete_record(
-          cache_record=records['cache_records'][hash_value])
-      del light_cache_records[hash_value]
-      assert shard_manager._shard_active_count == {
-          0: 0, 1: 0, 2: 0, 'backlog': 2}
-      assert shard_manager._light_cache_records == light_cache_records
-      _check_shard_heap(shard_manager, [(0, 0), (0, 1), (0, 2)])
-      assert shard_manager.get_cache_record(hash_value) is None
+      assert shard_manager.get_cache_record(hash_3) is not None
+      shard_manager.delete_record(light_3)
+      assert shard_manager.get_cache_record(hash_3) is None
+      _check_shard_manager_state(
+          shard_manager,
+          light_cache_records={hash_4: light_4},
+          enc_light_cache_records={hash_4: enc_light_4},
+          map_shard_to_cache={'backlog': {hash_4}},
+          shard_active_count={0: 0, 1: 0, 2: 0, 'backlog': 2},
+          shard_heap=[(0, 0), (0, 1), (0, 2)])
 
       # Test remove from backlog
-      hash_value = _get_hash_from_prompt(prompt='p4', records=records)
-      assert shard_manager.get_cache_record(hash_value) is not None
-      shard_manager.delete_record(cache_record=hash_value)
-      del light_cache_records[hash_value]
-      assert shard_manager._shard_active_count == {
-          0: 0, 1: 0, 2: 0, 'backlog': 0}
-      assert shard_manager._light_cache_records == light_cache_records
-      _check_shard_heap(shard_manager, [(0, 0), (0, 1), (0, 2)])
-      assert shard_manager.get_cache_record(hash_value) is None
+      assert shard_manager.get_cache_record(hash_4) is not None
+      shard_manager.delete_record(hash_4)
+      assert shard_manager.get_cache_record(hash_4) is None
+      _check_shard_manager_state(
+          shard_manager,
+          light_cache_records={},
+          enc_light_cache_records={},
+          map_shard_to_cache={},
+          shard_active_count={0: 0, 1: 0, 2: 0, 'backlog': 0},
+          shard_heap=[(0, 0), (0, 1), (0, 2)])
 
       # Test delete not existed
       shard_manager.delete_record(cache_record='invalid_hash_value')
-      assert shard_manager._shard_active_count == {
-          0: 0, 1: 0, 2: 0, 'backlog': 0}
-      assert shard_manager._light_cache_records == light_cache_records
-      _check_shard_heap(shard_manager, [(0, 0), (0, 1), (0, 2)])
+      _check_shard_manager_state(
+          shard_manager,
+          light_cache_records={},
+          enc_light_cache_records={},
+          map_shard_to_cache={},
+          shard_active_count={0: 0, 1: 0, 2: 0, 'backlog': 0},
+          shard_heap=[(0, 0), (0, 1), (0, 2)])
 
   def test_save_record(self):
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -951,83 +1046,115 @@ class TestShardManager:
           shard_dir=temp_dir, shard_count=_SHARD_COUNT)
       _save_shard_manager(
           path=temp_dir, records=records['all_light_cache_records'])
+      (hash_1, light_1, enc_light_1,
+       hash_2, light_2, enc_light_2,
+       hash_3, light_3, enc_light_3,
+       hash_4, light_4, enc_light_4) = _unpack_records(records=records)
 
       # Delete some records to open space for new records
       shard_manager = query_cache.ShardManager(
           path=temp_dir, shard_count=_SHARD_COUNT,
           response_per_file=_RESPONSE_PER_FILE)
-      shard_manager.delete_record(
-          _get_hash_from_prompt(prompt='p2', records=records))
-      shard_manager.delete_record(
-          _get_hash_from_prompt(prompt='p3', records=records))
-      assert shard_manager._shard_active_count == {
-          0: 1, 1: 0, 2: 0, 'backlog': 2}
-      _check_shard_heap(shard_manager, [(0, 1), (0, 2), (1, 0)])
+      shard_manager.delete_record(hash_2)
+      shard_manager.delete_record(hash_3)
+      _check_shard_manager_state(
+          shard_manager,
+          light_cache_records={hash_1: light_1, hash_4: light_4},
+          enc_light_cache_records={hash_1: enc_light_1,  hash_4: enc_light_4},
+          map_shard_to_cache={0: {hash_1}, 'backlog': {hash_4}},
+          shard_active_count={0: 1, 1: 0, 2: 0, 'backlog': 2},
+          shard_heap=[(0, 1), (0, 2), (1, 0)])
 
       # Test new record to backlog
-      cache_record = _create_cache_record(
-          prompt='p8', responses=[], shard_id='not_important', call_count=0)
-      shard_manager.save_record(cache_record)
-      assert shard_manager._shard_active_count == {
-          0: 1, 1: 0, 2: 0, 'backlog': 3}
-      _check_shard_heap(shard_manager, [(0, 1), (0, 2), (1, 0)])
-      assert shard_manager.get_cache_record(
-          types.QueryRecord(prompt='p1')).shard_id == 0
-      assert shard_manager.get_cache_record(
-          types.QueryRecord(prompt='p4')).shard_id == 'backlog'
-      assert shard_manager.get_cache_record(
-          types.QueryRecord(prompt='p8')).shard_id == 'backlog'
+      hash_5, record_5, light_5, _, enc_light_5 = _create_cache_record(
+          prompt='p8', responses=[], shard_id='not_important',
+          call_count=0, all_values=True)
+      shard_manager.save_record(record_5)
+      light_5.shard_id = 'backlog'
+      enc_light_5 = query_cache.BaseQueryCache._encode_light_cache_record(
+          light_5)
+      _check_shard_manager_state(
+          shard_manager,
+          light_cache_records={
+              hash_1: light_1, hash_4: light_4, hash_5: light_5},
+          enc_light_cache_records={
+              hash_1: enc_light_1,  hash_4: enc_light_4, hash_5: enc_light_5},
+          map_shard_to_cache={
+              0: {hash_1}, 'backlog': {hash_4, hash_5}},
+          shard_active_count={0: 1, 1: 0, 2: 0, 'backlog': 3},
+          shard_heap=[(0, 1), (0, 2), (1, 0)])
 
       # Test backlog overload
-      cache_record = _create_cache_record(
-          prompt='p9', responses=['r9', 'r10'],
-          shard_id='not_important', call_count=1)
-      shard_manager.save_record(cache_record)
-      assert shard_manager._shard_active_count == {
-          0: 1, 1: 3, 2: 0, 'backlog': 3}
-      _check_shard_heap(shard_manager, [(0, 2), (1, 0), (3, 1)])
-      assert shard_manager.get_cache_record(
-          types.QueryRecord(prompt='p1')).shard_id == 0
-      assert shard_manager.get_cache_record(
-          types.QueryRecord(prompt='p4')).shard_id == 1
-      assert shard_manager.get_cache_record(
-          types.QueryRecord(prompt='p8')).shard_id == 1
-      assert shard_manager.get_cache_record(
-          types.QueryRecord(prompt='p9')).shard_id == 'backlog'
+      hash_6, record_6, light_6, _, enc_light_6 = _create_cache_record(
+          prompt='p9', responses=['r9', 'r10'], shard_id='not_important',
+          call_count=0, all_values=True)
+      shard_manager.save_record(record_6)
+      light_4.shard_id = 1
+      enc_light_4 = query_cache.BaseQueryCache._encode_light_cache_record(
+          light_4)
+      light_5.shard_id = 1
+      enc_light_5 = query_cache.BaseQueryCache._encode_light_cache_record(
+          light_5)
+      light_6.shard_id = 'backlog'
+      enc_light_6 = query_cache.BaseQueryCache._encode_light_cache_record(
+          light_6)
+      _check_shard_manager_state(
+          shard_manager,
+          light_cache_records={
+              hash_1: light_1, hash_4: light_4,
+              hash_5: light_5, hash_6: light_6},
+          enc_light_cache_records={
+              hash_1: enc_light_1,  hash_4: enc_light_4,
+              hash_5: enc_light_5, hash_6: enc_light_6},
+          map_shard_to_cache={
+              0: {hash_1}, 1: {hash_4, hash_5}, 'backlog': {hash_6}},
+          shard_active_count={0: 1, 1: 3, 2: 0, 'backlog': 3},
+          shard_heap=[(0, 2), (1, 0), (3, 1)])
 
       # Test override record
-      cache_record = _create_cache_record(
-          prompt='p1', responses=['new_r1'],
-          shard_id='not_important', call_count=1)
-      shard_manager.save_record(cache_record)
-      assert shard_manager._shard_active_count == {
-          0: 3, 1: 3, 2: 0, 'backlog': 2}
-      _check_shard_heap(shard_manager, [(0, 2), (3, 0), (3, 1)])
-      assert shard_manager.get_cache_record(
-          types.QueryRecord(prompt='p9')).shard_id == 0
-      assert shard_manager.get_cache_record(
-          types.QueryRecord(prompt='p4')).shard_id == 1
-      assert shard_manager.get_cache_record(
-          types.QueryRecord(prompt='p8')).shard_id == 1
-      assert shard_manager.get_cache_record(
-          types.QueryRecord(prompt='p1')).shard_id == 'backlog'
+      hash_1, record_1, light_1, _, enc_light_1 = _create_cache_record(
+          prompt='p1', responses=['new_r1'], shard_id='not_important',
+          call_count=1, all_values=True)
+      shard_manager.save_record(record_1)
+      light_1.shard_id = 'backlog'
+      enc_light_1 = query_cache.BaseQueryCache._encode_light_cache_record(
+          light_1)
+      light_6.shard_id = 0
+      enc_light_6 = query_cache.BaseQueryCache._encode_light_cache_record(
+          light_6)
+      _check_shard_manager_state(
+          shard_manager,
+          light_cache_records={
+              hash_1: light_1, hash_4: light_4,
+              hash_5: light_5, hash_6: light_6},
+          enc_light_cache_records={
+              hash_1: enc_light_1,  hash_4: enc_light_4,
+              hash_5: enc_light_5, hash_6: enc_light_6},
+          map_shard_to_cache={
+              0: {hash_6}, 1: {hash_4, hash_5}, 'backlog': {hash_1}},
+          shard_active_count={0: 3, 1: 3, 2: 0, 'backlog': 2},
+          shard_heap=[(0, 2), (3, 0), (3, 1)])
 
       # Test override backlog record
-      cache_record = _create_cache_record(
+      hash_1, record_1, light_1, _, enc_light_1 = _create_cache_record(
           prompt='p1', responses=['new_r1', 'new_r2', 'new_r3'],
-          shard_id='not_important', call_count=3)
-      shard_manager.save_record(cache_record)
-      assert shard_manager._shard_active_count == {
-          0: 3, 1: 3, 2: 0, 'backlog': 4}
-      _check_shard_heap(shard_manager, [(0, 2), (3, 0), (3, 1)])
-      assert shard_manager.get_cache_record(
-          types.QueryRecord(prompt='p9')).shard_id == 0
-      assert shard_manager.get_cache_record(
-          types.QueryRecord(prompt='p4')).shard_id == 1
-      assert shard_manager.get_cache_record(
-          types.QueryRecord(prompt='p8')).shard_id == 1
-      assert shard_manager.get_cache_record(
-          types.QueryRecord(prompt='p1')).shard_id == 'backlog'
+          shard_id='not_important', call_count=3, all_values=True)
+      shard_manager.save_record(record_1)
+      light_1.shard_id = 'backlog'
+      enc_light_1 = query_cache.BaseQueryCache._encode_light_cache_record(
+          light_1)
+      _check_shard_manager_state(
+          shard_manager,
+          light_cache_records={
+              hash_1: light_1, hash_4: light_4,
+              hash_5: light_5, hash_6: light_6},
+          enc_light_cache_records={
+              hash_1: enc_light_1,  hash_4: enc_light_4,
+              hash_5: enc_light_5, hash_6: enc_light_6},
+          map_shard_to_cache={
+              0: {hash_6}, 1: {hash_4, hash_5}, 'backlog': {hash_1}},
+          shard_active_count={0: 3, 1: 3, 2: 0, 'backlog': 4},
+          shard_heap=[(0, 2), (3, 0), (3, 1)])
 
 
 class TestQueryCache:
@@ -1213,98 +1340,132 @@ class TestQueryCache:
           response_per_file=_RESPONSE_PER_FILE,
           cache_response_size=10)
 
-      record_1 = types.QueryRecord(prompt='p1')
-      hash_1 = query_cache.BaseQueryCache._get_query_record_hash(
-          query_record=record_1)
-      record_2 = types.QueryRecord(prompt='p2')
-      hash_2 = query_cache.BaseQueryCache._get_query_record_hash(
-          query_record=record_2)
-      record_3 = types.QueryRecord(prompt='p3')
-      hash_3 = query_cache.BaseQueryCache._get_query_record_hash(
-          query_record=record_3)
-      record_4 = types.QueryRecord(prompt='p4')
-      hash_4 = query_cache.BaseQueryCache._get_query_record_hash(
-          query_record=record_4)
+      (hash_1, light_1, enc_light_1,
+       hash_2, light_2, enc_light_2,
+       hash_3, light_3, enc_light_3,
+       hash_4, light_4, enc_light_4) = _unpack_records(records=records)
+      record_1 = records['cache_records'][hash_1]
+      record_2 = records['cache_records'][hash_2]
+      record_3 = records['cache_records'][hash_3]
+      record_4 = records['cache_records'][hash_4]
 
       assert query_cache_manager.look(record_1) is None
       _check_record_heap(query_cache_manager, [
           hash_1, hash_2, hash_3, hash_4])
-      assert query_cache_manager._shard_manager._shard_active_count == {
-          0: 1, 1: 2, 2: 3, 'backlog': 2}
-      assert query_cache_manager._shard_manager._map_shard_to_cache == {
-          0: {hash_1}, 1: {hash_2}, 2: {hash_3}, 'backlog': {hash_4}}
+      _check_shard_manager_state(
+          query_cache_manager._shard_manager,
+          light_cache_records={
+              hash_1: light_1, hash_2: light_2,
+              hash_3: light_3, hash_4: light_4},
+          enc_light_cache_records={
+              hash_1: enc_light_1, hash_2: enc_light_2,
+              hash_3: enc_light_3, hash_4: enc_light_4},
+          map_shard_to_cache={
+              0: {hash_1}, 1: {hash_2}, 2: {hash_3}, 'backlog': {hash_4}},
+          shard_active_count={0: 1, 1: 2, 2: 3, 'backlog': 2},
+          shard_heap=[(1, 0), (2, 1), (3, 2)])
 
       assert query_cache_manager.look(record_1) is None
       _check_record_heap(query_cache_manager, [
           hash_1, hash_2, hash_3, hash_4])
-      assert query_cache_manager._shard_manager._shard_active_count == {
-          0: 1, 1: 2, 2: 3, 'backlog': 2}
-      assert query_cache_manager._shard_manager._map_shard_to_cache == {
-          0: {hash_1}, 1: {hash_2}, 2: {hash_3}, 'backlog': {hash_4}}
+      _check_shard_manager_state(
+          query_cache_manager._shard_manager,
+          light_cache_records={
+              hash_1: light_1, hash_2: light_2,
+              hash_3: light_3, hash_4: light_4},
+          enc_light_cache_records={
+              hash_1: enc_light_1, hash_2: enc_light_2,
+              hash_3: enc_light_3, hash_4: enc_light_4},
+          map_shard_to_cache={
+              0: {hash_1}, 1: {hash_2}, 2: {hash_3}, 'backlog': {hash_4}},
+          shard_active_count={0: 1, 1: 2, 2: 3, 'backlog': 2},
+          shard_heap=[(1, 0), (2, 1), (3, 2)])
 
       assert query_cache_manager.look(record_2).response == 'r1'
       _check_record_heap(query_cache_manager, [
           hash_1, hash_3, hash_4, hash_2])
-      assert query_cache_manager._shard_manager._shard_active_count == {
-          0: 1, 1: 0, 2: 3, 'backlog': 4}
-      assert query_cache_manager._shard_manager._map_shard_to_cache == {
-          0: {hash_1}, 1: set(), 2: {hash_3}, 'backlog': {hash_2, hash_4}}
+      _check_shard_manager_state(
+          query_cache_manager._shard_manager,
+          map_shard_to_cache={
+              0: {hash_1}, 2: {hash_3}, 'backlog': {hash_2, hash_4}},
+          shard_active_count={0: 1, 1: 0, 2: 3, 'backlog': 4},
+          shard_heap=[(0, 1), (1, 0), (3, 2)])
 
       assert query_cache_manager.look(record_2).response == 'r1'
       _check_record_heap(query_cache_manager, [
           hash_1, hash_3, hash_4, hash_2])
-      assert query_cache_manager._shard_manager._shard_active_count == {
-          0: 1, 1: 0, 2: 3, 'backlog': 4}
-      assert query_cache_manager._shard_manager._map_shard_to_cache == {
-          0: {hash_1}, 1: set(), 2: {hash_3}, 'backlog': {hash_2, hash_4}}
+      _check_shard_manager_state(
+          query_cache_manager._shard_manager,
+          map_shard_to_cache={
+              0: {hash_1}, 2: {hash_3}, 'backlog': {hash_2, hash_4}},
+          shard_active_count={0: 1, 1: 0, 2: 3, 'backlog': 4},
+          shard_heap=[(0, 1), (1, 0), (3, 2)])
 
       assert query_cache_manager.look(record_3).response == 'r2'
       _check_record_heap(query_cache_manager, [
           hash_1, hash_4, hash_2, hash_3])
-      assert query_cache_manager._shard_manager._shard_active_count == {
-          0: 1, 1: 4, 2: 0, 'backlog': 3}
-      assert query_cache_manager._shard_manager._map_shard_to_cache == {
-          0: {hash_1}, 1: {hash_2, hash_4}, 2: set(), 'backlog': {hash_3}}
+      _check_shard_manager_state(
+          query_cache_manager._shard_manager,
+          map_shard_to_cache={
+              0: {hash_1}, 1:{hash_2, hash_4}, 'backlog': {hash_3}},
+          shard_active_count={0: 1, 1: 4, 2: 0, 'backlog': 3},
+          shard_heap=[(0, 2), (1, 0), (4, 1)])
 
       assert query_cache_manager.look(record_3).response == 'r3'
       _check_record_heap(query_cache_manager, [
           hash_1, hash_4, hash_2, hash_3])
-      assert query_cache_manager._shard_manager._shard_active_count == {
-          0: 1, 1: 4, 2: 0, 'backlog': 3}
-      assert query_cache_manager._shard_manager._map_shard_to_cache == {
-          0: {hash_1}, 1: {hash_2, hash_4}, 2: set(), 'backlog': {hash_3}}
+      _check_shard_manager_state(
+          query_cache_manager._shard_manager,
+          map_shard_to_cache={
+              0: {hash_1}, 1:{hash_2, hash_4}, 'backlog': {hash_3}},
+          shard_active_count={0: 1, 1: 4, 2: 0, 'backlog': 3},
+          shard_heap=[(0, 2), (1, 0), (4, 1)])
 
       assert query_cache_manager.look(record_3).response == 'r2'
       _check_record_heap(query_cache_manager, [
           hash_1, hash_4, hash_2, hash_3])
-      assert query_cache_manager._shard_manager._shard_active_count == {
-          0: 1, 1: 4, 2: 0, 'backlog': 3}
-      assert query_cache_manager._shard_manager._map_shard_to_cache == {
-          0: {hash_1}, 1: {hash_2, hash_4}, 2: set(), 'backlog': {hash_3}}
+      _check_shard_manager_state(
+          query_cache_manager._shard_manager,
+          map_shard_to_cache={
+              0: {hash_1}, 1:{hash_2, hash_4}, 'backlog': {hash_3}},
+          shard_active_count={0: 1, 1: 4, 2: 0, 'backlog': 3},
+          shard_heap=[(0, 2), (1, 0), (4, 1)])
 
       assert query_cache_manager.look(record_3).response == 'r3'
       _check_record_heap(query_cache_manager, [
           hash_1, hash_4, hash_2, hash_3])
-      assert query_cache_manager._shard_manager._shard_active_count == {
-          0: 1, 1: 4, 2: 0, 'backlog': 3}
-      assert query_cache_manager._shard_manager._map_shard_to_cache == {
-          0: {hash_1}, 1: {hash_2, hash_4}, 2: set(), 'backlog': {hash_3}}
+      _check_shard_manager_state(
+          query_cache_manager._shard_manager,
+          map_shard_to_cache={
+              0: {hash_1}, 1:{hash_2, hash_4}, 'backlog': {hash_3}},
+          shard_active_count={0: 1, 1: 4, 2: 0, 'backlog': 3},
+          shard_heap=[(0, 2), (1, 0), (4, 1)])
 
       assert query_cache_manager.look(record_4).response == 'r4'
       _check_record_heap(query_cache_manager, [
           hash_1, hash_2, hash_3, hash_4])
-      assert query_cache_manager._shard_manager._shard_active_count == {
-          0: 1, 1: 2, 2: 3, 'backlog': 2}
-      assert query_cache_manager._shard_manager._map_shard_to_cache == {
-          0: {hash_1}, 1: {hash_2}, 2: {hash_3}, 'backlog': { hash_4}}
+      _check_shard_manager_state(
+          query_cache_manager._shard_manager,
+          map_shard_to_cache={
+              0: {hash_1}, 1:{hash_2}, 2: {hash_3}, 'backlog': {hash_4}},
+          shard_active_count={0: 1, 1: 2, 2: 3, 'backlog': 2},
+          shard_heap=[(1, 0), (2, 1), (3, 2)])
+      _check_shard_manager_state(
+          query_cache_manager._shard_manager,
+          map_shard_to_cache={
+              0: {hash_1}, 1:{hash_2}, 2: {hash_3}, 'backlog': {hash_4}},
+          shard_active_count={0: 1, 1: 2, 2: 3, 'backlog': 2},
+          shard_heap=[(1, 0), (2, 1), (3, 2)])
 
       assert query_cache_manager.look(record_4).response == 'r4'
       _check_record_heap(query_cache_manager, [
           hash_1, hash_2, hash_3, hash_4])
-      assert query_cache_manager._shard_manager._shard_active_count == {
-          0: 1, 1: 2, 2: 3, 'backlog': 2}
-      assert query_cache_manager._shard_manager._map_shard_to_cache == {
-          0: {hash_1}, 1: {hash_2}, 2: {hash_3}, 'backlog': { hash_4}}
+      _check_shard_manager_state(
+          query_cache_manager._shard_manager,
+          map_shard_to_cache={
+              0: {hash_1}, 1:{hash_2}, 2: {hash_3}, 'backlog': {hash_4}},
+          shard_active_count={0: 1, 1: 2, 2: 3, 'backlog': 2},
+          shard_heap=[(1, 0), (2, 1), (3, 2)])
 
 
 # ShardManager: new methods tests
