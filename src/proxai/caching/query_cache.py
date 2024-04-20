@@ -1,3 +1,4 @@
+import copy
 import os
 import collections
 import datetime
@@ -217,19 +218,69 @@ class BaseQueryCache:
       return cache_record.query_response_count + 1
     return len(cache_record.query_responses) + 1
 
+  @staticmethod
+  def _get_hash_value(
+      cache_record: Union[
+          str,
+          types.CacheRecord,
+          types.LightCacheRecord,
+          types.QueryRecord]
+  ) -> str:
+    if isinstance(cache_record, str):
+      return cache_record
+    if isinstance(cache_record, types.CacheRecord):
+      if cache_record.query_record.hash_value:
+        return cache_record.query_record.hash_value
+      else:
+        cache_record.query_record.hash_value = (
+            BaseQueryCache._get_query_record_hash(
+                cache_record.query_record))
+        return cache_record.query_record.hash_value
+    if isinstance(cache_record, types.LightCacheRecord):
+      if cache_record.query_record_hash:
+        return cache_record.query_record_hash
+      else:
+        raise ValueError('LightCacheRecord doen\'t have query_record_hash')
+    if isinstance(cache_record, types.QueryRecord):
+      query_record = cache_record
+      if query_record.hash_value:
+        return query_record.hash_value
+      else:
+        query_record.hash_value = BaseQueryCache._get_query_record_hash(
+            query_record)
+        return query_record.hash_value
+
 
 class HeapManager:
   _heap: List[Tuple[int, Union[int, str]]]
   _active_values: Dict[Union[int, str], int]
+  _record_size_map: Dict[Union[int, str], int]
+  _with_size: bool
+  _total_size: int
 
-  def __init__(self):
+  def __init__(self, with_size: bool = False):
     self._heap = []
     self._active_values = {}
+    self._record_size_map = {}
+    self._with_size = with_size
+    if with_size:
+      self._total_size = 0
 
-  def push(self, key: Union[int, str], value: int):
-    if key in self._active_values and self._active_values[key] == value:
-      return
+  def push(
+      self,
+      key: Union[int, str],
+      value: int,
+      record_size: int = None):
+    if not self._with_size and record_size:
+      raise ValueError('Cannot push record size without with_size=True')
+    if self._with_size and not record_size:
+      raise ValueError('Cannot push without record size with with_size=False')
+    if key in self._active_values and self._with_size:
+      self._total_size -= self._record_size_map[key]
     self._active_values[key] = value
+    if self._with_size:
+      self._record_size_map[key] = record_size
+      self._total_size += record_size
     heapq.heappush(self._heap, (value, key))
 
   def pop(self) -> Optional[Tuple[int, Union[int, str]]]:
@@ -237,6 +288,9 @@ class HeapManager:
       value, key = heapq.heappop(self._heap)
       if key in self._active_values and self._active_values[key] == value:
         del self._active_values[key]
+        if self._with_size:
+          self._total_size -= self._record_size_map[key]
+          del self._record_size_map[key]
         return value, key
     return None, None
 
@@ -249,6 +303,8 @@ class HeapManager:
     return None, None
 
   def __len__(self):
+    if self._with_size:
+      return self._total_size
     return len(self._active_values)
 
 
@@ -281,14 +337,6 @@ class ShardManager:
     self._shard_paths = {}
     self._backlog_shard_path = None
     self._light_cache_records_path = None
-    self._shard_active_count = {}
-    self._shard_heap = HeapManager()
-    self._loaded_cache_records = {}
-    self._light_cache_records = {}
-    self._map_shard_to_cache = {}
-
-    for shard_id in self.shard_paths:
-      self._update_shard_active_count(shard_id=shard_id, total_size=0)
     self._load_light_cache_records()
 
   def _check_shard_id(self, shard_id: Union[int, str]):
@@ -322,11 +370,42 @@ class ShardManager:
         self._path, f'light_cache_records_{self._shard_count:05}.json')
     return self._light_cache_records_path
 
-  def _update_shard_active_count(
-      self, shard_id: Union[int, str], total_size: int):
-    self._shard_active_count[shard_id] = total_size
+  def _update_cache_record(
+      self,
+      cache_record: Union[types.CacheRecord, types.LightCacheRecord],
+      delete_only: bool = False):
+    hash_value = BaseQueryCache._get_hash_value(cache_record)
+    shard_id = cache_record.shard_id
+    if isinstance(cache_record, types.CacheRecord):
+      light_cache_record = BaseQueryCache._to_light_cache_record(cache_record)
+    else:
+      light_cache_record = cache_record
+
+    # Clean previous values
+    if hash_value in self._light_cache_records:
+      old_shard_id = self._light_cache_records[hash_value].shard_id
+      self._map_shard_to_cache[old_shard_id].remove(hash_value)
+      self._shard_active_count[old_shard_id] -= BaseQueryCache._get_cache_size(
+          self._light_cache_records[hash_value])
+      if old_shard_id != 'backlog':
+        self._shard_heap.push(
+            key=old_shard_id, value=self._shard_active_count[old_shard_id])
+      if hash_value in self._loaded_cache_records:
+        del self._loaded_cache_records[hash_value]
+      del self._light_cache_records[hash_value]
+    if delete_only:
+      return
+
+    # Insert new values
+    self._light_cache_records[hash_value] = light_cache_record
+    self._map_shard_to_cache[shard_id].add(hash_value)
+    self._shard_active_count[shard_id] += BaseQueryCache._get_cache_size(
+        light_cache_record)
     if shard_id != 'backlog':
-      self._shard_heap.push(key=shard_id, value=total_size)
+      self._shard_heap.push(
+          key=shard_id, value=self._shard_active_count[shard_id])
+    if isinstance(cache_record, types.CacheRecord):
+      self._loaded_cache_records[hash_value] = cache_record
 
   def _save_light_cache_records(self):
     data = {}
@@ -345,8 +424,18 @@ class ShardManager:
       json.dump(data, f)
 
   def _load_light_cache_records(self):
-    data = {}
+    # Reset all values
+    self._shard_active_count = {}
+    self._shard_heap = HeapManager()
+    self._loaded_cache_records = {}
+    self._light_cache_records = {}
     self._map_shard_to_cache = collections.defaultdict(set)
+    for shard_id in self.shard_paths:
+      self._shard_active_count[shard_id] = 0
+      if shard_id != 'backlog':
+        self._shard_heap.push(key=shard_id, value=0)
+    data = {}
+
     # Load light cache records from backup if primary file is corrupted
     try:
       with open(self.light_cache_records_path, 'r') as f:
@@ -360,86 +449,75 @@ class ShardManager:
 
     # Load light cache records from data
     for query_record_hash, record in data.items():
-      light_cache_record = BaseQueryCache._decode_light_cache_record(record)
+      try:
+        light_cache_record = BaseQueryCache._decode_light_cache_record(record)
+      except Exception:
+        continue
       if query_record_hash != light_cache_record.query_record_hash:
         continue
-      if isinstance(light_cache_record.shard_id, str):
-        if light_cache_record.shard_id != 'backlog':
-          continue
-      elif isinstance(light_cache_record.shard_id, int):
-        if (light_cache_record.shard_id < 0
-            or light_cache_record.shard_id >= self._shard_count):
-          continue
-      else:
+      if (isinstance(light_cache_record.shard_id, str)
+          and light_cache_record.shard_id != 'backlog'):
         continue
-      self._light_cache_records[query_record_hash] = light_cache_record
-      self._map_shard_to_cache[light_cache_record.shard_id].add(
-          query_record_hash)
+      if (isinstance(light_cache_record.shard_id, int)
+          and (light_cache_record.shard_id < 0
+            or light_cache_record.shard_id >= self._shard_count)):
+        continue
+      self._update_cache_record(light_cache_record)
 
-    # Shard active count is updated after loading light cache records
-    for shard_id, hash_set in self._map_shard_to_cache.items():
-      shard_size = 0
-      for hash_value in hash_set:
-        shard_size += BaseQueryCache._get_cache_size(
-            self._light_cache_records[hash_value])
-      self._update_shard_active_count(shard_id=shard_id, total_size=shard_size)
+  def _check_cache_record_is_up_to_date(
+      self, cache_record: types.CacheRecord) -> bool:
+    hash_value = BaseQueryCache._get_hash_value(cache_record)
+    if hash_value not in self._light_cache_records:
+      return False
+    light_cache_record = self._light_cache_records[hash_value]
+    comparison_light_cache_record = BaseQueryCache._to_light_cache_record(
+        cache_record)
+    if light_cache_record != comparison_light_cache_record:
+      return False
+    return True
 
-  def _load_shard(self, shard_id: Union[int, str]) ->  List[types.CacheRecord]:
-    total_size = 0
+  def _load_shard(
+      self, shard_id: Union[int, str]) ->  List[str]:
     result = []
-    result_hash_values = set()
-    shard_path = self.shard_paths[shard_id]
-    # Load cache records from shard
     try:
-      with open(shard_path, 'r') as f:
+      with open(self.shard_paths[shard_id], 'r') as f:
         for line in f:
           try:
             cache_record = BaseQueryCache._decode_cache_record(json.loads(line))
           except Exception:
             continue
-          if (cache_record.query_record.hash_value
-              not in self._light_cache_records):
+          if not self._check_cache_record_is_up_to_date(cache_record):
             continue
-          result.append(cache_record)
-          result_hash_values.add(cache_record.query_record.hash_value)
-          self._loaded_cache_records[
-              cache_record.query_record.hash_value] = cache_record
-          total_size += BaseQueryCache._get_cache_size(cache_record)
+          self._update_cache_record(cache_record)
+          result.append(BaseQueryCache._get_hash_value(cache_record))
     except Exception:
       pass
-
-    for hash_value in self._map_shard_to_cache[shard_id]:
-      if hash_value not in result_hash_values:
-        del self._light_cache_records[hash_value]
-    self._update_shard_active_count(shard_id=shard_id, total_size=total_size)
+    for hash_value in list(self._map_shard_to_cache[shard_id]):
+      if hash_value not in result:
+        light_cache_value = copy.deepcopy(
+            self._light_cache_records[hash_value])
+        self._update_cache_record(light_cache_value, delete_only=True)
     return result
 
   def _move_backlog_to_shard(self, shard_id: Union[int, str]):
     self._check_shard_id(shard_id)
-    total_size = 0
-    cache_records = self._load_shard(shard_id=shard_id)
-    backlog_cache_records = self._load_shard(shard_id='backlog')
-    for cache_record in backlog_cache_records:
+    if shard_id == 'backlog':
+      raise ValueError('Cannot move backlog to backlog')
+    shard_hash_values = self._load_shard(shard_id=shard_id)
+    backlog_hash_values = self._load_shard(shard_id='backlog')
+    for hash_value in backlog_hash_values:
+      cache_record = copy.deepcopy(self._loaded_cache_records[hash_value])
       cache_record.shard_id = shard_id
-      import pprint
-      print()
-      pprint.pprint(self._map_shard_to_cache)
-      self._map_shard_to_cache['backlog'].remove(
-          cache_record.query_record.hash_value)
-      self._map_shard_to_cache[shard_id].add(
-          cache_record.query_record.hash_value)
-      self._loaded_cache_records[
-          cache_record.query_record.hash_value] = cache_record
-      self._light_cache_records[
-          cache_record.query_record.hash_value] = (
-              BaseQueryCache._to_light_cache_record(cache_record))
+      self._update_cache_record(cache_record)
 
     with open(self.shard_paths[shard_id] + '_backup', 'w') as f:
-      for cache_record in cache_records + backlog_cache_records:
-        f.write(json.dumps(BaseQueryCache._encode_cache_record(cache_record)))
-        f.write('\n')
-        total_size += BaseQueryCache._get_cache_size(cache_record)
-
+      for hash_value in shard_hash_values + backlog_hash_values:
+        try:
+          cache_record = self._loaded_cache_records[hash_value]
+          f.write(json.dumps(BaseQueryCache._encode_cache_record(cache_record)))
+          f.write('\n')
+        except Exception:
+          continue
     os.rename(
         self.shard_paths[shard_id] + '_backup',
         self.shard_paths[shard_id])
@@ -447,78 +525,50 @@ class ShardManager:
       os.remove(self.shard_paths['backlog'])
     except OSError:
       pass
-    self._update_shard_active_count(shard_id=shard_id, total_size=total_size)
-    self._update_shard_active_count(shard_id='backlog', total_size=0)
 
   def _add_to_backlog(self, cache_record: types.CacheRecord):
+    cache_record = copy.deepcopy(cache_record)
     cache_record.shard_id = 'backlog'
+    self._update_cache_record(cache_record)
     with open(self.shard_paths['backlog'], 'a') as f:
       f.write(json.dumps(BaseQueryCache._encode_cache_record(cache_record)))
       f.write('\n')
-    self._shard_active_count['backlog'] += BaseQueryCache._get_cache_size(
-        cache_record)
-    self._map_shard_to_cache['backlog'].add(
-        cache_record.query_record.hash_value)
-    self._loaded_cache_records[cache_record.query_record.hash_value] = (
-        cache_record)
-    self._light_cache_records[cache_record.query_record.hash_value] = (
-        BaseQueryCache._to_light_cache_record(cache_record))
 
   def get_cache_record(
       self, query_record: Union[types.QueryRecord, str]) -> Optional[types.CacheRecord]:
-    if isinstance(query_record, str):
-      hash_value = query_record
-    elif query_record.hash_value:
-      hash_value = query_record.hash_value
-    else:
-      hash_value = BaseQueryCache._get_query_record_hash(query_record)
-
+    hash_value = BaseQueryCache._get_hash_value(query_record)
     if hash_value not in self._light_cache_records:
       return None
-
     light_cache_record = self._light_cache_records[hash_value]
     if light_cache_record.shard_id not in self.shard_paths:
       return None
-
     self._load_shard(shard_id=light_cache_record.shard_id)
     if hash_value not in self._loaded_cache_records:
       return None
     return self._loaded_cache_records[hash_value]
 
-  def delete_record(self, cache_record: Union[types.CacheRecord, str]):
-    if isinstance(cache_record, str):
-      hash_value = cache_record
-    elif cache_record.query_record.hash_value:
-      hash_value = cache_record.query_record.hash_value
-    else:
-      hash_value = BaseQueryCache._get_query_record_hash(
-          cache_record.query_record)
+  def delete_record(
+      self,
+      cache_record: Union[
+          str,
+          types.CacheRecord,
+          types.LightCacheRecord,
+          types.QueryRecord]):
+    hash_value = BaseQueryCache._get_hash_value(cache_record)
     if hash_value not in self._light_cache_records:
       return
-    shard_id = self._light_cache_records[hash_value].shard_id
-    record_size = BaseQueryCache._get_cache_size(
+    light_cache_records = copy.deepcopy(
         self._light_cache_records[hash_value])
-    self._shard_active_count[shard_id] -= record_size
-    self._map_shard_to_cache[shard_id].remove(hash_value)
-    if shard_id != 'backlog':
-      self._shard_heap.push(
-          key=shard_id, value=self._shard_active_count[shard_id])
-    if hash_value in self._loaded_cache_records:
-      del self._loaded_cache_records[hash_value]
-    del self._light_cache_records[hash_value]
+    self._update_cache_record(light_cache_records, delete_only=True)
 
   def save_record(self, cache_record: types.CacheRecord):
-    if not cache_record.query_record.hash_value:
-      cache_record.query_record.hash_value = (
-          BaseQueryCache._get_query_record_hash(
-              cache_record.query_record))
+    hash_value = BaseQueryCache._get_hash_value(cache_record)
+    self.delete_record(hash_value)
 
-    if cache_record.query_record.hash_value in self._light_cache_records:
-      self.delete_record(cache_record)
-
+    backlog_size = self._shard_active_count['backlog']
+    record_size = BaseQueryCache._get_cache_size(cache_record)
     lowest_shard_value, lowest_shard_key = self._shard_heap.top()
-    if (self._shard_active_count['backlog']
-        + BaseQueryCache._get_cache_size(cache_record)
+    if (backlog_size + record_size
         > self._response_per_file - lowest_shard_value):
       self._move_backlog_to_shard(shard_id=lowest_shard_key)
       self._add_to_backlog(cache_record)
@@ -533,7 +583,6 @@ class QueryCacheManager(BaseQueryCache):
   _cache_response_size: int
   _shard_manager: ShardManager
   _record_heap: HeapManager
-  _current_size: int
 
   def __init__(
       self,
@@ -550,37 +599,22 @@ class QueryCacheManager(BaseQueryCache):
         path=self._cache_dir,
         shard_count=shard_count,
         response_per_file=response_per_file)
-    self._record_heap = HeapManager()
-    self._current_size = 0
+    self._record_heap = HeapManager(with_size=True)
 
     for record in self._shard_manager._light_cache_records.values():
       self._push_record_heap(record)
 
   def _push_record_heap(
       self, cache_record: Union[types.CacheRecord, types.LightCacheRecord]):
-    if isinstance(cache_record, types.CacheRecord):
-      hash_value = cache_record.query_record.hash_value
-    else:
-      hash_value = cache_record.query_record_hash
+    hash_value = BaseQueryCache._get_hash_value(cache_record)
     last_access_time = cache_record.last_access_time.timestamp()
-    print(f'> PUSH {hash_value} {last_access_time}')
-    if (hash_value in self._record_heap._active_values and
-        hash_value in self._shard_manager._light_cache_records):
-      print(f'> _current_size -= {BaseQueryCache._get_cache_size(self._shard_manager._light_cache_records[hash_value])}')
-      self._current_size -= BaseQueryCache._get_cache_size(
-          self._shard_manager._light_cache_records[hash_value])
-    self._record_heap.push(key=hash_value, value=last_access_time)
-    print(f'> _current_size += {BaseQueryCache._get_cache_size(cache_record)}')
-    self._current_size += BaseQueryCache._get_cache_size(cache_record)
-    while self._current_size > self._cache_response_size:
+    self._record_heap.push(
+        key=hash_value,
+        value=last_access_time,
+        record_size=BaseQueryCache._get_cache_size(cache_record))
+    while len(self._record_heap) > self._cache_response_size:
       _, hash_value = self._record_heap.pop()
-      print(f'> POP {hash_value}')
-      if hash_value in self._shard_manager._light_cache_records:
-        print(f'> _current_size -= {BaseQueryCache._get_cache_size(self._shard_manager._light_cache_records[hash_value])}')
-        self._current_size -= BaseQueryCache._get_cache_size(
-            self._shard_manager._light_cache_records[hash_value])
       self._shard_manager.delete_record(hash_value)
-
 
   def look(
       self,

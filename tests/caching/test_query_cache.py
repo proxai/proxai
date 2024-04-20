@@ -85,7 +85,7 @@ def _save_shard_manager(path, records=None):
 
 
 
-def _get_cache_record(prompt, responses, shard_id, call_count):
+def _create_cache_record(prompt, responses, shard_id, call_count):
   query_record = types.QueryRecord(prompt=prompt)
   query_record.hash_value = (
       query_cache.BaseQueryCache._get_query_record_hash(
@@ -134,24 +134,24 @@ def _get_example_records(shard_dir=None, shard_count=None):
             enc_light_cache_records)
 
   records = [
-      _get_cache_record(
+      _create_cache_record(
           prompt='p1', responses=[], shard_id=0, call_count=0),
-      _get_cache_record(
+      _create_cache_record(
           prompt='p2', responses=['r1'], shard_id=1, call_count=1),
-      _get_cache_record(
+      _create_cache_record(
           prompt='p3', responses=['r2', 'r3'], shard_id=2, call_count=2),
-      _get_cache_record(
+      _create_cache_record(
           prompt='p4', responses=['r4'], shard_id='backlog', call_count=1)]
   (cache_records, light_cache_records, enc_cache_records,
     enc_light_cache_records) = _generate_vals(
       records, write_to_shard=(shard_dir is not None))
 
   records = [
-      _get_cache_record(
+      _create_cache_record(
           prompt='p5', responses=['r5'], shard_id='corrupted', call_count=1),
-      _get_cache_record(
+      _create_cache_record(
           prompt='p6', responses=['r6'], shard_id=-1, call_count=1),
-      (_get_cache_record(
+      (_create_cache_record(
           prompt='p7', responses=['r7'], shard_id=0, call_count=1),
         'corrupted_hash_value')]
   (cor_cache_records, cor_light_cache_records, enc_cor_cache_records,
@@ -195,7 +195,8 @@ def _check_shard_heap(shard_manager, expected):
 
 
 def _check_record_heap(query_cache_manager, expected):
-  current_heap = copy.deepcopy(query_cache_manager._record_heap)
+  current_heap: query_cache.HeapManager = (
+      copy.deepcopy(query_cache_manager._record_heap))
   current_heap_list = []
   while len(current_heap) > 0:
     current_heap_list.append(current_heap.pop())
@@ -229,6 +230,30 @@ def _get_hash_from_prompt(prompt, records):
   for hash, cache_record in records['cache_records'].items():
     if cache_record.query_record.prompt == prompt:
       return hash
+
+
+def _print_state(
+    shard_manager: query_cache.ShardManager,
+    records):
+  names = {}
+  for i in range(1, 10):
+    val = types.QueryRecord(prompt=f'p{i}')
+    names[query_cache.BaseQueryCache._get_query_record_hash(
+        query_record=val)] = f'p{i}'
+  from pprint import pprint
+  print('---- _light_cache_records')
+  for k in shard_manager._light_cache_records:
+    print(f'{k}: {names[k]}')
+  print('---- _loaded_cache_records')
+  for k in shard_manager._loaded_cache_records:
+    print(f'{k}: {names[k]}')
+  print('---- _shard_active_count')
+  pprint(shard_manager._shard_active_count)
+  for shard_id in shard_manager.shard_paths:
+    print(f'---- Shard {shard_id}')
+    with open(shard_manager.shard_paths[shard_id], 'r') as f:
+      for line in f:
+        pprint(json.loads(line))
 
 
 class TestBaseQueryCache:
@@ -582,9 +607,10 @@ class TestShardManager:
       shard_manager = query_cache.ShardManager(
           path=temp_dir, shard_count=_SHARD_COUNT,
           response_per_file=_RESPONSE_PER_FILE)
-      cache_record = _get_cache_record(
+      cache_record = _create_cache_record(
           prompt='p8', responses=['r8'], shard_id='not_important', call_count=1)
-      shard_manager._add_to_backlog(cache_record)
+      shard_manager._add_to_backlog(copy.deepcopy(cache_record))
+      cache_record.shard_id = 'backlog'
       assert shard_manager._shard_active_count == {
           0: 1, 1: 2, 2: 3, 'backlog': 4}
       assert shard_manager._light_cache_records == {
@@ -723,7 +749,7 @@ class TestShardManager:
       _check_shard_heap(shard_manager, [(0, 1), (0, 2), (1, 0)])
 
       # Test new record to backlog
-      cache_record = _get_cache_record(
+      cache_record = _create_cache_record(
           prompt='p8', responses=[], shard_id='not_important', call_count=0)
       shard_manager.save_record(cache_record)
       assert shard_manager._shard_active_count == {
@@ -737,7 +763,7 @@ class TestShardManager:
           types.QueryRecord(prompt='p8')).shard_id == 'backlog'
 
       # Test backlog overload
-      cache_record = _get_cache_record(
+      cache_record = _create_cache_record(
           prompt='p9', responses=['r9', 'r10'],
           shard_id='not_important', call_count=1)
       shard_manager.save_record(cache_record)
@@ -754,7 +780,7 @@ class TestShardManager:
           types.QueryRecord(prompt='p9')).shard_id == 'backlog'
 
       # Test override record
-      cache_record = _get_cache_record(
+      cache_record = _create_cache_record(
           prompt='p1', responses=['new_r1'],
           shard_id='not_important', call_count=1)
       shard_manager.save_record(cache_record)
@@ -771,7 +797,7 @@ class TestShardManager:
           types.QueryRecord(prompt='p1')).shard_id == 'backlog'
 
       # Test override backlog record
-      cache_record = _get_cache_record(
+      cache_record = _create_cache_record(
           prompt='p1', responses=['new_r1', 'new_r2', 'new_r3'],
           shard_id='not_important', call_count=3)
       shard_manager.save_record(cache_record)
@@ -799,16 +825,16 @@ class TestQueryCache:
       _check_record_heap(query_cache_manager, [])
 
       # First record
-      query_cache_manager._push_record_heap(
-          cache_record=_get_cache_record(
-              prompt='p1', responses=[], shard_id=0, call_count=0))
-      _check_record_heap(query_cache_manager, [
-          query_cache.BaseQueryCache._get_query_record_hash(
-              query_record=types.QueryRecord(prompt='p1'))])
+      record_1 = _create_cache_record(
+          prompt='p1', responses=[], shard_id='not_important', call_count=0)
+      hash_1 = query_cache.BaseQueryCache._get_query_record_hash(
+          query_record=record_1.query_record)
+      query_cache_manager._push_record_heap(cache_record=record_1)
+      _check_record_heap(query_cache_manager, [hash_1])
 
       # Second record
       query_cache_manager._push_record_heap(
-          cache_record=_get_cache_record(
+          cache_record=_create_cache_record(
               prompt='p2', responses=[], shard_id=0, call_count=0))
       _check_record_heap(query_cache_manager, [
           query_cache.BaseQueryCache._get_query_record_hash(
@@ -818,7 +844,7 @@ class TestQueryCache:
 
       # Third record
       query_cache_manager._push_record_heap(
-          cache_record=_get_cache_record(
+          cache_record=_create_cache_record(
               prompt='p3', responses=[], shard_id=0, call_count=0))
       _check_record_heap(query_cache_manager, [
           query_cache.BaseQueryCache._get_query_record_hash(
@@ -830,7 +856,7 @@ class TestQueryCache:
 
       # Override first record
       query_cache_manager._push_record_heap(
-          cache_record=_get_cache_record(
+          cache_record=_create_cache_record(
               prompt='p1', responses=['r1'], shard_id=0, call_count=0))
       _check_record_heap(query_cache_manager, [
           query_cache.BaseQueryCache._get_query_record_hash(
@@ -864,7 +890,7 @@ class TestQueryCache:
 
       # New value
       query_cache_manager._push_record_heap(
-          cache_record=_get_cache_record(
+          cache_record=_create_cache_record(
               prompt='p5', responses=['r1'], shard_id=0, call_count=0))
       _check_record_heap(
           query_cache_manager, [
@@ -877,7 +903,7 @@ class TestQueryCache:
 
       # Override value
       query_cache_manager._push_record_heap(
-          cache_record=_get_cache_record(
+          cache_record=_create_cache_record(
               prompt='p3', responses=['r1'], shard_id=0, call_count=0))
       _check_record_heap(
           query_cache_manager, [
@@ -898,7 +924,7 @@ class TestQueryCache:
           cache_response_size=10)
 
       # record_1: size = 4, heap = [record_1]
-      record_1 = _get_cache_record(
+      record_1 = _create_cache_record(
               prompt='p1', responses=['r1', 'r2', 'r3'],
               shard_id=0, call_count=0)
       hash_1 = query_cache.BaseQueryCache._get_query_record_hash(
@@ -908,7 +934,7 @@ class TestQueryCache:
       _check_record_heap(query_cache_manager, [hash_1])
 
       # record_2: size = 4, heap = [record_1, record_2]
-      record_2 = _get_cache_record(
+      record_2 = _create_cache_record(
               prompt='p2', responses=['r1', 'r2', 'r3'],
               shard_id=0, call_count=0)
       hash_2 = query_cache.BaseQueryCache._get_query_record_hash(
@@ -918,7 +944,7 @@ class TestQueryCache:
       _check_record_heap(query_cache_manager, [hash_1, hash_2])
 
       # record_3: size = 4, heap = [record_2, record_3]
-      record_3 = _get_cache_record(
+      record_3 = _create_cache_record(
               prompt='p3', responses=['r1', 'r2', 'r3'],
               shard_id=0, call_count=0)
       hash_3 = query_cache.BaseQueryCache._get_query_record_hash(
@@ -931,7 +957,7 @@ class TestQueryCache:
           == set([hash_2, hash_3]))
 
       # record_4: size = 2, heap = [record_2, record_3, record_4]
-      record_4 = _get_cache_record(
+      record_4 = _create_cache_record(
               prompt='p4', responses=['r1'],
               shard_id=0, call_count=0)
       hash_4 = query_cache.BaseQueryCache._get_query_record_hash(
@@ -945,7 +971,7 @@ class TestQueryCache:
 
       # Override and overflow
       # record_2: size = 10, heap = [record_2]
-      record_2 = _get_cache_record(
+      record_2 = _create_cache_record(
               prompt='p2', responses=[
                   'r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7', 'r8', 'r9'],
               shard_id=0, call_count=0)
@@ -1015,18 +1041,6 @@ class TestQueryCache:
           0: 1, 1: 0, 2: 3, 'backlog': 4}
       assert query_cache_manager._shard_manager._map_shard_to_cache == {
           0: {hash_1}, 1: set(), 2: {hash_3}, 'backlog': {hash_2, hash_4}}
-      print('---- 0')
-      with open(query_cache_manager._shard_manager.shard_paths[0], 'r') as f:
-        print(f.read())
-      print('---- 1')
-      with open(query_cache_manager._shard_manager.shard_paths[1], 'r') as f:
-        print(f.read())
-      print('---- 2')
-      with open(query_cache_manager._shard_manager.shard_paths[2], 'r') as f:
-        print(f.read())
-      print('---- backlog')
-      with open(query_cache_manager._shard_manager.backlog_shard_path, 'r') as f:
-        print(f.read())
 
       assert query_cache_manager.look(record_3).response == 'r2'
       _check_record_heap(query_cache_manager, [
@@ -1060,22 +1074,25 @@ class TestQueryCache:
       assert query_cache_manager._shard_manager._map_shard_to_cache == {
           0: {hash_1}, 1: {hash_2, hash_4}, 2: set(), 'backlog': {hash_3}}
 
-      # assert query_cache_manager.look(
-      #     types.QueryRecord(prompt='p3')).response == 'r2'
-      # assert query_cache_manager.look(
-      #     types.QueryRecord(prompt='p3')).response == 'r3'
-      # assert query_cache_manager.look(
-      #     types.QueryRecord(prompt='p3')).response == 'r2'
-      # assert query_cache_manager.look(
-      #     types.QueryRecord(prompt='p3')).response == 'r3'
-      # assert query_cache_manager.look(
-      #     types.QueryRecord(prompt='p4')).response == 'r4'
-      # assert query_cache_manager.look(
-      #     types.QueryRecord(prompt='p4')).response == 'r4'
+      assert query_cache_manager.look(record_4).response == 'r4'
+      _check_record_heap(query_cache_manager, [
+          hash_1, hash_2, hash_3, hash_4])
+      assert query_cache_manager._shard_manager._shard_active_count == {
+          0: 1, 1: 2, 2: 3, 'backlog': 2}
+      assert query_cache_manager._shard_manager._map_shard_to_cache == {
+          0: {hash_1}, 1: {hash_2}, 2: {hash_3}, 'backlog': { hash_4}}
+
+      assert query_cache_manager.look(record_4).response == 'r4'
+      _check_record_heap(query_cache_manager, [
+          hash_1, hash_2, hash_3, hash_4])
+      assert query_cache_manager._shard_manager._shard_active_count == {
+          0: 1, 1: 2, 2: 3, 'backlog': 2}
+      assert query_cache_manager._shard_manager._map_shard_to_cache == {
+          0: {hash_1}, 1: {hash_2}, 2: {hash_3}, 'backlog': { hash_4}}
 
 
-# Test for save record
-#   -> corner cases like shard count is 1, file count is 1/0/-1, etc.
-# Different cache, same hash bug
-# Check when light_cache saved to the file. (Might change to just append, while reading get recents).
-# If hits to the same hash??!!!
+# # Test for save record
+# #   -> corner cases like shard count is 1, file count is 1/0/-1, etc.
+# # Different cache, same hash bug
+# # Check when light_cache saved to the file. (Might change to just append, while reading get recents).
+# # If hits to the same hash??!!!
