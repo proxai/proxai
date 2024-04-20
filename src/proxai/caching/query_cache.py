@@ -373,7 +373,8 @@ class ShardManager:
   def _update_cache_record(
       self,
       cache_record: Union[types.CacheRecord, types.LightCacheRecord],
-      delete_only: bool = False):
+      delete_only: bool = False,
+      write_to_file: bool = True):
     hash_value = BaseQueryCache._get_hash_value(cache_record)
     shard_id = cache_record.shard_id
     if isinstance(cache_record, types.CacheRecord):
@@ -393,6 +394,10 @@ class ShardManager:
       if hash_value in self._loaded_cache_records:
         del self._loaded_cache_records[hash_value]
       del self._light_cache_records[hash_value]
+      if write_to_file:
+        with open(self._light_cache_records_path, 'a') as f:
+          f.write(json.dumps({hash_value: {}}))
+          f.write('\n')
     if delete_only:
       return
 
@@ -406,6 +411,12 @@ class ShardManager:
           key=shard_id, value=self._shard_active_count[shard_id])
     if isinstance(cache_record, types.CacheRecord):
       self._loaded_cache_records[hash_value] = cache_record
+    if write_to_file:
+      with open(self._light_cache_records_path, 'a') as f:
+        f.write(json.dumps(
+            {hash_value: BaseQueryCache._encode_light_cache_record(
+              light_cache_record)}))
+        f.write('\n')
 
   def _save_light_cache_records(self):
     data = {}
@@ -421,7 +432,8 @@ class ShardManager:
       pass
 
     with open(self._light_cache_records_path, 'w') as f:
-      json.dump(data, f)
+      f.write(json.dumps(data))
+      f.write('\n')
 
   def _load_light_cache_records(self):
     # Reset all values
@@ -437,18 +449,29 @@ class ShardManager:
     data = {}
 
     # Load light cache records from backup if primary file is corrupted
+    def load_data(file_path: str):
+      data = {}
+      with open(file_path, 'r') as f:
+        for line in f:
+          try:
+            record_data = json.loads(line)
+          except Exception:
+            continue
+          for hash_value, record in record_data.items():
+            data[hash_value] = record
+      return data
     try:
-      with open(self.light_cache_records_path, 'r') as f:
-        data: Dict[str, Any] = json.load(f)
+      data = load_data(self.light_cache_records_path)
     except Exception as e1:
       try:
-        with open(self.light_cache_records_path + '_backup', 'r') as f:
-          data: Dict[str, Any] = json.load(f)
+        data = load_data(self.light_cache_records_path + '_backup')
       except Exception as e2:
         return
 
     # Load light cache records from data
     for query_record_hash, record in data.items():
+      if record == {}:
+        continue
       try:
         light_cache_record = BaseQueryCache._decode_light_cache_record(record)
       except Exception:
@@ -462,7 +485,8 @@ class ShardManager:
           and (light_cache_record.shard_id < 0
             or light_cache_record.shard_id >= self._shard_count)):
         continue
-      self._update_cache_record(light_cache_record)
+      self._update_cache_record(light_cache_record, write_to_file=False)
+    self._save_light_cache_records()
 
   def _check_cache_record_is_up_to_date(
       self, cache_record: types.CacheRecord) -> bool:
