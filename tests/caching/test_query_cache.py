@@ -771,6 +771,63 @@ class TestShardManager:
           shard_active_count={0: 0, 1: 0, 2: 0, 'backlog': 0},
           shard_heap=[(0, 0), (0, 1), (0, 2)])
 
+  def test_check_cache_record_is_up_to_date(self):
+    with tempfile.TemporaryDirectory() as temp_dir:
+      records = _get_example_records(
+          shard_dir=temp_dir, shard_count=_SHARD_COUNT)
+      save_shard_manager = _save_shard_manager(
+          path=temp_dir, records=records['all_light_cache_records'])
+      os.remove(save_shard_manager.shard_paths[1])
+      (hash_1, light_1, enc_light_1,
+       hash_2, light_2, enc_light_2,
+       hash_3, light_3, enc_light_3,
+       hash_4, light_4, enc_light_4) = _unpack_records(records=records)
+      record_1: types.CacheRecord = copy.deepcopy(
+          records['cache_records'][hash_1])
+      record_2: types.CacheRecord = copy.deepcopy(
+          records['cache_records'][hash_2])
+      record_3: types.CacheRecord = copy.deepcopy(
+          records['cache_records'][hash_3])
+      record_4: types.CacheRecord = copy.deepcopy(
+          records['cache_records'][hash_4])
+
+      shard_manager = query_cache.ShardManager(
+          path=temp_dir, shard_count=_SHARD_COUNT,
+          response_per_file=_RESPONSE_PER_FILE)
+
+      # Hash in light_cache_records check
+      hash_5, record_5, light_5, _, enc_light_5 = _create_cache_record(
+          prompt='p5', responses=['r5'], shard_id=0, call_count=1,
+          all_values=True)
+      assert shard_manager._check_cache_record_is_up_to_date(
+          cache_record=record_5) is False
+
+      # Different query_response_count check
+      record_1.query_responses = ['r1', 'r2', 'r3', 'r4', 'r5']
+      assert shard_manager._check_cache_record_is_up_to_date(
+          cache_record=record_1) is False
+
+      # Different query_response_count check
+      record_2.shard_id = 'backlog'
+      assert shard_manager._check_cache_record_is_up_to_date(
+          cache_record=record_2) is False
+
+      # Different last_access_time check
+      record_3.last_access_time = datetime.datetime.now()
+      assert shard_manager._check_cache_record_is_up_to_date(
+          cache_record=record_3) is False
+
+      # Different call_count check
+      record_4.call_count = 100
+      assert shard_manager._check_cache_record_is_up_to_date(
+          cache_record=record_4) is False
+
+      # Check with the same record
+      record_1: types.CacheRecord = copy.deepcopy(
+          records['cache_records'][hash_1])
+      assert shard_manager._check_cache_record_is_up_to_date(
+          cache_record=record_1) is True
+
   def test_move_backlog_to_invalid_shard(self):
     with tempfile.TemporaryDirectory() as temp_dir:
       shard_manager = query_cache.ShardManager(
@@ -1467,17 +1524,16 @@ class TestQueryCache:
           shard_active_count={0: 1, 1: 2, 2: 3, 'backlog': 2},
           shard_heap=[(1, 0), (2, 1), (3, 2)])
 
-
-# ShardManager: new methods tests
-
-# QueryCacheManager: add new response to existing record
-      # ? -> when return when return from cache(?) like there is 3 responses
-      # should we add 4? Who will check that?
+  def test_cache(self):
+    raise ValueError('Not implemented')
 
 # Test for save record
 #   -> corner cases like shard count is 1, file count is 1/0/-1, etc.
 
+# Test for cache. Not implemented somehow.
 
+# Different cache, same hash bug. If hits to the same hash??!!!
 
-# Different cache, same hash bug
-# If hits to the same hash??!!!
+# QueryCacheManager: add new response to existing record
+      # ? -> when return when return from cache(?) like there is 3 responses
+      # should we add 4? Who will check that?
