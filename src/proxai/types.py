@@ -1,6 +1,7 @@
 import dataclasses
+import datetime
 import enum
-from typing import Dict, List, Tuple, Type, Set
+from typing import Any, Dict, List, Optional, Tuple, Type, Set
 
 
 class RunType(enum.Enum):
@@ -205,3 +206,61 @@ class ModelStatus:
   working_models: Set[ModelType] = dataclasses.field(default_factory=set)
   failed_models: Set[ModelType] = dataclasses.field(default_factory=set)
   filtered_models: Set[ModelType] = dataclasses.field(default_factory=set)
+
+
+@dataclasses.dataclass
+class LoggingOptions:
+  path: Optional[str] = None
+  time: bool = True
+  prompt: bool = True
+  response: bool = True
+  error: bool = True
+
+
+ModelCacheType = Dict[
+    CallType, Dict[Provider, Dict[ProviderModel, Dict[str, Any]]]]
+
+
+@dataclasses.dataclass
+class CacheOptions:
+  path: Optional[str] = None
+  unique_response_limit: Optional[int] = 1
+  duration: Optional[int] = 24 * 60 * 60
+
+
+@dataclasses.dataclass
+class QueryRecord:
+  call_type: Optional[CallType] = None
+  provider: Optional[Provider] = None
+  provider_model: Optional[ProviderModel] = None
+  max_tokens: Optional[int] = None
+  prompt: Optional[str] = None
+  hash_value: Optional[str] = None
+
+
+@dataclasses.dataclass
+class QueryResponseRecord:
+  response: Optional[str] = None
+  error: Optional[str] = None
+  start_time: Optional[datetime.datetime] = None
+  end_time: Optional[datetime.datetime] = None
+  response_time: Optional[datetime.timedelta] = None
+
+
+@dataclasses.dataclass
+class CacheRecord:
+  query_record: Optional[QueryRecord] = None
+  query_responses: List[QueryResponseRecord] = dataclasses.field(
+      default_factory=list)
+  shard_id: Optional[str] = None
+  last_access_time: Optional[datetime.datetime] = None
+  call_count: Optional[int] = None
+
+
+@dataclasses.dataclass
+class LightCacheRecord:
+  query_record_hash: Optional[str] = None
+  query_response_count: Optional[int] = None
+  shard_id: Optional[int] = None
+  last_access_time: Optional[datetime.datetime] = None
+  call_count: Optional[int] = None

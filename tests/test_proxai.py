@@ -2,7 +2,7 @@ import proxai.types as types
 from proxai import proxai
 import pytest
 import tempfile
-import proxai.caching.utils as caching_utils
+import proxai.caching.model_cache as model_cache
 
 
 class TestRunType:
@@ -85,8 +85,8 @@ class TestAvailableModels:
     proxai._set_run_type(types.RunType.TEST)
     with tempfile.TemporaryDirectory() as cache_dir:
       proxai.connect(cache_path=cache_dir)
-      save_cache = caching_utils.ModelCache(
-          cache_options=caching_utils.CacheOptions(
+      save_cache = model_cache.ModelCache(
+          cache_options=types.CacheOptions(
               path=cache_dir))
       data = types.ModelStatus()
       data.working_models.add(
@@ -132,8 +132,8 @@ class TestAvailableModels:
       assert models.failed_models == set([
           (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)])
 
-      load_cache = caching_utils.ModelCache(
-          cache_options=caching_utils.CacheOptions(
+      load_cache = model_cache.ModelCache(
+          cache_options=types.CacheOptions(
               path=cache_dir))
       loaded_data = load_cache.get(call_type=types.CallType.GENERATE_TEXT)
       assert loaded_data.working_models == set([
@@ -164,8 +164,8 @@ class TestAvailableModels:
       proxai.connect(cache_path=cache_dir)
 
       # _filter_by_cache filter
-      save_cache = caching_utils.ModelCache(
-          cache_options=caching_utils.CacheOptions(
+      save_cache = model_cache.ModelCache(
+          cache_options=types.CacheOptions(
               path=cache_dir))
       data = types.ModelStatus()
       data.failed_models.add(
@@ -197,8 +197,8 @@ class TestAvailableModels:
           (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)])
 
       # Check cache file values
-      load_cache = caching_utils.ModelCache(
-          cache_options=caching_utils.CacheOptions(
+      load_cache = model_cache.ModelCache(
+          cache_options=types.CacheOptions(
               path=cache_dir))
       models = load_cache.get(call_type=types.CallType.GENERATE_TEXT)
       assert models.working_models == set([
