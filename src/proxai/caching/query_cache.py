@@ -612,8 +612,8 @@ class QueryCacheManager(BaseQueryCache):
       self,
       cache_options: types.CacheOptions,
       shard_count: int = 800,
-      response_per_file: int = 100,
-      cache_response_size: int = 20000):
+      response_per_file: int = 200,
+      cache_response_size: int = 40000):
     super().__init__(cache_options)
 
     self._shard_count = shard_count
