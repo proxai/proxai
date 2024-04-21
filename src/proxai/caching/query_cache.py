@@ -646,8 +646,12 @@ class QueryCacheManager(BaseQueryCache):
       query_record: types.QueryRecord,
       update: bool = True
   ) -> Optional[types.QueryResponseRecord]:
+    if not isinstance(query_record, types.QueryRecord):
+      raise ValueError('query_record should be of type QueryRecord')
     cache_record = self._shard_manager.get_cache_record(query_record)
     if cache_record is None:
+      return None
+    if cache_record.query_record != query_record:
       return None
     if (len(cache_record.query_responses)
         < self._cache_options.unique_response_limit):
