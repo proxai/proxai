@@ -11,20 +11,12 @@ AVAILABLE_MODELS_PATH = 'available_models.json'
 LAST_TESTED = 'last_tested'
 STATUS = 'status'
 
-ModelCacheType = Dict[types.CallType, Dict[types.ModelType, Dict[str, Any]]]
-
-
-@dataclass
-class CacheOptions:
-  path: Optional[str] = None
-  duration: Optional[int] = 24 * 60 * 60
-
 
 class ModelCache:
-  _cache_options: CacheOptions
-  _data: ModelCacheType = {}
+  _cache_options: types.CacheOptions
+  _data: types.ModelCacheType = {}
 
-  def __init__(self, cache_options: CacheOptions):
+  def __init__(self, cache_options: types.CacheOptions):
     self._data = {}
     self._cache_options = cache_options
     if self._cache_path:
@@ -52,7 +44,7 @@ class ModelCache:
     if not os.path.exists(self._cache_path):
       return
     with open(self._cache_path, 'r') as f:
-      self._data: ModelCacheType = json.load(f)
+      self._data: types.ModelCacheType = json.load(f)
     for call_value in self._data.values():
       for provider_value in call_value.values():
         for provider_model_value in provider_value.values():
