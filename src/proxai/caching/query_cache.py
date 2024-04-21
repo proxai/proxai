@@ -619,12 +619,13 @@ class QueryCacheManager(BaseQueryCache):
     self._shard_count = shard_count
     self._response_per_file = response_per_file
     self._cache_response_size = cache_response_size
+    os.makedirs(self._cache_dir, exist_ok=True)
+
     self._shard_manager = ShardManager(
         path=self._cache_dir,
         shard_count=shard_count,
         response_per_file=response_per_file)
     self._record_heap = HeapManager(with_size=True)
-
     for record in self._shard_manager._light_cache_records.values():
       self._push_record_heap(record)
 
@@ -648,7 +649,8 @@ class QueryCacheManager(BaseQueryCache):
     cache_record = self._shard_manager.get_cache_record(query_record)
     if cache_record is None:
       return None
-    if len(cache_record.query_responses) == 0:
+    if (len(cache_record.query_responses)
+        < self._cache_options.unique_response_limit):
       return None
     if update:
       cache_record.last_access_time = datetime.datetime.now()
@@ -669,9 +671,9 @@ class QueryCacheManager(BaseQueryCache):
       cache_record.last_access_time = current_time
       cache_record.call_count += 1
     else:
+      query_record.hash_value = self._get_query_record_hash(query_record)
       cache_record = types.CacheRecord(
           query_record=query_record,
-          query_record_hash=self._get_query_record_hash(query_record),
           query_responses=[response_record],
           last_access_time=current_time,
           call_count=1)
