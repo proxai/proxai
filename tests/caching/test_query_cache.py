@@ -83,13 +83,26 @@ def _save_shard_manager(path, records=None):
     save_shard_manager._save_light_cache_records()
     return save_shard_manager
 
+def _create_response_record(
+    response_id,
+    error=None) -> types.QueryResponseRecord:
+  query_response_record = types.QueryResponseRecord(
+    response=f'r{response_id}',
+    start_time=(datetime.datetime.now()
+                - datetime.timedelta(seconds=response_id)),
+    end_time=datetime.datetime.now(),
+    response_time=datetime.timedelta(seconds=response_id))
+  if error:
+    query_response_record.error = error
+  return query_response_record
+
 
 def _create_cache_record(
     prompt,
     responses,
     shard_id,
     call_count,
-    all_values=False):
+    all_values=False) -> types.CacheRecord:
   query_record = types.QueryRecord(prompt=prompt)
   query_record.hash_value = (
       query_cache.BaseQueryCache._get_query_record_hash(
@@ -1525,15 +1538,210 @@ class TestQueryCache:
           shard_heap=[(1, 0), (2, 1), (3, 2)])
 
   def test_cache(self):
-    raise ValueError('Not implemented')
+    with tempfile.TemporaryDirectory() as temp_dir:
+      query_record_1 = types.QueryRecord(prompt='p1')
+      query_record_2 = types.QueryRecord(prompt='p2')
+      query_record_3 = types.QueryRecord(prompt='p3')
+      query_record_4 = types.QueryRecord(prompt='p4')
+      response_record_1 = _create_response_record(response_id=1)
+      response_record_2 = _create_response_record(response_id=2)
+      response_record_3 = _create_response_record(response_id=3)
+
+      query_cache_manager = query_cache.QueryCacheManager(
+          cache_options=types.CacheOptions(
+              path=temp_dir,
+              unique_response_limit=3),
+          shard_count=_SHARD_COUNT,
+          response_per_file=_RESPONSE_PER_FILE,
+          cache_response_size=10)
+
+      # Initial state validation
+      assert query_cache_manager.look(query_record_1) is None
+      _check_record_heap(query_cache_manager, [])
+      _check_shard_manager_state(
+          query_cache_manager._shard_manager,
+          light_cache_records={},
+          enc_light_cache_records={},
+          map_shard_to_cache={},
+          shard_active_count={0: 0, 1: 0, 2: 0, 'backlog': 0},
+          shard_heap=[(0, 0), (0, 1), (0, 2)])
+
+      # Cache (query_1, response_1)
+      query_cache_manager.cache(
+          query_record=query_record_1,
+          response_record=response_record_1)
+      _check_record_heap(query_cache_manager, [
+          query_record_1.hash_value])
+      _check_shard_manager_state(
+          query_cache_manager._shard_manager,
+          shard_active_count={0: 0, 1: 0, 2: 0, 'backlog': 2},
+          shard_heap=[(0, 0), (0, 1), (0, 2)])
+      assert query_cache_manager.look(query_record_1) is None
+
+      # Cache (query_1, response_2)
+      query_cache_manager.cache(
+          query_record=query_record_1,
+          response_record=response_record_2)
+      _check_record_heap(query_cache_manager, [
+          query_record_1.hash_value])
+      _check_shard_manager_state(
+          query_cache_manager._shard_manager,
+          shard_active_count={0: 0, 1: 0, 2: 0, 'backlog': 3},
+          shard_heap=[(0, 0), (0, 1), (0, 2)])
+      assert query_cache_manager.look(query_record_1) is None
+      # Check if returning None changes call count
+      assert query_cache_manager.look(query_record_1) is None
+
+      # Cache (query_1, response_3)
+      query_cache_manager.cache(
+          query_record=query_record_1,
+          response_record=response_record_3)
+      _check_record_heap(query_cache_manager, [
+          query_record_1.hash_value])
+      _check_shard_manager_state(
+          query_cache_manager._shard_manager,
+          shard_active_count={0: 0, 1: 0, 2: 0, 'backlog': 4},
+          shard_heap=[(0, 0), (0, 1), (0, 2)])
+      # Check first cache record starts with first cached response
+      assert query_cache_manager.look(query_record_1).response == 'r1'
+      assert query_cache_manager.look(query_record_1).response == 'r2'
+      assert query_cache_manager.look(query_record_1).response == 'r3'
+      assert query_cache_manager.look(query_record_1).response == 'r1'
+
+      # Cache (query_2, response_1)
+      query_cache_manager.cache(
+          query_record=query_record_2,
+          response_record=response_record_1)
+      _check_record_heap(query_cache_manager, [
+          query_record_1.hash_value,
+          query_record_2.hash_value])
+      _check_shard_manager_state(
+          query_cache_manager._shard_manager,
+          shard_active_count={0: 4, 1: 0, 2: 0, 'backlog': 2},
+          shard_heap=[(0, 1), (0, 2), (4, 0)])
+      assert query_cache_manager.look(query_record_2) is None
+
+      # Check look correctly changes heap and shard manager state
+      assert query_cache_manager.look(query_record_1).response == 'r2'
+      _check_record_heap(query_cache_manager, [
+          query_record_2.hash_value,
+          query_record_1.hash_value])
+      _check_shard_manager_state(
+          query_cache_manager._shard_manager,
+          shard_active_count={0: 2, 1: 0, 2: 0, 'backlog': 4},
+          shard_heap=[(0, 1), (0, 2), (2, 0)])
+
+      # Cache (query_3, response_1)
+      query_cache_manager.cache(
+          query_record=query_record_3,
+          response_record=response_record_1)
+      _check_record_heap(query_cache_manager, [
+          query_record_2.hash_value,
+          query_record_1.hash_value,
+          query_record_3.hash_value])
+      _check_shard_manager_state(
+          query_cache_manager._shard_manager,
+          shard_active_count={0: 2, 1: 4, 2: 0, 'backlog': 2},
+          shard_heap=[(0, 2), (2, 0), (4, 1)])
+      assert query_cache_manager.look(query_record_3) is None
+
+      # Cache (query_3, response_2)
+      query_cache_manager.cache(
+          query_record=query_record_3,
+          response_record=response_record_2)
+      _check_record_heap(query_cache_manager, [
+          query_record_2.hash_value,
+          query_record_1.hash_value,
+          query_record_3.hash_value])
+      _check_shard_manager_state(
+          query_cache_manager._shard_manager,
+          shard_active_count={0: 2, 1: 4, 2: 0, 'backlog': 3},
+          shard_heap=[(0, 2), (2, 0), (4, 1)])
+      assert query_cache_manager.look(query_record_3) is None
+
+      # Cache (query_3, response_3)
+      query_cache_manager.cache(
+          query_record=query_record_3,
+          response_record=response_record_3)
+      _check_record_heap(query_cache_manager, [
+          query_record_2.hash_value,
+          query_record_1.hash_value,
+          query_record_3.hash_value])
+      _check_shard_manager_state(
+          query_cache_manager._shard_manager,
+          shard_active_count={0: 2, 1: 4, 2: 0, 'backlog': 4},
+          shard_heap=[(0, 2), (2, 0), (4, 1)])
+      assert query_cache_manager.look(query_record_3).response == 'r1'
+      assert query_cache_manager.look(query_record_3).response == 'r2'
+      assert query_cache_manager.look(query_record_3).response == 'r3'
+      assert query_cache_manager.look(query_record_3).response == 'r1'
+
+      # Cache (query_4, response_1)
+      # This will overflow the backlog and deletes query_2
+      query_cache_manager.cache(
+          query_record=query_record_4,
+          response_record=response_record_1)
+      _check_record_heap(query_cache_manager, [
+          query_record_1.hash_value,
+          query_record_3.hash_value,
+          query_record_4.hash_value])
+      _check_shard_manager_state(
+          query_cache_manager._shard_manager,
+          shard_active_count={0: 0, 1: 4, 2: 4, 'backlog': 2},
+          shard_heap=[(0, 0), (4, 1), (4, 2)])
+      assert query_cache_manager.look(query_record_4) is None
+
+      # Check look correctly changes heap and shard manager state
+      assert query_cache_manager.look(query_record_1).response == 'r3'
+      _check_record_heap(query_cache_manager, [
+          query_record_3.hash_value,
+          query_record_4.hash_value,
+          query_record_1.hash_value,])
+      _check_shard_manager_state(
+          query_cache_manager._shard_manager,
+          shard_active_count={0: 2, 1: 0, 2: 4, 'backlog': 4},
+          shard_heap=[(0, 1), (2, 0), (4, 2)])
+
+      # Cache (query_4, response_2)
+      # This will overflow the backlog and deletes query_3
+      query_cache_manager.cache(
+          query_record=query_record_4,
+          response_record=response_record_2)
+      _check_record_heap(query_cache_manager, [
+          query_record_1.hash_value,
+          query_record_4.hash_value,])
+      _check_shard_manager_state(
+          query_cache_manager._shard_manager,
+          shard_active_count={0: 4, 1: 0, 2: 0, 'backlog': 3},
+          shard_heap=[(0, 1), (0, 2), (4, 0)])
+      assert query_cache_manager.look(query_record_4) is None
+
+      # Cache (query_4, response_3)
+      query_cache_manager.cache(
+          query_record=query_record_4,
+          response_record=response_record_3)
+      _check_record_heap(query_cache_manager, [
+          query_record_1.hash_value,
+          query_record_4.hash_value,])
+      _check_shard_manager_state(
+          query_cache_manager._shard_manager,
+          shard_active_count={0: 4, 1: 0, 2: 0, 'backlog': 4},
+          shard_heap=[(0, 1), (0, 2), (4, 0)])
+      assert query_cache_manager.look(query_record_4).response == 'r1'
+
+      # Final checks
+      assert query_cache_manager.look(query_record_1).response == 'r1'
+      assert query_cache_manager.look(query_record_2) is None
+      assert query_cache_manager.look(query_record_3) is None
+      assert query_cache_manager.look(query_record_4).response == 'r2'
+      assert query_cache_manager.look(query_record_1).response == 'r2'
+      assert query_cache_manager.look(query_record_2) is None
+      assert query_cache_manager.look(query_record_3) is None
+      assert query_cache_manager.look(query_record_4).response == 'r3'
+      assert query_cache_manager.look(query_record_1).response == 'r3'
+
 
 # Test for save record
 #   -> corner cases like shard count is 1, file count is 1/0/-1, etc.
 
-# Test for cache. Not implemented somehow.
-
 # Different cache, same hash bug. If hits to the same hash??!!!
-
-# QueryCacheManager: add new response to existing record
-      # ? -> when return when return from cache(?) like there is 3 responses
-      # should we add 4? Who will check that?
