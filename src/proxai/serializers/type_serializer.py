@@ -3,31 +3,89 @@ from typing import Any, Dict
 import proxai.types as types
 
 
+def encode_model_type(
+    model_type: types.ModelType) -> Dict[str, Any]:
+  provider, provider_model = model_type
+  record = {}
+  if isinstance(provider, types.Provider):
+    record['provider'] = provider.value
+  elif isinstance(provider, str):
+    record['provider'] = provider
+  else:
+    raise ValueError(
+        'Invalid provider type.\n'
+        f'{provider=}\n'
+        f'{type(provider)=}')
+  if isinstance(provider_model, types.ProviderModel):
+    record['provider_model'] = provider_model.value
+  elif isinstance(provider_model, str):
+    record['provider_model'] = provider_model
+  else:
+    raise ValueError(
+        'Invalid provider_model type.\n'
+        f'{provider_model=}\n'
+        f'{type(provider_model)=}')
+  return record
+
+
+def decode_model_type(
+    record: Dict[str, Any]) -> types.ModelType:
+  if 'provider' not in record:
+    raise ValueError(f'Provider not found in record: {record=}')
+  if 'provider_model' not in record:
+    raise ValueError(f'Provider model not found in record: {record=}')
+  provider = types.Provider(record['provider'])
+  provider_model = types.PROVIDER_MODEL_MAP[provider](record['provider_model'])
+  return (provider, provider_model)
+
+
+def encode_model_status(
+    model_status: types.ModelStatus) -> Dict[str, Any]:
+  record = {}
+  if model_status.unprocessed_models != None:
+    record['unprocessed_models'] = []
+    for model_type in model_status.unprocessed_models:
+      record['unprocessed_models'].append(encode_model_type(model_type))
+  if model_status.working_models != None:
+    record['working_models'] = []
+    for model_type in model_status.working_models:
+      record['working_models'].append(encode_model_type(model_type))
+  if model_status.failed_models != None:
+    record['failed_models'] = []
+    for model_type in model_status.failed_models:
+      record['failed_models'].append(encode_model_type(model_type))
+  if model_status.filtered_models != None:
+    record['filtered_models'] = []
+    for model_type in model_status.filtered_models:
+      record['filtered_models'].append(encode_model_type(model_type))
+  return record
+
+
+def decode_model_status(
+    record: Dict[str, Any]) -> types.ModelStatus:
+  model_status = types.ModelStatus()
+  if 'unprocessed_models' in record:
+    for model_type_record in record['unprocessed_models']:
+      model_status.unprocessed_models.add(decode_model_type(model_type_record))
+  if 'working_models' in record:
+    for model_type_record in record['working_models']:
+      model_status.working_models.add(decode_model_type(model_type_record))
+  if 'failed_models' in record:
+    for model_type_record in record['failed_models']:
+      model_status.failed_models.add(decode_model_type(model_type_record))
+  if 'filtered_models' in record:
+    for model_type_record in record['filtered_models']:
+      model_status.filtered_models.add(decode_model_type(model_type_record))
+  return model_status
+
+
 def encode_query_record(
     query_record: types.QueryRecord) -> Dict[str, Any]:
   record = {}
   if query_record.call_type != None:
     record['call_type'] = query_record.call_type.value
-  if query_record.provider != None:
-    if isinstance(query_record.provider, types.Provider):
-      record['provider'] = query_record.provider.value
-    elif isinstance(query_record.provider, str):
-      record['provider'] = query_record.provider
-    else:
-      raise ValueError(
-          'Invalid provider type.\n'
-          f'{query_record.provider=}\n'
-          f'{type(query_record.provider)=}')
-  if query_record.provider_model != None:
-    if isinstance(query_record.provider_model, types.ProviderModel):
-      record['provider_model'] = query_record.provider_model.value
-    elif isinstance(query_record.provider_model, str):
-      record['provider_model'] = query_record.provider_model
-    else:
-      raise ValueError(
-          'Invalid provider_model type.\n'
-          f'{query_record.provider_model=}\n'
-          f'{type(query_record.provider_model)=}')
+  if query_record.model != None:
+    record['model'] = encode_model_type(query_record.model)
   if query_record.max_tokens != None:
     record['max_tokens'] = str(query_record.max_tokens)
   if query_record.prompt != None:
@@ -39,16 +97,11 @@ def encode_query_record(
 
 def decode_query_record(
     record: Dict[str, Any]) -> types.QueryRecord:
-  if 'provider_model' in record and 'provider' not in record:
-    raise ValueError('provider_model without provider')
   query_record = types.QueryRecord()
   if 'call_type' in record:
     query_record.call_type = types.CallType(record['call_type'])
-  if 'provider' in record:
-    query_record.provider = types.Provider(record['provider'])
-  if 'provider_model' in record:
-    query_record.provider_model = types.PROVIDER_MODEL_MAP[
-        query_record.provider](record['provider_model'])
+  if 'model' in record:
+    query_record.model = decode_model_type(record['model'])
   if 'max_tokens' in record:
     query_record.max_tokens = int(record['max_tokens'])
   query_record.prompt = record.get('prompt', None)

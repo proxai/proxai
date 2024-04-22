@@ -7,10 +7,10 @@ def get_query_record_hash(query_record: types.QueryRecord) -> str:
   signature_str = ''
   if query_record.call_type is not None:
     signature_str += query_record.call_type + chr(255)
-  if query_record.provider is not None:
-    signature_str += query_record.provider + chr(255)
-  if query_record.provider_model is not None:
-    signature_str += query_record.provider_model + chr(255)
+  if query_record.model is not None:
+    provider, provider_model = query_record.model
+    signature_str += provider + chr(255)
+    signature_str += provider_model + chr(255)
   if query_record.max_tokens is not None:
     signature_str += str(query_record.max_tokens) + chr(255)
   if query_record.prompt is not None:

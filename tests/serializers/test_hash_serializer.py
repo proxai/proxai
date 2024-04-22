@@ -6,15 +6,11 @@ import pytest
 def _get_query_record_options():
   return [
       {'call_type': types.CallType.GENERATE_TEXT},
-      {'provider': types.Provider.OPENAI,},
-      {'provider': 'openai',},
-      {'provider_model': types.OpenAIModel.GPT_4,},
-      {'provider_model': 'gpt-4',},
+      {'model': (types.Provider.OPENAI, types.OpenAIModel.GPT_4)},
       {'max_tokens': 100},
       {'prompt': 'Hello, world!'},
       {'call_type': types.CallType.GENERATE_TEXT,
-       'provider': types.Provider.OPENAI,
-       'provider_model': types.OpenAIModel.GPT_4,
+       'model': (types.Provider.OPENAI, types.OpenAIModel.GPT_4),
        'max_tokens': 100,
        'prompt': 'Hello, world!'},]
 
