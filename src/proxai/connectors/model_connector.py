@@ -58,18 +58,21 @@ class ModelConnector(object):
         max_tokens=max_tokens)
 
     if self.query_cache_manager and use_cache:
-      # NOT READY! What to do for error? Raise exception?
+      response_record = None
       try:
         response_record = self.query_cache_manager.look(query_record)
-        if response_record:
-          log_query_record(
-              logging_options=self._logging_options,
-              query_record=query_record,
-              response_record=response_record,
-              from_cache=True)
-          return response_record.response
       except Exception as e:
         pass
+      if response_record:
+        log_query_record(
+            logging_options=self._logging_options,
+            query_record=query_record,
+            response_record=response_record,
+            from_cache=True)
+        if response_record.error:
+          raise Exception(response_record.error)
+        elif response_record.response != None:
+          return response_record.response
 
     response, error = None, None
     try:
