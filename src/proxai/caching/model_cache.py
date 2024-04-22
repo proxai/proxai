@@ -4,17 +4,15 @@ import datetime
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Set
 import proxai.types as types
-import proxai.type_utils as type_utils
+import proxai.serializers.type_serializer as type_serializer
 import json
 
 AVAILABLE_MODELS_PATH = 'available_models.json'
-LAST_TESTED = 'last_tested'
-STATUS = 'status'
 
 
 class ModelCache:
   _cache_options: types.CacheOptions
-  _data: types.ModelCacheType = {}
+  _data: Dict[types.CallType, types.ModelStatus] = {}
 
   def __init__(self, cache_options: types.CacheOptions):
     self._data = {}
@@ -32,11 +30,8 @@ class ModelCache:
     if not self._cache_path:
       return
     data = copy.deepcopy(self._data)
-    for call_value in data.values():
-      for provider_value in call_value.values():
-        for provider_model_value in provider_value.values():
-          provider_model_value[LAST_TESTED] = type_utils.encode_datetime(
-              provider_model_value[LAST_TESTED])
+    for call_value in data.keys():
+      data[call_value] = type_serializer.encode_model_status(data[call_value])
     with open(self._cache_path, 'w') as f:
       json.dump(data, f)
 
@@ -44,53 +39,55 @@ class ModelCache:
     if not os.path.exists(self._cache_path):
       return
     with open(self._cache_path, 'r') as f:
-      self._data: types.ModelCacheType = json.load(f)
-    for call_value in self._data.values():
-      for provider_value in call_value.values():
-        for provider_model_value in provider_value.values():
-          provider_model_value[LAST_TESTED] = type_utils.decode_datetime(
-              provider_model_value[LAST_TESTED])
+      self._data: Dict[str, Any] = json.load(f)
+    for call_value in self._data.keys():
+      self._data[call_value] = type_serializer.decode_model_status(
+          self._data[call_value])
+
+  def _clean_model(
+      self,
+      call_type: types.CallType,
+      model: types.ModelType):
+    if model in self._data[call_type].working_models:
+      self._data[call_type].working_models.remove(model)
+    if model in self._data[call_type].failed_models:
+      self._data[call_type].failed_models.remove(model)
+    for idx, provider_query in enumerate(
+        self._data[call_type].provider_queries):
+      query_record, _ = provider_query
+      if query_record.model == model:
+        del self._data[call_type].provider_queries[idx]
+        break
 
   def get(self, call_type: str) -> types.ModelStatus:
     result = types.ModelStatus()
     if call_type not in self._data:
       return result
-    current_time = datetime.datetime.now()
-    for provider, provider_value in self._data[call_type].items():
-      for provider_model, provider_model_value in provider_value.items():
-        model = (provider, provider_model)
-        if self._cache_options.duration:
-          if ((current_time - provider_model_value[LAST_TESTED]).total_seconds()
-              > self._cache_options.duration):
-            continue
-        if provider_model_value[STATUS]:
-          result.working_models.add(model)
-        else:
-          result.failed_models.add(model)
-    return result
+    for query_record, query_response_record in copy.deepcopy(
+        self._data[call_type].provider_queries):
+      if self._cache_options.duration == None:
+        continue
+      passing_time = (datetime.datetime.now()
+                      - query_response_record.end_time).total_seconds()
+      if passing_time > self._cache_options.duration:
+        self._clean_model(call_type=call_type, model=query_record.model)
+    self._save_to_cache()
+    return self._data[call_type]
 
   def update(
         self,
-        models: types.ModelStatus,
-        call_type: str,
-        update_time: Optional[datetime.datetime] = None):
-    if not update_time:
-      update_time = datetime.datetime.now()
+        model_status: types.ModelStatus,
+        call_type: str):
     if call_type not in self._data:
-      self._data[call_type] = {}
-
-    def _update_model(model: types.ModelType, status: bool):
-      provider, provider_model = model
-      if provider not in self._data[call_type]:
-        self._data[call_type][provider] = {}
-      if provider_model not in self._data[call_type][provider]:
-        self._data[call_type][provider][provider_model] = {}
-      self._data[call_type][provider][provider_model][LAST_TESTED] = (
-          update_time)
-      self._data[call_type][provider][provider_model][STATUS] = status
-
-    for model in models.working_models:
-      _update_model(model, True)
-    for model in models.failed_models:
-      _update_model(model, False)
+      self._data[call_type] = types.ModelStatus()
+    for model in model_status.working_models:
+      self._clean_model(call_type=call_type, model=model)
+    for model in model_status.failed_models:
+      self._clean_model(call_type=call_type, model=model)
+    for model in model_status.working_models:
+      self._data[call_type].working_models.add(model)
+    for model in model_status.failed_models:
+      self._data[call_type].failed_models.add(model)
+    for provider_query in model_status.provider_queries:
+      self._data[call_type].provider_queries.append(provider_query)
     self._save_to_cache()

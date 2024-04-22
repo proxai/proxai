@@ -39,46 +39,6 @@ def decode_model_type(
   return (provider, provider_model)
 
 
-def encode_model_status(
-    model_status: types.ModelStatus) -> Dict[str, Any]:
-  record = {}
-  if model_status.unprocessed_models != None:
-    record['unprocessed_models'] = []
-    for model_type in model_status.unprocessed_models:
-      record['unprocessed_models'].append(encode_model_type(model_type))
-  if model_status.working_models != None:
-    record['working_models'] = []
-    for model_type in model_status.working_models:
-      record['working_models'].append(encode_model_type(model_type))
-  if model_status.failed_models != None:
-    record['failed_models'] = []
-    for model_type in model_status.failed_models:
-      record['failed_models'].append(encode_model_type(model_type))
-  if model_status.filtered_models != None:
-    record['filtered_models'] = []
-    for model_type in model_status.filtered_models:
-      record['filtered_models'].append(encode_model_type(model_type))
-  return record
-
-
-def decode_model_status(
-    record: Dict[str, Any]) -> types.ModelStatus:
-  model_status = types.ModelStatus()
-  if 'unprocessed_models' in record:
-    for model_type_record in record['unprocessed_models']:
-      model_status.unprocessed_models.add(decode_model_type(model_type_record))
-  if 'working_models' in record:
-    for model_type_record in record['working_models']:
-      model_status.working_models.add(decode_model_type(model_type_record))
-  if 'failed_models' in record:
-    for model_type_record in record['failed_models']:
-      model_status.failed_models.add(decode_model_type(model_type_record))
-  if 'filtered_models' in record:
-    for model_type_record in record['filtered_models']:
-      model_status.filtered_models.add(decode_model_type(model_type_record))
-  return model_status
-
-
 def encode_query_record(
     query_record: types.QueryRecord) -> Dict[str, Any]:
   record = {}
@@ -229,3 +189,56 @@ def decode_light_cache_record(
   if 'call_count' in record:
     light_cache_record.call_count = int(record['call_count'])
   return light_cache_record
+
+
+def encode_model_status(
+    model_status: types.ModelStatus) -> Dict[str, Any]:
+  record = {}
+  if model_status.unprocessed_models != None:
+    record['unprocessed_models'] = []
+    for model_type in model_status.unprocessed_models:
+      record['unprocessed_models'].append(encode_model_type(model_type))
+  if model_status.working_models != None:
+    record['working_models'] = []
+    for model_type in model_status.working_models:
+      record['working_models'].append(encode_model_type(model_type))
+  if model_status.failed_models != None:
+    record['failed_models'] = []
+    for model_type in model_status.failed_models:
+      record['failed_models'].append(encode_model_type(model_type))
+  if model_status.filtered_models != None:
+    record['filtered_models'] = []
+    for model_type in model_status.filtered_models:
+      record['filtered_models'].append(encode_model_type(model_type))
+  if model_status.provider_queries:
+    record['provider_queries'] = []
+    for query_record, query_response_record in model_status.provider_queries:
+      record['provider_queries'].append({
+          'query_record': encode_query_record(query_record),
+          'query_response_record': encode_query_response_record(
+              query_response_record)})
+  return record
+
+
+def decode_model_status(
+    record: Dict[str, Any]) -> types.ModelStatus:
+  model_status = types.ModelStatus()
+  if 'unprocessed_models' in record:
+    for model_type_record in record['unprocessed_models']:
+      model_status.unprocessed_models.add(decode_model_type(model_type_record))
+  if 'working_models' in record:
+    for model_type_record in record['working_models']:
+      model_status.working_models.add(decode_model_type(model_type_record))
+  if 'failed_models' in record:
+    for model_type_record in record['failed_models']:
+      model_status.failed_models.add(decode_model_type(model_type_record))
+  if 'filtered_models' in record:
+    for model_type_record in record['filtered_models']:
+      model_status.filtered_models.add(decode_model_type(model_type_record))
+  if 'provider_queries' in record:
+    for provider_query_record in record['provider_queries']:
+      query_record = decode_query_record(provider_query_record['query_record'])
+      query_response_record = decode_query_response_record(
+          provider_query_record['query_response_record'])
+      model_status.provider_queries.append((query_record, query_response_record))
+  return model_status
