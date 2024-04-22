@@ -1,4 +1,5 @@
 import datetime
+import functools
 import os
 import random
 from typing import Any, Dict, Optional, Set, Tuple
@@ -13,6 +14,7 @@ from proxai.connectors.databricks import DatabricksConnector
 from proxai.connectors.mistral import MistralConnector
 from proxai.connectors.hugging_face import HuggingFaceConnector
 import proxai.caching.model_cache as model_cache
+import proxai.caching.query_cache as query_cache
 import multiprocessing
 
 _RUN_TYPE: types.RunType = types.RunType.PRODUCTION
@@ -20,6 +22,7 @@ _REGISTERED_VALUES: Dict[str, types.ModelType] = {}
 _INITIALIZED_MODEL_CONNECTORS: Dict[types.ModelType, ModelConnector] = {}
 _LOGGING_OPTIONS: types.LoggingOptions = types.LoggingOptions()
 _CACHE_OPTIONS: types.CacheOptions = types.CacheOptions()
+_QUERY_CACHE_MANAGER: Optional[query_cache.QueryCacheManager] = None
 
 CacheOptions = types.CacheOptions
 LoggingOptions = types.LoggingOptions
@@ -27,7 +30,17 @@ LoggingOptions = types.LoggingOptions
 
 def _set_run_type(run_type: types.RunType):
   global _RUN_TYPE
+  global _REGISTERED_VALUES
+  global _INITIALIZED_MODEL_CONNECTORS
+  global _LOGGING_OPTIONS
+  global _CACHE_OPTIONS
+  global _QUERY_CACHE_MANAGER
   _RUN_TYPE = run_type
+  _REGISTERED_VALUES = {}
+  _INITIALIZED_MODEL_CONNECTORS = {}
+  _LOGGING_OPTIONS = types.LoggingOptions()
+  _CACHE_OPTIONS = types.CacheOptions()
+  _QUERY_CACHE_MANAGER = None
 
 
 def connect(
@@ -37,6 +50,10 @@ def connect(
     logging_options: LoggingOptions=None):
   global _CACHE_OPTIONS
   global _LOGGING_OPTIONS
+  global _QUERY_CACHE_MANAGER
+
+  if _INITIALIZED_MODEL_CONNECTORS != {}:
+    raise ValueError('connect() must be called before any other function.')
 
   if cache_path and cache_options and cache_options.path:
     raise ValueError('cache_path and cache_options.path are both set.')
@@ -47,7 +64,17 @@ def connect(
   if cache_path:
     _CACHE_OPTIONS.path = cache_path
   if cache_options:
-    _CACHE_OPTIONS.duration = cache_options.duration
+    if cache_options.path:
+      _CACHE_OPTIONS.path = cache_options.path
+    if cache_options.duration:
+      raise ValueError(
+        'cache_options.duration is not supported yet.\n'
+        'We are looking for contributors! https://github.com/proxai/proxai')
+    if cache_options.unique_response_limit:
+      _CACHE_OPTIONS.unique_response_limit = cache_options.unique_response_limit
+  if _CACHE_OPTIONS.path:
+    _QUERY_CACHE_MANAGER = query_cache.QueryCacheManager(
+        cache_options=_CACHE_OPTIONS)
 
   if logging_path:
     _LOGGING_OPTIONS.path = logging_path
@@ -60,6 +87,7 @@ def connect(
 
 def _init_model_connector(model: types.ModelType) -> ModelConnector:
   global _LOGGING_OPTIONS
+  global _QUERY_CACHE_MANAGER
   provider, _ = model
   connector = None
   if provider == types.Provider.OPENAI:
@@ -78,6 +106,11 @@ def _init_model_connector(model: types.ModelType) -> ModelConnector:
     connector =  HuggingFaceConnector
   else:
     raise ValueError(f'Provider not supported. {model}')
+
+  if _QUERY_CACHE_MANAGER:
+    connector = functools.partial(
+        connector,
+        query_cache_manager=_QUERY_CACHE_MANAGER)
 
   if _LOGGING_OPTIONS.path:
     return connector(
@@ -250,7 +283,8 @@ class AvailableModels:
       # use cache.
       text = model_connector.generate_text(
           prompt=f'Hello model?',
-          max_tokens=100)
+          max_tokens=100,
+          use_cache=False)
       return model, True, text
     except Exception as e:
       return model, False, str(e)

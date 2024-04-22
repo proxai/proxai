@@ -50,9 +50,25 @@ class BaseQueryCache:
     if query_record.call_type != None:
       record['call_type'] = query_record.call_type.value
     if query_record.provider != None:
-      record['provider'] = query_record.provider.value
+      if isinstance(query_record.provider, types.Provider):
+        record['provider'] = query_record.provider.value
+      elif isinstance(query_record.provider, str):
+        record['provider'] = query_record.provider
+      else:
+        raise ValueError(
+            'Invalid provider type.\n'
+            f'{query_record.provider=}\n'
+            f'{type(query_record.provider)=}')
     if query_record.provider_model != None:
-      record['provider_model'] = query_record.provider_model.value
+      if isinstance(query_record.provider_model, types.ProviderModel):
+        record['provider_model'] = query_record.provider_model.value
+      elif isinstance(query_record.provider_model, str):
+        record['provider_model'] = query_record.provider_model
+      else:
+        raise ValueError(
+            'Invalid provider_model type.\n'
+            f'{query_record.provider_model=}\n'
+            f'{type(query_record.provider_model)=}')
     if query_record.max_tokens != None:
       record['max_tokens'] = str(query_record.max_tokens)
     if query_record.prompt != None:
