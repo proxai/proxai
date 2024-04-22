@@ -343,11 +343,13 @@ class AvailableModels:
       else:
         models.failed_models.add(query_record.model)
         update_models.failed_models.add(query_record.model)
+      update_models.provider_queries.append(
+          (query_record, query_response_record))
     if not _CACHE_OPTIONS.path:
       return
     if not self._model_cache:
       self._model_cache = model_cache.ModelCache(_CACHE_OPTIONS)
-    self._model_cache.update(models=update_models, call_type=call_type)
+    self._model_cache.update(model_status=update_models, call_type=call_type)
 
   def _format_set(
       self,

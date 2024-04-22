@@ -11,9 +11,23 @@ class TestModelCache:
       save_cache = model_cache.ModelCache(
           cache_options=types.CacheOptions(path=cache_dir))
       data = types.ModelStatus()
-      data.working_models.add(('provider1', 'provider_model1'))
-      data.working_models.add(('provider2', 'provider_model2'))
-      data.failed_models.add(('provider3', 'provider_model3'))
+      data.working_models.add(('openai', 'gpt-4'))
+      data.working_models.add(('claude', types.ClaudeModel.CLAUDE_3_OPUS))
+      data.failed_models.add(('gemini', types.GeminiModel.GEMINI_PRO))
+      data.provider_queries.append(
+          (types.QueryRecord(
+              call_type=types.CallType.GENERATE_TEXT,
+              model=('openai', 'gpt-4')),
+           types.QueryResponseRecord(
+              response='response1',
+              end_time=datetime.datetime.now() - datetime.timedelta(days=1))))
+      data.provider_queries.append(
+          (types.QueryRecord(
+              call_type=types.CallType.GENERATE_TEXT,
+              model=('claude', types.ClaudeModel.CLAUDE_3_OPUS)),
+           types.QueryResponseRecord(
+              response='response2',
+              end_time=datetime.datetime.now() - datetime.timedelta(days=1))))
       save_cache.update(data, types.CallType.GENERATE_TEXT)
 
       load_cache = model_cache.ModelCache(
@@ -22,26 +36,50 @@ class TestModelCache:
       assert loaded_data == data
 
   def test_filter_duration(self):
-    update_time = datetime.datetime.now() - datetime.timedelta(seconds=200)
     with tempfile.TemporaryDirectory() as cache_dir:
       save_cache = model_cache.ModelCache(
           cache_options=types.CacheOptions(
               path=cache_dir))
 
       data = types.ModelStatus()
-      data.working_models.add(('provider1', 'provider_model1'))
-      data.failed_models.add(('provider2', 'provider_model2'))
+      data.working_models.add(('openai', 'gpt-4'))
+      data.failed_models.add(('claude', types.ClaudeModel.CLAUDE_3_OPUS))
+      data.provider_queries.append(
+          (types.QueryRecord(
+              call_type=types.CallType.GENERATE_TEXT,
+              model=('openai', 'gpt-4')),
+           types.QueryResponseRecord(
+              response='response1',
+              end_time=datetime.datetime.now() - datetime.timedelta(days=1))))
+      data.provider_queries.append(
+          (types.QueryRecord(
+              call_type=types.CallType.GENERATE_TEXT,
+              model=('claude', types.ClaudeModel.CLAUDE_3_OPUS)),
+           types.QueryResponseRecord(
+              error='error1',
+              end_time=datetime.datetime.now() - datetime.timedelta(days=1))))
       save_cache.update(
-          models=data,
-          call_type=types.CallType.GENERATE_TEXT,
-          update_time=update_time)
+          model_status=data, call_type=types.CallType.GENERATE_TEXT)
 
       data = types.ModelStatus()
-      data.working_models.add(('provider3', 'provider_model3'))
-      data.failed_models.add(('provider4', 'provider_model4'))
+      data.working_models.add(('gemini', types.GeminiModel.GEMINI_PRO))
+      data.failed_models.add(('cohere', types.CohereModel.COMMAND_R))
+      data.provider_queries.append(
+          (types.QueryRecord(
+              call_type=types.CallType.GENERATE_TEXT,
+              model=('openai', 'gpt-4')),
+           types.QueryResponseRecord(
+              response='response1',
+              end_time=datetime.datetime.now())))
+      data.provider_queries.append(
+          (types.QueryRecord(
+              call_type=types.CallType.GENERATE_TEXT,
+              model=('claude', types.ClaudeModel.CLAUDE_3_OPUS)),
+           types.QueryResponseRecord(
+              error='error1',
+              end_time=datetime.datetime.now())))
       save_cache.update(
-          models=data,
-          call_type=types.CallType.GENERATE_TEXT)
+          model_status=data, call_type=types.CallType.GENERATE_TEXT)
 
       load_cache = model_cache.ModelCache(
           cache_options=types.CacheOptions(
@@ -49,6 +87,6 @@ class TestModelCache:
               duration=10))
       loaded_data = load_cache.get(call_type=types.CallType.GENERATE_TEXT)
       assert loaded_data.working_models == set(
-          [('provider3', 'provider_model3')])
+          [('gemini', types.GeminiModel.GEMINI_PRO)])
       assert loaded_data.failed_models == set(
-          [('provider4', 'provider_model4')])
+          [('cohere', types.CohereModel.COMMAND_R)])
