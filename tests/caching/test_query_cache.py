@@ -5,75 +5,14 @@ from typing import Dict
 import json
 import proxai.types as types
 import proxai.caching.query_cache as query_cache
+import proxai.serializers.type_serializer as type_serializer
+import proxai.serializers.hash_serializer as hash_serializer
 import pytest
 import functools
 import tempfile
 
 _SHARD_COUNT = 3
 _RESPONSE_PER_FILE = 4
-
-
-def _get_query_record_options():
-  return [
-      {'call_type': types.CallType.GENERATE_TEXT},
-      {'provider': types.Provider.OPENAI,},
-      {'provider': 'openai',},
-      {'provider_model': types.OpenAIModel.GPT_4,},
-      {'provider_model': 'gpt-4',},
-      {'max_tokens': 100},
-      {'prompt': 'Hello, world!'},
-      {'call_type': types.CallType.GENERATE_TEXT,
-       'provider': types.Provider.OPENAI,
-       'provider_model': types.OpenAIModel.GPT_4,
-       'max_tokens': 100,
-       'prompt': 'Hello, world!'},]
-
-
-def _get_query_response_record_options():
-  return [
-      {'response': 'Hello, world!'},
-      {'error': 'Error message'},
-      {'start_time': datetime.datetime.now()},
-      {'end_time': datetime.datetime.now()},
-      {'response_time': datetime.timedelta(seconds=1)},
-      {'response': 'Hello, world!',
-       'error': 'Error message',
-       'start_time': datetime.datetime.now(),
-       'end_time': datetime.datetime.now(),
-       'response_time': datetime.timedelta(seconds=1)},]
-
-
-def _get_cache_record_options():
-  return [
-      {'query_record': types.QueryRecord(
-          call_type=types.CallType.GENERATE_TEXT)},
-      {'query_responses': [types.QueryResponseRecord(
-          response='Hello, world!')]},
-      {'shard_id': 0},
-      {'shard_id': 'backlog'},
-      {'last_access_time': datetime.datetime.now()},
-      {'call_count': 1},
-      {'query_record': types.QueryRecord(
-          call_type=types.CallType.GENERATE_TEXT),
-       'query_responses': [types.QueryResponseRecord(
-          response='Hello, world!')],
-       'shard_id': 0,
-       'last_access_time': datetime.datetime.now(),
-       'call_count': 1},]
-
-
-def _get_light_cache_record_options():
-  return [
-      {'query_record_hash': 'hash_value'},
-      {'query_response_count': 1},
-      {'shard_id': 0},
-      {'last_access_time': datetime.datetime.now()},
-      {'call_count': 1},
-      {'query_record_hash': 'hash_value',
-       'query_response_count': 1,
-       'shard_id': 0,
-       'last_access_time': datetime.datetime.now(),
-       'call_count': 1},]
 
 
 def _save_shard_manager(path, records=None):
@@ -107,7 +46,7 @@ def _create_cache_record(
     all_values=False) -> types.CacheRecord:
   query_record = types.QueryRecord(prompt=prompt)
   query_record.hash_value = (
-      query_cache.BaseQueryCache._get_query_record_hash(
+      hash_serializer.get_query_record_hash(
           query_record=query_record))
   cache_record = types.CacheRecord(
       query_record=query_record,
@@ -124,8 +63,8 @@ def _create_cache_record(
       query_record.hash_value,
       cache_record,
       light_record,
-      query_cache.BaseQueryCache._encode_cache_record(cache_record),
-      query_cache.BaseQueryCache._encode_light_cache_record(light_record))
+      type_serializer.encode_cache_record(cache_record),
+      type_serializer.encode_light_cache_record(light_record))
 
 
 def _get_example_records(shard_dir=None, shard_count=None):
@@ -150,9 +89,9 @@ def _get_example_records(shard_dir=None, shard_count=None):
       light_cache_records[hash_value] = (
           query_cache.BaseQueryCache._to_light_cache_record(record))
       enc_cache_records[hash_value] = (
-          query_cache.BaseQueryCache._encode_cache_record(record))
+          type_serializer.encode_cache_record(record))
       enc_light_cache_records[hash_value] = (
-          query_cache.BaseQueryCache._encode_light_cache_record(
+          type_serializer.encode_light_cache_record(
               light_cache_record=light_cache_records[hash_value]))
       if write_to_shard:
         with open(shard_manager.shard_paths[record.shard_id], 'a') as f:
@@ -345,7 +284,7 @@ def _print_state(
   names = {}
   for i in range(1, 10):
     val = types.QueryRecord(prompt=f'p{i}')
-    names[query_cache.BaseQueryCache._get_query_record_hash(
+    names[hash_serializer.get_query_record_hash(
         query_record=val)] = f'p{i}'
   from pprint import pprint
   print('---- _light_cache_records')
@@ -364,82 +303,17 @@ def _print_state(
 
 
 class TestBaseQueryCache:
-  @pytest.mark.parametrize('query_record_options', _get_query_record_options())
-  def test_get_query_record_hash(self, query_record_options):
-    query_record = types.QueryRecord(**query_record_options)
-    query_hash_value = query_cache.BaseQueryCache._get_query_record_hash(
-        query_record=query_record)
-
-    query_record_options['max_tokens'] = 222
-    query_record_2 = types.QueryRecord(**query_record_options)
-    query_hash_value_2 = query_cache.BaseQueryCache._get_query_record_hash(
-        query_record=query_record_2)
-
-    assert query_hash_value != query_hash_value_2
-    assert query_hash_value == (
-        query_cache.BaseQueryCache._get_query_record_hash(
-            query_record=query_record))
-
-  @pytest.mark.parametrize('query_record_options', _get_query_record_options())
-  def test_encode_decode_query_record(self, query_record_options):
-    query_record = types.QueryRecord(**query_record_options)
-    encoded_query_record = query_cache.BaseQueryCache._encode_query_record(
-        query_record=query_record)
-    if ('provider' not in query_record_options
-        and 'provider_model' in query_record_options):
-      with pytest.raises(ValueError):
-        _ = query_cache.BaseQueryCache._decode_query_record(
-            record=encoded_query_record)
-    else:
-      decoded_query_record = query_cache.BaseQueryCache._decode_query_record(
-          record=encoded_query_record)
-      assert query_record == decoded_query_record
-
-  @pytest.mark.parametrize(
-      'query_response_record_options', _get_query_response_record_options())
-  def test_encode_decode_query_response_record(
-      self, query_response_record_options):
-    query_response_record = types.QueryResponseRecord(
-        **query_response_record_options)
-    encoded_query_response_record = (
-        query_cache.BaseQueryCache._encode_query_response_record(
-            query_response_record=query_response_record))
-    decoded_query_response_record = (
-        query_cache.BaseQueryCache._decode_query_response_record(
-            record=encoded_query_response_record))
-    assert query_response_record == decoded_query_response_record
-
-  @pytest.mark.parametrize('cache_record_options', _get_cache_record_options())
-  def test_encode_decode_cache_record(self, cache_record_options):
-    cache_record = types.CacheRecord(**cache_record_options)
-    encoded_cache_record = query_cache.BaseQueryCache._encode_cache_record(
-        cache_record=cache_record)
-    decoded_cache_record = query_cache.BaseQueryCache._decode_cache_record(
-        record=encoded_cache_record)
-    assert cache_record == decoded_cache_record
-
-  @pytest.mark.parametrize(
-      'light_cache_record_options', _get_light_cache_record_options())
-  def test_encode_decode_light_cache_record(self, light_cache_record_options):
-    light_cache_record = types.LightCacheRecord(**light_cache_record_options)
-    encoded_light_cache_record = (
-        query_cache.BaseQueryCache._encode_light_cache_record(
-            light_cache_record=light_cache_record))
-    decoded_light_cache_record = (
-        query_cache.BaseQueryCache._decode_light_cache_record(
-            record=encoded_light_cache_record))
-    assert light_cache_record == decoded_light_cache_record
 
   def test_to_light_cache_record(self):
     query_record = types.QueryRecord(call_type=types.CallType.GENERATE_TEXT)
     query_record.hash_value = (
-        query_cache.BaseQueryCache._get_query_record_hash(
+        hash_serializer.get_query_record_hash(
             query_record=query_record))
     cache_record = types.CacheRecord(
         query_record=query_record,
         query_responses=[
-          types.QueryResponseRecord(response='Hello, world! - 1'),
-          types.QueryResponseRecord(response='Hello, world! - 2'),],
+            types.QueryResponseRecord(response='Hello, world! - 1'),
+            types.QueryResponseRecord(response='Hello, world! - 2'),],
         shard_id=5,
         last_access_time=datetime.datetime.now(),
         call_count=7)
@@ -447,7 +321,7 @@ class TestBaseQueryCache:
     light_cache_record = query_cache.BaseQueryCache._to_light_cache_record(
         cache_record=cache_record)
     assert light_cache_record.query_record_hash == (
-        query_cache.BaseQueryCache._get_query_record_hash(
+        hash_serializer.get_query_record_hash(
             query_record=cache_record.query_record))
     assert light_cache_record.query_response_count == 2
     assert light_cache_record.shard_id == 5
@@ -867,7 +741,7 @@ class TestShardManager:
           response_per_file=_RESPONSE_PER_FILE)
       shard_manager._move_backlog_to_shard(shard_id=1)
       light_4.shard_id = 1
-      enc_light_4 = query_cache.BaseQueryCache._encode_light_cache_record(
+      enc_light_4 = type_serializer.encode_light_cache_record(
           light_4)
       _check_shard_manager_state(
           shard_manager,
@@ -906,7 +780,7 @@ class TestShardManager:
           response_per_file=_RESPONSE_PER_FILE)
       shard_manager._move_backlog_to_shard(shard_id=1)
       light_4.shard_id = 1
-      enc_light_4 = query_cache.BaseQueryCache._encode_light_cache_record(
+      enc_light_4 = type_serializer.encode_light_cache_record(
           light_4)
       _check_shard_manager_state(
           shard_manager,
@@ -977,7 +851,7 @@ class TestShardManager:
           all_values=True)
       shard_manager._add_to_backlog(copy.deepcopy(record_5))
       light_5.shard_id = 'backlog'
-      enc_light_5 = query_cache.BaseQueryCache._encode_light_cache_record(
+      enc_light_5 = type_serializer.encode_light_cache_record(
           light_5)
       _check_shard_manager_state(
           shard_manager,
@@ -1143,7 +1017,7 @@ class TestShardManager:
           call_count=0, all_values=True)
       shard_manager.save_record(record_5)
       light_5.shard_id = 'backlog'
-      enc_light_5 = query_cache.BaseQueryCache._encode_light_cache_record(
+      enc_light_5 = type_serializer.encode_light_cache_record(
           light_5)
       _check_shard_manager_state(
           shard_manager,
@@ -1162,13 +1036,13 @@ class TestShardManager:
           call_count=0, all_values=True)
       shard_manager.save_record(record_6)
       light_4.shard_id = 1
-      enc_light_4 = query_cache.BaseQueryCache._encode_light_cache_record(
+      enc_light_4 = type_serializer.encode_light_cache_record(
           light_4)
       light_5.shard_id = 1
-      enc_light_5 = query_cache.BaseQueryCache._encode_light_cache_record(
+      enc_light_5 = type_serializer.encode_light_cache_record(
           light_5)
       light_6.shard_id = 'backlog'
-      enc_light_6 = query_cache.BaseQueryCache._encode_light_cache_record(
+      enc_light_6 = type_serializer.encode_light_cache_record(
           light_6)
       _check_shard_manager_state(
           shard_manager,
@@ -1189,10 +1063,10 @@ class TestShardManager:
           call_count=1, all_values=True)
       shard_manager.save_record(record_1)
       light_1.shard_id = 'backlog'
-      enc_light_1 = query_cache.BaseQueryCache._encode_light_cache_record(
+      enc_light_1 = type_serializer.encode_light_cache_record(
           light_1)
       light_6.shard_id = 0
-      enc_light_6 = query_cache.BaseQueryCache._encode_light_cache_record(
+      enc_light_6 = type_serializer.encode_light_cache_record(
           light_6)
       _check_shard_manager_state(
           shard_manager,
@@ -1213,7 +1087,7 @@ class TestShardManager:
           shard_id='not_important', call_count=3, all_values=True)
       shard_manager.save_record(record_1)
       light_1.shard_id = 'backlog'
-      enc_light_1 = query_cache.BaseQueryCache._encode_light_cache_record(
+      enc_light_1 = type_serializer.encode_light_cache_record(
           light_1)
       _check_shard_manager_state(
           shard_manager,
@@ -1242,7 +1116,7 @@ class TestQueryCache:
       # First record
       record_1 = _create_cache_record(
           prompt='p1', responses=[], shard_id='not_important', call_count=0)
-      hash_1 = query_cache.BaseQueryCache._get_query_record_hash(
+      hash_1 = hash_serializer.get_query_record_hash(
           query_record=record_1.query_record)
       query_cache_manager._push_record_heap(cache_record=record_1)
       _check_record_heap(query_cache_manager, [hash_1])
@@ -1252,9 +1126,9 @@ class TestQueryCache:
           cache_record=_create_cache_record(
               prompt='p2', responses=[], shard_id=0, call_count=0))
       _check_record_heap(query_cache_manager, [
-          query_cache.BaseQueryCache._get_query_record_hash(
+          hash_serializer.get_query_record_hash(
               query_record=types.QueryRecord(prompt='p1')),
-          query_cache.BaseQueryCache._get_query_record_hash(
+          hash_serializer.get_query_record_hash(
               query_record=types.QueryRecord(prompt='p2')),])
 
       # Third record
@@ -1262,11 +1136,11 @@ class TestQueryCache:
           cache_record=_create_cache_record(
               prompt='p3', responses=[], shard_id=0, call_count=0))
       _check_record_heap(query_cache_manager, [
-          query_cache.BaseQueryCache._get_query_record_hash(
+          hash_serializer.get_query_record_hash(
               query_record=types.QueryRecord(prompt='p1')),
-          query_cache.BaseQueryCache._get_query_record_hash(
+          hash_serializer.get_query_record_hash(
               query_record=types.QueryRecord(prompt='p2')),
-          query_cache.BaseQueryCache._get_query_record_hash(
+          hash_serializer.get_query_record_hash(
               query_record=types.QueryRecord(prompt='p3')),])
 
       # Override first record
@@ -1274,11 +1148,11 @@ class TestQueryCache:
           cache_record=_create_cache_record(
               prompt='p1', responses=['r1'], shard_id=0, call_count=0))
       _check_record_heap(query_cache_manager, [
-          query_cache.BaseQueryCache._get_query_record_hash(
+          hash_serializer.get_query_record_hash(
               query_record=types.QueryRecord(prompt='p2')),
-          query_cache.BaseQueryCache._get_query_record_hash(
+          hash_serializer.get_query_record_hash(
               query_record=types.QueryRecord(prompt='p3')),
-          query_cache.BaseQueryCache._get_query_record_hash(
+          hash_serializer.get_query_record_hash(
               query_record=types.QueryRecord(prompt='p1')),])
 
   def test_push_record_heap_existing_path(self):
@@ -1313,7 +1187,7 @@ class TestQueryCache:
               _get_hash_from_prompt(prompt='p2', records=records),
               _get_hash_from_prompt(prompt='p3', records=records),
               _get_hash_from_prompt(prompt='p4', records=records),
-              query_cache.BaseQueryCache._get_query_record_hash(
+              hash_serializer.get_query_record_hash(
                   query_record=types.QueryRecord(prompt='p5'))])
 
       # Override value
@@ -1325,7 +1199,7 @@ class TestQueryCache:
               _get_hash_from_prompt(prompt='p1', records=records),
               _get_hash_from_prompt(prompt='p2', records=records),
               _get_hash_from_prompt(prompt='p4', records=records),
-              query_cache.BaseQueryCache._get_query_record_hash(
+              hash_serializer.get_query_record_hash(
                   query_record=types.QueryRecord(prompt='p5')),
               _get_hash_from_prompt(prompt='p3', records=records),])
 
@@ -1342,7 +1216,7 @@ class TestQueryCache:
       record_1 = _create_cache_record(
               prompt='p1', responses=['r1', 'r2', 'r3'],
               shard_id=0, call_count=0)
-      hash_1 = query_cache.BaseQueryCache._get_query_record_hash(
+      hash_1 = hash_serializer.get_query_record_hash(
           query_record=record_1.query_record)
       query_cache_manager._push_record_heap(cache_record=record_1)
       query_cache_manager._shard_manager.save_record(record_1)
@@ -1352,7 +1226,7 @@ class TestQueryCache:
       record_2 = _create_cache_record(
               prompt='p2', responses=['r1', 'r2', 'r3'],
               shard_id=0, call_count=0)
-      hash_2 = query_cache.BaseQueryCache._get_query_record_hash(
+      hash_2 = hash_serializer.get_query_record_hash(
           query_record=record_2.query_record)
       query_cache_manager._push_record_heap(cache_record=record_2)
       query_cache_manager._shard_manager.save_record(record_2)
@@ -1362,7 +1236,7 @@ class TestQueryCache:
       record_3 = _create_cache_record(
               prompt='p3', responses=['r1', 'r2', 'r3'],
               shard_id=0, call_count=0)
-      hash_3 = query_cache.BaseQueryCache._get_query_record_hash(
+      hash_3 = hash_serializer.get_query_record_hash(
           query_record=record_3.query_record)
       query_cache_manager._push_record_heap(cache_record=record_3)
       query_cache_manager._shard_manager.save_record(record_3)
@@ -1375,7 +1249,7 @@ class TestQueryCache:
       record_4 = _create_cache_record(
               prompt='p4', responses=['r1'],
               shard_id=0, call_count=0)
-      hash_4 = query_cache.BaseQueryCache._get_query_record_hash(
+      hash_4 = hash_serializer.get_query_record_hash(
           query_record=record_4.query_record)
       query_cache_manager._push_record_heap(cache_record=record_4)
       query_cache_manager._shard_manager.save_record(record_4)
@@ -1833,5 +1707,3 @@ class TestQueryCache:
           shard_active_count={0: 6, 'backlog': 2},
           shard_heap=[(6, 0)])
       assert query_cache_manager.look(query_record_3) is None
-
-# Different cache, same hash bug. If hits to the same hash??!!!
