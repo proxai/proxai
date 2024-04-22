@@ -231,8 +231,7 @@ class CacheOptions:
 @dataclasses.dataclass
 class QueryRecord:
   call_type: Optional[CallType] = None
-  provider: Optional[Provider] = None
-  provider_model: Optional[ProviderModel] = None
+  model: Optional[ModelType] = None
   max_tokens: Optional[int] = None
   prompt: Optional[str] = None
   hash_value: Optional[str] = None

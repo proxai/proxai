@@ -5,18 +5,49 @@ import proxai.serializers.hash_serializer as hash_serializer
 import pytest
 
 
+def _get_model_type_options():
+  return [
+      {'provider': types.Provider.OPENAI,
+       'provider_model': types.OpenAIModel.GPT_4},
+      {'provider': types.Provider.OPENAI,
+       'provider_model': 'gpt-4'},
+      {'provider': 'openai',
+       'provider_model': types.OpenAIModel.GPT_4},
+      {'provider': 'openai',
+       'provider_model': 'gpt-4'},]
+
+
+def _get_model_status_options():
+  model_1 = (types.Provider.OPENAI, types.OpenAIModel.GPT_4)
+  model_2 = (types.Provider.OPENAI,
+                  types.OpenAIModel.GPT_3_5_TURBO_INSTRUCT)
+  model_3 = (types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_OPUS)
+  model_4 = (types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_SONNET)
+  return [
+      {},
+      {'unprocessed_models': {model_1}},
+      {'working_models': {model_1, model_2}},
+      {'failed_models': {model_1, model_2, model_3}},
+      {'filtered_models': {model_1, model_2, model_3, model_4}},
+      {'unprocessed_models': {model_1},
+       'working_models': {model_2},
+       'failed_models': {model_3},
+       'filtered_models': {model_4}},
+       {'unprocessed_models': {model_1, model_2},
+       'working_models': {model_2, model_3},
+       'failed_models': {model_3, model_4},
+       'filtered_models': {model_4, model_1}}]
+
+
 def _get_query_record_options():
   return [
       {'call_type': types.CallType.GENERATE_TEXT},
-      {'provider': types.Provider.OPENAI,},
-      {'provider': 'openai',},
-      {'provider_model': types.OpenAIModel.GPT_4,},
-      {'provider_model': 'gpt-4',},
+      {'model': ('openai', types.OpenAIModel.GPT_4),},
+      {'model': (types.Provider.OPENAI, 'gpt-4'),},
       {'max_tokens': 100},
       {'prompt': 'Hello, world!'},
       {'call_type': types.CallType.GENERATE_TEXT,
-       'provider': types.Provider.OPENAI,
-       'provider_model': types.OpenAIModel.GPT_4,
+       'model': (types.Provider.OPENAI, types.OpenAIModel.GPT_4),
        'max_tokens': 100,
        'prompt': 'Hello, world!'},]
 
@@ -69,6 +100,23 @@ def _get_light_cache_record_options():
 
 
 class TestTypeSerializer:
+  @pytest.mark.parametrize('model_type_options', _get_model_type_options())
+  def test_encode_decode_model_type(self, model_type_options):
+    model_type = (model_type_options['provider'],
+                  model_type_options['provider_model'])
+    encoded_model_type = type_serializer.encode_model_type(model_type=model_type)
+    decoded_model_type = type_serializer.decode_model_type(record=encoded_model_type)
+    assert model_type == decoded_model_type
+
+  @pytest.mark.parametrize('model_status_options', _get_model_status_options())
+  def test_encode_decode_model_status(self, model_status_options):
+    model_status = types.ModelStatus(**model_status_options)
+    encoded_model_status = type_serializer.encode_model_status(
+        model_status=model_status)
+    decoded_model_status = type_serializer.decode_model_status(
+        record=encoded_model_status)
+    assert model_status == decoded_model_status
+
   @pytest.mark.parametrize('query_record_options', _get_query_record_options())
   def test_get_query_record_hash(self, query_record_options):
     query_record = types.QueryRecord(**query_record_options)

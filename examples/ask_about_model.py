@@ -26,6 +26,7 @@ def query():
     return px.generate_text(
       'Which company created you and what is your model name?')
   except Exception as e:
+    print(str(e))
     return 'ERROR'
 
 

@@ -280,13 +280,11 @@ class AvailableModels:
       model_connector: ModelConnector
   ) -> Tuple[types.QueryRecord, types.QueryResponseRecord]:
     start_time = datetime.datetime.now()
-    provider, provider_model = model
     prompt = 'Hello model!?'
     max_tokens = 100
     query_record = types.QueryRecord(
         call_type=types.CallType.GENERATE_TEXT,
-        provider=provider,
-        provider_model=provider_model,
+        model=model,
         prompt=prompt,
         max_tokens=max_tokens)
 
@@ -338,14 +336,13 @@ class AvailableModels:
         result.get() for result in test_results]
     update_models = types.ModelStatus()
     for query_record, query_response_record in test_results:
-      model = (query_record.provider, query_record.provider_model)
-      models.unprocessed_models.remove(model)
+      models.unprocessed_models.remove(query_record.model)
       if query_response_record.response != None:
-        models.working_models.add(model)
-        update_models.working_models.add(model)
+        models.working_models.add(query_record.model)
+        update_models.working_models.add(query_record.model)
       else:
-        models.failed_models.add(model)
-        update_models.failed_models.add(model)
+        models.failed_models.add(query_record.model)
+        update_models.failed_models.add(query_record.model)
     if not _CACHE_OPTIONS.path:
       return
     if not self._model_cache:

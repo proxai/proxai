@@ -52,8 +52,7 @@ class ModelConnector(object):
     start_time = datetime.datetime.now()
     query_record = types.QueryRecord(
         call_type=types.CallType.GENERATE_TEXT,
-        provider=self.provider,
-        provider_model=self.provider_model,
+        model=self.model,
         prompt=prompt,
         max_tokens=max_tokens)
 
