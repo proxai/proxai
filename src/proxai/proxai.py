@@ -2,7 +2,7 @@ import datetime
 import functools
 import os
 import random
-from typing import Any, Dict, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 import proxai.types as types
 import proxai.type_utils as type_utils
 from proxai.connectors.model_connector import ModelConnector
@@ -277,17 +277,39 @@ class AvailableModels:
   @staticmethod
   def _test_generate_text(
       model: types.ModelType,
-      model_connector: ModelConnector):
+      model_connector: ModelConnector
+  ) -> Tuple[types.QueryRecord, types.QueryResponseRecord]:
+    start_time = datetime.datetime.now()
+    provider, provider_model = model
+    prompt = 'Hello model!?'
+    max_tokens = 100
+    query_record = types.QueryRecord(
+        call_type=types.CallType.GENERATE_TEXT,
+        provider=provider,
+        provider_model=provider_model,
+        prompt=prompt,
+        max_tokens=max_tokens)
+
+    response, error = None, None
     try:
-      # TODO: After adding cache for generate_text, force generate_text to not
-      # use cache.
-      text = model_connector.generate_text(
-          prompt=f'Hello model?',
-          max_tokens=100,
-          use_cache=False)
-      return model, True, text
+      response = model_connector.generate_text(
+          prompt=prompt, max_tokens=max_tokens, use_cache=False)
     except Exception as e:
-      return model, False, str(e)
+      error = e
+
+    if response != None:
+      query_response_record = functools.partial(
+          types.QueryResponseRecord,
+          response=response)
+    else:
+      query_response_record = functools.partial(
+          types.QueryResponseRecord,
+          error=str(error))
+    response_record = query_response_record(
+        start_time=start_time,
+        end_time=datetime.datetime.now(),
+        response_time=datetime.datetime.now() - start_time)
+    return query_record, response_record
 
   def _test_models(self, models: types.ModelStatus, call_type: str):
     global _INITIALIZED_MODEL_CONNECTORS
@@ -312,11 +334,13 @@ class AvailableModels:
       test_results.append(result)
     pool.close()
     pool.join()
-    test_results = [result.get() for result in test_results]
+    test_results: List[Tuple[types.QueryRecord, types.QueryResponseRecord]] = [
+        result.get() for result in test_results]
     update_models = types.ModelStatus()
-    for model, status, _ in test_results:
+    for query_record, query_response_record in test_results:
+      model = (query_record.provider, query_record.provider_model)
       models.unprocessed_models.remove(model)
-      if status:
+      if query_response_record.response != None:
         models.working_models.add(model)
         update_models.working_models.add(model)
       else:
