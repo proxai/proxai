@@ -1,7 +1,8 @@
 import datetime
+import functools
 import os
 import random
-from typing import Any, Dict, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 import proxai.types as types
 import proxai.type_utils as type_utils
 from proxai.connectors.model_connector import ModelConnector
@@ -13,6 +14,7 @@ from proxai.connectors.databricks import DatabricksConnector
 from proxai.connectors.mistral import MistralConnector
 from proxai.connectors.hugging_face import HuggingFaceConnector
 import proxai.caching.model_cache as model_cache
+import proxai.caching.query_cache as query_cache
 import multiprocessing
 
 _RUN_TYPE: types.RunType = types.RunType.PRODUCTION
@@ -20,6 +22,7 @@ _REGISTERED_VALUES: Dict[str, types.ModelType] = {}
 _INITIALIZED_MODEL_CONNECTORS: Dict[types.ModelType, ModelConnector] = {}
 _LOGGING_OPTIONS: types.LoggingOptions = types.LoggingOptions()
 _CACHE_OPTIONS: types.CacheOptions = types.CacheOptions()
+_QUERY_CACHE_MANAGER: Optional[query_cache.QueryCacheManager] = None
 
 CacheOptions = types.CacheOptions
 LoggingOptions = types.LoggingOptions
@@ -27,7 +30,17 @@ LoggingOptions = types.LoggingOptions
 
 def _set_run_type(run_type: types.RunType):
   global _RUN_TYPE
+  global _REGISTERED_VALUES
+  global _INITIALIZED_MODEL_CONNECTORS
+  global _LOGGING_OPTIONS
+  global _CACHE_OPTIONS
+  global _QUERY_CACHE_MANAGER
   _RUN_TYPE = run_type
+  _REGISTERED_VALUES = {}
+  _INITIALIZED_MODEL_CONNECTORS = {}
+  _LOGGING_OPTIONS = types.LoggingOptions()
+  _CACHE_OPTIONS = types.CacheOptions()
+  _QUERY_CACHE_MANAGER = None
 
 
 def connect(
@@ -37,6 +50,10 @@ def connect(
     logging_options: LoggingOptions=None):
   global _CACHE_OPTIONS
   global _LOGGING_OPTIONS
+  global _QUERY_CACHE_MANAGER
+
+  if _INITIALIZED_MODEL_CONNECTORS != {}:
+    raise ValueError('connect() must be called before any other function.')
 
   if cache_path and cache_options and cache_options.path:
     raise ValueError('cache_path and cache_options.path are both set.')
@@ -47,7 +64,17 @@ def connect(
   if cache_path:
     _CACHE_OPTIONS.path = cache_path
   if cache_options:
-    _CACHE_OPTIONS.duration = cache_options.duration
+    if cache_options.path:
+      _CACHE_OPTIONS.path = cache_options.path
+    if cache_options.duration:
+      raise ValueError(
+        'cache_options.duration is not supported yet.\n'
+        'We are looking for contributors! https://github.com/proxai/proxai')
+    if cache_options.unique_response_limit:
+      _CACHE_OPTIONS.unique_response_limit = cache_options.unique_response_limit
+  if _CACHE_OPTIONS.path:
+    _QUERY_CACHE_MANAGER = query_cache.QueryCacheManager(
+        cache_options=_CACHE_OPTIONS)
 
   if logging_path:
     _LOGGING_OPTIONS.path = logging_path
@@ -60,6 +87,7 @@ def connect(
 
 def _init_model_connector(model: types.ModelType) -> ModelConnector:
   global _LOGGING_OPTIONS
+  global _QUERY_CACHE_MANAGER
   provider, _ = model
   connector = None
   if provider == types.Provider.OPENAI:
@@ -78,6 +106,11 @@ def _init_model_connector(model: types.ModelType) -> ModelConnector:
     connector =  HuggingFaceConnector
   else:
     raise ValueError(f'Provider not supported. {model}')
+
+  if _QUERY_CACHE_MANAGER:
+    connector = functools.partial(
+        connector,
+        query_cache_manager=_QUERY_CACHE_MANAGER)
 
   if _LOGGING_OPTIONS.path:
     return connector(
@@ -244,16 +277,37 @@ class AvailableModels:
   @staticmethod
   def _test_generate_text(
       model: types.ModelType,
-      model_connector: ModelConnector):
+      model_connector: ModelConnector
+  ) -> Tuple[types.QueryRecord, types.QueryResponseRecord]:
+    start_time = datetime.datetime.now()
+    prompt = 'Hello model!?'
+    max_tokens = 100
+    query_record = types.QueryRecord(
+        call_type=types.CallType.GENERATE_TEXT,
+        model=model,
+        prompt=prompt,
+        max_tokens=max_tokens)
+
+    response, error = None, None
     try:
-      # TODO: After adding cache for generate_text, force generate_text to not
-      # use cache.
-      text = model_connector.generate_text(
-          prompt=f'Hello model?',
-          max_tokens=100)
-      return model, True, text
+      response = model_connector.generate_text(
+          prompt=prompt, max_tokens=max_tokens, use_cache=False)
     except Exception as e:
-      return model, False, str(e)
+      error = e
+
+    if response != None:
+      query_response_record = functools.partial(
+          types.QueryResponseRecord,
+          response=response)
+    else:
+      query_response_record = functools.partial(
+          types.QueryResponseRecord,
+          error=str(error))
+    response_record = query_response_record(
+        start_time=start_time,
+        end_time=datetime.datetime.now(),
+        response_time=datetime.datetime.now() - start_time)
+    return query_record, response_record
 
   def _test_models(self, models: types.ModelStatus, call_type: str):
     global _INITIALIZED_MODEL_CONNECTORS
@@ -278,21 +332,24 @@ class AvailableModels:
       test_results.append(result)
     pool.close()
     pool.join()
-    test_results = [result.get() for result in test_results]
+    test_results: List[Tuple[types.QueryRecord, types.QueryResponseRecord]] = [
+        result.get() for result in test_results]
     update_models = types.ModelStatus()
-    for model, status, _ in test_results:
-      models.unprocessed_models.remove(model)
-      if status:
-        models.working_models.add(model)
-        update_models.working_models.add(model)
+    for query_record, query_response_record in test_results:
+      models.unprocessed_models.remove(query_record.model)
+      if query_response_record.response != None:
+        models.working_models.add(query_record.model)
+        update_models.working_models.add(query_record.model)
       else:
-        models.failed_models.add(model)
-        update_models.failed_models.add(model)
+        models.failed_models.add(query_record.model)
+        update_models.failed_models.add(query_record.model)
+      update_models.provider_queries.append(
+          (query_record, query_response_record))
     if not _CACHE_OPTIONS.path:
       return
     if not self._model_cache:
       self._model_cache = model_cache.ModelCache(_CACHE_OPTIONS)
-    self._model_cache.update(models=update_models, call_type=call_type)
+    self._model_cache.update(model_status=update_models, call_type=call_type)
 
   def _format_set(
       self,

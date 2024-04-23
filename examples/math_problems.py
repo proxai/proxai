@@ -110,7 +110,8 @@ class EvalResult:
 
 def eval_math_questions(try_count) -> EvalResult:
   eval_result = EvalResult()
-  for test in TEST_DATA:
+  for idx, test in enumerate(TEST_DATA):
+    # print(f'{idx+1}/{len(TEST_DATA)}')
     question_result = get_result_for_question(
         question=test['question'],
         answer=test['answer'],
@@ -129,13 +130,15 @@ def eval_math_questions(try_count) -> EvalResult:
 
 
 def run_test(models, try_count):
-  print(f'{"PROVIDER":10} | {"MODEL":35} | {"DURATION":13} | {"RESPONSE"}')
+  print(f'{"PROVIDER":15} | {"MODEL":45} | {"DURATION":13} | {"RESPONSE"}')
   print()
   all_results = {}
-  for provider, provider_models in models.items():
+  for provider in sorted(list(models.keys())):
+    provider_models = sorted(models[provider])
     for provider_model in provider_models:
       px.set_model(generate_text=(provider, provider_model))
       start_time = datetime.datetime.now()
+      # print(f'{provider:10} | {provider_model:35}')
       eval_result = eval_math_questions(try_count=try_count)
       end_time = datetime.datetime.now()
       duration = (end_time - start_time).total_seconds() * 1000
@@ -143,22 +146,27 @@ def run_test(models, try_count):
         f'Correct: {eval_result.correct:2}, '
         f'Incorrect: {eval_result.incorrect:2}, '
         f'Error: {eval_result.error:2}')
-      print(f'{provider:10} | {provider_model:35} | {duration:10.0f} ms | {response}')
+      print(f'{provider:15} | {provider_model:45} | {duration:10.0f} ms | {response}')
       all_results[(provider, provider_model)] = eval_result.all_results
   print()
   return all_results
 
 
 def print_all_results(all_results):
-  print(f'{"MODEL":40} | '
+  print(f'{"MODEL":60} | '
         + ' | '.join([f'{idx:5}' for idx in range(1, len(TEST_DATA)+1)]),
         end=' | ')
   print()
   for (provider, provider_model), results in all_results.items():
-    print(f"{f'{provider} / {provider_model}':40} | ", end='')
+    print(f"{f'{provider} / {provider_model}':60} | ", end='')
     for result in results:
       print(f'{result:5}', end=' | ')
     print()
+  print(f"{'Total count':60} | ", end='')
+  for idx in range(1, len(TEST_DATA)+1):
+    true_count = sum([1 for results in all_results.values() if results[idx-1] == 'True'])
+    print(f'{true_count:5}', end=' | ')
+  print()
 
 
 def main():
