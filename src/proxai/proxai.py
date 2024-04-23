@@ -173,7 +173,7 @@ class AvailableModels:
       only_largest_models: bool = False,
       verbose: bool = False,
       failed_models: bool = False
-  ) -> Dict[types.Provider, Set[types.ProviderModel]]:
+  ) -> List[types.ModelType]:
     start_time = datetime.datetime.now()
     models = types.ModelStatus()
     self._get_all_models(models, call_type=types.CallType.GENERATE_TEXT)
@@ -185,7 +185,7 @@ class AvailableModels:
     # working largest model for each provider.
     if only_largest_models:
       _allowed_models = set([
-          (types.Provider.OPENAI, types.OpenAIModel.GPT_4),
+          (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW),
           (types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_OPUS),
           (types.Provider.GEMINI, types.GeminiModel.GEMINI_PRO),
           (types.Provider.COHERE, types.CohereModel.COMMAND_R),
@@ -354,11 +354,5 @@ class AvailableModels:
   def _format_set(
       self,
       model_set: Set[types.ModelType]
-  ) -> Dict[types.Provider, Set[types.ProviderModel]]:
-    result: Dict[types.Provider, Set[types.ProviderModel]] = {}
-    for model in model_set:
-      provider, provider_model = model
-      if provider not in result:
-        result[provider] = set()
-      result[provider].add(provider_model)
-    return result
+  ) -> List[types.ModelType]:
+    return sorted(list(model_set))
