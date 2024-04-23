@@ -123,17 +123,20 @@ def _init_model_connector(model: types.ModelType) -> ModelConnector:
       run_type=_RUN_TYPE)
 
 
-def _get_model_connector(call_type: types.CallType) -> ModelConnector:
+def _get_model_connector(
+    call_type: types.CallType,
+    model: Optional[types.ModelType]=None) -> ModelConnector:
   global _REGISTERED_VALUES
   global _INITIALIZED_MODEL_CONNECTORS
   if call_type == types.CallType.GENERATE_TEXT:
     if call_type not in _REGISTERED_VALUES:
       default_model = (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)
       _REGISTERED_VALUES[call_type] = default_model
-    if _REGISTERED_VALUES[call_type] not in _INITIALIZED_MODEL_CONNECTORS:
-      _INITIALIZED_MODEL_CONNECTORS[_REGISTERED_VALUES[call_type]] = (
-          _init_model_connector(_REGISTERED_VALUES[call_type]))
-    return _INITIALIZED_MODEL_CONNECTORS[_REGISTERED_VALUES[call_type]]
+    if model == None:
+      model = _REGISTERED_VALUES[call_type]
+    if model not in _INITIALIZED_MODEL_CONNECTORS:
+      _INITIALIZED_MODEL_CONNECTORS[model] = _init_model_connector(model)
+    return _INITIALIZED_MODEL_CONNECTORS[model]
 
 
 def set_model(generate_text: types.ModelType=None):
@@ -156,7 +159,9 @@ def generate_text(
     raise ValueError('prompt and messages cannot be set at the same time.')
   if messages != None:
     type_utils.check_messages_type(messages)
-  model_connector = _get_model_connector(types.CallType.GENERATE_TEXT)
+  model_connector = _get_model_connector(
+      types.CallType.GENERATE_TEXT,
+      model=model)
   _generate_text = model_connector.generate_text
   if prompt != None:
     _generate_text = functools.partial(_generate_text, prompt=prompt)
@@ -216,6 +221,8 @@ class AvailableModels:
           (types.Provider.COHERE, types.CohereModel.COMMAND_R),
           (types.Provider.DATABRICKS,
            types.DatabricksModel.DATABRICKS_DBRX_INSTRUCT),
+          (types.Provider.DATABRICKS,
+           types.DatabricksModel.DATABRICKS_LLAMA_2_70b_CHAT),
           (types.Provider.MISTRAL, types.MistralModel.MISTRAL_LARGE_LATEST),
       ])
       for model in list(models.unprocessed_models):
