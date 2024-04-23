@@ -13,7 +13,7 @@ class MistralConnector(ModelConnector):
   def init_mock_model(self):
     return MistralMock()
 
-  def generate_text(self, prompt: str, max_tokens: int) -> str:
+  def generate_text_proc(self, prompt: str, max_tokens: int) -> str:
     response = self.api.chat(
         model=self.provider_model,
         messages=[

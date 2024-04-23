@@ -196,19 +196,6 @@ ModelType = Tuple[Provider, ProviderModel]
 
 
 @dataclasses.dataclass
-class ValueType:
-  generate_text: ModelType = None
-
-
-@dataclasses.dataclass
-class ModelStatus:
-  unprocessed_models: Set[ModelType] = dataclasses.field(default_factory=set)
-  working_models: Set[ModelType] = dataclasses.field(default_factory=set)
-  failed_models: Set[ModelType] = dataclasses.field(default_factory=set)
-  filtered_models: Set[ModelType] = dataclasses.field(default_factory=set)
-
-
-@dataclasses.dataclass
 class LoggingOptions:
   path: Optional[str] = None
   time: bool = True
@@ -217,22 +204,17 @@ class LoggingOptions:
   error: bool = True
 
 
-ModelCacheType = Dict[
-    CallType, Dict[Provider, Dict[ProviderModel, Dict[str, Any]]]]
-
-
 @dataclasses.dataclass
 class CacheOptions:
   path: Optional[str] = None
   unique_response_limit: Optional[int] = 1
-  duration: Optional[int] = 24 * 60 * 60
+  duration: Optional[int] = None
 
 
 @dataclasses.dataclass
 class QueryRecord:
   call_type: Optional[CallType] = None
-  provider: Optional[Provider] = None
-  provider_model: Optional[ProviderModel] = None
+  model: Optional[ModelType] = None
   max_tokens: Optional[int] = None
   prompt: Optional[str] = None
   hash_value: Optional[str] = None
@@ -264,3 +246,13 @@ class LightCacheRecord:
   shard_id: Optional[int] = None
   last_access_time: Optional[datetime.datetime] = None
   call_count: Optional[int] = None
+
+
+@dataclasses.dataclass
+class ModelStatus:
+  unprocessed_models: Set[ModelType] = dataclasses.field(default_factory=set)
+  working_models: Set[ModelType] = dataclasses.field(default_factory=set)
+  failed_models: Set[ModelType] = dataclasses.field(default_factory=set)
+  filtered_models: Set[ModelType] = dataclasses.field(default_factory=set)
+  provider_queries: List[Tuple[QueryRecord, QueryResponseRecord]] = (
+      dataclasses.field(default_factory=list))

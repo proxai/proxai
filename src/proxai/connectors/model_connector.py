@@ -1,7 +1,9 @@
 import datetime
+import functools
 from typing import Any, Dict, Optional
 import proxai.types as types
 from proxai.logging.utils import log_query_record
+import proxai.caching.query_cache as query_cache
 
 
 class ModelConnector(object):
@@ -9,6 +11,7 @@ class ModelConnector(object):
   provider: Optional[str] = None
   provider_model: Optional[str] = None
   run_type: types.RunType
+  query_cache_manager: Optional[query_cache.QueryCacheManager] = None
   _api: Optional[Any] = None
   _logging_options: Optional[Dict] = None
 
@@ -16,12 +19,15 @@ class ModelConnector(object):
       self,
       model: types.ModelType,
       run_type: types.RunType,
-      logging_options: Optional[dict] = None):
+      logging_options: Optional[dict] = None,
+      query_cache_manager: Optional[query_cache.QueryCacheManager] = None):
     self.model = model
     self.provider, self.provider_model = model
     self.run_type = run_type
     if logging_options:
       self._logging_options = logging_options
+    if query_cache_manager:
+      self.query_cache_manager = query_cache_manager
 
   @property
   def api(self):
@@ -38,60 +44,66 @@ class ModelConnector(object):
   def init_mock_model(self):
     raise NotImplementedError
 
-  def _get_query_record(
+  def generate_text(
       self,
-      call_type: types.CallType,
-      prompt: Optional[str] = None,
-      max_tokens: Optional[int] = None,
-      response: Optional[str] = None,
-      error: Optional[str] = None,
-      start_time: Optional[datetime.datetime] = None,
-      end_time: Optional[datetime.datetime] = None):
-    query_record = types.QueryRecord(
-        call_type=call_type,
-        provider=self.provider,
-        provider_model=self.provider_model)
-    if prompt:
-      query_record.prompt = prompt
-    if max_tokens:
-      query_record.max_tokens = max_tokens
-    if response:
-      query_record.response = response
-    if error:
-      query_record.error = error
-    if start_time:
-      query_record.start_time = start_time
-    if end_time:
-      query_record.end_time = end_time
-    if start_time and end_time:
-      query_record.response_time = end_time - start_time
-    return query_record
-
-  def generate_text(self, prompt: str, max_tokens: int) -> str:
+      prompt: str,
+      max_tokens: int,
+      use_cache: bool = True) -> str:
     start_time = datetime.datetime.now()
+    query_record = types.QueryRecord(
+        call_type=types.CallType.GENERATE_TEXT,
+        model=self.model,
+        prompt=prompt,
+        max_tokens=max_tokens)
+
+    if self.query_cache_manager and use_cache:
+      response_record = None
+      try:
+        response_record = self.query_cache_manager.look(query_record)
+      except Exception as e:
+        pass
+      if response_record:
+        log_query_record(
+            logging_options=self._logging_options,
+            query_record=query_record,
+            response_record=response_record,
+            from_cache=True)
+        if response_record.error:
+          raise Exception(response_record.error)
+        elif response_record.response != None:
+          return response_record.response
+
+    response, error = None, None
     try:
-      response =  self.generate_text_proc(prompt, max_tokens)
-      query_record = self._get_query_record(
-          call_type=types.CallType.GENERATE_TEXT,
-          prompt=prompt,
-          max_tokens=max_tokens,
-          response=response,
-          start_time=start_time,
-          end_time=datetime.datetime.now())
-      log_query_record(
-          logging_options=self._logging_options, query_record=query_record)
-      return response
+      response = self.generate_text_proc(prompt, max_tokens)
     except Exception as e:
-      query_record = self._get_query_record(
-          call_type=types.CallType.GENERATE_TEXT,
-          prompt=prompt,
-          max_tokens=max_tokens,
-          error=str(e),
-          start_time=start_time,
-          end_time=datetime.datetime.now())
-      log_query_record(
-          logging_options=self._logging_options, query_record=query_record)
-      raise e
+      error = e
+
+    if response != None:
+      query_response_record = functools.partial(
+          types.QueryResponseRecord,
+          response=response)
+    else:
+      query_response_record = functools.partial(
+          types.QueryResponseRecord,
+          error=str(error))
+    response_record = query_response_record(
+        start_time=start_time,
+        end_time=datetime.datetime.now(),
+        response_time=datetime.datetime.now() - start_time)
+
+    if self.query_cache_manager and use_cache:
+      self.query_cache_manager.cache(
+          query_record=query_record,
+          response_record=response_record)
+
+    log_query_record(
+        logging_options=self._logging_options,
+        query_record=query_record,
+        response_record=response_record)
+    if response != None:
+      return response
+    raise error
 
 
   def generate_text_proc(self, prompt: str, max_tokens: int) -> dict:

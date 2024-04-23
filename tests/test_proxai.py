@@ -86,14 +86,23 @@ class TestAvailableModels:
     with tempfile.TemporaryDirectory() as cache_dir:
       proxai.connect(cache_path=cache_dir)
       save_cache = model_cache.ModelCache(
-          cache_options=types.CacheOptions(
-              path=cache_dir))
+          cache_options=types.CacheOptions(path=cache_dir))
       data = types.ModelStatus()
       data.working_models.add(
         (types.Provider.OPENAI, types.OpenAIModel.GPT_4))
       data.failed_models.add(
         (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW))
-      save_cache.update(models=data, call_type=types.CallType.GENERATE_TEXT)
+      data.provider_queries.append(
+          (types.QueryRecord(
+              model=(types.Provider.OPENAI, types.OpenAIModel.GPT_4)),
+           types.QueryResponseRecord(response='response1')))
+      data.provider_queries.append(
+          (types.QueryRecord(
+              model=(types.Provider.OPENAI,
+                     types.OpenAIModel.GPT_4_TURBO_PREVIEW)),
+           types.QueryResponseRecord(error='error1')))
+      save_cache.update(
+          model_status=data, call_type=types.CallType.GENERATE_TEXT)
 
       available_models = proxai.AvailableModels()
       available_models._providers_with_key = [types.Provider.OPENAI]
@@ -170,7 +179,13 @@ class TestAvailableModels:
       data = types.ModelStatus()
       data.failed_models.add(
           (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW))
-      save_cache.update(models=data, call_type=types.CallType.GENERATE_TEXT)
+      data.provider_queries.append(
+          (types.QueryRecord(
+              model=(types.Provider.OPENAI,
+                     types.OpenAIModel.GPT_4_TURBO_PREVIEW)),
+           types.QueryResponseRecord(error='error1')))
+      save_cache.update(
+          model_status=data, call_type=types.CallType.GENERATE_TEXT)
 
       # _test_models filter
       proxai._INITIALIZED_MODEL_CONNECTORS[
