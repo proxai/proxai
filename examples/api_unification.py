@@ -8,8 +8,15 @@ import proxai as px
 import os
 import proxai.types as px_types
 
-_PROVIDERS = ['openai', 'claude', 'gemini', 'cohere', 'databricks', 'mistral']
-_BREAK_CACHES = False
+_PROVIDERS = [
+    'openai',
+    'claude',
+    'gemini',
+    'cohere',
+    'databricks',
+    'mistral',
+    'hugging_face']
+_BREAK_CACHES = True
 _HISTORY = True
 
 
