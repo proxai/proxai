@@ -46,10 +46,18 @@ def encode_query_record(
     record['call_type'] = query_record.call_type.value
   if query_record.model != None:
     record['model'] = encode_model_type(query_record.model)
-  if query_record.max_tokens != None:
-    record['max_tokens'] = str(query_record.max_tokens)
   if query_record.prompt != None:
     record['prompt'] = query_record.prompt
+  if query_record.system != None:
+    record['system'] = query_record.system
+  if query_record.messages != None:
+    record['messages'] = query_record.messages
+  if query_record.max_tokens != None:
+    record['max_tokens'] = str(query_record.max_tokens)
+  if query_record.temperature != None:
+    record['temperature'] = str(query_record.temperature)
+  if query_record.stop != None:
+    record['stop'] = query_record.stop
   if query_record.hash_value != None:
     record['hash_value'] = query_record.hash_value
   return record
@@ -62,9 +70,14 @@ def decode_query_record(
     query_record.call_type = types.CallType(record['call_type'])
   if 'model' in record:
     query_record.model = decode_model_type(record['model'])
+  query_record.prompt = record.get('prompt', None)
+  query_record.system = record.get('system', None)
+  query_record.messages = record.get('messages', None)
   if 'max_tokens' in record:
     query_record.max_tokens = int(record['max_tokens'])
-  query_record.prompt = record.get('prompt', None)
+  if 'temperature' in record:
+    query_record.temperature = float(record['temperature'])
+  query_record.stop = record.get('stop', None)
   query_record.hash_value = record.get('hash_value', None)
   return query_record
 
