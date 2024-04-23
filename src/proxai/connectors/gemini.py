@@ -23,11 +23,17 @@ class GeminiConnector(ModelConnector):
       temperature: Optional[float] = None,
       stop: Optional[types.StopType] = None
   ) -> str:
+    # Note: Gemini uses 'user' and 'model' as roles.  'system_instruction' is a
+    # different parameter.
     contents = []
     if prompt != None:
       contents.append({'role': 'user', 'parts': prompt})
     if messages != None:
-      contents.extend(messages)
+      for message in messages:
+        if message['role'] == 'assistant':
+          contents.append({'role': 'model', 'parts': message['content']})
+        if message['role'] == 'user':
+          contents.append({'role': 'user', 'parts': message['content']})
     _, provider_model = model
 
     if (provider_model == self.provider_model

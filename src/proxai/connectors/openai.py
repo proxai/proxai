@@ -23,6 +23,7 @@ class OpenAIConnector(ModelConnector):
       temperature: Optional[float] = None,
       stop: Optional[types.StopType] = None
   ) -> str:
+    # Note: OpenAI uses 'system', 'user', and 'assistant' as roles.
     query_messages = []
     if system != None:
       query_messages.append({'role': 'system', 'content': system})

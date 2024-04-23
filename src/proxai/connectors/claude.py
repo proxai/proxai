@@ -23,6 +23,8 @@ class ClaudeConnector(ModelConnector):
       temperature: Optional[float] = None,
       stop: Optional[types.StopType] = None
   ) -> str:
+    # Note: Claude uses 'user' and 'assistant' as roles. 'system' is a
+    # different parameter.
     query_messages = []
     if prompt != None:
       query_messages.append({'role': 'user', 'content': prompt})
