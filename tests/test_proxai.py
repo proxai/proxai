@@ -161,11 +161,10 @@ class TestAvailableModels:
       available_models = proxai.AvailableModels()
       available_models._providers_with_key = [types.Provider.OPENAI]
       models = available_models.generate_text()
-      assert models == {
-          types.Provider.OPENAI: set([
-              types.OpenAIModel.GPT_4,
-              types.OpenAIModel.GPT_4_TURBO_PREVIEW,
-              types.OpenAIModel.GPT_3_5_TURBO])}
+      assert models == [
+          (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO),
+          (types.Provider.OPENAI, types.OpenAIModel.GPT_4),
+          (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW)]
 
   def test_generate_text_filters(self):
     proxai._set_run_type(types.RunType.TEST)
@@ -199,8 +198,8 @@ class TestAvailableModels:
 
       # Check that the failed model was filtered out
       models = available_models.generate_text()
-      assert models == {
-          types.Provider.OPENAI: set([types.OpenAIModel.GPT_4])}
+      assert models == [
+          (types.Provider.OPENAI, types.OpenAIModel.GPT_4)]
 
       # Check cache memory values
       models = available_models._model_cache.get(
