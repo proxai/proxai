@@ -1,5 +1,6 @@
 """Examples of asking about model properties."""
 import csv
+import collections
 import os
 from pathlib import Path
 from typing import List
@@ -60,10 +61,15 @@ def connect_to_proxai():
 
 
 def get_models(verbose=True):
-  models = px.models.generate_text(verbose=True)
+  models = px.models.generate_text(
+      only_largest_models=True,
+      verbose=True)
+  grouped_models = collections.defaultdict(list)
+  for provider, model in models:
+    grouped_models[provider].append(model)
   if verbose:
     print('Available models:')
-    for provider, provider_models in models.items():
+    for provider, provider_models in grouped_models.items():
       print(f'{provider}:')
       for provider_model in provider_models:
         print(f'   {provider_model}')
@@ -133,21 +139,19 @@ def run_test(models, try_count):
   print(f'{"PROVIDER":15} | {"MODEL":45} | {"DURATION":13} | {"RESPONSE"}')
   print()
   all_results = {}
-  for provider in sorted(list(models.keys())):
-    provider_models = sorted(models[provider])
-    for provider_model in provider_models:
-      px.set_model(generate_text=(provider, provider_model))
-      start_time = datetime.datetime.now()
-      # print(f'{provider:10} | {provider_model:35}')
-      eval_result = eval_math_questions(try_count=try_count)
-      end_time = datetime.datetime.now()
-      duration = (end_time - start_time).total_seconds() * 1000
-      response = (
-        f'Correct: {eval_result.correct:2}, '
-        f'Incorrect: {eval_result.incorrect:2}, '
-        f'Error: {eval_result.error:2}')
-      print(f'{provider:15} | {provider_model:45} | {duration:10.0f} ms | {response}')
-      all_results[(provider, provider_model)] = eval_result.all_results
+  for provider, provider_model in models:
+    px.set_model(generate_text=(provider, provider_model))
+    start_time = datetime.datetime.now()
+    # print(f'{provider:10} | {provider_model:35}')
+    eval_result = eval_math_questions(try_count=try_count)
+    end_time = datetime.datetime.now()
+    duration = (end_time - start_time).total_seconds() * 1000
+    response = (
+      f'Correct: {eval_result.correct:2}, '
+      f'Incorrect: {eval_result.incorrect:2}, '
+      f'Error: {eval_result.error:2}')
+    print(f'{provider:15} | {provider_model:45} | {duration:10.0f} ms | {response}')
+    all_results[(provider, provider_model)] = eval_result.all_results
   print()
   return all_results
 
