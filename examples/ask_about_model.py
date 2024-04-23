@@ -28,7 +28,11 @@ def get_models(verbose=True):
 def query():
   try:
     return px.generate_text(
-      'Which company created you and what is your model name?')
+        prompt='Which company created you and what is your model name?',
+        system='Answer all questions in French.',
+        max_tokens=100,
+        temperature=1.0,
+        stop=['.'])
   except Exception as e:
     print(str(e))
     return 'ERROR'
@@ -48,6 +52,8 @@ Which company created you and what is your model name?
 def test_query(models, query_func):
   print(f'{"PROVIDER":10} | {"MODEL":45} | {"DURATION":13} | {"RESPONSE"}')
   for provider, provider_model in models:
+    if provider not in ['openai', 'claude', 'gemini']:
+      continue
     px.set_model(generate_text=(provider, provider_model))
     start_time = datetime.datetime.now()
     response = query_func()

@@ -1,7 +1,7 @@
 import dataclasses
 import datetime
 import enum
-from typing import Any, Dict, List, Optional, Tuple, Type, Set
+from typing import Any, Dict, List, Optional, Tuple, Type, Set, Union
 
 
 class RunType(enum.Enum):
@@ -66,6 +66,7 @@ class GeminiModel(ProviderModel):
   GEMINI_1_0_PRO_001 =  'models/gemini-1.0-pro-001'
   GEMINI_1_0_PRO_LATEST = 'models/gemini-1.0-pro-latest'
   GEMINI_1_0_PRO_VISION_LATEST = 'models/gemini-1.0-pro-vision-latest'
+  GEMINI_1_5_PRO_LATEST = 'models/gemini-1.5-pro-latest'
   GEMINI_PRO = 'models/gemini-pro'
   GEMINI_PRO_VISION = 'models/gemini-pro-vision'
 
@@ -161,6 +162,7 @@ GENERATE_TEXT_MODELS: Dict[Provider, List[Type[ProviderModel]]] = {
         GeminiModel.GEMINI_1_0_PRO,
         GeminiModel.GEMINI_1_0_PRO_001,
         GeminiModel.GEMINI_1_0_PRO_LATEST,
+        GeminiModel.GEMINI_1_5_PRO_LATEST,
         GeminiModel.GEMINI_PRO,
     ],
     Provider.COHERE: [
@@ -193,6 +195,8 @@ GENERATE_TEXT_MODELS: Dict[Provider, List[Type[ProviderModel]]] = {
 
 
 ModelType = Tuple[Provider, ProviderModel]
+StopType = Union[str, List[str]]
+MessagesType = List[Dict[str, str]]
 
 
 @dataclasses.dataclass
@@ -215,8 +219,12 @@ class CacheOptions:
 class QueryRecord:
   call_type: Optional[CallType] = None
   model: Optional[ModelType] = None
-  max_tokens: Optional[int] = None
   prompt: Optional[str] = None
+  system: Optional[str] = None
+  messages: Optional[MessagesType] = None
+  max_tokens: Optional[int] = None
+  temperature: Optional[float] = None
+  stop: Optional[StopType] = None
   hash_value: Optional[str] = None
 
 

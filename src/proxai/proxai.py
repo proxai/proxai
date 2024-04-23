@@ -144,10 +144,35 @@ def set_model(generate_text: types.ModelType=None):
 
 
 def generate_text(
-    prompt: str,
-    max_tokens: int = 100) -> str:
+    prompt: Optional[str] = None,
+    system: Optional[str] = None,
+    messages: Optional[types.MessagesType] = None,
+    max_tokens: Optional[int] = None,
+    temperature: Optional[float] = None,
+    stop: Optional[types.StopType] = None,
+    model: Optional[types.ModelType] = None,
+    use_cache: bool = True) -> str:
+  if prompt != None and messages != None:
+    raise ValueError('prompt and messages cannot be set at the same time.')
+  if messages != None:
+    type_utils.check_messages_type(messages)
   model_connector = _get_model_connector(types.CallType.GENERATE_TEXT)
-  return model_connector.generate_text(prompt, max_tokens)
+  _generate_text = model_connector.generate_text
+  if prompt != None:
+    _generate_text = functools.partial(_generate_text, prompt=prompt)
+  if system != None:
+    _generate_text = functools.partial(_generate_text, system=system)
+  if messages != None:
+    _generate_text = functools.partial(_generate_text, messages=messages)
+  if max_tokens != None:
+    _generate_text = functools.partial(_generate_text, max_tokens=max_tokens)
+  if temperature != None:
+    _generate_text = functools.partial(_generate_text, temperature=temperature)
+  if stop != None:
+    _generate_text = functools.partial(_generate_text, stop=stop)
+  if model != None:
+    _generate_text = functools.partial(_generate_text, model=model)
+  return _generate_text(use_cache=use_cache)
 
 
 class AvailableModels:
@@ -187,7 +212,7 @@ class AvailableModels:
       _allowed_models = set([
           (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW),
           (types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_OPUS),
-          (types.Provider.GEMINI, types.GeminiModel.GEMINI_PRO),
+          (types.Provider.GEMINI, types.GeminiModel.GEMINI_1_5_PRO_LATEST),
           (types.Provider.COHERE, types.CohereModel.COMMAND_R),
           (types.Provider.DATABRICKS,
            types.DatabricksModel.DATABRICKS_DBRX_INSTRUCT),
