@@ -23,6 +23,7 @@ _INITIALIZED_MODEL_CONNECTORS: Dict[types.ModelType, ModelConnector] = {}
 _LOGGING_OPTIONS: types.LoggingOptions = types.LoggingOptions()
 _CACHE_OPTIONS: types.CacheOptions = types.CacheOptions()
 _QUERY_CACHE_MANAGER: Optional[query_cache.QueryCacheManager] = None
+_STRICT_FEATURE_TEST: bool = False
 
 CacheOptions = types.CacheOptions
 LoggingOptions = types.LoggingOptions
@@ -47,10 +48,12 @@ def connect(
     cache_path: str=None,
     cache_options: CacheOptions=None,
     logging_path: str=None,
-    logging_options: LoggingOptions=None):
+    logging_options: LoggingOptions=None,
+    strict_feature_test: bool=False):
   global _CACHE_OPTIONS
   global _LOGGING_OPTIONS
   global _QUERY_CACHE_MANAGER
+  global _STRICT_FEATURE_TEST
 
   if _INITIALIZED_MODEL_CONNECTORS != {}:
     raise ValueError('connect() must be called before any other function.')
@@ -84,6 +87,8 @@ def connect(
     _LOGGING_OPTIONS.response = logging_options.response
     _LOGGING_OPTIONS.error = logging_options.error
 
+  _STRICT_FEATURE_TEST = strict_feature_test
+
 
 def _init_model_connector(model: types.ModelType) -> ModelConnector:
   global _LOGGING_OPTIONS
@@ -107,20 +112,23 @@ def _init_model_connector(model: types.ModelType) -> ModelConnector:
   else:
     raise ValueError(f'Provider not supported. {model}')
 
+  connector = functools.partial(
+      connector,
+      model=model,
+      run_type=_RUN_TYPE,
+      strict_feature_test=_STRICT_FEATURE_TEST)
+
   if _QUERY_CACHE_MANAGER:
     connector = functools.partial(
         connector,
         query_cache_manager=_QUERY_CACHE_MANAGER)
 
   if _LOGGING_OPTIONS.path:
-    return connector(
-        model=model,
-        run_type=_RUN_TYPE,
+    connector = functools.partial(
+        connector,
         logging_options=_LOGGING_OPTIONS)
 
-  return connector(
-      model=model,
-      run_type=_RUN_TYPE)
+  return connector()
 
 
 def _get_model_connector(

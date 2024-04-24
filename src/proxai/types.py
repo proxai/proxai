@@ -208,6 +208,13 @@ class LoggingOptions:
   error: bool = True
 
 
+class LoggingType(str, enum.Enum):
+  QUERY = 'query'
+  ERROR = 'error'
+  WARNING = 'warning'
+  INFO = 'info'
+
+
 @dataclasses.dataclass
 class CacheOptions:
   path: Optional[str] = None

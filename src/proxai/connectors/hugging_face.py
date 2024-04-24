@@ -42,32 +42,30 @@ class HuggingFaceConnector(ModelConnector):
     return HuggingFaceMock()
 
   def generate_text_proc(
-      self,
-      model: types.ModelType,
-      prompt: Optional[str] = None,
-      system: Optional[str] = None,
-      messages: Optional[types.MessagesType] = None,
-      max_tokens: Optional[int] = None,
-      temperature: Optional[float] = None,
-      stop: Optional[types.StopType] = None
-  ) -> str:
-    if system != None:
-      raise ValueError('Hugging Face does not support system messages.')
-    if messages != None:
-      raise ValueError('Hugging Face does not support message history.')
-    _, provider_model = model
+      self, query_record: types.QueryRecord) -> str:
+    if query_record.system != None:
+      self.feature_fail(
+          query_record=query_record,
+          message='Hugging Face does not support system messages.')
+    if query_record.messages != None:
+      self.feature_fail(
+          query_record=query_record,
+          message='Hugging Face does not support message history.')
+    _, provider_model = query_record.model
 
     create = functools.partial(
         self.api.generate_content,
         model=provider_model)
-    if max_tokens != None:
+    if query_record.max_tokens != None:
       # Note: Hugging Face uses max_new_tokens instead of max_tokens.
       # This implies that input tokens are not counted.
-      create = functools.partial(create, max_tokens=max_tokens)
-    if temperature != None:
-      create = functools.partial(create, temperature=temperature)
-    if stop != None:
-      raise ValueError('Hugging Face does not support stop tokens.')
+      create = functools.partial(create, max_tokens=query_record.max_tokens)
+    if query_record.temperature != None:
+      create = functools.partial(create, temperature=query_record.temperature)
+    if query_record.stop != None:
+      self.feature_fail(
+          query_record=query_record,
+          message='Hugging Face does not support stop tokens.')
 
-    completion = create(prompt)
+    completion = create(query_record.prompt)
     return completion
