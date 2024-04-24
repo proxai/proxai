@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 
 class _MockMessage(object):
@@ -21,5 +21,11 @@ class _MockResponse(object):
 
 
 class MistralMock(object):
-  def chat(self, model: str, messages: List[Any]) -> _MockResponse:
+  def chat(
+      self,
+      model: str,
+      messages: List[Any],
+      max_tokens: Optional[int]=None,
+      temperature: Optional[float]=None,
+      stop: Optional[List[str]]=None) -> _MockResponse:
     return _MockResponse()

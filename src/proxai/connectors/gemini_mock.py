@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 
 class _MockResponse(object):
@@ -9,5 +9,9 @@ class _MockResponse(object):
 
 
 class GeminiMock(object):
-  def generate_content(self, prompt: str) -> _MockResponse:
+  def __init__(self, model_name: str, system_instruction: Optional[str]=None):
+    pass
+
+  def generate_content(
+      self, contents, generation_config) -> _MockResponse:
     return _MockResponse()

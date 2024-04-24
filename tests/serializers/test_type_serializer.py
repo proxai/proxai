@@ -24,9 +24,7 @@ def _get_query_record_options():
       {'model': (types.Provider.OPENAI, 'gpt-4'),},
       {'prompt': 'Hello, world!'},
       {'system': 'Hello, system!'},
-      {'messages': [
-          {'user': 'Hello, user!'},
-          {'assistant': 'Hello, assistant!'}]},
+      {'messages': [{'role': 'user', 'content': 'Hello, user!'}]},
       {'max_tokens': 100},
       {'temperature': 0.5},
       {'stop': ['stop']},
@@ -34,9 +32,7 @@ def _get_query_record_options():
        'model': (types.Provider.OPENAI, types.OpenAIModel.GPT_4),
        'prompt': 'Hello, world!',
        'system': 'Hello, system!',
-       'messages': [
-          {'user': 'Hello, user!'},
-          {'assistant': 'Hello, assistant!'}],
+       'messages': [{'role': 'user', 'content': 'Hello, user!'}],
        'max_tokens': 100,
        'temperature': 0.5,
        'stop': ['stop']},]
