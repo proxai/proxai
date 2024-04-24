@@ -20,6 +20,7 @@ class CohereConnector(ModelConnector):
     # chat_history 'SYSTEM' role. The difference is explained in the
     # documentation. The suggested way is to use the preamble parameter.
     query_messages = []
+    prompt = query_record.prompt
     if query_record.messages != None:
       for message in query_record.messages:
         if message['role'] == 'user':

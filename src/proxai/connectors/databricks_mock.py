@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 
 class _MockResponse(object):
@@ -9,5 +9,11 @@ class _MockResponse(object):
 
 
 class DatabricksMock(object):
-  def create(self, model: str, messages: List[Dict]) -> _MockResponse:
+  def create(
+      self,
+      model: str,
+      messages: List[Dict],
+      max_tokens: Optional[int]=None,
+      temperature: Optional[float]=None,
+      stop: Optional[List[str]]=None) -> _MockResponse:
     return _MockResponse()
