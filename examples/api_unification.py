@@ -15,14 +15,17 @@ _PROVIDERS = [
     'cohere',
     'databricks',
     'mistral',
-    'hugging_face']
+    'hugging_face',
+]
+_ONLY_LARGEST_MODELS = False
 _BREAK_CACHES = True
 _HISTORY = True
+_STRICT_FEATURE_TEST = True
 
 
 def get_models(verbose=True):
   models = px.models.generate_text(
-      only_largest_models=True,
+      only_largest_models=_ONLY_LARGEST_MODELS,
       verbose=True)
   grouped_models = collections.defaultdict(list)
   for provider, model in models:
@@ -53,18 +56,18 @@ def test_query(
         {'role': 'assistant', 'content': 'Bonjour!'},
         {'role': 'user', 'content': prompt}]
     prompt = None
-  stop = ['.']
-  if model[0] == 'mistral':
-    stop = None
-  return px.generate_text(
-      model=model,
-      prompt=prompt,
-      system='Answer all questions in French.',
-      messages=messages,
-      max_tokens=100,
-      temperature=0.1,
-      stop=stop,
-      use_cache=False)
+  try:
+    return px.generate_text(
+        model=model,
+        prompt=prompt,
+        system='Answer all questions in French.',
+        messages=messages,
+        max_tokens=100,
+        temperature=0.1,
+        stop=['.'],
+        use_cache=False)
+  except Exception as e:
+    return f'ERROR: {str(e)}'
 
 
 def run_tests(models, query_func):
@@ -84,10 +87,13 @@ def run_tests(models, query_func):
 
 def main():
   cache_path = f'{Path.home()}/proxai_cache/'
-  logging_path = f'{Path.home()}/proxai_log/ask_about_model/'
+  logging_path = f'{Path.home()}/proxai_log/api_unification/'
   os.makedirs(cache_path, exist_ok=True)
   os.makedirs(logging_path, exist_ok=True)
-  px.connect(cache_path=cache_path, logging_path=logging_path)
+  px.connect(
+      cache_path=cache_path,
+      logging_path=logging_path,
+      strict_feature_test=_STRICT_FEATURE_TEST)
   models = get_models()
   run_tests(models, functools.partial(
       test_query,

@@ -14,36 +14,28 @@ class ClaudeConnector(ModelConnector):
     return ClaudeMock()
 
   def generate_text_proc(
-      self,
-      model: types.ModelType,
-      prompt: Optional[str] = None,
-      system: Optional[str] = None,
-      messages: Optional[types.MessagesType] = None,
-      max_tokens: Optional[int] = None,
-      temperature: Optional[float] = None,
-      stop: Optional[types.StopType] = None
-  ) -> str:
+      self, query_record: types.QueryRecord) -> str:
     # Note: Claude uses 'user' and 'assistant' as roles. 'system' is a
     # different parameter.
     query_messages = []
-    if prompt != None:
-      query_messages.append({'role': 'user', 'content': prompt})
-    if messages != None:
-      query_messages.extend(messages)
-    _, provider_model = model
+    if query_record.prompt != None:
+      query_messages.append({'role': 'user', 'content': query_record.prompt})
+    if query_record.messages != None:
+      query_messages.extend(query_record.messages)
+    _, provider_model = query_record.model
 
     create = functools.partial(
         self.api.messages.create,
         model=provider_model,
         messages=query_messages)
-    if system != None:
-      create = functools.partial(create, system=system)
-    if max_tokens != None:
-      create = functools.partial(create, max_tokens=max_tokens)
-    if temperature != None:
-      create = functools.partial(create, temperature=temperature)
-    if stop != None:
-      create = functools.partial(create, stop_sequences=stop)
+    if query_record.system != None:
+      create = functools.partial(create, system=query_record.system)
+    if query_record.max_tokens != None:
+      create = functools.partial(create, max_tokens=query_record.max_tokens)
+    if query_record.temperature != None:
+      create = functools.partial(create, temperature=query_record.temperature)
+    if query_record.stop != None:
+      create = functools.partial(create, stop_sequences=query_record.stop)
 
     completion = create()
     return completion.content[0].text

@@ -2,7 +2,7 @@ import datetime
 import functools
 from typing import Any, Dict, Optional
 import proxai.types as types
-from proxai.logging.utils import log_query_record
+from proxai.logging.utils import log_query_record, log_message
 import proxai.caching.query_cache as query_cache
 import proxai.type_utils as type_utils
 
@@ -12,6 +12,7 @@ class ModelConnector(object):
   provider: Optional[str] = None
   provider_model: Optional[str] = None
   run_type: types.RunType
+  strict_feature_test: bool = False
   query_cache_manager: Optional[query_cache.QueryCacheManager] = None
   _api: Optional[Any] = None
   _logging_options: Optional[Dict] = None
@@ -21,10 +22,12 @@ class ModelConnector(object):
       model: types.ModelType,
       run_type: types.RunType,
       logging_options: Optional[dict] = None,
+      strict_feature_test: bool = False,
       query_cache_manager: Optional[query_cache.QueryCacheManager] = None):
     self.model = model
     self.provider, self.provider_model = model
     self.run_type = run_type
+    self.strict_feature_test = strict_feature_test
     if logging_options:
       self._logging_options = logging_options
     if query_cache_manager:
@@ -44,6 +47,24 @@ class ModelConnector(object):
 
   def init_mock_model(self):
     raise NotImplementedError
+
+  def feature_fail(
+      self,
+      message: str,
+      query_record: Optional[types.QueryRecord] = None):
+    if self.strict_feature_test:
+      log_message(
+          type=types.LoggingType.ERROR,
+          logging_options=self._logging_options,
+          query_record=query_record,
+          message=message)
+      raise Exception(message)
+    else:
+      log_message(
+          type=types.LoggingType.WARNING,
+          logging_options=self._logging_options,
+          query_record=query_record,
+          message=message)
 
   def generate_text(
       self,
@@ -96,29 +117,9 @@ class ModelConnector(object):
         elif response_record.response != None:
           return response_record.response
 
-    generate_text_proc = self.generate_text_proc
-    if prompt != None:
-      generate_text_proc = functools.partial(
-          generate_text_proc, prompt=prompt)
-    if system != None:
-      generate_text_proc = functools.partial(
-          generate_text_proc, system=system)
-    if messages != None:
-      generate_text_proc = functools.partial(
-          generate_text_proc, messages=messages)
-    if max_tokens != None:
-      generate_text_proc = functools.partial(
-          generate_text_proc, max_tokens=max_tokens)
-    if temperature != None:
-      generate_text_proc = functools.partial(
-          generate_text_proc, temperature=temperature)
-    if stop != None:
-      generate_text_proc = functools.partial(
-          generate_text_proc, stop=stop)
-
     response, error = None, None
     try:
-      response = generate_text_proc(model=query_model)
+      response = self.generate_text_proc(query_record=query_record)
     except Exception as e:
       error = e
 
@@ -150,13 +151,5 @@ class ModelConnector(object):
 
 
   def generate_text_proc(
-      self,
-      model: types.ModelType,
-      prompt: Optional[str] = None,
-      system: Optional[str] = None,
-      messages: Optional[types.MessagesType] = None,
-      max_tokens: Optional[int] = None,
-      temperature: Optional[float] = None,
-      stop: Optional[types.StopType] = None
-  ) -> dict:
+      self, query_record: types.QueryRecord) -> dict:
     raise NotImplementedError
