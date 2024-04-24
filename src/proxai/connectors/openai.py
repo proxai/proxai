@@ -1,3 +1,4 @@
+import functools
 from typing import Union, Optional
 from openai import OpenAI
 import proxai.types as types
@@ -12,12 +13,28 @@ class OpenAIConnector(ModelConnector):
   def init_mock_model(self):
     return OpenAIMock()
 
-  def generate_text_proc(self, prompt: str, max_tokens: int) -> str:
-    completion = self.api.chat.completions.create(
-        model=self.provider_model,
-        messages=[
-          {'role': 'system', 'content': 'You are an helpful assistant.'},
-          {'role': 'user', 'content': prompt}
-        ]
-    )
+  def generate_text_proc(
+      self, query_record: types.QueryRecord) -> str:
+    # Note: OpenAI uses 'system', 'user', and 'assistant' as roles.
+    query_messages = []
+    if query_record.system != None:
+      query_messages.append({'role': 'system', 'content': query_record.system})
+    if query_record.prompt != None:
+      query_messages.append({'role': 'user', 'content': query_record.prompt})
+    if query_record.messages != None:
+      query_messages.extend(query_record.messages)
+    _, provider_model = query_record.model
+
+    create = functools.partial(
+        self.api.chat.completions.create,
+        model=provider_model,
+        messages=query_messages)
+    if query_record.max_tokens != None:
+      create = functools.partial(create, max_tokens=query_record.max_tokens)
+    if query_record.temperature != None:
+      create = functools.partial(create, temperature=query_record.temperature)
+    if query_record.stop != None:
+      create = functools.partial(create, stop=query_record.stop)
+
+    completion = create()
     return completion.choices[0].message.content
