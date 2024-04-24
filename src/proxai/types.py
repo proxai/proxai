@@ -220,6 +220,7 @@ class CacheOptions:
   path: Optional[str] = None
   unique_response_limit: Optional[int] = 1
   duration: Optional[int] = None
+  retry_if_error_cached: bool = False
 
 
 @dataclasses.dataclass

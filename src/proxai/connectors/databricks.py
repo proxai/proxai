@@ -1,3 +1,4 @@
+import copy
 import os
 import functools
 from typing import Union, Optional, Type
@@ -14,8 +15,10 @@ class DatabricksConnector(ModelConnector):
   def init_mock_model(self):
     return DatabricksMock()
 
-  def generate_text_proc(
-      self, query_record: types.QueryRecord) -> str:
+  def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
+    return copy.deepcopy(query_record)
+
+  def generate_text_proc(self, query_record: types.QueryRecord) -> str:
     # Note: Databricks tries to use same parameters with OpenAI.
     # Some parameters seems not working as expected for some models. For
     # example, the system instruction doesn't have any effect on the completion

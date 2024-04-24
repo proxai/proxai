@@ -100,6 +100,8 @@ class ModelConnector(object):
         temperature=temperature,
         stop=stop)
 
+    query_record = self.feature_check(query_record=query_record)
+
     if self.query_cache_manager and use_cache:
       response_record = None
       try:
@@ -149,7 +151,8 @@ class ModelConnector(object):
       return response
     raise error
 
+  def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
+    raise NotImplementedError
 
-  def generate_text_proc(
-      self, query_record: types.QueryRecord) -> dict:
+  def generate_text_proc(self, query_record: types.QueryRecord) -> dict:
     raise NotImplementedError

@@ -308,6 +308,7 @@ class ShardManager:
           and (light_cache_record.shard_id < 0
             or light_cache_record.shard_id >= self._shard_count)):
         continue
+      light_cache_record.call_count = 0
       self._update_cache_record(light_cache_record, write_to_file=False)
     self._save_light_cache_records()
 
@@ -316,9 +317,13 @@ class ShardManager:
     hash_value = BaseQueryCache._get_hash_value(cache_record)
     if hash_value not in self._light_cache_records:
       return False
-    light_cache_record = self._light_cache_records[hash_value]
-    comparison_light_cache_record = BaseQueryCache._to_light_cache_record(
-        cache_record)
+    light_cache_record = copy.deepcopy(
+        self._light_cache_records[hash_value])
+    comparison_light_cache_record = copy.deepcopy(
+        BaseQueryCache._to_light_cache_record(
+            cache_record))
+    light_cache_record.call_count = None
+    comparison_light_cache_record.call_count = None
     if light_cache_record != comparison_light_cache_record:
       return False
     return True
@@ -335,6 +340,8 @@ class ShardManager:
             continue
           if not self._check_cache_record_is_up_to_date(cache_record):
             continue
+          cache_record.call_count = self._light_cache_records[
+              cache_record.query_record.hash_value].call_count
           self._update_cache_record(cache_record)
           result.append(BaseQueryCache._get_hash_value(cache_record))
     except Exception:
@@ -479,13 +486,22 @@ class QueryCacheManager(BaseQueryCache):
     if (len(cache_record.query_responses)
         < self._cache_options.unique_response_limit):
       return None
+    query_response: types.QueryResponseRecord = cache_record.query_responses[
+        cache_record.call_count % len(cache_record.query_responses)]
+    if (query_response.error
+        and self._cache_options.retry_if_error_cached
+        and cache_record.call_count < len(cache_record.query_responses)):
+      cache_record.last_access_time = datetime.datetime.now()
+      cache_record.call_count += 1
+      self._shard_manager.save_record(cache_record=cache_record)
+      self._push_record_heap(cache_record)
+      return None
     if update:
       cache_record.last_access_time = datetime.datetime.now()
       cache_record.call_count += 1
       self._shard_manager.save_record(cache_record=cache_record)
       self._push_record_heap(cache_record)
-    return cache_record.query_responses[
-        (cache_record.call_count - 1) % len(cache_record.query_responses)]
+    return query_response
 
   def cache(
       self,
@@ -493,17 +509,30 @@ class QueryCacheManager(BaseQueryCache):
       response_record: types.QueryResponseRecord):
     current_time = datetime.datetime.now()
     cache_record = self._shard_manager.get_cache_record(query_record)
-    if cache_record:
-      cache_record.query_responses.append(response_record)
-      cache_record.last_access_time = current_time
-      cache_record.call_count += 1
-    else:
+    if not cache_record:
       query_record.hash_value = hash_serializer.get_query_record_hash(
           query_record)
       cache_record = types.CacheRecord(
           query_record=query_record,
           query_responses=[response_record],
           last_access_time=current_time,
-          call_count=1)
-    self._shard_manager.save_record(cache_record=cache_record)
-    self._push_record_heap(cache_record)
+          call_count=0)
+      self._shard_manager.save_record(cache_record=cache_record)
+      self._push_record_heap(cache_record)
+      return
+    if (len(cache_record.query_responses)
+        < self._cache_options.unique_response_limit):
+      cache_record.query_responses.append(response_record)
+      cache_record.last_access_time = current_time
+      self._shard_manager.save_record(cache_record=cache_record)
+      self._push_record_heap(cache_record)
+      return
+    if (self._cache_options.retry_if_error_cached
+        and response_record.error == None):
+      for idx, previous_response in enumerate(cache_record.query_responses):
+        if previous_response.error:
+          cache_record.query_responses[idx] = response_record
+          cache_record.last_access_time = current_time
+          self._shard_manager.save_record(cache_record=cache_record)
+          self._push_record_heap(cache_record)
+          return

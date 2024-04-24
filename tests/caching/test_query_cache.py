@@ -34,6 +34,7 @@ def _create_response_record(
     end_time=datetime.datetime.now(),
     response_time=datetime.timedelta(seconds=response_id))
   if error:
+    query_response_record.response = None
     query_response_record.error = error
   return query_response_record
 
@@ -104,22 +105,22 @@ def _get_example_records(shard_dir=None, shard_count=None):
       _create_cache_record(
           prompt='p1', responses=[], shard_id=0, call_count=0),
       _create_cache_record(
-          prompt='p2', responses=['r1'], shard_id=1, call_count=1),
+          prompt='p2', responses=['r1'], shard_id=1, call_count=0),
       _create_cache_record(
-          prompt='p3', responses=['r2', 'r3'], shard_id=2, call_count=2),
+          prompt='p3', responses=['r2', 'r3'], shard_id=2, call_count=0),
       _create_cache_record(
-          prompt='p4', responses=['r4'], shard_id='backlog', call_count=1)]
+          prompt='p4', responses=['r4'], shard_id='backlog', call_count=0)]
   (cache_records, light_cache_records, enc_cache_records,
     enc_light_cache_records) = _generate_vals(
       records, write_to_shard=(shard_dir is not None))
 
   records = [
       _create_cache_record(
-          prompt='p5', responses=['r5'], shard_id='corrupted', call_count=1),
+          prompt='p5', responses=['r5'], shard_id='corrupted', call_count=0),
       _create_cache_record(
-          prompt='p6', responses=['r6'], shard_id=-1, call_count=1),
+          prompt='p6', responses=['r6'], shard_id=-1, call_count=0),
       (_create_cache_record(
-          prompt='p7', responses=['r7'], shard_id=0, call_count=1),
+          prompt='p7', responses=['r7'], shard_id=0, call_count=0),
         'corrupted_hash_value')]
   (cor_cache_records, cor_light_cache_records, enc_cor_cache_records,
     enc_cor_light_cache_records) = _generate_vals(records)
@@ -709,7 +710,7 @@ class TestShardManager:
       # Different call_count check
       record_4.call_count = 100
       assert shard_manager._check_cache_record_is_up_to_date(
-          cache_record=record_4) is False
+          cache_record=record_4) is True
 
       # Check with the same record
       record_1: types.CacheRecord = copy.deepcopy(
@@ -1707,3 +1708,67 @@ class TestQueryCache:
           shard_active_count={0: 6, 'backlog': 2},
           shard_heap=[(6, 0)])
       assert query_cache_manager.look(query_record_3) is None
+
+  def test_retry_if_error_cached_1(self):
+    with tempfile.TemporaryDirectory() as temp_dir:
+      query_record_1 = types.QueryRecord(prompt='p1')
+      response_record_1 = _create_response_record(response_id=1)
+      error_record_2 = _create_response_record(response_id=2, error='e1')
+      response_record_3 = _create_response_record(response_id=3)
+
+      query_cache_manager = query_cache.QueryCacheManager(
+          cache_options=types.CacheOptions(
+              path=temp_dir,
+              unique_response_limit=2,
+              retry_if_error_cached=True),
+          shard_count=_SHARD_COUNT,
+          response_per_file=_RESPONSE_PER_FILE,
+          cache_response_size=10)
+
+      query_cache_manager.cache(
+          query_record=query_record_1,
+          response_record=response_record_1)
+      assert query_cache_manager.look(query_record_1) is None
+      query_cache_manager.cache(
+          query_record=query_record_1,
+          response_record=error_record_2)
+      assert query_cache_manager.look(query_record_1) == response_record_1
+      assert query_cache_manager.look(query_record_1) is None
+      assert query_cache_manager.look(query_record_1) == response_record_1
+      assert query_cache_manager.look(query_record_1) == error_record_2
+      query_cache_manager.cache(
+          query_record=query_record_1,
+          response_record=response_record_3)
+      assert query_cache_manager.look(query_record_1) == response_record_1
+      assert query_cache_manager.look(query_record_1) == response_record_3
+
+  def test_retry_if_error_cached_2(self):
+    with tempfile.TemporaryDirectory() as temp_dir:
+      query_record_1 = types.QueryRecord(prompt='p1')
+      response_record_1 = _create_response_record(response_id=1)
+      error_record_2 = _create_response_record(response_id=2, error='e1')
+      response_record_3 = _create_response_record(response_id=3)
+
+      query_cache_manager = query_cache.QueryCacheManager(
+          cache_options=types.CacheOptions(
+              path=temp_dir,
+              unique_response_limit=2,
+              retry_if_error_cached=True),
+          shard_count=_SHARD_COUNT,
+          response_per_file=_RESPONSE_PER_FILE,
+          cache_response_size=10)
+
+      query_cache_manager.cache(
+          query_record=query_record_1,
+          response_record=response_record_1)
+      assert query_cache_manager.look(query_record_1) is None
+      query_cache_manager.cache(
+          query_record=query_record_1,
+          response_record=error_record_2)
+      assert query_cache_manager.look(query_record_1) == response_record_1
+      query_cache_manager.cache(
+          query_record=query_record_1,
+          response_record=response_record_3)
+      assert query_cache_manager.look(query_record_1) == response_record_3
+      assert query_cache_manager.look(query_record_1) == response_record_1
+      assert query_cache_manager.look(query_record_1) == response_record_3
