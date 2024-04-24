@@ -1,3 +1,5 @@
+import os
+import functools
 from typing import Union, Optional, Type
 from databricks_genai_inference import ChatCompletion
 import proxai.types as types
@@ -12,10 +14,33 @@ class DatabricksConnector(ModelConnector):
   def init_mock_model(self):
     return DatabricksMock()
 
-  def generate_text_proc(self, prompt: str, max_tokens: int) -> str:
-    response = self.api.create(
-        model=self.provider_model,
-        messages=[
-            {'role': 'system', 'content': 'You are a helpful assistant.'},
-            {'role': 'user', 'content': prompt}])
-    return response.message
+  def generate_text_proc(
+      self, query_record: types.QueryRecord) -> str:
+    # Note: Databricks tries to use same parameters with OpenAI.
+    # Some parameters seems not working as expected for some models. For
+    # example, the system instruction doesn't have any effect on the completion
+    # for databricks-dbrx-instruct. But the stop parameter works as expected for
+    # this model. However, system instruction works for
+    # databricks-llama-2-70b-chat.
+    query_messages = []
+    if query_record.system != None:
+      query_messages.append({'role': 'system', 'content': query_record.system})
+    if query_record.prompt != None:
+      query_messages.append({'role': 'user', 'content': query_record.prompt})
+    if query_record.messages != None:
+      query_messages.extend(query_record.messages)
+    _, provider_model = query_record.model
+
+    create = functools.partial(
+        self.api.create,
+        model=provider_model,
+        messages=query_messages)
+    if query_record.max_tokens != None:
+      create = functools.partial(create, max_tokens=query_record.max_tokens)
+    if query_record.temperature != None:
+      create = functools.partial(create, temperature=query_record.temperature)
+    if query_record.stop != None:
+      create = functools.partial(create, stop=query_record.stop)
+
+    completion = create()
+    return completion.message

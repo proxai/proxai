@@ -7,12 +7,20 @@ def _get_query_record_options():
   return [
       {'call_type': types.CallType.GENERATE_TEXT},
       {'model': (types.Provider.OPENAI, types.OpenAIModel.GPT_4)},
-      {'max_tokens': 100},
       {'prompt': 'Hello, world!'},
+      {'system': 'Hello, system!'},
+      {'messages': [{'role': 'user', 'content': 'Hello, user!'}]},
+      {'max_tokens': 100},
+      {'temperature': 0.5},
+      {'stop': ['.', '?', '!']},
       {'call_type': types.CallType.GENERATE_TEXT,
        'model': (types.Provider.OPENAI, types.OpenAIModel.GPT_4),
+       'prompt': 'Hello, world!',
+       'system': 'Hello, system!',
+       'messages': [{'role': 'user', 'content': 'Hello, user!'}],
        'max_tokens': 100,
-       'prompt': 'Hello, world!'},]
+       'temperature': 0.5,
+        'stop': ['.', '?', '!']},]
 
 
 class TestBaseQueryCache:

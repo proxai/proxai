@@ -22,12 +22,24 @@ def _get_query_record_options():
       {'call_type': types.CallType.GENERATE_TEXT},
       {'model': ('openai', types.OpenAIModel.GPT_4),},
       {'model': (types.Provider.OPENAI, 'gpt-4'),},
-      {'max_tokens': 100},
       {'prompt': 'Hello, world!'},
+      {'system': 'Hello, system!'},
+      {'messages': [
+          {'user': 'Hello, user!'},
+          {'assistant': 'Hello, assistant!'}]},
+      {'max_tokens': 100},
+      {'temperature': 0.5},
+      {'stop': ['stop']},
       {'call_type': types.CallType.GENERATE_TEXT,
        'model': (types.Provider.OPENAI, types.OpenAIModel.GPT_4),
+       'prompt': 'Hello, world!',
+       'system': 'Hello, system!',
+       'messages': [
+          {'user': 'Hello, user!'},
+          {'assistant': 'Hello, assistant!'}],
        'max_tokens': 100,
-       'prompt': 'Hello, world!'},]
+       'temperature': 0.5,
+       'stop': ['stop']},]
 
 
 def _get_query_response_record_options():

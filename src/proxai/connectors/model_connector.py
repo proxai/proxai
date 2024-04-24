@@ -2,8 +2,9 @@ import datetime
 import functools
 from typing import Any, Dict, Optional
 import proxai.types as types
-from proxai.logging.utils import log_query_record
+from proxai.logging.utils import log_query_record, log_message
 import proxai.caching.query_cache as query_cache
+import proxai.type_utils as type_utils
 
 
 class ModelConnector(object):
@@ -11,6 +12,7 @@ class ModelConnector(object):
   provider: Optional[str] = None
   provider_model: Optional[str] = None
   run_type: types.RunType
+  strict_feature_test: bool = False
   query_cache_manager: Optional[query_cache.QueryCacheManager] = None
   _api: Optional[Any] = None
   _logging_options: Optional[Dict] = None
@@ -20,10 +22,12 @@ class ModelConnector(object):
       model: types.ModelType,
       run_type: types.RunType,
       logging_options: Optional[dict] = None,
+      strict_feature_test: bool = False,
       query_cache_manager: Optional[query_cache.QueryCacheManager] = None):
     self.model = model
     self.provider, self.provider_model = model
     self.run_type = run_type
+    self.strict_feature_test = strict_feature_test
     if logging_options:
       self._logging_options = logging_options
     if query_cache_manager:
@@ -44,17 +48,57 @@ class ModelConnector(object):
   def init_mock_model(self):
     raise NotImplementedError
 
+  def feature_fail(
+      self,
+      message: str,
+      query_record: Optional[types.QueryRecord] = None):
+    if self.strict_feature_test:
+      log_message(
+          type=types.LoggingType.ERROR,
+          logging_options=self._logging_options,
+          query_record=query_record,
+          message=message)
+      raise Exception(message)
+    else:
+      log_message(
+          type=types.LoggingType.WARNING,
+          logging_options=self._logging_options,
+          query_record=query_record,
+          message=message)
+
   def generate_text(
       self,
-      prompt: str,
-      max_tokens: int,
+      prompt: Optional[str] = None,
+      system: Optional[str] = None,
+      messages: Optional[types.MessagesType] = None,
+      max_tokens: Optional[int] = 100,
+      temperature: Optional[float] = None,
+      stop: Optional[types.StopType] = None,
+      model: Optional[types.ModelType] = None,
       use_cache: bool = True) -> str:
+    if prompt != None and messages != None:
+      raise ValueError('prompt and messages cannot be set at the same time.')
+    if messages != None:
+      type_utils.check_messages_type(messages)
+
+    query_model = self.model
+    if model != None:
+      provider, _ = model
+      if provider != self.provider:
+        raise ValueError(
+            'Model provider does not match the connector provider.')
+      query_model = model
+
     start_time = datetime.datetime.now()
     query_record = types.QueryRecord(
         call_type=types.CallType.GENERATE_TEXT,
-        model=self.model,
+        model=query_model,
         prompt=prompt,
-        max_tokens=max_tokens)
+        system=system,
+        messages=messages,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        stop=stop)
 
     if self.query_cache_manager and use_cache:
       response_record = None
@@ -75,7 +119,7 @@ class ModelConnector(object):
 
     response, error = None, None
     try:
-      response = self.generate_text_proc(prompt, max_tokens)
+      response = self.generate_text_proc(query_record=query_record)
     except Exception as e:
       error = e
 
@@ -106,5 +150,6 @@ class ModelConnector(object):
     raise error
 
 
-  def generate_text_proc(self, prompt: str, max_tokens: int) -> dict:
+  def generate_text_proc(
+      self, query_record: types.QueryRecord) -> dict:
     raise NotImplementedError

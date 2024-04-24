@@ -23,6 +23,7 @@ _INITIALIZED_MODEL_CONNECTORS: Dict[types.ModelType, ModelConnector] = {}
 _LOGGING_OPTIONS: types.LoggingOptions = types.LoggingOptions()
 _CACHE_OPTIONS: types.CacheOptions = types.CacheOptions()
 _QUERY_CACHE_MANAGER: Optional[query_cache.QueryCacheManager] = None
+_STRICT_FEATURE_TEST: bool = False
 
 CacheOptions = types.CacheOptions
 LoggingOptions = types.LoggingOptions
@@ -47,10 +48,12 @@ def connect(
     cache_path: str=None,
     cache_options: CacheOptions=None,
     logging_path: str=None,
-    logging_options: LoggingOptions=None):
+    logging_options: LoggingOptions=None,
+    strict_feature_test: bool=False):
   global _CACHE_OPTIONS
   global _LOGGING_OPTIONS
   global _QUERY_CACHE_MANAGER
+  global _STRICT_FEATURE_TEST
 
   if _INITIALIZED_MODEL_CONNECTORS != {}:
     raise ValueError('connect() must be called before any other function.')
@@ -84,6 +87,8 @@ def connect(
     _LOGGING_OPTIONS.response = logging_options.response
     _LOGGING_OPTIONS.error = logging_options.error
 
+  _STRICT_FEATURE_TEST = strict_feature_test
+
 
 def _init_model_connector(model: types.ModelType) -> ModelConnector:
   global _LOGGING_OPTIONS
@@ -107,33 +112,39 @@ def _init_model_connector(model: types.ModelType) -> ModelConnector:
   else:
     raise ValueError(f'Provider not supported. {model}')
 
+  connector = functools.partial(
+      connector,
+      model=model,
+      run_type=_RUN_TYPE,
+      strict_feature_test=_STRICT_FEATURE_TEST)
+
   if _QUERY_CACHE_MANAGER:
     connector = functools.partial(
         connector,
         query_cache_manager=_QUERY_CACHE_MANAGER)
 
   if _LOGGING_OPTIONS.path:
-    return connector(
-        model=model,
-        run_type=_RUN_TYPE,
+    connector = functools.partial(
+        connector,
         logging_options=_LOGGING_OPTIONS)
 
-  return connector(
-      model=model,
-      run_type=_RUN_TYPE)
+  return connector()
 
 
-def _get_model_connector(call_type: types.CallType) -> ModelConnector:
+def _get_model_connector(
+    call_type: types.CallType,
+    model: Optional[types.ModelType]=None) -> ModelConnector:
   global _REGISTERED_VALUES
   global _INITIALIZED_MODEL_CONNECTORS
   if call_type == types.CallType.GENERATE_TEXT:
     if call_type not in _REGISTERED_VALUES:
       default_model = (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)
       _REGISTERED_VALUES[call_type] = default_model
-    if _REGISTERED_VALUES[call_type] not in _INITIALIZED_MODEL_CONNECTORS:
-      _INITIALIZED_MODEL_CONNECTORS[_REGISTERED_VALUES[call_type]] = (
-          _init_model_connector(_REGISTERED_VALUES[call_type]))
-    return _INITIALIZED_MODEL_CONNECTORS[_REGISTERED_VALUES[call_type]]
+    if model == None:
+      model = _REGISTERED_VALUES[call_type]
+    if model not in _INITIALIZED_MODEL_CONNECTORS:
+      _INITIALIZED_MODEL_CONNECTORS[model] = _init_model_connector(model)
+    return _INITIALIZED_MODEL_CONNECTORS[model]
 
 
 def set_model(generate_text: types.ModelType=None):
@@ -144,10 +155,37 @@ def set_model(generate_text: types.ModelType=None):
 
 
 def generate_text(
-    prompt: str,
-    max_tokens: int = 100) -> str:
-  model_connector = _get_model_connector(types.CallType.GENERATE_TEXT)
-  return model_connector.generate_text(prompt, max_tokens)
+    prompt: Optional[str] = None,
+    system: Optional[str] = None,
+    messages: Optional[types.MessagesType] = None,
+    max_tokens: Optional[int] = None,
+    temperature: Optional[float] = None,
+    stop: Optional[types.StopType] = None,
+    model: Optional[types.ModelType] = None,
+    use_cache: bool = True) -> str:
+  if prompt != None and messages != None:
+    raise ValueError('prompt and messages cannot be set at the same time.')
+  if messages != None:
+    type_utils.check_messages_type(messages)
+  model_connector = _get_model_connector(
+      types.CallType.GENERATE_TEXT,
+      model=model)
+  _generate_text = model_connector.generate_text
+  if prompt != None:
+    _generate_text = functools.partial(_generate_text, prompt=prompt)
+  if system != None:
+    _generate_text = functools.partial(_generate_text, system=system)
+  if messages != None:
+    _generate_text = functools.partial(_generate_text, messages=messages)
+  if max_tokens != None:
+    _generate_text = functools.partial(_generate_text, max_tokens=max_tokens)
+  if temperature != None:
+    _generate_text = functools.partial(_generate_text, temperature=temperature)
+  if stop != None:
+    _generate_text = functools.partial(_generate_text, stop=stop)
+  if model != None:
+    _generate_text = functools.partial(_generate_text, model=model)
+  return _generate_text(use_cache=use_cache)
 
 
 class AvailableModels:
@@ -187,10 +225,12 @@ class AvailableModels:
       _allowed_models = set([
           (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW),
           (types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_OPUS),
-          (types.Provider.GEMINI, types.GeminiModel.GEMINI_PRO),
+          (types.Provider.GEMINI, types.GeminiModel.GEMINI_1_5_PRO_LATEST),
           (types.Provider.COHERE, types.CohereModel.COMMAND_R),
           (types.Provider.DATABRICKS,
            types.DatabricksModel.DATABRICKS_DBRX_INSTRUCT),
+          (types.Provider.DATABRICKS,
+           types.DatabricksModel.DATABRICKS_LLAMA_2_70b_CHAT),
           (types.Provider.MISTRAL, types.MistralModel.MISTRAL_LARGE_LATEST),
       ])
       for model in list(models.unprocessed_models):
