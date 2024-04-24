@@ -1,3 +1,4 @@
+import copy
 import functools
 from typing import Union, Optional
 from openai import OpenAI
@@ -13,8 +14,10 @@ class OpenAIConnector(ModelConnector):
   def init_mock_model(self):
     return OpenAIMock()
 
-  def generate_text_proc(
-      self, query_record: types.QueryRecord) -> str:
+  def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
+    return copy.deepcopy(query_record)
+
+  def generate_text_proc(self, query_record: types.QueryRecord) -> str:
     # Note: OpenAI uses 'system', 'user', and 'assistant' as roles.
     query_messages = []
     if query_record.system != None:

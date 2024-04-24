@@ -71,10 +71,12 @@ def connect(
       _CACHE_OPTIONS.path = cache_options.path
     if cache_options.duration:
       raise ValueError(
-        'cache_options.duration is not supported yet.\n'
-        'We are looking for contributors! https://github.com/proxai/proxai')
+          'cache_options.duration is not supported yet.\n'
+          'We are looking for contributors! https://github.com/proxai/proxai')
     if cache_options.unique_response_limit:
       _CACHE_OPTIONS.unique_response_limit = cache_options.unique_response_limit
+    if cache_options.retry_if_error_cached:
+      _CACHE_OPTIONS.retry_if_error_cached = cache_options.retry_if_error_cached
   if _CACHE_OPTIONS.path:
     _QUERY_CACHE_MANAGER = query_cache.QueryCacheManager(
         cache_options=_CACHE_OPTIONS)

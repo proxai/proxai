@@ -8,19 +8,11 @@ import proxai as px
 import os
 import proxai.types as px_types
 
-_PROVIDERS = [
-    'openai',
-    'claude',
-    'gemini',
-    'cohere',
-    'databricks',
-    'mistral',
-    'hugging_face',
-]
 _ONLY_LARGEST_MODELS = False
-_BREAK_CACHES = True
+_BREAK_CACHES = False
 _HISTORY = True
 _STRICT_FEATURE_TEST = True
+_RETRY_IF_ERROR_CACHED = True
 
 
 def get_models(verbose=True):
@@ -64,8 +56,7 @@ def test_query(
         messages=messages,
         max_tokens=100,
         temperature=0.1,
-        stop=['.'],
-        use_cache=False)
+        stop=['.'])
   except Exception as e:
     return f'ERROR: {str(e)}'
 
@@ -74,8 +65,6 @@ def run_tests(models, query_func):
   print(f'{"PROVIDER":10} | {"MODEL":45} | {"DURATION":13} | {"RESPONSE"}')
   for model in models:
     provider, provider_model = model
-    if provider not in _PROVIDERS:
-      continue
     start_time = datetime.datetime.now()
     response = query_func(model=model)
     end_time = datetime.datetime.now()
@@ -91,7 +80,10 @@ def main():
   os.makedirs(cache_path, exist_ok=True)
   os.makedirs(logging_path, exist_ok=True)
   px.connect(
-      cache_path=cache_path,
+      cache_options=px_types.CacheOptions(
+          path=cache_path,
+          unique_response_limit=1,
+          retry_if_error_cached=_RETRY_IF_ERROR_CACHED),
       logging_path=logging_path,
       strict_feature_test=_STRICT_FEATURE_TEST)
   models = get_models()
