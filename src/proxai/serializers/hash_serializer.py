@@ -2,8 +2,8 @@ import proxai.types as types
 
 
 def get_query_record_hash(query_record: types.QueryRecord) -> str:
-  _PRIME_1 = 1000000007
-  _PRIME_2 = 1000000009
+  POWER = 65535
+  PRIME = 110589769251386569
   signature_str = ''
   if query_record.call_type != None:
     signature_str += query_record.call_type + chr(255)
@@ -27,5 +27,5 @@ def get_query_record_hash(query_record: types.QueryRecord) -> str:
     signature_str += str(query_record.stop) + chr(255)
   hash_val = 0
   for char in signature_str:
-    hash_val = (hash_val * _PRIME_1 + ord(char)) % _PRIME_2
+    hash_val = (hash_val * POWER + ord(char)) % PRIME
   return str(hash_val)

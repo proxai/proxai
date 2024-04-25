@@ -161,11 +161,12 @@ def generate_text(
     prompt: Optional[str] = None,
     system: Optional[str] = None,
     messages: Optional[types.MessagesType] = None,
-    max_tokens: Optional[int] = None,
+    max_tokens: Optional[int] = 100,
     temperature: Optional[float] = None,
     stop: Optional[types.StopType] = None,
     model: Optional[types.ModelType] = None,
     use_cache: bool = True,
+    unique_response_limit: Optional[int] = None,
     extensive_return: bool = False) -> str:
   if prompt != None and messages != None:
     raise ValueError('prompt and messages cannot be set at the same time.')
@@ -174,22 +175,16 @@ def generate_text(
   model_connector = _get_model_connector(
       types.CallType.GENERATE_TEXT,
       model=model)
-  _generate_text = model_connector.generate_text
-  if prompt != None:
-    _generate_text = functools.partial(_generate_text, prompt=prompt)
-  if system != None:
-    _generate_text = functools.partial(_generate_text, system=system)
-  if messages != None:
-    _generate_text = functools.partial(_generate_text, messages=messages)
-  if max_tokens != None:
-    _generate_text = functools.partial(_generate_text, max_tokens=max_tokens)
-  if temperature != None:
-    _generate_text = functools.partial(_generate_text, temperature=temperature)
-  if stop != None:
-    _generate_text = functools.partial(_generate_text, stop=stop)
-  if model != None:
-    _generate_text = functools.partial(_generate_text, model=model)
-  logging_record =  _generate_text(use_cache=use_cache)
+  logging_record = model_connector.generate_text(
+      prompt=prompt,
+      system=system,
+      messages=messages,
+      max_tokens=max_tokens,
+      temperature=temperature,
+      stop=stop,
+      model=model,
+      use_cache=use_cache,
+      unique_response_limit=unique_response_limit)
   if logging_record.response_record.error:
     error_traceback = ''
     if logging_record.response_record.error_traceback:

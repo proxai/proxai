@@ -6,6 +6,7 @@ import proxai.types as types
 from proxai.logging.utils import log_query_record, log_message
 import proxai.caching.query_cache as query_cache
 import proxai.type_utils as type_utils
+import proxai.serializers.hash_serializer as hash_serializer
 
 
 class ModelConnector(object):
@@ -76,7 +77,8 @@ class ModelConnector(object):
       temperature: Optional[float] = None,
       stop: Optional[types.StopType] = None,
       model: Optional[types.ModelType] = None,
-      use_cache: bool = True) -> types.LoggingRecord:
+      use_cache: bool = True,
+      unique_response_limit: Optional[int] = None) -> types.LoggingRecord:
     if prompt != None and messages != None:
       raise ValueError('prompt and messages cannot be set at the same time.')
     if messages != None:
@@ -106,7 +108,9 @@ class ModelConnector(object):
     if self.query_cache_manager and use_cache:
       response_record = None
       try:
-        response_record = self.query_cache_manager.look(updated_query_record)
+        response_record = self.query_cache_manager.look(
+            updated_query_record,
+            unique_response_limit=unique_response_limit)
       except Exception as e:
         pass
       if response_record:
@@ -142,8 +146,9 @@ class ModelConnector(object):
 
     if self.query_cache_manager and use_cache:
       self.query_cache_manager.cache(
-          query_record=query_record,
-          response_record=response_record)
+          query_record=updated_query_record,
+          response_record=response_record,
+          unique_response_limit=unique_response_limit)
 
     logging_record = types.LoggingRecord(
         query_record=query_record,
