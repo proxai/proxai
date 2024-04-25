@@ -54,8 +54,7 @@ class ModelCache:
       self._data[call_type].failed_models.remove(model)
     for idx, provider_query in enumerate(
         self._data[call_type].provider_queries):
-      query_record, _ = provider_query
-      if query_record.model == model:
+      if provider_query.query_record.model == model:
         del self._data[call_type].provider_queries[idx]
         break
 
@@ -63,14 +62,15 @@ class ModelCache:
     result = types.ModelStatus()
     if call_type not in self._data:
       return result
-    for query_record, query_response_record in copy.deepcopy(
-        self._data[call_type].provider_queries):
+    for provider_query in copy.deepcopy(self._data[call_type].provider_queries):
       if self._cache_options.duration == None:
         continue
       passing_time = (datetime.datetime.now()
-                      - query_response_record.end_time).total_seconds()
+                      - provider_query.response_record.end_time
+                      ).total_seconds()
       if passing_time > self._cache_options.duration:
-        self._clean_model(call_type=call_type, model=query_record.model)
+        self._clean_model(call_type=call_type,
+                          model=provider_query.query_record.model)
     self._save_to_cache()
     return self._data[call_type]
 
