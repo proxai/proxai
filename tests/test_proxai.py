@@ -93,14 +93,16 @@ class TestAvailableModels:
       data.failed_models.add(
         (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW))
       data.provider_queries.append(
-          (types.QueryRecord(
-              model=(types.Provider.OPENAI, types.OpenAIModel.GPT_4)),
-           types.QueryResponseRecord(response='response1')))
+          types.LoggingRecord(
+              query_record=types.QueryRecord(
+                  model=(types.Provider.OPENAI, types.OpenAIModel.GPT_4)),
+              response_record=types.QueryResponseRecord(response='response1')))
       data.provider_queries.append(
-          (types.QueryRecord(
-              model=(types.Provider.OPENAI,
-                     types.OpenAIModel.GPT_4_TURBO_PREVIEW)),
-           types.QueryResponseRecord(error='error1')))
+          types.LoggingRecord(
+              query_record=types.QueryRecord(
+                  model=(types.Provider.OPENAI,
+                          types.OpenAIModel.GPT_4_TURBO_PREVIEW)),
+              response_record=types.QueryResponseRecord(error='error1')))
       save_cache.update(
           model_status=data, call_type=types.CallType.GENERATE_TEXT)
 
@@ -179,10 +181,11 @@ class TestAvailableModels:
       data.failed_models.add(
           (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW))
       data.provider_queries.append(
-          (types.QueryRecord(
-              model=(types.Provider.OPENAI,
-                     types.OpenAIModel.GPT_4_TURBO_PREVIEW)),
-           types.QueryResponseRecord(error='error1')))
+          types.LoggingRecord(
+              query_record=types.QueryRecord(
+                  model=(types.Provider.OPENAI,
+                         types.OpenAIModel.GPT_4_TURBO_PREVIEW)),
+              response_record=types.QueryResponseRecord(error='error1')))
       save_cache.update(
           model_status=data, call_type=types.CallType.GENERATE_TEXT)
 

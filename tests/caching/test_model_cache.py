@@ -15,19 +15,23 @@ class TestModelCache:
       data.working_models.add(('claude', types.ClaudeModel.CLAUDE_3_OPUS))
       data.failed_models.add(('gemini', types.GeminiModel.GEMINI_PRO))
       data.provider_queries.append(
-          (types.QueryRecord(
-              call_type=types.CallType.GENERATE_TEXT,
-              model=('openai', 'gpt-4')),
-           types.QueryResponseRecord(
-              response='response1',
-              end_time=datetime.datetime.now() - datetime.timedelta(days=1))))
+          types.LoggingRecord(
+              query_record=types.QueryRecord(
+                  call_type=types.CallType.GENERATE_TEXT,
+                  model=('openai', 'gpt-4')),
+              response_record=types.QueryResponseRecord(
+                  response='response1',
+                  end_time=datetime.datetime.now() - datetime.timedelta(days=1))
+          ))
       data.provider_queries.append(
-          (types.QueryRecord(
-              call_type=types.CallType.GENERATE_TEXT,
-              model=('claude', types.ClaudeModel.CLAUDE_3_OPUS)),
-           types.QueryResponseRecord(
-              response='response2',
-              end_time=datetime.datetime.now() - datetime.timedelta(days=1))))
+          types.LoggingRecord(
+              query_record=types.QueryRecord(
+                  call_type=types.CallType.GENERATE_TEXT,
+                  model=('claude', types.ClaudeModel.CLAUDE_3_OPUS)),
+              response_record=types.QueryResponseRecord(
+                  response='response2',
+                  end_time=datetime.datetime.now() - datetime.timedelta(days=1))
+          ))
       save_cache.update(data, types.CallType.GENERATE_TEXT)
 
       load_cache = model_cache.ModelCache(
@@ -45,19 +49,23 @@ class TestModelCache:
       data.working_models.add(('openai', 'gpt-4'))
       data.failed_models.add(('claude', types.ClaudeModel.CLAUDE_3_OPUS))
       data.provider_queries.append(
-          (types.QueryRecord(
-              call_type=types.CallType.GENERATE_TEXT,
-              model=('openai', 'gpt-4')),
-           types.QueryResponseRecord(
-              response='response1',
-              end_time=datetime.datetime.now() - datetime.timedelta(days=1))))
+          types.LoggingRecord(
+              query_record=types.QueryRecord(
+                  call_type=types.CallType.GENERATE_TEXT,
+                  model=('openai', 'gpt-4')),
+              response_record=types.QueryResponseRecord(
+                  response='response1',
+                  end_time=datetime.datetime.now() - datetime.timedelta(days=1))
+          ))
       data.provider_queries.append(
-          (types.QueryRecord(
-              call_type=types.CallType.GENERATE_TEXT,
-              model=('claude', types.ClaudeModel.CLAUDE_3_OPUS)),
-           types.QueryResponseRecord(
-              error='error1',
-              end_time=datetime.datetime.now() - datetime.timedelta(days=1))))
+          types.LoggingRecord(
+              query_record=types.QueryRecord(
+                  call_type=types.CallType.GENERATE_TEXT,
+                  model=('claude', types.ClaudeModel.CLAUDE_3_OPUS)),
+              response_record=types.QueryResponseRecord(
+                  error='error1',
+                  end_time=datetime.datetime.now() - datetime.timedelta(days=1))
+          ))
       save_cache.update(
           model_status=data, call_type=types.CallType.GENERATE_TEXT)
 
@@ -65,19 +73,23 @@ class TestModelCache:
       data.working_models.add(('gemini', types.GeminiModel.GEMINI_PRO))
       data.failed_models.add(('cohere', types.CohereModel.COMMAND_R))
       data.provider_queries.append(
-          (types.QueryRecord(
-              call_type=types.CallType.GENERATE_TEXT,
-              model=('openai', 'gpt-4')),
-           types.QueryResponseRecord(
-              response='response1',
-              end_time=datetime.datetime.now())))
+          types.LoggingRecord(
+              query_record=types.QueryRecord(
+                  call_type=types.CallType.GENERATE_TEXT,
+                  model=('openai', 'gpt-4')),
+              response_record=types.QueryResponseRecord(
+                  response='response1',
+                  end_time=datetime.datetime.now() - datetime.timedelta(days=1))
+          ))
       data.provider_queries.append(
-          (types.QueryRecord(
-              call_type=types.CallType.GENERATE_TEXT,
-              model=('claude', types.ClaudeModel.CLAUDE_3_OPUS)),
-           types.QueryResponseRecord(
-              error='error1',
-              end_time=datetime.datetime.now())))
+          types.LoggingRecord(
+              query_record=types.QueryRecord(
+                  call_type=types.CallType.GENERATE_TEXT,
+                  model=('claude', types.ClaudeModel.CLAUDE_3_OPUS)),
+              response_record=types.QueryResponseRecord(
+                  error='error1',
+                  end_time=datetime.datetime.now() - datetime.timedelta(days=1))
+          ))
       save_cache.update(
           model_status=data, call_type=types.CallType.GENERATE_TEXT)
 
