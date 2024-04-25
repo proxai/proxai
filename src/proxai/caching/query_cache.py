@@ -474,7 +474,8 @@ class QueryCacheManager(BaseQueryCache):
   def look(
       self,
       query_record: types.QueryRecord,
-      update: bool = True
+      update: bool = True,
+      unique_response_limit: Optional[int] = None,
   ) -> Optional[types.QueryResponseRecord]:
     if not isinstance(query_record, types.QueryRecord):
       raise ValueError('query_record should be of type QueryRecord')
@@ -483,8 +484,9 @@ class QueryCacheManager(BaseQueryCache):
       return None
     if cache_record.query_record != query_record:
       return None
-    if (len(cache_record.query_responses)
-        < self._cache_options.unique_response_limit):
+    if unique_response_limit == None:
+      unique_response_limit = self._cache_options.unique_response_limit
+    if len(cache_record.query_responses) < unique_response_limit:
       return None
     query_response: types.QueryResponseRecord = cache_record.query_responses[
         cache_record.call_count % len(cache_record.query_responses)]
@@ -506,7 +508,8 @@ class QueryCacheManager(BaseQueryCache):
   def cache(
       self,
       query_record: types.QueryRecord,
-      response_record: types.QueryResponseRecord):
+      response_record: types.QueryResponseRecord,
+      unique_response_limit: Optional[int] = None):
     current_time = datetime.datetime.now()
     cache_record = self._shard_manager.get_cache_record(query_record)
     if not cache_record:
@@ -520,8 +523,9 @@ class QueryCacheManager(BaseQueryCache):
       self._shard_manager.save_record(cache_record=cache_record)
       self._push_record_heap(cache_record)
       return
-    if (len(cache_record.query_responses)
-        < self._cache_options.unique_response_limit):
+    if unique_response_limit == None:
+      unique_response_limit = self._cache_options.unique_response_limit
+    if len(cache_record.query_responses) < unique_response_limit:
       cache_record.query_responses.append(response_record)
       cache_record.last_access_time = current_time
       self._shard_manager.save_record(cache_record=cache_record)
