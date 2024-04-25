@@ -1,3 +1,4 @@
+import copy
 import functools
 from typing import Union, Optional
 import google.generativeai as genai
@@ -8,13 +9,25 @@ from .model_connector import ModelConnector
 
 class GeminiConnector(ModelConnector):
   def init_model(self):
-    return genai.GenerativeModel(self.provider_model)
+    return genai.GenerativeModel
 
   def init_mock_model(self):
-    return GeminiMock()
+    return GeminiMock
 
-  def generate_text_proc(
-      self, query_record: types.QueryRecord) -> str:
+  def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
+    query_record = copy.deepcopy(query_record)
+    _, provider_model = query_record.model
+    if (query_record.system != None
+        and provider_model != types.GeminiModel.GEMINI_1_5_PRO_LATEST):
+      self.feature_fail(
+          query_record=query_record,
+          message=(
+              'System instructions are only supported for the '
+              'GEMINI_1_5_PRO_LATEST model.'))
+      query_record.system = None
+    return query_record
+
+  def generate_text_proc(self, query_record: types.QueryRecord) -> str:
     # Note: Gemini uses 'user' and 'model' as roles.  'system_instruction' is a
     # different parameter.
     contents = []
@@ -29,24 +42,14 @@ class GeminiConnector(ModelConnector):
     _, provider_model = query_record.model
 
     if query_record.system == None:
-      if provider_model == self.provider_model:
-        generate_content = self.api.generate_content
-      else:
-        generate_content = genai.GenerativeModel(
-            model_name=provider_model).generate_content
+      generate_content = self.api(model_name=provider_model).generate_content
     else:
       if provider_model == types.GeminiModel.GEMINI_1_5_PRO_LATEST:
-        generate_content = genai.GenerativeModel(
+        generate_content = self.api(
             model_name=provider_model,
             system_instruction=query_record.system).generate_content
       else:
-        self.feature_fail(
-            query_record=query_record,
-            message=(
-                'System instructions are only supported for the '
-                'GEMINI_1_5_PRO_LATEST model.'))
-        generate_content = genai.GenerativeModel(
-            model_name=provider_model).generate_content
+        generate_content = self.api(model_name=provider_model).generate_content
 
     generation_config = genai.GenerationConfig()
     if query_record.max_tokens != None:

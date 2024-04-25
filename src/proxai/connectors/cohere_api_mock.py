@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 
 class _MockResponse(object):
@@ -9,5 +9,13 @@ class _MockResponse(object):
 
 
 class CohereMock(object):
-  def chat(self, message: str, model: str) -> _MockResponse:
+  def chat(
+      self,
+      message: str,
+      model: str,
+      preamble: Optional[str]=None,
+      chat_history: Optional[List[Dict]]=None,
+      max_tokens: Optional[int]=None,
+      temperature: Optional[float]=None,
+      stop_sequences: Optional[List[str]]=None) -> _MockResponse:
     return _MockResponse()

@@ -1,3 +1,4 @@
+import copy
 import functools
 from typing import Union, Optional
 import cohere
@@ -13,13 +14,16 @@ class CohereConnector(ModelConnector):
   def init_mock_model(self):
     return CohereMock()
 
-  def generate_text_proc(
-      self, query_record: types.QueryRecord) -> str:
+  def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
+    return copy.deepcopy(query_record)
+
+  def generate_text_proc(self, query_record: types.QueryRecord) -> str:
     # Note: Cohere uses 'SYSTEM', 'USER', and 'CHATBOT' as roles. Additionally,
     # system instructions can be provided in two ways: preamble parameter and
     # chat_history 'SYSTEM' role. The difference is explained in the
     # documentation. The suggested way is to use the preamble parameter.
     query_messages = []
+    prompt = query_record.prompt
     if query_record.messages != None:
       for message in query_record.messages:
         if message['role'] == 'user':

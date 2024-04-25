@@ -24,9 +24,7 @@ def _get_query_record_options():
       {'model': (types.Provider.OPENAI, 'gpt-4'),},
       {'prompt': 'Hello, world!'},
       {'system': 'Hello, system!'},
-      {'messages': [
-          {'user': 'Hello, user!'},
-          {'assistant': 'Hello, assistant!'}]},
+      {'messages': [{'role': 'user', 'content': 'Hello, user!'}]},
       {'max_tokens': 100},
       {'temperature': 0.5},
       {'stop': ['stop']},
@@ -34,9 +32,7 @@ def _get_query_record_options():
        'model': (types.Provider.OPENAI, types.OpenAIModel.GPT_4),
        'prompt': 'Hello, world!',
        'system': 'Hello, system!',
-       'messages': [
-          {'user': 'Hello, user!'},
-          {'assistant': 'Hello, assistant!'}],
+       'messages': [{'role': 'user', 'content': 'Hello, user!'}],
        'max_tokens': 100,
        'temperature': 0.5,
        'stop': ['stop']},]
@@ -89,6 +85,20 @@ def _get_light_cache_record_options():
        'call_count': 1},]
 
 
+def _get_logging_record_options():
+  return [
+      {'query_record': types.QueryRecord(
+          call_type=types.CallType.GENERATE_TEXT)},
+      {'response_record': types.QueryResponseRecord(
+          response='Hello, world!')},
+      {'response_source': types.ResponseSource.CACHE},
+      {'query_record': types.QueryRecord(
+          call_type=types.CallType.GENERATE_TEXT),
+       'response_record': types.QueryResponseRecord(
+          response='Hello, world!'),
+       'response_source': types.ResponseSource.CACHE},]
+
+
 def _get_model_status_options():
   model_1 = (types.Provider.OPENAI, types.OpenAIModel.GPT_4)
   model_2 = (types.Provider.OPENAI,
@@ -101,11 +111,12 @@ def _get_model_status_options():
       {'working_models': {model_1, model_2}},
       {'failed_models': {model_1, model_2, model_3}},
       {'filtered_models': {model_1, model_2, model_3, model_4}},
-      {'provider_queries': [(
-          types.QueryRecord(
-              call_type=types.CallType.GENERATE_TEXT),
-          types.QueryResponseRecord(
-              response='Hello, world!'))]},
+      {'provider_queries': [
+          types.LoggingRecord(
+            query_record=types.QueryRecord(
+                call_type=types.CallType.GENERATE_TEXT),
+            response_record=types.QueryResponseRecord(
+                response='Hello, world!'))]},
       {'unprocessed_models': {model_1},
        'working_models': {model_2},
        'failed_models': {model_3},
@@ -114,11 +125,12 @@ def _get_model_status_options():
        'working_models': {model_2, model_3},
        'failed_models': {model_3, model_4},
        'filtered_models': {model_4, model_1},
-       'provider_queries': [(
-          types.QueryRecord(
-              call_type=types.CallType.GENERATE_TEXT),
-          types.QueryResponseRecord(
-              response='Hello, world!'))]}]
+       'provider_queries': [
+          types.LoggingRecord(
+            query_record=types.QueryRecord(
+                call_type=types.CallType.GENERATE_TEXT),
+            response_record=types.QueryResponseRecord(
+                response='Hello, world!'))]}]
 
 
 class TestTypeSerializer:
@@ -129,15 +141,6 @@ class TestTypeSerializer:
     encoded_model_type = type_serializer.encode_model_type(model_type=model_type)
     decoded_model_type = type_serializer.decode_model_type(record=encoded_model_type)
     assert model_type == decoded_model_type
-
-  @pytest.mark.parametrize('model_status_options', _get_model_status_options())
-  def test_encode_decode_model_status(self, model_status_options):
-    model_status = types.ModelStatus(**model_status_options)
-    encoded_model_status = type_serializer.encode_model_status(
-        model_status=model_status)
-    decoded_model_status = type_serializer.decode_model_status(
-        record=encoded_model_status)
-    assert model_status == decoded_model_status
 
   @pytest.mark.parametrize('query_record_options', _get_query_record_options())
   def test_get_query_record_hash(self, query_record_options):
@@ -204,3 +207,22 @@ class TestTypeSerializer:
         type_serializer.decode_light_cache_record(
             record=encoded_light_cache_record))
     assert light_cache_record == decoded_light_cache_record
+
+  @pytest.mark.parametrize(
+      'logging_record_options', _get_logging_record_options())
+  def test_encode_decode_logging_record(self, logging_record_options):
+    logging_record = types.LoggingRecord(**logging_record_options)
+    encoded_logging_record = type_serializer.encode_logging_record(
+        logging_record=logging_record)
+    decoded_logging_record = type_serializer.decode_logging_record(
+        record=encoded_logging_record)
+    assert logging_record == decoded_logging_record
+
+  @pytest.mark.parametrize('model_status_options', _get_model_status_options())
+  def test_encode_decode_model_status(self, model_status_options):
+    model_status = types.ModelStatus(**model_status_options)
+    encoded_model_status = type_serializer.encode_model_status(
+        model_status=model_status)
+    decoded_model_status = type_serializer.decode_model_status(
+        record=encoded_model_status)
+    assert model_status == decoded_model_status

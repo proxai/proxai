@@ -1,4 +1,5 @@
 import datetime
+import traceback
 import functools
 from typing import Any, Dict, Optional
 import proxai.types as types
@@ -75,7 +76,7 @@ class ModelConnector(object):
       temperature: Optional[float] = None,
       stop: Optional[types.StopType] = None,
       model: Optional[types.ModelType] = None,
-      use_cache: bool = True) -> str:
+      use_cache: bool = True) -> types.LoggingRecord:
     if prompt != None and messages != None:
       raise ValueError('prompt and messages cannot be set at the same time.')
     if messages != None:
@@ -100,27 +101,29 @@ class ModelConnector(object):
         temperature=temperature,
         stop=stop)
 
+    updated_query_record = self.feature_check(query_record=query_record)
+
     if self.query_cache_manager and use_cache:
       response_record = None
       try:
-        response_record = self.query_cache_manager.look(query_record)
+        response_record = self.query_cache_manager.look(updated_query_record)
       except Exception as e:
         pass
       if response_record:
-        log_query_record(
-            logging_options=self._logging_options,
+        logging_record = types.LoggingRecord(
             query_record=query_record,
             response_record=response_record,
-            from_cache=True)
-        if response_record.error:
-          raise Exception(response_record.error)
-        elif response_record.response != None:
-          return response_record.response
+            response_source=types.ResponseSource.CACHE)
+        log_query_record(
+            logging_options=self._logging_options,
+            logging_record=logging_record)
+        return logging_record
 
-    response, error = None, None
+    response, error, error_traceback = None, None, None
     try:
-      response = self.generate_text_proc(query_record=query_record)
+      response = self.generate_text_proc(query_record=updated_query_record)
     except Exception as e:
+      error_traceback = traceback.format_exc()
       error = e
 
     if response != None:
@@ -130,7 +133,8 @@ class ModelConnector(object):
     else:
       query_response_record = functools.partial(
           types.QueryResponseRecord,
-          error=str(error))
+          error=str(error),
+          error_traceback=error_traceback)
     response_record = query_response_record(
         start_time=start_time,
         end_time=datetime.datetime.now(),
@@ -141,15 +145,17 @@ class ModelConnector(object):
           query_record=query_record,
           response_record=response_record)
 
+    logging_record = types.LoggingRecord(
+        query_record=query_record,
+        response_record=response_record,
+        response_source=types.ResponseSource.PROVIDER)
     log_query_record(
         logging_options=self._logging_options,
-        query_record=query_record,
-        response_record=response_record)
-    if response != None:
-      return response
-    raise error
+        logging_record=logging_record)
+    return logging_record
 
+  def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
+    raise NotImplementedError
 
-  def generate_text_proc(
-      self, query_record: types.QueryRecord) -> dict:
+  def generate_text_proc(self, query_record: types.QueryRecord) -> dict:
     raise NotImplementedError

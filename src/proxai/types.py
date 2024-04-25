@@ -220,6 +220,7 @@ class CacheOptions:
   path: Optional[str] = None
   unique_response_limit: Optional[int] = 1
   duration: Optional[int] = None
+  retry_if_error_cached: bool = False
 
 
 @dataclasses.dataclass
@@ -239,6 +240,7 @@ class QueryRecord:
 class QueryResponseRecord:
   response: Optional[str] = None
   error: Optional[str] = None
+  error_traceback: Optional[str] = None
   start_time: Optional[datetime.datetime] = None
   end_time: Optional[datetime.datetime] = None
   response_time: Optional[datetime.timedelta] = None
@@ -263,11 +265,23 @@ class LightCacheRecord:
   call_count: Optional[int] = None
 
 
+class ResponseSource(str, enum.Enum):
+  CACHE = 'cache'
+  PROVIDER = 'provider'
+
+
+@dataclasses.dataclass
+class LoggingRecord:
+  query_record: Optional[QueryRecord] = None
+  response_record: Optional[QueryResponseRecord] = None
+  response_source: Optional[ResponseSource] = None
+
+
 @dataclasses.dataclass
 class ModelStatus:
   unprocessed_models: Set[ModelType] = dataclasses.field(default_factory=set)
   working_models: Set[ModelType] = dataclasses.field(default_factory=set)
   failed_models: Set[ModelType] = dataclasses.field(default_factory=set)
   filtered_models: Set[ModelType] = dataclasses.field(default_factory=set)
-  provider_queries: List[Tuple[QueryRecord, QueryResponseRecord]] = (
+  provider_queries: List[LoggingRecord] = (
       dataclasses.field(default_factory=list))
