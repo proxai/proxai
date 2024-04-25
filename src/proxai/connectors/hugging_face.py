@@ -1,3 +1,4 @@
+import copy
 import functools
 import os
 import requests
@@ -41,18 +42,27 @@ class HuggingFaceConnector(ModelConnector):
   def init_mock_model(self):
     return HuggingFaceMock()
 
-  def generate_text_proc(
-      self, query_record: types.QueryRecord) -> str:
+  def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
+    query_record = copy.deepcopy(query_record)
     if query_record.system != None:
       self.feature_fail(
           query_record=query_record,
           message='Hugging Face does not support system messages.')
+      query_record.system = None
     if query_record.messages != None:
       self.feature_fail(
           query_record=query_record,
           message='Hugging Face does not support message history.')
-    _, provider_model = query_record.model
+      query_record.messages = None
+    if query_record.stop != None:
+      self.feature_fail(
+          query_record=query_record,
+          message='Hugging Face does not support stop tokens.')
+      query_record.stop = None
+    return query_record
 
+  def generate_text_proc(self, query_record: types.QueryRecord) -> str:
+    _, provider_model = query_record.model
     create = functools.partial(
         self.api.generate_content,
         model=provider_model)
@@ -62,10 +72,5 @@ class HuggingFaceConnector(ModelConnector):
       create = functools.partial(create, max_tokens=query_record.max_tokens)
     if query_record.temperature != None:
       create = functools.partial(create, temperature=query_record.temperature)
-    if query_record.stop != None:
-      self.feature_fail(
-          query_record=query_record,
-          message='Hugging Face does not support stop tokens.')
-
     completion = create(query_record.prompt)
     return completion

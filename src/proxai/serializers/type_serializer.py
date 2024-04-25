@@ -204,6 +204,35 @@ def decode_light_cache_record(
   return light_cache_record
 
 
+def encode_logging_record(
+    logging_record: types.LoggingRecord) -> Dict[str, Any]:
+  record = {}
+  if logging_record.query_record != None:
+    record['query_record'] = encode_query_record(
+        logging_record.query_record)
+  if logging_record.response_record != None:
+    record['response_record'] = encode_query_response_record(
+        logging_record.response_record)
+  if logging_record.response_source != None:
+    record['response_source'] = logging_record.response_source.value
+  return record
+
+
+def decode_logging_record(
+    record: Dict[str, Any]) -> types.LoggingRecord:
+  logging_record = types.LoggingRecord()
+  if 'query_record' in record:
+    logging_record.query_record = decode_query_record(
+        record['query_record'])
+  if 'response_record' in record:
+    logging_record.response_record = decode_query_response_record(
+        record['response_record'])
+  if 'response_source' in record:
+    logging_record.response_source = (
+        types.ResponseSource(record['response_source']))
+  return logging_record
+
+
 def encode_model_status(
     model_status: types.ModelStatus) -> Dict[str, Any]:
   record = {}
@@ -225,11 +254,8 @@ def encode_model_status(
       record['filtered_models'].append(encode_model_type(model_type))
   if model_status.provider_queries:
     record['provider_queries'] = []
-    for query_record, query_response_record in model_status.provider_queries:
-      record['provider_queries'].append({
-          'query_record': encode_query_record(query_record),
-          'query_response_record': encode_query_response_record(
-              query_response_record)})
+    for provider_query in model_status.provider_queries:
+      record['provider_queries'].append(encode_logging_record(provider_query))
   return record
 
 
@@ -250,8 +276,6 @@ def decode_model_status(
       model_status.filtered_models.add(decode_model_type(model_type_record))
   if 'provider_queries' in record:
     for provider_query_record in record['provider_queries']:
-      query_record = decode_query_record(provider_query_record['query_record'])
-      query_response_record = decode_query_response_record(
-          provider_query_record['query_response_record'])
-      model_status.provider_queries.append((query_record, query_response_record))
+      model_status.provider_queries.append(
+          decode_logging_record(provider_query_record))
   return model_status
