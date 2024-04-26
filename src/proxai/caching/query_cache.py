@@ -490,7 +490,8 @@ class QueryCacheManager(BaseQueryCache):
       unique_response_limit = self._cache_options.unique_response_limit
     if len(cache_record.query_responses) < unique_response_limit:
       return types.CacheLookResult(
-          look_fail_reason=types.CacheLookFailReason.RESPONSES_NOT_REACHED_LIMIT)
+          look_fail_reason=
+          types.CacheLookFailReason.UNIQUE_RESPONSE_LIMIT_NOT_REACHED)
     query_response: types.QueryResponseRecord = cache_record.query_responses[
         cache_record.call_count % len(cache_record.query_responses)]
     if (query_response.error
@@ -501,7 +502,7 @@ class QueryCacheManager(BaseQueryCache):
       self._shard_manager.save_record(cache_record=cache_record)
       self._push_record_heap(cache_record)
       return types.CacheLookResult(
-          look_fail_reason=types.CacheLookFailReason.ERROR_CACHED)
+          look_fail_reason=types.CacheLookFailReason.PROVIDER_ERROR_CACHED)
     if update:
       cache_record.last_access_time = datetime.datetime.now()
       cache_record.call_count += 1
