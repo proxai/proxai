@@ -1,7 +1,7 @@
 import dataclasses
 import datetime
 import enum
-from typing import Any, Dict, List, Optional, Tuple, Type, Set, Union
+from typing import Dict, List, Optional, Tuple, Type, Set, Union
 
 
 class RunType(enum.Enum):
