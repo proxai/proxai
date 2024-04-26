@@ -265,6 +265,19 @@ class LightCacheRecord:
   call_count: Optional[int] = None
 
 
+class CacheLookFailReason(str, enum.Enum):
+  CACHE_NOT_FOUND = 'cache_not_found'
+  CACHE_NOT_MATCHED = 'cache_not_matched'
+  RESPONSES_NOT_REACHED_LIMIT = 'responses_not_reached_limit'
+  ERROR_CACHED = 'error_cached'
+
+
+@dataclasses.dataclass
+class CacheLookResult:
+  query_response: Optional[QueryResponseRecord] = None
+  look_fail_reason: Optional[CacheLookFailReason] = None
+
+
 class ResponseSource(str, enum.Enum):
   CACHE = 'cache'
   PROVIDER = 'provider'
@@ -275,6 +288,7 @@ class LoggingRecord:
   query_record: Optional[QueryRecord] = None
   response_record: Optional[QueryResponseRecord] = None
   response_source: Optional[ResponseSource] = None
+  look_fail_reason: Optional[CacheLookFailReason] = None
 
 
 @dataclasses.dataclass

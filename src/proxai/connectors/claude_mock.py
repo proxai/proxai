@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 # [ContentBlock(text="Hello! It's nice to meet you. How can I assist you today?", type='text')]
 
 class _MockContentBlock(object):
@@ -21,8 +21,8 @@ class _MockMessages(object):
   def create(
       self,
       model: str,
-      max_tokens: int,
-      messages: List[Dict]) -> _MockResponse:
+      max_tokens: Optional[int] = None,
+      messages: Optional[List[Dict]] = None) -> _MockResponse:
     return _MockResponse()
 
 

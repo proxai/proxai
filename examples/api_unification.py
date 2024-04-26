@@ -8,73 +8,92 @@ import proxai as px
 import os
 import proxai.types as px_types
 
-_ONLY_LARGEST_MODELS = False
-_BREAK_CACHES = False
-_HISTORY = True
-_STRICT_FEATURE_TEST = True
-_RETRY_IF_ERROR_CACHED = True
+TOTAL_CACHE_HITS = 0
+TOTAL_PROVIDER_CALLS = 0
 
 
-def get_models(verbose=True):
-  models = px.models.generate_text(
-      only_largest_models=_ONLY_LARGEST_MODELS,
-      verbose=True)
-  grouped_models = collections.defaultdict(list)
-  for provider, model in models:
-    grouped_models[provider].append(model)
-  if verbose:
-    print('Available models:')
-    for provider, provider_models in grouped_models.items():
-      print(f'{provider}:')
-      for provider_model in provider_models:
-        print(f'   {provider_model}')
-    print()
-  return models
+def basic_test(hard_start=False):
+  options = [
+      {'name': 'Basic Test / 1st Run',
+       'strict_feature_test': False,
+       'retry_if_error_cached': False,
+       'use_cache': not hard_start},
+      {'name': 'Basic Test / 2nd Run',
+       'strict_feature_test': False,
+       'retry_if_error_cached': False,
+       'use_cache': True},
+      {'name': 'Basic Test / 1st Run',
+       'strict_feature_test': False,
+       'retry_if_error_cached': True,
+       'use_cache': True},
+      {'name': 'Basic Test / 2nd Run',
+       'strict_feature_test': False,
+       'retry_if_error_cached': True,
+       'use_cache': True},
+  ]
+  px_generate_text = functools.partial(
+      px.generate_text,
+      prompt='Which company created you and what is your model name?')
+  return options, px_generate_text
 
 
-def test_query(
-    model: px_types.ModelType,
-    break_caches: bool=False,
-    history: bool=True):
-  prompt = ''
-  messages = None
-  if break_caches:
-    prompt = ('Please ignore this but I really like number'
-              f' {random.randint(1, 1000000)}.\n')
-  prompt += 'Which company created you and what is your model name?'
-  if history:
-    messages = [
+def feature_complete_test(hard_start=False):
+  options = [
+      {'name': 'Feature Complete Test / 1st Run',
+       'strict_feature_test': False,
+       'retry_if_error_cached': True,
+       'use_cache': not hard_start},
+      {'name': 'Feature Complete Test / 2nd Run',
+       'strict_feature_test': False,
+       'retry_if_error_cached': True,
+       'use_cache': True},
+      {'name': 'Feature Complete Test / 1st Run',
+       'strict_feature_test': True,
+       'retry_if_error_cached': True,
+       'use_cache': True},
+      {'name': 'Feature Complete Test / 2nd Run',
+       'strict_feature_test': True,
+       'retry_if_error_cached': True,
+       'use_cache': True},
+  ]
+  px_generate_text = functools.partial(
+      px.generate_text,
+      system='Answer all questions in French.',
+      messages=[
         {'role': 'user', 'content': 'Hello!'},
         {'role': 'assistant', 'content': 'Bonjour!'},
-        {'role': 'user', 'content': prompt}]
-    prompt = None
+        {'role': 'user',
+         'content': 'Which company created you and what is your model name?'}],
+      max_tokens=100,
+      temperature=1.0,
+      stop=['.'])
+  return options, px_generate_text
+
+
+def make_query(
+    model,
+    use_cache,
+    px_generate_text):
+  global TOTAL_CACHE_HITS, TOTAL_PROVIDER_CALLS
   try:
-    return px.generate_text(
+    logging_record: px_types.LoggingRecord = px_generate_text(
         model=model,
-        prompt=prompt,
-        system='Answer all questions in French.',
-        messages=messages,
-        max_tokens=100,
-        temperature=0.1,
-        stop=['.'])
+        use_cache=use_cache,
+        extensive_return=True)
+    if logging_record.response_source == px_types.ResponseSource.CACHE:
+      TOTAL_CACHE_HITS += 1
+    else:
+      TOTAL_PROVIDER_CALLS += 1
+    return logging_record.response_record.response
   except Exception as e:
     return f'ERROR: {str(e)}'
 
 
-def run_tests(models, query_func):
-  print(f'{"PROVIDER":10} | {"MODEL":45} | {"DURATION":13} | {"RESPONSE"}')
-  for model in models:
-    provider, provider_model = model
-    start_time = datetime.datetime.now()
-    response = query_func(model=model)
-    end_time = datetime.datetime.now()
-    duration = (end_time - start_time).total_seconds() * 1000
-    response = response.strip().split('\n')[0][:100] + (
-      '...' if len(response) > 100 else '')
-    print(f'{provider:10} | {provider_model:45} | {duration:10.0f} ms | {response}')
-
-
-def main():
+def run_queries(
+    retry_if_error_cached = False,
+    strict_feature_test = False,
+    use_cache = False,
+    px_generate_text = None):
   cache_path = f'{Path.home()}/proxai_cache/'
   logging_path = f'{Path.home()}/proxai_log/api_unification/'
   os.makedirs(cache_path, exist_ok=True)
@@ -83,14 +102,55 @@ def main():
       cache_options=px_types.CacheOptions(
           path=cache_path,
           unique_response_limit=1,
-          retry_if_error_cached=_RETRY_IF_ERROR_CACHED),
+          retry_if_error_cached=retry_if_error_cached),
       logging_path=logging_path,
-      strict_feature_test=_STRICT_FEATURE_TEST)
-  models = get_models()
-  run_tests(models, functools.partial(
-      test_query,
-      break_caches=_BREAK_CACHES,
-      history=_HISTORY))
+      strict_feature_test=strict_feature_test)
+  models = px.models.generate_text(verbose=True)
+  print(f'{"PROVIDER":10} | {"MODEL":45} | {"DURATION":13} | {"RESPONSE"}')
+  for model in models:
+    provider, provider_model = model
+    start_time = datetime.datetime.now()
+    response = make_query(
+        model=model,
+        use_cache=use_cache,
+        px_generate_text=px_generate_text)
+    end_time = datetime.datetime.now()
+    duration = (end_time - start_time).total_seconds() * 1000
+    response = response.strip().split('\n')[0][:100] + (
+      '...' if len(response) > 100 else '')
+    print(f'{provider:10} | {provider_model:45} | {duration:10.0f} ms | {response}')
+
+
+def run_tests(options, px_generate_text):
+  for idx, option in enumerate(options):
+    print(f'\n\n{idx+1}.{option["name"]}')
+    print(f'{option["retry_if_error_cached"]=}')
+    print(f'{option["strict_feature_test"]=}')
+    print(f'{option["use_cache"]=}')
+    print()
+    total_cache_hits = TOTAL_CACHE_HITS
+    total_provider_calls = TOTAL_PROVIDER_CALLS
+    run_queries(
+        retry_if_error_cached=option['retry_if_error_cached'],
+        strict_feature_test=option['strict_feature_test'],
+        use_cache=option['use_cache'],
+        px_generate_text=px_generate_text)
+    print()
+    print(f'Cache Hits     : {TOTAL_CACHE_HITS - total_cache_hits}')
+    print(f'Provider Calls : {TOTAL_PROVIDER_CALLS - total_provider_calls}')
+    print(f'Total Cache Hits     : {TOTAL_CACHE_HITS}')
+    print(f'Total Provider Calls : {TOTAL_PROVIDER_CALLS}')
+    input('Press Enter to continue...')
+
+
+def main():
+  options, px_generate_text = basic_test(
+      hard_start=False)
+  run_tests(options, px_generate_text)
+
+  options, px_generate_text = feature_complete_test(
+      hard_start=False)
+  run_tests(options, px_generate_text)
 
 
 if __name__ == '__main__':
