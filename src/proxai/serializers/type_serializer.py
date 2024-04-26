@@ -1,6 +1,7 @@
 import datetime
 from typing import Any, Dict
 import proxai.types as types
+import proxai.stat_types as stat_types
 
 
 def encode_model_type(
@@ -284,3 +285,229 @@ def decode_model_status(
       model_status.provider_queries.append(
           decode_logging_record(provider_query_record))
   return model_status
+
+
+def encode_base_provider_stats(
+    base_provider_stats: stat_types.BaseProviderStats) -> Dict[str, Any]:
+  record = {}
+  if base_provider_stats.total_queries:
+    record['total_queries'] = base_provider_stats.total_queries
+  if base_provider_stats.total_successes:
+    record['total_successes'] = base_provider_stats.total_successes
+  if base_provider_stats.total_fails:
+    record['total_fails'] = base_provider_stats.total_fails
+  if base_provider_stats.total_token_count:
+    record['total_token_count'] = base_provider_stats.total_token_count
+  if base_provider_stats.total_query_token_count:
+    record['total_query_token_count'] = (
+        base_provider_stats.total_query_token_count)
+  if base_provider_stats.total_response_token_count:
+    record['total_response_token_count'] = (
+        base_provider_stats.total_response_token_count)
+  if base_provider_stats.total_response_time:
+    record['total_response_time'] = base_provider_stats.total_response_time
+  if base_provider_stats.avr_response_time:
+    record['avr_response_time'] = base_provider_stats.avr_response_time
+  if base_provider_stats.estimated_price:
+    record['estimated_price'] = base_provider_stats.estimated_price
+  return record
+
+
+def decode_base_provider_stats(
+    record: Dict[str, Any]) -> stat_types.BaseProviderStats:
+  base_provider_stats = stat_types.BaseProviderStats()
+  if 'total_queries' in record:
+    base_provider_stats.total_queries = record['total_queries']
+  if 'total_successes' in record:
+    base_provider_stats.total_successes = record['total_successes']
+  if 'total_fails' in record:
+    base_provider_stats.total_fails = record['total_fails']
+  if 'total_token_count' in record:
+    base_provider_stats.total_token_count = record['total_token_count']
+  if 'total_query_token_count' in record:
+    base_provider_stats.total_query_token_count = (
+        record['total_query_token_count'])
+  if 'total_response_token_count' in record:
+    base_provider_stats.total_response_token_count = (
+        record['total_response_token_count'])
+  if 'total_response_time' in record:
+    base_provider_stats.total_response_time = record['total_response_time']
+  if 'avr_response_time' in record:
+    base_provider_stats.avr_response_time = record['avr_response_time']
+  if 'estimated_price' in record:
+    base_provider_stats.estimated_price = record['estimated_price']
+
+
+def encode_base_cache_stats(
+    base_cache_stats: stat_types.BaseCacheStats) -> Dict[str, Any]:
+  record = {}
+  if base_cache_stats.total_cache_hit:
+    record['total_cache_hit'] = base_cache_stats.total_cache_hit
+  if base_cache_stats.total_success_return:
+    record['total_success_return'] = base_cache_stats.total_success_return
+  if base_cache_stats.total_fail_return:
+    record['total_fail_return'] = base_cache_stats.total_fail_return
+  if base_cache_stats.saved_token_count:
+    record['saved_token_count'] = base_cache_stats.saved_token_count
+  if base_cache_stats.saved_query_token_count:
+    record['saved_query_token_count'] = base_cache_stats.saved_query_token_count
+  if base_cache_stats.saved_response_token_count:
+    record['saved_response_token_count'] = (
+        base_cache_stats.saved_response_token_count)
+  if base_cache_stats.saved_total_response_time:
+    record['saved_total_response_time'] = (
+        base_cache_stats.saved_total_response_time)
+  if base_cache_stats.saved_avr_response_time:
+    record['saved_avr_response_time'] = base_cache_stats.saved_avr_response_time
+  if base_cache_stats.saved_estimated_price:
+    record['saved_estimated_price'] = base_cache_stats.saved_estimated_price
+  if base_cache_stats.total_cache_look_fail_reasons:
+    record['total_cache_look_fail_reasons'] = {}
+    for k, v in base_cache_stats.total_cache_look_fail_reasons.items():
+      record['total_cache_look_fail_reasons'][k.value] = v
+  return record
+
+
+def decode_base_cache_stats(record) -> stat_types.BaseCacheStats:
+  base_cache_stats = stat_types.BaseCacheStats()
+  if 'total_cache_hit' in record:
+    base_cache_stats.total_cache_hit = record['total_cache_hit']
+  if 'total_success_return' in record:
+    base_cache_stats.total_success_return = record['total_success_return']
+  if 'total_fail_return' in record:
+    base_cache_stats.total_fail_return = record['total_fail_return']
+  if 'saved_token_count' in record:
+    base_cache_stats.saved_token_count = record['saved_token_count']
+  if 'saved_query_token_count' in record:
+    base_cache_stats.saved_query_token_count = record['saved_query_token_count']
+  if 'saved_response_token_count' in record:
+    base_cache_stats.saved_response_token_count = (
+        record['saved_response_token_count'])
+  if 'saved_total_response_time' in record:
+    base_cache_stats.saved_total_response_time = (
+        record['saved_total_response_time'])
+  if 'saved_avr_response_time' in record:
+    base_cache_stats.saved_avr_response_time = record['saved_avr_response_time']
+  if 'saved_estimated_price' in record:
+    base_cache_stats.saved_estimated_price = record['saved_estimated_price']
+  if 'total_cache_look_fail_reasons' in record:
+    base_cache_stats.total_cache_look_fail_reasons = {}
+    for k, v in record['total_cache_look_fail_reasons'].items():
+      base_cache_stats.total_cache_look_fail_reasons[
+          types.CacheLookFailReason(k)] = v
+
+
+def encode_model_stats(
+    model_stats: stat_types.ModelStats) -> Dict[str, Any]:
+  record = {}
+  if model_stats.model:
+    record['model'] = encode_model_type(model_stats.model)
+  if model_stats.provider_stats:
+    record['provider_stats'] = model_stats.provider_stats.encode()
+  if model_stats.cache_stats:
+    record['cache_stats'] = model_stats.cache_stats.encode()
+  return record
+
+
+def decode_model_stats(record: Dict[str, Any]) -> stat_types.ModelStats:
+  model_stats = stat_types.ModelStats()
+  if 'model' in record:
+    model_stats.model = decode_model_type(record['model'])
+  if 'provider_stats' in record:
+    model_stats.provider_stats = decode_base_provider_stats(
+        record['provider_stats'])
+  if 'cache_stats' in record:
+    model_stats.cache_stats = decode_base_cache_stats(
+        record['cache_stats'])
+
+
+def encode_provider_stats(
+    provider_stats: stat_types.ProviderStats) -> Dict[str, Any]:
+  record = {}
+  if provider_stats.provider:
+    record['provider'] = provider_stats.provider.value
+  if provider_stats.provider_stats:
+    record['provider_stats'] = decode_base_provider_stats(
+        provider_stats.provider_stats)
+  if provider_stats.cache_stats:
+    record['cache_stats'] = decode_base_cache_stats(provider_stats.cache_stats)
+  if provider_stats.model_stats:
+    record['model_stats'] = {}
+    for k, v in provider_stats.model_stats.items():
+      record['model_stats'][encode_model_type(k)] = v.encode()
+  return record
+
+
+def decode_provider_stats(record: Dict[str, Any]) -> stat_types.ProviderStats:
+  provider_stats = stat_types.ProviderStats()
+  if 'provider' in record:
+    provider_stats.provider = types.Provider(record['provider'])
+  if 'provider_stats' in record:
+    provider_stats.provider_stats = decode_base_provider_stats(
+        provider_stats.provider_stats)
+  if 'cache_stats' in record:
+    provider_stats.cache_stats = decode_base_cache_stats(
+        provider_stats.cache_stats)
+  if 'model_stats' in record:
+    provider_stats.model_stats = {}
+    for k, v in record['model_stats'].items():
+      provider_stats.model_stats[decode_model_type(k)] = decode_model_stats(v)
+
+
+def encode_connect_stats(
+    connect_stats: stat_types.ConnectStats) -> Dict[str, Any]:
+  record = {}
+  if connect_stats.provider_stats:
+    record['provider_stats'] = encode_provider_stats(
+        connect_stats.provider_stats)
+  if connect_stats.cache_stats:
+    record['cache_stats'] = encode_base_cache_stats(connect_stats.cache_stats)
+  if connect_stats.provider_stats:
+    record['provider_stats'] = {}
+    for k, v in connect_stats.provider_stats.items():
+      record['provider_stats'][k.value] = decode_provider_stats(v)
+  return record
+
+
+def decode_connect_stats(
+    record: Dict[str, Any]) -> stat_types.ConnectStats:
+  connect_stats = stat_types.ConnectStats()
+  if 'provider_stats' in record:
+    connect_stats.provider_stats = decode_base_provider_stats(
+        record['provider_stats'])
+  if 'cache_stats' in record:
+    connect_stats.cache_stats = decode_base_cache_stats(record['cache_stats'])
+  if 'provider_stats' in record:
+    connect_stats.provider_stats = {}
+    for k, v in record['provider_stats'].items():
+      connect_stats.provider_stats[types.Provider(k)] = decode_provider_stats(v)
+
+
+def encode_global_stats(
+    global_stats: stat_types.GlobalStats) -> Dict[str, Any]:
+  record = {}
+  if global_stats.provider_stats:
+    record['provider_stats'] = encode_base_provider_stats(
+        global_stats.provider_stats)
+  if global_stats.cache_stats:
+    record['cache_stats'] = encode_base_cache_stats(global_stats.cache_stats)
+  if global_stats.last_connect_stats:
+    record['last_connect_stats'] = []
+    for connect_stats in global_stats.last_connect_stats:
+      record['last_connect_stats'].append(encode_connect_stats(connect_stats))
+  return record
+
+
+def decode_global_stats(
+    record: Dict[str, Any]) -> stat_types.GlobalStats:
+  global_stats = stat_types.GlobalStats()
+  if 'provider_stats' in record:
+    global_stats.provider_stats = decode_base_provider_stats(
+        record['provider_stats'])
+  if 'cache_stats' in record:
+    global_stats.cache_stats = decode_base_cache_stats(record['cache_stats'])
+  if 'last_connect_stats' in record:
+    global_stats.last_connect_stats = []
+    for connect_stats in record['last_connect_stats']:
+      global_stats.last_connect_stats.append(
+          decode_connect_stats(connect_stats))
