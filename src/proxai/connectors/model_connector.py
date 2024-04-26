@@ -106,11 +106,14 @@ class ModelConnector(object):
     updated_query_record = self.feature_check(query_record=query_record)
 
     if self.query_cache_manager and use_cache:
+      cache_look_result = None
       response_record = None
       try:
-        response_record = self.query_cache_manager.look(
+        cache_look_result = self.query_cache_manager.look(
             updated_query_record,
             unique_response_limit=unique_response_limit)
+        if cache_look_result.query_response:
+          response_record = cache_look_result.query_response
       except Exception as e:
         pass
       if response_record:
@@ -122,6 +125,13 @@ class ModelConnector(object):
             logging_options=self._logging_options,
             logging_record=logging_record)
         return logging_record
+      logging_record = types.LoggingRecord(
+          query_record=query_record,
+          look_fail_reason=cache_look_result.look_fail_reason,
+          response_source=types.ResponseSource.CACHE)
+      log_query_record(
+          logging_options=self._logging_options,
+          logging_record=logging_record)
 
     response, error, error_traceback = None, None, None
     try:

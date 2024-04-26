@@ -476,18 +476,21 @@ class QueryCacheManager(BaseQueryCache):
       query_record: types.QueryRecord,
       update: bool = True,
       unique_response_limit: Optional[int] = None,
-  ) -> Optional[types.QueryResponseRecord]:
+  ) -> types.CacheLookResult:
     if not isinstance(query_record, types.QueryRecord):
       raise ValueError('query_record should be of type QueryRecord')
     cache_record = self._shard_manager.get_cache_record(query_record)
     if cache_record is None:
-      return None
+      return types.CacheLookResult(
+          look_fail_reason=types.CacheLookFailReason.CACHE_NOT_FOUND)
     if cache_record.query_record != query_record:
-      return None
+      return types.CacheLookResult(
+          look_fail_reason=types.CacheLookFailReason.CACHE_NOT_MATCHED)
     if unique_response_limit == None:
       unique_response_limit = self._cache_options.unique_response_limit
     if len(cache_record.query_responses) < unique_response_limit:
-      return None
+      return types.CacheLookResult(
+          look_fail_reason=types.CacheLookFailReason.RESPONSES_NOT_REACHED_LIMIT)
     query_response: types.QueryResponseRecord = cache_record.query_responses[
         cache_record.call_count % len(cache_record.query_responses)]
     if (query_response.error
@@ -497,13 +500,14 @@ class QueryCacheManager(BaseQueryCache):
       cache_record.call_count += 1
       self._shard_manager.save_record(cache_record=cache_record)
       self._push_record_heap(cache_record)
-      return None
+      return types.CacheLookResult(
+          look_fail_reason=types.CacheLookFailReason.ERROR_CACHED)
     if update:
       cache_record.last_access_time = datetime.datetime.now()
       cache_record.call_count += 1
       self._shard_manager.save_record(cache_record=cache_record)
       self._push_record_heap(cache_record)
-    return query_response
+    return types.CacheLookResult(query_response=query_response)
 
   def cache(
       self,
