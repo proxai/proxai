@@ -30,19 +30,25 @@ CacheOptions = types.CacheOptions
 LoggingOptions = types.LoggingOptions
 
 
-def _set_run_type(run_type: types.RunType):
-  global _RUN_TYPE
+def _init_globals():
   global _REGISTERED_VALUES
   global _INITIALIZED_MODEL_CONNECTORS
   global _LOGGING_OPTIONS
   global _CACHE_OPTIONS
   global _QUERY_CACHE_MANAGER
-  _RUN_TYPE = run_type
+  global _STRICT_FEATURE_TEST
   _REGISTERED_VALUES = {}
   _INITIALIZED_MODEL_CONNECTORS = {}
   _LOGGING_OPTIONS = types.LoggingOptions()
   _CACHE_OPTIONS = types.CacheOptions()
   _QUERY_CACHE_MANAGER = None
+  _STRICT_FEATURE_TEST = False
+
+
+def _set_run_type(run_type: types.RunType):
+  global _RUN_TYPE
+  _RUN_TYPE = run_type
+  _init_globals()
 
 
 def connect(
@@ -55,9 +61,7 @@ def connect(
   global _LOGGING_OPTIONS
   global _QUERY_CACHE_MANAGER
   global _STRICT_FEATURE_TEST
-
-  if _INITIALIZED_MODEL_CONNECTORS != {}:
-    raise ValueError('connect() must be called before any other function.')
+  _init_globals()
 
   if cache_path and cache_options and cache_options.path:
     raise ValueError('cache_path and cache_options.path are both set.')
