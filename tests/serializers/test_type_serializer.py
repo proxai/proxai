@@ -92,11 +92,13 @@ def _get_logging_record_options():
       {'response_record': types.QueryResponseRecord(
           response='Hello, world!')},
       {'response_source': types.ResponseSource.CACHE},
+      {'look_fail_reason': types.CacheLookFailReason.CACHE_NOT_FOUND},
       {'query_record': types.QueryRecord(
           call_type=types.CallType.GENERATE_TEXT),
        'response_record': types.QueryResponseRecord(
           response='Hello, world!'),
-       'response_source': types.ResponseSource.CACHE},]
+       'response_source': types.ResponseSource.CACHE,
+       'look_fail_reason': types.CacheLookFailReason.CACHE_NOT_FOUND},]
 
 
 def _get_model_status_options():

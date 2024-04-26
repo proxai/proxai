@@ -215,6 +215,8 @@ def encode_logging_record(
         logging_record.response_record)
   if logging_record.response_source != None:
     record['response_source'] = logging_record.response_source.value
+  if logging_record.look_fail_reason != None:
+    record['look_fail_reason'] = logging_record.look_fail_reason.value
   return record
 
 
@@ -230,6 +232,9 @@ def decode_logging_record(
   if 'response_source' in record:
     logging_record.response_source = (
         types.ResponseSource(record['response_source']))
+  if 'look_fail_reason' in record:
+    logging_record.look_fail_reason = (
+        types.CacheLookFailReason(record['look_fail_reason']))
   return logging_record
 
 
