@@ -6,6 +6,7 @@ import proxai.types as types
 from proxai.logging.utils import log_query_record, log_message
 import proxai.caching.query_cache as query_cache
 import proxai.type_utils as type_utils
+import proxai.serializers.hash_serializer as hash_serializer
 
 
 class ModelConnector(object):
@@ -76,7 +77,8 @@ class ModelConnector(object):
       temperature: Optional[float] = None,
       stop: Optional[types.StopType] = None,
       model: Optional[types.ModelType] = None,
-      use_cache: bool = True) -> types.LoggingRecord:
+      use_cache: bool = True,
+      unique_response_limit: Optional[int] = None) -> types.LoggingRecord:
     if prompt != None and messages != None:
       raise ValueError('prompt and messages cannot be set at the same time.')
     if messages != None:
@@ -104,9 +106,14 @@ class ModelConnector(object):
     updated_query_record = self.feature_check(query_record=query_record)
 
     if self.query_cache_manager and use_cache:
+      cache_look_result = None
       response_record = None
       try:
-        response_record = self.query_cache_manager.look(updated_query_record)
+        cache_look_result = self.query_cache_manager.look(
+            updated_query_record,
+            unique_response_limit=unique_response_limit)
+        if cache_look_result.query_response:
+          response_record = cache_look_result.query_response
       except Exception as e:
         pass
       if response_record:
@@ -118,6 +125,13 @@ class ModelConnector(object):
             logging_options=self._logging_options,
             logging_record=logging_record)
         return logging_record
+      logging_record = types.LoggingRecord(
+          query_record=query_record,
+          look_fail_reason=cache_look_result.look_fail_reason,
+          response_source=types.ResponseSource.CACHE)
+      log_query_record(
+          logging_options=self._logging_options,
+          logging_record=logging_record)
 
     response, error, error_traceback = None, None, None
     try:
@@ -142,8 +156,9 @@ class ModelConnector(object):
 
     if self.query_cache_manager and use_cache:
       self.query_cache_manager.cache(
-          query_record=query_record,
-          response_record=response_record)
+          query_record=updated_query_record,
+          response_record=response_record,
+          unique_response_limit=unique_response_limit)
 
     logging_record = types.LoggingRecord(
         query_record=query_record,
