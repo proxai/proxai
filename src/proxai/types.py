@@ -268,8 +268,8 @@ class LightCacheRecord:
 class CacheLookFailReason(str, enum.Enum):
   CACHE_NOT_FOUND = 'cache_not_found'
   CACHE_NOT_MATCHED = 'cache_not_matched'
-  RESPONSES_NOT_REACHED_LIMIT = 'responses_not_reached_limit'
-  ERROR_CACHED = 'error_cached'
+  UNIQUE_RESPONSE_LIMIT_NOT_REACHED = 'unique_response_limit_not_reached'
+  PROVIDER_ERROR_CACHED = 'provider_error_cached'
 
 
 @dataclasses.dataclass

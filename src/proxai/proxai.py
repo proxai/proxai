@@ -199,6 +199,11 @@ def generate_text(
   return logging_record.response_record.response
 
 
+def get_summary(since_start: bool = False):
+  raise ValueError('Not implemented yet. We are looking for contributors! '
+                   'github.com/proxai/proxai')
+
+
 class AvailableModels:
   _model_cache: Optional[model_cache.ModelCache] = None
   _generate_text: Dict[types.ModelType, Any] = {}
