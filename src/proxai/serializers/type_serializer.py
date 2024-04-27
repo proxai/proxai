@@ -431,10 +431,10 @@ def encode_provider_stats(
         provider_stats.provider_stats)
   if provider_stats.cache_stats:
     record['cache_stats'] = decode_base_cache_stats(provider_stats.cache_stats)
-  if provider_stats.model_stats:
-    record['model_stats'] = {}
-    for k, v in provider_stats.model_stats.items():
-      record['model_stats'][encode_model_type(k)] = v.encode()
+  if provider_stats.models:
+    record['models'] = {}
+    for k, v in provider_stats.models.items():
+      record['models'][encode_model_type(k)] = v.encode()
   return record
 
 
@@ -448,66 +448,36 @@ def decode_provider_stats(record: Dict[str, Any]) -> stat_types.ProviderStats:
   if 'cache_stats' in record:
     provider_stats.cache_stats = decode_base_cache_stats(
         provider_stats.cache_stats)
-  if 'model_stats' in record:
-    provider_stats.model_stats = {}
-    for k, v in record['model_stats'].items():
-      provider_stats.model_stats[decode_model_type(k)] = decode_model_stats(v)
+  if 'models' in record:
+    provider_stats.models = {}
+    for k, v in record['models'].items():
+      provider_stats.models[decode_model_type(k)] = decode_model_stats(v)
 
 
-def encode_connect_stats(
-    connect_stats: stat_types.ConnectStats) -> Dict[str, Any]:
+def encode_run_stats(
+    run_stats: stat_types.RunStats) -> Dict[str, Any]:
   record = {}
-  if connect_stats.provider_stats:
+  if run_stats.provider_stats:
     record['provider_stats'] = encode_provider_stats(
-        connect_stats.provider_stats)
-  if connect_stats.cache_stats:
-    record['cache_stats'] = encode_base_cache_stats(connect_stats.cache_stats)
-  if connect_stats.provider_stats:
-    record['provider_stats'] = {}
-    for k, v in connect_stats.provider_stats.items():
-      record['provider_stats'][k.value] = decode_provider_stats(v)
+        run_stats.provider_stats)
+  if run_stats.cache_stats:
+    record['cache_stats'] = encode_base_cache_stats(run_stats.cache_stats)
+  if run_stats.provider_stats:
+    record['providers'] = {}
+    for k, v in run_stats.providers.items():
+      record['providers'][k.value] = decode_provider_stats(v)
   return record
 
 
-def decode_connect_stats(
-    record: Dict[str, Any]) -> stat_types.ConnectStats:
-  connect_stats = stat_types.ConnectStats()
+def decode_run_stats(
+    record: Dict[str, Any]) -> stat_types.RunStats:
+  run_stats = stat_types.RunStats()
   if 'provider_stats' in record:
-    connect_stats.provider_stats = decode_base_provider_stats(
+    run_stats.provider_stats = decode_base_provider_stats(
         record['provider_stats'])
   if 'cache_stats' in record:
-    connect_stats.cache_stats = decode_base_cache_stats(record['cache_stats'])
-  if 'provider_stats' in record:
-    connect_stats.provider_stats = {}
-    for k, v in record['provider_stats'].items():
-      connect_stats.provider_stats[types.Provider(k)] = decode_provider_stats(v)
-
-
-def encode_global_stats(
-    global_stats: stat_types.GlobalStats) -> Dict[str, Any]:
-  record = {}
-  if global_stats.provider_stats:
-    record['provider_stats'] = encode_base_provider_stats(
-        global_stats.provider_stats)
-  if global_stats.cache_stats:
-    record['cache_stats'] = encode_base_cache_stats(global_stats.cache_stats)
-  if global_stats.last_connect_stats:
-    record['last_connect_stats'] = []
-    for connect_stats in global_stats.last_connect_stats:
-      record['last_connect_stats'].append(encode_connect_stats(connect_stats))
-  return record
-
-
-def decode_global_stats(
-    record: Dict[str, Any]) -> stat_types.GlobalStats:
-  global_stats = stat_types.GlobalStats()
-  if 'provider_stats' in record:
-    global_stats.provider_stats = decode_base_provider_stats(
-        record['provider_stats'])
-  if 'cache_stats' in record:
-    global_stats.cache_stats = decode_base_cache_stats(record['cache_stats'])
-  if 'last_connect_stats' in record:
-    global_stats.last_connect_stats = []
-    for connect_stats in record['last_connect_stats']:
-      global_stats.last_connect_stats.append(
-          decode_connect_stats(connect_stats))
+    run_stats.cache_stats = decode_base_cache_stats(record['cache_stats'])
+  if 'providers' in record:
+    run_stats.providers = {}
+    for k, v in record['providers'].items():
+      run_stats.provider_stats[types.Provider(k)] = decode_provider_stats(v)
