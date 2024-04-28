@@ -61,6 +61,37 @@ class HuggingFaceConnector(ModelConnector):
       query_record.stop = None
     return query_record
 
+  def _get_token_count(self, logging_record: types.LoggingRecord):
+    # Note: This temporary implementation is not accurate.
+    # Better version should be calculated from the api response or at least
+    # libraries like tiktoker.
+    return logging_record.query_record.max_tokens
+
+  def _get_query_token_count(self, logging_record: types.LoggingRecord):
+    # Note: Not implemented yet.
+    return 0
+
+  def _get_response_token_count(self, logging_record: types.LoggingRecord):
+    # Note: Not implemented yet.
+    return logging_record.query_record.max_tokens
+
+  def _get_estimated_price(self, logging_record: types.LoggingRecord):
+    # Note: Not implemented yet.
+    # Needs to get updated all the time.
+    # This is just a temporary implementation.
+    query_token_count = self._get_query_token_count(logging_record)
+    response_token_count = self._get_response_token_count(logging_record)
+    _, provider_model = logging_record.query_record.model
+    if provider_model in [
+        types.HuggingFaceModel.GOOGLE_GEMMA_7B_IT,
+        types.HuggingFaceModel.MISTRAL_MIXTRAL_8X7B_INSTRUCT,
+        types.HuggingFaceModel.MISTRAL_MISTRAL_7B_INSTRUCT,
+        types.HuggingFaceModel.NOUS_HERMES_2_MIXTRAL_8X7B,
+        types.HuggingFaceModel.OPENCHAT_3_5]:
+      return 0
+    else:
+      raise ValueError(f'Model not found.\n{logging_record.query_record.model}')
+
   def generate_text_proc(self, query_record: types.QueryRecord) -> str:
     _, provider_model = query_record.model
     create = functools.partial(

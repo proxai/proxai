@@ -1,6 +1,7 @@
 import datetime
 from typing import Any, Dict
 import proxai.types as types
+import proxai.stat_types as stat_types
 
 
 def encode_model_type(
@@ -284,3 +285,208 @@ def decode_model_status(
       model_status.provider_queries.append(
           decode_logging_record(provider_query_record))
   return model_status
+
+
+def encode_base_provider_stats(
+    base_provider_stats: stat_types.BaseProviderStats) -> Dict[str, Any]:
+  record = {}
+  if base_provider_stats.total_queries:
+    record['total_queries'] = base_provider_stats.total_queries
+  if base_provider_stats.total_successes:
+    record['total_successes'] = base_provider_stats.total_successes
+  if base_provider_stats.total_fails:
+    record['total_fails'] = base_provider_stats.total_fails
+  if base_provider_stats.total_token_count:
+    record['total_token_count'] = base_provider_stats.total_token_count
+  if base_provider_stats.total_query_token_count:
+    record['total_query_token_count'] = (
+        base_provider_stats.total_query_token_count)
+  if base_provider_stats.total_response_token_count:
+    record['total_response_token_count'] = (
+        base_provider_stats.total_response_token_count)
+  if base_provider_stats.total_response_time:
+    record['total_response_time'] = base_provider_stats.total_response_time
+  if base_provider_stats.avr_response_time:
+    record['avr_response_time'] = base_provider_stats.avr_response_time
+  if base_provider_stats.estimated_price:
+    record['estimated_price'] = base_provider_stats.estimated_price
+  if base_provider_stats.total_cache_look_fail_reasons:
+    record['total_cache_look_fail_reasons'] = {}
+    for k, v in base_provider_stats.total_cache_look_fail_reasons.items():
+      record['total_cache_look_fail_reasons'][k.value] = v
+  return record
+
+
+def decode_base_provider_stats(
+    record: Dict[str, Any]) -> stat_types.BaseProviderStats:
+  base_provider_stats = stat_types.BaseProviderStats()
+  if 'total_queries' in record:
+    base_provider_stats.total_queries = record['total_queries']
+  if 'total_successes' in record:
+    base_provider_stats.total_successes = record['total_successes']
+  if 'total_fails' in record:
+    base_provider_stats.total_fails = record['total_fails']
+  if 'total_token_count' in record:
+    base_provider_stats.total_token_count = record['total_token_count']
+  if 'total_query_token_count' in record:
+    base_provider_stats.total_query_token_count = (
+        record['total_query_token_count'])
+  if 'total_response_token_count' in record:
+    base_provider_stats.total_response_token_count = (
+        record['total_response_token_count'])
+  if 'total_response_time' in record:
+    base_provider_stats.total_response_time = record['total_response_time']
+  if 'estimated_price' in record:
+    base_provider_stats.estimated_price = record['estimated_price']
+  if 'total_cache_look_fail_reasons' in record:
+    base_provider_stats.total_cache_look_fail_reasons = {}
+    for k, v in record['total_cache_look_fail_reasons'].items():
+      base_provider_stats.total_cache_look_fail_reasons[
+          types.CacheLookFailReason(k)] = v
+  return base_provider_stats
+
+
+def encode_base_cache_stats(
+    base_cache_stats: stat_types.BaseCacheStats) -> Dict[str, Any]:
+  record = {}
+  if base_cache_stats.total_cache_hit:
+    record['total_cache_hit'] = base_cache_stats.total_cache_hit
+  if base_cache_stats.total_success_return:
+    record['total_success_return'] = base_cache_stats.total_success_return
+  if base_cache_stats.total_fail_return:
+    record['total_fail_return'] = base_cache_stats.total_fail_return
+  if base_cache_stats.saved_token_count:
+    record['saved_token_count'] = base_cache_stats.saved_token_count
+  if base_cache_stats.saved_query_token_count:
+    record['saved_query_token_count'] = base_cache_stats.saved_query_token_count
+  if base_cache_stats.saved_response_token_count:
+    record['saved_response_token_count'] = (
+        base_cache_stats.saved_response_token_count)
+  if base_cache_stats.saved_total_response_time:
+    record['saved_total_response_time'] = (
+        base_cache_stats.saved_total_response_time)
+  if base_cache_stats.saved_avr_response_time:
+    record['saved_avr_response_time'] = base_cache_stats.saved_avr_response_time
+  if base_cache_stats.saved_estimated_price:
+    record['saved_estimated_price'] = base_cache_stats.saved_estimated_price
+  return record
+
+
+def decode_base_cache_stats(record) -> stat_types.BaseCacheStats:
+  base_cache_stats = stat_types.BaseCacheStats()
+  if 'total_cache_hit' in record:
+    base_cache_stats.total_cache_hit = record['total_cache_hit']
+  if 'total_success_return' in record:
+    base_cache_stats.total_success_return = record['total_success_return']
+  if 'total_fail_return' in record:
+    base_cache_stats.total_fail_return = record['total_fail_return']
+  if 'saved_token_count' in record:
+    base_cache_stats.saved_token_count = record['saved_token_count']
+  if 'saved_query_token_count' in record:
+    base_cache_stats.saved_query_token_count = record['saved_query_token_count']
+  if 'saved_response_token_count' in record:
+    base_cache_stats.saved_response_token_count = (
+        record['saved_response_token_count'])
+  if 'saved_total_response_time' in record:
+    base_cache_stats.saved_total_response_time = (
+        record['saved_total_response_time'])
+  if 'saved_estimated_price' in record:
+    base_cache_stats.saved_estimated_price = record['saved_estimated_price']
+  return base_cache_stats
+
+
+def encode_model_stats(
+    model_stats: stat_types.ModelStats) -> Dict[str, Any]:
+  record = {}
+  if model_stats.model:
+    record['model'] = encode_model_type(model_stats.model)
+  if model_stats.provider_stats:
+    record['provider_stats'] = encode_base_provider_stats(
+        model_stats.provider_stats)
+  if model_stats.cache_stats:
+    record['cache_stats'] = encode_base_cache_stats(model_stats.cache_stats)
+  return record
+
+
+def decode_model_stats(record: Dict[str, Any]) -> stat_types.ModelStats:
+  model_stats = stat_types.ModelStats()
+  if 'model' in record:
+    model_stats.model = decode_model_type(record['model'])
+  if 'provider_stats' in record:
+    model_stats.provider_stats = decode_base_provider_stats(
+        record['provider_stats'])
+  if 'cache_stats' in record:
+    model_stats.cache_stats = decode_base_cache_stats(
+        record['cache_stats'])
+  return model_stats
+
+
+def encode_provider_stats(
+    provider_stats: stat_types.ProviderStats) -> Dict[str, Any]:
+  record = {}
+  if provider_stats.provider:
+    record['provider'] = provider_stats.provider.value
+  if provider_stats.provider_stats:
+    record['provider_stats'] = encode_base_provider_stats(
+        provider_stats.provider_stats)
+  if provider_stats.cache_stats:
+    record['cache_stats'] = encode_base_cache_stats(provider_stats.cache_stats)
+  if provider_stats.models:
+    record['models'] = []
+    for k, v in provider_stats.models.items():
+      value = encode_model_type(k)
+      value['model_stats'] = encode_model_stats(v)
+      record['models'].append(value)
+  return record
+
+
+def decode_provider_stats(record: Dict[str, Any]) -> stat_types.ProviderStats:
+  provider_stats = stat_types.ProviderStats()
+  if 'provider' in record:
+    provider_stats.provider = types.Provider(record['provider'])
+  if 'provider_stats' in record:
+    provider_stats.provider_stats = decode_base_provider_stats(
+        record['provider_stats'])
+  if 'cache_stats' in record:
+    provider_stats.cache_stats = decode_base_cache_stats(
+        record['cache_stats'])
+  if 'models' in record:
+    provider_stats.models = {}
+    for model_record in record['models']:
+      model_type = decode_model_type({
+          'provider': model_record['provider'],
+          'provider_model': model_record['provider_model']
+      })
+      provider_stats.models[model_type] = decode_model_stats(
+          model_record['model_stats'])
+  return provider_stats
+
+
+def encode_run_stats(
+    run_stats: stat_types.RunStats) -> Dict[str, Any]:
+  record = {}
+  if run_stats.provider_stats:
+    record['provider_stats'] = encode_base_provider_stats(
+        run_stats.provider_stats)
+  if run_stats.cache_stats:
+    record['cache_stats'] = encode_base_cache_stats(run_stats.cache_stats)
+  if run_stats.provider_stats:
+    record['providers'] = {}
+    for k, v in run_stats.providers.items():
+      record['providers'][k.value] = encode_provider_stats(v)
+  return record
+
+
+def decode_run_stats(
+    record: Dict[str, Any]) -> stat_types.RunStats:
+  run_stats = stat_types.RunStats()
+  if 'provider_stats' in record:
+    run_stats.provider_stats = decode_base_provider_stats(
+        record['provider_stats'])
+  if 'cache_stats' in record:
+    run_stats.cache_stats = decode_base_cache_stats(record['cache_stats'])
+  if 'providers' in record:
+    run_stats.providers = {}
+    for k, v in record['providers'].items():
+      run_stats.provider_stats[types.Provider(k)] = decode_provider_stats(v)
+  return run_stats
