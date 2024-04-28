@@ -446,10 +446,10 @@ def decode_provider_stats(record: Dict[str, Any]) -> stat_types.ProviderStats:
     provider_stats.provider = types.Provider(record['provider'])
   if 'provider_stats' in record:
     provider_stats.provider_stats = decode_base_provider_stats(
-        provider_stats.provider_stats)
+        record['provider_stats'])
   if 'cache_stats' in record:
     provider_stats.cache_stats = decode_base_cache_stats(
-        provider_stats.cache_stats)
+        record['cache_stats'])
   if 'models' in record:
     provider_stats.models = {}
     for model_record in record['models']:
@@ -459,8 +459,6 @@ def decode_provider_stats(record: Dict[str, Any]) -> stat_types.ProviderStats:
       })
       provider_stats.models[model_type] = decode_model_stats(
           model_record['model_stats'])
-    for k, v in record['models'].items():
-      provider_stats.models[decode_model_type(k)] = decode_model_stats(v)
   return provider_stats
 
 
