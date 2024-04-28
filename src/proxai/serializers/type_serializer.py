@@ -310,6 +310,10 @@ def encode_base_provider_stats(
     record['avr_response_time'] = base_provider_stats.avr_response_time
   if base_provider_stats.estimated_price:
     record['estimated_price'] = base_provider_stats.estimated_price
+  if base_provider_stats.total_cache_look_fail_reasons:
+    record['total_cache_look_fail_reasons'] = {}
+    for k, v in base_provider_stats.total_cache_look_fail_reasons.items():
+      record['total_cache_look_fail_reasons'][k.value] = v
   return record
 
 
@@ -334,6 +338,12 @@ def decode_base_provider_stats(
     base_provider_stats.total_response_time = record['total_response_time']
   if 'estimated_price' in record:
     base_provider_stats.estimated_price = record['estimated_price']
+  if 'total_cache_look_fail_reasons' in record:
+    base_provider_stats.total_cache_look_fail_reasons = {}
+    for k, v in record['total_cache_look_fail_reasons'].items():
+      base_provider_stats.total_cache_look_fail_reasons[
+          types.CacheLookFailReason(k)] = v
+  return base_provider_stats
 
 
 def encode_base_cache_stats(
@@ -359,10 +369,6 @@ def encode_base_cache_stats(
     record['saved_avr_response_time'] = base_cache_stats.saved_avr_response_time
   if base_cache_stats.saved_estimated_price:
     record['saved_estimated_price'] = base_cache_stats.saved_estimated_price
-  if base_cache_stats.total_cache_look_fail_reasons:
-    record['total_cache_look_fail_reasons'] = {}
-    for k, v in base_cache_stats.total_cache_look_fail_reasons.items():
-      record['total_cache_look_fail_reasons'][k.value] = v
   return record
 
 
@@ -386,11 +392,7 @@ def decode_base_cache_stats(record) -> stat_types.BaseCacheStats:
         record['saved_total_response_time'])
   if 'saved_estimated_price' in record:
     base_cache_stats.saved_estimated_price = record['saved_estimated_price']
-  if 'total_cache_look_fail_reasons' in record:
-    base_cache_stats.total_cache_look_fail_reasons = {}
-    for k, v in record['total_cache_look_fail_reasons'].items():
-      base_cache_stats.total_cache_look_fail_reasons[
-          types.CacheLookFailReason(k)] = v
+  return base_cache_stats
 
 
 def encode_model_stats(
@@ -416,6 +418,7 @@ def decode_model_stats(record: Dict[str, Any]) -> stat_types.ModelStats:
   if 'cache_stats' in record:
     model_stats.cache_stats = decode_base_cache_stats(
         record['cache_stats'])
+  return model_stats
 
 
 def encode_provider_stats(
@@ -458,6 +461,7 @@ def decode_provider_stats(record: Dict[str, Any]) -> stat_types.ProviderStats:
           model_record['model_stats'])
     for k, v in record['models'].items():
       provider_stats.models[decode_model_type(k)] = decode_model_stats(v)
+  return provider_stats
 
 
 def encode_run_stats(
@@ -487,3 +491,4 @@ def decode_run_stats(
     run_stats.providers = {}
     for k, v in record['providers'].items():
       run_stats.provider_stats[types.Provider(k)] = decode_provider_stats(v)
+  return run_stats

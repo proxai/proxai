@@ -115,6 +115,8 @@ class ModelConnector(object):
           logging_record.response_record.response_time.total_seconds())
       provider_stats.estimated_price = self._get_estimated_price(
           logging_record=logging_record)
+      provider_stats.total_cache_look_fail_reasons = {
+          logging_record.look_fail_reason: 1}
     elif logging_record.response_source == types.ResponseSource.CACHE:
       cache_stats.total_cache_hit = 1
       if logging_record.response_record.response:
@@ -183,6 +185,7 @@ class ModelConnector(object):
 
     updated_query_record = self.feature_check(query_record=query_record)
 
+    look_fail_reason = None
     if self.query_cache_manager and use_cache:
       cache_look_result = None
       response_record = None
@@ -204,9 +207,10 @@ class ModelConnector(object):
             logging_record=logging_record)
         self._update_stats(logging_record=logging_record)
         return logging_record
+      look_fail_reason = cache_look_result.look_fail_reason
       logging_record = types.LoggingRecord(
           query_record=query_record,
-          look_fail_reason=cache_look_result.look_fail_reason,
+          look_fail_reason=look_fail_reason,
           response_source=types.ResponseSource.CACHE)
       log_query_record(
           logging_options=self._logging_options,
@@ -242,6 +246,7 @@ class ModelConnector(object):
     logging_record = types.LoggingRecord(
         query_record=query_record,
         response_record=response_record,
+        look_fail_reason=look_fail_reason,
         response_source=types.ResponseSource.PROVIDER)
     log_query_record(
         logging_options=self._logging_options,

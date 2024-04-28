@@ -268,11 +268,10 @@ class AvailableModels:
           (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW),
           (types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_OPUS),
           (types.Provider.GEMINI, types.GeminiModel.GEMINI_1_5_PRO_LATEST),
-          (types.Provider.COHERE, types.CohereModel.COMMAND_R),
+          (types.Provider.COHERE, types.CohereModel.COMMAND_R_PLUS),
+          (types.Provider.DATABRICKS, types.DatabricksModel.DBRX_INSTRUCT),
           (types.Provider.DATABRICKS,
-           types.DatabricksModel.DATABRICKS_DBRX_INSTRUCT),
-          (types.Provider.DATABRICKS,
-           types.DatabricksModel.DATABRICKS_LLAMA_2_70b_CHAT),
+           types.DatabricksModel.LLAMA_3_70B_INSTRUCT),
           (types.Provider.MISTRAL, types.MistralModel.MISTRAL_LARGE_LATEST),
       ])
       for model in list(models.unprocessed_models):
