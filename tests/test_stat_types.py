@@ -13,7 +13,9 @@ def base_provider_stats_examples():
       total_query_token_count=100,
       total_response_token_count=100,
       total_response_time=0.5,
-      estimated_price=1.0)
+      estimated_price=1.0,
+      total_cache_look_fail_reasons={
+          types.CacheLookFailReason.CACHE_NOT_FOUND: 1})
   big_example = stat_types.BaseProviderStats(
       total_queries=4,
       total_successes=2,
@@ -22,7 +24,9 @@ def base_provider_stats_examples():
       total_query_token_count=200,
       total_response_token_count=200,
       total_response_time=1.0,
-      estimated_price=2.0)
+      estimated_price=2.0,
+      total_cache_look_fail_reasons={
+          types.CacheLookFailReason.CACHE_NOT_FOUND: 2})
   return (example, big_example)
 
 
@@ -35,9 +39,7 @@ def base_cache_stats_examples():
       saved_query_token_count=100,
       saved_response_token_count=100,
       saved_total_response_time=0.5,
-      saved_estimated_price=1.0,
-      total_cache_look_fail_reasons={
-          types.CacheLookFailReason.CACHE_NOT_FOUND: 1})
+      saved_estimated_price=1.0)
   big_example = stat_types.BaseCacheStats(
       total_cache_hit=4,
       total_success_return=2,
@@ -46,9 +48,7 @@ def base_cache_stats_examples():
       saved_query_token_count=200,
       saved_response_token_count=200,
       saved_total_response_time=1.0,
-      saved_estimated_price=2.0,
-      total_cache_look_fail_reasons={
-          types.CacheLookFailReason.CACHE_NOT_FOUND: 2})
+      saved_estimated_price=2.0)
   return (example, big_example)
 
 
@@ -95,25 +95,12 @@ class TestStatTypes:
     example_2.total_response_time = 1.0
     assert example != example_2
 
-  def test_base_provider_stats_add(self):
+  def test_base_provider_stats_add_1(self):
     example, big_example = base_provider_stats_examples()
     assert example + example == big_example
 
-  def test_base_provider_stats_sub(self):
+  def test_base_provider_stats_add_2(self):
     example, big_example = base_provider_stats_examples()
-    assert big_example - example == example
-
-  def test_invalid_base_provider_stats_sub(self):
-    example, big_example = base_provider_stats_examples()
-    with pytest.raises(ValueError):
-      example - big_example
-
-  def test_base_cache_stats_add_1(self):
-    example, big_example = base_cache_stats_examples()
-    assert example + example == big_example
-
-  def test_base_cache_stats_add_2(self):
-    example, big_example = base_cache_stats_examples()
     example_2 = copy.deepcopy(example)
     example_2.total_cache_look_fail_reasons = {
         types.CacheLookFailReason.CACHE_NOT_MATCHED: 1}
@@ -122,12 +109,12 @@ class TestStatTypes:
         types.CacheLookFailReason.CACHE_NOT_MATCHED: 1}
     assert example + example_2 == big_example
 
-  def test_base_cache_stats_sub_1(self):
-    example, big_example = base_cache_stats_examples()
+  def test_base_provider_stats_sub_1(self):
+    example, big_example = base_provider_stats_examples()
     assert big_example - example == example
 
-  def test_base_cache_stats_sub_2(self):
-    example, big_example = base_cache_stats_examples()
+  def test_base_provider_stats_sub_2(self):
+    example, big_example = base_provider_stats_examples()
     example_2 = copy.deepcopy(example)
     example_2.total_cache_look_fail_reasons = {
         types.CacheLookFailReason.CACHE_NOT_MATCHED: 1}
@@ -135,6 +122,19 @@ class TestStatTypes:
         types.CacheLookFailReason.CACHE_NOT_FOUND: 1,
         types.CacheLookFailReason.CACHE_NOT_MATCHED: 1}
     assert big_example - example_2 == example
+
+  def test_invalid_base_provider_stats_sub(self):
+    example, big_example = base_provider_stats_examples()
+    with pytest.raises(ValueError):
+      example - big_example
+
+  def test_base_cache_stats_add(self):
+    example, big_example = base_cache_stats_examples()
+    assert example + example == big_example
+
+  def test_base_cache_stats_sub(self):
+    example, big_example = base_cache_stats_examples()
+    assert big_example - example == example
 
   def test_invalid_base_cache_stats_sub(self):
     example, big_example = base_cache_stats_examples()

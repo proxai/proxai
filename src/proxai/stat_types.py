@@ -20,6 +20,9 @@ class BaseProviderStats:
 
   estimated_price: float = 0.0
 
+  total_cache_look_fail_reasons: Dict[types.CacheLookFailReason, int] = (
+      dataclasses.field(default_factory=dict))
+
   def __init__(
       self,
       total_queries: int = 0,
@@ -30,6 +33,7 @@ class BaseProviderStats:
       total_response_token_count: int = 0,
       total_response_time: float = 0.0,
       estimated_price: float = 0.0,
+      total_cache_look_fail_reasons: Dict[types.CacheLookFailReason, int] = {},
   ):
     self.total_queries = total_queries
     self.total_successes = total_successes
@@ -39,6 +43,7 @@ class BaseProviderStats:
     self.total_response_token_count = total_response_token_count
     self.total_response_time = total_response_time
     self.estimated_price = estimated_price
+    self.total_cache_look_fail_reasons = total_cache_look_fail_reasons
 
   @property
   def total_response_time(self):
@@ -66,6 +71,13 @@ class BaseProviderStats:
       raise ValueError(
           'Invalid addition of BaseProviderStats objects.'
           f'Cannot add BaseProviderStats with {type(other)}')
+    total_cache_look_fail_reasons = copy.deepcopy(
+        self.total_cache_look_fail_reasons)
+    for k, v in other.total_cache_look_fail_reasons.items():
+      if k in total_cache_look_fail_reasons:
+        total_cache_look_fail_reasons[k] += v
+      else:
+        total_cache_look_fail_reasons[k] = v
     return BaseProviderStats(
         total_queries=self.total_queries + other.total_queries,
         total_successes=self.total_successes + other.total_successes,
@@ -77,13 +89,27 @@ class BaseProviderStats:
             self.total_response_token_count + other.total_response_token_count),
         total_response_time=(
             self.total_response_time + other.total_response_time),
-        estimated_price=self.estimated_price + other.estimated_price)
+        estimated_price=self.estimated_price + other.estimated_price,
+        total_cache_look_fail_reasons=total_cache_look_fail_reasons)
 
   def __sub__(self, other):
     if not isinstance(other, BaseProviderStats):
       raise ValueError(
           'Invalid subtraction of BaseProviderStats objects.'
           f'Cannot subtract BaseProviderStats with {type(other)}')
+    total_cache_look_fail_reasons = copy.deepcopy(
+        self.total_cache_look_fail_reasons)
+    for k, v in other.total_cache_look_fail_reasons.items():
+      if k in total_cache_look_fail_reasons:
+        total_cache_look_fail_reasons[k] -= v
+      else:
+        raise ValueError(
+            f'Invalid subtraction of BaseCacheStats objects.'
+            f'Key {k} not found in total_cache_look_fail_reasons.')
+    for k in list(total_cache_look_fail_reasons.keys()):
+      if total_cache_look_fail_reasons[k] <= 0:
+        del total_cache_look_fail_reasons[k]
+
     result = BaseProviderStats(
         total_queries=self.total_queries - other.total_queries,
         total_successes=self.total_successes - other.total_successes,
@@ -95,12 +121,24 @@ class BaseProviderStats:
             self.total_response_token_count - other.total_response_token_count),
         total_response_time=(
             self.total_response_time - other.total_response_time),
-        estimated_price=self.estimated_price - other.estimated_price)
+        estimated_price=self.estimated_price - other.estimated_price,
+        total_cache_look_fail_reasons=total_cache_look_fail_reasons)
     for key in result.__dict__:
-      if getattr(result, key) < 0:
-        raise ValueError(
-            f'Invalid subtraction of BaseProviderStats objects.'
-            f'Negative value for {key}: {getattr(result, key)}')
+      if isinstance(getattr(result, key), dict):
+        for k in getattr(result, key):
+          if getattr(result, key)[k] < -0.0001:
+            raise ValueError(
+                f'Invalid subtraction of BaseCacheStats objects.'
+                f'Negative value for {key}[{k}]: {getattr(result, key)[k]}')
+          if getattr(result, key)[k] < 0:
+            result.__dict__[key][k] = 0
+      else:
+        if getattr(result, key) < -0.0001:
+          raise ValueError(
+              f'Invalid subtraction of BaseCacheStats objects.'
+              f'Negative value for {key}: {getattr(result, key)}')
+        if getattr(result, key) < 0:
+          result.__dict__[key] = 0
     return result
 
 
@@ -119,9 +157,6 @@ class BaseCacheStats:
 
   saved_estimated_price: float = 0.0
 
-  total_cache_look_fail_reasons: Dict[types.CacheLookFailReason, int] = (
-      dataclasses.field(default_factory=dict))
-
   def __init__(
       self,
       total_cache_hit: int = 0,
@@ -132,7 +167,6 @@ class BaseCacheStats:
       saved_response_token_count: int = 0,
       saved_total_response_time: float = 0.0,
       saved_estimated_price: float = 0.0,
-      total_cache_look_fail_reasons: Dict[types.CacheLookFailReason, int] = {},
   ):
     self.total_cache_hit = total_cache_hit
     self.total_success_return = total_success_return
@@ -142,7 +176,6 @@ class BaseCacheStats:
     self.saved_response_token_count = saved_response_token_count
     self.saved_total_response_time = saved_total_response_time
     self.saved_estimated_price = saved_estimated_price
-    self.total_cache_look_fail_reasons = total_cache_look_fail_reasons
 
   @property
   def saved_total_response_time(self):
@@ -170,13 +203,6 @@ class BaseCacheStats:
       raise ValueError(
           'Invalid addition of BaseCacheStats objects.'
           f'Cannot add BaseCacheStats with {type(other)}')
-    total_cache_look_fail_reasons = copy.deepcopy(
-        self.total_cache_look_fail_reasons)
-    for k, v in other.total_cache_look_fail_reasons.items():
-      if k in total_cache_look_fail_reasons:
-        total_cache_look_fail_reasons[k] += v
-      else:
-        total_cache_look_fail_reasons[k] = v
     return BaseCacheStats(
         total_cache_hit=self.total_cache_hit + other.total_cache_hit,
         total_success_return=(
@@ -190,26 +216,13 @@ class BaseCacheStats:
         saved_total_response_time=(
             self.saved_total_response_time + other.saved_total_response_time),
         saved_estimated_price=(
-            self.saved_estimated_price + other.saved_estimated_price),
-        total_cache_look_fail_reasons=total_cache_look_fail_reasons)
+            self.saved_estimated_price + other.saved_estimated_price))
 
   def __sub__(self, other):
     if not isinstance(other, BaseCacheStats):
       raise ValueError(
           'Invalid subtraction of BaseCacheStats objects.'
           f'Cannot subtract BaseCacheStats with {type(other)}')
-    total_cache_look_fail_reasons = copy.deepcopy(
-        self.total_cache_look_fail_reasons)
-    for k, v in other.total_cache_look_fail_reasons.items():
-      if k in total_cache_look_fail_reasons:
-        total_cache_look_fail_reasons[k] -= v
-      else:
-        raise ValueError(
-            f'Invalid subtraction of BaseCacheStats objects.'
-            f'Key {k} not found in total_cache_look_fail_reasons.')
-    for k in list(total_cache_look_fail_reasons.keys()):
-      if total_cache_look_fail_reasons[k] <= 0:
-        del total_cache_look_fail_reasons[k]
 
     result = BaseCacheStats(
         total_cache_hit=self.total_cache_hit - other.total_cache_hit,
@@ -224,20 +237,15 @@ class BaseCacheStats:
         saved_total_response_time=(
             self.saved_total_response_time - other.saved_total_response_time),
         saved_estimated_price=(
-            self.saved_estimated_price - other.saved_estimated_price),
-        total_cache_look_fail_reasons=total_cache_look_fail_reasons)
+            self.saved_estimated_price - other.saved_estimated_price))
 
     for key in result.__dict__:
-      if isinstance(getattr(result, key), int) and getattr(result, key) < 0:
+      if getattr(result, key) < -0.0001:
         raise ValueError(
-            f'Invalid subtraction of BaseCacheStats objects.'
+            f'Invalid subtraction of BaseProviderStats objects.'
             f'Negative value for {key}: {getattr(result, key)}')
-      elif isinstance(getattr(result, key), dict):
-        for k in getattr(result, key):
-          if getattr(result, key)[k] < 0:
-            raise ValueError(
-                f'Invalid subtraction of BaseCacheStats objects.'
-                f'Negative value for {key}[{k}]: {getattr(result, key)[k]}')
+      if getattr(result, key) < 0:
+        result.__dict__[key] = 0
     return result
 
 
