@@ -13,7 +13,7 @@ _BREAK_CACHES = False
 
 def get_models(verbose=True):
   models = px.models.generate_text(
-      only_largest_models=True,
+      only_largest_models=False,
       verbose=True)
   grouped_models = collections.defaultdict(list)
   for provider, model in models:
@@ -41,7 +41,17 @@ def test_query(break_caches: bool=False):
     return 'ERROR'
 
 
+def print_summary():
+  summary = px.get_summary()
+  summary_json = px.get_summary(json=True)
+  # print(summary)
+  from pprint import pprint
+  pprint(summary_json)
+  print()
+
+
 def run_tests(models, query_func):
+  print_summary()
   print(f'{"PROVIDER":10} | {"MODEL":45} | {"DURATION":13} | {"RESPONSE"}')
   for provider, provider_model in models:
     px.set_model(generate_text=(provider, provider_model))
@@ -52,6 +62,7 @@ def run_tests(models, query_func):
     response = response.strip().split('\n')[0][:100] + (
       '...' if len(response) > 100 else '')
     print(f'{provider:10} | {provider_model:45} | {duration:10.0f} ms | {response}')
+    print_summary()
 
 
 def main():
@@ -61,6 +72,8 @@ def main():
   os.makedirs(logging_path, exist_ok=True)
   px.connect(cache_path=cache_path, logging_path=logging_path)
   models = get_models()
+  models = [
+      model for model in models if model[0] == px_types.Provider.OPENAI]
   run_tests(models, functools.partial(test_query, break_caches=_BREAK_CACHES))
 
 

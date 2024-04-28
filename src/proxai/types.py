@@ -1,7 +1,7 @@
 import dataclasses
 import datetime
 import enum
-from typing import Any, Dict, List, Optional, Tuple, Type, Set, Union
+from typing import Dict, List, Optional, Tuple, Type, Set, Union
 
 
 class RunType(enum.Enum):
@@ -82,6 +82,7 @@ class CohereModel(ProviderModel):
   COMMAND = 'command'
   COMMAND_NIGHTLY = 'command-nightly'
   COMMAND_R = 'command-r'
+  COMMAND_R_PLUS = 'command-r-plus'
 
 
 class DatabricksModel(ProviderModel):
@@ -90,9 +91,13 @@ class DatabricksModel(ProviderModel):
   Models provided by Databricks:
   https://docs.databricks.com/en/machine-learning/foundation-models/index.html#provisioned-throughput-foundation-model-apis
   """
-  DATABRICKS_DBRX_INSTRUCT = 'databricks-dbrx-instruct'
-  DATABRICKS_MIXTRAL_8x7b_INSTRUCT = 'databricks-mixtral-8x7b-instruct'
-  DATABRICKS_LLAMA_2_70b_CHAT = 'databricks-llama-2-70b-chat'
+  DBRX_INSTRUCT = 'databricks-dbrx-instruct'
+  MIXTRAL_8x7B_INSTRUCT = 'databricks-mixtral-8x7b-instruct'
+  LLAMA_2_70B_CHAT = 'databricks-llama-2-70b-chat'
+  LLAMA_3_70B_INSTRUCT = 'databricks-meta-llama-3-70b-instruct'
+  BGE_LARGE_EN = 'databricks-bge-large-en'
+  MPT_30B_INSTRUCT = 'databricks-mpt-30b-instruct'
+  MPT_7B_INSTRUCT = 'databricks-mpt-7b-instruct'
 
 
 class MistralModel(ProviderModel):
@@ -103,6 +108,7 @@ class MistralModel(ProviderModel):
   """
   OPEN_MISTRAL_7B = 'open-mistral-7b'
   OPEN_MIXTRAL_8X7B = 'open-mixtral-8x7b'
+  OPEN_MIXTRAL_8x22B  = 'open-mixtral-8x22b'
   MISTRAL_SMALL_LATEST = 'mistral-small-latest'
   MISTRAL_MEDIUM_LATEST = 'mistral-medium-latest'
   MISTRAL_LARGE_LATEST = 'mistral-large-latest'
@@ -171,11 +177,16 @@ GENERATE_TEXT_MODELS: Dict[Provider, List[Type[ProviderModel]]] = {
         CohereModel.COMMAND,
         CohereModel.COMMAND_NIGHTLY,
         CohereModel.COMMAND_R,
+        CohereModel.COMMAND_R_PLUS,
     ],
     Provider.DATABRICKS: [
-        DatabricksModel.DATABRICKS_DBRX_INSTRUCT,
-        DatabricksModel.DATABRICKS_MIXTRAL_8x7b_INSTRUCT,
-        DatabricksModel.DATABRICKS_LLAMA_2_70b_CHAT,
+        DatabricksModel.DBRX_INSTRUCT,
+        DatabricksModel.MIXTRAL_8x7B_INSTRUCT,
+        DatabricksModel.LLAMA_2_70B_CHAT,
+        DatabricksModel.LLAMA_3_70B_INSTRUCT,
+        DatabricksModel.BGE_LARGE_EN,
+        DatabricksModel.MPT_30B_INSTRUCT,
+        DatabricksModel.MPT_7B_INSTRUCT,
     ],
     Provider.MISTRAL: [
         MistralModel.OPEN_MISTRAL_7B,
@@ -224,6 +235,11 @@ class CacheOptions:
 
 
 @dataclasses.dataclass
+class SummaryOptions:
+  json: bool = True
+
+
+@dataclasses.dataclass
 class QueryRecord:
   call_type: Optional[CallType] = None
   model: Optional[ModelType] = None
@@ -268,8 +284,8 @@ class LightCacheRecord:
 class CacheLookFailReason(str, enum.Enum):
   CACHE_NOT_FOUND = 'cache_not_found'
   CACHE_NOT_MATCHED = 'cache_not_matched'
-  RESPONSES_NOT_REACHED_LIMIT = 'responses_not_reached_limit'
-  ERROR_CACHED = 'error_cached'
+  UNIQUE_RESPONSE_LIMIT_NOT_REACHED = 'unique_response_limit_not_reached'
+  PROVIDER_ERROR_CACHED = 'provider_error_cached'
 
 
 @dataclasses.dataclass

@@ -27,6 +27,42 @@ class GeminiConnector(ModelConnector):
       query_record.system = None
     return query_record
 
+  def _get_token_count(self, logging_record: types.LoggingRecord):
+    # Note: This temporary implementation is not accurate.
+    # Better version should be calculated from the api response or at least
+    # libraries like tiktoker.
+    return logging_record.query_record.max_tokens
+
+  def _get_query_token_count(self, logging_record: types.LoggingRecord):
+    # Note: Not implemented yet.
+    return 0
+
+  def _get_response_token_count(self, logging_record: types.LoggingRecord):
+    # Note: Not implemented yet.
+    return logging_record.query_record.max_tokens
+
+  def _get_estimated_price(self, logging_record: types.LoggingRecord):
+    # Note: Not implemented yet.
+    # Needs to get updated all the time.
+    # This is just a temporary implementation.
+    query_token_count = self._get_query_token_count(logging_record)
+    response_token_count = self._get_response_token_count(logging_record)
+    _, provider_model = logging_record.query_record.model
+    if provider_model == types.GeminiModel.GEMINI_1_5_PRO_LATEST:
+      return ((query_token_count / 1000000) * 7.0
+              + (response_token_count / 1000000) * 21.0)
+    elif provider_model in [
+        types.GeminiModel.GEMINI_1_0_PRO,
+        types.GeminiModel.GEMINI_1_0_PRO_001,
+        types.GeminiModel.GEMINI_1_0_PRO_LATEST,
+        types.GeminiModel.GEMINI_1_0_PRO_VISION_LATEST,
+        types.GeminiModel.GEMINI_PRO,
+        types.GeminiModel.GEMINI_PRO_VISION]:
+      return ((query_token_count / 1000000) * 0.5
+              + (response_token_count / 1000000) * 1.5)
+    else:
+      raise ValueError(f'Model not found.\n{logging_record.query_record.model}')
+
   def generate_text_proc(self, query_record: types.QueryRecord) -> str:
     # Note: Gemini uses 'user' and 'model' as roles.  'system_instruction' is a
     # different parameter.
