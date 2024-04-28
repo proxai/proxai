@@ -1,9 +1,11 @@
+import copy
 import datetime
 import traceback
+import types as builtins_types
 import functools
 import os
 import random
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 import proxai.types as types
 import proxai.type_utils as type_utils
 from proxai.connectors.model_connector import ModelConnector
@@ -16,6 +18,8 @@ from proxai.connectors.mistral import MistralConnector
 from proxai.connectors.hugging_face import HuggingFaceConnector
 import proxai.caching.model_cache as model_cache
 import proxai.caching.query_cache as query_cache
+import proxai.serializers.type_serializer as type_serializer
+import proxai.stat_types as stat_types
 import multiprocessing
 
 _RUN_TYPE: types.RunType = types.RunType.PRODUCTION
@@ -25,6 +29,10 @@ _LOGGING_OPTIONS: types.LoggingOptions = types.LoggingOptions()
 _CACHE_OPTIONS: types.CacheOptions = types.CacheOptions()
 _QUERY_CACHE_MANAGER: Optional[query_cache.QueryCacheManager] = None
 _STRICT_FEATURE_TEST: bool = False
+_STATS: Dict[str, stat_types.RunStats] = {
+    stat_types.GlobalStatType.RUN_TIME: stat_types.RunStats(),
+    stat_types.GlobalStatType.SINCE_CONNECT: stat_types.RunStats()
+}
 
 CacheOptions = types.CacheOptions
 LoggingOptions = types.LoggingOptions
@@ -37,12 +45,14 @@ def _init_globals():
   global _CACHE_OPTIONS
   global _QUERY_CACHE_MANAGER
   global _STRICT_FEATURE_TEST
+  global _STATS
   _REGISTERED_VALUES = {}
   _INITIALIZED_MODEL_CONNECTORS = {}
   _LOGGING_OPTIONS = types.LoggingOptions()
   _CACHE_OPTIONS = types.CacheOptions()
   _QUERY_CACHE_MANAGER = None
   _STRICT_FEATURE_TEST = False
+  _STATS[stat_types.GlobalStatType.SINCE_CONNECT] = stat_types.RunStats()
 
 
 def _set_run_type(run_type: types.RunType):
@@ -100,6 +110,7 @@ def connect(
 def _init_model_connector(model: types.ModelType) -> ModelConnector:
   global _LOGGING_OPTIONS
   global _QUERY_CACHE_MANAGER
+  global _STATS
   provider, _ = model
   connector = None
   if provider == types.Provider.OPENAI:
@@ -123,7 +134,8 @@ def _init_model_connector(model: types.ModelType) -> ModelConnector:
       connector,
       model=model,
       run_type=_RUN_TYPE,
-      strict_feature_test=_STRICT_FEATURE_TEST)
+      strict_feature_test=_STRICT_FEATURE_TEST,
+      stats=_STATS)
 
   if _QUERY_CACHE_MANAGER:
     connector = functools.partial(
@@ -199,9 +211,23 @@ def generate_text(
   return logging_record.response_record.response
 
 
-def get_summary(since_start: bool = False):
-  raise ValueError('Not implemented yet. We are looking for contributors! '
-                   'github.com/proxai/proxai')
+def get_summary(
+    run_time: bool = False,
+    json: bool = False) -> Union[stat_types.RunStats, Dict[str, Any]]:
+  stat_value = None
+  if run_time:
+    stat_value = copy.deepcopy(_STATS[stat_types.GlobalStatType.RUN_TIME])
+  else:
+    stat_value = copy.deepcopy(_STATS[stat_types.GlobalStatType.SINCE_CONNECT])
+  if json:
+    return type_serializer.encode_run_stats(stat_value)
+  class StatValue(stat_types.RunStats):
+    def __init__(self, stat_value):
+      super().__init__(**stat_value.__dict__)
+
+    def serialize(self):
+      return type_serializer.encode_run_stats(self)
+  return StatValue(stat_value)
 
 
 class AvailableModels:
