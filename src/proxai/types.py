@@ -224,6 +224,11 @@ class CacheOptions:
 
 
 @dataclasses.dataclass
+class SummaryOptions:
+  json: bool = True
+
+
+@dataclasses.dataclass
 class QueryRecord:
   call_type: Optional[CallType] = None
   model: Optional[ModelType] = None

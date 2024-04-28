@@ -1,5 +1,6 @@
 import copy
 import dataclasses
+import enum
 from typing import Dict, List, Optional
 import proxai.types as types
 
@@ -229,13 +230,13 @@ class BaseCacheStats:
     for key in result.__dict__:
       if isinstance(getattr(result, key), int) and getattr(result, key) < 0:
         raise ValueError(
-            f'Invalid addition of BaseCacheStats objects.'
+            f'Invalid subtraction of BaseCacheStats objects.'
             f'Negative value for {key}: {getattr(result, key)}')
       elif isinstance(getattr(result, key), dict):
         for k in getattr(result, key):
           if getattr(result, key)[k] < 0:
             raise ValueError(
-                f'Invalid addition of BaseCacheStats objects.'
+                f'Invalid subtraction of BaseCacheStats objects.'
                 f'Negative value for {key}[{k}]: {getattr(result, key)[k]}')
     return result
 
@@ -375,6 +376,11 @@ class ProviderStats(BaseStats):
           'Invalid subtraction of ProviderStats objects.'
           f'Cannot subtract ProviderStats with {type(other)}')
     return result
+
+
+class GlobalStatType(str, enum.Enum):
+  RUN_TIME = 'run_time'
+  SINCE_CONNECT = 'since_connect'
 
 
 @dataclasses.dataclass

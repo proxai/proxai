@@ -6,6 +6,7 @@ import proxai.types as types
 from proxai.logging.utils import log_query_record, log_message
 import proxai.caching.query_cache as query_cache
 import proxai.type_utils as type_utils
+import proxai.stat_types as stats_type
 import proxai.serializers.hash_serializer as hash_serializer
 
 
@@ -18,6 +19,7 @@ class ModelConnector(object):
   query_cache_manager: Optional[query_cache.QueryCacheManager] = None
   _api: Optional[Any] = None
   _logging_options: Optional[Dict] = None
+  _stats: Optional[Dict[str, stats_type.RunStats]] = None
 
   def __init__(
       self,
@@ -25,7 +27,8 @@ class ModelConnector(object):
       run_type: types.RunType,
       logging_options: Optional[dict] = None,
       strict_feature_test: bool = False,
-      query_cache_manager: Optional[query_cache.QueryCacheManager] = None):
+      query_cache_manager: Optional[query_cache.QueryCacheManager] = None,
+      stats: Optional[Dict[str, stats_type.RunStats]] = None):
     self.model = model
     self.provider, self.provider_model = model
     self.run_type = run_type
@@ -34,6 +37,8 @@ class ModelConnector(object):
       self._logging_options = logging_options
     if query_cache_manager:
       self.query_cache_manager = query_cache_manager
+    if stats:
+      self._stats = stats
 
   @property
   def api(self):
@@ -67,6 +72,79 @@ class ModelConnector(object):
           logging_options=self._logging_options,
           query_record=query_record,
           message=message)
+
+  def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
+    raise NotImplementedError
+
+  def _get_token_count(
+      self, logging_record: types.LoggingRecord) -> int:
+    raise NotImplementedError
+
+  def _get_query_token_count(
+      self, logging_record: types.LoggingRecord) -> int:
+    raise NotImplementedError
+
+  def _get_response_token_count(
+      self, logging_record: types.LoggingRecord) -> int:
+    raise NotImplementedError
+
+  def _get_estimated_price(
+      self, logging_record: types.LoggingRecord) -> float:
+    raise NotImplementedError
+
+  def _update_stats(self, logging_record: types.LoggingRecord):
+    if not self._stats:
+      return
+    model = logging_record.query_record.model
+    provider_stats = stats_type.BaseProviderStats()
+    cache_stats = stats_type.BaseCacheStats()
+    if logging_record.response_source == types.ResponseSource.PROVIDER:
+      provider_stats.total_queries = 1
+      if logging_record.response_record.response:
+        provider_stats.total_successes = 1
+      else:
+        provider_stats.total_fails = 1
+      provider_stats.total_token_count = self._get_token_count(
+          logging_record=logging_record)
+      provider_stats.total_query_token_count = self._get_query_token_count(
+          logging_record=logging_record)
+      provider_stats.total_response_token_count = (
+          self._get_response_token_count(
+            logging_record=logging_record))
+      provider_stats.total_response_time = (
+          logging_record.response_record.response_time.total_seconds())
+      provider_stats.estimated_price = self._get_estimated_price(
+          logging_record=logging_record)
+    elif logging_record.response_source == types.ResponseSource.CACHE:
+      cache_stats.total_cache_hit = 1
+      if logging_record.response_record.response:
+        cache_stats.total_success_return = 1
+      else:
+        cache_stats.total_fail_return = 1
+      cache_stats.saved_token_count = self._get_token_count(
+          logging_record=logging_record)
+      cache_stats.saved_query_token_count = self._get_query_token_count(
+          logging_record=logging_record)
+      cache_stats.saved_response_token_count = (
+          self._get_response_token_count(
+            logging_record=logging_record))
+      cache_stats.saved_total_response_time = (
+          logging_record.response_record.response_time.total_seconds())
+      cache_stats.saved_estimated_price = self._get_estimated_price(
+          logging_record=logging_record)
+    else:
+      raise ValueError(
+        f'Invalid response source.\n{logging_record.response_source}')
+
+    model_stats = stats_type.ModelStats(
+        model=model,
+        provider_stats=provider_stats,
+        cache_stats=cache_stats)
+    self._stats[stats_type.GlobalStatType.RUN_TIME] += model_stats
+    self._stats[stats_type.GlobalStatType.SINCE_CONNECT] += model_stats
+
+  def generate_text_proc(self, query_record: types.QueryRecord) -> dict:
+    raise NotImplementedError
 
   def generate_text(
       self,
@@ -124,6 +202,7 @@ class ModelConnector(object):
         log_query_record(
             logging_options=self._logging_options,
             logging_record=logging_record)
+        self._update_stats(logging_record=logging_record)
         return logging_record
       logging_record = types.LoggingRecord(
           query_record=query_record,
@@ -167,10 +246,5 @@ class ModelConnector(object):
     log_query_record(
         logging_options=self._logging_options,
         logging_record=logging_record)
+    self._update_stats(logging_record=logging_record)
     return logging_record
-
-  def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
-    raise NotImplementedError
-
-  def generate_text_proc(self, query_record: types.QueryRecord) -> dict:
-    raise NotImplementedError

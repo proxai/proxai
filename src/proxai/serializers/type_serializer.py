@@ -332,8 +332,6 @@ def decode_base_provider_stats(
         record['total_response_token_count'])
   if 'total_response_time' in record:
     base_provider_stats.total_response_time = record['total_response_time']
-  if 'avr_response_time' in record:
-    base_provider_stats.avr_response_time = record['avr_response_time']
   if 'estimated_price' in record:
     base_provider_stats.estimated_price = record['estimated_price']
 
@@ -386,8 +384,6 @@ def decode_base_cache_stats(record) -> stat_types.BaseCacheStats:
   if 'saved_total_response_time' in record:
     base_cache_stats.saved_total_response_time = (
         record['saved_total_response_time'])
-  if 'saved_avr_response_time' in record:
-    base_cache_stats.saved_avr_response_time = record['saved_avr_response_time']
   if 'saved_estimated_price' in record:
     base_cache_stats.saved_estimated_price = record['saved_estimated_price']
   if 'total_cache_look_fail_reasons' in record:
@@ -403,9 +399,10 @@ def encode_model_stats(
   if model_stats.model:
     record['model'] = encode_model_type(model_stats.model)
   if model_stats.provider_stats:
-    record['provider_stats'] = model_stats.provider_stats.encode()
+    record['provider_stats'] = encode_base_provider_stats(
+        model_stats.provider_stats)
   if model_stats.cache_stats:
-    record['cache_stats'] = model_stats.cache_stats.encode()
+    record['cache_stats'] = encode_base_cache_stats(model_stats.cache_stats)
   return record
 
 
@@ -427,14 +424,16 @@ def encode_provider_stats(
   if provider_stats.provider:
     record['provider'] = provider_stats.provider.value
   if provider_stats.provider_stats:
-    record['provider_stats'] = decode_base_provider_stats(
+    record['provider_stats'] = encode_base_provider_stats(
         provider_stats.provider_stats)
   if provider_stats.cache_stats:
-    record['cache_stats'] = decode_base_cache_stats(provider_stats.cache_stats)
+    record['cache_stats'] = encode_base_cache_stats(provider_stats.cache_stats)
   if provider_stats.models:
-    record['models'] = {}
+    record['models'] = []
     for k, v in provider_stats.models.items():
-      record['models'][encode_model_type(k)] = v.encode()
+      value = encode_model_type(k)
+      value['model_stats'] = encode_model_stats(v)
+      record['models'].append(value)
   return record
 
 
@@ -450,6 +449,13 @@ def decode_provider_stats(record: Dict[str, Any]) -> stat_types.ProviderStats:
         provider_stats.cache_stats)
   if 'models' in record:
     provider_stats.models = {}
+    for model_record in record['models']:
+      model_type = decode_model_type({
+          'provider': model_record['provider'],
+          'provider_model': model_record['provider_model']
+      })
+      provider_stats.models[model_type] = decode_model_stats(
+          model_record['model_stats'])
     for k, v in record['models'].items():
       provider_stats.models[decode_model_type(k)] = decode_model_stats(v)
 
@@ -458,14 +464,14 @@ def encode_run_stats(
     run_stats: stat_types.RunStats) -> Dict[str, Any]:
   record = {}
   if run_stats.provider_stats:
-    record['provider_stats'] = encode_provider_stats(
+    record['provider_stats'] = encode_base_provider_stats(
         run_stats.provider_stats)
   if run_stats.cache_stats:
     record['cache_stats'] = encode_base_cache_stats(run_stats.cache_stats)
   if run_stats.provider_stats:
     record['providers'] = {}
     for k, v in run_stats.providers.items():
-      record['providers'][k.value] = decode_provider_stats(v)
+      record['providers'][k.value] = encode_provider_stats(v)
   return record
 
 
