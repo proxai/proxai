@@ -3,13 +3,13 @@ from importlib.metadata import version
 from proxai.proxai import (
     generate_text,
     get_summary,
+    get_available_models,
     set_model,
     CacheOptions,
     LoggingOptions,
     connect,
-    AvailableModels,
 )
 
 
 __version__ = version("proxai")
-models = AvailableModels()
+models = get_available_models()
