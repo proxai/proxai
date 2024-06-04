@@ -66,7 +66,10 @@ def main():
   logging_path = f'{Path.home()}/proxai_log/ask_about_model/'
   os.makedirs(cache_path, exist_ok=True)
   os.makedirs(logging_path, exist_ok=True)
-  px.connect(cache_path=cache_path, logging_path=logging_path)
+  px.connect(
+    experiment_name='ask_about_model',
+    cache_path=cache_path,
+    logging_path=logging_path)
   models = get_models()
   run_tests(models, functools.partial(test_query, break_caches=_BREAK_CACHES))
 
