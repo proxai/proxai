@@ -1,13 +1,14 @@
 import datetime
 import traceback
 import functools
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 import proxai.types as types
-from proxai.logging.utils import log_query_record, log_message
+from proxai.logging.utils import log_logging_record, log_message, log_proxdash_message
 import proxai.caching.query_cache as query_cache
 import proxai.type_utils as type_utils
 import proxai.stat_types as stats_type
 import proxai.serializers.hash_serializer as hash_serializer
+import proxai.connections.proxdash as proxdash
 
 
 class ModelConnector(object):
@@ -18,23 +19,43 @@ class ModelConnector(object):
   strict_feature_test: bool = False
   query_cache_manager: Optional[query_cache.QueryCacheManager] = None
   _api: Optional[Any] = None
-  _logging_options: Optional[Dict] = None
   _stats: Optional[Dict[str, stats_type.RunStats]] = None
+  _logging_options: Optional[types.LoggingOptions] = None
+  _get_logging_options: Optional[Dict] = None
+  _proxdash_connection: Optional[proxdash.ProxDashConnection] = None
+  _get_proxdash_connection: Optional[
+      Callable[[bool], proxdash.ProxDashConnection]] = None
 
   def __init__(
       self,
       model: types.ModelType,
       run_type: types.RunType,
-      logging_options: Optional[dict] = None,
       strict_feature_test: bool = False,
       query_cache_manager: Optional[query_cache.QueryCacheManager] = None,
-      stats: Optional[Dict[str, stats_type.RunStats]] = None):
+      stats: Optional[Dict[str, stats_type.RunStats]] = None,
+      logging_options: Optional[types.LoggingOptions] = None,
+      get_logging_options: Optional[Callable[[], types.LoggingOptions]] = None,
+      proxdash_connection: Optional[proxdash.ProxDashConnection] = None,
+      get_proxdash_connection: Optional[
+          Callable[[bool], proxdash.ProxDashConnection]] = None):
+    if logging_options and get_logging_options:
+      raise ValueError(
+          'logging_options and get_logging_options cannot be set at the same '
+          'time.')
+
+    if proxdash_connection and get_proxdash_connection:
+      raise ValueError(
+          'proxdash_connection and get_proxdash_connection cannot be set at '
+          'the same time.')
+
     self.model = model
     self.provider, self.provider_model = model
     self.run_type = run_type
     self.strict_feature_test = strict_feature_test
-    if logging_options:
-      self._logging_options = logging_options
+    self.logging_options = logging_options
+    self._get_logging_options = get_logging_options
+    self.proxdash_connection = proxdash_connection
+    self._get_proxdash_connection = get_proxdash_connection
     if query_cache_manager:
       self.query_cache_manager = query_cache_manager
     if stats:
@@ -49,6 +70,30 @@ class ModelConnector(object):
         self._api = self.init_mock_model()
     return self._api
 
+  @property
+  def logging_options(self):
+    if self._logging_options:
+      return self._logging_options
+    if self._get_logging_options:
+      return self._get_logging_options()
+    return None
+
+  @logging_options.setter
+  def logging_options(self, value):
+    self._logging_options = value
+
+  @property
+  def proxdash_connection(self):
+    if self._proxdash_connection:
+      return self._proxdash_connection
+    if self._get_proxdash_connection:
+      return self._get_proxdash_connection()
+    return None
+
+  @proxdash_connection.setter
+  def proxdash_connection(self, value):
+    self._proxdash_connection = value
+
   def init_model(self):
     raise NotImplementedError
 
@@ -62,14 +107,14 @@ class ModelConnector(object):
     if self.strict_feature_test:
       log_message(
           type=types.LoggingType.ERROR,
-          logging_options=self._logging_options,
+          logging_options=self.logging_options,
           query_record=query_record,
           message=message)
       raise Exception(message)
     else:
       log_message(
           type=types.LoggingType.WARNING,
-          logging_options=self._logging_options,
+          logging_options=self.logging_options,
           query_record=query_record,
           message=message)
 
@@ -145,6 +190,20 @@ class ModelConnector(object):
     self._stats[stats_type.GlobalStatType.RUN_TIME] += model_stats
     self._stats[stats_type.GlobalStatType.SINCE_CONNECT] += model_stats
 
+  def _update_proxdash(self, logging_record: types.LoggingRecord):
+    if not self.proxdash_connection:
+      return
+    try:
+      self.proxdash_connection.upload_logging_record(logging_record)
+    except Exception as e:
+      log_proxdash_message(
+          logging_options=self.logging_options,
+          message=(
+              'ProxDash upload_logging_record failed.\n'
+              f'Error message: {e}\n'
+              f'Traceback: {traceback.format_exc()}'),
+          type=types.LoggingType.ERROR)
+
   def generate_text_proc(self, query_record: types.QueryRecord) -> dict:
     raise NotImplementedError
 
@@ -202,18 +261,19 @@ class ModelConnector(object):
             query_record=query_record,
             response_record=response_record,
             response_source=types.ResponseSource.CACHE)
-        log_query_record(
-            logging_options=self._logging_options,
+        log_logging_record(
+            logging_options=self.logging_options,
             logging_record=logging_record)
         self._update_stats(logging_record=logging_record)
+        self._update_proxdash(logging_record=logging_record)
         return logging_record
       look_fail_reason = cache_look_result.look_fail_reason
       logging_record = types.LoggingRecord(
           query_record=query_record,
           look_fail_reason=look_fail_reason,
           response_source=types.ResponseSource.CACHE)
-      log_query_record(
-          logging_options=self._logging_options,
+      log_logging_record(
+          logging_options=self.logging_options,
           logging_record=logging_record)
 
     response, error, error_traceback = None, None, None
@@ -248,8 +308,9 @@ class ModelConnector(object):
         response_record=response_record,
         look_fail_reason=look_fail_reason,
         response_source=types.ResponseSource.PROVIDER)
-    log_query_record(
-        logging_options=self._logging_options,
+    log_logging_record(
+        logging_options=self.logging_options,
         logging_record=logging_record)
     self._update_stats(logging_record=logging_record)
+    self._update_proxdash(logging_record=logging_record)
     return logging_record

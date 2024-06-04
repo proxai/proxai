@@ -1,3 +1,4 @@
+import copy
 import datetime
 import multiprocessing
 import os
@@ -6,23 +7,52 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 import proxai.types as types
 import proxai.caching.model_cache as model_cache
 from proxai.connectors.model_connector import ModelConnector
+from proxai.connections.proxdash import ProxDashConnection
 
 
 class AvailableModels:
   _model_cache: Optional[model_cache.ModelCache] = None
   _generate_text: Dict[types.ModelType, Any] = {}
+  _cache_options: types.CacheOptions
   _get_cache_options: Callable[[], types.CacheOptions]
+  _logging_options: types.LoggingOptions
+  _get_logging_options: Callable[[], types.LoggingOptions]
+  _proxdash_connection: ProxDashConnection
+  _get_proxdash_connection: Callable[[], ProxDashConnection]
   _get_initialized_model_connectors: Callable[
       [], Dict[types.ModelType, ModelConnector]]
+  _init_model_connector: Callable[[types.ModelType], ModelConnector]
   _providers_with_key: Set[types.Provider] = set()
 
   def __init__(
       self,
-      get_cache_options: Callable[[], types.CacheOptions],
       get_initialized_model_connectors: Callable[
           [], Dict[types.ModelType, ModelConnector]],
-      init_model_connector: Callable[[types.ModelType], ModelConnector]):
+      init_model_connector: Callable[[types.ModelType], ModelConnector],
+      cache_options: Optional[types.CacheOptions] = None,
+      get_cache_options: Optional[Callable[[], types.CacheOptions]] = None,
+      logging_options: Optional[types.LoggingOptions] = None,
+      get_logging_options: Optional[Callable[[], types.LoggingOptions]] = None,
+      proxdash_connection: Optional[ProxDashConnection] = None,
+      get_proxdash_connection: Optional[
+          Callable[[], ProxDashConnection]] = None):
+    if cache_options and get_cache_options:
+      raise ValueError(
+          'Only one of cache_options or get_cache_options should be provided.')
+    if logging_options and get_logging_options:
+      raise ValueError(
+          'Only one of logging_options or get_logging_options should be '
+          'provided.')
+    if proxdash_connection and get_proxdash_connection:
+      raise ValueError(
+          'Only one of proxdash_connection or get_proxdash_connection should '
+          'be provided.')
+    self.cache_options = cache_options
     self._get_cache_options = get_cache_options
+    self.logging_options = logging_options
+    self._get_logging_options = get_logging_options
+    self.proxdash_connection = proxdash_connection
+    self._get_proxdash_connection = get_proxdash_connection
     self._get_initialized_model_connectors = get_initialized_model_connectors
     self._init_model_connector= init_model_connector
     self._load_provider_keys()
@@ -37,11 +67,47 @@ class AvailableModels:
       if provider_flag:
         self._providers_with_key.add(provider)
 
+  @property
+  def cache_options(self) -> types.CacheOptions:
+    if self._cache_options:
+      return self._cache_options
+    if self._get_cache_options:
+      return self._get_cache_options()
+    return None
+
+  @cache_options.setter
+  def cache_options(self, cache_options: types.CacheOptions):
+    self._cache_options = cache_options
+
+  @property
+  def logging_options(self) -> types.LoggingOptions:
+    if self._logging_options:
+      return self._logging_options
+    if self._get_logging_options:
+      return self._get_logging_options()
+    return None
+
+  @logging_options.setter
+  def logging_options(self, logging_options: types.LoggingOptions):
+    self._logging_options = logging_options
+
+  @property
+  def proxdash_connection(self) -> ProxDashConnection:
+    if self._proxdash_connection:
+      return self._proxdash_connection
+    if self._get_proxdash_connection:
+      return self._get_proxdash_connection()
+    return None
+
+  @proxdash_connection.setter
+  def proxdash_connection(self, proxdash_connection: ProxDashConnection):
+    self._proxdash_connection = proxdash_connection
+
   def generate_text(
       self,
       only_largest_models: bool = False,
       verbose: bool = False,
-      failed_models: bool = False
+      return_all: bool = False
   ) -> List[types.ModelType]:
     start_time = datetime.datetime.now()
     models = types.ModelStatus()
@@ -49,8 +115,8 @@ class AvailableModels:
     self._filter_by_provider_key(models)
     self._filter_by_cache(models, call_type=types.CallType.GENERATE_TEXT)
 
-    # TODO: This very experimental and require proper design. One alternative is
-    # registering models according to their sizes in px.types. Then, find
+    # TODO: This is very experimental and require proper design. One alternative
+    # is registering models according to their sizes in px.types. Then, find
     # working largest model for each provider.
     if only_largest_models:
       _allowed_models = set([
@@ -87,8 +153,10 @@ class AvailableModels:
       duration = (end_time - start_time).total_seconds()
       print(f'Test duration: {duration} seconds.')
 
-    if failed_models:
-      return self._format_set(models.failed_models)
+    if return_all:
+      return (
+          self._format_set(models.working_models),
+          self._format_set(models.failed_models))
     return self._format_set(models.working_models)
 
   def _get_all_models(self, models: types.ModelStatus, call_type: str):
@@ -121,11 +189,10 @@ class AvailableModels:
       self,
       models: types.ModelStatus,
       call_type: str):
-    cache_options = self._get_cache_options()
-    if not cache_options.path:
+    if not self.cache_options.path:
       return
     if not self._model_cache:
-      self._model_cache = model_cache.ModelCache(cache_options)
+      self._model_cache = model_cache.ModelCache(self.cache_options)
     cache_result = self._model_cache.get(call_type=call_type)
 
     def _remove_model(model: types.ModelType):
@@ -148,11 +215,18 @@ class AvailableModels:
   @staticmethod
   def _test_generate_text(
       model: types.ModelType,
-      model_connector: ModelConnector
+      model_connector: ModelConnector,
+      logging_options: types.LoggingOptions,
+      proxdash_connection: ProxDashConnection
   ) -> List[types.LoggingRecord]:
     start_time = datetime.datetime.now()
-    prompt = 'Hello model!?'
+    prompt = 'Hello model!'
     max_tokens = 100
+    model_connector = copy.deepcopy(model_connector)
+    model_connector._logging_options = logging_options
+    model_connector._get_logging_options = None
+    model_connector._proxdash_connection = proxdash_connection
+    model_connector._get_proxdash_connection = None
     try:
       logging_record = model_connector.generate_text(
           model=model,
@@ -195,7 +269,11 @@ class AvailableModels:
     for test_model in test_models:
       result = pool.apply_async(
           test_func,
-          args=(test_model, initialized_model_connectors[test_model]))
+          args=(
+              test_model,
+              initialized_model_connectors[test_model],
+              self.logging_options,
+              self.proxdash_connection))
       test_results.append(result)
     pool.close()
     pool.join()
@@ -211,11 +289,10 @@ class AvailableModels:
         models.failed_models.add(logging_record.query_record.model)
         update_models.failed_models.add(logging_record.query_record.model)
       update_models.provider_queries.append(logging_record)
-    cache_options = self._get_cache_options()
-    if not cache_options.path:
+    if not self.cache_options.path:
       return
     if not self._model_cache:
-      self._model_cache = model_cache.ModelCache(cache_options)
+      self._model_cache = model_cache.ModelCache(self.cache_options)
     self._model_cache.update(model_status=update_models, call_type=call_type)
 
   def _format_set(
