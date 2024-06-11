@@ -247,6 +247,8 @@ def connect(
     _LOGGING_OPTIONS.prompt = logging_options.prompt
     _LOGGING_OPTIONS.response = logging_options.response
     _LOGGING_OPTIONS.error = logging_options.error
+    _LOGGING_OPTIONS.stdout = logging_options.stdout
+    _LOGGING_OPTIONS.proxdash_stdout = logging_options.proxdash_stdout
 
   _STRICT_FEATURE_TEST = strict_feature_test
 

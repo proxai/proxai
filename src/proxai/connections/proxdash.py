@@ -11,6 +11,7 @@ _PROXDASH_BACKEND_URL = 'https://proxainest-production.up.railway.app'
 
 
 class ProxDashConnection(object):
+  _experiment_name: str = '(not set)'
   _hidden_run_key: str
   _logging_options: types.LoggingOptions
   _get_logging_options: Optional[Callable[[], types.LoggingOptions]]
@@ -100,6 +101,8 @@ class ProxDashConnection(object):
 
   @experiment_name.setter
   def experiment_name(self, experiment_name) -> str:
+    if self._experiment_name == experiment_name:
+      return
     experiment.validate_experiment_name(experiment_name)
     self._experiment_name = experiment_name
     if self.status == types.ProxDashConnectionStatus.CONNECTED:
