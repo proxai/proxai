@@ -257,6 +257,9 @@ class ModelConnector(object):
       except Exception as e:
         pass
       if response_record:
+        response_record.end_time = datetime.datetime.now()
+        response_record.start_time = (
+            response_record.end_time - response_record.response_time)
         logging_record = types.LoggingRecord(
             query_record=query_record,
             response_record=response_record,
