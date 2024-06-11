@@ -69,7 +69,8 @@ def main():
   px.connect(
     experiment_name='ask_about_model',
     cache_path=cache_path,
-    logging_path=logging_path)
+    logging_path=logging_path,
+    logging_options=px.LoggingOptions(proxdash_stdout=True))
   models = get_models()
   run_tests(models, functools.partial(test_query, break_caches=_BREAK_CACHES))
 
