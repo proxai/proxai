@@ -66,7 +66,7 @@ class TestAvailableModels:
     proxai._set_run_type(types.RunType.TEST)
     with tempfile.TemporaryDirectory() as cache_dir:
       proxai.connect(cache_path=cache_dir)
-      available_models = proxai.AvailableModels()
+      available_models = proxai.get_available_models()
       available_models._providers_with_key = [
           types.Provider.OPENAI, types.Provider.CLAUDE]
       models = types.ModelStatus()
@@ -106,7 +106,7 @@ class TestAvailableModels:
       save_cache.update(
           model_status=data, call_type=types.CallType.GENERATE_TEXT)
 
-      available_models = proxai.AvailableModels()
+      available_models = proxai.get_available_models()
       available_models._providers_with_key = [types.Provider.OPENAI]
       models = types.ModelStatus()
       available_models._get_all_models(
@@ -125,7 +125,7 @@ class TestAvailableModels:
     proxai._set_run_type(types.RunType.TEST)
     with tempfile.TemporaryDirectory() as cache_dir:
       proxai.connect(cache_path=cache_dir)
-      available_models = proxai.AvailableModels()
+      available_models = proxai.get_available_models()
       available_models._providers_with_key = [types.Provider.OPENAI]
       models = types.ModelStatus()
       available_models._get_all_models(
@@ -160,7 +160,7 @@ class TestAvailableModels:
     proxai._set_run_type(types.RunType.TEST)
     with tempfile.TemporaryDirectory() as cache_dir:
       proxai.connect(cache_path=cache_dir)
-      available_models = proxai.AvailableModels()
+      available_models = proxai.get_available_models()
       available_models._providers_with_key = [types.Provider.OPENAI]
       models = available_models.generate_text()
       assert models == [
@@ -194,7 +194,7 @@ class TestAvailableModels:
           (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)] = (
               'failing_connector')
 
-      available_models = proxai.AvailableModels()
+      available_models = proxai.get_available_models()
 
       # _filter_by_provider_key filter
       available_models._providers_with_key = [types.Provider.OPENAI]

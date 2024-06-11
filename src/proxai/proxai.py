@@ -1,11 +1,7 @@
 import copy
-import datetime
-import traceback
-import types as builtins_types
 import functools
 import os
-import random
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 import proxai.types as types
 import proxai.type_utils as type_utils
 from proxai.connectors.model_connector import ModelConnector
@@ -16,13 +12,17 @@ from proxai.connectors.cohere_api import CohereConnector
 from proxai.connectors.databricks import DatabricksConnector
 from proxai.connectors.mistral import MistralConnector
 from proxai.connectors.hugging_face import HuggingFaceConnector
-import proxai.caching.model_cache as model_cache
 import proxai.caching.query_cache as query_cache
 import proxai.serializers.type_serializer as type_serializer
 import proxai.stat_types as stat_types
-import multiprocessing
+import proxai.connections.available_models as available_models
+import proxai.connections.proxdash as proxdash
+import proxai.experiment.experiment as experiment
+from proxai.logging.utils import log_proxdash_message
 
 _RUN_TYPE: types.RunType = types.RunType.PRODUCTION
+_HIDDEN_RUN_KEY: Optional[str] = None
+_EXPERIMENT_NAME: Optional[str] = None
 _REGISTERED_VALUES: Dict[str, types.ModelType] = {}
 _INITIALIZED_MODEL_CONNECTORS: Dict[types.ModelType, ModelConnector] = {}
 _LOGGING_OPTIONS: types.LoggingOptions = types.LoggingOptions()
@@ -33,9 +33,24 @@ _STATS: Dict[str, stat_types.RunStats] = {
     stat_types.GlobalStatType.RUN_TIME: stat_types.RunStats(),
     stat_types.GlobalStatType.SINCE_CONNECT: stat_types.RunStats()
 }
+_PROXDASH_CONNECTION: Optional[proxdash.ProxDashConnection] = None
 
 CacheOptions = types.CacheOptions
 LoggingOptions = types.LoggingOptions
+
+
+def _init_hidden_run_key():
+  global _HIDDEN_RUN_KEY
+  if _HIDDEN_RUN_KEY == None:
+    _HIDDEN_RUN_KEY = experiment.get_hidden_run_key()
+
+
+def _init_experiment_name(experiment_name: Optional[str]):
+  global _EXPERIMENT_NAME
+  if not experiment_name:
+    return
+  experiment.validate_experiment_name(experiment_name)
+  _EXPERIMENT_NAME = experiment_name
 
 
 def _init_globals():
@@ -55,13 +70,140 @@ def _init_globals():
   _STATS[stat_types.GlobalStatType.SINCE_CONNECT] = stat_types.RunStats()
 
 
+def _init_model_connector(model: types.ModelType) -> ModelConnector:
+  global _LOGGING_OPTIONS
+  global _QUERY_CACHE_MANAGER
+  global _STATS
+  provider, _ = model
+  connector = None
+  if provider == types.Provider.OPENAI:
+    connector =  OpenAIConnector
+  elif provider == types.Provider.CLAUDE:
+    connector =  ClaudeConnector
+  elif provider == types.Provider.GEMINI:
+    connector =  GeminiConnector
+  elif provider == types.Provider.COHERE:
+    connector =  CohereConnector
+  elif provider == types.Provider.DATABRICKS:
+    connector =  DatabricksConnector
+  elif provider == types.Provider.MISTRAL:
+    connector =  MistralConnector
+  elif provider == types.Provider.HUGGING_FACE:
+    connector =  HuggingFaceConnector
+  else:
+    raise ValueError(f'Provider not supported. {model}')
+
+  connector = functools.partial(
+      connector,
+      model=model,
+      run_type=_RUN_TYPE,
+      strict_feature_test=_STRICT_FEATURE_TEST,
+      stats=_STATS,
+      get_logging_options=_get_logging_options,
+      get_proxdash_connection=_get_proxdash_connection)
+
+  if _QUERY_CACHE_MANAGER:
+    connector = functools.partial(
+        connector,
+        query_cache_manager=_QUERY_CACHE_MANAGER)
+
+  return connector()
+
+
+def _get_cache_options() -> CacheOptions:
+  return _CACHE_OPTIONS
+
+
+def _get_logging_options() -> LoggingOptions:
+  return _LOGGING_OPTIONS
+
+
+def _get_experiment_name() -> str:
+  if _EXPERIMENT_NAME:
+    return _EXPERIMENT_NAME
+  return '(not set)'
+
+
+def _get_hidden_run_key() -> str:
+  if not _HIDDEN_RUN_KEY:
+    _init_hidden_run_key()
+  return _HIDDEN_RUN_KEY
+
+
+def _get_initialized_model_connectors()-> Dict[
+    types.ModelType, ModelConnector]:
+  return _INITIALIZED_MODEL_CONNECTORS
+
+
+def _get_proxdash_connection() -> proxdash.ProxDashConnection:
+  global _PROXDASH_CONNECTION
+  if not _PROXDASH_CONNECTION:
+    _PROXDASH_CONNECTION = proxdash.ProxDashConnection(
+        hidden_run_key=_get_hidden_run_key(),
+        get_logging_options=_get_logging_options)
+  _PROXDASH_CONNECTION.experiment_name = _get_experiment_name()
+  return _PROXDASH_CONNECTION
+
+
+def _get_model_connector(
+    call_type: types.CallType,
+    model: Optional[types.ModelType]=None) -> ModelConnector:
+  global _REGISTERED_VALUES
+  global _INITIALIZED_MODEL_CONNECTORS
+  if call_type == types.CallType.GENERATE_TEXT:
+    if call_type not in _REGISTERED_VALUES:
+      default_model = (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)
+      _REGISTERED_VALUES[call_type] = default_model
+    if model == None:
+      model = _REGISTERED_VALUES[call_type]
+    if model not in _INITIALIZED_MODEL_CONNECTORS:
+      _INITIALIZED_MODEL_CONNECTORS[model] = _init_model_connector(model)
+    return _INITIALIZED_MODEL_CONNECTORS[model]
+
+
 def _set_run_type(run_type: types.RunType):
   global _RUN_TYPE
   _RUN_TYPE = run_type
   _init_globals()
 
 
+def check_health(
+    experiment_name: Optional[str]='check_health',
+    verbose: bool = False
+) -> Tuple[List[types.ModelType], List[types.ModelType]]:
+  experiment.validate_experiment_name(experiment_name)
+  logging_options = types.LoggingOptions(proxdash_stdout=True)
+  proxdash_connection = proxdash.ProxDashConnection(
+      hidden_run_key=_get_hidden_run_key(),
+      logging_options=logging_options)
+  proxdash_connection.experiment_name = experiment_name
+  log_proxdash_message(
+      logging_options=logging_options,
+      message='Starting to test each model...',
+      type=types.LoggingType.INFO)
+  models = available_models.AvailableModels(
+      cache_options=types.CacheOptions(),
+      logging_options=logging_options,
+      proxdash_connection=proxdash_connection,
+      get_initialized_model_connectors=_get_initialized_model_connectors,
+      init_model_connector=_init_model_connector)
+  succeeded_models, failed_models = models.generate_text(
+      verbose=verbose, return_all=True)
+  log_proxdash_message(
+      logging_options=logging_options,
+      message=f'Finished testing. Succeeded Models: {len(succeeded_models)}, '
+              f'Failed Models: {len(failed_models)}',
+      type=types.LoggingType.INFO)
+  if proxdash_connection.status == types.ProxDashConnectionStatus.CONNECTED:
+    log_proxdash_message(
+        logging_options=logging_options,
+        message='Results are uploaded to the ProxDash.',
+        type=types.LoggingType.INFO)
+  return succeeded_models, failed_models
+
+
 def connect(
+    experiment_name: Optional[str]=None,
     cache_path: str=None,
     cache_options: CacheOptions=None,
     logging_path: str=None,
@@ -72,6 +214,8 @@ def connect(
   global _QUERY_CACHE_MANAGER
   global _STRICT_FEATURE_TEST
   _init_globals()
+  _init_experiment_name(experiment_name)
+
 
   if cache_path and cache_options and cache_options.path:
     raise ValueError('cache_path and cache_options.path are both set.')
@@ -103,67 +247,10 @@ def connect(
     _LOGGING_OPTIONS.prompt = logging_options.prompt
     _LOGGING_OPTIONS.response = logging_options.response
     _LOGGING_OPTIONS.error = logging_options.error
+    _LOGGING_OPTIONS.stdout = logging_options.stdout
+    _LOGGING_OPTIONS.proxdash_stdout = logging_options.proxdash_stdout
 
   _STRICT_FEATURE_TEST = strict_feature_test
-
-
-def _init_model_connector(model: types.ModelType) -> ModelConnector:
-  global _LOGGING_OPTIONS
-  global _QUERY_CACHE_MANAGER
-  global _STATS
-  provider, _ = model
-  connector = None
-  if provider == types.Provider.OPENAI:
-    connector =  OpenAIConnector
-  elif provider == types.Provider.CLAUDE:
-    connector =  ClaudeConnector
-  elif provider == types.Provider.GEMINI:
-    connector =  GeminiConnector
-  elif provider == types.Provider.COHERE:
-    connector =  CohereConnector
-  elif provider == types.Provider.DATABRICKS:
-    connector =  DatabricksConnector
-  elif provider == types.Provider.MISTRAL:
-    connector =  MistralConnector
-  elif provider == types.Provider.HUGGING_FACE:
-    connector =  HuggingFaceConnector
-  else:
-    raise ValueError(f'Provider not supported. {model}')
-
-  connector = functools.partial(
-      connector,
-      model=model,
-      run_type=_RUN_TYPE,
-      strict_feature_test=_STRICT_FEATURE_TEST,
-      stats=_STATS)
-
-  if _QUERY_CACHE_MANAGER:
-    connector = functools.partial(
-        connector,
-        query_cache_manager=_QUERY_CACHE_MANAGER)
-
-  if _LOGGING_OPTIONS.path:
-    connector = functools.partial(
-        connector,
-        logging_options=_LOGGING_OPTIONS)
-
-  return connector()
-
-
-def _get_model_connector(
-    call_type: types.CallType,
-    model: Optional[types.ModelType]=None) -> ModelConnector:
-  global _REGISTERED_VALUES
-  global _INITIALIZED_MODEL_CONNECTORS
-  if call_type == types.CallType.GENERATE_TEXT:
-    if call_type not in _REGISTERED_VALUES:
-      default_model = (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)
-      _REGISTERED_VALUES[call_type] = default_model
-    if model == None:
-      model = _REGISTERED_VALUES[call_type]
-    if model not in _INITIALIZED_MODEL_CONNECTORS:
-      _INITIALIZED_MODEL_CONNECTORS[model] = _init_model_connector(model)
-    return _INITIALIZED_MODEL_CONNECTORS[model]
 
 
 def set_model(generate_text: types.ModelType=None):
@@ -221,213 +308,21 @@ def get_summary(
     stat_value = copy.deepcopy(_STATS[stat_types.GlobalStatType.SINCE_CONNECT])
   if json:
     return type_serializer.encode_run_stats(stat_value)
+
   class StatValue(stat_types.RunStats):
     def __init__(self, stat_value):
       super().__init__(**stat_value.__dict__)
 
     def serialize(self):
       return type_serializer.encode_run_stats(self)
+
   return StatValue(stat_value)
 
 
-class AvailableModels:
-  _model_cache: Optional[model_cache.ModelCache] = None
-  _generate_text: Dict[types.ModelType, Any] = {}
-  _providers_with_key: Set[types.Provider] = set()
-
-  def __init__(self):
-    self._load_provider_keys()
-
-  def _load_provider_keys(self):
-    for provider, provider_key_name in types.PROVIDER_KEY_MAP.items():
-      provider_flag = True
-      for key_name in provider_key_name:
-        if key_name not in os.environ:
-          provider_flag = False
-          break
-      if provider_flag:
-        self._providers_with_key.add(provider)
-
-  def generate_text(
-      self,
-      only_largest_models: bool = False,
-      verbose: bool = False,
-      failed_models: bool = False
-  ) -> List[types.ModelType]:
-    start_time = datetime.datetime.now()
-    models = types.ModelStatus()
-    self._get_all_models(models, call_type=types.CallType.GENERATE_TEXT)
-    self._filter_by_provider_key(models)
-    self._filter_by_cache(models, call_type=types.CallType.GENERATE_TEXT)
-
-    # TODO: This very experimental and require proper design. One alternative is
-    # registering models according to their sizes in px.types. Then, find
-    # working largest model for each provider.
-    if only_largest_models:
-      _allowed_models = set([
-          (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW),
-          (types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_OPUS),
-          (types.Provider.GEMINI, types.GeminiModel.GEMINI_1_5_PRO_LATEST),
-          (types.Provider.COHERE, types.CohereModel.COMMAND_R_PLUS),
-          (types.Provider.DATABRICKS, types.DatabricksModel.DBRX_INSTRUCT),
-          (types.Provider.DATABRICKS,
-           types.DatabricksModel.LLAMA_3_70B_INSTRUCT),
-          (types.Provider.MISTRAL, types.MistralModel.MISTRAL_LARGE_LATEST),
-      ])
-      for model in list(models.unprocessed_models):
-        if model not in _allowed_models:
-          models.unprocessed_models.remove(model)
-          models.filtered_models.add(model)
-      for model in list(models.working_models):
-        if model not in _allowed_models:
-          models.working_models.remove(model)
-          models.filtered_models.add(model)
-
-    print_flag = bool(verbose and models.unprocessed_models)
-    if print_flag:
-      print(f'From cache;\n'
-            f'  {len(models.working_models)} models are working.\n'
-            f'  {len(models.failed_models)} models are failed.')
-      print(f'Running test for {len(models.unprocessed_models)} models.')
-    self._test_models(models, call_type=types.CallType.GENERATE_TEXT)
-    end_time = datetime.datetime.now()
-    if print_flag:
-      print(f'After test;\n'
-            f'  {len(models.working_models)} models are working.\n'
-            f'  {len(models.failed_models)} models are failed.')
-      duration = (end_time - start_time).total_seconds()
-      print(f'Test duration: {duration} seconds.')
-
-    if failed_models:
-      return self._format_set(models.failed_models)
-    return self._format_set(models.working_models)
-
-  def _get_all_models(self, models: types.ModelStatus, call_type: str):
-    if call_type == types.CallType.GENERATE_TEXT:
-      for provider, provider_models in types.GENERATE_TEXT_MODELS.items():
-        for provider_model in provider_models:
-          if provider_model not in (
-              models.working_models
-              | models.failed_models
-              | models.filtered_models):
-            models.unprocessed_models.add((provider, provider_model))
-
-  def _filter_by_provider_key(self, models: types.ModelStatus):
-    def _filter_set(
-        model_set: Set[types.ModelType]
-    ) -> Tuple[Set[types.ModelType], Set[types.ModelType]]:
-      not_filtered = set()
-      for model in model_set:
-        provider, _ = model
-        if provider in self._providers_with_key:
-          not_filtered.add(model)
-        else:
-          models.filtered_models.add(model)
-      return not_filtered
-    models.unprocessed_models = _filter_set(models.unprocessed_models)
-    models.working_models = _filter_set(models.working_models)
-    models.failed_models = _filter_set(models.failed_models)
-
-  def _filter_by_cache(
-      self,
-      models: types.ModelStatus,
-      call_type: str):
-    if not _CACHE_OPTIONS.path:
-      return
-    if not self._model_cache:
-      self._model_cache = model_cache.ModelCache(_CACHE_OPTIONS)
-    cache_result = self._model_cache.get(call_type=call_type)
-
-    def _remove_model(model: types.ModelType):
-      if model in models.unprocessed_models:
-        models.unprocessed_models.remove(model)
-      if model in models.working_models:
-        models.working_models.remove(model)
-      elif model in models.failed_models:
-        models.failed_models.remove(model)
-
-    for model in cache_result.working_models:
-      if model not in models.filtered_models:
-        _remove_model(model)
-        models.working_models.add(model)
-    for model in cache_result.failed_models:
-      if model not in models.filtered_models:
-        _remove_model(model)
-        models.failed_models.add(model)
-
-  @staticmethod
-  def _test_generate_text(
-      model: types.ModelType,
-      model_connector: ModelConnector
-  ) -> List[types.LoggingRecord]:
-    start_time = datetime.datetime.now()
-    prompt = 'Hello model!?'
-    max_tokens = 100
-    try:
-      logging_record = model_connector.generate_text(
-          model=model,
-          prompt=prompt,
-          max_tokens=max_tokens,
-          use_cache=False)
-      return logging_record
-    except Exception as e:
-      return types.LoggingRecord(
-          query_record=types.QueryRecord(
-              call_type=types.CallType.GENERATE_TEXT,
-              model=model,
-              prompt=prompt,
-              max_tokens=max_tokens),
-          response_record=types.QueryResponseRecord(
-              error=str(e),
-              error_traceback=traceback.format_exc(),
-              start_time=start_time,
-              end_time=datetime.datetime.now(),
-              response_time=datetime.datetime.now() - start_time),
-          response_source=types.ResponseSource.PROVIDER)
-
-  def _test_models(self, models: types.ModelStatus, call_type: str):
-    global _INITIALIZED_MODEL_CONNECTORS
-    if not models.unprocessed_models:
-      return
-    for model in models.unprocessed_models:
-      if model not in _INITIALIZED_MODEL_CONNECTORS:
-        _INITIALIZED_MODEL_CONNECTORS[model] = _init_model_connector(model)
-
-    test_models = list(models.unprocessed_models)
-    test_func = None
-    if call_type == types.CallType.GENERATE_TEXT:
-      test_func = self._test_generate_text
-    else:
-      raise ValueError(f'Call type not supported: {call_type}')
-    pool = multiprocessing.Pool(processes=len(test_models))
-    test_results = []
-    for test_model in test_models:
-      result = pool.apply_async(
-          test_func,
-          args=(test_model, _INITIALIZED_MODEL_CONNECTORS[test_model]))
-      test_results.append(result)
-    pool.close()
-    pool.join()
-    test_results: List[types.LoggingRecord] = [
-        result.get() for result in test_results]
-    update_models = types.ModelStatus()
-    for logging_record in test_results:
-      models.unprocessed_models.remove(logging_record.query_record.model)
-      if logging_record.response_record.response != None:
-        models.working_models.add(logging_record.query_record.model)
-        update_models.working_models.add(logging_record.query_record.model)
-      else:
-        models.failed_models.add(logging_record.query_record.model)
-        update_models.failed_models.add(logging_record.query_record.model)
-      update_models.provider_queries.append(logging_record)
-    if not _CACHE_OPTIONS.path:
-      return
-    if not self._model_cache:
-      self._model_cache = model_cache.ModelCache(_CACHE_OPTIONS)
-    self._model_cache.update(model_status=update_models, call_type=call_type)
-
-  def _format_set(
-      self,
-      model_set: Set[types.ModelType]
-  ) -> List[types.ModelType]:
-    return sorted(list(model_set))
+def get_available_models() -> available_models.AvailableModels:
+  return available_models.AvailableModels(
+      get_cache_options=_get_cache_options,
+      get_logging_options=_get_logging_options,
+      get_initialized_model_connectors=_get_initialized_model_connectors,
+      get_proxdash_connection=_get_proxdash_connection,
+      init_model_connector=_init_model_connector)

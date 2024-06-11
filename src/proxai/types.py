@@ -10,7 +10,7 @@ class RunType(enum.Enum):
 
 
 class CallType(str, enum.Enum):
-  GENERATE_TEXT = 'generate_text'
+  GENERATE_TEXT = 'GENERATE_TEXT'
 
 
 class Provider(str, enum.Enum):
@@ -213,6 +213,8 @@ MessagesType = List[Dict[str, str]]
 @dataclasses.dataclass
 class LoggingOptions:
   path: Optional[str] = None
+  stdout: bool = False
+  proxdash_stdout: bool = False
   time: bool = True
   prompt: bool = True
   response: bool = True
@@ -220,10 +222,10 @@ class LoggingOptions:
 
 
 class LoggingType(str, enum.Enum):
-  QUERY = 'query'
-  ERROR = 'error'
-  WARNING = 'warning'
-  INFO = 'info'
+  QUERY = 'QUERY'
+  ERROR = 'ERROR'
+  WARNING = 'WARNING'
+  INFO = 'INFO'
 
 
 @dataclasses.dataclass
@@ -282,10 +284,10 @@ class LightCacheRecord:
 
 
 class CacheLookFailReason(str, enum.Enum):
-  CACHE_NOT_FOUND = 'cache_not_found'
-  CACHE_NOT_MATCHED = 'cache_not_matched'
-  UNIQUE_RESPONSE_LIMIT_NOT_REACHED = 'unique_response_limit_not_reached'
-  PROVIDER_ERROR_CACHED = 'provider_error_cached'
+  CACHE_NOT_FOUND = 'CACHE_NOT_FOUND'
+  CACHE_NOT_MATCHED = 'CACHE_NOT_MATCHED'
+  UNIQUE_RESPONSE_LIMIT_NOT_REACHED = 'UNIQUE_RESPONSE_LIMIT_NOT_REACHED'
+  PROVIDER_ERROR_CACHED = 'PROVIDER_ERROR_CACHED'
 
 
 @dataclasses.dataclass
@@ -295,8 +297,8 @@ class CacheLookResult:
 
 
 class ResponseSource(str, enum.Enum):
-  CACHE = 'cache'
-  PROVIDER = 'provider'
+  CACHE = 'CACHE'
+  PROVIDER = 'PROVIDER'
 
 
 @dataclasses.dataclass
@@ -315,3 +317,10 @@ class ModelStatus:
   filtered_models: Set[ModelType] = dataclasses.field(default_factory=set)
   provider_queries: List[LoggingRecord] = (
       dataclasses.field(default_factory=list))
+
+
+class ProxDashConnectionStatus(str, enum.Enum):
+  CONNECTED = 'CONNECTED'
+  API_KEY_NOT_FOUND = 'API_KEY_NOT_FOUND'
+  API_KEY_NOT_VALID = 'API_KEY_NOT_VALID'
+  PROXDASH_INVALID_RETURN = 'PROXDASH_INVALID_RETURN'
