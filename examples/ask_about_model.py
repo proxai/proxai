@@ -7,6 +7,7 @@ import datetime
 import proxai as px
 import os
 import proxai.types as px_types
+from pprint import pprint
 
 _BREAK_CACHES = False
 
@@ -42,16 +43,12 @@ def test_query(break_caches: bool=False):
 
 
 def print_summary():
-  summary = px.get_summary()
   summary_json = px.get_summary(json=True)
-  # print(summary)
-  from pprint import pprint
   pprint(summary_json)
   print()
 
 
 def run_tests(models, query_func):
-  print_summary()
   print(f'{"PROVIDER":10} | {"MODEL":45} | {"DURATION":13} | {"RESPONSE"}')
   for provider, provider_model in models:
     px.set_model(generate_text=(provider, provider_model))
@@ -62,7 +59,6 @@ def run_tests(models, query_func):
     response = response.strip().split('\n')[0][:100] + (
       '...' if len(response) > 100 else '')
     print(f'{provider:10} | {provider_model:45} | {duration:10.0f} ms | {response}')
-    print_summary()
 
 
 def main():
@@ -70,10 +66,12 @@ def main():
   logging_path = f'{Path.home()}/proxai_log/ask_about_model/'
   os.makedirs(cache_path, exist_ok=True)
   os.makedirs(logging_path, exist_ok=True)
-  px.connect(cache_path=cache_path, logging_path=logging_path)
+  px.connect(
+    experiment_name='ask_about_model',
+    cache_path=cache_path,
+    logging_path=logging_path,
+    logging_options=px.LoggingOptions(proxdash_stdout=True))
   models = get_models()
-  models = [
-      model for model in models if model[0] == px_types.Provider.OPENAI]
   run_tests(models, functools.partial(test_query, break_caches=_BREAK_CACHES))
 
 

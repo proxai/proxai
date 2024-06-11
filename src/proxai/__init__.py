@@ -1,15 +1,18 @@
 # read version from installed package
 from importlib.metadata import version
 from proxai.proxai import (
-    generate_text,
-    get_summary,
-    set_model,
     CacheOptions,
     LoggingOptions,
+    check_health,
     connect,
-    AvailableModels,
+    set_model,
+    generate_text,
+    get_summary,
+    get_available_models,
+    _init_hidden_run_key,
 )
 
 
 __version__ = version("proxai")
-models = AvailableModels()
+_init_hidden_run_key()
+models = get_available_models()
