@@ -9,12 +9,13 @@ import os
 import proxai.types as px_types
 from pprint import pprint
 
-_BREAK_CACHES = False
+_BREAK_CACHES = True
+_ONLY_LARGEST_MODELS = True
 
 
 def get_models(verbose=True):
   models = px.models.generate_text(
-      only_largest_models=False,
+      only_largest_models=_ONLY_LARGEST_MODELS,
       verbose=True)
   grouped_models = collections.defaultdict(list)
   for provider, model in models:
@@ -67,10 +68,10 @@ def main():
   os.makedirs(cache_path, exist_ok=True)
   os.makedirs(logging_path, exist_ok=True)
   px.connect(
-    experiment_name='ask_about_model',
-    cache_path=cache_path,
-    logging_path=logging_path,
-    logging_options=px.LoggingOptions(proxdash_stdout=True))
+      experiment_name='ask_about_model',
+      cache_path=cache_path,
+      logging_path=logging_path,
+      logging_options=px.LoggingOptions(proxdash_stdout=True))
   models = get_models()
   run_tests(models, functools.partial(test_query, break_caches=_BREAK_CACHES))
 

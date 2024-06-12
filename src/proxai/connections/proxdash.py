@@ -115,6 +115,9 @@ class ProxDashConnection(object):
   def upload_logging_record(self, logging_record: types.LoggingRecord):
     if self.status != types.ProxDashConnectionStatus.CONNECTED:
       return
+    stop = None
+    if logging_record.query_record.stop:
+      stop = str(logging_record.query_record.stop)
     data = {
       'api_key': self._api_key,
       'hidden_run_key': self._hidden_run_key,
@@ -124,14 +127,14 @@ class ProxDashConnection(object):
       'model': logging_record.query_record.model[1],
       'max_tokens': logging_record.query_record.max_tokens,
       'temperature': logging_record.query_record.temperature,
-      'stop': str(logging_record.query_record.stop),
+      'stop': stop,
       'hash_value': logging_record.query_record.hash_value,
       'error': logging_record.response_record.error,
       'error_traceback': logging_record.response_record.error_traceback,
       'start_time': logging_record.response_record.start_time.isoformat(),
       'end_time': logging_record.response_record.end_time.isoformat(),
       'response_time': (
-          logging_record.response_record.response_time.total_seconds()),
+          logging_record.response_record.response_time.total_seconds() * 1000),
       'response_source': logging_record.response_source,
       'look_fail_reason': logging_record.look_fail_reason,
     }
