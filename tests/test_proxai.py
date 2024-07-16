@@ -24,7 +24,7 @@ class TestRegisterModel:
   def test_successful_register_model(self):
     proxai._set_run_type(types.RunType.TEST)
     proxai.set_model(generate_text=('openai', 'gpt-3.5-turbo'))
-    assert proxai._REGISTERED_VALUES['generate_text'] == (
+    assert proxai._REGISTERED_VALUES[types.CallType.GENERATE_TEXT] == (
         'openai', 'gpt-3.5-turbo')
 
 
@@ -32,7 +32,8 @@ class TestGenerateText:
   def _test_generate_text(self, model: types.ModelType):
     proxai._set_run_type(types.RunType.TEST)
     proxai.set_model(generate_text=model)
-    assert proxai._REGISTERED_VALUES['generate_text'] == model
+    print(proxai._REGISTERED_VALUES)
+    assert proxai._REGISTERED_VALUES[types.CallType.GENERATE_TEXT] == model
 
     text = proxai.generate_text('Hello, my name is')
     assert text == 'mock response'

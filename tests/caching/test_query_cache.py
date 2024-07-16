@@ -31,7 +31,10 @@ def _create_response_record(
     response=f'r{response_id}',
     start_time=(datetime.datetime.now()
                 - datetime.timedelta(seconds=response_id)),
+    start_utc_time=(datetime.datetime.now(datetime.timezone.utc)
+                    - datetime.timedelta(seconds=response_id)),
     end_time=datetime.datetime.now(),
+    end_utc_time=datetime.datetime.now(datetime.timezone.utc),
     response_time=datetime.timedelta(seconds=response_id))
   if error:
     query_response_record.response = None

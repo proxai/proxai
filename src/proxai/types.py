@@ -260,7 +260,9 @@ class QueryResponseRecord:
   error: Optional[str] = None
   error_traceback: Optional[str] = None
   start_time: Optional[datetime.datetime] = None
+  start_utc_time: Optional[datetime.datetime] = None
   end_time: Optional[datetime.datetime] = None
+  end_utc_time: Optional[datetime.datetime] = None
   response_time: Optional[datetime.timedelta] = None
 
 
