@@ -1,5 +1,6 @@
 import copy
 import functools
+import math
 from typing import Union, Optional
 import google.generativeai as genai
 import proxai.types as types
@@ -41,7 +42,7 @@ class GeminiConnector(ModelConnector):
     # Note: Not implemented yet.
     return logging_record.query_record.max_tokens
 
-  def _get_estimated_price(self, logging_record: types.LoggingRecord):
+  def _get_estimated_cost(self, logging_record: types.LoggingRecord):
     # Note: Not implemented yet.
     # Needs to get updated all the time.
     # This is just a temporary implementation.
@@ -49,8 +50,7 @@ class GeminiConnector(ModelConnector):
     response_token_count = self._get_response_token_count(logging_record)
     _, provider_model = logging_record.query_record.model
     if provider_model == types.GeminiModel.GEMINI_1_5_PRO_LATEST:
-      return ((query_token_count / 1000000) * 7.0
-              + (response_token_count / 1000000) * 21.0)
+      return math.floor(query_token_count * 7.0 + response_token_count * 21.0)
     elif provider_model in [
         types.GeminiModel.GEMINI_1_0_PRO,
         types.GeminiModel.GEMINI_1_0_PRO_001,
@@ -58,8 +58,7 @@ class GeminiConnector(ModelConnector):
         types.GeminiModel.GEMINI_1_0_PRO_VISION_LATEST,
         types.GeminiModel.GEMINI_PRO,
         types.GeminiModel.GEMINI_PRO_VISION]:
-      return ((query_token_count / 1000000) * 0.5
-              + (response_token_count / 1000000) * 1.5)
+      return math.floor(query_token_count * 0.5 + response_token_count * 1.5)
     else:
       raise ValueError(f'Model not found.\n{logging_record.query_record.model}')
 

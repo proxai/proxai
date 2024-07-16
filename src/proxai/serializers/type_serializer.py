@@ -102,6 +102,8 @@ def encode_query_response_record(
   if query_response_record.response_time != None:
     record['response_time'] = (
         query_response_record.response_time.total_seconds())
+  if query_response_record.estimated_cost != None:
+    record['estimated_cost'] = query_response_record.estimated_cost
   return record
 
 
@@ -125,6 +127,8 @@ def decode_query_response_record(
   if 'response_time' in record:
     query_response_record.response_time = datetime.timedelta(
         seconds=record['response_time'])
+  if 'estimated_cost' in record:
+    query_response_record.estimated_cost = record['estimated_cost']
   return query_response_record
 
 
@@ -318,8 +322,8 @@ def encode_base_provider_stats(
     record['total_response_time'] = base_provider_stats.total_response_time
   if base_provider_stats.avr_response_time:
     record['avr_response_time'] = base_provider_stats.avr_response_time
-  if base_provider_stats.estimated_price:
-    record['estimated_price'] = base_provider_stats.estimated_price
+  if base_provider_stats.estimated_cost:
+    record['estimated_cost'] = base_provider_stats.estimated_cost
   if base_provider_stats.total_cache_look_fail_reasons:
     record['total_cache_look_fail_reasons'] = {}
     for k, v in base_provider_stats.total_cache_look_fail_reasons.items():
@@ -346,8 +350,8 @@ def decode_base_provider_stats(
         record['total_response_token_count'])
   if 'total_response_time' in record:
     base_provider_stats.total_response_time = record['total_response_time']
-  if 'estimated_price' in record:
-    base_provider_stats.estimated_price = record['estimated_price']
+  if 'estimated_cost' in record:
+    base_provider_stats.estimated_cost = record['estimated_cost']
   if 'total_cache_look_fail_reasons' in record:
     base_provider_stats.total_cache_look_fail_reasons = {}
     for k, v in record['total_cache_look_fail_reasons'].items():
@@ -377,8 +381,8 @@ def encode_base_cache_stats(
         base_cache_stats.saved_total_response_time)
   if base_cache_stats.saved_avr_response_time:
     record['saved_avr_response_time'] = base_cache_stats.saved_avr_response_time
-  if base_cache_stats.saved_estimated_price:
-    record['saved_estimated_price'] = base_cache_stats.saved_estimated_price
+  if base_cache_stats.saved_estimated_cost:
+    record['saved_estimated_cost'] = base_cache_stats.saved_estimated_cost
   return record
 
 
@@ -400,8 +404,8 @@ def decode_base_cache_stats(record) -> stat_types.BaseCacheStats:
   if 'saved_total_response_time' in record:
     base_cache_stats.saved_total_response_time = (
         record['saved_total_response_time'])
-  if 'saved_estimated_price' in record:
-    base_cache_stats.saved_estimated_price = record['saved_estimated_price']
+  if 'saved_estimated_cost' in record:
+    base_cache_stats.saved_estimated_cost = record['saved_estimated_cost']
   return base_cache_stats
 
 

@@ -137,6 +137,7 @@ class ProxDashConnection(object):
       'endUTCTime': logging_record.response_record.end_utc_time.isoformat(),
       'responseTime': (
           logging_record.response_record.response_time.total_seconds() * 1000),
+      'estimatedCost': logging_record.response_record.estimated_cost,
       'responseSource': logging_record.response_source,
       'lookFailReason': logging_record.look_fail_reason,
     }

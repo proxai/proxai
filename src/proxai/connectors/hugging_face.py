@@ -1,5 +1,6 @@
 import copy
 import functools
+import math
 import os
 import requests
 from typing import Union, Optional
@@ -75,7 +76,7 @@ class HuggingFaceConnector(ModelConnector):
     # Note: Not implemented yet.
     return logging_record.query_record.max_tokens
 
-  def _get_estimated_price(self, logging_record: types.LoggingRecord):
+  def _get_estimated_cost(self, logging_record: types.LoggingRecord):
     # Note: Not implemented yet.
     # Needs to get updated all the time.
     # This is just a temporary implementation.

@@ -48,13 +48,15 @@ def _get_query_response_record_options():
       {'end_time': datetime.datetime.now()},
       {'end_utc_time': datetime.datetime.now(datetime.timezone.utc)},
       {'response_time': datetime.timedelta(seconds=1)},
+      {'estimated_cost': 1},
       {'response': 'Hello, world!',
        'error': 'Error message',
        'start_time': datetime.datetime.now(),
        'start_utc_time': datetime.datetime.now(datetime.timezone.utc),
        'end_time': datetime.datetime.now(),
        'end_utc_time': datetime.datetime.now(datetime.timezone.utc),
-       'response_time': datetime.timedelta(seconds=1)},]
+       'response_time': datetime.timedelta(seconds=1),
+       'estimated_cost': 1},]
 
 
 def _get_cache_record_options():
@@ -150,7 +152,7 @@ def _get_base_provider_stats_options():
     {'total_response_token_count': 6},
     {'total_successes': 1,
      'total_response_time': 7.0},
-    {'estimated_price': 8.0},
+    {'estimated_cost': 8.0},
     {'total_cache_look_fail_reasons': {
         types.CacheLookFailReason.CACHE_NOT_FOUND: 9}},
     {'total_queries': 1,
@@ -161,7 +163,7 @@ def _get_base_provider_stats_options():
      'total_response_token_count': 6,
      'total_successes': 1,
      'total_response_time': 7.0,
-     'estimated_price': 8.0,
+     'estimated_cost': 8.0,
      'total_cache_look_fail_reasons': {
         types.CacheLookFailReason.CACHE_NOT_FOUND: 9}}]
 
@@ -176,7 +178,7 @@ def _get_base_cache_stats_options():
     {'saved_response_token_count': 6},
     {'total_success_return': 1,
      'saved_total_response_time': 7.0},
-    {'saved_estimated_price': 8.0},
+    {'saved_estimated_cost': 8.0},
     {'total_cache_hit': 1,
      'total_success_return': 2,
      'total_fail_return': 3,
@@ -184,7 +186,7 @@ def _get_base_cache_stats_options():
      'saved_query_token_count': 5,
      'saved_response_token_count': 6,
      'saved_total_response_time': 7.0,
-     'saved_estimated_price': 8.0}]
+     'saved_estimated_cost': 8.0}]
 
 
 def _get_model_stats_options():

@@ -264,6 +264,7 @@ class QueryResponseRecord:
   end_time: Optional[datetime.datetime] = None
   end_utc_time: Optional[datetime.datetime] = None
   response_time: Optional[datetime.timedelta] = None
+  estimated_cost: Optional[int] = None
 
 
 @dataclasses.dataclass

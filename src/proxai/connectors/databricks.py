@@ -1,6 +1,7 @@
 import copy
 import os
 import functools
+import math
 from typing import Union, Optional, Type
 from databricks_genai_inference import ChatCompletion
 import proxai.types as types
@@ -32,7 +33,7 @@ class DatabricksConnector(ModelConnector):
     # Note: Not implemented yet.
     return logging_record.query_record.max_tokens
 
-  def _get_estimated_price(self, logging_record: types.LoggingRecord):
+  def _get_estimated_cost(self, logging_record: types.LoggingRecord):
     # Note: Not implemented yet.
     # Needs to get updated all the time.
     # This is just a temporary implementation.
@@ -40,26 +41,24 @@ class DatabricksConnector(ModelConnector):
     response_token_count = self._get_response_token_count(logging_record)
     _, provider_model = logging_record.query_record.model
     if provider_model == types.DatabricksModel.LLAMA_3_70B_INSTRUCT:
-      return ((query_token_count / 1000000) * 14.28
-              + (response_token_count / 1000000) * 42.85)
+      return math.floor(
+          query_token_count * 14.28 + response_token_count * 42.85)
     elif provider_model == types.DatabricksModel.DBRX_INSTRUCT:
-      return ((query_token_count / 1000000) * 32.14
-              + (response_token_count / 1000000) * 96.42)
+      return math.floor(
+          query_token_count * 32.14 + response_token_count * 96.42)
     elif provider_model == types.DatabricksModel.MIXTRAL_8x7B_INSTRUCT:
-      return ((query_token_count / 1000000) * 21.42
-              + (response_token_count / 1000000) * 21.42)
+      return math.floor(
+          query_token_count * 21.42 + response_token_count * 21.42)
     elif provider_model in types.DatabricksModel.LLAMA_2_70B_CHAT:
-      return ((query_token_count / 1000000) * 28.57
-              + (response_token_count / 1000000) * 28.57)
+      return math.floor(
+          query_token_count * 28.57 + response_token_count * 28.57)
     elif provider_model in types.DatabricksModel.MPT_30B_INSTRUCT:
-      return ((query_token_count / 1000000) * 14.28
-              + (response_token_count / 1000000) * 14.28)
+      return math.floor(
+          query_token_count * 14.28 + response_token_count * 14.28)
     elif provider_model in types.DatabricksModel.MPT_7B_INSTRUCT:
-      return ((query_token_count / 1000000) * 7.14
-              + (response_token_count / 1000000) * 7.14)
+      return math.floor(query_token_count * 7.14 + response_token_count * 7.14)
     elif provider_model in types.DatabricksModel.BGE_LARGE_EN:
-      return ((query_token_count / 1000000) * 1.42
-              + (response_token_count / 1000000) * 1.42)
+      return math.floor(query_token_count * 1.42 + response_token_count * 1.42)
     else:
       raise ValueError(f'Model not found.\n{logging_record.query_record.model}')
 
