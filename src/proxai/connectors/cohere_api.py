@@ -1,5 +1,6 @@
 import copy
 import functools
+import math
 from typing import Union, Optional
 import cohere
 import proxai.types as types
@@ -31,7 +32,7 @@ class CohereConnector(ModelConnector):
     # Note: Not implemented yet.
     return logging_record.query_record.max_tokens
 
-  def _get_estimated_price(self, logging_record: types.LoggingRecord):
+  def _get_estimated_cost(self, logging_record: types.LoggingRecord):
     # Note: Not implemented yet.
     # Needs to get updated all the time.
     # This is just a temporary implementation.
@@ -44,11 +45,9 @@ class CohereConnector(ModelConnector):
         types.CohereModel.COMMAND_LIGHT_NIGHTLY,
         types.CohereModel.COMMAND_NIGHTLY,
         types.CohereModel.COMMAND_R]:
-      return ((query_token_count / 1000000) * 0.5
-              + (response_token_count / 1000000) * 1.5)
+      return math.floor(query_token_count * 0.5 + response_token_count * 1.5)
     elif provider_model == types.CohereModel.COMMAND_R_PLUS:
-      return ((query_token_count / 1000000) * 3.0
-              + (response_token_count / 1000000) * 15.0)
+      return math.floor(query_token_count * 3.0 + response_token_count * 15.0)
     else:
       raise ValueError(f'Model not found.\n{logging_record.query_record.model}')
 

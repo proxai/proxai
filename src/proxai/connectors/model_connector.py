@@ -133,7 +133,7 @@ class ModelConnector(object):
       self, logging_record: types.LoggingRecord) -> int:
     raise NotImplementedError
 
-  def _get_estimated_price(
+  def _get_estimated_cost(
       self, logging_record: types.LoggingRecord) -> float:
     raise NotImplementedError
 
@@ -158,8 +158,8 @@ class ModelConnector(object):
             logging_record=logging_record))
       provider_stats.total_response_time = (
           logging_record.response_record.response_time.total_seconds())
-      provider_stats.estimated_price = self._get_estimated_price(
-          logging_record=logging_record)
+      provider_stats.estimated_cost = (
+          logging_record.response_record.estimated_cost)
       provider_stats.total_cache_look_fail_reasons = {
           logging_record.look_fail_reason: 1}
     elif logging_record.response_source == types.ResponseSource.CACHE:
@@ -177,8 +177,8 @@ class ModelConnector(object):
             logging_record=logging_record))
       cache_stats.saved_total_response_time = (
           logging_record.response_record.response_time.total_seconds())
-      cache_stats.saved_estimated_price = self._get_estimated_price(
-          logging_record=logging_record)
+      cache_stats.saved_estimated_cost = (
+          logging_record.response_record.estimated_cost)
     else:
       raise ValueError(
         f'Invalid response source.\n{logging_record.response_source}')
@@ -269,6 +269,8 @@ class ModelConnector(object):
             query_record=query_record,
             response_record=response_record,
             response_source=types.ResponseSource.CACHE)
+        logging_record.response_record.estimated_cost = (
+            self._get_estimated_cost(logging_record=logging_record))
         log_logging_record(
             logging_options=self.logging_options,
             logging_record=logging_record)
@@ -318,6 +320,8 @@ class ModelConnector(object):
         response_record=response_record,
         look_fail_reason=look_fail_reason,
         response_source=types.ResponseSource.PROVIDER)
+    logging_record.response_record.estimated_cost = (
+        self._get_estimated_cost(logging_record=logging_record))
     log_logging_record(
         logging_options=self.logging_options,
         logging_record=logging_record)

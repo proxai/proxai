@@ -1,5 +1,6 @@
 import copy
 import functools
+import math
 from typing import Union, Optional
 from mistralai.client import MistralClient
 from mistralai.models.chat_completion import ChatMessage
@@ -38,7 +39,7 @@ class MistralConnector(ModelConnector):
     # Note: Not implemented yet.
     return logging_record.query_record.max_tokens
 
-  def _get_estimated_price(self, logging_record: types.LoggingRecord):
+  def _get_estimated_cost(self, logging_record: types.LoggingRecord):
     # Note: Not implemented yet.
     # Needs to get updated all the time.
     # This is just a temporary implementation.
@@ -46,23 +47,17 @@ class MistralConnector(ModelConnector):
     response_token_count = self._get_response_token_count(logging_record)
     _, provider_model = logging_record.query_record.model
     if provider_model == types.MistralModel.OPEN_MISTRAL_7B:
-      return ((query_token_count / 1000000) * 0.25
-              + (response_token_count / 1000000) * 0.25)
+      return math.floor(query_token_count * 0.25 + response_token_count * 0.25)
     elif provider_model == types.MistralModel.OPEN_MIXTRAL_8X7B:
-      return ((query_token_count / 1000000) * 0.7
-              + (response_token_count / 1000000) * 0.7)
+      return math.floor(query_token_count * 0.7 + response_token_count * 0.7)
     elif provider_model == types.MistralModel.OPEN_MIXTRAL_8x22B:
-      return ((query_token_count / 1000000) * 2.0
-              + (response_token_count / 1000000) * 6.0)
+      return math.floor(query_token_count * 2.0 + response_token_count * 6.0)
     elif provider_model == types.MistralModel.MISTRAL_SMALL_LATEST:
-      return ((query_token_count / 1000000) * 2.0
-              + (response_token_count / 1000000) * 6.0)
+      return math.floor(query_token_count * 2.0 + response_token_count * 6.0)
     elif provider_model == types.MistralModel.MISTRAL_MEDIUM_LATEST:
-      return ((query_token_count / 1000000) * 2.7
-              + (response_token_count / 1000000) * 8.1)
+      return math.floor(query_token_count * 2.7 + response_token_count * 8.1)
     elif provider_model == types.MistralModel.MISTRAL_LARGE_LATEST:
-      return ((query_token_count / 1000000) * 8.0
-              + (response_token_count / 1000000) * 24.0)
+      return math.floor(query_token_count * 8.0 + response_token_count * 24.0)
     else:
       raise ValueError(f'Model not found.\n{logging_record.query_record.model}')
 
