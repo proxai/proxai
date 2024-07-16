@@ -44,12 +44,16 @@ def _get_query_response_record_options():
       {'response': 'Hello, world!'},
       {'error': 'Error message'},
       {'start_time': datetime.datetime.now()},
+      {'start_utc_time': datetime.datetime.now(datetime.timezone.utc)},
       {'end_time': datetime.datetime.now()},
+      {'end_utc_time': datetime.datetime.now(datetime.timezone.utc)},
       {'response_time': datetime.timedelta(seconds=1)},
       {'response': 'Hello, world!',
        'error': 'Error message',
        'start_time': datetime.datetime.now(),
+       'start_utc_time': datetime.datetime.now(datetime.timezone.utc),
        'end_time': datetime.datetime.now(),
+       'end_utc_time': datetime.datetime.now(datetime.timezone.utc),
        'response_time': datetime.timedelta(seconds=1)},]
 
 

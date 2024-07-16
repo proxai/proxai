@@ -232,6 +232,7 @@ class ModelConnector(object):
       query_model = model
 
     start_time = datetime.datetime.now()
+    start_utc_time = datetime.datetime.now(datetime.timezone.utc)
     query_record = types.QueryRecord(
         call_type=types.CallType.GENERATE_TEXT,
         model=query_model,
@@ -258,8 +259,12 @@ class ModelConnector(object):
         pass
       if response_record:
         response_record.end_time = datetime.datetime.now()
+        response_record.end_utc_time = datetime.datetime.now(
+            datetime.timezone.utc)
         response_record.start_time = (
             response_record.end_time - response_record.response_time)
+        response_record.start_utc_time = (
+            response_record.end_utc_time - response_record.response_time)
         logging_record = types.LoggingRecord(
             query_record=query_record,
             response_record=response_record,
@@ -297,7 +302,9 @@ class ModelConnector(object):
           error_traceback=error_traceback)
     response_record = query_response_record(
         start_time=start_time,
+        start_utc_time=start_utc_time,
         end_time=datetime.datetime.now(),
+        end_utc_time=datetime.datetime.now(datetime.timezone.utc),
         response_time=datetime.datetime.now() - start_time)
 
     if self.query_cache_manager and use_cache:
