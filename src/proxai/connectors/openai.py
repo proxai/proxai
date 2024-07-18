@@ -1,5 +1,6 @@
 import copy
 import functools
+import math
 from typing import Union, Optional
 from openai import OpenAI
 import proxai.types as types
@@ -31,7 +32,7 @@ class OpenAIConnector(ModelConnector):
     # Note: Not implemented yet.
     return logging_record.query_record.max_tokens
 
-  def _get_estimated_price(self, logging_record: types.LoggingRecord):
+  def _get_estimated_cost(self, logging_record: types.LoggingRecord):
     # Note: Not implemented yet.
     # Needs to get updated all the time.
     # This is just a temporary implementation.
@@ -39,23 +40,17 @@ class OpenAIConnector(ModelConnector):
     response_token_count = self._get_response_token_count(logging_record)
     _, provider_model = logging_record.query_record.model
     if provider_model == types.OpenAIModel.GPT_4:
-      return ((query_token_count / 1000000) * 30.0
-              + (response_token_count / 1000000) * 60.0)
+      return math.floor(query_token_count * 30.0 + response_token_count * 60.0)
     elif provider_model == types.OpenAIModel.GPT_4_TURBO_PREVIEW:
-      return ((query_token_count / 1000000) * 10.0
-              + (response_token_count / 1000000) * 30.0)
+      return math.floor(query_token_count * 10.0 + response_token_count * 30.0)
     elif provider_model == types.OpenAIModel.GPT_3_5_TURBO:
-      return ((query_token_count / 1000000) * 0.5
-              + (response_token_count / 1000000) * 1.5)
+      return math.floor(query_token_count * 0.5 + response_token_count * 1.5)
     elif provider_model == types.OpenAIModel.GPT_3_5_TURBO_INSTRUCT:
-      return ((query_token_count / 1000000) * 1.5
-              + (response_token_count / 1000000) * 2.0)
+      return math.floor(query_token_count * 1.5 + response_token_count * 2.0)
     elif provider_model == types.OpenAIModel.BABBAGE:
-      return ((query_token_count / 1000000) * 0.4
-              + (response_token_count / 1000000) * 0.4)
+      return math.floor(query_token_count * 0.4 + response_token_count * 0.4)
     elif provider_model == types.OpenAIModel.DAVINCI:
-      return ((query_token_count / 1000000) * 2.0
-              + (response_token_count / 1000000) * 2.0)
+      return math.floor(query_token_count * 2.0 + response_token_count * 2.0)
     else:
       raise ValueError(f'Model not found.\n{logging_record.query_record.model}')
 

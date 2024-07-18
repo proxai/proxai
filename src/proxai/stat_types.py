@@ -18,7 +18,7 @@ class BaseProviderStats:
   _total_response_time: float = 0.0
   _avr_response_time: float = 0.0
 
-  estimated_price: float = 0.0
+  estimated_cost: int = 0.0
 
   total_cache_look_fail_reasons: Dict[types.CacheLookFailReason, int] = (
       dataclasses.field(default_factory=dict))
@@ -32,7 +32,7 @@ class BaseProviderStats:
       total_query_token_count: int = 0,
       total_response_token_count: int = 0,
       total_response_time: float = 0.0,
-      estimated_price: float = 0.0,
+      estimated_cost: int = 0.0,
       total_cache_look_fail_reasons: Dict[types.CacheLookFailReason, int] = {},
   ):
     self.total_queries = total_queries
@@ -42,7 +42,7 @@ class BaseProviderStats:
     self.total_query_token_count = total_query_token_count
     self.total_response_token_count = total_response_token_count
     self.total_response_time = total_response_time
-    self.estimated_price = estimated_price
+    self.estimated_cost = estimated_cost
     self.total_cache_look_fail_reasons = total_cache_look_fail_reasons
 
   @property
@@ -89,7 +89,7 @@ class BaseProviderStats:
             self.total_response_token_count + other.total_response_token_count),
         total_response_time=(
             self.total_response_time + other.total_response_time),
-        estimated_price=self.estimated_price + other.estimated_price,
+        estimated_cost=self.estimated_cost + other.estimated_cost,
         total_cache_look_fail_reasons=total_cache_look_fail_reasons)
 
   def __sub__(self, other):
@@ -121,7 +121,7 @@ class BaseProviderStats:
             self.total_response_token_count - other.total_response_token_count),
         total_response_time=(
             self.total_response_time - other.total_response_time),
-        estimated_price=self.estimated_price - other.estimated_price,
+        estimated_cost=self.estimated_cost - other.estimated_cost,
         total_cache_look_fail_reasons=total_cache_look_fail_reasons)
     for key in result.__dict__:
       if isinstance(getattr(result, key), dict):
@@ -155,7 +155,7 @@ class BaseCacheStats:
   _saved_total_response_time: float = 0.0
   _saved_avr_response_time: float = 0.0
 
-  saved_estimated_price: float = 0.0
+  saved_estimated_cost: int = 0.0
 
   def __init__(
       self,
@@ -166,7 +166,7 @@ class BaseCacheStats:
       saved_query_token_count: int = 0,
       saved_response_token_count: int = 0,
       saved_total_response_time: float = 0.0,
-      saved_estimated_price: float = 0.0,
+      saved_estimated_cost: int = 0.0,
   ):
     self.total_cache_hit = total_cache_hit
     self.total_success_return = total_success_return
@@ -175,7 +175,7 @@ class BaseCacheStats:
     self.saved_query_token_count = saved_query_token_count
     self.saved_response_token_count = saved_response_token_count
     self.saved_total_response_time = saved_total_response_time
-    self.saved_estimated_price = saved_estimated_price
+    self.saved_estimated_cost = saved_estimated_cost
 
   @property
   def saved_total_response_time(self):
@@ -215,8 +215,8 @@ class BaseCacheStats:
             self.saved_response_token_count + other.saved_response_token_count),
         saved_total_response_time=(
             self.saved_total_response_time + other.saved_total_response_time),
-        saved_estimated_price=(
-            self.saved_estimated_price + other.saved_estimated_price))
+        saved_estimated_cost=(
+            self.saved_estimated_cost + other.saved_estimated_cost))
 
   def __sub__(self, other):
     if not isinstance(other, BaseCacheStats):
@@ -236,8 +236,8 @@ class BaseCacheStats:
             self.saved_response_token_count - other.saved_response_token_count),
         saved_total_response_time=(
             self.saved_total_response_time - other.saved_total_response_time),
-        saved_estimated_price=(
-            self.saved_estimated_price - other.saved_estimated_price))
+        saved_estimated_cost=(
+            self.saved_estimated_cost - other.saved_estimated_cost))
 
     for key in result.__dict__:
       if getattr(result, key) < -0.0001:

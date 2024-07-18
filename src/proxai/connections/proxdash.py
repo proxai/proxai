@@ -62,7 +62,7 @@ class ProxDashConnection(object):
   def _check_key_validity(self):
     response = requests.post(
         f'{_PROXDASH_BACKEND_URL}/connect',
-        data={'api_key': self._api_key})
+        data={'apiKey': self._api_key})
     if response.status_code != 201 or response.text == 'false':
       self.status = types.ProxDashConnectionStatus.API_KEY_NOT_VALID
       log_proxdash_message(
@@ -119,24 +119,27 @@ class ProxDashConnection(object):
     if logging_record.query_record.stop:
       stop = str(logging_record.query_record.stop)
     data = {
-      'api_key': self._api_key,
-      'hidden_run_key': self._hidden_run_key,
-      'experiment_name': self.experiment_name,
-      'call_type': logging_record.query_record.call_type,
+      'apiKey': self._api_key,
+      'hiddenRunKey': self._hidden_run_key,
+      'experimentName': self.experiment_name,
+      'callType': logging_record.query_record.call_type,
       'provider': logging_record.query_record.model[0],
       'model': logging_record.query_record.model[1],
-      'max_tokens': logging_record.query_record.max_tokens,
+      'maxTokens': logging_record.query_record.max_tokens,
       'temperature': logging_record.query_record.temperature,
       'stop': stop,
-      'hash_value': logging_record.query_record.hash_value,
+      'hashValue': logging_record.query_record.hash_value,
       'error': logging_record.response_record.error,
-      'error_traceback': logging_record.response_record.error_traceback,
-      'start_time': logging_record.response_record.start_time.isoformat(),
-      'end_time': logging_record.response_record.end_time.isoformat(),
-      'response_time': (
+      'errorTraceback': logging_record.response_record.error_traceback,
+      'startTime': logging_record.response_record.start_time.isoformat(),
+      'startUTCTime': logging_record.response_record.start_utc_time.isoformat(),
+      'endTime': logging_record.response_record.end_time.isoformat(),
+      'endUTCTime': logging_record.response_record.end_utc_time.isoformat(),
+      'responseTime': (
           logging_record.response_record.response_time.total_seconds() * 1000),
-      'response_source': logging_record.response_source,
-      'look_fail_reason': logging_record.look_fail_reason,
+      'estimatedCost': logging_record.response_record.estimated_cost,
+      'responseSource': logging_record.response_source,
+      'lookFailReason': logging_record.look_fail_reason,
     }
     if self._key_data['permission'] == 'ALL':
       data['prompt'] = logging_record.query_record.prompt

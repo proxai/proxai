@@ -1,6 +1,7 @@
 import anthropic
 import copy
 import functools
+import math
 from typing import Union, Optional
 import proxai.types as types
 from .claude_mock import ClaudeMock
@@ -31,7 +32,7 @@ class ClaudeConnector(ModelConnector):
     # Note: Not implemented yet.
     return logging_record.query_record.max_tokens
 
-  def _get_estimated_price(self, logging_record: types.LoggingRecord):
+  def _get_estimated_cost(self, logging_record: types.LoggingRecord):
     # Note: Not implemented yet.
     # Needs to get updated all the time.
     # This is just a temporary implementation.
@@ -39,14 +40,11 @@ class ClaudeConnector(ModelConnector):
     response_token_count = self._get_response_token_count(logging_record)
     _, provider_model = logging_record.query_record.model
     if provider_model == types.ClaudeModel.CLAUDE_3_OPUS:
-      return ((query_token_count / 1000000) * 15.0
-              + (response_token_count / 1000000) * 75.0)
+      return math.floor(query_token_count * 15.0 + response_token_count * 75.0)
     elif provider_model == types.ClaudeModel.CLAUDE_3_SONNET:
-      return ((query_token_count / 1000000) * 3.0
-              + (response_token_count / 1000000) * 15.0)
+      return math.floor(query_token_count * 3.0 + response_token_count * 15.0)
     elif provider_model == types.ClaudeModel.CLAUDE_3_HAIKU:
-      return ((query_token_count / 1000000) * 0.25
-              + (response_token_count / 1000000) * 1.25)
+      return math.floor(query_token_count * 0.25 + response_token_count * 1.25)
     else:
       raise ValueError(f'Model not found.\n{logging_record.query_record.model}')
 
