@@ -5,6 +5,14 @@ import tempfile
 import proxai.caching.model_cache as model_cache
 
 
+class MockFailingConnector:
+    def __init__(self, *args, **kwargs):
+      pass
+
+    def generate_text(self, prompt):
+      raise ValueError('Temp Error')
+
+
 class TestRunType:
     def test_setup_run_type(self):
       proxai._set_run_type(types.RunType.TEST)
@@ -132,9 +140,11 @@ class TestAvailableModels:
       available_models._get_all_models(
           models, call_type=types.CallType.GENERATE_TEXT)
       available_models._filter_by_provider_key(models)
+
+      # Fail for GPT_3_5_TURBO model. Other openai models should work.
       proxai._INITIALIZED_MODEL_CONNECTORS[
           (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)] = (
-              'failing_connector')
+              MockFailingConnector())
       available_models._test_models(
           models, call_type=types.CallType.GENERATE_TEXT)
       assert models.unprocessed_models == set()
@@ -193,7 +203,7 @@ class TestAvailableModels:
       # _test_models filter
       proxai._INITIALIZED_MODEL_CONNECTORS[
           (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)] = (
-              'failing_connector')
+              MockFailingConnector())
 
       available_models = proxai.get_available_models()
 

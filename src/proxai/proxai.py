@@ -96,7 +96,7 @@ def _init_model_connector(model: types.ModelType) -> ModelConnector:
   connector = functools.partial(
       connector,
       model=model,
-      run_type=_RUN_TYPE,
+      run_type=_get_run_type(),
       strict_feature_test=_STRICT_FEATURE_TEST,
       stats=_STATS,
       get_logging_options=_get_logging_options,
@@ -165,6 +165,10 @@ def _set_run_type(run_type: types.RunType):
   global _RUN_TYPE
   _RUN_TYPE = run_type
   _init_globals()
+
+
+def _get_run_type() -> types.RunType:
+  return _RUN_TYPE
 
 
 def check_health(
@@ -321,6 +325,7 @@ def get_summary(
 
 def get_available_models() -> available_models.AvailableModels:
   return available_models.AvailableModels(
+      get_run_type=_get_run_type,
       get_cache_options=_get_cache_options,
       get_logging_options=_get_logging_options,
       get_initialized_model_connectors=_get_initialized_model_connectors,
