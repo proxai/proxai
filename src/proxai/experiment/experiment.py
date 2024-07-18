@@ -4,7 +4,7 @@ import string
 
 
 def get_hidden_run_key() -> str:
-  random.seed(datetime.datetime.now())
+  random.seed(datetime.datetime.now().timestamp())
   return str(random.randint(1, 1000000))
 
 
