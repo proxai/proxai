@@ -13,6 +13,8 @@ from proxai.connections.proxdash import ProxDashConnection
 class AvailableModels:
   _model_cache: Optional[model_cache.ModelCache] = None
   _generate_text: Dict[types.ModelType, Any] = {}
+  _run_type: types.RunType
+  _get_run_type: Callable[[], types.RunType]
   _cache_options: types.CacheOptions
   _get_cache_options: Callable[[], types.CacheOptions]
   _logging_options: types.LoggingOptions
@@ -29,6 +31,8 @@ class AvailableModels:
       get_initialized_model_connectors: Callable[
           [], Dict[types.ModelType, ModelConnector]],
       init_model_connector: Callable[[types.ModelType], ModelConnector],
+      run_type: types.RunType = None,
+      get_run_type: Callable[[], types.RunType] = None,
       cache_options: Optional[types.CacheOptions] = None,
       get_cache_options: Optional[Callable[[], types.CacheOptions]] = None,
       logging_options: Optional[types.LoggingOptions] = None,
@@ -36,6 +40,9 @@ class AvailableModels:
       proxdash_connection: Optional[ProxDashConnection] = None,
       get_proxdash_connection: Optional[
           Callable[[], ProxDashConnection]] = None):
+    if run_type and get_run_type:
+      raise ValueError(
+          'Only one of run_type or get_run_type should be provided.')
     if cache_options and get_cache_options:
       raise ValueError(
           'Only one of cache_options or get_cache_options should be provided.')
@@ -47,6 +54,8 @@ class AvailableModels:
       raise ValueError(
           'Only one of proxdash_connection or get_proxdash_connection should '
           'be provided.')
+    self.run_type = run_type
+    self._get_run_type = get_run_type
     self.cache_options = cache_options
     self._get_cache_options = get_cache_options
     self.logging_options = logging_options
@@ -66,6 +75,18 @@ class AvailableModels:
           break
       if provider_flag:
         self._providers_with_key.add(provider)
+
+  @property
+  def run_type(self) -> types.RunType:
+    if self._run_type:
+      return self._run_type
+    if self._get_run_type:
+      return self._get_run_type()
+    return None
+
+  @run_type.setter
+  def run_type(self, run_type: types.RunType):
+    self._run_type = run_type
 
   @property
   def cache_options(self) -> types.CacheOptions:
@@ -93,6 +114,8 @@ class AvailableModels:
 
   @property
   def proxdash_connection(self) -> ProxDashConnection:
+    if self.run_type == types.RunType.TEST:
+      return None
     if self._proxdash_connection:
       return self._proxdash_connection
     if self._get_proxdash_connection:
@@ -217,7 +240,7 @@ class AvailableModels:
       model: types.ModelType,
       model_connector: ModelConnector,
       logging_options: types.LoggingOptions,
-      proxdash_connection: ProxDashConnection
+      proxdash_connection: Optional[ProxDashConnection],
   ) -> List[types.LoggingRecord]:
     start_time = datetime.datetime.now()
     prompt = 'Hello model!'
@@ -225,8 +248,10 @@ class AvailableModels:
     model_connector = copy.deepcopy(model_connector)
     model_connector._logging_options = logging_options
     model_connector._get_logging_options = None
-    model_connector._proxdash_connection = proxdash_connection
+    model_connector._proxdash_connection = None
     model_connector._get_proxdash_connection = None
+    if proxdash_connection:
+      model_connector._proxdash_connection = proxdash_connection
     try:
       logging_record = model_connector.generate_text(
           model=model,

@@ -13,7 +13,7 @@ def base_provider_stats_examples():
       total_query_token_count=100,
       total_response_token_count=100,
       total_response_time=0.5,
-      estimated_price=1.0,
+      estimated_cost=1.0,
       total_cache_look_fail_reasons={
           types.CacheLookFailReason.CACHE_NOT_FOUND: 1})
   big_example = stat_types.BaseProviderStats(
@@ -24,7 +24,7 @@ def base_provider_stats_examples():
       total_query_token_count=200,
       total_response_token_count=200,
       total_response_time=1.0,
-      estimated_price=2.0,
+      estimated_cost=2.0,
       total_cache_look_fail_reasons={
           types.CacheLookFailReason.CACHE_NOT_FOUND: 2})
   return (example, big_example)
@@ -39,7 +39,7 @@ def base_cache_stats_examples():
       saved_query_token_count=100,
       saved_response_token_count=100,
       saved_total_response_time=0.5,
-      saved_estimated_price=1.0)
+      saved_estimated_cost=1.0)
   big_example = stat_types.BaseCacheStats(
       total_cache_hit=4,
       total_success_return=2,
@@ -48,7 +48,7 @@ def base_cache_stats_examples():
       saved_query_token_count=200,
       saved_response_token_count=200,
       saved_total_response_time=1.0,
-      saved_estimated_price=2.0)
+      saved_estimated_cost=2.0)
   return (example, big_example)
 
 
