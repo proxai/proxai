@@ -11,7 +11,7 @@ def main():
   os.makedirs(cache_path, exist_ok=True)
   os.makedirs(logging_path, exist_ok=True)
   px.connect(
-      experiment_name='cache_test/run_2',
+      experiment_name='simple_test/run_1',
       cache_path=cache_path,
       logging_path=logging_path,
       logging_options=px.LoggingOptions(proxdash_stdout=True))
