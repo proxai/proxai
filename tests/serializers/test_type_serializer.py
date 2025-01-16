@@ -43,18 +43,20 @@ def _get_query_response_record_options():
   return [
       {'response': 'Hello, world!'},
       {'error': 'Error message'},
-      {'start_time': datetime.datetime.now()},
-      {'start_utc_time': datetime.datetime.now(datetime.timezone.utc)},
-      {'end_time': datetime.datetime.now()},
-      {'end_utc_time': datetime.datetime.now(datetime.timezone.utc)},
+      {'start_utc_date': datetime.datetime.now(datetime.timezone.utc)},
+      {'end_utc_date': datetime.datetime.now(datetime.timezone.utc)},
+      {'local_time_offset_minute': (
+          datetime.datetime.now().astimezone().utcoffset().total_seconds()
+          // 60) * -1},
       {'response_time': datetime.timedelta(seconds=1)},
       {'estimated_cost': 1},
       {'response': 'Hello, world!',
        'error': 'Error message',
-       'start_time': datetime.datetime.now(),
-       'start_utc_time': datetime.datetime.now(datetime.timezone.utc),
-       'end_time': datetime.datetime.now(),
-       'end_utc_time': datetime.datetime.now(datetime.timezone.utc),
+       'start_utc_date': datetime.datetime.now(datetime.timezone.utc),
+       'end_utc_date': datetime.datetime.now(datetime.timezone.utc),
+       'local_time_offset_minute': (
+          datetime.datetime.now().astimezone().utcoffset().total_seconds()
+          // 60) * -1,
        'response_time': datetime.timedelta(seconds=1),
        'estimated_cost': 1},]
 

@@ -7,8 +7,8 @@ import proxai.experiment.experiment as experiment
 from proxai.logging.utils import log_proxdash_message
 from typing import Callable, Dict, List, Optional
 
-_PROXDASH_BACKEND_URL = 'https://proxainest-production.up.railway.app'
-
+# _PROXDASH_BACKEND_URL = 'https://proxainest-production.up.railway.app'
+_PROXDASH_BACKEND_URL = 'http://localhost:3001'
 
 class ProxDashConnection(object):
   _experiment_name: str = '(not set)'
@@ -131,10 +131,9 @@ class ProxDashConnection(object):
       'hashValue': logging_record.query_record.hash_value,
       'error': logging_record.response_record.error,
       'errorTraceback': logging_record.response_record.error_traceback,
-      'startTime': logging_record.response_record.start_time.isoformat(),
-      'startUTCTime': logging_record.response_record.start_utc_time.isoformat(),
-      'endTime': logging_record.response_record.end_time.isoformat(),
-      'endUTCTime': logging_record.response_record.end_utc_time.isoformat(),
+      'startUTCDate': logging_record.response_record.start_utc_date.isoformat(),
+      'endUTCDate': logging_record.response_record.end_utc_date.isoformat(),
+      'localTimeOffsetMinute': logging_record.response_record.local_time_offset_minute,
       'responseTime': (
           logging_record.response_record.response_time.total_seconds() * 1000),
       'estimatedCost': logging_record.response_record.estimated_cost,

@@ -259,10 +259,9 @@ class QueryResponseRecord:
   response: Optional[str] = None
   error: Optional[str] = None
   error_traceback: Optional[str] = None
-  start_time: Optional[datetime.datetime] = None
-  start_utc_time: Optional[datetime.datetime] = None
-  end_time: Optional[datetime.datetime] = None
-  end_utc_time: Optional[datetime.datetime] = None
+  start_utc_date: Optional[datetime.datetime] = None
+  end_utc_date: Optional[datetime.datetime] = None
+  local_time_offset_minute: Optional[int] = None
   response_time: Optional[datetime.timedelta] = None
   estimated_cost: Optional[int] = None
 
