@@ -132,7 +132,7 @@ class AvailableModels:
       verbose: bool = False,
       return_all: bool = False
   ) -> List[types.ModelType]:
-    start_time = datetime.datetime.now()
+    start_utc_date = datetime.datetime.now(datetime.timezone.utc)
     models = types.ModelStatus()
     self._get_all_models(models, call_type=types.CallType.GENERATE_TEXT)
     self._filter_by_provider_key(models)
@@ -168,12 +168,12 @@ class AvailableModels:
             f'  {len(models.failed_models)} models are failed.')
       print(f'Running test for {len(models.unprocessed_models)} models.')
     self._test_models(models, call_type=types.CallType.GENERATE_TEXT)
-    end_time = datetime.datetime.now()
+    end_utc_date = datetime.datetime.now(datetime.timezone.utc)
     if print_flag:
       print(f'After test;\n'
             f'  {len(models.working_models)} models are working.\n'
             f'  {len(models.failed_models)} models are failed.')
-      duration = (end_time - start_time).total_seconds()
+      duration = (end_utc_date - start_utc_date).total_seconds()
       print(f'Test duration: {duration} seconds.')
 
     if return_all:
@@ -242,7 +242,7 @@ class AvailableModels:
       logging_options: types.LoggingOptions,
       proxdash_connection: Optional[ProxDashConnection],
   ) -> List[types.LoggingRecord]:
-    start_time = datetime.datetime.now()
+    start_utc_date = datetime.datetime.now(datetime.timezone.utc)
     prompt = 'Hello model!'
     max_tokens = 100
     model_connector = copy.deepcopy(model_connector)
@@ -269,9 +269,11 @@ class AvailableModels:
           response_record=types.QueryResponseRecord(
               error=str(e),
               error_traceback=traceback.format_exc(),
-              start_time=start_time,
-              end_time=datetime.datetime.now(),
-              response_time=datetime.datetime.now() - start_time),
+              start_utc_date=start_utc_date,
+              end_utc_date=datetime.datetime.now(datetime.timezone.utc),
+              response_time=(
+                  datetime.datetime.now(datetime.timezone.utc)
+                  - start_utc_date)),
           response_source=types.ResponseSource.PROVIDER)
 
   def _test_models(self, models: types.ModelStatus, call_type: str):

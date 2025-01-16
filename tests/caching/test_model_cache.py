@@ -21,7 +21,8 @@ class TestModelCache:
                   model=('openai', 'gpt-4')),
               response_record=types.QueryResponseRecord(
                   response='response1',
-                  end_time=datetime.datetime.now() - datetime.timedelta(days=1))
+                  end_utc_date=datetime.datetime.now(
+                      datetime.timezone.utc) - datetime.timedelta(days=1))
           ))
       data.provider_queries.append(
           types.LoggingRecord(
@@ -30,7 +31,8 @@ class TestModelCache:
                   model=('claude', types.ClaudeModel.CLAUDE_3_OPUS)),
               response_record=types.QueryResponseRecord(
                   response='response2',
-                  end_time=datetime.datetime.now() - datetime.timedelta(days=1))
+                  end_utc_date=datetime.datetime.now(
+                      datetime.timezone.utc) - datetime.timedelta(days=1))
           ))
       save_cache.update(data, types.CallType.GENERATE_TEXT)
 
@@ -55,7 +57,8 @@ class TestModelCache:
                   model=('openai', 'gpt-4')),
               response_record=types.QueryResponseRecord(
                   response='response1',
-                  end_time=datetime.datetime.now() - datetime.timedelta(days=1))
+                  end_utc_date=datetime.datetime.now(
+                      datetime.timezone.utc) - datetime.timedelta(days=1))
           ))
       data.provider_queries.append(
           types.LoggingRecord(
@@ -64,7 +67,8 @@ class TestModelCache:
                   model=('claude', types.ClaudeModel.CLAUDE_3_OPUS)),
               response_record=types.QueryResponseRecord(
                   error='error1',
-                  end_time=datetime.datetime.now() - datetime.timedelta(days=1))
+                  end_utc_date=datetime.datetime.now(
+                      datetime.timezone.utc) - datetime.timedelta(days=1))
           ))
       save_cache.update(
           model_status=data, call_type=types.CallType.GENERATE_TEXT)
@@ -79,7 +83,8 @@ class TestModelCache:
                   model=('openai', 'gpt-4')),
               response_record=types.QueryResponseRecord(
                   response='response1',
-                  end_time=datetime.datetime.now() - datetime.timedelta(days=1))
+                  end_utc_date=datetime.datetime.now(
+                      datetime.timezone.utc) - datetime.timedelta(days=1))
           ))
       data.provider_queries.append(
           types.LoggingRecord(
@@ -88,7 +93,8 @@ class TestModelCache:
                   model=('claude', types.ClaudeModel.CLAUDE_3_OPUS)),
               response_record=types.QueryResponseRecord(
                   error='error1',
-                  end_time=datetime.datetime.now() - datetime.timedelta(days=1))
+                  end_utc_date=datetime.datetime.now(
+                      datetime.timezone.utc) - datetime.timedelta(days=1))
           ))
       save_cache.update(
           model_status=data, call_type=types.CallType.GENERATE_TEXT)

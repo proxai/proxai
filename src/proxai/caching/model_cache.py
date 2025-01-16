@@ -65,8 +65,8 @@ class ModelCache:
     for provider_query in copy.deepcopy(self._data[call_type].provider_queries):
       if self._cache_options.duration == None:
         continue
-      passing_time = (datetime.datetime.now()
-                      - provider_query.response_record.end_time
+      passing_time = (datetime.datetime.now(datetime.timezone.utc)
+                      - provider_query.response_record.end_utc_date
                       ).total_seconds()
       if passing_time > self._cache_options.duration:
         self._clean_model(call_type=call_type,
