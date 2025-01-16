@@ -91,14 +91,13 @@ def encode_query_response_record(
     record['response'] = query_response_record.response
   if query_response_record.error != None:
     record['error'] = query_response_record.error
-  if query_response_record.start_time != None:
-    record['start_time'] = query_response_record.start_time.isoformat()
-  if query_response_record.start_utc_time != None:
-    record['start_utc_time'] = query_response_record.start_utc_time.isoformat()
-  if query_response_record.end_time != None:
-    record['end_time'] = query_response_record.end_time.isoformat()
-  if query_response_record.end_utc_time != None:
-    record['end_utc_time'] = query_response_record.end_utc_time.isoformat()
+  if query_response_record.start_utc_date != None:
+    record['start_utc_date'] = query_response_record.start_utc_date.isoformat()
+  if query_response_record.end_utc_date != None:
+    record['end_utc_date'] = query_response_record.end_utc_date.isoformat()
+  if query_response_record.local_time_offset_minute != None:
+    record['local_time_offset_minute'] = (
+        query_response_record.local_time_offset_minute)
   if query_response_record.response_time != None:
     record['response_time'] = (
         query_response_record.response_time.total_seconds())
@@ -112,18 +111,15 @@ def decode_query_response_record(
   query_response_record = types.QueryResponseRecord()
   query_response_record.response = record.get('response', None)
   query_response_record.error = record.get('error', None)
-  if 'start_time' in record:
-    query_response_record.start_time = datetime.datetime.fromisoformat(
-        record['start_time'])
-  if 'start_utc_time' in record:
-    query_response_record.start_utc_time = datetime.datetime.fromisoformat(
-        record['start_utc_time'])
-  if 'end_time' in record:
-    query_response_record.end_time = datetime.datetime.fromisoformat(
-        record['end_time'])
-  if 'end_utc_time' in record:
-    query_response_record.end_utc_time = datetime.datetime.fromisoformat(
-        record['end_utc_time'])
+  if 'start_utc_date' in record:
+    query_response_record.start_utc_date = datetime.datetime.fromisoformat(
+        record['start_utc_date'])
+  if 'end_utc_date' in record:
+    query_response_record.end_utc_date = datetime.datetime.fromisoformat(
+        record['end_utc_date'])
+  if 'local_time_offset_minute' in record:
+    query_response_record.local_time_offset_minute = (
+        record['local_time_offset_minute'])
   if 'response_time' in record:
     query_response_record.response_time = datetime.timedelta(
         seconds=record['response_time'])

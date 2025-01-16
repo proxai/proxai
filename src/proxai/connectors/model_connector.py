@@ -231,8 +231,7 @@ class ModelConnector(object):
             'Model provider does not match the connector provider.')
       query_model = model
 
-    start_time = datetime.datetime.now()
-    start_utc_time = datetime.datetime.now(datetime.timezone.utc)
+    start_utc_date = datetime.datetime.now(datetime.timezone.utc)
     query_record = types.QueryRecord(
         call_type=types.CallType.GENERATE_TEXT,
         model=query_model,
@@ -258,13 +257,13 @@ class ModelConnector(object):
       except Exception as e:
         pass
       if response_record:
-        response_record.end_time = datetime.datetime.now()
-        response_record.end_utc_time = datetime.datetime.now(
+        response_record.end_utc_date = datetime.datetime.now(
             datetime.timezone.utc)
-        response_record.start_time = (
-            response_record.end_time - response_record.response_time)
-        response_record.start_utc_time = (
-            response_record.end_utc_time - response_record.response_time)
+        response_record.start_utc_date = (
+            response_record.end_utc_date - response_record.response_time)
+        response_record.local_time_offset_minute = (
+            datetime.datetime.now().astimezone().utcoffset().total_seconds()
+            // 60) * -1
         logging_record = types.LoggingRecord(
             query_record=query_record,
             response_record=response_record,
@@ -303,11 +302,13 @@ class ModelConnector(object):
           error=str(error),
           error_traceback=error_traceback)
     response_record = query_response_record(
-        start_time=start_time,
-        start_utc_time=start_utc_time,
-        end_time=datetime.datetime.now(),
-        end_utc_time=datetime.datetime.now(datetime.timezone.utc),
-        response_time=datetime.datetime.now() - start_time)
+        start_utc_date=start_utc_date,
+        end_utc_date=datetime.datetime.now(datetime.timezone.utc),
+        local_time_offset_minute=(
+            datetime.datetime.now().astimezone().utcoffset().total_seconds()
+            // 60) * -1,
+        response_time=(
+            datetime.datetime.now(datetime.timezone.utc) - start_utc_date))
 
     if self.query_cache_manager and use_cache:
       self.query_cache_manager.cache(

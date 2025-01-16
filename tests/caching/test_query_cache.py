@@ -29,12 +29,12 @@ def _create_response_record(
     error=None) -> types.QueryResponseRecord:
   query_response_record = types.QueryResponseRecord(
     response=f'r{response_id}',
-    start_time=(datetime.datetime.now()
-                - datetime.timedelta(seconds=response_id)),
-    start_utc_time=(datetime.datetime.now(datetime.timezone.utc)
+    start_utc_date=(datetime.datetime.now(datetime.timezone.utc)
                     - datetime.timedelta(seconds=response_id)),
-    end_time=datetime.datetime.now(),
-    end_utc_time=datetime.datetime.now(datetime.timezone.utc),
+    end_utc_date=datetime.datetime.now(datetime.timezone.utc),
+    local_time_offset_minute=(
+        datetime.datetime.now().astimezone().utcoffset().total_seconds()
+        // 60) * -1,
     response_time=datetime.timedelta(seconds=response_id))
   if error:
     query_response_record.response = None
