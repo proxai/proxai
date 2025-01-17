@@ -34,6 +34,7 @@ _STATS: Dict[str, stat_types.RunStats] = {
     stat_types.GlobalStatType.SINCE_CONNECT: stat_types.RunStats()
 }
 _PROXDASH_CONNECTION: Optional[proxdash.ProxDashConnection] = None
+_ALLOW_MULTIPROCESSING: bool = False
 
 CacheOptions = types.CacheOptions
 LoggingOptions = types.LoggingOptions
@@ -60,6 +61,7 @@ def _init_globals():
   global _CACHE_OPTIONS
   global _QUERY_CACHE_MANAGER
   global _STRICT_FEATURE_TEST
+  global _ALLOW_MULTIPROCESSING
   global _STATS
   _REGISTERED_VALUES = {}
   _INITIALIZED_MODEL_CONNECTORS = {}
@@ -67,6 +69,7 @@ def _init_globals():
   _CACHE_OPTIONS = types.CacheOptions()
   _QUERY_CACHE_MANAGER = None
   _STRICT_FEATURE_TEST = False
+  _ALLOW_MULTIPROCESSING = False
   _STATS[stat_types.GlobalStatType.SINCE_CONNECT] = stat_types.RunStats()
 
 
@@ -161,6 +164,10 @@ def _get_model_connector(
     return _INITIALIZED_MODEL_CONNECTORS[model]
 
 
+def _get_allow_multiprocessing() -> bool:
+  return _ALLOW_MULTIPROCESSING
+
+
 def _set_run_type(run_type: types.RunType):
   global _RUN_TYPE
   _RUN_TYPE = run_type
@@ -212,20 +219,23 @@ def connect(
     cache_options: CacheOptions=None,
     logging_path: str=None,
     logging_options: LoggingOptions=None,
+    allow_multiprocessing: bool=False,
     strict_feature_test: bool=False):
   global _CACHE_OPTIONS
   global _LOGGING_OPTIONS
   global _QUERY_CACHE_MANAGER
   global _STRICT_FEATURE_TEST
+  global _ALLOW_MULTIPROCESSING
   _init_globals()
   _init_experiment_name(experiment_name)
-
 
   if cache_path and cache_options and cache_options.path:
     raise ValueError('cache_path and cache_options.path are both set.')
 
   if logging_path and logging_options and logging_options.path:
     raise ValueError('logging_path and logging_options.path are both set.')
+
+  _ALLOW_MULTIPROCESSING = allow_multiprocessing
 
   if cache_path:
     _CACHE_OPTIONS.path = cache_path
@@ -326,6 +336,7 @@ def get_summary(
 def get_available_models() -> available_models.AvailableModels:
   return available_models.AvailableModels(
       get_run_type=_get_run_type,
+      get_allow_multiprocessing=_get_allow_multiprocessing,
       get_cache_options=_get_cache_options,
       get_logging_options=_get_logging_options,
       get_initialized_model_connectors=_get_initialized_model_connectors,

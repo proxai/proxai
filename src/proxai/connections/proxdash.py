@@ -7,8 +7,7 @@ import proxai.experiment.experiment as experiment
 from proxai.logging.utils import log_proxdash_message
 from typing import Callable, Dict, List, Optional
 
-# _PROXDASH_BACKEND_URL = 'https://proxainest-production.up.railway.app'
-_PROXDASH_BACKEND_URL = 'http://localhost:3001'
+_PROXDASH_BACKEND_URL = 'https://proxainest-production.up.railway.app'
 
 class ProxDashConnection(object):
   _experiment_name: str = '(not set)'
