@@ -19,6 +19,8 @@ class AvailableModels:
   _get_cache_options: Callable[[], types.CacheOptions]
   _logging_options: types.LoggingOptions
   _get_logging_options: Callable[[], types.LoggingOptions]
+  _allow_multiprocessing: bool
+  _get_allow_multiprocessing: Callable[[], bool]
   _proxdash_connection: ProxDashConnection
   _get_proxdash_connection: Callable[[], ProxDashConnection]
   _get_initialized_model_connectors: Callable[
@@ -39,7 +41,9 @@ class AvailableModels:
       get_logging_options: Optional[Callable[[], types.LoggingOptions]] = None,
       proxdash_connection: Optional[ProxDashConnection] = None,
       get_proxdash_connection: Optional[
-          Callable[[], ProxDashConnection]] = None):
+          Callable[[], ProxDashConnection]] = None,
+      allow_multiprocessing: bool = None,
+      get_allow_multiprocessing: Optional[Callable[[], bool]] = None):
     if run_type and get_run_type:
       raise ValueError(
           'Only one of run_type or get_run_type should be provided.')
@@ -54,6 +58,10 @@ class AvailableModels:
       raise ValueError(
           'Only one of proxdash_connection or get_proxdash_connection should '
           'be provided.')
+    if allow_multiprocessing and get_allow_multiprocessing:
+      raise ValueError(
+          'Only one of allow_multiprocessing or get_allow_multiprocessing should '
+          'be provided.')
     self.run_type = run_type
     self._get_run_type = get_run_type
     self.cache_options = cache_options
@@ -64,6 +72,8 @@ class AvailableModels:
     self._get_proxdash_connection = get_proxdash_connection
     self._get_initialized_model_connectors = get_initialized_model_connectors
     self._init_model_connector= init_model_connector
+    self.allow_multiprocessing = allow_multiprocessing
+    self._get_allow_multiprocessing = get_allow_multiprocessing
     self._load_provider_keys()
 
   def _load_provider_keys(self):
@@ -125,6 +135,18 @@ class AvailableModels:
   @proxdash_connection.setter
   def proxdash_connection(self, proxdash_connection: ProxDashConnection):
     self._proxdash_connection = proxdash_connection
+
+  @property
+  def allow_multiprocessing(self) -> bool:
+    if self._allow_multiprocessing is not None:
+      return self._allow_multiprocessing
+    if self._get_allow_multiprocessing:
+      return self._get_allow_multiprocessing()
+    return None
+
+  @allow_multiprocessing.setter
+  def allow_multiprocessing(self, allow_multiprocessing: bool):
+    self._allow_multiprocessing = allow_multiprocessing
 
   def generate_text(
       self,
@@ -291,21 +313,32 @@ class AvailableModels:
       test_func = self._test_generate_text
     else:
       raise ValueError(f'Call type not supported: {call_type}')
-    pool = multiprocessing.Pool(processes=len(test_models))
+
     test_results = []
-    for test_model in test_models:
-      result = pool.apply_async(
-          test_func,
-          args=(
-              test_model,
-              initialized_model_connectors[test_model],
-              self.logging_options,
-              self.proxdash_connection))
-      test_results.append(result)
-    pool.close()
-    pool.join()
-    test_results: List[types.LoggingRecord] = [
-        result.get() for result in test_results]
+    if self.allow_multiprocessing:
+      pool = multiprocessing.Pool(processes=len(test_models))
+      for test_model in test_models:
+        result = pool.apply_async(
+            test_func,
+            args=(
+                test_model,
+                initialized_model_connectors[test_model],
+                self.logging_options,
+                self.proxdash_connection))
+        test_results.append(result)
+      pool.close()
+      pool.join()
+      test_results: List[types.LoggingRecord] = [
+          result.get() for result in test_results]
+    else:
+      for test_model in test_models:
+        test_results.append(
+            test_func(
+                test_model,
+                initialized_model_connectors[test_model],
+                self.logging_options,
+                self.proxdash_connection))
+
     update_models = types.ModelStatus()
     for logging_record in test_results:
       models.unprocessed_models.remove(logging_record.query_record.model)

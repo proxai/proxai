@@ -130,17 +130,19 @@ class TestAvailableModels:
       assert models.failed_models == set([
           (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW)])
 
-  def test_test_models(self):
+  @pytest.mark.parametrize('allow_multiprocessing', [True, False])
+  def test_test_models(self, allow_multiprocessing):
     proxai._set_run_type(types.RunType.TEST)
     with tempfile.TemporaryDirectory() as cache_dir:
-      proxai.connect(cache_path=cache_dir)
+      proxai.connect(
+          cache_path=cache_dir,
+          allow_multiprocessing=allow_multiprocessing)
       available_models = proxai.get_available_models()
       available_models._providers_with_key = [types.Provider.OPENAI]
       models = types.ModelStatus()
       available_models._get_all_models(
           models, call_type=types.CallType.GENERATE_TEXT)
       available_models._filter_by_provider_key(models)
-
       # Fail for GPT_3_5_TURBO model. Other openai models should work.
       proxai._INITIALIZED_MODEL_CONNECTORS[
           (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)] = (
