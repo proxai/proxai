@@ -71,12 +71,14 @@ def feature_complete_test(hard_start=False):
 
 
 def make_query(
+    provider,
     model,
     use_cache,
     px_generate_text):
   global TOTAL_CACHE_HITS, TOTAL_PROVIDER_CALLS
   try:
     logging_record: px_types.LoggingRecord = px_generate_text(
+        provider=provider,
         model=model,
         use_cache=use_cache,
         extensive_return=True)
@@ -108,11 +110,11 @@ def run_queries(
       strict_feature_test=strict_feature_test)
   models = px.models.generate_text(verbose=True)
   print(f'{"PROVIDER":10} | {"MODEL":45} | {"DURATION":13} | {"RESPONSE"}')
-  for model in models:
-    provider, provider_model = model
+  for provider, provider_model in models:
     start_time = datetime.datetime.now()
     response = make_query(
-        model=model,
+        provider=provider,
+        model=provider_model,
         use_cache=use_cache,
         px_generate_text=px_generate_text)
     end_time = datetime.datetime.now()

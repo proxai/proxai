@@ -266,6 +266,8 @@ def connect(
 
   _STRICT_FEATURE_TEST = strict_feature_test
 
+  _get_proxdash_connection()
+
 
 def set_model(generate_text: types.ModelType=None):
   global _REGISTERED_VALUES
@@ -281,7 +283,8 @@ def generate_text(
     max_tokens: Optional[int] = 100,
     temperature: Optional[float] = None,
     stop: Optional[types.StopType] = None,
-    model: Optional[types.ModelType] = None,
+    provider: Optional[types.Provider] = None,
+    model: Optional[types.ProviderModel] = None,
     use_cache: bool = True,
     unique_response_limit: Optional[int] = None,
     extensive_return: bool = False) -> str:
@@ -289,9 +292,16 @@ def generate_text(
     raise ValueError('prompt and messages cannot be set at the same time.')
   if messages != None:
     type_utils.check_messages_type(messages)
+
+  if (provider is None) != (model is None):
+    raise ValueError('provider and model need to be set together.')
+  modelValue = None
+  if provider is not None and model is not None:
+    modelValue = (provider, model)
+
   model_connector = _get_model_connector(
       types.CallType.GENERATE_TEXT,
-      model=model)
+      model=modelValue)
   logging_record = model_connector.generate_text(
       prompt=prompt,
       system=system,
@@ -299,7 +309,7 @@ def generate_text(
       max_tokens=max_tokens,
       temperature=temperature,
       stop=stop,
-      model=model,
+      model=modelValue,
       use_cache=use_cache,
       unique_response_limit=unique_response_limit)
   if logging_record.response_record.error:
