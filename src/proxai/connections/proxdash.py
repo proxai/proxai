@@ -45,6 +45,10 @@ class ProxDashConnection(object):
     self._api_key = api_key
     if self._check_key_validity():
       self.status = types.ProxDashConnectionStatus.CONNECTED
+      log_proxdash_message(
+          logging_options=self.logging_options,
+          message='Connected to ProxDash.',
+          type=types.LoggingType.INFO)
 
   @property
   def logging_options(self) -> types.LoggingOptions:
@@ -107,8 +111,7 @@ class ProxDashConnection(object):
     if self.status == types.ProxDashConnectionStatus.CONNECTED:
       log_proxdash_message(
           logging_options=self.logging_options,
-          message='Connected to ProxDash.\n'
-                  f'Experiment name: {experiment_name}',
+          message=f'Connected to ProxDash experiment: {experiment_name}',
           type=types.LoggingType.INFO)
 
   def upload_logging_record(self, logging_record: types.LoggingRecord):
