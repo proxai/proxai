@@ -180,7 +180,8 @@ def _get_run_type() -> types.RunType:
 
 def check_health(
     experiment_path: Optional[str]='check_health',
-    verbose: bool = False
+    verbose: bool = False,
+    allow_multiprocessing: bool = False
 ) -> Tuple[List[types.ModelType], List[types.ModelType]]:
   experiment.validate_experiment_path(experiment_path)
   logging_options = types.LoggingOptions(proxdash_stdout=True)
@@ -196,6 +197,7 @@ def check_health(
       cache_options=types.CacheOptions(),
       logging_options=logging_options,
       proxdash_connection=proxdash_connection,
+      allow_multiprocessing=allow_multiprocessing,
       get_initialized_model_connectors=_get_initialized_model_connectors,
       init_model_connector=_init_model_connector)
   succeeded_models, failed_models = models.generate_text(
@@ -257,10 +259,8 @@ def connect(
   if logging_path:
     _LOGGING_OPTIONS.path = logging_path
   if logging_options:
-    _LOGGING_OPTIONS.time = logging_options.time
     _LOGGING_OPTIONS.prompt = logging_options.prompt
     _LOGGING_OPTIONS.response = logging_options.response
-    _LOGGING_OPTIONS.error = logging_options.error
     _LOGGING_OPTIONS.stdout = logging_options.stdout
     _LOGGING_OPTIONS.proxdash_stdout = logging_options.proxdash_stdout
 
