@@ -27,6 +27,7 @@ _REGISTERED_VALUES: Dict[str, types.ModelType] = {}
 _INITIALIZED_MODEL_CONNECTORS: Dict[types.ModelType, ModelConnector] = {}
 _LOGGING_OPTIONS: types.LoggingOptions = types.LoggingOptions()
 _CACHE_OPTIONS: types.CacheOptions = types.CacheOptions()
+_PROXDASH_OPTIONS: types.ProxDashOptions = types.ProxDashOptions()
 _QUERY_CACHE_MANAGER: Optional[query_cache.QueryCacheManager] = None
 _STRICT_FEATURE_TEST: bool = False
 _STATS: Dict[str, stat_types.RunStats] = {
@@ -38,7 +39,7 @@ _ALLOW_MULTIPROCESSING: bool = False
 
 CacheOptions = types.CacheOptions
 LoggingOptions = types.LoggingOptions
-
+ProxDashOptions = types.ProxDashOptions
 
 def _init_hidden_run_key():
   global _HIDDEN_RUN_KEY
@@ -59,6 +60,7 @@ def _init_globals():
   global _INITIALIZED_MODEL_CONNECTORS
   global _LOGGING_OPTIONS
   global _CACHE_OPTIONS
+  global _PROXDASH_OPTIONS
   global _QUERY_CACHE_MANAGER
   global _STRICT_FEATURE_TEST
   global _ALLOW_MULTIPROCESSING
@@ -67,6 +69,7 @@ def _init_globals():
   _INITIALIZED_MODEL_CONNECTORS = {}
   _LOGGING_OPTIONS = types.LoggingOptions()
   _CACHE_OPTIONS = types.CacheOptions()
+  _PROXDASH_OPTIONS = types.ProxDashOptions()
   _QUERY_CACHE_MANAGER = None
   _STRICT_FEATURE_TEST = False
   _ALLOW_MULTIPROCESSING = False
@@ -121,6 +124,10 @@ def _get_logging_options() -> LoggingOptions:
   return _LOGGING_OPTIONS
 
 
+def _get_proxdash_options() -> ProxDashOptions:
+  return _PROXDASH_OPTIONS
+
+
 def _get_experiment_path() -> str:
   if _EXPERIMENT_PATH:
     return _EXPERIMENT_PATH
@@ -143,7 +150,8 @@ def _get_proxdash_connection() -> proxdash.ProxDashConnection:
   if not _PROXDASH_CONNECTION:
     _PROXDASH_CONNECTION = proxdash.ProxDashConnection(
         hidden_run_key=_get_hidden_run_key(),
-        get_logging_options=_get_logging_options)
+        get_logging_options=_get_logging_options,
+        get_proxdash_options=_get_proxdash_options)
   _PROXDASH_CONNECTION.experiment_path = _get_experiment_path()
   return _PROXDASH_CONNECTION
 
@@ -221,11 +229,13 @@ def connect(
     cache_options: CacheOptions=None,
     logging_path: str=None,
     logging_options: LoggingOptions=None,
+    proxdash_options: ProxDashOptions=None,
     allow_multiprocessing: bool=False,
     strict_feature_test: bool=False):
   global _CACHE_OPTIONS
   global _LOGGING_OPTIONS
   global _QUERY_CACHE_MANAGER
+  global _PROXDASH_OPTIONS
   global _STRICT_FEATURE_TEST
   global _ALLOW_MULTIPROCESSING
   _init_globals()
@@ -264,6 +274,10 @@ def connect(
     _LOGGING_OPTIONS.proxdash_stdout = logging_options.proxdash_stdout
     _LOGGING_OPTIONS.hide_sensitive_content = (
         logging_options.hide_sensitive_content)
+
+  if proxdash_options:
+    _PROXDASH_OPTIONS.hide_sensitive_content = (
+        proxdash_options.hide_sensitive_content)
 
   _STRICT_FEATURE_TEST = strict_feature_test
 
