@@ -283,6 +283,7 @@ def connect(
     _PROXDASH_OPTIONS.stdout = proxdash_options.stdout
     _PROXDASH_OPTIONS.hide_sensitive_content = (
         proxdash_options.hide_sensitive_content)
+    _PROXDASH_OPTIONS.disable_proxdash = proxdash_options.disable_proxdash
 
   _STRICT_FEATURE_TEST = strict_feature_test
 

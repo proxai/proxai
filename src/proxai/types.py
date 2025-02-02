@@ -236,7 +236,7 @@ class CacheOptions:
 class ProxDashOptions:
   stdout: bool = False
   hide_sensitive_content: bool = False
-
+  disable_proxdash: bool = False
 
 @dataclasses.dataclass
 class SummaryOptions:
@@ -324,6 +324,7 @@ class ModelStatus:
 
 
 class ProxDashConnectionStatus(str, enum.Enum):
+  DISABLED = 'DISABLED'
   CONNECTED = 'CONNECTED'
   API_KEY_NOT_FOUND = 'API_KEY_NOT_FOUND'
   API_KEY_NOT_VALID = 'API_KEY_NOT_VALID'
