@@ -260,10 +260,10 @@ def connect(
   if logging_path:
     _LOGGING_OPTIONS.logging_path = logging_path
   if logging_options:
-    _LOGGING_OPTIONS.prompt = logging_options.prompt
-    _LOGGING_OPTIONS.response = logging_options.response
     _LOGGING_OPTIONS.stdout = logging_options.stdout
     _LOGGING_OPTIONS.proxdash_stdout = logging_options.proxdash_stdout
+    _LOGGING_OPTIONS.hide_sensitive_content = (
+        logging_options.hide_sensitive_content)
 
   _STRICT_FEATURE_TEST = strict_feature_test
 

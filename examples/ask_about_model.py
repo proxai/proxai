@@ -68,10 +68,12 @@ def main():
   os.makedirs(cache_path, exist_ok=True)
   os.makedirs(logging_path, exist_ok=True)
   px.connect(
-      experiment_path='ask_about_model/run_2',
+      experiment_path='ask_about_model/run_3',
       cache_path=cache_path,
       logging_path=logging_path,
-      logging_options=px.LoggingOptions(proxdash_stdout=True))
+      logging_options=px.LoggingOptions(
+          proxdash_stdout=True,
+          hide_sensitive_content=True))
   models = get_models()
   run_tests(models, functools.partial(test_query, break_caches=_BREAK_CACHES))
 
