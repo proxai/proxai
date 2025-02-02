@@ -14,7 +14,7 @@ def main():
       experiment_path='simple_test/run_1',
       cache_path=cache_path,
       logging_path=logging_path,
-      logging_options=px.LoggingOptions(proxdash_stdout=True))
+      proxdash_options=px.ProxDashOptions(stdout=True))
   random_int = random.randint(1, 1000000)
   result = px.generate_text(
       'This is a test message to check if the cache is working or '

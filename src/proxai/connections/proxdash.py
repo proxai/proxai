@@ -48,6 +48,7 @@ class ProxDashConnection(object):
         self.status = types.ProxDashConnectionStatus.API_KEY_NOT_FOUND
         log_proxdash_message(
             logging_options=self.logging_options,
+            proxdash_options=self.proxdash_options,
             message='ProxDash API key not found. Please provide an API key '
                     'either as an argument or as an environment variable.',
             type=types.LoggingType.ERROR)
@@ -57,6 +58,7 @@ class ProxDashConnection(object):
       self.status = types.ProxDashConnectionStatus.CONNECTED
       log_proxdash_message(
           logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
           message='Connected to ProxDash.',
           type=types.LoggingType.INFO)
 
@@ -111,6 +113,7 @@ class ProxDashConnection(object):
       self.status = types.ProxDashConnectionStatus.API_KEY_NOT_VALID
       log_proxdash_message(
           logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
           message=(
               'ProxDash API key not valid. Please provide a valid API key.\n'
               'Check proxai.co/dashboard/api-keys page to get your API '
@@ -123,6 +126,7 @@ class ProxDashConnection(object):
       self.status = types.ProxDashConnectionStatus.PROXDASH_INVALID_RETURN
       log_proxdash_message(
           logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
           message=(
               'ProxDash returned an invalid response.\nPlease report this '
               'issue to the https://github.com/proxai/proxai.\n'
@@ -152,6 +156,7 @@ class ProxDashConnection(object):
     if self.status == types.ProxDashConnectionStatus.CONNECTED:
       log_proxdash_message(
           logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
           message=f'Connected to ProxDash experiment: {experiment_path}',
           type=types.LoggingType.INFO)
 
@@ -199,6 +204,7 @@ class ProxDashConnection(object):
     if response.status_code != 201 or response.text != 'success':
       log_proxdash_message(
           logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
           message=(
               'ProxDash could not log the record. Error message:\n'
               f'{response.text}'),

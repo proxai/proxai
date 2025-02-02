@@ -124,6 +124,7 @@ def log_message(
 
 def log_proxdash_message(
     logging_options: types.LoggingOptions,
+    proxdash_options: types.ProxDashOptions,
     message: str,
     type: types.LoggingType,
     query_record: Optional[types.QueryRecord] = None):
@@ -137,7 +138,7 @@ def log_proxdash_message(
     if logging_options.hide_sensitive_content:
       query_record = _hide_sensitive_content_query_record(query_record)
     result['query_record'] = type_serializer.encode_query_record(query_record)
-  if logging_options.proxdash_stdout:
+  if proxdash_options.stdout:
     pprint(result)
   if not logging_options.logging_path:
     return
