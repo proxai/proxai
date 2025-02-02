@@ -192,13 +192,16 @@ def check_health(
     allow_multiprocessing: bool = False
 ) -> Tuple[List[types.ModelType], List[types.ModelType]]:
   experiment.validate_experiment_path(experiment_path)
-  logging_options = types.LoggingOptions(proxdash_stdout=True)
+  logging_options = types.LoggingOptions()
+  proxdash_options = types.ProxDashOptions(stdout=True)
   proxdash_connection = proxdash.ProxDashConnection(
       hidden_run_key=_get_hidden_run_key(),
-      logging_options=logging_options)
+      logging_options=logging_options,
+      proxdash_options=proxdash_options)
   proxdash_connection.experiment_path = experiment_path
   log_proxdash_message(
       logging_options=logging_options,
+      proxdash_options=proxdash_options,
       message='Starting to test each model...',
       type=types.LoggingType.INFO)
   models = available_models.AvailableModels(
@@ -212,12 +215,14 @@ def check_health(
       verbose=verbose, return_all=True)
   log_proxdash_message(
       logging_options=logging_options,
+      proxdash_options=proxdash_options,
       message=f'Finished testing. Succeeded Models: {len(succeeded_models)}, '
               f'Failed Models: {len(failed_models)}',
       type=types.LoggingType.INFO)
   if proxdash_connection.status == types.ProxDashConnectionStatus.CONNECTED:
     log_proxdash_message(
         logging_options=logging_options,
+        proxdash_options=proxdash_options,
         message='Results are uploaded to the ProxDash.',
         type=types.LoggingType.INFO)
   return succeeded_models, failed_models
@@ -271,11 +276,11 @@ def connect(
     _LOGGING_OPTIONS.logging_path = logging_path
   if logging_options:
     _LOGGING_OPTIONS.stdout = logging_options.stdout
-    _LOGGING_OPTIONS.proxdash_stdout = logging_options.proxdash_stdout
     _LOGGING_OPTIONS.hide_sensitive_content = (
         logging_options.hide_sensitive_content)
 
   if proxdash_options:
+    _PROXDASH_OPTIONS.stdout = proxdash_options.stdout
     _PROXDASH_OPTIONS.hide_sensitive_content = (
         proxdash_options.hide_sensitive_content)
 

@@ -214,7 +214,6 @@ MessagesType = List[Dict[str, str]]
 class LoggingOptions:
   logging_path: Optional[str] = None
   stdout: bool = False
-  proxdash_stdout: bool = False
   hide_sensitive_content: bool = False
 
 
@@ -235,6 +234,7 @@ class CacheOptions:
 
 @dataclasses.dataclass
 class ProxDashOptions:
+  stdout: bool = False
   hide_sensitive_content: bool = False
 
 
