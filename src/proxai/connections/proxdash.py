@@ -36,11 +36,24 @@ class ProxDashConnection(object):
       raise ValueError(
           'Only one of proxdash_options or get_proxdash_options should be '
           'provided.')
+
     self._hidden_run_key = hidden_run_key
     self.logging_options = logging_options
     self._get_logging_options = get_logging_options
     self.proxdash_options = proxdash_options
     self._get_proxdash_options = get_proxdash_options
+
+    if self.proxdash_options and self.proxdash_options.disable_proxdash:
+      self.status = types.ProxDashConnectionStatus.DISABLED
+      log_proxdash_message(
+          logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
+          message=(
+              'ProxDash disabled via proxdash_options. '
+              'No data will be sent to ProxDash servers.'),
+          type=types.LoggingType.INFO)
+      return
+
     if not api_key:
       if 'PROXDASH_API_KEY' in os.environ:
         api_key = os.environ['PROXDASH_API_KEY']
@@ -68,7 +81,7 @@ class ProxDashConnection(object):
       return self._logging_options
     if self._get_logging_options:
       return self._get_logging_options()
-    return None
+    return types.LoggingOptions()
 
   @logging_options.setter
   def logging_options(self, logging_options: types.LoggingOptions):
@@ -80,7 +93,7 @@ class ProxDashConnection(object):
       return self._proxdash_options
     if self._get_proxdash_options:
       return self._get_proxdash_options()
-    return None
+    return types.ProxDashOptions()
 
   @proxdash_options.setter
   def proxdash_options(self, proxdash_options: types.ProxDashOptions):

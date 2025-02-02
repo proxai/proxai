@@ -128,8 +128,6 @@ def log_proxdash_message(
     message: str,
     type: types.LoggingType,
     query_record: Optional[types.QueryRecord] = None):
-  if not logging_options:
-    return
   result = {}
   result['logging_type'] = type.value.upper()
   result['message'] = message
