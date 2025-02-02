@@ -234,8 +234,9 @@ def connect(
   if cache_path and cache_options and cache_options.path:
     raise ValueError('cache_path and cache_options.path are both set.')
 
-  if logging_path and logging_options and logging_options.path:
-    raise ValueError('logging_path and logging_options.path are both set.')
+  if logging_path and logging_options and logging_options.logging_path:
+    raise ValueError('logging_path and logging_options.logging_path are '
+                     'both set.')
 
   _ALLOW_MULTIPROCESSING = allow_multiprocessing
 
@@ -257,7 +258,7 @@ def connect(
         cache_options=_CACHE_OPTIONS)
 
   if logging_path:
-    _LOGGING_OPTIONS.path = logging_path
+    _LOGGING_OPTIONS.logging_path = logging_path
   if logging_options:
     _LOGGING_OPTIONS.prompt = logging_options.prompt
     _LOGGING_OPTIONS.response = logging_options.response
