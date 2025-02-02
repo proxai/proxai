@@ -10,7 +10,7 @@ from typing import Callable, Dict, List, Optional
 _PROXDASH_BACKEND_URL = 'https://proxainest-production.up.railway.app'
 
 class ProxDashConnection(object):
-  _experiment_name: str = '(not set)'
+  _experiment_path: str = '(not set)'
   _hidden_run_key: str
   _logging_options: types.LoggingOptions
   _get_logging_options: Optional[Callable[[], types.LoggingOptions]]
@@ -99,19 +99,19 @@ class ProxDashConnection(object):
     self._status = status
 
   @property
-  def experiment_name(self) -> str:
-    return self._experiment_name
+  def experiment_path(self) -> str:
+    return self._experiment_path
 
-  @experiment_name.setter
-  def experiment_name(self, experiment_name) -> str:
-    if self._experiment_name == experiment_name:
+  @experiment_path.setter
+  def experiment_path(self, experiment_path: str):
+    if self._experiment_path == experiment_path:
       return
-    experiment.validate_experiment_name(experiment_name)
-    self._experiment_name = experiment_name
+    experiment.validate_experiment_path(experiment_path)
+    self._experiment_path = experiment_path
     if self.status == types.ProxDashConnectionStatus.CONNECTED:
       log_proxdash_message(
           logging_options=self.logging_options,
-          message=f'Connected to ProxDash experiment: {experiment_name}',
+          message=f'Connected to ProxDash experiment: {experiment_path}',
           type=types.LoggingType.INFO)
 
   def upload_logging_record(self, logging_record: types.LoggingRecord):
@@ -123,7 +123,7 @@ class ProxDashConnection(object):
     data = {
       'apiKey': self._api_key,
       'hiddenRunKey': self._hidden_run_key,
-      'experimentName': self.experiment_name,
+      'experimentPath': self.experiment_path,
       'callType': logging_record.query_record.call_type,
       'provider': logging_record.query_record.model[0],
       'model': logging_record.query_record.model[1],
