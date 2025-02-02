@@ -71,9 +71,8 @@ def main():
       experiment_path='ask_about_model/run_3',
       cache_path=cache_path,
       logging_path=logging_path,
-      logging_options=px.LoggingOptions(
-          proxdash_stdout=True,
-          hide_sensitive_content=True))
+      logging_options=px.LoggingOptions(proxdash_stdout=True),
+      proxdash_options=px.ProxDashOptions(hide_sensitive_content=True))
   models = get_models()
   run_tests(models, functools.partial(test_query, break_caches=_BREAK_CACHES))
 

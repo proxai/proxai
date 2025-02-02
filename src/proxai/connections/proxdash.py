@@ -1,4 +1,5 @@
 import os
+import copy
 import json
 import requests
 import proxai.types as types
@@ -23,14 +24,23 @@ class ProxDashConnection(object):
       hidden_run_key: str,
       api_key: Optional[str] = None,
       logging_options: Optional[types.LoggingOptions] = None,
-      get_logging_options: Optional[Callable[[], types.LoggingOptions]] = None):
+      get_logging_options: Optional[Callable[[], types.LoggingOptions]] = None,
+      proxdash_options: Optional[types.ProxDashOptions] = None,
+      get_proxdash_options: Optional[
+          Callable[[], types.ProxDashOptions]] = None):
     if logging_options and get_logging_options:
       raise ValueError(
           'Only one of logging_options or get_logging_options should be '
           'provided.')
+    if proxdash_options and get_proxdash_options:
+      raise ValueError(
+          'Only one of proxdash_options or get_proxdash_options should be '
+          'provided.')
     self._hidden_run_key = hidden_run_key
     self.logging_options = logging_options
     self._get_logging_options = get_logging_options
+    self.proxdash_options = proxdash_options
+    self._get_proxdash_options = get_proxdash_options
     if not api_key:
       if 'PROXDASH_API_KEY' in os.environ:
         api_key = os.environ['PROXDASH_API_KEY']
@@ -61,6 +71,37 @@ class ProxDashConnection(object):
   @logging_options.setter
   def logging_options(self, logging_options: types.LoggingOptions):
     self._logging_options = logging_options
+
+  @property
+  def proxdash_options(self) -> types.ProxDashOptions:
+    if self._proxdash_options:
+      return self._proxdash_options
+    if self._get_proxdash_options:
+      return self._get_proxdash_options()
+    return None
+
+  @proxdash_options.setter
+  def proxdash_options(self, proxdash_options: types.ProxDashOptions):
+    self._proxdash_options = proxdash_options
+
+  def _hide_sensitive_content_logging_record(
+      self, logging_record: types.LoggingRecord) -> types.LoggingRecord:
+    logging_record = copy.deepcopy(logging_record)
+    if logging_record.query_record and logging_record.query_record.prompt:
+      logging_record.query_record.prompt = '<sensitive content hidden>'
+    if logging_record.query_record and logging_record.query_record.system:
+      logging_record.query_record.system = '<sensitive content hidden>'
+    if logging_record.query_record and logging_record.query_record.messages:
+      logging_record.query_record.messages = [
+        {
+          'role': 'assistant',
+          'content': '<sensitive content hidden>'
+        }
+      ]
+    if (logging_record.response_record and
+        logging_record.response_record.response):
+      logging_record.response_record.response = '<sensitive content hidden>'
+    return logging_record
 
   def _check_key_validity(self):
     response = requests.post(
@@ -117,6 +158,9 @@ class ProxDashConnection(object):
   def upload_logging_record(self, logging_record: types.LoggingRecord):
     if self.status != types.ProxDashConnectionStatus.CONNECTED:
       return
+    if self.proxdash_options and self.proxdash_options.hide_sensitive_content:
+      logging_record = self._hide_sensitive_content_logging_record(
+        logging_record)
     stop = None
     if logging_record.query_record.stop:
       stop = str(logging_record.query_record.stop)

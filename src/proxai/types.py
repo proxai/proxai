@@ -234,6 +234,11 @@ class CacheOptions:
 
 
 @dataclasses.dataclass
+class ProxDashOptions:
+  hide_sensitive_content: bool = False
+
+
+@dataclasses.dataclass
 class SummaryOptions:
   json: bool = True
 
