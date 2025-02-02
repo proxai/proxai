@@ -19,7 +19,7 @@ def _write_log(
     logging_options: types.LoggingOptions,
     file_name: str,
     data: Dict):
-    file_path = os.path.join(logging_options.path, file_name)
+    file_path = os.path.join(logging_options.logging_path, file_name)
     with open(file_path, 'a') as f:
       f.write(json.dumps(data) + '\n')
     f.close()
@@ -33,7 +33,7 @@ def log_logging_record(
   result = type_serializer.encode_logging_record(logging_record)
   if logging_options.stdout:
     pprint(result)
-  if not logging_options.path:
+  if not logging_options.logging_path:
     return
   _write_log(
       logging_options=logging_options,
@@ -56,7 +56,7 @@ def log_message(
     result['query_record'] = type_serializer.encode_query_record(query_record)
   if logging_options.stdout:
     pprint(result)
-  if not logging_options.path:
+  if not logging_options.logging_path:
     return
   if type == types.LoggingType.ERROR:
     _write_log(
@@ -94,7 +94,7 @@ def log_proxdash_message(
     result['query_record'] = type_serializer.encode_query_record(query_record)
   if logging_options.proxdash_stdout:
     pprint(result)
-  if not logging_options.path:
+  if not logging_options.logging_path:
     return
   if type == types.LoggingType.ERROR:
     _write_log(

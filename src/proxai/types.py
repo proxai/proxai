@@ -212,7 +212,7 @@ MessagesType = List[Dict[str, str]]
 
 @dataclasses.dataclass
 class LoggingOptions:
-  path: Optional[str] = None
+  logging_path: Optional[str] = None
   stdout: bool = False
   proxdash_stdout: bool = False
   prompt: bool = True
