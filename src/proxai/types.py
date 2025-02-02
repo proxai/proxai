@@ -215,8 +215,7 @@ class LoggingOptions:
   logging_path: Optional[str] = None
   stdout: bool = False
   proxdash_stdout: bool = False
-  prompt: bool = True
-  response: bool = True
+  hide_sensitive_content: bool = False
 
 
 class LoggingType(str, enum.Enum):

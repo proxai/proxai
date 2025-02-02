@@ -1,4 +1,5 @@
 import os
+import copy
 from datetime import datetime
 from dataclasses import dataclass
 from typing import Dict, Optional
@@ -13,6 +14,44 @@ WARNING_LOGGING_FILE_NAME = 'warnings.log'
 INFO_LOGGING_FILE_NAME = 'info.log'
 MERGED_LOGGING_FILE_NAME = 'merged.log'
 PROXDASH_LOGGING_FILE_NAME = 'proxdash.log'
+
+
+def _hide_sensitive_content_query_record(
+    query_record: types.QueryRecord) -> types.QueryRecord:
+  query_record = copy.deepcopy(query_record)
+  if query_record.system:
+    query_record.system = '<sensitive content hidden>'
+  if query_record.prompt:
+    query_record.prompt = '<sensitive content hidden>'
+  if query_record.messages:
+    query_record.messages = [
+      {
+        'role': 'assistant',
+        'content': '<sensitive content hidden>'
+      }
+    ]
+  return query_record
+
+
+def _hide_sensitive_content_query_response_record(
+    query_response_record: types.QueryResponseRecord) -> types.QueryResponseRecord:
+  query_response_record = copy.deepcopy(query_response_record)
+  if query_response_record.response:
+    query_response_record.response = '<sensitive content hidden>'
+  return query_response_record
+
+
+def _hide_sensitive_content_logging_record(
+    logging_record: types.LoggingRecord) -> types.LoggingRecord:
+  logging_record = copy.deepcopy(logging_record)
+  if logging_record.query_record:
+    logging_record.query_record = _hide_sensitive_content_query_record(
+        logging_record.query_record)
+  if logging_record.response_record:
+    logging_record.response_record = (
+        _hide_sensitive_content_query_response_record(
+            logging_record.response_record))
+  return logging_record
 
 
 def _write_log(
@@ -30,6 +69,8 @@ def log_logging_record(
     logging_record: types.LoggingRecord):
   if not logging_options:
     return
+  if logging_options.hide_sensitive_content:
+    logging_record = _hide_sensitive_content_logging_record(logging_record)
   result = type_serializer.encode_logging_record(logging_record)
   if logging_options.stdout:
     pprint(result)
@@ -53,6 +94,8 @@ def log_message(
   result['message'] = message
   result['timestamp'] = datetime.now().isoformat()
   if query_record:
+    if logging_options.hide_sensitive_content:
+      query_record = _hide_sensitive_content_query_record(query_record)
     result['query_record'] = type_serializer.encode_query_record(query_record)
   if logging_options.stdout:
     pprint(result)
@@ -91,6 +134,8 @@ def log_proxdash_message(
   result['message'] = message
   result['timestamp'] = datetime.now().isoformat()
   if query_record:
+    if logging_options.hide_sensitive_content:
+      query_record = _hide_sensitive_content_query_record(query_record)
     result['query_record'] = type_serializer.encode_query_record(query_record)
   if logging_options.proxdash_stdout:
     pprint(result)
