@@ -22,7 +22,7 @@ from proxai.logging.utils import log_proxdash_message
 
 _RUN_TYPE: types.RunType = types.RunType.PRODUCTION
 _HIDDEN_RUN_KEY: Optional[str] = None
-_EXPERIMENT_NAME: Optional[str] = None
+_EXPERIMENT_PATH: Optional[str] = None
 _REGISTERED_VALUES: Dict[str, types.ModelType] = {}
 _INITIALIZED_MODEL_CONNECTORS: Dict[types.ModelType, ModelConnector] = {}
 _LOGGING_OPTIONS: types.LoggingOptions = types.LoggingOptions()
@@ -46,12 +46,12 @@ def _init_hidden_run_key():
     _HIDDEN_RUN_KEY = experiment.get_hidden_run_key()
 
 
-def _init_experiment_name(experiment_name: Optional[str]):
-  global _EXPERIMENT_NAME
-  if not experiment_name:
+def _init_experiment_path(experiment_path: Optional[str]):
+  global _EXPERIMENT_PATH
+  if not experiment_path:
     return
-  experiment.validate_experiment_name(experiment_name)
-  _EXPERIMENT_NAME = experiment_name
+  experiment.validate_experiment_path(experiment_path)
+  _EXPERIMENT_PATH = experiment_path
 
 
 def _init_globals():
@@ -121,9 +121,9 @@ def _get_logging_options() -> LoggingOptions:
   return _LOGGING_OPTIONS
 
 
-def _get_experiment_name() -> str:
-  if _EXPERIMENT_NAME:
-    return _EXPERIMENT_NAME
+def _get_experiment_path() -> str:
+  if _EXPERIMENT_PATH:
+    return _EXPERIMENT_PATH
   return '(not set)'
 
 
@@ -144,7 +144,7 @@ def _get_proxdash_connection() -> proxdash.ProxDashConnection:
     _PROXDASH_CONNECTION = proxdash.ProxDashConnection(
         hidden_run_key=_get_hidden_run_key(),
         get_logging_options=_get_logging_options)
-  _PROXDASH_CONNECTION.experiment_name = _get_experiment_name()
+  _PROXDASH_CONNECTION.experiment_path = _get_experiment_path()
   return _PROXDASH_CONNECTION
 
 
@@ -179,15 +179,15 @@ def _get_run_type() -> types.RunType:
 
 
 def check_health(
-    experiment_name: Optional[str]='check_health',
+    experiment_path: Optional[str]='check_health',
     verbose: bool = False
 ) -> Tuple[List[types.ModelType], List[types.ModelType]]:
-  experiment.validate_experiment_name(experiment_name)
+  experiment.validate_experiment_path(experiment_path)
   logging_options = types.LoggingOptions(proxdash_stdout=True)
   proxdash_connection = proxdash.ProxDashConnection(
       hidden_run_key=_get_hidden_run_key(),
       logging_options=logging_options)
-  proxdash_connection.experiment_name = experiment_name
+  proxdash_connection.experiment_path = experiment_path
   log_proxdash_message(
       logging_options=logging_options,
       message='Starting to test each model...',
@@ -214,7 +214,7 @@ def check_health(
 
 
 def connect(
-    experiment_name: Optional[str]=None,
+    experiment_path: Optional[str]=None,
     cache_path: str=None,
     cache_options: CacheOptions=None,
     logging_path: str=None,
@@ -227,7 +227,7 @@ def connect(
   global _STRICT_FEATURE_TEST
   global _ALLOW_MULTIPROCESSING
   _init_globals()
-  _init_experiment_name(experiment_name)
+  _init_experiment_path(experiment_path)
 
   if cache_path and cache_options and cache_options.path:
     raise ValueError('cache_path and cache_options.path are both set.')
