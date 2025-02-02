@@ -215,10 +215,8 @@ class LoggingOptions:
   path: Optional[str] = None
   stdout: bool = False
   proxdash_stdout: bool = False
-  time: bool = True
   prompt: bool = True
   response: bool = True
-  error: bool = True
 
 
 class LoggingType(str, enum.Enum):
