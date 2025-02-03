@@ -140,10 +140,10 @@ def _init_cache_options(
     cache_options: Optional[types.CacheOptions] = None,
     global_init: Optional[bool] = False
 ) -> Tuple[types.CacheOptions, Optional[query_cache.QueryCacheManager]]:
-  if cache_path and cache_options and cache_options.path:
-    raise ValueError('cache_path and cache_options.path are both set.'
-                     'Either set cache_path or cache_options.path, but not'
-                     ' both.')
+  if cache_path and cache_options and cache_options.cache_path:
+    raise ValueError('cache_path and cache_options.cache_path are both set.'
+                     'Either set cache_path or cache_options.cache_path, but '
+                     'not both.')
 
   result_cache_options = types.CacheOptions()
   result_query_cache_manager = None
@@ -157,8 +157,14 @@ def _init_cache_options(
       raise ValueError(
           'cache_options.duration is not supported yet.\n'
           'We are looking for contributors! https://github.com/proxai/proxai')
-    result_cache_options.unique_response_limit = cache_options.unique_response_limit
-    result_cache_options.retry_if_error_cached = cache_options.retry_if_error_cached
+    result_cache_options.unique_response_limit = (
+        cache_options.unique_response_limit)
+    result_cache_options.retry_if_error_cached = (
+        cache_options.retry_if_error_cached)
+    result_cache_options.clear_query_cache_on_connect = (
+        cache_options.clear_query_cache_on_connect)
+    result_cache_options.clear_model_cache_on_connect = (
+        cache_options.clear_model_cache_on_connect)
   if result_cache_options.cache_path:
     result_query_cache_manager = query_cache.QueryCacheManager(
         cache_options=result_cache_options)

@@ -354,6 +354,75 @@ class TestBaseQueryCache:
         light_cache_record)
     assert cache_record_size == light_cache_record_size == 3
 
+  def test_clear_cache(self):
+    with tempfile.TemporaryDirectory() as temp_dir:
+      # Create initial cache with some records
+      query_record_1 = types.QueryRecord(prompt='p1')
+      query_record_2 = types.QueryRecord(prompt='p2')
+      response_record_1 = _create_response_record(response_id=1)
+      response_record_2 = _create_response_record(response_id=2)
+
+      # First cache manager - populate cache
+      query_cache_manager = query_cache.QueryCacheManager(
+          cache_options=types.CacheOptions(
+              cache_path=temp_dir,
+              clear_query_cache_on_connect=False),
+          shard_count=_SHARD_COUNT,
+          response_per_file=_RESPONSE_PER_FILE,
+          cache_response_size=10)
+
+      # Add some records
+      query_cache_manager.cache(
+          query_record=query_record_1,
+          response_record=response_record_1)
+      query_cache_manager.cache(
+          query_record=query_record_2,
+          response_record=response_record_2)
+
+      # Verify records exist
+      assert query_cache_manager.look(
+          query_record_1).query_response == response_record_1
+      assert query_cache_manager.look(
+          query_record_2).query_response == response_record_2
+
+      # Create new cache manager with clear_cache_on_connect=False
+      query_cache_manager_2 = query_cache.QueryCacheManager(
+          cache_options=types.CacheOptions(
+              cache_path=temp_dir,
+              clear_query_cache_on_connect=False),
+          shard_count=_SHARD_COUNT,
+          response_per_file=_RESPONSE_PER_FILE,
+          cache_response_size=10)
+
+      # Verify records still exist
+      assert query_cache_manager_2.look(
+          query_record_1).query_response == response_record_1
+      assert query_cache_manager_2.look(
+          query_record_2).query_response == response_record_2
+
+      # Create new cache manager with clear_cache_on_connect=True
+      query_cache_manager_3 = query_cache.QueryCacheManager(
+          cache_options=types.CacheOptions(
+              cache_path=temp_dir,
+              clear_query_cache_on_connect=True),
+          shard_count=_SHARD_COUNT,
+          response_per_file=_RESPONSE_PER_FILE,
+          cache_response_size=10)
+
+      # Verify records are cleared
+      assert query_cache_manager_3.look(query_record_1).look_fail_reason
+      assert query_cache_manager_3.look(query_record_2).look_fail_reason
+
+      # Check internal state
+      _check_record_heap(query_cache_manager_3, [])
+      _check_shard_manager_state(
+          query_cache_manager_3._shard_manager,
+          light_cache_records={},
+          enc_light_cache_records={},
+          map_shard_to_cache={},
+          shard_active_count={0: 0, 1: 0, 2: 0, 'backlog': 0},
+          shard_heap=[(0, 0), (0, 1), (0, 2)])
+
 
 class TestHeapManager:
   def test_simple_heap(self):

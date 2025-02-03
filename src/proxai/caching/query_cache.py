@@ -1,5 +1,6 @@
 import copy
 import os
+import shutil
 import collections
 import datetime
 import json
@@ -18,6 +19,13 @@ class BaseQueryCache:
 
   def __init__(self, cache_options: types.CacheOptions):
     self._cache_options = cache_options
+
+  def _clear_cache(self):
+    if not self._cache_options.cache_path:
+      return
+    cache_dir = os.path.join(self._cache_options.cache_path, CACHE_DIR)
+    if os.path.exists(cache_dir):
+      shutil.rmtree(cache_dir)
 
   @property
   def _cache_dir(self) -> str:
@@ -449,6 +457,10 @@ class QueryCacheManager(BaseQueryCache):
     self._shard_count = shard_count
     self._response_per_file = response_per_file
     self._cache_response_size = cache_response_size
+
+    if self._cache_options.clear_query_cache_on_connect:
+      self._clear_cache()
+
     os.makedirs(self._cache_dir, exist_ok=True)
 
     self._shard_manager = ShardManager(

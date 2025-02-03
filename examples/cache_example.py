@@ -5,6 +5,7 @@ import proxai.types as px_types
 
 _UNIQUE_RESPONSE_LIMIT = 3
 _REPEAT_COUNT = 6
+_RANDOM_SEED = 42
 
 
 if __name__ == '__main__':
@@ -12,9 +13,9 @@ if __name__ == '__main__':
       logging_path=f'{Path.home()}/proxai_log/',
       cache_path=f'{Path.home()}/proxai_cache/',
       cache_options=px_types.CacheOptions(
-          unique_response_limit=_UNIQUE_RESPONSE_LIMIT))
+          unique_response_limit=_UNIQUE_RESPONSE_LIMIT,
+          clear_query_cache_on_connect=True))
 
-  random_seed = random.randint(0, 1000000)
   models = px.models.generate_text(only_largest_models=True, verbose=True)
   for model in models:
     provider, provider_model = model
@@ -25,7 +26,7 @@ if __name__ == '__main__':
       try:
         result = px.generate_text(
             'Give me one sentence that will make me laugh.'
-            f' You have {random_seed} seconds left!',
+            f' You have {_RANDOM_SEED} seconds left!',
             temperature=0.8,
             extensive_return=True)
       except Exception as e:

@@ -230,6 +230,8 @@ class CacheOptions:
   unique_response_limit: Optional[int] = 1
   duration: Optional[int] = None
   retry_if_error_cached: bool = False
+  clear_query_cache_on_connect: bool = False
+  clear_model_cache_on_connect: bool = False
 
 
 @dataclasses.dataclass
