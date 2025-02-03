@@ -11,6 +11,7 @@ from typing import Callable, Dict, List, Optional
 _PROXDASH_BACKEND_URL = 'https://proxainest-production.up.railway.app'
 
 class ProxDashConnection(object):
+  _last_experiment_path: str = '(not set)'
   _experiment_path: str = '(not set)'
   _hidden_run_key: str
   _logging_options: types.LoggingOptions
@@ -23,11 +24,17 @@ class ProxDashConnection(object):
       self,
       hidden_run_key: str,
       api_key: Optional[str] = None,
+      experiment_path: Optional[str] = None,
+      get_experiment_path: Optional[Callable[[], str]] = None,
       logging_options: Optional[types.LoggingOptions] = None,
       get_logging_options: Optional[Callable[[], types.LoggingOptions]] = None,
       proxdash_options: Optional[types.ProxDashOptions] = None,
       get_proxdash_options: Optional[
           Callable[[], types.ProxDashOptions]] = None):
+    if experiment_path and get_experiment_path:
+      raise ValueError(
+          'Only one of experiment_path or get_experiment_path should be '
+          'provided.')
     if logging_options and get_logging_options:
       raise ValueError(
           'Only one of logging_options or get_logging_options should be '
@@ -74,6 +81,11 @@ class ProxDashConnection(object):
           proxdash_options=self.proxdash_options,
           message='Connected to ProxDash.',
           type=types.LoggingType.INFO)
+
+    self._get_experiment_path = get_experiment_path
+    self.experiment_path = experiment_path
+    # This is to trigger the experiment_path getter.
+    _ = self.experiment_path
 
   @property
   def logging_options(self) -> types.LoggingOptions:
@@ -157,12 +169,29 @@ class ProxDashConnection(object):
     self._status = status
 
   @property
-  def experiment_path(self) -> str:
-    return self._experiment_path
+  def experiment_path(self) -> Optional[str]:
+    if self._experiment_path:
+      return self._experiment_path
+    elif self._get_experiment_path:
+      experiment_path = self._get_experiment_path()
+      if self._last_experiment_path != experiment_path:
+        self._last_experiment_path = experiment_path
+        if self.status == types.ProxDashConnectionStatus.CONNECTED:
+          log_proxdash_message(
+              logging_options=self.logging_options,
+              proxdash_options=self.proxdash_options,
+              message=f'Connected to ProxDash experiment: {experiment_path}',
+              type=types.LoggingType.INFO)
+      return experiment_path
+    else:
+      return '(not set)'
 
   @experiment_path.setter
-  def experiment_path(self, experiment_path: str):
+  def experiment_path(self, experiment_path: Optional[str]):
     if self._experiment_path == experiment_path:
+      return
+    if experiment_path is None:
+      self._experiment_path = None
       return
     experiment.validate_experiment_path(experiment_path)
     self._experiment_path = experiment_path

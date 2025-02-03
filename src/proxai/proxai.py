@@ -25,6 +25,7 @@ _HIDDEN_RUN_KEY: Optional[str] = None
 _EXPERIMENT_PATH: Optional[str] = None
 _REGISTERED_VALUES: Dict[str, types.ModelType] = {}
 _INITIALIZED_MODEL_CONNECTORS: Dict[types.ModelType, ModelConnector] = {}
+_ROOT_LOGGING_PATH: Optional[str] = None
 _LOGGING_OPTIONS: types.LoggingOptions = types.LoggingOptions()
 _CACHE_OPTIONS: types.CacheOptions = types.CacheOptions()
 _PROXDASH_OPTIONS: types.ProxDashOptions = types.ProxDashOptions()
@@ -40,19 +41,6 @@ _ALLOW_MULTIPROCESSING: bool = False
 CacheOptions = types.CacheOptions
 LoggingOptions = types.LoggingOptions
 ProxDashOptions = types.ProxDashOptions
-
-def _init_hidden_run_key():
-  global _HIDDEN_RUN_KEY
-  if _HIDDEN_RUN_KEY == None:
-    _HIDDEN_RUN_KEY = experiment.get_hidden_run_key()
-
-
-def _init_experiment_path(experiment_path: Optional[str]):
-  global _EXPERIMENT_PATH
-  if not experiment_path:
-    return
-  experiment.validate_experiment_path(experiment_path)
-  _EXPERIMENT_PATH = experiment_path
 
 
 def _init_globals():
@@ -74,6 +62,150 @@ def _init_globals():
   _STRICT_FEATURE_TEST = False
   _ALLOW_MULTIPROCESSING = False
   _STATS[stat_types.GlobalStatType.SINCE_CONNECT] = stat_types.RunStats()
+
+
+def _init_hidden_run_key():
+  global _HIDDEN_RUN_KEY
+  if _HIDDEN_RUN_KEY == None:
+    _HIDDEN_RUN_KEY = experiment.get_hidden_run_key()
+
+
+def _init_experiment_path(
+    experiment_path: Optional[str] = None,
+    global_init: Optional[bool] = False
+) -> Optional[str]:
+  global _EXPERIMENT_PATH
+  if not experiment_path:
+    if global_init:
+      _EXPERIMENT_PATH = None
+    return None
+  experiment.validate_experiment_path(experiment_path)
+  if global_init:
+    _EXPERIMENT_PATH = experiment_path
+  return experiment_path
+
+
+def _init_logging_options(
+    experiment_path: Optional[str] = None,
+    logging_path: Optional[str] = None,
+    logging_options: Optional[types.LoggingOptions] = None,
+    global_init: Optional[bool] = False
+) -> Tuple[types.LoggingOptions, Optional[str]]:
+  if logging_path and logging_options and logging_options.logging_path:
+    raise ValueError('logging_path and logging_options.logging_path are '
+                     'both set. Either set logging_path or '
+                     'logging_options.logging_path, but not both.')
+
+  root_logging_path = None
+  result_logging_options = types.LoggingOptions()
+
+  if logging_path:
+    root_logging_path = logging_path
+  elif logging_options and logging_options.logging_path:
+    root_logging_path = logging_options.logging_path
+  else:
+    root_logging_path = None
+
+  if root_logging_path:
+    if not os.path.exists(root_logging_path):
+      raise ValueError(
+          f'Root logging path does not exist: {root_logging_path}')
+
+    if experiment_path:
+      result_logging_options.logging_path = os.path.join(
+          root_logging_path, experiment_path)
+    else:
+      result_logging_options.logging_path = root_logging_path
+    if not os.path.exists(result_logging_options.logging_path):
+      os.makedirs(result_logging_options.logging_path, exist_ok=True)
+  else:
+    result_logging_options.logging_path = None
+
+  if logging_options:
+    result_logging_options.stdout = logging_options.stdout
+    result_logging_options.hide_sensitive_content = (
+        logging_options.hide_sensitive_content)
+
+  if global_init:
+    global _ROOT_LOGGING_PATH
+    global _LOGGING_OPTIONS
+    _ROOT_LOGGING_PATH = root_logging_path
+    _LOGGING_OPTIONS = result_logging_options
+
+  return (result_logging_options, root_logging_path)
+
+
+def _init_cache_options(
+    cache_path: Optional[str] = None,
+    cache_options: Optional[types.CacheOptions] = None,
+    global_init: Optional[bool] = False
+) -> Tuple[types.CacheOptions, Optional[query_cache.QueryCacheManager]]:
+  if cache_path and cache_options and cache_options.path:
+    raise ValueError('cache_path and cache_options.path are both set.'
+                     'Either set cache_path or cache_options.path, but not'
+                     ' both.')
+
+  result_cache_options = types.CacheOptions()
+  result_query_cache_manager = None
+
+  if cache_path:
+    result_cache_options.path = cache_path
+  if cache_options:
+    if cache_options.path:
+      result_cache_options.path = cache_options.path
+    if cache_options.duration:
+      raise ValueError(
+          'cache_options.duration is not supported yet.\n'
+          'We are looking for contributors! https://github.com/proxai/proxai')
+    result_cache_options.unique_response_limit = cache_options.unique_response_limit
+    result_cache_options.retry_if_error_cached = cache_options.retry_if_error_cached
+  if result_cache_options.path:
+    result_query_cache_manager = query_cache.QueryCacheManager(
+        cache_options=result_cache_options)
+  if global_init:
+    global _CACHE_OPTIONS
+    global _QUERY_CACHE_MANAGER
+    _CACHE_OPTIONS = result_cache_options
+    _QUERY_CACHE_MANAGER = result_query_cache_manager
+  return (result_cache_options, result_query_cache_manager)
+
+
+def _init_proxdash_options(
+    proxdash_options: Optional[types.ProxDashOptions] = None,
+    global_init: Optional[bool] = False) -> types.ProxDashOptions:
+  result_proxdash_options = types.ProxDashOptions()
+  if proxdash_options:
+    result_proxdash_options.stdout = proxdash_options.stdout
+    result_proxdash_options.hide_sensitive_content = (
+        proxdash_options.hide_sensitive_content)
+    result_proxdash_options.disable_proxdash = proxdash_options.disable_proxdash
+
+  if global_init:
+    global _PROXDASH_OPTIONS
+    _PROXDASH_OPTIONS = result_proxdash_options
+  return result_proxdash_options
+
+
+def _init_allow_multiprocessing(
+    allow_multiprocessing: Optional[bool] = None,
+    global_init: Optional[bool] = False) -> Optional[bool]:
+  if allow_multiprocessing is None:
+    return None
+  if global_init:
+    global _ALLOW_MULTIPROCESSING
+    _ALLOW_MULTIPROCESSING = allow_multiprocessing
+  return allow_multiprocessing
+
+
+def _init_strict_feature_test(
+    strict_feature_test: Optional[bool] = None,
+    global_init: Optional[bool] = False) -> Optional[bool]:
+  if strict_feature_test is None:
+    return None
+  if global_init:
+    global _STRICT_FEATURE_TEST
+    _STRICT_FEATURE_TEST = strict_feature_test
+  return strict_feature_test
 
 
 def _init_model_connector(model: types.ModelType) -> ModelConnector:
@@ -150,9 +282,9 @@ def _get_proxdash_connection() -> proxdash.ProxDashConnection:
   if not _PROXDASH_CONNECTION:
     _PROXDASH_CONNECTION = proxdash.ProxDashConnection(
         hidden_run_key=_get_hidden_run_key(),
+        get_experiment_path=_get_experiment_path,
         get_logging_options=_get_logging_options,
         get_proxdash_options=_get_proxdash_options)
-  _PROXDASH_CONNECTION.experiment_path = _get_experiment_path()
   return _PROXDASH_CONNECTION
 
 
@@ -176,14 +308,14 @@ def _get_allow_multiprocessing() -> bool:
   return _ALLOW_MULTIPROCESSING
 
 
+def _get_run_type() -> types.RunType:
+  return _RUN_TYPE
+
+
 def _set_run_type(run_type: types.RunType):
   global _RUN_TYPE
   _RUN_TYPE = run_type
   _init_globals()
-
-
-def _get_run_type() -> types.RunType:
-  return _RUN_TYPE
 
 
 def check_health(
@@ -191,24 +323,30 @@ def check_health(
     verbose: bool = False,
     allow_multiprocessing: bool = False
 ) -> Tuple[List[types.ModelType], List[types.ModelType]]:
-  experiment.validate_experiment_path(experiment_path)
-  logging_options = types.LoggingOptions()
-  proxdash_options = types.ProxDashOptions(stdout=True)
+  experiment_path = _init_experiment_path(experiment_path=experiment_path)
+  logging_options, _ = _init_logging_options(
+      experiment_path=experiment_path,
+      logging_options=types.LoggingOptions())
+  cache_options, _ = _init_cache_options()
+  proxdash_options = _init_proxdash_options(
+      proxdash_options=types.ProxDashOptions(stdout=True))
+  allow_multiprocessing = _init_allow_multiprocessing(
+      allow_multiprocessing=allow_multiprocessing)
+
   proxdash_connection = proxdash.ProxDashConnection(
       hidden_run_key=_get_hidden_run_key(),
-      logging_options=logging_options,
+      experiment_path=experiment_path,
       proxdash_options=proxdash_options)
-  proxdash_connection.experiment_path = experiment_path
   log_proxdash_message(
       logging_options=logging_options,
       proxdash_options=proxdash_options,
       message='Starting to test each model...',
       type=types.LoggingType.INFO)
   models = available_models.AvailableModels(
-      cache_options=types.CacheOptions(),
-      logging_options=logging_options,
       proxdash_connection=proxdash_connection,
       allow_multiprocessing=allow_multiprocessing,
+      cache_options=cache_options,
+      logging_options=logging_options,
       get_initialized_model_connectors=_get_initialized_model_connectors,
       init_model_connector=_init_model_connector)
   succeeded_models, failed_models = models.generate_text(
@@ -237,55 +375,28 @@ def connect(
     proxdash_options: ProxDashOptions=None,
     allow_multiprocessing: bool=False,
     strict_feature_test: bool=False):
-  global _CACHE_OPTIONS
-  global _LOGGING_OPTIONS
-  global _QUERY_CACHE_MANAGER
-  global _PROXDASH_OPTIONS
-  global _STRICT_FEATURE_TEST
-  global _ALLOW_MULTIPROCESSING
   _init_globals()
-  _init_experiment_path(experiment_path)
-
-  if cache_path and cache_options and cache_options.path:
-    raise ValueError('cache_path and cache_options.path are both set.')
-
-  if logging_path and logging_options and logging_options.logging_path:
-    raise ValueError('logging_path and logging_options.logging_path are '
-                     'both set.')
-
-  _ALLOW_MULTIPROCESSING = allow_multiprocessing
-
-  if cache_path:
-    _CACHE_OPTIONS.path = cache_path
-  if cache_options:
-    if cache_options.path:
-      _CACHE_OPTIONS.path = cache_options.path
-    if cache_options.duration:
-      raise ValueError(
-          'cache_options.duration is not supported yet.\n'
-          'We are looking for contributors! https://github.com/proxai/proxai')
-    if cache_options.unique_response_limit:
-      _CACHE_OPTIONS.unique_response_limit = cache_options.unique_response_limit
-    if cache_options.retry_if_error_cached:
-      _CACHE_OPTIONS.retry_if_error_cached = cache_options.retry_if_error_cached
-  if _CACHE_OPTIONS.path:
-    _QUERY_CACHE_MANAGER = query_cache.QueryCacheManager(
-        cache_options=_CACHE_OPTIONS)
-
-  if logging_path:
-    _LOGGING_OPTIONS.logging_path = logging_path
-  if logging_options:
-    _LOGGING_OPTIONS.stdout = logging_options.stdout
-    _LOGGING_OPTIONS.hide_sensitive_content = (
-        logging_options.hide_sensitive_content)
-
-  if proxdash_options:
-    _PROXDASH_OPTIONS.stdout = proxdash_options.stdout
-    _PROXDASH_OPTIONS.hide_sensitive_content = (
-        proxdash_options.hide_sensitive_content)
-    _PROXDASH_OPTIONS.disable_proxdash = proxdash_options.disable_proxdash
-
-  _STRICT_FEATURE_TEST = strict_feature_test
+  _init_experiment_path(
+      experiment_path=experiment_path,
+      global_init=True)
+  _init_logging_options(
+      experiment_path=experiment_path,
+      logging_path=logging_path,
+      logging_options=logging_options,
+      global_init=True)
+  _init_cache_options(
+      cache_path=cache_path,
+      cache_options=cache_options,
+      global_init=True)
+  _init_proxdash_options(
+      proxdash_options=proxdash_options,
+      global_init=True)
+  _init_allow_multiprocessing(
+      allow_multiprocessing=allow_multiprocessing,
+      global_init=True)
+  _init_strict_feature_test(
+      strict_feature_test=strict_feature_test,
+      global_init=True)
 
   _get_proxdash_connection()
 
@@ -308,7 +419,7 @@ def generate_text(
     model: Optional[types.ProviderModel] = None,
     use_cache: bool = True,
     unique_response_limit: Optional[int] = None,
-    extensive_return: bool = False) -> str:
+    extensive_return: bool = False) -> Union[str, types.LoggingRecord]:
   if prompt != None and messages != None:
     raise ValueError('prompt and messages cannot be set at the same time.')
   if messages != None:
