@@ -149,17 +149,17 @@ def _init_cache_options(
   result_query_cache_manager = None
 
   if cache_path:
-    result_cache_options.path = cache_path
+    result_cache_options.cache_path = cache_path
   if cache_options:
-    if cache_options.path:
-      result_cache_options.path = cache_options.path
+    if cache_options.cache_path:
+      result_cache_options.cache_path = cache_options.cache_path
     if cache_options.duration:
       raise ValueError(
           'cache_options.duration is not supported yet.\n'
           'We are looking for contributors! https://github.com/proxai/proxai')
     result_cache_options.unique_response_limit = cache_options.unique_response_limit
     result_cache_options.retry_if_error_cached = cache_options.retry_if_error_cached
-  if result_cache_options.path:
+  if result_cache_options.cache_path:
     result_query_cache_manager = query_cache.QueryCacheManager(
         cache_options=result_cache_options)
   if global_init:

@@ -356,7 +356,7 @@ class TestAvailableModels:
     with tempfile.TemporaryDirectory() as cache_dir:
       proxai.connect(cache_path=cache_dir)
       save_cache = model_cache.ModelCache(
-          cache_options=types.CacheOptions(path=cache_dir))
+          cache_options=types.CacheOptions(cache_path=cache_dir))
       data = types.ModelStatus()
       data.working_models.add(
         (types.Provider.OPENAI, types.OpenAIModel.GPT_4))
@@ -418,8 +418,7 @@ class TestAvailableModels:
           (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)])
 
       load_cache = model_cache.ModelCache(
-          cache_options=types.CacheOptions(
-              path=cache_dir))
+          cache_options=types.CacheOptions(cache_path=cache_dir))
       loaded_data = load_cache.get(call_type=types.CallType.GENERATE_TEXT)
       assert loaded_data.working_models == set([
           (types.Provider.OPENAI, types.OpenAIModel.GPT_4),
@@ -449,8 +448,7 @@ class TestAvailableModels:
 
       # _filter_by_cache filter
       save_cache = model_cache.ModelCache(
-          cache_options=types.CacheOptions(
-              path=cache_dir))
+          cache_options=types.CacheOptions(cache_path=cache_dir))
       data = types.ModelStatus()
       data.failed_models.add(
           (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW))
@@ -489,8 +487,7 @@ class TestAvailableModels:
 
       # Check cache file values
       load_cache = model_cache.ModelCache(
-          cache_options=types.CacheOptions(
-              path=cache_dir))
+          cache_options=types.CacheOptions(cache_path=cache_dir))
       models = load_cache.get(call_type=types.CallType.GENERATE_TEXT)
       assert models.working_models == set([
           (types.Provider.OPENAI, types.OpenAIModel.GPT_4)])

@@ -21,9 +21,9 @@ class BaseQueryCache:
 
   @property
   def _cache_dir(self) -> str:
-    if not self._cache_options.path:
+    if not self._cache_options.cache_path:
       return None
-    return os.path.join(self._cache_options.path, CACHE_DIR)
+    return os.path.join(self._cache_options.cache_path, CACHE_DIR)
 
   @staticmethod
   def _to_light_cache_record(cache_record: types.CacheRecord):

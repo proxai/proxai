@@ -1111,7 +1111,7 @@ class TestQueryCache:
   def test_push_record_heap_empty_dir(self):
     with tempfile.TemporaryDirectory() as temp_dir:
       query_cache_manager = query_cache.QueryCacheManager(
-          cache_options=types.CacheOptions(path=temp_dir),
+          cache_options=types.CacheOptions(cache_path=temp_dir),
           shard_count=_SHARD_COUNT,
           response_per_file=_RESPONSE_PER_FILE,
           cache_response_size=10)
@@ -1170,7 +1170,7 @@ class TestQueryCache:
           path=cache_path, records=records['all_light_cache_records'])
 
       query_cache_manager = query_cache.QueryCacheManager(
-          cache_options=types.CacheOptions(path=temp_dir),
+          cache_options=types.CacheOptions(cache_path=temp_dir),
           shard_count=_SHARD_COUNT,
           response_per_file=_RESPONSE_PER_FILE,
           cache_response_size=10)
@@ -1211,7 +1211,7 @@ class TestQueryCache:
     with tempfile.TemporaryDirectory() as temp_dir:
       os.makedirs(os.path.join(temp_dir, query_cache.CACHE_DIR))
       query_cache_manager = query_cache.QueryCacheManager(
-          cache_options=types.CacheOptions(path=temp_dir),
+          cache_options=types.CacheOptions(cache_path=temp_dir),
           shard_count=_SHARD_COUNT,
           response_per_file=_RESPONSE_PER_FILE,
           cache_response_size=10)
@@ -1285,7 +1285,7 @@ class TestQueryCache:
           path=cache_dir, records=records['all_light_cache_records'])
 
       query_cache_manager = query_cache.QueryCacheManager(
-          cache_options=types.CacheOptions(path=temp_dir),
+          cache_options=types.CacheOptions(cache_path=temp_dir),
           shard_count=_SHARD_COUNT,
           response_per_file=_RESPONSE_PER_FILE,
           cache_response_size=10)
@@ -1437,7 +1437,7 @@ class TestQueryCache:
 
       query_cache_manager = query_cache.QueryCacheManager(
           cache_options=types.CacheOptions(
-              path=temp_dir,
+              cache_path=temp_dir,
               unique_response_limit=3),
           shard_count=_SHARD_COUNT,
           response_per_file=_RESPONSE_PER_FILE,
@@ -1648,7 +1648,7 @@ class TestQueryCache:
 
       query_cache_manager = query_cache.QueryCacheManager(
           cache_options=types.CacheOptions(
-              path=temp_dir,
+              cache_path=temp_dir,
               unique_response_limit=3),
           shard_count=1,
           response_per_file=_RESPONSE_PER_FILE,
@@ -1738,7 +1738,7 @@ class TestQueryCache:
 
       query_cache_manager = query_cache.QueryCacheManager(
           cache_options=types.CacheOptions(
-              path=temp_dir,
+              cache_path=temp_dir,
               unique_response_limit=2,
               retry_if_error_cached=True),
           shard_count=_SHARD_COUNT,
@@ -1776,7 +1776,7 @@ class TestQueryCache:
 
       query_cache_manager = query_cache.QueryCacheManager(
           cache_options=types.CacheOptions(
-              path=temp_dir,
+              cache_path=temp_dir,
               unique_response_limit=2,
               retry_if_error_cached=True),
           shard_count=_SHARD_COUNT,

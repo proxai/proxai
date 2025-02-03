@@ -22,9 +22,9 @@ class ModelCache:
 
   @property
   def _cache_path(self) -> str:
-    if not self._cache_options.path:
+    if not self._cache_options.cache_path:
       return None
-    return os.path.join(self._cache_options.path, AVAILABLE_MODELS_PATH)
+    return os.path.join(self._cache_options.cache_path, AVAILABLE_MODELS_PATH)
 
   def _save_to_cache(self):
     if not self._cache_path:
