@@ -3,6 +3,7 @@ from importlib.metadata import version
 from proxai.proxai import (
     CacheOptions,
     LoggingOptions,
+    ProxDashOptions,
     check_health,
     connect,
     set_model,

@@ -39,7 +39,8 @@ def test_query(break_caches: bool=False):
   try:
     return px.generate_text(prompt)
   except Exception as e:
-    print(str(e))
+    error_message = str(e).strip().split('\n')[-1]
+    print(f'<ERROR>: {error_message}')
     return 'ERROR'
 
 
@@ -63,15 +64,13 @@ def run_tests(models, query_func):
 
 
 def main():
-  cache_path = f'{Path.home()}/proxai_cache/'
-  logging_path = f'{Path.home()}/proxai_log/ask_about_model/'
-  os.makedirs(cache_path, exist_ok=True)
-  os.makedirs(logging_path, exist_ok=True)
   px.connect(
-      experiment_name='ask_about_model/run_1',
-      cache_path=cache_path,
-      logging_path=logging_path,
-      logging_options=px.LoggingOptions(proxdash_stdout=True))
+      experiment_path='ask_about_model/run_1',
+      logging_path=f'{Path.home()}/proxai_log/',
+      cache_path=f'{Path.home()}/proxai_cache/',
+      proxdash_options=px.ProxDashOptions(
+          stdout=True,
+          hide_sensitive_content=True))
   models = get_models()
   run_tests(models, functools.partial(test_query, break_caches=_BREAK_CACHES))
 

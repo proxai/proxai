@@ -234,7 +234,7 @@ class AvailableModels:
       self,
       models: types.ModelStatus,
       call_type: str):
-    if not self.cache_options.path:
+    if not self.cache_options.cache_path:
       return
     if not self._model_cache:
       self._model_cache = model_cache.ModelCache(self.cache_options)
@@ -349,7 +349,7 @@ class AvailableModels:
         models.failed_models.add(logging_record.query_record.model)
         update_models.failed_models.add(logging_record.query_record.model)
       update_models.provider_queries.append(logging_record)
-    if not self.cache_options.path:
+    if not self.cache_options.cache_path:
       return
     if not self._model_cache:
       self._model_cache = model_cache.ModelCache(self.cache_options)
