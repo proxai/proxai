@@ -102,11 +102,11 @@ def run_queries(
   os.makedirs(logging_path, exist_ok=True)
   px.connect(
       experiment_path='api_unification/run_1',
+      logging_path=logging_path,
       cache_options=px_types.CacheOptions(
           path=cache_path,
           unique_response_limit=1,
           retry_if_error_cached=retry_if_error_cached),
-      logging_path=logging_path,
       strict_feature_test=strict_feature_test)
   models = px.models.generate_text(verbose=True)
   print(f'{"PROVIDER":10} | {"MODEL":45} | {"DURATION":13} | {"RESPONSE"}')
