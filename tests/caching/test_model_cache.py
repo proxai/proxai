@@ -9,7 +9,7 @@ class TestModelCache:
   def test_save_and_load(self):
     with tempfile.TemporaryDirectory() as cache_dir:
       save_cache = model_cache.ModelCache(
-          cache_options=types.CacheOptions(path=cache_dir))
+          cache_options=types.CacheOptions(cache_path=cache_dir))
       data = types.ModelStatus()
       data.working_models.add(('openai', 'gpt-4'))
       data.working_models.add(('claude', types.ClaudeModel.CLAUDE_3_OPUS))
@@ -37,15 +37,14 @@ class TestModelCache:
       save_cache.update(data, types.CallType.GENERATE_TEXT)
 
       load_cache = model_cache.ModelCache(
-          cache_options=types.CacheOptions(path=cache_dir))
+          cache_options=types.CacheOptions(cache_path=cache_dir))
       loaded_data = load_cache.get(types.CallType.GENERATE_TEXT)
       assert loaded_data == data
 
   def test_filter_duration(self):
     with tempfile.TemporaryDirectory() as cache_dir:
       save_cache = model_cache.ModelCache(
-          cache_options=types.CacheOptions(
-              path=cache_dir))
+          cache_options=types.CacheOptions(cache_path=cache_dir))
 
       data = types.ModelStatus()
       data.working_models.add(('openai', 'gpt-4'))
@@ -101,7 +100,7 @@ class TestModelCache:
 
       load_cache = model_cache.ModelCache(
           cache_options=types.CacheOptions(
-              path=cache_dir,
+              cache_path=cache_dir,
               duration=10))
       loaded_data = load_cache.get(call_type=types.CallType.GENERATE_TEXT)
       assert loaded_data.working_models == set(
