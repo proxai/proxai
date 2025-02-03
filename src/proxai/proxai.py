@@ -215,7 +215,6 @@ def _init_strict_feature_test(
 
 
 def _init_model_connector(model: types.ModelType) -> ModelConnector:
-  global _LOGGING_OPTIONS
   global _QUERY_CACHE_MANAGER
   global _STATS
   provider, _ = model
