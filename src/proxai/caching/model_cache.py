@@ -17,14 +17,22 @@ class ModelCache:
   def __init__(self, cache_options: types.CacheOptions):
     self._data = {}
     self._cache_options = cache_options
+    if self._cache_options.clear_model_cache_on_connect:
+      self._clear_cache()
     if self._cache_path:
       self._load_from_cache()
 
   @property
   def _cache_path(self) -> str:
-    if not self._cache_options.path:
+    if not self._cache_options.cache_path:
       return None
-    return os.path.join(self._cache_options.path, AVAILABLE_MODELS_PATH)
+    return os.path.join(self._cache_options.cache_path, AVAILABLE_MODELS_PATH)
+
+  def _clear_cache(self):
+    if not self._cache_path:
+      return
+    if os.path.exists(self._cache_path):
+      os.remove(self._cache_path)
 
   def _save_to_cache(self):
     if not self._cache_path:

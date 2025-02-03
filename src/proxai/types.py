@@ -212,13 +212,9 @@ MessagesType = List[Dict[str, str]]
 
 @dataclasses.dataclass
 class LoggingOptions:
-  path: Optional[str] = None
+  logging_path: Optional[str] = None
   stdout: bool = False
-  proxdash_stdout: bool = False
-  time: bool = True
-  prompt: bool = True
-  response: bool = True
-  error: bool = True
+  hide_sensitive_content: bool = False
 
 
 class LoggingType(str, enum.Enum):
@@ -230,11 +226,19 @@ class LoggingType(str, enum.Enum):
 
 @dataclasses.dataclass
 class CacheOptions:
-  path: Optional[str] = None
+  cache_path: Optional[str] = None
   unique_response_limit: Optional[int] = 1
   duration: Optional[int] = None
   retry_if_error_cached: bool = False
+  clear_query_cache_on_connect: bool = False
+  clear_model_cache_on_connect: bool = False
 
+
+@dataclasses.dataclass
+class ProxDashOptions:
+  stdout: bool = False
+  hide_sensitive_content: bool = False
+  disable_proxdash: bool = False
 
 @dataclasses.dataclass
 class SummaryOptions:
@@ -322,6 +326,7 @@ class ModelStatus:
 
 
 class ProxDashConnectionStatus(str, enum.Enum):
+  DISABLED = 'DISABLED'
   CONNECTED = 'CONNECTED'
   API_KEY_NOT_FOUND = 'API_KEY_NOT_FOUND'
   API_KEY_NOT_VALID = 'API_KEY_NOT_VALID'

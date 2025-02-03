@@ -1,4 +1,5 @@
 import os
+import copy
 import json
 import requests
 import proxai.types as types
@@ -10,7 +11,8 @@ from typing import Callable, Dict, List, Optional
 _PROXDASH_BACKEND_URL = 'https://proxainest-production.up.railway.app'
 
 class ProxDashConnection(object):
-  _experiment_name: str = '(not set)'
+  _last_experiment_path: str = '(not set)'
+  _experiment_path: str = '(not set)'
   _hidden_run_key: str
   _logging_options: types.LoggingOptions
   _get_logging_options: Optional[Callable[[], types.LoggingOptions]]
@@ -22,15 +24,43 @@ class ProxDashConnection(object):
       self,
       hidden_run_key: str,
       api_key: Optional[str] = None,
+      experiment_path: Optional[str] = None,
+      get_experiment_path: Optional[Callable[[], str]] = None,
       logging_options: Optional[types.LoggingOptions] = None,
-      get_logging_options: Optional[Callable[[], types.LoggingOptions]] = None):
+      get_logging_options: Optional[Callable[[], types.LoggingOptions]] = None,
+      proxdash_options: Optional[types.ProxDashOptions] = None,
+      get_proxdash_options: Optional[
+          Callable[[], types.ProxDashOptions]] = None):
+    if experiment_path and get_experiment_path:
+      raise ValueError(
+          'Only one of experiment_path or get_experiment_path should be '
+          'provided.')
     if logging_options and get_logging_options:
       raise ValueError(
           'Only one of logging_options or get_logging_options should be '
           'provided.')
+    if proxdash_options and get_proxdash_options:
+      raise ValueError(
+          'Only one of proxdash_options or get_proxdash_options should be '
+          'provided.')
+
     self._hidden_run_key = hidden_run_key
     self.logging_options = logging_options
     self._get_logging_options = get_logging_options
+    self.proxdash_options = proxdash_options
+    self._get_proxdash_options = get_proxdash_options
+
+    if self.proxdash_options and self.proxdash_options.disable_proxdash:
+      self.status = types.ProxDashConnectionStatus.DISABLED
+      log_proxdash_message(
+          logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
+          message=(
+              'ProxDash disabled via proxdash_options. '
+              'No data will be sent to ProxDash servers.'),
+          type=types.LoggingType.INFO)
+      return
+
     if not api_key:
       if 'PROXDASH_API_KEY' in os.environ:
         api_key = os.environ['PROXDASH_API_KEY']
@@ -38,6 +68,7 @@ class ProxDashConnection(object):
         self.status = types.ProxDashConnectionStatus.API_KEY_NOT_FOUND
         log_proxdash_message(
             logging_options=self.logging_options,
+            proxdash_options=self.proxdash_options,
             message='ProxDash API key not found. Please provide an API key '
                     'either as an argument or as an environment variable.',
             type=types.LoggingType.ERROR)
@@ -45,6 +76,16 @@ class ProxDashConnection(object):
     self._api_key = api_key
     if self._check_key_validity():
       self.status = types.ProxDashConnectionStatus.CONNECTED
+      log_proxdash_message(
+          logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
+          message='Connected to ProxDash.',
+          type=types.LoggingType.INFO)
+
+    self._get_experiment_path = get_experiment_path
+    self.experiment_path = experiment_path
+    # This is to trigger the experiment_path getter.
+    _ = self.experiment_path
 
   @property
   def logging_options(self) -> types.LoggingOptions:
@@ -52,11 +93,42 @@ class ProxDashConnection(object):
       return self._logging_options
     if self._get_logging_options:
       return self._get_logging_options()
-    return None
+    return types.LoggingOptions()
 
   @logging_options.setter
   def logging_options(self, logging_options: types.LoggingOptions):
     self._logging_options = logging_options
+
+  @property
+  def proxdash_options(self) -> types.ProxDashOptions:
+    if self._proxdash_options:
+      return self._proxdash_options
+    if self._get_proxdash_options:
+      return self._get_proxdash_options()
+    return types.ProxDashOptions()
+
+  @proxdash_options.setter
+  def proxdash_options(self, proxdash_options: types.ProxDashOptions):
+    self._proxdash_options = proxdash_options
+
+  def _hide_sensitive_content_logging_record(
+      self, logging_record: types.LoggingRecord) -> types.LoggingRecord:
+    logging_record = copy.deepcopy(logging_record)
+    if logging_record.query_record and logging_record.query_record.prompt:
+      logging_record.query_record.prompt = '<sensitive content hidden>'
+    if logging_record.query_record and logging_record.query_record.system:
+      logging_record.query_record.system = '<sensitive content hidden>'
+    if logging_record.query_record and logging_record.query_record.messages:
+      logging_record.query_record.messages = [
+        {
+          'role': 'assistant',
+          'content': '<sensitive content hidden>'
+        }
+      ]
+    if (logging_record.response_record and
+        logging_record.response_record.response):
+      logging_record.response_record.response = '<sensitive content hidden>'
+    return logging_record
 
   def _check_key_validity(self):
     response = requests.post(
@@ -66,6 +138,7 @@ class ProxDashConnection(object):
       self.status = types.ProxDashConnectionStatus.API_KEY_NOT_VALID
       log_proxdash_message(
           logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
           message=(
               'ProxDash API key not valid. Please provide a valid API key.\n'
               'Check proxai.co/dashboard/api-keys page to get your API '
@@ -78,6 +151,7 @@ class ProxDashConnection(object):
       self.status = types.ProxDashConnectionStatus.PROXDASH_INVALID_RETURN
       log_proxdash_message(
           logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
           message=(
               'ProxDash returned an invalid response.\nPlease report this '
               'issue to the https://github.com/proxai/proxai.\n'
@@ -95,32 +169,52 @@ class ProxDashConnection(object):
     self._status = status
 
   @property
-  def experiment_name(self) -> str:
-    return self._experiment_name
+  def experiment_path(self) -> Optional[str]:
+    if self._experiment_path:
+      return self._experiment_path
+    elif self._get_experiment_path:
+      experiment_path = self._get_experiment_path()
+      if self._last_experiment_path != experiment_path:
+        self._last_experiment_path = experiment_path
+        if self.status == types.ProxDashConnectionStatus.CONNECTED:
+          log_proxdash_message(
+              logging_options=self.logging_options,
+              proxdash_options=self.proxdash_options,
+              message=f'Connected to ProxDash experiment: {experiment_path}',
+              type=types.LoggingType.INFO)
+      return experiment_path
+    else:
+      return '(not set)'
 
-  @experiment_name.setter
-  def experiment_name(self, experiment_name) -> str:
-    if self._experiment_name == experiment_name:
+  @experiment_path.setter
+  def experiment_path(self, experiment_path: Optional[str]):
+    if self._experiment_path == experiment_path:
       return
-    experiment.validate_experiment_name(experiment_name)
-    self._experiment_name = experiment_name
+    if experiment_path is None:
+      self._experiment_path = None
+      return
+    experiment.validate_experiment_path(experiment_path)
+    self._experiment_path = experiment_path
     if self.status == types.ProxDashConnectionStatus.CONNECTED:
       log_proxdash_message(
           logging_options=self.logging_options,
-          message='Connected to ProxDash.\n'
-                  f'Experiment name: {experiment_name}',
+          proxdash_options=self.proxdash_options,
+          message=f'Connected to ProxDash experiment: {experiment_path}',
           type=types.LoggingType.INFO)
 
   def upload_logging_record(self, logging_record: types.LoggingRecord):
     if self.status != types.ProxDashConnectionStatus.CONNECTED:
       return
+    if self.proxdash_options and self.proxdash_options.hide_sensitive_content:
+      logging_record = self._hide_sensitive_content_logging_record(
+        logging_record)
     stop = None
     if logging_record.query_record.stop:
       stop = str(logging_record.query_record.stop)
     data = {
       'apiKey': self._api_key,
       'hiddenRunKey': self._hidden_run_key,
-      'experimentName': self.experiment_name,
+      'experimentPath': self.experiment_path,
       'callType': logging_record.query_record.call_type,
       'provider': logging_record.query_record.model[0],
       'model': logging_record.query_record.model[1],
@@ -152,6 +246,7 @@ class ProxDashConnection(object):
     if response.status_code != 201 or response.text != 'success':
       log_proxdash_message(
           logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
           message=(
               'ProxDash could not log the record. Error message:\n'
               f'{response.text}'),
