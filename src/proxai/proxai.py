@@ -347,11 +347,8 @@ def check_health(
       hidden_run_key=_get_hidden_run_key(),
       experiment_path=experiment_path,
       proxdash_options=proxdash_options)
-  log_proxdash_message(
-      logging_options=logging_options,
-      proxdash_options=proxdash_options,
-      message='Starting to test each model...',
-      type=types.LoggingType.INFO)
+  if verbose:
+    print('> Starting to test each model...')
   models = available_models.AvailableModels(
       proxdash_connection=proxdash_connection,
       allow_multiprocessing=allow_multiprocessing,
@@ -361,12 +358,16 @@ def check_health(
       init_model_connector=_init_model_connector)
   succeeded_models, failed_models = models.generate_text(
       verbose=verbose, return_all=True)
-  log_proxdash_message(
-      logging_options=logging_options,
-      proxdash_options=proxdash_options,
-      message=f'Finished testing. Succeeded Models: {len(succeeded_models)}, '
-              f'Failed Models: {len(failed_models)}',
-      type=types.LoggingType.INFO)
+  if verbose:
+    print('> Finished testing.\n'
+          f'   Succeeded Models: {len(succeeded_models)}\n'
+          f'   Failed Models: {len(failed_models)}')
+    print('> Succeeded Models:')
+    for model in sorted(succeeded_models):
+      print(f'   {model[0]} - {model[1]}')
+    print('> Failed Models:')
+    for model in sorted(failed_models):
+      print(f'   {model[0]} - {model[1]}')
   if proxdash_connection.status == types.ProxDashConnectionStatus.CONNECTED:
     log_proxdash_message(
         logging_options=logging_options,
