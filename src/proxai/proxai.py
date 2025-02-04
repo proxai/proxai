@@ -1,4 +1,5 @@
 import copy
+import datetime
 import functools
 import os
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
@@ -324,10 +325,14 @@ def _set_run_type(run_type: types.RunType):
 
 
 def check_health(
-    experiment_path: Optional[str]='check_health',
-    verbose: bool = False,
-    allow_multiprocessing: bool = False
+    experiment_path: Optional[str]=None,
+    verbose: bool = True,
+    allow_multiprocessing: bool = True
 ) -> Tuple[List[types.ModelType], List[types.ModelType]]:
+  if not experiment_path:
+    now = datetime.datetime.now()
+    experiment_path = (
+        f'connection_health/{now.strftime("%Y-%m-%d_%H-%M-%S")}')
   experiment_path = _init_experiment_path(experiment_path=experiment_path)
   logging_options, _ = _init_logging_options(
       experiment_path=experiment_path,
