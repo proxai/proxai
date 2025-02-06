@@ -62,14 +62,21 @@ class TestExperiment:
       experiment.validate_experiment_path(None)
 
   def test_invalid_path_with_spaces(self):
-    with pytest.raises(ValueError):
-      experiment.validate_experiment_path('root dir')
-    with pytest.raises(ValueError):
-      experiment.validate_experiment_path('root/my dir')
+    # Leading/trailing spaces in components are not allowed
     with pytest.raises(ValueError):
       experiment.validate_experiment_path(' root')
     with pytest.raises(ValueError):
       experiment.validate_experiment_path('root ')
+    with pytest.raises(ValueError):
+      experiment.validate_experiment_path('root/ dir')
+    with pytest.raises(ValueError):
+      experiment.validate_experiment_path('root/dir ')
+
+    # Consecutive spaces are not allowed
+    with pytest.raises(ValueError):
+      experiment.validate_experiment_path('root  dir')
+    with pytest.raises(ValueError):
+      experiment.validate_experiment_path('root/my  dir')
 
   def test_invalid_path_with_special_chars(self):
     with pytest.raises(ValueError):
@@ -96,3 +103,9 @@ class TestExperiment:
       experiment.validate_experiment_path('root\\dir')
     with pytest.raises(ValueError):
       experiment.validate_experiment_path('root/dir\\subdir')
+
+  def test_valid_path_with_spaces(self):
+    # Single spaces within components should now be valid
+    experiment.validate_experiment_path('root dir')
+    experiment.validate_experiment_path('my root/test dir/final dir')
+    experiment.validate_experiment_path('root/my dir/test')
