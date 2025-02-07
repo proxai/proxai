@@ -359,15 +359,25 @@ def check_health(
   succeeded_models, failed_models = models.generate_text(
       verbose=verbose, return_all=True)
   if verbose:
+    providers = set(
+        [model[0] for model in succeeded_models] +
+        [model[0] for model in failed_models])
+    result_table = {
+        provider: {'working': [], 'failed': []} for provider in providers}
+    for model in succeeded_models:
+      result_table[model[0]]['working'].append(model[1])
+    for model in failed_models:
+      result_table[model[0]]['failed'].append(model[1])
     print('> Finished testing.\n'
+          f'   Registered Providers: {len(providers)}\n'
           f'   Succeeded Models: {len(succeeded_models)}\n'
           f'   Failed Models: {len(failed_models)}')
-    print('> Succeeded Models:')
-    for model in sorted(succeeded_models):
-      print(f'   {model[0]} - {model[1]}')
-    print('> Failed Models:')
-    for model in sorted(failed_models):
-      print(f'   {model[0]} - {model[1]}')
+    for provider in sorted(providers):
+      print(f'> {provider}:')
+      for model in sorted(result_table[provider]['working']):
+        print(f'   [ WORKING ]: {model}')
+      for model in sorted(result_table[provider]['failed']):
+        print(f'   [ FAILED  ]: {model}')
   if proxdash_connection.status == types.ProxDashConnectionStatus.CONNECTED:
     log_proxdash_message(
         logging_options=logging_options,
