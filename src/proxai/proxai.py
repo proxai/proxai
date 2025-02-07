@@ -37,7 +37,7 @@ _STATS: Dict[str, stat_types.RunStats] = {
     stat_types.GlobalStatType.SINCE_CONNECT: stat_types.RunStats()
 }
 _PROXDASH_CONNECTION: Optional[proxdash.ProxDashConnection] = None
-_ALLOW_MULTIPROCESSING: bool = False
+_ALLOW_MULTIPROCESSING: bool = True
 
 CacheOptions = types.CacheOptions
 LoggingOptions = types.LoggingOptions
@@ -61,7 +61,7 @@ def _init_globals():
   _PROXDASH_OPTIONS = types.ProxDashOptions()
   _QUERY_CACHE_MANAGER = None
   _STRICT_FEATURE_TEST = False
-  _ALLOW_MULTIPROCESSING = False
+  _ALLOW_MULTIPROCESSING = True
   _STATS[stat_types.GlobalStatType.SINCE_CONNECT] = stat_types.RunStats()
 
 
@@ -384,7 +384,7 @@ def connect(
     logging_path: str=None,
     logging_options: LoggingOptions=None,
     proxdash_options: ProxDashOptions=None,
-    allow_multiprocessing: bool=False,
+    allow_multiprocessing: bool=True,
     strict_feature_test: bool=False):
   _init_globals()
   _init_experiment_path(
