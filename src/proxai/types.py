@@ -246,6 +246,16 @@ class SummaryOptions:
 
 
 @dataclasses.dataclass
+class RunOptions:
+  run_type: Optional[RunType] = None
+  logging_options: Optional[LoggingOptions] = None
+  cache_options: Optional[CacheOptions] = None
+  proxdash_options: Optional[ProxDashOptions] = None
+  allow_multiprocessing: Optional[bool] = None
+  strict_feature_test: Optional[bool] = None
+
+
+@dataclasses.dataclass
 class QueryRecord:
   call_type: Optional[CallType] = None
   model: Optional[ModelType] = None

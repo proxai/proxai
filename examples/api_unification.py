@@ -96,15 +96,11 @@ def run_queries(
     strict_feature_test = False,
     use_cache = False,
     px_generate_text = None):
-  cache_path = f'{Path.home()}/proxai_cache/'
-  logging_path = f'{Path.home()}/proxai_log/api_unification/'
-  os.makedirs(cache_path, exist_ok=True)
-  os.makedirs(logging_path, exist_ok=True)
   px.connect(
       experiment_path='api_unification/run_1',
-      logging_path=logging_path,
+      logging_path=f'{Path.home()}/proxai_log/',
       cache_options=px_types.CacheOptions(
-          path=cache_path,
+          cache_path=f'{Path.home()}/proxai_cache/',
           unique_response_limit=1,
           retry_if_error_cached=retry_if_error_cached),
       strict_feature_test=strict_feature_test)

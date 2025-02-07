@@ -10,6 +10,7 @@ from proxai.proxai import (
     generate_text,
     get_summary,
     get_available_models,
+    get_current_options,
     _init_hidden_run_key,
 )
 
