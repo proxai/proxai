@@ -158,4 +158,3 @@ class TestModelCache:
       assert loaded_data.working_models == set()
       assert loaded_data.failed_models == set()
       assert loaded_data.provider_queries == []
-

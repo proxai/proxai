@@ -505,3 +505,14 @@ def get_available_models() -> available_models.AvailableModels:
       get_initialized_model_connectors=_get_initialized_model_connectors,
       get_proxdash_connection=_get_proxdash_connection,
       init_model_connector=_init_model_connector)
+
+
+def get_current_options() -> types.RunOptions:
+  return types.RunOptions(
+    run_type=_get_run_type(),
+    logging_options=_get_logging_options(),
+    cache_options=_get_cache_options(),
+    proxdash_options=_get_proxdash_options(),
+    allow_multiprocessing=_get_allow_multiprocessing(),
+    strict_feature_test=_STRICT_FEATURE_TEST
+  )

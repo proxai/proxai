@@ -6,14 +6,10 @@ import time
 
 
 def main():
-  cache_path = f'{Path.home()}/proxai_cache/'
-  logging_path = f'{Path.home()}/proxai_log/ask_about_model/'
-  os.makedirs(cache_path, exist_ok=True)
-  os.makedirs(logging_path, exist_ok=True)
   px.connect(
       experiment_path='simple_test/run_1',
-      cache_path=cache_path,
-      logging_path=logging_path,
+      logging_path=f'{Path.home()}/proxai_log/',
+      cache_path=f'{Path.home()}/proxai_cache/',
       proxdash_options=px.ProxDashOptions(stdout=True))
   random_int = random.randint(1, 1000000)
   result = px.generate_text(
