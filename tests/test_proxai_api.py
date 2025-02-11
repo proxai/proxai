@@ -1,5 +1,6 @@
 import os
 import tempfile
+import time
 import json
 from typing import Dict, Optional
 import pytest
@@ -58,11 +59,28 @@ class TestProxaiApiUseCases:
       assert px.generate_text('hello') == 'mock response'
 
   def test_model_cache_with_different_connect_cache_paths(self):
-    # Todo: Not finished test. Update this when temp cache path is implemented.
-    # px_options = px.get_current_options()
-    # Check dump cache path file is created
-    # px.models.generate_text()
-    # px_options.cache_options.cache_path
+    # --- Default model cache directory test ---
+    # First call:
+    px.models.generate_text()
+    # Second call should be faster because of model cache:
+    start = time.time()
+    px.models.allow_multiprocessing = True
+    px.models.generate_text()
+    px.models.allow_multiprocessing = False
+    total_time = time.time() - start
+    assert total_time < 1
+
+    # --- First connect without cache path ---
+    px.connect(allow_multiprocessing=False)
+    # First call:
+    px.models.generate_text()
+    # Second call should be faster because of model cache:
+    start = time.time()
+    px.models.allow_multiprocessing = True
+    px.models.generate_text()
+    px.models.allow_multiprocessing = False
+    total_time = time.time() - start
+    assert total_time < 1
 
     def _check_model_cache_path(
         cache_path: str,

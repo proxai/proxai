@@ -2,6 +2,7 @@ import copy
 import datetime
 import functools
 import os
+import tempfile
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 import proxai.types as types
 import proxai.type_utils as type_utils
@@ -26,6 +27,8 @@ _ROOT_LOGGING_PATH: Optional[str] = None
 _LOGGING_OPTIONS: types.LoggingOptions = types.LoggingOptions()
 _CACHE_OPTIONS: types.CacheOptions = types.CacheOptions()
 _PROXDASH_OPTIONS: types.ProxDashOptions = types.ProxDashOptions()
+_DEFAULT_MODEL_CACHE_PATH: Optional[tempfile.TemporaryDirectory] = None
+_DEFAULT_MODEL_CACHE_MANAGER: Optional[model_cache.ModelCacheManager] = None
 _MODEL_CACHE_MANAGER: Optional[model_cache.ModelCacheManager] = None
 _QUERY_CACHE_MANAGER: Optional[query_cache.QueryCacheManager] = None
 _STRICT_FEATURE_TEST: bool = False
@@ -52,6 +55,8 @@ def _init_globals():
   global _STRICT_FEATURE_TEST
   global _ALLOW_MULTIPROCESSING
   global _STATS
+  global _DEFAULT_MODEL_CACHE_MANAGER
+  global _DEFAULT_MODEL_CACHE_PATH
   _REGISTERED_VALUES = {}
   _INITIALIZED_MODEL_CONNECTORS = {}
   _LOGGING_OPTIONS = types.LoggingOptions()
@@ -62,6 +67,8 @@ def _init_globals():
   _STRICT_FEATURE_TEST = False
   _ALLOW_MULTIPROCESSING = True
   _STATS[stat_types.GlobalStatType.SINCE_CONNECT] = stat_types.RunStats()
+  _DEFAULT_MODEL_CACHE_MANAGER = None
+  _DEFAULT_MODEL_CACHE_PATH = None
 
 
 def _init_hidden_run_key():
@@ -271,7 +278,18 @@ def _get_initialized_model_connectors() -> Dict[
 
 
 def _get_model_cache_manager() -> model_cache.ModelCacheManager:
-  return _MODEL_CACHE_MANAGER
+  global _MODEL_CACHE_MANAGER
+  global _DEFAULT_MODEL_CACHE_MANAGER
+  global _DEFAULT_MODEL_CACHE_PATH
+  if _MODEL_CACHE_MANAGER is not None:
+    return _MODEL_CACHE_MANAGER
+  if _DEFAULT_MODEL_CACHE_PATH is None:
+    default_cache_path = tempfile.TemporaryDirectory()
+    _DEFAULT_MODEL_CACHE_PATH = default_cache_path
+    _DEFAULT_MODEL_CACHE_MANAGER = model_cache.ModelCacheManager(
+        cache_options=types.CacheOptions(
+            cache_path=default_cache_path.name))
+  return _DEFAULT_MODEL_CACHE_MANAGER
 
 
 def _get_proxdash_connection() -> proxdash.ProxDashConnection:
@@ -328,7 +346,6 @@ def check_health(
   logging_options, _ = _init_logging_options(
       experiment_path=experiment_path,
       logging_options=types.LoggingOptions())
-  cache_options, _, _ = _init_cache_options()
   if _get_run_type() == types.RunType.TEST:
     proxdash_options = types.ProxDashOptions(
         stdout=False,
@@ -348,7 +365,6 @@ def check_health(
       get_run_type=_get_run_type,
       proxdash_connection=proxdash_connection,
       allow_multiprocessing=allow_multiprocessing,
-      cache_options=cache_options,
       logging_options=logging_options,
       get_initialized_model_connectors=_get_initialized_model_connectors,
       init_model_connector=_init_model_connector)
@@ -503,7 +519,6 @@ def get_available_models() -> available_models.AvailableModels:
   return available_models.AvailableModels(
       get_run_type=_get_run_type,
       get_allow_multiprocessing=_get_allow_multiprocessing,
-      get_cache_options=_get_cache_options,
       get_logging_options=_get_logging_options,
       get_model_cache_manager=_get_model_cache_manager,
       get_initialized_model_connectors=_get_initialized_model_connectors,
