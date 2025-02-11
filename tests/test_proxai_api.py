@@ -64,36 +64,66 @@ class TestProxaiApiUseCases:
     # px.models.generate_text()
     # px_options.cache_options.cache_path
 
-    # Todo: Following check still not working because ModelCacheManager in
-    # AvailableModels is different from ModelCacheManager in Proxai globals.
-    # Finish this test after passing functions in init instead of direct
-    # objects.
+    def _check_model_cache_path(
+        cache_path: str,
+        min_expected_records: int):
+      assert os.path.exists(os.path.join(cache_path, 'available_models.json'))
+      with open(os.path.join(cache_path, 'available_models.json'), 'r') as f:
+        data = json.load(f)
+        assert data['GENERATE_TEXT']['failed_models'] == []
+        assert data['GENERATE_TEXT']['unprocessed_models'] == []
+        assert data['GENERATE_TEXT']['filtered_models'] == []
+        assert (
+            len(data['GENERATE_TEXT']['working_models']) >=
+            min_expected_records)
+        assert (
+            len(data['GENERATE_TEXT']['provider_queries']) >=
+            min_expected_records)
+
+    # --- First connect ---
     cache_path = self._get_path_dir('cache_path')
     px.connect(
         cache_path=cache_path,
         allow_multiprocessing=False)
+    # Cache file is not created yet because nothing saved to ModelCacheManager.
     assert not os.path.exists(os.path.join(cache_path, 'available_models.json'))
-    # models = px.models.generate_text()
-    # with open(os.path.join(cache_path, 'available_models.json'), 'r') as f:
-    #   assert f.read() == '{}'
+    px.models.generate_text(only_largest_models=True)
+    # Cache file is created because some models are saved to ModelCacheManager.
+    _check_model_cache_path(cache_path, min_expected_records=5)
 
-    # px.connect(cache_path='test_cache_2')
-    # px.models.allow_multiprocessing = False
-    # # Check cache file is created
+    # --- Second connect with same cache path ---
+    px.connect(
+        cache_path=cache_path,
+        allow_multiprocessing=True)
+    # Cache file is still there because same cache path.
+    _check_model_cache_path(cache_path, min_expected_records=5)
+    px.models.generate_text(only_largest_models=False)
+    # Cache file is updated and more models are saved to ModelCacheManager
+    # because only_largest_models is False.
+    _check_model_cache_path(cache_path, min_expected_records=30)
 
-    # px.models.generate_text()
-    # # Check cache file is updated
+    # --- Third connect with different cache path ---
+    cache_path_2 = self._get_path_dir('cache_path_2')
+    # Cache file is not created yet because nothing saved to ModelCacheManager
+    # and this cache path is not used in previous connect.
+    assert not os.path.exists(
+        os.path.join(cache_path_2, 'available_models.json'))
+    px.connect(
+        cache_path=cache_path_2,
+        allow_multiprocessing=False)
+    px.models.generate_text(only_largest_models=True)
+    # Cache file is created because some models are saved to ModelCacheManager.
+    _check_model_cache_path(cache_path_2, min_expected_records=5)
 
-    # px.connect()
-    # px.models.allow_multiprocessing = False
-    # # Check what happens?
-
-    # px.connect(cache_path='test_cache_1')
-    # px.models.allow_multiprocessing = False
-    # # Check cache file is already created
-
-    # px.models.generate_text()
-    # # Check cache file is updated
+    # --- Fourth connect with same cache path ---
+    px.connect(
+        cache_path=cache_path,
+        allow_multiprocessing=True)
+    # Cache file is still there because same cache path.
+    _check_model_cache_path(cache_path, min_expected_records=30)
+    px.models.generate_text(only_largest_models=True)
+    # Nothing changed because same cache path and same only_largest_models.
+    _check_model_cache_path(cache_path, min_expected_records=30)
 
   def test_query_cache_with_different_connect_cache_paths(self):
     # --- Before connect ---

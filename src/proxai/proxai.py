@@ -505,7 +505,7 @@ def get_available_models() -> available_models.AvailableModels:
       get_allow_multiprocessing=_get_allow_multiprocessing,
       get_cache_options=_get_cache_options,
       get_logging_options=_get_logging_options,
-      model_cache_manager=_get_model_cache_manager(),
+      get_model_cache_manager=_get_model_cache_manager,
       get_initialized_model_connectors=_get_initialized_model_connectors,
       get_proxdash_connection=_get_proxdash_connection,
       init_model_connector=_init_model_connector)
