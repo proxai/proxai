@@ -38,6 +38,8 @@ class AvailableModels:
       cache_options: Optional[types.CacheOptions] = None,
       get_cache_options: Optional[Callable[[], types.CacheOptions]] = None,
       model_cache_manager: Optional[model_cache.ModelCacheManager] = None,
+      get_model_cache_manager: Optional[
+          Callable[[], model_cache.ModelCacheManager]] = None,
       logging_options: Optional[types.LoggingOptions] = None,
       get_logging_options: Optional[Callable[[], types.LoggingOptions]] = None,
       proxdash_connection: Optional[ProxDashConnection] = None,
@@ -63,11 +65,16 @@ class AvailableModels:
       raise ValueError(
           'Only one of allow_multiprocessing or get_allow_multiprocessing should '
           'be provided.')
+    if model_cache_manager and get_model_cache_manager:
+      raise ValueError(
+          'Only one of model_cache_manager or get_model_cache_manager should '
+          'be provided.')
     self.run_type = run_type
     self._get_run_type = get_run_type
     self.cache_options = cache_options
     self._get_cache_options = get_cache_options
-    self._model_cache_manager = model_cache_manager
+    self.model_cache_manager = model_cache_manager
+    self._get_model_cache_manager = get_model_cache_manager
     self.logging_options = logging_options
     self._get_logging_options = get_logging_options
     self.proxdash_connection = proxdash_connection
@@ -123,6 +130,19 @@ class AvailableModels:
   @logging_options.setter
   def logging_options(self, logging_options: types.LoggingOptions):
     self._logging_options = logging_options
+
+  @property
+  def model_cache_manager(self) -> model_cache.ModelCacheManager:
+    if self._model_cache_manager:
+      return self._model_cache_manager
+    if self._get_model_cache_manager:
+      return self._get_model_cache_manager()
+    return None
+
+  @model_cache_manager.setter
+  def model_cache_manager(
+      self, model_cache_manager: model_cache.ModelCacheManager):
+    self._model_cache_manager = model_cache_manager
 
   @property
   def proxdash_connection(self) -> ProxDashConnection:
@@ -239,8 +259,8 @@ class AvailableModels:
     if not self.cache_options.cache_path:
       return
     cache_result = types.ModelStatus()
-    if self._model_cache_manager:
-      cache_result = self._model_cache_manager.get(call_type=call_type)
+    if self.model_cache_manager:
+      cache_result = self.model_cache_manager.get(call_type=call_type)
 
     def _remove_model(model: types.ModelType):
       if model in models.unprocessed_models:
@@ -353,8 +373,8 @@ class AvailableModels:
       update_models.provider_queries.append(logging_record)
     if not self.cache_options.cache_path:
       return
-    if self._model_cache_manager:
-      self._model_cache_manager.update(
+    if self.model_cache_manager:
+      self.model_cache_manager.update(
           model_status=update_models, call_type=call_type)
 
   def _format_set(
