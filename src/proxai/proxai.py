@@ -5,15 +5,10 @@ import os
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 import proxai.types as types
 import proxai.type_utils as type_utils
-from proxai.connectors.model_connector import ModelConnector
-from proxai.connectors.openai import OpenAIConnector
-from proxai.connectors.claude import ClaudeConnector
-from proxai.connectors.gemini import GeminiConnector
-from proxai.connectors.cohere_api import CohereConnector
-from proxai.connectors.databricks import DatabricksConnector
-from proxai.connectors.mistral import MistralConnector
-from proxai.connectors.hugging_face import HuggingFaceConnector
+import proxai.connectors.model_connector as model_connector
+import proxai.connectors.model_registry as model_registry
 import proxai.caching.query_cache as query_cache
+import proxai.caching.model_cache as model_cache
 import proxai.serializers.type_serializer as type_serializer
 import proxai.stat_types as stat_types
 import proxai.connections.available_models as available_models
@@ -25,11 +20,13 @@ _RUN_TYPE: types.RunType = types.RunType.PRODUCTION
 _HIDDEN_RUN_KEY: Optional[str] = None
 _EXPERIMENT_PATH: Optional[str] = None
 _REGISTERED_VALUES: Dict[str, types.ModelType] = {}
-_INITIALIZED_MODEL_CONNECTORS: Dict[types.ModelType, ModelConnector] = {}
+_INITIALIZED_MODEL_CONNECTORS: Dict[
+    types.ModelType, model_connector.ModelConnector] = {}
 _ROOT_LOGGING_PATH: Optional[str] = None
 _LOGGING_OPTIONS: types.LoggingOptions = types.LoggingOptions()
 _CACHE_OPTIONS: types.CacheOptions = types.CacheOptions()
 _PROXDASH_OPTIONS: types.ProxDashOptions = types.ProxDashOptions()
+_MODEL_CACHE_MANAGER: Optional[model_cache.ModelCacheManager] = None
 _QUERY_CACHE_MANAGER: Optional[query_cache.QueryCacheManager] = None
 _STRICT_FEATURE_TEST: bool = False
 _STATS: Dict[str, stat_types.RunStats] = {
@@ -51,6 +48,7 @@ def _init_globals():
   global _CACHE_OPTIONS
   global _PROXDASH_OPTIONS
   global _QUERY_CACHE_MANAGER
+  global _MODEL_CACHE_MANAGER
   global _STRICT_FEATURE_TEST
   global _ALLOW_MULTIPROCESSING
   global _STATS
@@ -60,6 +58,7 @@ def _init_globals():
   _CACHE_OPTIONS = types.CacheOptions()
   _PROXDASH_OPTIONS = types.ProxDashOptions()
   _QUERY_CACHE_MANAGER = None
+  _MODEL_CACHE_MANAGER = None
   _STRICT_FEATURE_TEST = False
   _ALLOW_MULTIPROCESSING = True
   _STATS[stat_types.GlobalStatType.SINCE_CONNECT] = stat_types.RunStats()
@@ -140,15 +139,18 @@ def _init_cache_options(
     cache_path: Optional[str] = None,
     cache_options: Optional[types.CacheOptions] = None,
     global_init: Optional[bool] = False
-) -> Tuple[types.CacheOptions, Optional[query_cache.QueryCacheManager]]:
+) -> Tuple[
+    types.CacheOptions,
+    Optional[model_cache.ModelCacheManager],
+    Optional[query_cache.QueryCacheManager]]:
   if cache_path and cache_options and cache_options.cache_path:
     raise ValueError('cache_path and cache_options.cache_path are both set.'
                      'Either set cache_path or cache_options.cache_path, but '
                      'not both.')
 
   result_cache_options = types.CacheOptions()
+  result_model_cache_manager = None
   result_query_cache_manager = None
-
   if cache_path:
     result_cache_options.cache_path = cache_path
   if cache_options:
@@ -167,14 +169,21 @@ def _init_cache_options(
     result_cache_options.clear_model_cache_on_connect = (
         cache_options.clear_model_cache_on_connect)
   if result_cache_options.cache_path:
+    result_model_cache_manager = model_cache.ModelCacheManager(
+        cache_options=result_cache_options)
     result_query_cache_manager = query_cache.QueryCacheManager(
         cache_options=result_cache_options)
   if global_init:
     global _CACHE_OPTIONS
+    global _MODEL_CACHE_MANAGER
     global _QUERY_CACHE_MANAGER
     _CACHE_OPTIONS = result_cache_options
+    _MODEL_CACHE_MANAGER = result_model_cache_manager
     _QUERY_CACHE_MANAGER = result_query_cache_manager
-  return (result_cache_options, result_query_cache_manager)
+  return (
+      result_cache_options,
+      result_model_cache_manager,
+      result_query_cache_manager)
 
 
 def _init_proxdash_options(
@@ -215,43 +224,21 @@ def _init_strict_feature_test(
   return strict_feature_test
 
 
-def _init_model_connector(model: types.ModelType) -> ModelConnector:
+def _init_model_connector(
+    model: types.ModelType) -> model_connector.ModelConnector:
   global _QUERY_CACHE_MANAGER
   global _STATS
-  provider, _ = model
-  connector = None
-  if provider == types.Provider.OPENAI:
-    connector =  OpenAIConnector
-  elif provider == types.Provider.CLAUDE:
-    connector =  ClaudeConnector
-  elif provider == types.Provider.GEMINI:
-    connector =  GeminiConnector
-  elif provider == types.Provider.COHERE:
-    connector =  CohereConnector
-  elif provider == types.Provider.DATABRICKS:
-    connector =  DatabricksConnector
-  elif provider == types.Provider.MISTRAL:
-    connector =  MistralConnector
-  elif provider == types.Provider.HUGGING_FACE:
-    connector =  HuggingFaceConnector
-  else:
-    raise ValueError(f'Provider not supported. {model}')
-
-  connector = functools.partial(
-      connector,
-      model=model,
+  connector = model_registry.get_model_connector(model)
+  if _QUERY_CACHE_MANAGER:
+    connector = functools.partial(
+        connector,
+        query_cache_manager=_QUERY_CACHE_MANAGER)
+  return connector(
       run_type=_get_run_type(),
       strict_feature_test=_STRICT_FEATURE_TEST,
       stats=_STATS,
       get_logging_options=_get_logging_options,
       get_proxdash_connection=_get_proxdash_connection)
-
-  if _QUERY_CACHE_MANAGER:
-    connector = functools.partial(
-        connector,
-        query_cache_manager=_QUERY_CACHE_MANAGER)
-
-  return connector()
 
 
 def _get_cache_options() -> CacheOptions:
@@ -278,9 +265,13 @@ def _get_hidden_run_key() -> str:
   return _HIDDEN_RUN_KEY
 
 
-def _get_initialized_model_connectors()-> Dict[
-    types.ModelType, ModelConnector]:
+def _get_initialized_model_connectors() -> Dict[
+    types.ModelType, model_connector.ModelConnector]:
   return _INITIALIZED_MODEL_CONNECTORS
+
+
+def _get_model_cache_manager() -> model_cache.ModelCacheManager:
+  return _MODEL_CACHE_MANAGER
 
 
 def _get_proxdash_connection() -> proxdash.ProxDashConnection:
@@ -296,7 +287,7 @@ def _get_proxdash_connection() -> proxdash.ProxDashConnection:
 
 def _get_model_connector(
     call_type: types.CallType,
-    model: Optional[types.ModelType]=None) -> ModelConnector:
+    model: Optional[types.ModelType]=None) -> model_connector.ModelConnector:
   global _REGISTERED_VALUES
   global _INITIALIZED_MODEL_CONNECTORS
   if call_type == types.CallType.GENERATE_TEXT:
@@ -318,7 +309,7 @@ def _get_run_type() -> types.RunType:
   return _RUN_TYPE
 
 
-def _set_run_type(run_type: types.RunType):
+def set_run_type(run_type: types.RunType):
   global _RUN_TYPE
   _RUN_TYPE = run_type
   _init_globals()
@@ -337,9 +328,13 @@ def check_health(
   logging_options, _ = _init_logging_options(
       experiment_path=experiment_path,
       logging_options=types.LoggingOptions())
-  cache_options, _ = _init_cache_options()
-  proxdash_options = _init_proxdash_options(
-      proxdash_options=types.ProxDashOptions(stdout=True))
+  cache_options, _, _ = _init_cache_options()
+  if _get_run_type() == types.RunType.TEST:
+    proxdash_options = types.ProxDashOptions(
+        stdout=False,
+        disable_proxdash=True)
+  else:
+    proxdash_options = types.ProxDashOptions(stdout=True)
   allow_multiprocessing = _init_allow_multiprocessing(
       allow_multiprocessing=allow_multiprocessing)
 
@@ -350,6 +345,7 @@ def check_health(
   if verbose:
     print('> Starting to test each model...')
   models = available_models.AvailableModels(
+      get_run_type=_get_run_type,
       proxdash_connection=proxdash_connection,
       allow_multiprocessing=allow_multiprocessing,
       cache_options=cache_options,
@@ -440,7 +436,8 @@ def generate_text(
     model: Optional[types.ProviderModel] = None,
     use_cache: bool = True,
     unique_response_limit: Optional[int] = None,
-    extensive_return: bool = False) -> Union[str, types.LoggingRecord]:
+    extensive_return: bool = False,
+    suppress_errors: bool = False) -> Union[str, types.LoggingRecord]:
   if prompt != None and messages != None:
     raise ValueError('prompt and messages cannot be set at the same time.')
   if messages != None:
@@ -466,10 +463,16 @@ def generate_text(
       use_cache=use_cache,
       unique_response_limit=unique_response_limit)
   if logging_record.response_record.error:
-    error_traceback = ''
-    if logging_record.response_record.error_traceback:
-      error_traceback = logging_record.response_record.error_traceback + '\n'
-    raise Exception(error_traceback + logging_record.response_record.error)
+    if suppress_errors:
+      if extensive_return:
+        return logging_record
+      return logging_record.response_record.error
+    else:
+      error_traceback = ''
+      if logging_record.response_record.error_traceback:
+        error_traceback = logging_record.response_record.error_traceback + '\n'
+      raise Exception(error_traceback + logging_record.response_record.error)
+
   if extensive_return:
     return logging_record
   return logging_record.response_record.response
@@ -502,6 +505,7 @@ def get_available_models() -> available_models.AvailableModels:
       get_allow_multiprocessing=_get_allow_multiprocessing,
       get_cache_options=_get_cache_options,
       get_logging_options=_get_logging_options,
+      model_cache_manager=_get_model_cache_manager(),
       get_initialized_model_connectors=_get_initialized_model_connectors,
       get_proxdash_connection=_get_proxdash_connection,
       init_model_connector=_init_model_connector)

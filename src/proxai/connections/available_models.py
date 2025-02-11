@@ -11,7 +11,7 @@ from proxai.connections.proxdash import ProxDashConnection
 
 
 class AvailableModels:
-  _model_cache: Optional[model_cache.ModelCache] = None
+  _model_cache_manager: Optional[model_cache.ModelCacheManager] = None
   _generate_text: Dict[types.ModelType, Any] = {}
   _run_type: types.RunType
   _get_run_type: Callable[[], types.RunType]
@@ -37,6 +37,7 @@ class AvailableModels:
       get_run_type: Callable[[], types.RunType] = None,
       cache_options: Optional[types.CacheOptions] = None,
       get_cache_options: Optional[Callable[[], types.CacheOptions]] = None,
+      model_cache_manager: Optional[model_cache.ModelCacheManager] = None,
       logging_options: Optional[types.LoggingOptions] = None,
       get_logging_options: Optional[Callable[[], types.LoggingOptions]] = None,
       proxdash_connection: Optional[ProxDashConnection] = None,
@@ -66,6 +67,7 @@ class AvailableModels:
     self._get_run_type = get_run_type
     self.cache_options = cache_options
     self._get_cache_options = get_cache_options
+    self._model_cache_manager = model_cache_manager
     self.logging_options = logging_options
     self._get_logging_options = get_logging_options
     self.proxdash_connection = proxdash_connection
@@ -236,9 +238,9 @@ class AvailableModels:
       call_type: str):
     if not self.cache_options.cache_path:
       return
-    if not self._model_cache:
-      self._model_cache = model_cache.ModelCache(self.cache_options)
-    cache_result = self._model_cache.get(call_type=call_type)
+    cache_result = types.ModelStatus()
+    if self._model_cache_manager:
+      cache_result = self._model_cache_manager.get(call_type=call_type)
 
     def _remove_model(model: types.ModelType):
       if model in models.unprocessed_models:
@@ -351,9 +353,9 @@ class AvailableModels:
       update_models.provider_queries.append(logging_record)
     if not self.cache_options.cache_path:
       return
-    if not self._model_cache:
-      self._model_cache = model_cache.ModelCache(self.cache_options)
-    self._model_cache.update(model_status=update_models, call_type=call_type)
+    if self._model_cache_manager:
+      self._model_cache_manager.update(
+          model_status=update_models, call_type=call_type)
 
   def _format_set(
       self,

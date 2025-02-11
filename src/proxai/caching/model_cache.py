@@ -10,7 +10,7 @@ import json
 AVAILABLE_MODELS_PATH = 'available_models.json'
 
 
-class ModelCache:
+class ModelCacheManager:
   _cache_options: types.CacheOptions
   _data: Dict[types.CallType, types.ModelStatus] = {}
 
