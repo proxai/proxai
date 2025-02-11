@@ -4,6 +4,7 @@ from proxai.proxai import (
     CacheOptions,
     LoggingOptions,
     ProxDashOptions,
+    set_run_type,
     check_health,
     connect,
     set_model,
