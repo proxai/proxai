@@ -51,7 +51,6 @@ class TestAvailableModels:
     available_models_manager = available_models.AvailableModels(
         run_type=types.RunType.TEST,
         allow_multiprocessing=allow_multiprocessing,
-        cache_options=types.CacheOptions(cache_path=self.cache_dir.name),
         model_cache_manager=self.model_cache_manager,
         get_initialized_model_connectors=self._get_initialized_model_connectors,
         init_model_connector=self._init_model_connector,

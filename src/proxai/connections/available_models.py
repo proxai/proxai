@@ -35,8 +35,6 @@ class AvailableModels:
       init_model_connector: Callable[[types.ModelType], ModelConnector],
       run_type: types.RunType = None,
       get_run_type: Callable[[], types.RunType] = None,
-      cache_options: Optional[types.CacheOptions] = None,
-      get_cache_options: Optional[Callable[[], types.CacheOptions]] = None,
       model_cache_manager: Optional[model_cache.ModelCacheManager] = None,
       get_model_cache_manager: Optional[
           Callable[[], model_cache.ModelCacheManager]] = None,
@@ -50,9 +48,6 @@ class AvailableModels:
     if run_type and get_run_type:
       raise ValueError(
           'Only one of run_type or get_run_type should be provided.')
-    if cache_options and get_cache_options:
-      raise ValueError(
-          'Only one of cache_options or get_cache_options should be provided.')
     if logging_options and get_logging_options:
       raise ValueError(
           'Only one of logging_options or get_logging_options should be '
@@ -71,8 +66,6 @@ class AvailableModels:
           'be provided.')
     self.run_type = run_type
     self._get_run_type = get_run_type
-    self.cache_options = cache_options
-    self._get_cache_options = get_cache_options
     self.model_cache_manager = model_cache_manager
     self._get_model_cache_manager = get_model_cache_manager
     self.logging_options = logging_options
@@ -106,18 +99,6 @@ class AvailableModels:
   @run_type.setter
   def run_type(self, run_type: types.RunType):
     self._run_type = run_type
-
-  @property
-  def cache_options(self) -> types.CacheOptions:
-    if self._cache_options:
-      return self._cache_options
-    if self._get_cache_options:
-      return self._get_cache_options()
-    return None
-
-  @cache_options.setter
-  def cache_options(self, cache_options: types.CacheOptions):
-    self._cache_options = cache_options
 
   @property
   def logging_options(self) -> types.LoggingOptions:
@@ -256,7 +237,7 @@ class AvailableModels:
       self,
       models: types.ModelStatus,
       call_type: str):
-    if not self.cache_options.cache_path:
+    if not self.model_cache_manager:
       return
     cache_result = types.ModelStatus()
     if self.model_cache_manager:
@@ -371,8 +352,6 @@ class AvailableModels:
         models.failed_models.add(logging_record.query_record.model)
         update_models.failed_models.add(logging_record.query_record.model)
       update_models.provider_queries.append(logging_record)
-    if not self.cache_options.cache_path:
-      return
     if self.model_cache_manager:
       self.model_cache_manager.update(
           model_status=update_models, call_type=call_type)
