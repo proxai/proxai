@@ -5,8 +5,8 @@ from typing import Dict, List, Optional, Tuple, Type, Set, Union
 
 
 class RunType(enum.Enum):
-  PRODUCTION = 1
-  TEST = 2
+  PRODUCTION = 'PRODUCTION'
+  TEST = 'TEST'
 
 
 class CallType(str, enum.Enum):
@@ -253,6 +253,7 @@ class RunOptions:
   proxdash_options: Optional[ProxDashOptions] = None
   allow_multiprocessing: Optional[bool] = None
   strict_feature_test: Optional[bool] = None
+  suppress_provider_errors: Optional[bool] = None
 
 
 @dataclasses.dataclass

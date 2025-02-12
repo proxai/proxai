@@ -110,6 +110,70 @@ def _get_logging_record_options():
        'look_fail_reason': types.CacheLookFailReason.CACHE_NOT_FOUND},]
 
 
+def _get_logging_options_options():
+  return [
+      {},
+      {'logging_path': 'logging_path'},
+      {'stdout': True},
+      {'hide_sensitive_content': True},]
+
+
+def _get_cache_options_options():
+  return [
+      {},
+      {'cache_path': 'cache_path'},
+      {'unique_response_limit': 1},
+      {'retry_if_error_cached': True},
+      {'clear_query_cache_on_connect': True},
+      {'clear_model_cache_on_connect': True},]
+
+
+def _get_proxdash_options_options():
+  return [
+      {},
+      {'stdout': True},
+      {'hide_sensitive_content': True},
+      {'disable_proxdash': True},]
+
+
+def _get_run_options_options():
+  return [
+      {},
+      {'run_type': types.RunType.TEST},
+      {'logging_options': types.LoggingOptions(
+          logging_path='logging_path',
+          stdout=True,
+          hide_sensitive_content=True)},
+      {'cache_options': types.CacheOptions(
+          cache_path='cache_path',
+          unique_response_limit=1,
+          retry_if_error_cached=True,
+          clear_query_cache_on_connect=True,
+          clear_model_cache_on_connect=True)},
+      {'proxdash_options': types.ProxDashOptions(
+          stdout=True,
+          hide_sensitive_content=True,
+          disable_proxdash=True)},
+      {'allow_multiprocessing': True},
+      {'strict_feature_test': True},
+      {'suppress_provider_errors': True},
+      {'run_type': types.RunType.TEST,
+       'logging_options': types.LoggingOptions(
+          logging_path='logging_path',
+          stdout=True,
+          hide_sensitive_content=True),
+       'cache_options': types.CacheOptions(
+          cache_path='cache_path',
+          unique_response_limit=1,
+          retry_if_error_cached=True,
+          clear_query_cache_on_connect=True,
+          clear_model_cache_on_connect=True),
+       'proxdash_options': types.ProxDashOptions(
+          stdout=True,
+          hide_sensitive_content=True,
+          disable_proxdash=True)}]
+
+
 def _get_model_status_options():
   model_1 = (types.Provider.OPENAI, types.OpenAIModel.GPT_4)
   model_2 = (types.Provider.OPENAI,
@@ -309,6 +373,46 @@ class TestTypeSerializer:
     decoded_logging_record = type_serializer.decode_logging_record(
         record=encoded_logging_record)
     assert logging_record == decoded_logging_record
+
+  @pytest.mark.parametrize(
+      'logging_options_options', _get_logging_options_options())
+  def test_encode_decode_logging_options(self, logging_options_options):
+    logging_options = types.LoggingOptions(**logging_options_options)
+    encoded_logging_options = type_serializer.encode_logging_options(
+        logging_options=logging_options)
+    decoded_logging_options = type_serializer.decode_logging_options(
+        record=encoded_logging_options)
+    assert logging_options == decoded_logging_options
+
+  @pytest.mark.parametrize(
+      'cache_options_options', _get_cache_options_options())
+  def test_encode_decode_cache_options(self, cache_options_options):
+    cache_options = types.CacheOptions(**cache_options_options)
+    encoded_cache_options = type_serializer.encode_cache_options(
+        cache_options=cache_options)
+    decoded_cache_options = type_serializer.decode_cache_options(
+        record=encoded_cache_options)
+    assert cache_options == decoded_cache_options
+
+  @pytest.mark.parametrize(
+      'proxdash_options_options', _get_proxdash_options_options())
+  def test_encode_decode_proxdash_options(self, proxdash_options_options):
+    proxdash_options = types.ProxDashOptions(**proxdash_options_options)
+    encoded_proxdash_options = type_serializer.encode_proxdash_options(
+        proxdash_options=proxdash_options)
+    decoded_proxdash_options = type_serializer.decode_proxdash_options(
+        record=encoded_proxdash_options)
+    assert proxdash_options == decoded_proxdash_options
+
+  @pytest.mark.parametrize(
+      'run_options_options', _get_run_options_options())
+  def test_encode_decode_run_options(self, run_options_options):
+    run_options = types.RunOptions(**run_options_options)
+    encoded_run_options = type_serializer.encode_run_options(
+        run_options=run_options)
+    decoded_run_options = type_serializer.decode_run_options(
+        record=encoded_run_options)
+    assert run_options == decoded_run_options
 
   @pytest.mark.parametrize('model_status_options', _get_model_status_options())
   def test_encode_decode_model_status(self, model_status_options):
