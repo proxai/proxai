@@ -310,7 +310,7 @@ class TestRetryIfErrorCached:
         provider=provider,
         model=model,
         extensive_return=True,
-        suppress_errors=True)
+        suppress_provider_errors=True)
     assert response.response_source == types.ResponseSource.PROVIDER
     assert response.response_record.error == 'Temp Error'
     # Second call:
@@ -319,7 +319,7 @@ class TestRetryIfErrorCached:
         provider=provider,
         model=model,
         extensive_return=True,
-        suppress_errors=True)
+        suppress_provider_errors=True)
     assert response.response_source == types.ResponseSource.CACHE
     assert response.response_record.error == 'Temp Error'
 
@@ -346,7 +346,7 @@ class TestRetryIfErrorCached:
         provider=provider,
         model=model,
         extensive_return=True,
-        suppress_errors=True)
+        suppress_provider_errors=True)
     assert response.response_source == types.ResponseSource.PROVIDER
     assert response.response_record.error == 'Temp Error'
     # Second call:
@@ -355,9 +355,129 @@ class TestRetryIfErrorCached:
         provider=provider,
         model=model,
         extensive_return=True,
-        suppress_errors=True)
+        suppress_provider_errors=True)
     assert response.response_source == types.ResponseSource.PROVIDER
     assert response.response_record.error == 'Temp Error'
+
+
+class TestSuppressProviderErrors:
+  def test_connect_with_suppress_provider_errors(self):
+    provider = types.Provider.OPENAI
+    model = types.OpenAIModel.GPT_3_5_TURBO
+    failing_connector = MockFailingConnector(
+        run_type=types.RunType.TEST,
+        model=(provider, model),
+        query_cache_manager=proxai._QUERY_CACHE_MANAGER)
+    proxai.set_run_type(types.RunType.TEST)
+
+    # Before connect:
+    proxai._INITIALIZED_MODEL_CONNECTORS[(provider, model)] = failing_connector
+    with pytest.raises(Exception):
+      proxai.generate_text(
+          'hello',
+          provider=provider,
+          model=model,
+          extensive_return=True)
+
+    # After simple connect:
+    proxai.connect()
+    proxai._INITIALIZED_MODEL_CONNECTORS[(provider, model)] = failing_connector
+    with pytest.raises(Exception):
+      proxai.generate_text(
+          'hello',
+          provider=provider,
+          model=model,
+          extensive_return=True)
+
+    # After connect with suppress_provider_errors=True:
+    proxai.connect(suppress_provider_errors=True)
+    proxai._INITIALIZED_MODEL_CONNECTORS[(provider, model)] = failing_connector
+    response = proxai.generate_text(
+        'hello',
+        provider=provider,
+        model=model,
+        extensive_return=True)
+    assert response.response_source == types.ResponseSource.PROVIDER
+    assert response.response_record.error == 'Temp Error'
+
+    # After connect with suppress_provider_errors=False:
+    proxai.connect(suppress_provider_errors=False)
+    proxai._INITIALIZED_MODEL_CONNECTORS[(provider, model)] = failing_connector
+    with pytest.raises(Exception):
+      proxai.generate_text(
+          'hello',
+          provider=provider,
+          model=model,
+          extensive_return=True)
+
+  def test_generate_text_with_suppress_provider_errors(self):
+    provider = types.Provider.OPENAI
+    model = types.OpenAIModel.GPT_3_5_TURBO
+    failing_connector = MockFailingConnector(
+        run_type=types.RunType.TEST,
+        model=(provider, model),
+        query_cache_manager=proxai._QUERY_CACHE_MANAGER)
+    proxai.set_run_type(types.RunType.TEST)
+
+    # Before connect:
+    proxai._INITIALIZED_MODEL_CONNECTORS[(provider, model)] = failing_connector
+    with pytest.raises(Exception):
+      proxai.generate_text(
+          'hello',
+          extensive_return=True,
+          suppress_provider_errors=False)
+
+    response = proxai.generate_text(
+        'hello',
+        extensive_return=True,
+        suppress_provider_errors=True)
+    assert response.response_source == types.ResponseSource.PROVIDER
+    assert response.response_record.error == 'Temp Error'
+
+    # After simple connect:
+    proxai.connect()
+    proxai._INITIALIZED_MODEL_CONNECTORS[(provider, model)] = failing_connector
+    with pytest.raises(Exception):
+      proxai.generate_text(
+          'hello',
+          extensive_return=True,
+          suppress_provider_errors=False)
+
+    response = proxai.generate_text(
+        'hello',
+        extensive_return=True,
+        suppress_provider_errors=True)
+    assert response.response_source == types.ResponseSource.PROVIDER
+    assert response.response_record.error == 'Temp Error'
+
+  def test_override_suppress_provider_errors(self):
+    provider = types.Provider.OPENAI
+    model = types.OpenAIModel.GPT_3_5_TURBO
+    failing_connector = MockFailingConnector(
+        run_type=types.RunType.TEST,
+        model=(provider, model),
+        query_cache_manager=proxai._QUERY_CACHE_MANAGER)
+    proxai.set_run_type(types.RunType.TEST)
+
+    # False override:
+    proxai.connect(suppress_provider_errors=True)
+    proxai._INITIALIZED_MODEL_CONNECTORS[(provider, model)] = failing_connector
+    with pytest.raises(Exception):
+      proxai.generate_text(
+          'hello',
+          extensive_return=True,
+          suppress_provider_errors=False)
+
+    # True override:
+    proxai.connect(suppress_provider_errors=False)
+    proxai._INITIALIZED_MODEL_CONNECTORS[(provider, model)] = failing_connector
+    response = proxai.generate_text(
+        'hello',
+        extensive_return=True,
+        suppress_provider_errors=True)
+    assert response.response_source == types.ResponseSource.PROVIDER
+    assert response.response_record.error == 'Temp Error'
+
 
 class TestRegisterModel:
   def test_not_supported_provider(self):
