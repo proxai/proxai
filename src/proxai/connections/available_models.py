@@ -155,12 +155,16 @@ class AvailableModels:
       self,
       only_largest_models: bool = False,
       verbose: bool = False,
-      return_all: bool = False
+      return_all: bool = False,
+      clear_model_cache: bool = False
   ) -> List[types.ModelType]:
     start_utc_date = datetime.datetime.now(datetime.timezone.utc)
     models = types.ModelStatus()
     self._get_all_models(models, call_type=types.CallType.GENERATE_TEXT)
     self._filter_by_provider_key(models)
+
+    if clear_model_cache:
+      self.model_cache_manager.clear_cache()
     self._filter_by_cache(models, call_type=types.CallType.GENERATE_TEXT)
 
     # TODO: This is very experimental and require proper design. One alternative

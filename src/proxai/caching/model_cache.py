@@ -18,7 +18,7 @@ class ModelCacheManager:
     self._data = {}
     self._cache_options = cache_options
     if self._cache_options.clear_model_cache_on_connect:
-      self._clear_cache()
+      self.clear_cache()
     if self._cache_path:
       self._load_from_cache()
 
@@ -28,7 +28,8 @@ class ModelCacheManager:
       return None
     return os.path.join(self._cache_options.cache_path, AVAILABLE_MODELS_PATH)
 
-  def _clear_cache(self):
+  def clear_cache(self):
+    self._data = {}
     if not self._cache_path:
       return
     if os.path.exists(self._cache_path):

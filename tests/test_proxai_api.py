@@ -143,6 +143,38 @@ class TestProxaiApiUseCases:
     # Nothing changed because same cache path and same only_largest_models.
     _check_model_cache_path(cache_path, min_expected_records=30)
 
+  def test_model_cache_with_different_model_generate_text_options(self):
+    cache_path = self._get_path_dir('cache_path')
+    px.connect(cache_path=cache_path, allow_multiprocessing=False)
+
+    # At the first call, more than 30 models are saved to cache:
+    px.models.generate_text(only_largest_models=False)
+    with open(os.path.join(cache_path, 'available_models.json'), 'r') as f:
+      data = json.load(f)
+      assert len(data['GENERATE_TEXT']['working_models']) > 10
+      assert len(data['GENERATE_TEXT']['provider_queries']) > 10
+
+    # At the second call, only largest models called but because other models
+    # are already cached, so it should have same number of records:
+    px.models.generate_text(only_largest_models=True)
+    with open(os.path.join(cache_path, 'available_models.json'), 'r') as f:
+      data = json.load(f)
+      assert len(data['GENERATE_TEXT']['working_models']) > 10
+      assert len(data['GENERATE_TEXT']['provider_queries']) > 10
+
+    # At the third call, clear_model_cache is True, so it should have less than
+    # 10 records because previous models are deleted and only largest models
+    # are called:
+    px.models.generate_text(
+        only_largest_models=True,
+        clear_model_cache=True)
+    with open(os.path.join(cache_path, 'available_models.json'), 'r') as f:
+      data = json.load(f)
+      assert len(data['GENERATE_TEXT']['working_models']) > 0
+      assert len(data['GENERATE_TEXT']['working_models']) < 10
+      assert len(data['GENERATE_TEXT']['provider_queries']) > 0
+      assert len(data['GENERATE_TEXT']['provider_queries']) < 10
+
   def test_query_cache_with_different_connect_cache_paths(self):
     # --- Before connect ---
     # First call:
