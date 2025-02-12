@@ -79,14 +79,18 @@ class AvailableModels:
     self._load_provider_keys()
 
   def _load_provider_keys(self):
-    for provider, provider_key_name in types.PROVIDER_KEY_MAP.items():
-      provider_flag = True
-      for key_name in provider_key_name:
-        if key_name not in os.environ:
-          provider_flag = False
-          break
-      if provider_flag:
+    if self.run_type == types.RunType.TEST:
+      for provider in types.PROVIDER_KEY_MAP.keys():
         self._providers_with_key.add(provider)
+    else:
+      for provider, provider_key_name in types.PROVIDER_KEY_MAP.items():
+        provider_flag = True
+        for key_name in provider_key_name:
+          if key_name not in os.environ:
+            provider_flag = False
+            break
+        if provider_flag:
+          self._providers_with_key.add(provider)
 
   @property
   def run_type(self) -> types.RunType:
