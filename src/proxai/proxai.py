@@ -236,10 +236,9 @@ def _init_model_connector(
   global _QUERY_CACHE_MANAGER
   global _STATS
   connector = model_registry.get_model_connector(model)
-  if _QUERY_CACHE_MANAGER:
-    connector = functools.partial(
-        connector,
-        query_cache_manager=_QUERY_CACHE_MANAGER)
+  connector = functools.partial(
+      connector,
+      get_query_cache_manager=_get_query_cache_manager)
   return connector(
       run_type=_get_run_type(),
       strict_feature_test=_STRICT_FEATURE_TEST,
@@ -290,6 +289,10 @@ def _get_model_cache_manager() -> model_cache.ModelCacheManager:
         cache_options=types.CacheOptions(
             cache_path=default_cache_path.name))
   return _DEFAULT_MODEL_CACHE_MANAGER
+
+
+def _get_query_cache_manager() -> query_cache.QueryCacheManager:
+  return _QUERY_CACHE_MANAGER
 
 
 def _get_proxdash_connection() -> proxdash.ProxDashConnection:
