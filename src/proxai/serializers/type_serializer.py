@@ -297,6 +297,136 @@ def decode_model_status(
   return model_status
 
 
+def encode_logging_options(
+    logging_options: types.LoggingOptions) -> Dict[str, Any]:
+  record = {}
+  if logging_options.logging_path != None:
+    record['logging_path'] = logging_options.logging_path
+  if logging_options.stdout != None:
+    record['stdout'] = logging_options.stdout
+  if logging_options.hide_sensitive_content != None:
+    record['hide_sensitive_content'] = logging_options.hide_sensitive_content
+  return record
+
+
+def encode_cache_options(
+    cache_options: types.CacheOptions) -> Dict[str, Any]:
+  record = {}
+  if cache_options.cache_path != None:
+    record['cache_path'] = cache_options.cache_path
+  if cache_options.unique_response_limit != None:
+    record['unique_response_limit'] = cache_options.unique_response_limit
+  if cache_options.retry_if_error_cached != None:
+    record['retry_if_error_cached'] = cache_options.retry_if_error_cached
+  if cache_options.clear_query_cache_on_connect != None:
+    record['clear_query_cache_on_connect'] = (
+        cache_options.clear_query_cache_on_connect)
+  if cache_options.clear_model_cache_on_connect != None:
+    record['clear_model_cache_on_connect'] = (
+        cache_options.clear_model_cache_on_connect)
+  return record
+
+
+def encode_proxdash_options(
+    proxdash_options: types.ProxDashOptions) -> Dict[str, Any]:
+  record = {}
+  if proxdash_options.stdout != None:
+    record['stdout'] = proxdash_options.stdout
+  if proxdash_options.hide_sensitive_content != None:
+    record['hide_sensitive_content'] = proxdash_options.hide_sensitive_content
+  if proxdash_options.disable_proxdash != None:
+    record['disable_proxdash'] = proxdash_options.disable_proxdash
+  return record
+
+
+def encode_run_options(
+    run_options: types.RunOptions) -> Dict[str, Any]:
+  record = {}
+  if run_options.run_type != None:
+    record['run_type'] = run_options.run_type.value
+  if run_options.logging_options != None:
+    record['logging_options'] = encode_logging_options(
+        run_options.logging_options)
+  if run_options.cache_options != None:
+    record['cache_options'] = encode_cache_options(
+        run_options.cache_options)
+  if run_options.proxdash_options != None:
+    record['proxdash_options'] = encode_proxdash_options(
+        run_options.proxdash_options)
+  if run_options.allow_multiprocessing != None:
+    record['allow_multiprocessing'] = run_options.allow_multiprocessing
+  if run_options.strict_feature_test != None:
+    record['strict_feature_test'] = run_options.strict_feature_test
+  if run_options.suppress_provider_errors != None:
+    record['suppress_provider_errors'] = run_options.suppress_provider_errors
+  return record
+
+
+def decode_logging_options(
+    record: Dict[str, Any]) -> types.LoggingOptions:
+  logging_options = types.LoggingOptions()
+  if 'logging_path' in record:
+    logging_options.logging_path = record['logging_path']
+  if 'stdout' in record:
+    logging_options.stdout = record['stdout']
+  if 'hide_sensitive_content' in record:
+    logging_options.hide_sensitive_content = record['hide_sensitive_content']
+  return logging_options
+
+
+def decode_cache_options(
+    record: Dict[str, Any]) -> types.CacheOptions:
+  cache_options = types.CacheOptions()
+  if 'cache_path' in record:
+    cache_options.cache_path = record['cache_path']
+  if 'unique_response_limit' in record:
+    cache_options.unique_response_limit = record['unique_response_limit']
+  if 'retry_if_error_cached' in record:
+    cache_options.retry_if_error_cached = record['retry_if_error_cached']
+  if 'clear_query_cache_on_connect' in record:
+    cache_options.clear_query_cache_on_connect = (
+        record['clear_query_cache_on_connect'])
+  if 'clear_model_cache_on_connect' in record:
+    cache_options.clear_model_cache_on_connect = (
+        record['clear_model_cache_on_connect'])
+  return cache_options
+
+
+def decode_proxdash_options(
+    record: Dict[str, Any]) -> types.ProxDashOptions:
+  proxdash_options = types.ProxDashOptions()
+  if 'stdout' in record:
+    proxdash_options.stdout = record['stdout']
+  if 'hide_sensitive_content' in record:
+    proxdash_options.hide_sensitive_content = record['hide_sensitive_content']
+  if 'disable_proxdash' in record:
+    proxdash_options.disable_proxdash = record['disable_proxdash']
+  return proxdash_options
+
+
+def decode_run_options(
+    record: Dict[str, Any]) -> types.RunOptions:
+  run_options = types.RunOptions()
+  if 'run_type' in record:
+    run_options.run_type = types.RunType(record['run_type'])
+  if 'logging_options' in record:
+    run_options.logging_options = decode_logging_options(
+        record['logging_options'])
+  if 'cache_options' in record:
+    run_options.cache_options = decode_cache_options(
+        record['cache_options'])
+  if 'proxdash_options' in record:
+    run_options.proxdash_options = decode_proxdash_options(
+        record['proxdash_options'])
+  if 'allow_multiprocessing' in record:
+    run_options.allow_multiprocessing = record['allow_multiprocessing']
+  if 'strict_feature_test' in record:
+    run_options.strict_feature_test = record['strict_feature_test']
+  if 'suppress_provider_errors' in record:
+    run_options.suppress_provider_errors = record['suppress_provider_errors']
+  return run_options
+
+
 def encode_base_provider_stats(
     base_provider_stats: stat_types.BaseProviderStats) -> Dict[str, Any]:
   record = {}

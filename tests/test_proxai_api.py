@@ -510,6 +510,8 @@ class TestProxaiApiUseCases:
         allow_multiprocessing=False,
         strict_feature_test=True)
     options = px.get_current_options()
+    assert options.run_type == px.types.RunType.TEST
+    assert options.logging_options.logging_path == logging_path
     assert options.logging_options.stdout == True
     assert options.logging_options.hide_sensitive_content == True
     assert options.cache_options.cache_path == cache_path
@@ -522,6 +524,20 @@ class TestProxaiApiUseCases:
     assert options.proxdash_options.disable_proxdash == True
     assert options.allow_multiprocessing == False
     assert options.strict_feature_test == True
+
+    options = px.get_current_options(json=True)
+    assert options['run_type'] == px.types.RunType.TEST.value
+    assert options['logging_options']['logging_path'] == logging_path
+    assert options['logging_options']['stdout'] == True
+    assert options['logging_options']['hide_sensitive_content'] == True
+    assert options['cache_options']['cache_path'] == cache_path
+    assert options['cache_options']['unique_response_limit'] == 2
+    assert options['cache_options']['retry_if_error_cached'] == True
+    assert options['cache_options']['clear_query_cache_on_connect'] == True
+    assert options['cache_options']['clear_model_cache_on_connect'] == True
+    assert options['proxdash_options']['stdout'] == True
+    assert options['proxdash_options']['hide_sensitive_content'] == True
+    assert options['proxdash_options']['disable_proxdash'] == True
 
   def test_get_summary(self):
     cache_path = self._get_path_dir('cache_path')

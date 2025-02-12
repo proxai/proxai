@@ -556,8 +556,9 @@ def get_available_models() -> available_models.AvailableModels:
       init_model_connector=_init_model_connector)
 
 
-def get_current_options() -> types.RunOptions:
-  return types.RunOptions(
+def get_current_options(
+    json: bool = False) -> Union[types.RunOptions, Dict[str, Any]]:
+  run_options = types.RunOptions(
     run_type=_get_run_type(),
     logging_options=_get_logging_options(),
     cache_options=_get_cache_options(),
@@ -565,3 +566,6 @@ def get_current_options() -> types.RunOptions:
     allow_multiprocessing=_get_allow_multiprocessing(),
     strict_feature_test=_get_strict_feature_test()
   )
+  if json:
+    return type_serializer.encode_run_options(run_options=run_options)
+  return run_options
