@@ -32,6 +32,7 @@ _DEFAULT_MODEL_CACHE_MANAGER: Optional[model_cache.ModelCacheManager] = None
 _MODEL_CACHE_MANAGER: Optional[model_cache.ModelCacheManager] = None
 _QUERY_CACHE_MANAGER: Optional[query_cache.QueryCacheManager] = None
 _STRICT_FEATURE_TEST: bool = False
+_SUPPRESS_PROVIDER_ERRORS: bool = False
 _STATS: Dict[str, stat_types.RunStats] = {
     stat_types.GlobalStatType.RUN_TIME: stat_types.RunStats(),
     stat_types.GlobalStatType.SINCE_CONNECT: stat_types.RunStats()
@@ -53,6 +54,7 @@ def _init_globals():
   global _QUERY_CACHE_MANAGER
   global _MODEL_CACHE_MANAGER
   global _STRICT_FEATURE_TEST
+  global _SUPPRESS_PROVIDER_ERRORS
   global _ALLOW_MULTIPROCESSING
   global _STATS
   global _DEFAULT_MODEL_CACHE_MANAGER
@@ -65,6 +67,7 @@ def _init_globals():
   _QUERY_CACHE_MANAGER = None
   _MODEL_CACHE_MANAGER = None
   _STRICT_FEATURE_TEST = False
+  _SUPPRESS_PROVIDER_ERRORS = False
   _ALLOW_MULTIPROCESSING = True
   _STATS[stat_types.GlobalStatType.SINCE_CONNECT] = stat_types.RunStats()
   _DEFAULT_MODEL_CACHE_MANAGER = None
@@ -231,6 +234,17 @@ def _init_strict_feature_test(
   return strict_feature_test
 
 
+def _init_suppress_errors(
+    suppress_provider_errors: Optional[bool] = None,
+    global_init: Optional[bool] = False) -> Optional[bool]:
+  if suppress_provider_errors is None:
+    return None
+  if global_init:
+    global _SUPPRESS_PROVIDER_ERRORS
+    _SUPPRESS_PROVIDER_ERRORS = suppress_provider_errors
+  return suppress_provider_errors
+
+
 def _init_model_connector(
     model: types.ModelType) -> model_connector.ModelConnector:
   global _QUERY_CACHE_MANAGER
@@ -241,7 +255,7 @@ def _init_model_connector(
       get_query_cache_manager=_get_query_cache_manager)
   return connector(
       run_type=_get_run_type(),
-      strict_feature_test=_STRICT_FEATURE_TEST,
+      strict_feature_test=_get_strict_feature_test(),
       stats=_STATS,
       get_logging_options=_get_logging_options,
       get_proxdash_connection=_get_proxdash_connection)
@@ -324,6 +338,14 @@ def _get_model_connector(
 
 def _get_allow_multiprocessing() -> bool:
   return _ALLOW_MULTIPROCESSING
+
+
+def _get_strict_feature_test() -> bool:
+  return _STRICT_FEATURE_TEST
+
+
+def _get_suppress_provider_errors() -> bool:
+  return _SUPPRESS_PROVIDER_ERRORS
 
 
 def _get_run_type() -> types.RunType:
@@ -410,7 +432,8 @@ def connect(
     logging_options: LoggingOptions=None,
     proxdash_options: ProxDashOptions=None,
     allow_multiprocessing: bool=True,
-    strict_feature_test: bool=False):
+    strict_feature_test: bool=False,
+    suppress_provider_errors: bool=False):
   _init_globals()
   _init_experiment_path(
       experiment_path=experiment_path,
@@ -432,6 +455,9 @@ def connect(
       global_init=True)
   _init_strict_feature_test(
       strict_feature_test=strict_feature_test,
+      global_init=True)
+  _init_suppress_errors(
+      suppress_provider_errors=suppress_provider_errors,
       global_init=True)
 
   _get_proxdash_connection()
@@ -456,7 +482,7 @@ def generate_text(
     use_cache: bool = True,
     unique_response_limit: Optional[int] = None,
     extensive_return: bool = False,
-    suppress_errors: bool = False) -> Union[str, types.LoggingRecord]:
+    suppress_provider_errors: Optional[bool] = None) -> Union[str, types.LoggingRecord]:
   if prompt != None and messages != None:
     raise ValueError('prompt and messages cannot be set at the same time.')
   if messages != None:
@@ -482,7 +508,8 @@ def generate_text(
       use_cache=use_cache,
       unique_response_limit=unique_response_limit)
   if logging_record.response_record.error:
-    if suppress_errors:
+    if suppress_provider_errors or (
+        suppress_provider_errors is None and _get_suppress_provider_errors()):
       if extensive_return:
         return logging_record
       return logging_record.response_record.error
@@ -536,5 +563,5 @@ def get_current_options() -> types.RunOptions:
     cache_options=_get_cache_options(),
     proxdash_options=_get_proxdash_options(),
     allow_multiprocessing=_get_allow_multiprocessing(),
-    strict_feature_test=_STRICT_FEATURE_TEST
+    strict_feature_test=_get_strict_feature_test()
   )
