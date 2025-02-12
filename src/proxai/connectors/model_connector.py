@@ -32,12 +32,19 @@ class ModelConnector(object):
       run_type: types.RunType,
       strict_feature_test: bool = False,
       query_cache_manager: Optional[query_cache.QueryCacheManager] = None,
+      get_query_cache_manager: Optional[
+          Callable[[], query_cache.QueryCacheManager]] = None,
       stats: Optional[Dict[str, stats_type.RunStats]] = None,
       logging_options: Optional[types.LoggingOptions] = None,
       get_logging_options: Optional[Callable[[], types.LoggingOptions]] = None,
       proxdash_connection: Optional[proxdash.ProxDashConnection] = None,
       get_proxdash_connection: Optional[
           Callable[[bool], proxdash.ProxDashConnection]] = None):
+    if query_cache_manager and get_query_cache_manager:
+      raise ValueError(
+          'query_cache_manager and get_query_cache_manager cannot be set at '
+          'the same time.')
+
     if logging_options and get_logging_options:
       raise ValueError(
           'logging_options and get_logging_options cannot be set at the same '
@@ -56,8 +63,8 @@ class ModelConnector(object):
     self._get_logging_options = get_logging_options
     self.proxdash_connection = proxdash_connection
     self._get_proxdash_connection = get_proxdash_connection
-    if query_cache_manager:
-      self.query_cache_manager = query_cache_manager
+    self.query_cache_manager = query_cache_manager
+    self._get_query_cache_manager = get_query_cache_manager
     if stats:
       self._stats = stats
 
@@ -81,6 +88,18 @@ class ModelConnector(object):
   @logging_options.setter
   def logging_options(self, value):
     self._logging_options = value
+
+  @property
+  def query_cache_manager(self):
+    if self._query_cache_manager:
+      return self._query_cache_manager
+    if self._get_query_cache_manager:
+      return self._get_query_cache_manager()
+    return None
+
+  @query_cache_manager.setter
+  def query_cache_manager(self, value):
+    self._query_cache_manager = value
 
   @property
   def proxdash_connection(self):
