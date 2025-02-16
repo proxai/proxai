@@ -479,7 +479,7 @@ def generate_text(
     stop: Optional[types.StopType] = None,
     provider: Optional[types.Provider] = None,
     model: Optional[types.ProviderModel] = None,
-    use_cache: bool = True,
+    use_cache: Optional[bool] = None,
     unique_response_limit: Optional[int] = None,
     extensive_return: bool = False,
     suppress_provider_errors: Optional[bool] = None) -> Union[str, types.LoggingRecord]:
@@ -493,6 +493,13 @@ def generate_text(
   modelValue = None
   if provider is not None and model is not None:
     modelValue = (provider, model)
+
+  if use_cache and not _get_query_cache_manager():
+    raise ValueError(
+        'use_cache is True but query cache is not initialized. '
+        'Please set cache_path on px.connect() to use query cache.')
+  if use_cache is None:
+    use_cache = True
 
   model_connector = _get_model_connector(
       types.CallType.GENERATE_TEXT,

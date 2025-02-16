@@ -44,6 +44,10 @@ class TestProxaiApiUseCases:
     assert text.response_record.response == 'mock response'
     assert text.response_source == px.types.ResponseSource.PROVIDER
 
+  def test_generate_text_with_use_cache_before_connect(self):
+    with pytest.raises(ValueError):
+      px.generate_text(use_cache=True)
+
   def test_models_generate_text(self):
     models = px.models.generate_text()
     assert len(models) > 10
