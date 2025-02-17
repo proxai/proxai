@@ -28,9 +28,9 @@ class ModelConnector(object):
 
   def __init__(
       self,
-      model: types.ModelType,
-      run_type: types.RunType,
-      strict_feature_test: bool = False,
+      model: Optional[types.ModelType] = None,
+      run_type: Optional[types.RunType] = None,
+      strict_feature_test: Optional[bool] = None,
       query_cache_manager: Optional[query_cache.QueryCacheManager] = None,
       get_query_cache_manager: Optional[
           Callable[[], query_cache.QueryCacheManager]] = None,
@@ -39,7 +39,37 @@ class ModelConnector(object):
       get_logging_options: Optional[Callable[[], types.LoggingOptions]] = None,
       proxdash_connection: Optional[proxdash.ProxDashConnection] = None,
       get_proxdash_connection: Optional[
-          Callable[[bool], proxdash.ProxDashConnection]] = None):
+          Callable[[bool], proxdash.ProxDashConnection]] = None,
+      init_state: Optional[types.ModelInitState] = None):
+
+    if init_state and (
+        run_type is not None or
+        strict_feature_test is not None or
+        query_cache_manager is not None or
+        get_query_cache_manager is not None or
+        stats is not None or
+        logging_options is not None or
+        get_logging_options is not None or
+        proxdash_connection is not None or
+        get_proxdash_connection is not None):
+      raise ValueError(
+          'init_state and other parameters cannot be set at the same time.')
+
+    if init_state and model and (init_state.model != model):
+      raise ValueError(
+          'init_state.model is not the same as the model parameter.')
+
+    if (not init_state or not init_state.model) and not model:
+      raise ValueError('model parameter is required.')
+
+    if init_state:
+      model = init_state.model
+      run_type = init_state.run_type
+      strict_feature_test = init_state.strict_feature_test
+      logging_options = init_state.logging_options
+      proxdash_connection = proxdash.ProxDashConnection(
+          init_state=init_state.proxdash_init_state)
+
     if query_cache_manager and get_query_cache_manager:
       raise ValueError(
           'query_cache_manager and get_query_cache_manager cannot be set at '
@@ -348,3 +378,15 @@ class ModelConnector(object):
     self._update_stats(logging_record=logging_record)
     self._update_proxdash(logging_record=logging_record)
     return logging_record
+
+  def get_init_state(self) -> types.ModelInitState:
+    init_state = types.ModelInitState(
+        model=self.model,
+        run_type=self.run_type,
+        strict_feature_test=self.strict_feature_test,
+        logging_options=self.logging_options)
+
+    if self.proxdash_connection:
+      init_state.proxdash_init_state = self.proxdash_connection.get_init_state()
+
+    return init_state
