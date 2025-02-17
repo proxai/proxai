@@ -7,15 +7,7 @@ import proxai.connections.available_models as available_models
 import proxai.caching.model_cache as model_cache
 import proxai.connectors.model_registry as model_registry
 import proxai.connectors.model_connector as model_connector
-
-
-class MockFailingConnector:
-    def __init__(self, *args, **kwargs):
-      pass
-
-    def generate_text(self, prompt):
-      raise ValueError('Temp Error')
-
+import proxai.connectors.mock_model_connector as mock_model_connector
 
 class TestAvailableModels:
   cache_dir: Optional[
@@ -120,33 +112,35 @@ class TestAvailableModels:
     available_models_manager = self._get_available_models(
         allow_multiprocessing=allow_multiprocessing)
     available_models_manager._providers_with_key = [
-        types.Provider.OPENAI]
+        types.Provider.OPENAI,
+        types.Provider.MOCK_FAILING_PROVIDER]
     models = types.ModelStatus()
     available_models_manager._get_all_models(
         models, call_type=types.CallType.GENERATE_TEXT)
     available_models_manager._filter_by_provider_key(models)
 
-    self.initialized_model_connectors[
-          (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)] = (
-              MockFailingConnector())
-
     available_models_manager._test_models(
         models, call_type=types.CallType.GENERATE_TEXT)
+
     assert models.unprocessed_models == set()
     assert models.working_models == set([
+        (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO),
         (types.Provider.OPENAI, types.OpenAIModel.GPT_4),
         (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW)])
     assert models.failed_models == set([
-        (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)])
+        (types.Provider.MOCK_FAILING_PROVIDER,
+         types.MockFailingModel.MOCK_FAILING_MODEL)])
 
     load_cache = model_cache.ModelCacheManager(
         cache_options=types.CacheOptions(cache_path=self.cache_dir.name))
     loaded_data = load_cache.get(call_type=types.CallType.GENERATE_TEXT)
     assert loaded_data.working_models == set([
+        (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO),
         (types.Provider.OPENAI, types.OpenAIModel.GPT_4),
         (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW)])
     assert loaded_data.failed_models == set([
-        (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)])
+        (types.Provider.MOCK_FAILING_PROVIDER,
+         types.MockFailingModel.MOCK_FAILING_MODEL)])
 
   def test_generate_text(self):
     available_models_manager = self._get_available_models()
@@ -162,31 +156,38 @@ class TestAvailableModels:
     self._save_temp_cache_state()
     available_models_manager = self._get_available_models()
     available_models_manager._providers_with_key = [
-        types.Provider.OPENAI]
-    self.initialized_model_connectors[
-          (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)] = (
-              MockFailingConnector())
+        types.Provider.OPENAI,
+        types.Provider.MOCK_PROVIDER,
+        types.Provider.MOCK_FAILING_PROVIDER]
 
     # Check that the failed model was filtered out
     models = available_models_manager.generate_text()
     assert models == [
+        (types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL),
+        (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO),
         (types.Provider.OPENAI, types.OpenAIModel.GPT_4)]
 
     # Check cache memory values
     models = available_models_manager._model_cache_manager.get(
         call_type=types.CallType.GENERATE_TEXT)
     assert models.working_models == set([
+        (types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL),
+        (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO),
         (types.Provider.OPENAI, types.OpenAIModel.GPT_4)])
     assert models.failed_models == set([
-        (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW),
-        (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)])
+        (types.Provider.MOCK_FAILING_PROVIDER,
+         types.MockFailingModel.MOCK_FAILING_MODEL),
+        (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW)])
 
     # Check cache file values
     load_cache = model_cache.ModelCacheManager(
         cache_options=types.CacheOptions(cache_path=self.cache_dir.name))
     models = load_cache.get(call_type=types.CallType.GENERATE_TEXT)
     assert models.working_models == set([
+        (types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL),
+        (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO),
         (types.Provider.OPENAI, types.OpenAIModel.GPT_4)])
     assert models.failed_models == set([
-        (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW),
-        (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)])
+        (types.Provider.MOCK_FAILING_PROVIDER,
+         types.MockFailingModel.MOCK_FAILING_MODEL),
+        (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW)])

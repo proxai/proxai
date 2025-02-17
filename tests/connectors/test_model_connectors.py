@@ -7,57 +7,33 @@ from proxai.connectors.model_connector import ModelConnector
 import proxai.caching.query_cache as query_cache
 import proxai.stat_types as stats_type
 import proxai.connections.proxdash as proxdash
-
-
-class MockModelConnector(ModelConnector):
-  def init_model(self):
-    return None
-
-  def init_mock_model(self):
-    return None
-
-  def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
-    return query_record
-
-  def _get_token_count(self, logging_record: types.LoggingRecord):
-    return 100
-
-  def _get_query_token_count(self, logging_record: types.LoggingRecord):
-    return 50
-
-  def _get_response_token_count(self, logging_record: types.LoggingRecord):
-    return 50
-
-  def _get_estimated_cost(self, logging_record: types.LoggingRecord):
-    return 0.002
-
-  def generate_text_proc(self, query_record: types.QueryRecord):
-    return "mock response"
+import proxai.connectors.mock_model_connector as mock_model_connector
 
 
 class TestModelConnector:
   @pytest.fixture
   def model_connector(self):
-    return MockModelConnector(
-        model=(types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO),
+    return mock_model_connector.MockModelConnector(
+        model=(types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL),
         run_type=types.RunType.TEST)
 
   def test_initialization(self, model_connector):
-    assert model_connector.model == (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)
-    assert model_connector.provider == types.Provider.OPENAI
-    assert model_connector.provider_model == types.OpenAIModel.GPT_3_5_TURBO
+    assert model_connector.model == (types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL)
+    assert model_connector.provider == types.Provider.MOCK_PROVIDER
+    assert model_connector.provider_model == types.MockModel.MOCK_MODEL
     assert model_connector.run_type == types.RunType.TEST
     assert model_connector.strict_feature_test == None
 
-  def test_initialization_with_invalid_params(self):
+  def test_initialization_with_invalid_combinations(self):
+    # Both query_cache_manager and get_query_cache_manager are set
     with pytest.raises(ValueError):
-        MockModelConnector(
-            model=(types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO),
-            run_type=types.RunType.TEST,
-            query_cache_manager=query_cache.QueryCacheManager(
-                cache_options=types.CacheOptions(cache_path="test_path")),
-            get_query_cache_manager=lambda: query_cache.QueryCacheManager(
-                cache_options=types.CacheOptions(cache_path="test_path")))
+      mock_model_connector.MockModelConnector(
+          model=(types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL),
+          run_type=types.RunType.TEST,
+          query_cache_manager=query_cache.QueryCacheManager(
+              cache_options=types.CacheOptions(cache_path="test_path")),
+          get_query_cache_manager=lambda: query_cache.QueryCacheManager(
+              cache_options=types.CacheOptions(cache_path="test_path")))
 
   def test_api_property(self, model_connector):
     assert model_connector.api is None  # Based on our mock implementation
@@ -67,8 +43,8 @@ class TestModelConnector:
     assert model_connector.api == "test_api"
 
   def test_feature_fail_strict(self):
-    connector = MockModelConnector(
-        model=(types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO),
+    connector = mock_model_connector.MockModelConnector(
+        model=(types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL),
         run_type=types.RunType.TEST,
         strict_feature_test=True)
 
@@ -95,8 +71,8 @@ class TestModelConnector:
       cache_manager = query_cache.QueryCacheManager(
           cache_options=types.CacheOptions(cache_path=temp_dir))
 
-      connector = MockModelConnector(
-          model=(types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO),
+      connector = mock_model_connector.MockModelConnector(
+          model=(types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL),
           run_type=types.RunType.TEST,
           query_cache_manager=cache_manager)
 
@@ -109,13 +85,13 @@ class TestModelConnector:
       assert result2.response_source == types.ResponseSource.CACHE
 
   def test_stats_update(self):
-    model = (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)
+    model = (types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL)
     stats = {
         stats_type.GlobalStatType.RUN_TIME: stats_type.ModelStats(model=model),
         stats_type.GlobalStatType.SINCE_CONNECT: stats_type.ModelStats(model=model)
     }
 
-    connector = MockModelConnector(
+    connector = mock_model_connector.MockModelConnector(
         model=model,
         run_type=types.RunType.TEST,
         stats=stats)
@@ -154,7 +130,7 @@ class TestModelConnectorInitState:
 
   def test_simple_init_state(self):
     init_state = types.ModelInitState(
-        model=(types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO),
+        model=(types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL),
         run_type=types.RunType.TEST,
         strict_feature_test=True,
         logging_options=types.LoggingOptions(stdout=True),
@@ -163,12 +139,12 @@ class TestModelConnectorInitState:
             hidden_run_key='test_key',
             api_key='test_api_key'))
 
-    connector = MockModelConnector(
-        model=(types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO),
+    connector = mock_model_connector.MockModelConnector(
+        model=(types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL),
         init_state=init_state)
 
     assert connector.model == (
-        types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)
+        types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL)
     assert connector.run_type == types.RunType.TEST
     assert connector.strict_feature_test == True
     assert connector.logging_options.stdout == True
@@ -178,41 +154,41 @@ class TestModelConnectorInitState:
 
   def test_init_with_mismatched_model(self):
     init_state = types.ModelInitState(
-        model=(types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO),
+        model=(types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL),
         run_type=types.RunType.TEST)
 
     with pytest.raises(
         ValueError,
         match='init_state.model is not the same as the model parameter'):
-      MockModelConnector(
+      mock_model_connector.MockModelConnector(
           model=(types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_OPUS),
           init_state=init_state)
 
   def test_init_with_invalid_combinations(self):
     init_state = types.ModelInitState(
-        model=(types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO),
+        model=(types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL),
         run_type=types.RunType.TEST)
 
     with pytest.raises(
         ValueError,
         match='init_state and other parameters cannot be set at the same time'):
-      MockModelConnector(
-          model=(types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO),
+      mock_model_connector.MockModelConnector(
+          model=(types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL),
           init_state=init_state,
           run_type=types.RunType.TEST)
 
     with pytest.raises(
         ValueError,
         match='init_state and other parameters cannot be set at the same time'):
-      MockModelConnector(
-          model=(types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO),
+      mock_model_connector.MockModelConnector(
+          model=(types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL),
           init_state=init_state,
           strict_feature_test=True)
 
   def test_init_with_all_options(self):
     with tempfile.TemporaryDirectory() as temp_dir:
       init_state = types.ModelInitState(
-          model=(types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO),
+          model=(types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL),
           run_type=types.RunType.TEST,
           strict_feature_test=True,
           logging_options=types.LoggingOptions(
@@ -230,12 +206,12 @@ class TestModelConnectorInitState:
                   stdout=True),
               proxdash_options=types.ProxDashOptions(stdout=True)))
 
-      connector = MockModelConnector(
-          model=(types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO),
+      connector = mock_model_connector.MockModelConnector(
+          model=(types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL),
           init_state=init_state)
 
       assert connector.model == (
-          types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)
+          types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL)
       assert connector.run_type == types.RunType.TEST
       assert connector.strict_feature_test == True
       assert connector.logging_options.stdout == True
@@ -261,8 +237,8 @@ class TestModelConnectorInitState:
           experiment_path='test/path',
           logging_options=base_logging_options)
 
-      connector = MockModelConnector(
-          model=(types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO),
+      connector = mock_model_connector.MockModelConnector(
+          model=(types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL),
           run_type=types.RunType.TEST,
           strict_feature_test=True,
           logging_options=base_logging_options,
@@ -270,7 +246,7 @@ class TestModelConnectorInitState:
 
       init_state = connector.get_init_state()
       assert init_state.model == (
-          types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)
+          types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL)
       assert init_state.run_type == types.RunType.TEST
       assert init_state.strict_feature_test == True
       assert init_state.logging_options.stdout == True
@@ -287,4 +263,4 @@ class TestModelConnectorInitState:
     init_state = types.ModelInitState(run_type=types.RunType.TEST)
 
     with pytest.raises(ValueError, match='model parameter is required'):
-      MockModelConnector(init_state=init_state)
+      mock_model_connector.MockModelConnector(init_state=init_state)
