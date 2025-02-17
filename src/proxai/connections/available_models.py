@@ -14,7 +14,7 @@ import proxai.connectors.mock_model_connector as mock_model_connector
 
 class AvailableModels:
   _model_cache_manager: Optional[model_cache.ModelCacheManager] = None
-  _generate_text: Dict[types.ModelType, Any] = {}
+  _generate_text: Dict[types.ModelType, Any]
   _run_type: types.RunType
   _get_run_type: Callable[[], types.RunType]
   _cache_options: types.CacheOptions
@@ -28,7 +28,7 @@ class AvailableModels:
   _get_initialized_model_connectors: Callable[
       [], Dict[types.ModelType, ModelConnector]]
   _init_model_connector: Callable[[types.ModelType], ModelConnector]
-  _providers_with_key: Set[types.Provider] = set()
+  _providers_with_key: Set[types.Provider]
 
   def __init__(
       self,
@@ -67,6 +67,7 @@ class AvailableModels:
           'Only one of model_cache_manager or get_model_cache_manager should '
           'be provided.')
     self.run_type = run_type
+    self._generate_text = {}
     self._get_run_type = get_run_type
     self.model_cache_manager = model_cache_manager
     self._get_model_cache_manager = get_model_cache_manager
@@ -78,21 +79,18 @@ class AvailableModels:
     self._init_model_connector= init_model_connector
     self.allow_multiprocessing = allow_multiprocessing
     self._get_allow_multiprocessing = get_allow_multiprocessing
+    self._providers_with_key = set()
     self._load_provider_keys()
 
   def _load_provider_keys(self):
-    if self.run_type == types.RunType.TEST:
-      for provider in types.PROVIDER_KEY_MAP.keys():
+    for provider, provider_key_name in types.PROVIDER_KEY_MAP.items():
+      provider_flag = True
+      for key_name in provider_key_name:
+        if key_name not in os.environ:
+          provider_flag = False
+          break
+      if provider_flag:
         self._providers_with_key.add(provider)
-    else:
-      for provider, provider_key_name in types.PROVIDER_KEY_MAP.items():
-        provider_flag = True
-        for key_name in provider_key_name:
-          if key_name not in os.environ:
-            provider_flag = False
-            break
-        if provider_flag:
-          self._providers_with_key.add(provider)
 
   @property
   def run_type(self) -> types.RunType:
@@ -166,6 +164,7 @@ class AvailableModels:
   ) -> Union[Set[types.ModelType], types.ModelStatus]:
     start_utc_date = datetime.datetime.now(datetime.timezone.utc)
     models = types.ModelStatus()
+    self._load_provider_keys()
     self._get_all_models(models, call_type=types.CallType.GENERATE_TEXT)
     self._filter_by_provider_key(models)
     if clear_model_cache:
@@ -202,13 +201,6 @@ class AvailableModels:
               | models.failed_models
               | models.filtered_models):
             models.unprocessed_models.add((provider, provider_model))
-      if self.run_type == types.RunType.TEST:
-        models.unprocessed_models.add((
-            types.Provider.MOCK_PROVIDER,
-            types.MockModel.MOCK_MODEL))
-        models.unprocessed_models.add((
-            types.Provider.MOCK_FAILING_PROVIDER,
-            types.MockFailingModel.MOCK_FAILING_MODEL))
       self._update_provider_queries(models)
 
   def _filter_by_provider_key(self, models: types.ModelStatus):
