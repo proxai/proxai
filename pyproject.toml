@@ -8,9 +8,10 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.9"
+urllib3 = "<2.0.0"
 openai = "^1.14.3"
 anthropic = "^0.21.3"
-google-generativeai = "^0.5.2"
+google-generativeai = "^0.8.4"
 cohere = "^5.1.7"
 databricks-genai-inference = "^0.2.3"
 mistralai = "^0.1.8"
