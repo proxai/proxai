@@ -88,6 +88,7 @@ class TestAvailableModels:
         (types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_HAIKU),
         (types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_OPUS),
         (types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_SONNET)])
+    assert models.provider_queries == []  # No queries should be filtered out since no queries exist yet
 
   def test_filter_by_cache(self):
     self._save_temp_cache_state()
@@ -106,6 +107,62 @@ class TestAvailableModels:
         (types.Provider.OPENAI, types.OpenAIModel.GPT_4)])
     assert models.failed_models == set([
         (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW)])
+    assert len(models.provider_queries) == 2  # Should contain both the success and error queries from cache
+    assert models.provider_queries[0].response_record.response == 'response1'
+    assert models.provider_queries[1].response_record.error == 'error1'
+
+    # Verify provider queries are properly maintained
+    assert len(models.provider_queries) == 2
+    assert all(
+        query.query_record.model in models.working_models.union(
+            models.failed_models)
+        for query in models.provider_queries)
+
+  def test_filter_largest_models(self):
+    available_models_manager = self._get_available_models()
+    models = types.ModelStatus()
+
+    # Add some models to working and unprocessed sets
+    models.unprocessed_models.add(
+        (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO))
+    models.unprocessed_models.add(
+        (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW))
+    models.working_models.add(
+        (types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_HAIKU))
+    models.working_models.add(
+        (types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_OPUS))
+
+    # Add a provider query for a model that will be filtered out
+    models.provider_queries.append(
+        types.LoggingRecord(
+            query_record=types.QueryRecord(
+                model=(types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_HAIKU)),
+            response_record=types.QueryResponseRecord(response='response1')))
+
+    # Add a provider query for a model that will remain
+    models.provider_queries.append(
+        types.LoggingRecord(
+            query_record=types.QueryRecord(
+                model=(types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_OPUS)),
+            response_record=types.QueryResponseRecord(response='response2')))
+
+    available_models_manager._filter_largest_models(models)
+
+    # Check that only largest models remain in unprocessed and working sets
+    assert models.unprocessed_models == set([
+        (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW)])
+    assert models.working_models == set([
+        (types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_OPUS)])
+
+    # Check that filtered models were moved to filtered_models set
+    assert models.filtered_models == set([
+        (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO),
+        (types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_HAIKU)])
+
+    # Check that provider queries for filtered models were removed
+    assert len(models.provider_queries) == 1
+    assert models.provider_queries[0].query_record.model == (
+        types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_OPUS)
 
   @pytest.mark.parametrize('allow_multiprocessing', [True, False])
   def test_test_models(self, allow_multiprocessing):
@@ -178,6 +235,7 @@ class TestAvailableModels:
         (types.Provider.MOCK_FAILING_PROVIDER,
          types.MockFailingModel.MOCK_FAILING_MODEL),
         (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW)])
+    assert len(models.provider_queries) >= 4  # Should include original cached queries plus new test results
 
     # Check cache file values
     load_cache = model_cache.ModelCacheManager(
@@ -191,3 +249,33 @@ class TestAvailableModels:
         (types.Provider.MOCK_FAILING_PROVIDER,
          types.MockFailingModel.MOCK_FAILING_MODEL),
         (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW)])
+    assert len(models.provider_queries) >= 4  # Should match memory cache queries
+
+  def test_update_provider_queries(self):
+    available_models_manager = self._get_available_models()
+    models = types.ModelStatus()
+
+    # Add some test queries
+    models.provider_queries.append(
+        types.LoggingRecord(
+            query_record=types.QueryRecord(
+                model=(types.Provider.OPENAI, types.OpenAIModel.GPT_4)),
+            response_record=types.QueryResponseRecord(response='response1')))
+    models.provider_queries.append(
+        types.LoggingRecord(
+            query_record=types.QueryRecord(
+                model=(types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_HAIKU)),
+            response_record=types.QueryResponseRecord(response='response2')))
+
+    # Add models to working set
+    models.working_models.add(
+        (types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_HAIKU))
+    # Add models to filtered set
+    models.filtered_models.add(
+        (types.Provider.OPENAI, types.OpenAIModel.GPT_4))
+
+    # Test that queries for filtered models are removed
+    available_models_manager._update_provider_queries(models)
+    assert len(models.provider_queries) == 1
+    assert models.provider_queries[0].query_record.model == (
+        types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_HAIKU)

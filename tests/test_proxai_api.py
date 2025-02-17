@@ -564,6 +564,6 @@ class TestProxaiApiUseCases:
     assert summary['providers']['openai']['cache_stats']['total_cache_hit'] == 2
 
   def test_check_health(self):
-    success, failed = px.check_health()
-    assert len(success) > 10
-    assert len(failed) == 0
+    model_status = px.check_health()
+    assert len(model_status.working_models) > 10
+    assert len(model_status.failed_models) == 0

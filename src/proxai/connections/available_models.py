@@ -163,38 +163,16 @@ class AvailableModels:
       verbose: bool = False,
       return_all: bool = False,
       clear_model_cache: bool = False
-  ) -> List[types.ModelType]:
+  ) -> Union[Set[types.ModelType], types.ModelStatus]:
     start_utc_date = datetime.datetime.now(datetime.timezone.utc)
     models = types.ModelStatus()
     self._get_all_models(models, call_type=types.CallType.GENERATE_TEXT)
     self._filter_by_provider_key(models)
-
     if clear_model_cache:
       self.model_cache_manager.clear_cache()
     self._filter_by_cache(models, call_type=types.CallType.GENERATE_TEXT)
-
-    # TODO: This is very experimental and require proper design. One alternative
-    # is registering models according to their sizes in px.types. Then, find
-    # working largest model for each provider.
     if only_largest_models:
-      _allowed_models = set([
-          (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW),
-          (types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_OPUS),
-          (types.Provider.GEMINI, types.GeminiModel.GEMINI_1_5_PRO_LATEST),
-          (types.Provider.COHERE, types.CohereModel.COMMAND_R_PLUS),
-          (types.Provider.DATABRICKS, types.DatabricksModel.DBRX_INSTRUCT),
-          (types.Provider.DATABRICKS,
-           types.DatabricksModel.LLAMA_3_70B_INSTRUCT),
-          (types.Provider.MISTRAL, types.MistralModel.MISTRAL_LARGE_LATEST),
-      ])
-      for model in list(models.unprocessed_models):
-        if model not in _allowed_models:
-          models.unprocessed_models.remove(model)
-          models.filtered_models.add(model)
-      for model in list(models.working_models):
-        if model not in _allowed_models:
-          models.working_models.remove(model)
-          models.filtered_models.add(model)
+      self._filter_largest_models(models)
 
     print_flag = bool(verbose and models.unprocessed_models)
     if print_flag:
@@ -212,9 +190,7 @@ class AvailableModels:
       print(f'Test duration: {duration} seconds.')
 
     if return_all:
-      return (
-          self._format_set(models.working_models),
-          self._format_set(models.failed_models))
+      return models
     return self._format_set(models.working_models)
 
   def _get_all_models(self, models: types.ModelStatus, call_type: str):
@@ -233,6 +209,7 @@ class AvailableModels:
         models.unprocessed_models.add((
             types.Provider.MOCK_FAILING_PROVIDER,
             types.MockFailingModel.MOCK_FAILING_MODEL))
+      self._update_provider_queries(models)
 
   def _filter_by_provider_key(self, models: types.ModelStatus):
     def _filter_set(
@@ -249,6 +226,7 @@ class AvailableModels:
     models.unprocessed_models = _filter_set(models.unprocessed_models)
     models.working_models = _filter_set(models.working_models)
     models.failed_models = _filter_set(models.failed_models)
+    self._update_provider_queries(models)
 
   def _filter_by_cache(
       self,
@@ -268,14 +246,48 @@ class AvailableModels:
       elif model in models.failed_models:
         models.failed_models.remove(model)
 
+    provider_query_map = {
+        query.query_record.model: query
+        for query in cache_result.provider_queries
+    }
+
     for model in cache_result.working_models:
       if model not in models.filtered_models:
         _remove_model(model)
         models.working_models.add(model)
+        models.provider_queries.append(provider_query_map[model])
     for model in cache_result.failed_models:
       if model not in models.filtered_models:
         _remove_model(model)
         models.failed_models.add(model)
+        models.provider_queries.append(provider_query_map[model])
+    self._update_provider_queries(models)
+
+  def _filter_largest_models(self, models: types.ModelStatus):
+    # TODO: This is very experimental and require proper design. One alternative
+    # is registering models according to their sizes in px.types. Then, find
+    # working largest model for each provider.
+
+    _allowed_models = set([
+        (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW),
+        (types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_OPUS),
+        (types.Provider.GEMINI, types.GeminiModel.GEMINI_1_5_PRO_LATEST),
+        (types.Provider.COHERE, types.CohereModel.COMMAND_R_PLUS),
+        (types.Provider.DATABRICKS, types.DatabricksModel.DBRX_INSTRUCT),
+        (types.Provider.DATABRICKS,
+          types.DatabricksModel.LLAMA_3_70B_INSTRUCT),
+        (types.Provider.MISTRAL, types.MistralModel.MISTRAL_LARGE_LATEST),
+    ])
+    for model in list(models.unprocessed_models):
+      if model not in _allowed_models:
+        models.unprocessed_models.remove(model)
+        models.filtered_models.add(model)
+    for model in list(models.working_models):
+      if model not in _allowed_models:
+        models.working_models.remove(model)
+        models.filtered_models.add(model)
+
+    self._update_provider_queries(models)
 
   @staticmethod
   def _test_generate_text(
@@ -354,13 +366,24 @@ class AvailableModels:
       else:
         models.failed_models.add(logging_record.query_record.model)
         update_models.failed_models.add(logging_record.query_record.model)
+      models.provider_queries.append(logging_record)
       update_models.provider_queries.append(logging_record)
     if self.model_cache_manager:
       self.model_cache_manager.update(
           model_status=update_models, call_type=call_type)
+    self._update_provider_queries(models)
 
   def _format_set(
       self,
       model_set: Set[types.ModelType]
   ) -> List[types.ModelType]:
     return sorted(list(model_set))
+
+  def _update_provider_queries(
+      self,
+      models: types.ModelStatus):
+    models.provider_queries = [
+        query for query in models.provider_queries
+        if query.query_record.model in models.working_models or
+        query.query_record.model in models.failed_models
+    ]
