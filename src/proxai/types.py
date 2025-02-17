@@ -164,6 +164,8 @@ PROVIDER_KEY_MAP: Dict[Provider, List[str]] = {
     Provider.DATABRICKS: ['DATABRICKS_TOKEN', 'DATABRICKS_HOST'],
     Provider.MISTRAL: ['MISTRAL_API_KEY'],
     Provider.HUGGING_FACE: ['HUGGINGFACE_API_KEY'],
+    Provider.MOCK_PROVIDER: ['MOCK_PROVIDER_API_KEY'],
+    Provider.MOCK_FAILING_PROVIDER: ['MOCK_FAILING_PROVIDER'],
 }
 
 
@@ -215,6 +217,12 @@ GENERATE_TEXT_MODELS: Dict[Provider, List[Type[ProviderModel]]] = {
         HuggingFaceModel.MISTRAL_MISTRAL_7B_INSTRUCT,
         HuggingFaceModel.NOUS_HERMES_2_MIXTRAL_8X7B,
         HuggingFaceModel.OPENCHAT_3_5,
+    ],
+    Provider.MOCK_PROVIDER: [
+        MockModel.MOCK_MODEL
+    ],
+    Provider.MOCK_FAILING_PROVIDER: [
+        MockFailingModel.MOCK_FAILING_MODEL
     ],
 }
 

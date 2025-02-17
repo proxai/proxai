@@ -1,3 +1,4 @@
+import os
 from typing import Dict, Optional
 import proxai.types as types
 from proxai import proxai
@@ -16,6 +17,14 @@ class TestAvailableModels:
       Dict[types.ModelType, model_connector.ModelConnector]] = None
   model_cache_manager: Optional[
       model_cache.ModelCacheManager] = None
+
+  @pytest.fixture(autouse=True)
+  def setup_test(self, monkeypatch):
+    monkeypatch.delenv('PROXDASH_API_KEY', raising=False)
+    for api_key_list in types.PROVIDER_KEY_MAP.values():
+      for api_key in api_key_list:
+        monkeypatch.delenv(api_key, raising=False)
+    yield
 
   def _init_test_variables(self):
     if self.cache_dir is None:
@@ -199,23 +208,29 @@ class TestAvailableModels:
         (types.Provider.MOCK_FAILING_PROVIDER,
          types.MockFailingModel.MOCK_FAILING_MODEL)])
 
-  def test_generate_text(self):
+  def test_generate_text(self, monkeypatch):
+    # Set only OpenAI key
+    monkeypatch.setenv(
+        types.PROVIDER_KEY_MAP[types.Provider.OPENAI][0], 'test_api_key')
     available_models_manager = self._get_available_models()
-    available_models_manager._providers_with_key = [
-        types.Provider.OPENAI]
     models = available_models_manager.generate_text()
     assert models == [
         (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO),
         (types.Provider.OPENAI, types.OpenAIModel.GPT_4),
         (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW)]
 
-  def test_generate_text_filters(self):
+  def test_generate_text_filters(self, monkeypatch):
+    # Set only OpenAI key
+    monkeypatch.setenv(
+        types.PROVIDER_KEY_MAP[types.Provider.OPENAI][0], 'test_api_key')
+    monkeypatch.setenv(
+        types.PROVIDER_KEY_MAP[types.Provider.MOCK_PROVIDER][0], 'test_api_key')
+    monkeypatch.setenv(
+        types.PROVIDER_KEY_MAP[
+            types.Provider.MOCK_FAILING_PROVIDER][0], 'test_api_key')
+
     self._save_temp_cache_state()
     available_models_manager = self._get_available_models()
-    available_models_manager._providers_with_key = [
-        types.Provider.OPENAI,
-        types.Provider.MOCK_PROVIDER,
-        types.Provider.MOCK_FAILING_PROVIDER]
 
     # Check that the failed model was filtered out
     models = available_models_manager.generate_text()
