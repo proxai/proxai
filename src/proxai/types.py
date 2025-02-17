@@ -357,3 +357,12 @@ class ProxDashInitState:
   logging_options: Optional[LoggingOptions] = None
   proxdash_options: Optional[ProxDashOptions] = None
   key_info_from_proxdash: Optional[Dict] = None
+
+
+@dataclasses.dataclass
+class ModelInitState:
+  model: Optional[ModelType] = None
+  run_type: Optional[RunType] = None
+  strict_feature_test: Optional[bool] = None
+  logging_options: Optional[LoggingOptions] = None
+  proxdash_init_state: Optional[ProxDashInitState] = None

@@ -47,7 +47,7 @@ class TestModelConnector:
     assert model_connector.provider == types.Provider.OPENAI
     assert model_connector.provider_model == types.OpenAIModel.GPT_3_5_TURBO
     assert model_connector.run_type == types.RunType.TEST
-    assert model_connector.strict_feature_test == False
+    assert model_connector.strict_feature_test == None
 
   def test_initialization_with_invalid_params(self):
     with pytest.raises(ValueError):
@@ -139,3 +139,152 @@ class TestModelConnector:
       model_connector.generate_text(
           prompt="Hello",
           messages=[{"role": "user", "content": "Hello"}])
+
+
+class TestModelConnectorInitState:
+  @pytest.fixture(autouse=True)
+  def setup_test(self, monkeypatch, requests_mock):
+    monkeypatch.delenv('PROXDASH_API_KEY', raising=False)
+    requests_mock.post(
+        'https://proxainest-production.up.railway.app/connect',
+        text='true',
+        status_code=201,
+    )
+    yield
+
+  def test_simple_init_state(self):
+    init_state = types.ModelInitState(
+        model=(types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO),
+        run_type=types.RunType.TEST,
+        strict_feature_test=True,
+        logging_options=types.LoggingOptions(stdout=True),
+        proxdash_init_state=types.ProxDashInitState(
+            status=types.ProxDashConnectionStatus.CONNECTED,
+            hidden_run_key='test_key',
+            api_key='test_api_key'))
+
+    connector = MockModelConnector(
+        model=(types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO),
+        init_state=init_state)
+
+    assert connector.model == (
+        types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)
+    assert connector.run_type == types.RunType.TEST
+    assert connector.strict_feature_test == True
+    assert connector.logging_options.stdout == True
+    assert (
+        connector.proxdash_connection.status ==
+        types.ProxDashConnectionStatus.CONNECTED)
+
+  def test_init_with_mismatched_model(self):
+    init_state = types.ModelInitState(
+        model=(types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO),
+        run_type=types.RunType.TEST)
+
+    with pytest.raises(
+        ValueError,
+        match='init_state.model is not the same as the model parameter'):
+      MockModelConnector(
+          model=(types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_OPUS),
+          init_state=init_state)
+
+  def test_init_with_invalid_combinations(self):
+    init_state = types.ModelInitState(
+        model=(types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO),
+        run_type=types.RunType.TEST)
+
+    with pytest.raises(
+        ValueError,
+        match='init_state and other parameters cannot be set at the same time'):
+      MockModelConnector(
+          model=(types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO),
+          init_state=init_state,
+          run_type=types.RunType.TEST)
+
+    with pytest.raises(
+        ValueError,
+        match='init_state and other parameters cannot be set at the same time'):
+      MockModelConnector(
+          model=(types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO),
+          init_state=init_state,
+          strict_feature_test=True)
+
+  def test_init_with_all_options(self):
+    with tempfile.TemporaryDirectory() as temp_dir:
+      init_state = types.ModelInitState(
+          model=(types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO),
+          run_type=types.RunType.TEST,
+          strict_feature_test=True,
+          logging_options=types.LoggingOptions(
+              logging_path=temp_dir,
+              hide_sensitive_content=True,
+              stdout=True),
+          proxdash_init_state=types.ProxDashInitState(
+              status=types.ProxDashConnectionStatus.CONNECTED,
+              hidden_run_key='test_key',
+              api_key='test_api_key',
+              experiment_path='test/path',
+              logging_options=types.LoggingOptions(
+                  logging_path=temp_dir,
+                  hide_sensitive_content=True,
+                  stdout=True),
+              proxdash_options=types.ProxDashOptions(stdout=True)))
+
+      connector = MockModelConnector(
+          model=(types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO),
+          init_state=init_state)
+
+      assert connector.model == (
+          types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)
+      assert connector.run_type == types.RunType.TEST
+      assert connector.strict_feature_test == True
+      assert connector.logging_options.stdout == True
+      assert connector.logging_options.hide_sensitive_content == True
+      assert connector.logging_options.logging_path == temp_dir
+      assert (
+          connector.proxdash_connection.status ==
+          types.ProxDashConnectionStatus.CONNECTED)
+      assert connector.proxdash_connection._hidden_run_key == 'test_key'
+      assert connector.proxdash_connection._api_key == 'test_api_key'
+      assert connector.proxdash_connection.experiment_path == 'test/path'
+
+  def test_get_init_state(self):
+    with tempfile.TemporaryDirectory() as temp_dir:
+      base_logging_options = types.LoggingOptions(
+          stdout=True,
+          hide_sensitive_content=True,
+          logging_path=temp_dir)
+
+      proxdash_connection = proxdash.ProxDashConnection(
+          hidden_run_key='test_key',
+          api_key='test_api_key',
+          experiment_path='test/path',
+          logging_options=base_logging_options)
+
+      connector = MockModelConnector(
+          model=(types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO),
+          run_type=types.RunType.TEST,
+          strict_feature_test=True,
+          logging_options=base_logging_options,
+          proxdash_connection=proxdash_connection)
+
+      init_state = connector.get_init_state()
+      assert init_state.model == (
+          types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)
+      assert init_state.run_type == types.RunType.TEST
+      assert init_state.strict_feature_test == True
+      assert init_state.logging_options.stdout == True
+      assert init_state.logging_options.hide_sensitive_content == True
+      assert init_state.logging_options.logging_path == temp_dir
+      assert (
+          init_state.proxdash_init_state.status ==
+          types.ProxDashConnectionStatus.CONNECTED)
+      assert init_state.proxdash_init_state.hidden_run_key == 'test_key'
+      assert init_state.proxdash_init_state.api_key == 'test_api_key'
+      assert init_state.proxdash_init_state.experiment_path == 'test/path'
+
+  def test_init_with_none_model(self):
+    init_state = types.ModelInitState(run_type=types.RunType.TEST)
+
+    with pytest.raises(ValueError, match='model parameter is required'):
+      MockModelConnector(init_state=init_state)
