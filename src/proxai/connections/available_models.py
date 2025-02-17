@@ -6,8 +6,10 @@ import traceback
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 import proxai.types as types
 import proxai.caching.model_cache as model_cache
+import proxai.connectors.model_registry as model_registry
 from proxai.connectors.model_connector import ModelConnector
 from proxai.connections.proxdash import ProxDashConnection
+import proxai.connectors.mock_model_connector as mock_model_connector
 
 
 class AvailableModels:
@@ -224,6 +226,13 @@ class AvailableModels:
               | models.failed_models
               | models.filtered_models):
             models.unprocessed_models.add((provider, provider_model))
+      if self.run_type == types.RunType.TEST:
+        models.unprocessed_models.add((
+            types.Provider.MOCK_PROVIDER,
+            types.MockModel.MOCK_MODEL))
+        models.unprocessed_models.add((
+            types.Provider.MOCK_FAILING_PROVIDER,
+            types.MockFailingModel.MOCK_FAILING_MODEL))
 
   def _filter_by_provider_key(self, models: types.ModelStatus):
     def _filter_set(
@@ -270,24 +279,16 @@ class AvailableModels:
 
   @staticmethod
   def _test_generate_text(
-      model: types.ModelType,
-      model_connector: ModelConnector,
-      logging_options: types.LoggingOptions,
-      proxdash_connection: Optional[ProxDashConnection],
+      model_init_state: types.ModelInitState,
   ) -> List[types.LoggingRecord]:
     start_utc_date = datetime.datetime.now(datetime.timezone.utc)
     prompt = 'Hello model!'
     max_tokens = 100
-    model_connector = copy.deepcopy(model_connector)
-    model_connector._logging_options = logging_options
-    model_connector._get_logging_options = None
-    model_connector._proxdash_connection = None
-    model_connector._get_proxdash_connection = None
-    if proxdash_connection:
-      model_connector._proxdash_connection = proxdash_connection
+    model_connector = model_registry.get_model_connector(model_init_state.model)
+    model_connector = model_connector(init_state=model_init_state)
+
     try:
       logging_record = model_connector.generate_text(
-          model=model,
           prompt=prompt,
           max_tokens=max_tokens,
           use_cache=False)
@@ -296,7 +297,7 @@ class AvailableModels:
       return types.LoggingRecord(
           query_record=types.QueryRecord(
               call_type=types.CallType.GENERATE_TEXT,
-              model=model,
+              model=model_init_state.model,
               prompt=prompt,
               max_tokens=max_tokens),
           response_record=types.QueryResponseRecord(
@@ -312,6 +313,7 @@ class AvailableModels:
   def _test_models(self, models: types.ModelStatus, call_type: str):
     if not models.unprocessed_models:
       return
+
     initialized_model_connectors = self._get_initialized_model_connectors()
     for model in models.unprocessed_models:
       if model not in initialized_model_connectors:
@@ -331,11 +333,7 @@ class AvailableModels:
       for test_model in test_models:
         result = pool.apply_async(
             test_func,
-            args=(
-                test_model,
-                initialized_model_connectors[test_model],
-                self.logging_options,
-                self.proxdash_connection))
+            args=(initialized_model_connectors[test_model].get_init_state(),))
         test_results.append(result)
       pool.close()
       pool.join()
@@ -345,10 +343,7 @@ class AvailableModels:
       for test_model in test_models:
         test_results.append(
             test_func(
-                test_model,
-                initialized_model_connectors[test_model],
-                self.logging_options,
-                self.proxdash_connection))
+                initialized_model_connectors[test_model].get_init_state()))
 
     update_models = types.ModelStatus()
     for logging_record in test_results:

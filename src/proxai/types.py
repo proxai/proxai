@@ -21,10 +21,22 @@ class Provider(str, enum.Enum):
   DATABRICKS = 'databricks'
   MISTRAL = 'mistral'
   HUGGING_FACE = 'hugging_face'
+  MOCK_PROVIDER = 'mock_provider'
+  MOCK_FAILING_PROVIDER = 'mock_failing_provider'
 
 
 class ProviderModel(str, enum.Enum):
   """Base provider model type."""
+
+
+class MockModel(ProviderModel):
+  """Mock model type."""
+  MOCK_MODEL = 'mock_model'
+
+
+class MockFailingModel(ProviderModel):
+  """Mock failing model type."""
+  MOCK_FAILING_MODEL = 'mock_failing_model'
 
 
 class OpenAIModel(ProviderModel):
@@ -140,6 +152,8 @@ PROVIDER_MODEL_MAP: Dict[Provider, Type[ProviderModel]] = {
     Provider.DATABRICKS: DatabricksModel,
     Provider.MISTRAL: MistralModel,
     Provider.HUGGING_FACE: HuggingFaceModel,
+    Provider.MOCK_PROVIDER: MockModel,
+    Provider.MOCK_FAILING_PROVIDER: MockFailingModel,
 }
 
 PROVIDER_KEY_MAP: Dict[Provider, List[str]] = {
