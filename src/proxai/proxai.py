@@ -362,7 +362,7 @@ def check_health(
     experiment_path: Optional[str]=None,
     verbose: bool = True,
     allow_multiprocessing: bool = True
-) -> Tuple[List[types.ModelType], List[types.ModelType]]:
+) -> types.ModelStatus:
   if not experiment_path:
     now = datetime.datetime.now()
     experiment_path = (
@@ -393,35 +393,43 @@ def check_health(
       logging_options=logging_options,
       get_initialized_model_connectors=_get_initialized_model_connectors,
       init_model_connector=_init_model_connector)
-  succeeded_models, failed_models = models.generate_text(
+  model_status = models.generate_text(
       verbose=verbose, return_all=True)
   if verbose:
     providers = set(
-        [model[0] for model in succeeded_models] +
-        [model[0] for model in failed_models])
+        [model[0] for model in model_status.working_models] +
+        [model[0] for model in model_status.failed_models])
+    model_query_map = {
+        query.query_record.model: query
+        for query in model_status.provider_queries
+    }
     result_table = {
         provider: {'working': [], 'failed': []} for provider in providers}
-    for model in succeeded_models:
+    for model in model_status.working_models:
       result_table[model[0]]['working'].append(model[1])
-    for model in failed_models:
+    for model in model_status.failed_models:
       result_table[model[0]]['failed'].append(model[1])
     print('> Finished testing.\n'
           f'   Registered Providers: {len(providers)}\n'
-          f'   Succeeded Models: {len(succeeded_models)}\n'
-          f'   Failed Models: {len(failed_models)}')
+          f'   Succeeded Models: {len(model_status.working_models)}\n'
+          f'   Failed Models: {len(model_status.failed_models)}')
     for provider in sorted(providers):
       print(f'> {provider}:')
       for model in sorted(result_table[provider]['working']):
-        print(f'   [ WORKING ]: {model}')
+        duration = model_query_map[
+            (provider, model)].response_record.response_time
+        print(f'   [ WORKING | {duration.total_seconds():6.2f}s ]: {model}')
       for model in sorted(result_table[provider]['failed']):
-        print(f'   [ FAILED  ]: {model}')
+        duration = model_query_map[
+            (provider, model)].response_record.response_time
+        print(f'   [ FAILED  | {duration.total_seconds():6.2f}s ]: {model}')
   if proxdash_connection.status == types.ProxDashConnectionStatus.CONNECTED:
     log_proxdash_message(
         logging_options=logging_options,
         proxdash_options=proxdash_options,
         message='Results are uploaded to the ProxDash.',
         type=types.LoggingType.INFO)
-  return succeeded_models, failed_models
+  return model_status
 
 
 def connect(
