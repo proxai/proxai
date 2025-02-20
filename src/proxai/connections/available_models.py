@@ -6,13 +6,15 @@ import traceback
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 import proxai.types as types
 import proxai.caching.model_cache as model_cache
+import proxai.connectors.model_registry as model_registry
 from proxai.connectors.model_connector import ModelConnector
 from proxai.connections.proxdash import ProxDashConnection
+import proxai.connectors.mock_model_connector as mock_model_connector
 
 
 class AvailableModels:
-  _model_cache: Optional[model_cache.ModelCache] = None
-  _generate_text: Dict[types.ModelType, Any] = {}
+  _model_cache_manager: Optional[model_cache.ModelCacheManager]
+  _generate_text: Dict[types.ModelType, Any]
   _run_type: types.RunType
   _get_run_type: Callable[[], types.RunType]
   _cache_options: types.CacheOptions
@@ -26,7 +28,7 @@ class AvailableModels:
   _get_initialized_model_connectors: Callable[
       [], Dict[types.ModelType, ModelConnector]]
   _init_model_connector: Callable[[types.ModelType], ModelConnector]
-  _providers_with_key: Set[types.Provider] = set()
+  _providers_with_key: Set[types.Provider]
 
   def __init__(
       self,
@@ -35,8 +37,9 @@ class AvailableModels:
       init_model_connector: Callable[[types.ModelType], ModelConnector],
       run_type: types.RunType = None,
       get_run_type: Callable[[], types.RunType] = None,
-      cache_options: Optional[types.CacheOptions] = None,
-      get_cache_options: Optional[Callable[[], types.CacheOptions]] = None,
+      model_cache_manager: Optional[model_cache.ModelCacheManager] = None,
+      get_model_cache_manager: Optional[
+          Callable[[], model_cache.ModelCacheManager]] = None,
       logging_options: Optional[types.LoggingOptions] = None,
       get_logging_options: Optional[Callable[[], types.LoggingOptions]] = None,
       proxdash_connection: Optional[ProxDashConnection] = None,
@@ -47,9 +50,6 @@ class AvailableModels:
     if run_type and get_run_type:
       raise ValueError(
           'Only one of run_type or get_run_type should be provided.')
-    if cache_options and get_cache_options:
-      raise ValueError(
-          'Only one of cache_options or get_cache_options should be provided.')
     if logging_options and get_logging_options:
       raise ValueError(
           'Only one of logging_options or get_logging_options should be '
@@ -62,10 +62,15 @@ class AvailableModels:
       raise ValueError(
           'Only one of allow_multiprocessing or get_allow_multiprocessing should '
           'be provided.')
+    if model_cache_manager and get_model_cache_manager:
+      raise ValueError(
+          'Only one of model_cache_manager or get_model_cache_manager should '
+          'be provided.')
     self.run_type = run_type
+    self._generate_text = {}
     self._get_run_type = get_run_type
-    self.cache_options = cache_options
-    self._get_cache_options = get_cache_options
+    self.model_cache_manager = model_cache_manager
+    self._get_model_cache_manager = get_model_cache_manager
     self.logging_options = logging_options
     self._get_logging_options = get_logging_options
     self.proxdash_connection = proxdash_connection
@@ -74,6 +79,7 @@ class AvailableModels:
     self._init_model_connector= init_model_connector
     self.allow_multiprocessing = allow_multiprocessing
     self._get_allow_multiprocessing = get_allow_multiprocessing
+    self._providers_with_key = set()
     self._load_provider_keys()
 
   def _load_provider_keys(self):
@@ -99,18 +105,6 @@ class AvailableModels:
     self._run_type = run_type
 
   @property
-  def cache_options(self) -> types.CacheOptions:
-    if self._cache_options:
-      return self._cache_options
-    if self._get_cache_options:
-      return self._get_cache_options()
-    return None
-
-  @cache_options.setter
-  def cache_options(self, cache_options: types.CacheOptions):
-    self._cache_options = cache_options
-
-  @property
   def logging_options(self) -> types.LoggingOptions:
     if self._logging_options:
       return self._logging_options
@@ -121,6 +115,19 @@ class AvailableModels:
   @logging_options.setter
   def logging_options(self, logging_options: types.LoggingOptions):
     self._logging_options = logging_options
+
+  @property
+  def model_cache_manager(self) -> model_cache.ModelCacheManager:
+    if self._model_cache_manager:
+      return self._model_cache_manager
+    if self._get_model_cache_manager:
+      return self._get_model_cache_manager()
+    return None
+
+  @model_cache_manager.setter
+  def model_cache_manager(
+      self, model_cache_manager: model_cache.ModelCacheManager):
+    self._model_cache_manager = model_cache_manager
 
   @property
   def proxdash_connection(self) -> ProxDashConnection:
@@ -152,36 +159,19 @@ class AvailableModels:
       self,
       only_largest_models: bool = False,
       verbose: bool = False,
-      return_all: bool = False
-  ) -> List[types.ModelType]:
+      return_all: bool = False,
+      clear_model_cache: bool = False
+  ) -> Union[Set[types.ModelType], types.ModelStatus]:
     start_utc_date = datetime.datetime.now(datetime.timezone.utc)
     models = types.ModelStatus()
+    self._load_provider_keys()
     self._get_all_models(models, call_type=types.CallType.GENERATE_TEXT)
     self._filter_by_provider_key(models)
+    if clear_model_cache and self.model_cache_manager:
+      self.model_cache_manager.clear_cache()
     self._filter_by_cache(models, call_type=types.CallType.GENERATE_TEXT)
-
-    # TODO: This is very experimental and require proper design. One alternative
-    # is registering models according to their sizes in px.types. Then, find
-    # working largest model for each provider.
     if only_largest_models:
-      _allowed_models = set([
-          (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW),
-          (types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_OPUS),
-          (types.Provider.GEMINI, types.GeminiModel.GEMINI_1_5_PRO_LATEST),
-          (types.Provider.COHERE, types.CohereModel.COMMAND_R_PLUS),
-          (types.Provider.DATABRICKS, types.DatabricksModel.DBRX_INSTRUCT),
-          (types.Provider.DATABRICKS,
-           types.DatabricksModel.LLAMA_3_70B_INSTRUCT),
-          (types.Provider.MISTRAL, types.MistralModel.MISTRAL_LARGE_LATEST),
-      ])
-      for model in list(models.unprocessed_models):
-        if model not in _allowed_models:
-          models.unprocessed_models.remove(model)
-          models.filtered_models.add(model)
-      for model in list(models.working_models):
-        if model not in _allowed_models:
-          models.working_models.remove(model)
-          models.filtered_models.add(model)
+      self._filter_largest_models(models)
 
     print_flag = bool(verbose and models.unprocessed_models)
     if print_flag:
@@ -199,9 +189,7 @@ class AvailableModels:
       print(f'Test duration: {duration} seconds.')
 
     if return_all:
-      return (
-          self._format_set(models.working_models),
-          self._format_set(models.failed_models))
+      return models
     return self._format_set(models.working_models)
 
   def _get_all_models(self, models: types.ModelStatus, call_type: str):
@@ -213,6 +201,7 @@ class AvailableModels:
               | models.failed_models
               | models.filtered_models):
             models.unprocessed_models.add((provider, provider_model))
+      self._update_provider_queries(models)
 
   def _filter_by_provider_key(self, models: types.ModelStatus):
     def _filter_set(
@@ -229,54 +218,81 @@ class AvailableModels:
     models.unprocessed_models = _filter_set(models.unprocessed_models)
     models.working_models = _filter_set(models.working_models)
     models.failed_models = _filter_set(models.failed_models)
+    self._update_provider_queries(models)
 
   def _filter_by_cache(
       self,
       models: types.ModelStatus,
       call_type: str):
-    if not self.cache_options.cache_path:
+    if not self.model_cache_manager:
       return
-    if not self._model_cache:
-      self._model_cache = model_cache.ModelCache(self.cache_options)
-    cache_result = self._model_cache.get(call_type=call_type)
+    cache_result = types.ModelStatus()
+    if self.model_cache_manager:
+      cache_result = self.model_cache_manager.get(call_type=call_type)
 
     def _remove_model(model: types.ModelType):
       if model in models.unprocessed_models:
         models.unprocessed_models.remove(model)
       if model in models.working_models:
         models.working_models.remove(model)
-      elif model in models.failed_models:
+      if model in models.failed_models:
         models.failed_models.remove(model)
+
+    provider_query_map = {
+        query.query_record.model: query
+        for query in cache_result.provider_queries
+    }
 
     for model in cache_result.working_models:
       if model not in models.filtered_models:
         _remove_model(model)
         models.working_models.add(model)
+        models.provider_queries.append(provider_query_map[model])
     for model in cache_result.failed_models:
       if model not in models.filtered_models:
         _remove_model(model)
         models.failed_models.add(model)
+        models.provider_queries.append(provider_query_map[model])
+    self._update_provider_queries(models)
+
+  def _filter_largest_models(self, models: types.ModelStatus):
+    # TODO: This is very experimental and require proper design. One alternative
+    # is registering models according to their sizes in px.types. Then, find
+    # working largest model for each provider.
+
+    _allowed_models = set([
+        (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW),
+        (types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_OPUS),
+        (types.Provider.GEMINI, types.GeminiModel.GEMINI_1_5_PRO_LATEST),
+        (types.Provider.COHERE, types.CohereModel.COMMAND_R_PLUS),
+        (types.Provider.DATABRICKS, types.DatabricksModel.DBRX_INSTRUCT),
+        (types.Provider.DATABRICKS,
+          types.DatabricksModel.LLAMA_3_70B_INSTRUCT),
+        (types.Provider.MISTRAL, types.MistralModel.MISTRAL_LARGE_LATEST),
+    ])
+    for model in list(models.unprocessed_models):
+      if model not in _allowed_models:
+        models.unprocessed_models.remove(model)
+        models.filtered_models.add(model)
+    for model in list(models.working_models):
+      if model not in _allowed_models:
+        models.working_models.remove(model)
+        models.filtered_models.add(model)
+
+    self._update_provider_queries(models)
 
   @staticmethod
   def _test_generate_text(
-      model: types.ModelType,
-      model_connector: ModelConnector,
-      logging_options: types.LoggingOptions,
-      proxdash_connection: Optional[ProxDashConnection],
+      model_init_state: types.ModelInitState,
   ) -> List[types.LoggingRecord]:
     start_utc_date = datetime.datetime.now(datetime.timezone.utc)
     prompt = 'Hello model!'
     max_tokens = 100
-    model_connector = copy.deepcopy(model_connector)
-    model_connector._logging_options = logging_options
-    model_connector._get_logging_options = None
-    model_connector._proxdash_connection = None
-    model_connector._get_proxdash_connection = None
-    if proxdash_connection:
-      model_connector._proxdash_connection = proxdash_connection
+    model_connector = model_registry.get_model_connector(model_init_state.model)
+    model_connector = model_connector(init_state=model_init_state)
+
     try:
       logging_record = model_connector.generate_text(
-          model=model,
           prompt=prompt,
           max_tokens=max_tokens,
           use_cache=False)
@@ -285,7 +301,7 @@ class AvailableModels:
       return types.LoggingRecord(
           query_record=types.QueryRecord(
               call_type=types.CallType.GENERATE_TEXT,
-              model=model,
+              model=model_init_state.model,
               prompt=prompt,
               max_tokens=max_tokens),
           response_record=types.QueryResponseRecord(
@@ -301,6 +317,7 @@ class AvailableModels:
   def _test_models(self, models: types.ModelStatus, call_type: str):
     if not models.unprocessed_models:
       return
+
     initialized_model_connectors = self._get_initialized_model_connectors()
     for model in models.unprocessed_models:
       if model not in initialized_model_connectors:
@@ -320,11 +337,7 @@ class AvailableModels:
       for test_model in test_models:
         result = pool.apply_async(
             test_func,
-            args=(
-                test_model,
-                initialized_model_connectors[test_model],
-                self.logging_options,
-                self.proxdash_connection))
+            args=(initialized_model_connectors[test_model].get_init_state(),))
         test_results.append(result)
       pool.close()
       pool.join()
@@ -334,10 +347,7 @@ class AvailableModels:
       for test_model in test_models:
         test_results.append(
             test_func(
-                test_model,
-                initialized_model_connectors[test_model],
-                self.logging_options,
-                self.proxdash_connection))
+                initialized_model_connectors[test_model].get_init_state()))
 
     update_models = types.ModelStatus()
     for logging_record in test_results:
@@ -348,15 +358,24 @@ class AvailableModels:
       else:
         models.failed_models.add(logging_record.query_record.model)
         update_models.failed_models.add(logging_record.query_record.model)
+      models.provider_queries.append(logging_record)
       update_models.provider_queries.append(logging_record)
-    if not self.cache_options.cache_path:
-      return
-    if not self._model_cache:
-      self._model_cache = model_cache.ModelCache(self.cache_options)
-    self._model_cache.update(model_status=update_models, call_type=call_type)
+    if self.model_cache_manager:
+      self.model_cache_manager.update(
+          model_status=update_models, call_type=call_type)
+    self._update_provider_queries(models)
 
   def _format_set(
       self,
       model_set: Set[types.ModelType]
   ) -> List[types.ModelType]:
     return sorted(list(model_set))
+
+  def _update_provider_queries(
+      self,
+      models: types.ModelStatus):
+    models.provider_queries = [
+        query for query in models.provider_queries
+        if query.query_record.model in models.working_models or
+        query.query_record.model in models.failed_models
+    ]

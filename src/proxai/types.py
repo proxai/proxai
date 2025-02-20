@@ -5,8 +5,8 @@ from typing import Dict, List, Optional, Tuple, Type, Set, Union
 
 
 class RunType(enum.Enum):
-  PRODUCTION = 1
-  TEST = 2
+  PRODUCTION = 'PRODUCTION'
+  TEST = 'TEST'
 
 
 class CallType(str, enum.Enum):
@@ -21,10 +21,22 @@ class Provider(str, enum.Enum):
   DATABRICKS = 'databricks'
   MISTRAL = 'mistral'
   HUGGING_FACE = 'hugging_face'
+  MOCK_PROVIDER = 'mock_provider'
+  MOCK_FAILING_PROVIDER = 'mock_failing_provider'
 
 
 class ProviderModel(str, enum.Enum):
   """Base provider model type."""
+
+
+class MockModel(ProviderModel):
+  """Mock model type."""
+  MOCK_MODEL = 'mock_model'
+
+
+class MockFailingModel(ProviderModel):
+  """Mock failing model type."""
+  MOCK_FAILING_MODEL = 'mock_failing_model'
 
 
 class OpenAIModel(ProviderModel):
@@ -140,6 +152,8 @@ PROVIDER_MODEL_MAP: Dict[Provider, Type[ProviderModel]] = {
     Provider.DATABRICKS: DatabricksModel,
     Provider.MISTRAL: MistralModel,
     Provider.HUGGING_FACE: HuggingFaceModel,
+    Provider.MOCK_PROVIDER: MockModel,
+    Provider.MOCK_FAILING_PROVIDER: MockFailingModel,
 }
 
 PROVIDER_KEY_MAP: Dict[Provider, List[str]] = {
@@ -150,6 +164,8 @@ PROVIDER_KEY_MAP: Dict[Provider, List[str]] = {
     Provider.DATABRICKS: ['DATABRICKS_TOKEN', 'DATABRICKS_HOST'],
     Provider.MISTRAL: ['MISTRAL_API_KEY'],
     Provider.HUGGING_FACE: ['HUGGINGFACE_API_KEY'],
+    Provider.MOCK_PROVIDER: ['MOCK_PROVIDER_API_KEY'],
+    Provider.MOCK_FAILING_PROVIDER: ['MOCK_FAILING_PROVIDER'],
 }
 
 
@@ -202,6 +218,12 @@ GENERATE_TEXT_MODELS: Dict[Provider, List[Type[ProviderModel]]] = {
         HuggingFaceModel.NOUS_HERMES_2_MIXTRAL_8X7B,
         HuggingFaceModel.OPENCHAT_3_5,
     ],
+    Provider.MOCK_PROVIDER: [
+        MockModel.MOCK_MODEL
+    ],
+    Provider.MOCK_FAILING_PROVIDER: [
+        MockFailingModel.MOCK_FAILING_MODEL
+    ],
 }
 
 
@@ -240,9 +262,21 @@ class ProxDashOptions:
   hide_sensitive_content: bool = False
   disable_proxdash: bool = False
 
+
 @dataclasses.dataclass
 class SummaryOptions:
   json: bool = True
+
+
+@dataclasses.dataclass
+class RunOptions:
+  run_type: Optional[RunType] = None
+  logging_options: Optional[LoggingOptions] = None
+  cache_options: Optional[CacheOptions] = None
+  proxdash_options: Optional[ProxDashOptions] = None
+  allow_multiprocessing: Optional[bool] = None
+  strict_feature_test: Optional[bool] = None
+  suppress_provider_errors: Optional[bool] = None
 
 
 @dataclasses.dataclass
@@ -326,8 +360,31 @@ class ModelStatus:
 
 
 class ProxDashConnectionStatus(str, enum.Enum):
+  INITIALIZING = 'INITIALIZING'
   DISABLED = 'DISABLED'
-  CONNECTED = 'CONNECTED'
   API_KEY_NOT_FOUND = 'API_KEY_NOT_FOUND'
+  API_KEY_FOUND = 'API_KEY_FOUND'
   API_KEY_NOT_VALID = 'API_KEY_NOT_VALID'
   PROXDASH_INVALID_RETURN = 'PROXDASH_INVALID_RETURN'
+  API_KEY_VALID = 'API_KEY_VALID'
+  CONNECTED = 'CONNECTED'
+
+
+@dataclasses.dataclass
+class ProxDashInitState:
+  status: Optional[ProxDashConnectionStatus] = None
+  hidden_run_key: Optional[str] = None
+  api_key: Optional[str] = None
+  experiment_path: Optional[str] = None
+  logging_options: Optional[LoggingOptions] = None
+  proxdash_options: Optional[ProxDashOptions] = None
+  key_info_from_proxdash: Optional[Dict] = None
+
+
+@dataclasses.dataclass
+class ModelInitState:
+  model: Optional[ModelType] = None
+  run_type: Optional[RunType] = None
+  strict_feature_test: Optional[bool] = None
+  logging_options: Optional[LoggingOptions] = None
+  proxdash_init_state: Optional[ProxDashInitState] = None
