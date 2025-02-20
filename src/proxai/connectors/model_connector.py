@@ -12,38 +12,92 @@ import proxai.connections.proxdash as proxdash
 
 
 class ModelConnector(object):
-  model: Optional[types.ModelType] = None
-  provider: Optional[str] = None
-  provider_model: Optional[str] = None
-  run_type: types.RunType
-  strict_feature_test: bool = False
-  query_cache_manager: Optional[query_cache.QueryCacheManager] = None
-  _api: Optional[Any] = None
-  _stats: Optional[Dict[str, stats_type.RunStats]] = None
-  _logging_options: Optional[types.LoggingOptions] = None
-  _get_logging_options: Optional[Dict] = None
-  _proxdash_connection: Optional[proxdash.ProxDashConnection] = None
+  model: Optional[types.ModelType]
+  provider: Optional[str]
+  provider_model: Optional[str]
+  _run_type: Optional[types.RunType]
+  _get_run_type: Optional[Callable[[], types.RunType]]
+  _strict_feature_test: Optional[bool]
+  _get_strict_feature_test: Optional[Callable[[], bool]]
+  _query_cache_manager: Optional[query_cache.QueryCacheManager]
+  _get_query_cache_manager: Optional[
+      Callable[[], query_cache.QueryCacheManager]]
+  _api: Optional[Any]
+  _stats: Optional[Dict[str, stats_type.RunStats]]
+  _logging_options: Optional[types.LoggingOptions]
+  _get_logging_options: Optional[Dict]
+  _proxdash_connection: Optional[proxdash.ProxDashConnection]
   _get_proxdash_connection: Optional[
-      Callable[[bool], proxdash.ProxDashConnection]] = None
+      Callable[[bool], proxdash.ProxDashConnection]]
 
   def __init__(
       self,
-      model: types.ModelType,
-      run_type: types.RunType,
-      strict_feature_test: bool = False,
+      model: Optional[types.ModelType] = None,
+      run_type: Optional[types.RunType] = None,
+      get_run_type: Optional[Callable[[], types.RunType]] = None,
+      strict_feature_test: Optional[bool] = None,
+      get_strict_feature_test: Optional[Callable[[], bool]] = None,
       query_cache_manager: Optional[query_cache.QueryCacheManager] = None,
+      get_query_cache_manager: Optional[
+          Callable[[], query_cache.QueryCacheManager]] = None,
       stats: Optional[Dict[str, stats_type.RunStats]] = None,
       logging_options: Optional[types.LoggingOptions] = None,
       get_logging_options: Optional[Callable[[], types.LoggingOptions]] = None,
       proxdash_connection: Optional[proxdash.ProxDashConnection] = None,
       get_proxdash_connection: Optional[
-          Callable[[bool], proxdash.ProxDashConnection]] = None):
-    if logging_options and get_logging_options:
+          Callable[[bool], proxdash.ProxDashConnection]] = None,
+      init_state: Optional[types.ModelInitState] = None):
+
+    if init_state and (
+        run_type is not None or
+        get_run_type is not None or
+        strict_feature_test is not None or
+        get_strict_feature_test is not None or
+        query_cache_manager is not None or
+        get_query_cache_manager is not None or
+        stats is not None or
+        logging_options is not None or
+        get_logging_options is not None or
+        proxdash_connection is not None or
+        get_proxdash_connection is not None):
+      raise ValueError(
+          'init_state and other parameters cannot be set at the same time.')
+
+    if init_state and model and (init_state.model != model):
+      raise ValueError(
+          'init_state.model is not the same as the model parameter.')
+
+    if (not init_state or not init_state.model) and not model:
+      raise ValueError('model parameter is required.')
+
+    if init_state:
+      model = init_state.model
+      run_type = init_state.run_type
+      strict_feature_test = init_state.strict_feature_test
+      logging_options = init_state.logging_options
+      proxdash_connection = proxdash.ProxDashConnection(
+          init_state=init_state.proxdash_init_state)
+
+    if run_type is not None and get_run_type is not None:
+      raise ValueError(
+          'run_type and get_run_type cannot be set at the same time.')
+
+    if strict_feature_test is not None and get_strict_feature_test is not None:
+      raise ValueError(
+          'strict_feature_test and get_strict_feature_test cannot be set at '
+          'the same time.')
+
+    if query_cache_manager is not None and get_query_cache_manager is not None:
+      raise ValueError(
+          'query_cache_manager and get_query_cache_manager cannot be set at '
+          'the same time.')
+
+    if logging_options is not None and get_logging_options is not None:
       raise ValueError(
           'logging_options and get_logging_options cannot be set at the same '
           'time.')
 
-    if proxdash_connection and get_proxdash_connection:
+    if proxdash_connection is not None and get_proxdash_connection is not None:
       raise ValueError(
           'proxdash_connection and get_proxdash_connection cannot be set at '
           'the same time.')
@@ -51,24 +105,61 @@ class ModelConnector(object):
     self.model = model
     self.provider, self.provider_model = model
     self.run_type = run_type
+    self._get_run_type = get_run_type
     self.strict_feature_test = strict_feature_test
+    self._get_strict_feature_test = get_strict_feature_test
+    self.query_cache_manager = query_cache_manager
+    self._get_query_cache_manager = get_query_cache_manager
+    self._stats = stats
     self.logging_options = logging_options
     self._get_logging_options = get_logging_options
     self.proxdash_connection = proxdash_connection
     self._get_proxdash_connection = get_proxdash_connection
-    if query_cache_manager:
-      self.query_cache_manager = query_cache_manager
-    if stats:
-      self._stats = stats
 
   @property
   def api(self):
-    if not self._api:
+    if not getattr(self, '_api', None):
       if self.run_type == types.RunType.PRODUCTION:
         self._api = self.init_model()
       else:
         self._api = self.init_mock_model()
     return self._api
+
+  @property
+  def run_type(self):
+    if self._run_type:
+      return self._run_type
+    if self._get_run_type:
+      return self._get_run_type()
+    return None
+
+  @run_type.setter
+  def run_type(self, value):
+    self._run_type = value
+
+  @property
+  def strict_feature_test(self):
+    if self._strict_feature_test:
+      return self._strict_feature_test
+    if self._get_strict_feature_test:
+      return self._get_strict_feature_test()
+    return None
+
+  @strict_feature_test.setter
+  def strict_feature_test(self, value):
+    self._strict_feature_test = value
+
+  @property
+  def query_cache_manager(self):
+    if self._query_cache_manager:
+      return self._query_cache_manager
+    if self._get_query_cache_manager:
+      return self._get_query_cache_manager()
+    return None
+
+  @query_cache_manager.setter
+  def query_cache_manager(self, value):
+    self._query_cache_manager = value
 
   @property
   def logging_options(self):
@@ -329,3 +420,15 @@ class ModelConnector(object):
     self._update_stats(logging_record=logging_record)
     self._update_proxdash(logging_record=logging_record)
     return logging_record
+
+  def get_init_state(self) -> types.ModelInitState:
+    init_state = types.ModelInitState(
+        model=self.model,
+        run_type=self.run_type,
+        strict_feature_test=self.strict_feature_test,
+        logging_options=self.logging_options)
+
+    if self.proxdash_connection:
+      init_state.proxdash_init_state = self.proxdash_connection.get_init_state()
+
+    return init_state

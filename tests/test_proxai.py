@@ -3,19 +3,12 @@ import proxai.types as types
 from proxai import proxai
 import pytest
 import tempfile
-import proxai.caching.model_cache as model_cache
-
-class MockFailingConnector:
-    def __init__(self, *args, **kwargs):
-      pass
-
-    def generate_text(self, prompt):
-      raise ValueError('Temp Error')
+import requests
 
 
 class TestRunType:
     def test_setup_run_type(self):
-      proxai._set_run_type(types.RunType.TEST)
+      proxai.set_run_type(types.RunType.TEST)
       assert proxai._RUN_TYPE == types.RunType.TEST
 
 
@@ -35,19 +28,19 @@ class TestInitExperimentPath:
       proxai._init_experiment_path(123)
 
   def test_global_init(self):
-    proxai._set_run_type(types.RunType.TEST)
+    proxai.set_run_type(types.RunType.TEST)
     proxai.connect()
     proxai._init_experiment_path('test_experiment', global_init=True)
     assert proxai._EXPERIMENT_PATH == 'test_experiment'
 
   def test_global_init_none(self):
-    proxai._set_run_type(types.RunType.TEST)
+    proxai.set_run_type(types.RunType.TEST)
     proxai.connect()
     proxai._init_experiment_path(None, global_init=True)
     assert proxai._EXPERIMENT_PATH is None
 
   def test_global_init_multiple(self):
-    proxai._set_run_type(types.RunType.TEST)
+    proxai.set_run_type(types.RunType.TEST)
     proxai.connect()
     proxai._init_experiment_path('test_1', global_init=True)
     proxai._init_experiment_path('test_2', global_init=True)
@@ -97,7 +90,7 @@ class TestInitLoggingPath:
       proxai._init_logging_options(logging_options=logging_options)
 
   def test_global_init(self):
-    proxai._set_run_type(types.RunType.TEST)
+    proxai.set_run_type(types.RunType.TEST)
     proxai.connect()
     with tempfile.TemporaryDirectory() as logging_path:
       proxai._init_logging_options(
@@ -142,7 +135,7 @@ class TestInitLoggingPath:
     assert root_logging_path is None
 
   def test_global_cleanup(self):
-    proxai._set_run_type(types.RunType.TEST)
+    proxai.set_run_type(types.RunType.TEST)
     proxai.connect()
     with tempfile.TemporaryDirectory() as logging_path:
       proxai._init_logging_options(
@@ -183,7 +176,7 @@ class TestInitProxdashOptions:
     assert proxdash_options.disable_proxdash == True
 
   def test_global_init(self):
-    proxai._set_run_type(types.RunType.TEST)
+    proxai.set_run_type(types.RunType.TEST)
     proxai.connect()
     base_options = types.ProxDashOptions(
         stdout=True,
@@ -198,7 +191,7 @@ class TestInitProxdashOptions:
     assert proxai._PROXDASH_OPTIONS.disable_proxdash == True
 
   def test_global_init_multiple(self):
-    proxai._set_run_type(types.RunType.TEST)
+    proxai.set_run_type(types.RunType.TEST)
     proxai.connect()
     options_1 = types.ProxDashOptions(stdout=True)
     options_2 = types.ProxDashOptions(hide_sensitive_content=True)
@@ -231,20 +224,20 @@ class TestInitAllowMultiprocessing:
     assert proxai._init_allow_multiprocessing(False) == False
 
   def test_global_init(self):
-    proxai._set_run_type(types.RunType.TEST)
+    proxai.set_run_type(types.RunType.TEST)
     proxai.connect()
     proxai._init_allow_multiprocessing(True, global_init=True)
     assert proxai._ALLOW_MULTIPROCESSING == True
 
   def test_global_init_multiple(self):
-    proxai._set_run_type(types.RunType.TEST)
+    proxai.set_run_type(types.RunType.TEST)
     proxai.connect()
     proxai._init_allow_multiprocessing(True, global_init=True)
     proxai._init_allow_multiprocessing(False, global_init=True)
     assert proxai._ALLOW_MULTIPROCESSING == False
 
   def test_no_global_init(self):
-    proxai._set_run_type(types.RunType.TEST)
+    proxai.set_run_type(types.RunType.TEST)
     proxai.connect()
     original_value = proxai._ALLOW_MULTIPROCESSING
     proxai._init_allow_multiprocessing(True, global_init=False)
@@ -260,24 +253,190 @@ class TestInitStrictFeatureTest:
     assert proxai._init_strict_feature_test(False) == False
 
   def test_global_init(self):
-    proxai._set_run_type(types.RunType.TEST)
+    proxai.set_run_type(types.RunType.TEST)
     proxai.connect()
     proxai._init_strict_feature_test(True, global_init=True)
     assert proxai._STRICT_FEATURE_TEST == True
 
   def test_global_init_multiple(self):
-    proxai._set_run_type(types.RunType.TEST)
+    proxai.set_run_type(types.RunType.TEST)
     proxai.connect()
     proxai._init_strict_feature_test(True, global_init=True)
     proxai._init_strict_feature_test(False, global_init=True)
     assert proxai._STRICT_FEATURE_TEST == False
 
   def test_no_global_init(self):
-    proxai._set_run_type(types.RunType.TEST)
+    proxai.set_run_type(types.RunType.TEST)
     proxai.connect()
     original_value = proxai._STRICT_FEATURE_TEST
     proxai._init_strict_feature_test(True, global_init=False)
     assert proxai._STRICT_FEATURE_TEST == original_value
+
+
+class TestRetryIfErrorCached:
+  def test_returns_error_from_cache(self):
+    proxai.set_run_type(types.RunType.TEST)
+    cache_path = tempfile.TemporaryDirectory()
+    proxai.connect(cache_path=cache_path.name, allow_multiprocessing=False)
+    provider = types.Provider.MOCK_FAILING_PROVIDER
+    model = types.MockFailingModel.MOCK_FAILING_MODEL
+    # First call:
+    response = proxai.generate_text(
+        'hello',
+        provider=provider,
+        model=model,
+        extensive_return=True,
+        suppress_provider_errors=True)
+    assert response.response_source == types.ResponseSource.PROVIDER
+    assert response.response_record.error == 'Temp Error'
+    # Second call:
+    response = proxai.generate_text(
+        'hello',
+        provider=provider,
+        model=model,
+        extensive_return=True,
+        suppress_provider_errors=True)
+    assert response.response_source == types.ResponseSource.CACHE
+    assert response.response_record.error == 'Temp Error'
+
+  def test_makes_provider_call_when_retry_if_error_cached_is_true(self):
+    proxai.set_run_type(types.RunType.TEST)
+    cache_path = tempfile.TemporaryDirectory()
+    proxai.connect(
+      cache_path=cache_path.name,
+      cache_options=types.CacheOptions(retry_if_error_cached=True),
+      allow_multiprocessing=False)
+    provider = types.Provider.MOCK_FAILING_PROVIDER
+    model = types.MockFailingModel.MOCK_FAILING_MODEL
+    # First call:
+    response = proxai.generate_text(
+        'hello',
+        provider=provider,
+        model=model,
+        extensive_return=True,
+        suppress_provider_errors=True)
+    assert response.response_source == types.ResponseSource.PROVIDER
+    assert response.response_record.error == 'Temp Error'
+    # Second call:
+    response = proxai.generate_text(
+        'hello',
+        provider=provider,
+        model=model,
+        extensive_return=True,
+        suppress_provider_errors=True)
+    assert response.response_source == types.ResponseSource.PROVIDER
+    assert response.response_record.error == 'Temp Error'
+
+
+class TestSuppressProviderErrors:
+  def test_connect_with_suppress_provider_errors(self):
+    provider = types.Provider.MOCK_FAILING_PROVIDER
+    model = types.MockFailingModel.MOCK_FAILING_MODEL
+    proxai.set_run_type(types.RunType.TEST)
+
+    # Before connect:
+    with pytest.raises(Exception):
+      proxai.generate_text(
+          'hello',
+          provider=provider,
+          model=model,
+          extensive_return=True)
+
+    # After simple connect:
+    proxai.connect()
+    with pytest.raises(Exception):
+      proxai.generate_text(
+          'hello',
+          provider=provider,
+          model=model,
+          extensive_return=True)
+
+    # After connect with suppress_provider_errors=True:
+    proxai.connect(suppress_provider_errors=True)
+    response = proxai.generate_text(
+        'hello',
+        provider=provider,
+        model=model,
+        extensive_return=True)
+    assert response.response_source == types.ResponseSource.PROVIDER
+    assert response.response_record.error == 'Temp Error'
+
+    # After connect with suppress_provider_errors=False:
+    proxai.connect(suppress_provider_errors=False)
+    with pytest.raises(Exception):
+      proxai.generate_text(
+          'hello',
+          provider=provider,
+          model=model,
+          extensive_return=True)
+
+  def test_generate_text_with_suppress_provider_errors(self):
+    provider = types.Provider.MOCK_FAILING_PROVIDER
+    model = types.MockFailingModel.MOCK_FAILING_MODEL
+    proxai.set_run_type(types.RunType.TEST)
+
+    # Before connect:
+    with pytest.raises(Exception):
+      proxai.generate_text(
+          'hello',
+          provider=provider,
+          model=model,
+          extensive_return=True,
+          suppress_provider_errors=False)
+
+    response = proxai.generate_text(
+        'hello',
+        provider=provider,
+        model=model,
+        extensive_return=True,
+        suppress_provider_errors=True)
+    assert response.response_source == types.ResponseSource.PROVIDER
+    assert response.response_record.error == 'Temp Error'
+
+    # After simple connect:
+    proxai.connect()
+    with pytest.raises(Exception):
+      proxai.generate_text(
+          'hello',
+          provider=provider,
+          model=model,
+          extensive_return=True,
+          suppress_provider_errors=False)
+
+    response = proxai.generate_text(
+        'hello',
+        provider=provider,
+        model=model,
+        extensive_return=True,
+        suppress_provider_errors=True)
+    assert response.response_source == types.ResponseSource.PROVIDER
+    assert response.response_record.error == 'Temp Error'
+
+  def test_override_suppress_provider_errors(self):
+    provider = types.Provider.MOCK_FAILING_PROVIDER
+    model = types.MockFailingModel.MOCK_FAILING_MODEL
+    proxai.set_run_type(types.RunType.TEST)
+
+    # False override:
+    proxai.connect(suppress_provider_errors=True)
+    with pytest.raises(Exception):
+      proxai.generate_text(
+          'hello',
+          provider=provider,
+          model=model,
+          extensive_return=True,
+          suppress_provider_errors=False)
+
+    # True override:
+    proxai.connect(suppress_provider_errors=False)
+    response = proxai.generate_text(
+        'hello',
+        provider=provider,
+        model=model,
+        extensive_return=True,
+        suppress_provider_errors=True)
+    assert response.response_source == types.ResponseSource.PROVIDER
+    assert response.response_record.error == 'Temp Error'
 
 
 class TestRegisterModel:
@@ -291,7 +450,7 @@ class TestRegisterModel:
       proxai.set_model(generate_text=('openai', 'not_supported_model'))
 
   def test_successful_register_model(self):
-    proxai._set_run_type(types.RunType.TEST)
+    proxai.set_run_type(types.RunType.TEST)
     proxai.set_model(generate_text=('openai', 'gpt-3.5-turbo'))
     assert proxai._REGISTERED_VALUES[types.CallType.GENERATE_TEXT] == (
         'openai', 'gpt-3.5-turbo')
@@ -299,7 +458,7 @@ class TestRegisterModel:
 
 class TestGenerateText:
   def _test_generate_text(self, model: types.ModelType):
-    proxai._set_run_type(types.RunType.TEST)
+    proxai.set_run_type(types.RunType.TEST)
     proxai.set_model(generate_text=model)
     print(proxai._REGISTERED_VALUES)
     assert proxai._REGISTERED_VALUES[types.CallType.GENERATE_TEXT] == model
@@ -331,169 +490,48 @@ class TestGenerateText:
     self._test_generate_text(('hugging_face', 'google/gemma-7b-it'))
 
 
-class TestAvailableModels:
-  def test_filter_by_key(self):
-    proxai._set_run_type(types.RunType.TEST)
-    with tempfile.TemporaryDirectory() as cache_dir:
-      proxai.connect(cache_path=cache_dir)
-      available_models = proxai.get_available_models()
-      available_models._providers_with_key = [
-          types.Provider.OPENAI, types.Provider.CLAUDE]
-      models = types.ModelStatus()
-      available_models._get_all_models(
-          models, call_type=types.CallType.GENERATE_TEXT)
-      available_models._filter_by_provider_key(models)
-      assert models.unprocessed_models == set([
-          (types.Provider.OPENAI, types.OpenAIModel.GPT_4),
-          (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW),
-          (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO),
-          (types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_HAIKU),
-          (types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_OPUS),
-          (types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_SONNET)])
+class TestConnectProxdashConnection:
+  def test_connect_proxdash_connection(self, monkeypatch, requests_mock):
+    # Setup
+    monkeypatch.setenv('PROXDASH_API_KEY', 'test_api_key')
+    requests_mock.post(
+        'https://proxainest-production.up.railway.app/connect',
+        text='true',
+        status_code=201,
+    )
 
-  def test_filter_by_cache(self):
-    proxai._set_run_type(types.RunType.TEST)
-    with tempfile.TemporaryDirectory() as cache_dir:
-      proxai.connect(cache_path=cache_dir)
-      save_cache = model_cache.ModelCache(
-          cache_options=types.CacheOptions(cache_path=cache_dir))
-      data = types.ModelStatus()
-      data.working_models.add(
-        (types.Provider.OPENAI, types.OpenAIModel.GPT_4))
-      data.failed_models.add(
-        (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW))
-      data.provider_queries.append(
-          types.LoggingRecord(
-              query_record=types.QueryRecord(
-                  model=(types.Provider.OPENAI, types.OpenAIModel.GPT_4)),
-              response_record=types.QueryResponseRecord(response='response1')))
-      data.provider_queries.append(
-          types.LoggingRecord(
-              query_record=types.QueryRecord(
-                  model=(types.Provider.OPENAI,
-                          types.OpenAIModel.GPT_4_TURBO_PREVIEW)),
-              response_record=types.QueryResponseRecord(error='error1')))
-      save_cache.update(
-          model_status=data, call_type=types.CallType.GENERATE_TEXT)
+    # First connection
+    proxai.set_run_type(types.RunType.TEST)
+    proxai.connect()
+    assert proxai._PROXDASH_CONNECTION is not None
+    first_connection = proxai._PROXDASH_CONNECTION
+    assert (
+        first_connection.status == types.ProxDashConnectionStatus.CONNECTED)
 
-      available_models = proxai.get_available_models()
-      available_models._providers_with_key = [types.Provider.OPENAI]
-      models = types.ModelStatus()
-      available_models._get_all_models(
-          models, call_type=types.CallType.GENERATE_TEXT)
-      available_models._filter_by_provider_key(models)
-      available_models._filter_by_cache(
-          models, call_type=types.CallType.GENERATE_TEXT)
-      assert models.unprocessed_models == set([
-          (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)])
-      assert models.working_models == set([
-          (types.Provider.OPENAI, types.OpenAIModel.GPT_4)])
-      assert models.failed_models == set([
-          (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW)])
+    # Second connection should reuse existing connection but reconnect
+    proxai.connect()
+    assert proxai._PROXDASH_CONNECTION is first_connection
+    assert len(requests_mock.request_history) == 2  # Two connection attempts
 
-  @pytest.mark.parametrize('allow_multiprocessing', [True, False])
-  def test_test_models(self, allow_multiprocessing):
-    proxai._set_run_type(types.RunType.TEST)
-    with tempfile.TemporaryDirectory() as cache_dir:
-      proxai.connect(
-          cache_path=cache_dir,
-          allow_multiprocessing=allow_multiprocessing)
-      available_models = proxai.get_available_models()
-      available_models._providers_with_key = [types.Provider.OPENAI]
-      models = types.ModelStatus()
-      available_models._get_all_models(
-          models, call_type=types.CallType.GENERATE_TEXT)
-      available_models._filter_by_provider_key(models)
-      # Fail for GPT_3_5_TURBO model. Other openai models should work.
-      proxai._INITIALIZED_MODEL_CONNECTORS[
-          (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)] = (
-              MockFailingConnector())
-      available_models._test_models(
-          models, call_type=types.CallType.GENERATE_TEXT)
-      assert models.unprocessed_models == set()
-      assert models.working_models == set([
-          (types.Provider.OPENAI, types.OpenAIModel.GPT_4),
-          (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW)])
-      assert models.failed_models == set([
-          (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)])
+  def test_connect_proxdash_connection_disabled(
+      self, monkeypatch, requests_mock):
+    # Setup
+    monkeypatch.delenv('PROXDASH_API_KEY', raising=False)
+    requests_mock.post(
+        'https://proxainest-production.up.railway.app/connect',
+        text='true',
+        status_code=201,
+    )
 
-      load_cache = model_cache.ModelCache(
-          cache_options=types.CacheOptions(cache_path=cache_dir))
-      loaded_data = load_cache.get(call_type=types.CallType.GENERATE_TEXT)
-      assert loaded_data.working_models == set([
-          (types.Provider.OPENAI, types.OpenAIModel.GPT_4),
-          (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW)])
-      assert loaded_data.failed_models == set([
-          (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)])
+    # First connection with disabled proxdash
+    proxai.set_run_type(types.RunType.TEST)
+    proxai.connect(
+        proxdash_options=types.ProxDashOptions(disable_proxdash=True))
+    assert proxai._PROXDASH_CONNECTION is not None
+    first_connection = proxai._PROXDASH_CONNECTION
+    assert first_connection.status == types.ProxDashConnectionStatus.DISABLED
 
-      del proxai._INITIALIZED_MODEL_CONNECTORS[
-          (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)]
-
-  def test_generate_text(self):
-    proxai._set_run_type(types.RunType.TEST)
-    with tempfile.TemporaryDirectory() as cache_dir:
-      proxai.connect(cache_path=cache_dir)
-      available_models = proxai.get_available_models()
-      available_models._providers_with_key = [types.Provider.OPENAI]
-      models = available_models.generate_text()
-      assert models == [
-          (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO),
-          (types.Provider.OPENAI, types.OpenAIModel.GPT_4),
-          (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW)]
-
-  def test_generate_text_filters(self):
-    proxai._set_run_type(types.RunType.TEST)
-    with tempfile.TemporaryDirectory() as cache_dir:
-      proxai.connect(cache_path=cache_dir)
-
-      # _filter_by_cache filter
-      save_cache = model_cache.ModelCache(
-          cache_options=types.CacheOptions(cache_path=cache_dir))
-      data = types.ModelStatus()
-      data.failed_models.add(
-          (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW))
-      data.provider_queries.append(
-          types.LoggingRecord(
-              query_record=types.QueryRecord(
-                  model=(types.Provider.OPENAI,
-                         types.OpenAIModel.GPT_4_TURBO_PREVIEW)),
-              response_record=types.QueryResponseRecord(error='error1')))
-      save_cache.update(
-          model_status=data, call_type=types.CallType.GENERATE_TEXT)
-
-      # _test_models filter
-      proxai._INITIALIZED_MODEL_CONNECTORS[
-          (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)] = (
-              MockFailingConnector())
-
-      available_models = proxai.get_available_models()
-
-      # _filter_by_provider_key filter
-      available_models._providers_with_key = [types.Provider.OPENAI]
-
-      # Check that the failed model was filtered out
-      models = available_models.generate_text()
-      assert models == [
-          (types.Provider.OPENAI, types.OpenAIModel.GPT_4)]
-
-      # Check cache memory values
-      models = available_models._model_cache.get(
-          call_type=types.CallType.GENERATE_TEXT)
-      assert models.working_models == set([
-          (types.Provider.OPENAI, types.OpenAIModel.GPT_4)])
-      assert models.failed_models == set([
-          (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW),
-          (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)])
-
-      # Check cache file values
-      load_cache = model_cache.ModelCache(
-          cache_options=types.CacheOptions(cache_path=cache_dir))
-      models = load_cache.get(call_type=types.CallType.GENERATE_TEXT)
-      assert models.working_models == set([
-          (types.Provider.OPENAI, types.OpenAIModel.GPT_4)])
-      assert models.failed_models == set([
-          (types.Provider.OPENAI, types.OpenAIModel.GPT_4_TURBO_PREVIEW),
-          (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)])
-
-      del proxai._INITIALIZED_MODEL_CONNECTORS[
-          (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)]
+    # Second connection should reuse existing connection
+    proxai.connect()
+    assert proxai._PROXDASH_CONNECTION is first_connection
+    assert len(requests_mock.request_history) == 0  # No connection attempts when disabled

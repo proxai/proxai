@@ -23,7 +23,7 @@ def validate_experiment_path(experiment_path: str):
     raise ValueError(
       f'Experiment path cannot be longer than {MAX_PATH_LENGTH} characters')
 
-  allowed_chars = set(string.ascii_letters + string.digits + '()_-.:/')
+  allowed_chars = set(string.ascii_letters + string.digits + '()_-.:/ ')
   for char in experiment_path:
     if char not in allowed_chars:
       raise ValueError(
@@ -37,6 +37,8 @@ def validate_experiment_path(experiment_path: str):
     raise ValueError('Experiment path cannot contain "//"')
   if '..' in experiment_path:
     raise ValueError('Experiment path cannot contain ".."')
+  if '  ' in experiment_path:
+    raise ValueError('Experiment path cannot contain consecutive spaces')
   for component in experiment_path.split('/'):
     if len(component) > MAX_COMPONENT_LENGTH:
       raise ValueError(
@@ -50,3 +52,6 @@ def validate_experiment_path(experiment_path: str):
       raise ValueError('Filename in experiment path cannot be "_"')
     if component.lower() in RESERVED_NAMES:
       raise ValueError(f'Path component "{component}" is a reserved name')
+    if component.startswith(' ') or component.endswith(' '):
+      raise ValueError(
+          f'Path component "{component}" cannot start or end with spaces')

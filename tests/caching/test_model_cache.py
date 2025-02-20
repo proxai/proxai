@@ -5,10 +5,10 @@ import pytest
 import tempfile
 
 
-class TestModelCache:
+class TestModelCacheManager:
   def test_save_and_load(self):
     with tempfile.TemporaryDirectory() as cache_dir:
-      save_cache = model_cache.ModelCache(
+      save_cache = model_cache.ModelCacheManager(
           cache_options=types.CacheOptions(cache_path=cache_dir))
       data = types.ModelStatus()
       data.working_models.add(('openai', 'gpt-4'))
@@ -36,14 +36,14 @@ class TestModelCache:
           ))
       save_cache.update(data, types.CallType.GENERATE_TEXT)
 
-      load_cache = model_cache.ModelCache(
+      load_cache = model_cache.ModelCacheManager(
           cache_options=types.CacheOptions(cache_path=cache_dir))
       loaded_data = load_cache.get(types.CallType.GENERATE_TEXT)
       assert loaded_data == data
 
   def test_filter_duration(self):
     with tempfile.TemporaryDirectory() as cache_dir:
-      save_cache = model_cache.ModelCache(
+      save_cache = model_cache.ModelCacheManager(
           cache_options=types.CacheOptions(cache_path=cache_dir))
 
       data = types.ModelStatus()
@@ -98,7 +98,7 @@ class TestModelCache:
       save_cache.update(
           model_status=data, call_type=types.CallType.GENERATE_TEXT)
 
-      load_cache = model_cache.ModelCache(
+      load_cache = model_cache.ModelCacheManager(
           cache_options=types.CacheOptions(
               cache_path=cache_dir,
               duration=10))
@@ -127,7 +127,7 @@ class TestModelCache:
           ))
 
       # First cache - populate cache
-      save_cache = model_cache.ModelCache(
+      save_cache = model_cache.ModelCacheManager(
           cache_options=types.CacheOptions(
               cache_path=cache_dir,
               clear_model_cache_on_connect=False))
@@ -138,7 +138,7 @@ class TestModelCache:
       assert loaded_data == data
 
       # Create new cache with clear_cache_on_connect=False
-      load_cache = model_cache.ModelCache(
+      load_cache = model_cache.ModelCacheManager(
           cache_options=types.CacheOptions(
               cache_path=cache_dir,
               clear_model_cache_on_connect=False))
@@ -148,7 +148,7 @@ class TestModelCache:
       assert loaded_data == data
 
       # Create new cache with clear_cache_on_connect=True
-      clear_cache = model_cache.ModelCache(
+      clear_cache = model_cache.ModelCacheManager(
           cache_options=types.CacheOptions(
               cache_path=cache_dir,
               clear_model_cache_on_connect=True))
@@ -158,4 +158,3 @@ class TestModelCache:
       assert loaded_data.working_models == set()
       assert loaded_data.failed_models == set()
       assert loaded_data.provider_queries == []
-
