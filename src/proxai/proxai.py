@@ -470,7 +470,11 @@ def connect(
       suppress_provider_errors=suppress_provider_errors,
       global_init=True)
 
-  _get_proxdash_connection()
+  if not _PROXDASH_CONNECTION:
+    _get_proxdash_connection()
+  else:
+    proxdash_connection = _get_proxdash_connection()
+    proxdash_connection.connect_to_proxdash()
 
 
 def set_model(generate_text: types.ModelType=None):
