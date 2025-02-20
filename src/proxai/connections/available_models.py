@@ -13,7 +13,7 @@ import proxai.connectors.mock_model_connector as mock_model_connector
 
 
 class AvailableModels:
-  _model_cache_manager: Optional[model_cache.ModelCacheManager] = None
+  _model_cache_manager: Optional[model_cache.ModelCacheManager]
   _generate_text: Dict[types.ModelType, Any]
   _run_type: types.RunType
   _get_run_type: Callable[[], types.RunType]
@@ -167,7 +167,7 @@ class AvailableModels:
     self._load_provider_keys()
     self._get_all_models(models, call_type=types.CallType.GENERATE_TEXT)
     self._filter_by_provider_key(models)
-    if clear_model_cache:
+    if clear_model_cache and self.model_cache_manager:
       self.model_cache_manager.clear_cache()
     self._filter_by_cache(models, call_type=types.CallType.GENERATE_TEXT)
     if only_largest_models:
@@ -235,7 +235,7 @@ class AvailableModels:
         models.unprocessed_models.remove(model)
       if model in models.working_models:
         models.working_models.remove(model)
-      elif model in models.failed_models:
+      if model in models.failed_models:
         models.failed_models.remove(model)
 
     provider_query_map = {
