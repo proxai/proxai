@@ -12,14 +12,15 @@ _PROXDASH_BACKEND_URL = 'https://proxainest-production.up.railway.app'
 
 
 class ProxDashConnection(object):
-  _last_connected_experiment_path: Optional[str] = None
-  _experiment_path: Optional[str] = None
-  _hidden_run_key: str
-  _logging_options: types.LoggingOptions
-  _get_logging_options: Optional[Callable[[], types.LoggingOptions]] = None
-  _status: Optional[types.ProxDashConnectionStatus] = None
+  _last_connected_experiment_path: Optional[str]
+  _experiment_path: Optional[str]
+  _get_experiment_path: Optional[Callable[[], str]]
+  _hidden_run_key: Optional[str]
+  _logging_options: Optional[types.LoggingOptions]
+  _get_logging_options: Optional[Callable[[], types.LoggingOptions]]
+  _status: Optional[types.ProxDashConnectionStatus]
   _api_key: str
-  _key_info_from_proxdash: Optional[Dict] = None
+  _key_info_from_proxdash: Optional[Dict]
 
   def __init__(
       self,
@@ -40,6 +41,16 @@ class ProxDashConnection(object):
       raise ValueError(
           'If init_state is provided, none of the other arguments should be '
           'provided.')
+
+    self._last_connected_experiment_path = None
+    self._experiment_path = None
+    self._get_experiment_path = None
+    self._hidden_run_key = None
+    self._logging_options = None
+    self._get_logging_options = None
+    self._status = None
+    self._api_key = None
+    self._key_info_from_proxdash = None
 
     init_status = None
     init_key_info_from_proxdash = None

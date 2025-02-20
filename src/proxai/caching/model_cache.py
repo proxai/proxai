@@ -12,7 +12,7 @@ AVAILABLE_MODELS_PATH = 'available_models.json'
 
 class ModelCacheManager:
   _cache_options: types.CacheOptions
-  _data: Dict[types.CallType, types.ModelStatus] = {}
+  _data: Dict[types.CallType, types.ModelStatus]
 
   def __init__(self, cache_options: types.CacheOptions):
     self._data = {}
