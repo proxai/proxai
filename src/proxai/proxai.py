@@ -361,7 +361,8 @@ def set_run_type(run_type: types.RunType):
 def check_health(
     experiment_path: Optional[str]=None,
     verbose: bool = True,
-    allow_multiprocessing: bool = True
+    allow_multiprocessing: bool = True,
+    detailed: bool = False,
 ) -> types.ModelStatus:
   if not experiment_path:
     now = datetime.datetime.now()
@@ -429,7 +430,8 @@ def check_health(
         proxdash_options=proxdash_options,
         message='Results are uploaded to the ProxDash.',
         type=types.LoggingType.INFO)
-  return model_status
+  if detailed:
+    return model_status
 
 
 def connect(
