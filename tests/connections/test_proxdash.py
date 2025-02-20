@@ -100,6 +100,49 @@ class TestProxDashConnectionInit:
           proxdash_options=types.ProxDashOptions(),
           get_proxdash_options=lambda: types.ProxDashOptions())
 
+  def test_connect_to_proxdash_with_init_status(
+      self, monkeypatch, requests_mock):
+    requests_mock.post(
+        'https://proxainest-production.up.railway.app/connect',
+        text='true',
+        status_code=201,
+    )
+    connection = ProxDashConnection(api_key='test_api_key')
+    connection.connect_to_proxdash(
+        api_key='new_api_key',
+        init_status=types.ProxDashConnectionStatus.CONNECTED)
+    assert connection.status == types.ProxDashConnectionStatus.CONNECTED
+    assert len(requests_mock.request_history) == 1
+
+  def test_connect_to_proxdash_with_key_info(self, monkeypatch, requests_mock):
+    test_key_info = {'permission': 'ALL'}
+    requests_mock.post(
+        'https://proxainest-production.up.railway.app/connect',
+        text='true',
+        status_code=201,
+    )
+    connection = ProxDashConnection(api_key='test_api_key')
+    connection.connect_to_proxdash(
+        api_key='new_api_key',
+        init_status=types.ProxDashConnectionStatus.CONNECTED,
+        init_key_info_from_proxdash=test_key_info)
+    assert connection.status == types.ProxDashConnectionStatus.CONNECTED
+    assert connection._key_info_from_proxdash == test_key_info
+    assert len(requests_mock.request_history) == 1
+
+  def test_connect_to_proxdash_disabled(self, requests_mock):
+    connection = ProxDashConnection(
+        proxdash_options=types.ProxDashOptions(disable_proxdash=True))
+    connection.connect_to_proxdash(api_key='test_api_key')
+    assert connection.status == types.ProxDashConnectionStatus.DISABLED
+    assert len(requests_mock.request_history) == 0
+
+  def test_connect_to_proxdash_no_api_key(self, monkeypatch):
+    monkeypatch.delenv('PROXDASH_API_KEY', raising=False)
+    connection = ProxDashConnection()
+    connection.connect_to_proxdash()
+    assert connection.status == types.ProxDashConnectionStatus.API_KEY_NOT_FOUND
+
 
 class TestProxDashConnectionInitState:
   @pytest.fixture(autouse=True)

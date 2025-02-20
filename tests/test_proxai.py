@@ -3,6 +3,7 @@ import proxai.types as types
 from proxai import proxai
 import pytest
 import tempfile
+import requests
 
 
 class TestRunType:
@@ -487,3 +488,50 @@ class TestGenerateText:
 
   def test_hugging_face(self):
     self._test_generate_text(('hugging_face', 'google/gemma-7b-it'))
+
+
+class TestConnectProxdashConnection:
+  def test_connect_proxdash_connection(self, monkeypatch, requests_mock):
+    # Setup
+    monkeypatch.setenv('PROXDASH_API_KEY', 'test_api_key')
+    requests_mock.post(
+        'https://proxainest-production.up.railway.app/connect',
+        text='true',
+        status_code=201,
+    )
+
+    # First connection
+    proxai.set_run_type(types.RunType.TEST)
+    proxai.connect()
+    assert proxai._PROXDASH_CONNECTION is not None
+    first_connection = proxai._PROXDASH_CONNECTION
+    assert (
+        first_connection.status == types.ProxDashConnectionStatus.CONNECTED)
+
+    # Second connection should reuse existing connection but reconnect
+    proxai.connect()
+    assert proxai._PROXDASH_CONNECTION is first_connection
+    assert len(requests_mock.request_history) == 2  # Two connection attempts
+
+  def test_connect_proxdash_connection_disabled(
+      self, monkeypatch, requests_mock):
+    # Setup
+    monkeypatch.delenv('PROXDASH_API_KEY', raising=False)
+    requests_mock.post(
+        'https://proxainest-production.up.railway.app/connect',
+        text='true',
+        status_code=201,
+    )
+
+    # First connection with disabled proxdash
+    proxai.set_run_type(types.RunType.TEST)
+    proxai.connect(
+        proxdash_options=types.ProxDashOptions(disable_proxdash=True))
+    assert proxai._PROXDASH_CONNECTION is not None
+    first_connection = proxai._PROXDASH_CONNECTION
+    assert first_connection.status == types.ProxDashConnectionStatus.DISABLED
+
+    # Second connection should reuse existing connection
+    proxai.connect()
+    assert proxai._PROXDASH_CONNECTION is first_connection
+    assert len(requests_mock.request_history) == 0  # No connection attempts when disabled

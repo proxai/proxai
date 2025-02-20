@@ -75,6 +75,17 @@ class ProxDashConnection(object):
     self.experiment_path = experiment_path
     self._get_experiment_path = get_experiment_path
 
+    self.connect_to_proxdash(
+        api_key,
+        init_status=init_status,
+        init_key_info_from_proxdash=init_key_info_from_proxdash)
+
+  def connect_to_proxdash(
+      self,
+      api_key: Optional[str] = None,
+      init_status: Optional[types.ProxDashConnectionStatus] = None,
+      init_key_info_from_proxdash: Optional[Dict] = None
+  ):
     if self.proxdash_options and self.proxdash_options.disable_proxdash:
       self.status = types.ProxDashConnectionStatus.DISABLED
       log_proxdash_message(
