@@ -5,7 +5,7 @@ import pytest
 import proxai.types as types
 from proxai.connections.proxdash import ProxDashConnection
 from proxai.logging.utils import log_proxdash_message
-import requests
+import proxai.connectors.model_configs as model_configs
 
 
 class TestProxDashConnectionInit:
@@ -369,7 +369,7 @@ class TestProxDashConnectionProperties:
       test_message = "Test proxdash message"
       query_record = types.QueryRecord(
           prompt="test prompt",
-          model=('test_provider', 'test_model'))
+          provider_model=model_configs.ALL_MODELS['mock_provider']['mock_model'])
 
       log_proxdash_message(
           logging_options=logging_options,
@@ -487,7 +487,8 @@ class TestProxDashConnectionProperties:
 
     logging_record = types.LoggingRecord(
         query_record=types.QueryRecord(
-            model=('test_provider', 'test_model')),
+            provider_model=model_configs.ALL_MODELS[
+                'mock_provider']['mock_model']),
         response_record=types.QueryResponseRecord(),
         response_source=types.ResponseSource.PROVIDER)
 

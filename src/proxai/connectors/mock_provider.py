@@ -2,7 +2,7 @@ import proxai.types as types
 import proxai.connectors.model_connector as model_connector
 
 
-class MockModelConnector(model_connector.ModelConnector):
+class MockProviderModelConnector(model_connector.ProviderModelConnector):
   def init_model(self):
     return None
 
@@ -28,7 +28,7 @@ class MockModelConnector(model_connector.ModelConnector):
     return "mock response"
 
 
-class MockFailingConnector(model_connector.ModelConnector):
+class MockFailingProviderModelConnector(model_connector.ProviderModelConnector):
   def init_model(self):
     return None
 

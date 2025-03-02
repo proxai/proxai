@@ -4,16 +4,16 @@ import math
 from typing import Union, Optional
 import cohere
 import proxai.types as types
-from .cohere_api_mock import CohereMock
-from .model_connector import ModelConnector
+import proxai.connectors.cohere_api_mock as cohere_api_mock
+import proxai.connectors.model_connector as model_connector
 
 
-class CohereConnector(ModelConnector):
+class CohereConnector(model_connector.ProviderModelConnector):
   def init_model(self):
     return cohere.Client()
 
   def init_mock_model(self):
-    return CohereMock()
+    return cohere_api_mock.CohereMock()
 
   def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
     return copy.deepcopy(query_record)
@@ -32,25 +32,6 @@ class CohereConnector(ModelConnector):
     # Note: Not implemented yet.
     return logging_record.query_record.max_tokens
 
-  def _get_estimated_cost(self, logging_record: types.LoggingRecord):
-    # Note: Not implemented yet.
-    # Needs to get updated all the time.
-    # This is just a temporary implementation.
-    query_token_count = self._get_query_token_count(logging_record)
-    response_token_count = self._get_response_token_count(logging_record)
-    _, provider_model = logging_record.query_record.model
-    if provider_model in [
-        types.CohereModel.COMMAND,
-        types.CohereModel.COMMAND_LIGHT,
-        types.CohereModel.COMMAND_LIGHT_NIGHTLY,
-        types.CohereModel.COMMAND_NIGHTLY,
-        types.CohereModel.COMMAND_R]:
-      return math.floor(query_token_count * 0.5 + response_token_count * 1.5)
-    elif provider_model == types.CohereModel.COMMAND_R_PLUS:
-      return math.floor(query_token_count * 3.0 + response_token_count * 15.0)
-    else:
-      raise ValueError(f'Model not found.\n{logging_record.query_record.model}')
-
   def generate_text_proc(self, query_record: types.QueryRecord) -> str:
     # Note: Cohere uses 'SYSTEM', 'USER', and 'CHATBOT' as roles. Additionally,
     # system instructions can be provided in two ways: preamble parameter and
@@ -68,11 +49,11 @@ class CohereConnector(ModelConnector):
               {'role': 'CHATBOT', 'message': message['content']})
       prompt = query_messages[-1]['message']
       del query_messages[-1]
-    _, provider_model = query_record.model
+    provider_model = query_record.provider_model
 
     create = functools.partial(
         self.api.chat,
-        model=provider_model,
+        model=provider_model.model,
         message=prompt)
     if query_record.system != None:
       create = functools.partial(create, preamble=query_record.system)

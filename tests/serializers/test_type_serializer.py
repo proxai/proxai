@@ -3,26 +3,21 @@ import proxai.types as types
 import proxai.stat_types as stat_types
 import proxai.serializers.type_serializer as type_serializer
 import proxai.serializers.hash_serializer as hash_serializer
+import proxai.connectors.model_configs as model_configs
 import pytest
 
 
-def _get_model_type_options():
+def _get_provider_model_type_options():
   return [
-      {'provider': types.Provider.OPENAI,
-       'provider_model': types.OpenAIModel.GPT_4},
-      {'provider': types.Provider.OPENAI,
-       'provider_model': 'gpt-4'},
       {'provider': 'openai',
-       'provider_model': types.OpenAIModel.GPT_4},
-      {'provider': 'openai',
-       'provider_model': 'gpt-4'},]
+       'model': 'gpt-4',
+       'provider_model_identifier': 'gpt-4'},]
 
 
 def _get_query_record_options():
   return [
       {'call_type': types.CallType.GENERATE_TEXT},
-      {'model': ('openai', types.OpenAIModel.GPT_4),},
-      {'model': (types.Provider.OPENAI, 'gpt-4'),},
+      {'provider_model': model_configs.ALL_MODELS['openai']['gpt-4']},
       {'prompt': 'Hello, world!'},
       {'system': 'Hello, system!'},
       {'messages': [{'role': 'user', 'content': 'Hello, user!'}]},
@@ -30,7 +25,7 @@ def _get_query_record_options():
       {'temperature': 0.5},
       {'stop': ['stop']},
       {'call_type': types.CallType.GENERATE_TEXT,
-       'model': (types.Provider.OPENAI, types.OpenAIModel.GPT_4),
+       'provider_model': model_configs.ALL_MODELS['openai']['gpt-4'],
        'prompt': 'Hello, world!',
        'system': 'Hello, system!',
        'messages': [{'role': 'user', 'content': 'Hello, user!'}],
@@ -175,11 +170,10 @@ def _get_run_options_options():
 
 
 def _get_model_status_options():
-  model_1 = (types.Provider.OPENAI, types.OpenAIModel.GPT_4)
-  model_2 = (types.Provider.OPENAI,
-                  types.OpenAIModel.GPT_3_5_TURBO_INSTRUCT)
-  model_3 = (types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_OPUS)
-  model_4 = (types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_SONNET)
+  model_1 = model_configs.ALL_MODELS['openai']['gpt-4']
+  model_2 = model_configs.ALL_MODELS['openai']['gpt-3.5-turbo-instruct']
+  model_3 = model_configs.ALL_MODELS['claude']['claude-3-opus']
+  model_4 = model_configs.ALL_MODELS['claude']['claude-3-sonnet']
   return [
       {},
       {'unprocessed_models': {model_1}},
@@ -255,30 +249,30 @@ def _get_base_cache_stats_options():
      'saved_estimated_cost': 8.0}]
 
 
-def _get_model_stats_options():
+def _get_provider_model_stats_options():
   return [
-    {'model': (types.Provider.OPENAI, types.OpenAIModel.GPT_4)},
+    {'provider_model': model_configs.ALL_MODELS['openai']['gpt-4']},
     {'provider_stats': stat_types.BaseProviderStats(total_queries=1)},
     {'cache_stats': stat_types.BaseCacheStats(total_cache_hit=1)},
-    {'model': (types.Provider.OPENAI, types.OpenAIModel.GPT_4),
+    {'provider_model': model_configs.ALL_MODELS['openai']['gpt-4'],
      'provider_stats': stat_types.BaseProviderStats(total_queries=1),
      'cache_stats': stat_types.BaseCacheStats(total_cache_hit=1)}]
 
 
 def _get_provider_stats_options():
   return [
-    {'provider': types.Provider.OPENAI},
+    {'provider': 'openai'},
     {'provider_stats': stat_types.BaseProviderStats(total_queries=1)},
     {'cache_stats': stat_types.BaseCacheStats(total_cache_hit=1)},
-    {'models': {
-        (types.Provider.OPENAI,
-         types.OpenAIModel.GPT_4): stat_types.ModelStats()}},
-    {'provider': types.Provider.OPENAI,
+    {'provider_models': {
+        model_configs.ALL_MODELS[
+            'openai']['gpt-4']: stat_types.ProviderModelStats()}},
+    {'provider': 'openai',
      'provider_stats': stat_types.BaseProviderStats(total_queries=1),
      'cache_stats': stat_types.BaseCacheStats(total_cache_hit=1),
-     'models': {
-        (types.Provider.OPENAI,
-          types.OpenAIModel.GPT_4): stat_types.ModelStats()}}]
+     'provider_models': {
+        model_configs.ALL_MODELS[
+            'openai']['gpt-4']: stat_types.ProviderModelStats()}}]
 
 
 def _get_run_stats_options():
@@ -290,13 +284,18 @@ def _get_run_stats_options():
 
 
 class TestTypeSerializer:
-  @pytest.mark.parametrize('model_type_options', _get_model_type_options())
-  def test_encode_decode_model_type(self, model_type_options):
-    model_type = (model_type_options['provider'],
-                  model_type_options['provider_model'])
-    encoded_model_type = type_serializer.encode_model_type(model_type=model_type)
-    decoded_model_type = type_serializer.decode_model_type(record=encoded_model_type)
-    assert model_type == decoded_model_type
+  @pytest.mark.parametrize(
+      'provider_model_type_options',
+      _get_provider_model_type_options())
+  def test_encode_decode_provider_model_type(self, provider_model_type_options):
+    provider_model_type = model_configs.ALL_MODELS[
+        provider_model_type_options['provider']][
+        provider_model_type_options['model']]
+    encoded_provider_model_type = type_serializer.encode_provider_model_type(
+        provider_model_type=provider_model_type)
+    decoded_provider_model_type = type_serializer.decode_provider_model_type(
+        record=encoded_provider_model_type)
+    assert provider_model_type == decoded_provider_model_type
 
   @pytest.mark.parametrize('query_record_options', _get_query_record_options())
   def test_get_query_record_hash(self, query_record_options):
@@ -319,15 +318,9 @@ class TestTypeSerializer:
     query_record = types.QueryRecord(**query_record_options)
     encoded_query_record = type_serializer.encode_query_record(
         query_record=query_record)
-    if ('provider' not in query_record_options
-        and 'provider_model' in query_record_options):
-      with pytest.raises(ValueError):
-        _ = type_serializer.decode_query_record(
-            record=encoded_query_record)
-    else:
-      decoded_query_record = type_serializer.decode_query_record(
-          record=encoded_query_record)
-      assert query_record == decoded_query_record
+    decoded_query_record = type_serializer.decode_query_record(
+        record=encoded_query_record)
+    assert query_record == decoded_query_record
 
   @pytest.mark.parametrize(
       'query_response_record_options', _get_query_response_record_options())
@@ -444,14 +437,18 @@ class TestTypeSerializer:
         record=encoded_cache_stats)
     assert cache_stats == decoded_cache_stats
 
-  @pytest.mark.parametrize('model_stats_options', _get_model_stats_options())
-  def test_encode_decode_model_stats(self, model_stats_options):
-    model_stats = stat_types.ModelStats(**model_stats_options)
-    encoded_model_stats = type_serializer.encode_model_stats(
-        model_stats=model_stats)
-    decoded_model_stats = type_serializer.decode_model_stats(
-        record=encoded_model_stats)
-    assert model_stats == decoded_model_stats
+  @pytest.mark.parametrize(
+      'provider_model_stats_options',
+      _get_provider_model_stats_options())
+  def test_encode_decode_provider_model_stats(
+      self, provider_model_stats_options):
+    provider_model_stats = stat_types.ProviderModelStats(
+        **provider_model_stats_options)
+    encoded_provider_model_stats = type_serializer.encode_provider_model_stats(
+        provider_model_stats=provider_model_stats)
+    decoded_provider_model_stats = type_serializer.decode_provider_model_stats(
+        record=encoded_provider_model_stats)
+    assert provider_model_stats == decoded_provider_model_stats
 
   @pytest.mark.parametrize(
       'provider_stats_options', _get_provider_stats_options())

@@ -48,7 +48,7 @@ class ModelCacheManager:
     if not os.path.exists(self._cache_path):
       return
     with open(self._cache_path, 'r') as f:
-      self._data: Dict[str, Any] = json.load(f)
+      self._data: Dict[types.CallType, types.ModelStatus] = json.load(f)
     for call_value in self._data.keys():
       self._data[call_value] = type_serializer.decode_model_status(
           self._data[call_value])
@@ -56,18 +56,18 @@ class ModelCacheManager:
   def _clean_model(
       self,
       call_type: types.CallType,
-      model: types.ModelType):
+      model: types.ProviderModelType):
     if model in self._data[call_type].working_models:
       self._data[call_type].working_models.remove(model)
     if model in self._data[call_type].failed_models:
       self._data[call_type].failed_models.remove(model)
     for idx, provider_query in enumerate(
         self._data[call_type].provider_queries):
-      if provider_query.query_record.model == model:
+      if provider_query.query_record.provider_model == model:
         del self._data[call_type].provider_queries[idx]
         break
 
-  def get(self, call_type: str) -> types.ModelStatus:
+  def get(self, call_type: types.CallType) -> types.ModelStatus:
     result = types.ModelStatus()
     if call_type not in self._data:
       return result
@@ -79,14 +79,14 @@ class ModelCacheManager:
                       ).total_seconds()
       if passing_time > self._cache_options.duration:
         self._clean_model(call_type=call_type,
-                          model=provider_query.query_record.model)
+                          model=provider_query.query_record.provider_model)
     self._save_to_cache()
     return self._data[call_type]
 
   def update(
-        self,
-        model_status: types.ModelStatus,
-        call_type: str):
+      self,
+      model_status: types.ModelStatus,
+      call_type: types.CallType):
     if call_type not in self._data:
       self._data[call_type] = types.ModelStatus()
     for model in model_status.working_models:

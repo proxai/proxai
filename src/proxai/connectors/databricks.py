@@ -5,16 +5,16 @@ import math
 from typing import Union, Optional, Type
 from databricks_genai_inference import ChatCompletion
 import proxai.types as types
-from .databricks_mock import DatabricksMock
-from .model_connector import ModelConnector
+import proxai.connectors.databricks_mock as databricks_mock
+import proxai.connectors.model_connector as model_connector
 
 
-class DatabricksConnector(ModelConnector):
+class DatabricksConnector(model_connector.ProviderModelConnector):
   def init_model(self):
     return ChatCompletion
 
   def init_mock_model(self):
-    return DatabricksMock()
+    return databricks_mock.DatabricksMock()
 
   def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
     return copy.deepcopy(query_record)
@@ -33,35 +33,6 @@ class DatabricksConnector(ModelConnector):
     # Note: Not implemented yet.
     return logging_record.query_record.max_tokens
 
-  def _get_estimated_cost(self, logging_record: types.LoggingRecord):
-    # Note: Not implemented yet.
-    # Needs to get updated all the time.
-    # This is just a temporary implementation.
-    query_token_count = self._get_query_token_count(logging_record)
-    response_token_count = self._get_response_token_count(logging_record)
-    _, provider_model = logging_record.query_record.model
-    if provider_model == types.DatabricksModel.LLAMA_3_70B_INSTRUCT:
-      return math.floor(
-          query_token_count * 14.28 + response_token_count * 42.85)
-    elif provider_model == types.DatabricksModel.DBRX_INSTRUCT:
-      return math.floor(
-          query_token_count * 32.14 + response_token_count * 96.42)
-    elif provider_model == types.DatabricksModel.MIXTRAL_8x7B_INSTRUCT:
-      return math.floor(
-          query_token_count * 21.42 + response_token_count * 21.42)
-    elif provider_model in types.DatabricksModel.LLAMA_2_70B_CHAT:
-      return math.floor(
-          query_token_count * 28.57 + response_token_count * 28.57)
-    elif provider_model in types.DatabricksModel.MPT_30B_INSTRUCT:
-      return math.floor(
-          query_token_count * 14.28 + response_token_count * 14.28)
-    elif provider_model in types.DatabricksModel.MPT_7B_INSTRUCT:
-      return math.floor(query_token_count * 7.14 + response_token_count * 7.14)
-    elif provider_model in types.DatabricksModel.BGE_LARGE_EN:
-      return math.floor(query_token_count * 1.42 + response_token_count * 1.42)
-    else:
-      raise ValueError(f'Model not found.\n{logging_record.query_record.model}')
-
   def generate_text_proc(self, query_record: types.QueryRecord) -> str:
     # Note: Databricks tries to use same parameters with OpenAI.
     # Some parameters seems not working as expected for some models. For
@@ -76,11 +47,11 @@ class DatabricksConnector(ModelConnector):
       query_messages.append({'role': 'user', 'content': query_record.prompt})
     if query_record.messages != None:
       query_messages.extend(query_record.messages)
-    _, provider_model = query_record.model
+    provider_model = query_record.provider_model
 
     create = functools.partial(
         self.api.create,
-        model=provider_model,
+        model=provider_model.model,
         messages=query_messages)
     if query_record.max_tokens != None:
       create = functools.partial(create, max_tokens=query_record.max_tokens)

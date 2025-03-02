@@ -15,14 +15,15 @@ import proxai.stat_types as stat_types
 import proxai.connections.available_models as available_models
 import proxai.connections.proxdash as proxdash
 import proxai.experiment.experiment as experiment
+import proxai.connectors.model_configs as model_configs
 from proxai.logging.utils import log_proxdash_message
 
 _RUN_TYPE: types.RunType = types.RunType.PRODUCTION
 _HIDDEN_RUN_KEY: Optional[str] = None
 _EXPERIMENT_PATH: Optional[str] = None
-_REGISTERED_VALUES: Dict[str, types.ModelType] = {}
+_REGISTERED_VALUES: Dict[str, types.ProviderModelType] = {}
 _INITIALIZED_MODEL_CONNECTORS: Dict[
-    types.ModelType, model_connector.ModelConnector] = {}
+    types.ProviderModelType, model_connector.ProviderModelConnector] = {}
 _ROOT_LOGGING_PATH: Optional[str] = None
 _LOGGING_OPTIONS: types.LoggingOptions = types.LoggingOptions()
 _CACHE_OPTIONS: types.CacheOptions = types.CacheOptions()
@@ -246,10 +247,11 @@ def _init_suppress_errors(
 
 
 def _init_model_connector(
-    model: types.ModelType) -> model_connector.ModelConnector:
+    provider_model_identifier: types.ProviderModelIdentifierType
+) -> model_connector.ProviderModelConnector:
   global _QUERY_CACHE_MANAGER
   global _STATS
-  connector = model_registry.get_model_connector(model)
+  connector = model_registry.get_model_connector(provider_model_identifier)
   connector = functools.partial(
       connector,
       get_query_cache_manager=_get_query_cache_manager)
@@ -286,7 +288,7 @@ def _get_hidden_run_key() -> str:
 
 
 def _get_initialized_model_connectors() -> Dict[
-    types.ModelType, model_connector.ModelConnector]:
+    types.ProviderModelType, model_connector.ProviderModelConnector]:
   return _INITIALIZED_MODEL_CONNECTORS
 
 
@@ -322,18 +324,25 @@ def _get_proxdash_connection() -> proxdash.ProxDashConnection:
 
 def _get_model_connector(
     call_type: types.CallType,
-    model: Optional[types.ModelType]=None) -> model_connector.ModelConnector:
+    provider_model_identifier: Optional[types.ProviderModelIdentifierType]=None
+) -> model_connector.ProviderModelConnector:
   global _REGISTERED_VALUES
   global _INITIALIZED_MODEL_CONNECTORS
+  provider_model = None
+  if provider_model_identifier:
+    provider_model = model_configs.get_provider_model_config(
+        provider_model_identifier)
   if call_type == types.CallType.GENERATE_TEXT:
     if call_type not in _REGISTERED_VALUES:
-      default_model = (types.Provider.OPENAI, types.OpenAIModel.GPT_3_5_TURBO)
-      _REGISTERED_VALUES[call_type] = default_model
-    if model == None:
-      model = _REGISTERED_VALUES[call_type]
-    if model not in _INITIALIZED_MODEL_CONNECTORS:
-      _INITIALIZED_MODEL_CONNECTORS[model] = _init_model_connector(model)
-    return _INITIALIZED_MODEL_CONNECTORS[model]
+      default_provider_model = model_configs.ALL_MODELS[
+          'openai']['gpt-3.5-turbo-instruct']
+      _REGISTERED_VALUES[call_type] = default_provider_model
+    if provider_model is None:
+      provider_model = _REGISTERED_VALUES[call_type]
+    if provider_model not in _INITIALIZED_MODEL_CONNECTORS:
+      _INITIALIZED_MODEL_CONNECTORS[provider_model] = _init_model_connector(
+          provider_model)
+    return _INITIALIZED_MODEL_CONNECTORS[provider_model]
 
 
 def _get_allow_multiprocessing() -> bool:
@@ -398,18 +407,20 @@ def check_health(
       verbose=verbose, return_all=True)
   if verbose:
     providers = set(
-        [model[0] for model in model_status.working_models] +
-        [model[0] for model in model_status.failed_models])
-    model_query_map = {
-        query.query_record.model: query
-        for query in model_status.provider_queries
-    }
+        [model.provider for model in model_status.working_models] +
+        [model.provider for model in model_status.failed_models])
+    provider_model_query_map: Dict[Tuple[str, str], types.LoggingRecord] = {}
+    for query in model_status.provider_queries:
+      provider_model_tuple = (
+          query.query_record.provider_model.provider,
+          query.query_record.provider_model.model)
+      provider_model_query_map[provider_model_tuple] = query
     result_table = {
         provider: {'working': [], 'failed': []} for provider in providers}
     for model in model_status.working_models:
-      result_table[model[0]]['working'].append(model[1])
+      result_table[model.provider]['working'].append(model.model)
     for model in model_status.failed_models:
-      result_table[model[0]]['failed'].append(model[1])
+      result_table[model.provider]['failed'].append(model.model)
     print('> Finished testing.\n'
           f'   Registered Providers: {len(providers)}\n'
           f'   Succeeded Models: {len(model_status.working_models)}\n'
@@ -417,11 +428,11 @@ def check_health(
     for provider in sorted(providers):
       print(f'> {provider}:')
       for model in sorted(result_table[provider]['working']):
-        duration = model_query_map[
+        duration = provider_model_query_map[
             (provider, model)].response_record.response_time
         print(f'   [ WORKING | {duration.total_seconds():6.2f}s ]: {model}')
       for model in sorted(result_table[provider]['failed']):
-        duration = model_query_map[
+        duration = provider_model_query_map[
             (provider, model)].response_record.response_time
         print(f'   [ FAILED  | {duration.total_seconds():6.2f}s ]: {model}')
   if proxdash_connection.status == types.ProxDashConnectionStatus.CONNECTED:
@@ -477,11 +488,12 @@ def connect(
     proxdash_connection.connect_to_proxdash()
 
 
-def set_model(generate_text: types.ModelType=None):
+def set_model(generate_text: types.ProviderModelIdentifierType=None):
   global _REGISTERED_VALUES
   if generate_text:
-    type_utils.check_model_type(generate_text)
-    _REGISTERED_VALUES[types.CallType.GENERATE_TEXT] = generate_text
+    type_utils.check_provider_model_identifier_type(generate_text)
+    provider_model = model_configs.get_provider_model_config(generate_text)
+    _REGISTERED_VALUES[types.CallType.GENERATE_TEXT] = provider_model
 
 
 def generate_text(
@@ -491,8 +503,7 @@ def generate_text(
     max_tokens: Optional[int] = 100,
     temperature: Optional[float] = None,
     stop: Optional[types.StopType] = None,
-    provider: Optional[types.Provider] = None,
-    model: Optional[types.ProviderModel] = None,
+    provider_model: Optional[types.ProviderModelIdentifierType] = None,
     use_cache: Optional[bool] = None,
     unique_response_limit: Optional[int] = None,
     extensive_return: bool = False,
@@ -502,12 +513,6 @@ def generate_text(
   if messages != None:
     type_utils.check_messages_type(messages)
 
-  if (provider is None) != (model is None):
-    raise ValueError('provider and model need to be set together.')
-  modelValue = None
-  if provider is not None and model is not None:
-    modelValue = (provider, model)
-
   if use_cache and not _get_query_cache_manager():
     raise ValueError(
         'use_cache is True but query cache is not initialized. '
@@ -516,16 +521,15 @@ def generate_text(
     use_cache = True
 
   model_connector = _get_model_connector(
-      types.CallType.GENERATE_TEXT,
-      model=modelValue)
-  logging_record = model_connector.generate_text(
+      call_type=types.CallType.GENERATE_TEXT,
+      provider_model_identifier=provider_model)
+  logging_record: types.LoggingRecord = model_connector.generate_text(
       prompt=prompt,
       system=system,
       messages=messages,
       max_tokens=max_tokens,
       temperature=temperature,
       stop=stop,
-      model=modelValue,
       use_cache=use_cache,
       unique_response_limit=unique_response_limit)
   if logging_record.response_record.error:

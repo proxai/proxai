@@ -1,20 +1,55 @@
 import datetime
+import proxai.types as types
 import proxai.type_utils as type_utils
+import proxai.connectors.model_configs as model_configs
 import pytest
 
 
-class TestCheckModelType:
+class TestCheckProviderModelType:
   def test_not_supported_provider(self):
     with pytest.raises(ValueError):
-      type_utils.check_model_type(
-          ('not_supported_provider', 'not_supported_model'))
+      type_utils.check_provider_model_identifier_type(
+          types.ProviderModelType(
+              provider='not_supported_provider',
+              model='not_supported_model',
+              provider_model_identifier=(
+                  'not_supported_provider_model_identifier')))
 
   def test_not_supported_model(self):
     with pytest.raises(ValueError):
-      type_utils.check_model_type(('openai', 'not_supported_model'))
+      type_utils.check_provider_model_identifier_type(
+          types.ProviderModelType(
+              provider='openai',
+              model='not_supported_model',
+              provider_model_identifier=(
+                  'not_supported_provider_model_identifier')))
 
-  def test_supported_model(self):
-    type_utils.check_model_type(('claude', 'claude-3-opus-20240229'))
+  def test_not_supported_provider_model_identifier(self):
+    with pytest.raises(ValueError):
+      type_utils.check_provider_model_identifier_type(
+          types.ProviderModelType(
+              provider='claude',
+              model='claude-3-opus',
+              provider_model_identifier=(
+                  'not_supported_provider_model_identifier')))
+
+  def test_supported_provider_model_identifier(self):
+    type_utils.check_provider_model_identifier_type(
+        model_configs.ALL_MODELS['claude']['claude-3-opus'])
+
+  def test_not_supported_provider_tuple(self):
+    with pytest.raises(ValueError):
+      type_utils.check_provider_model_identifier_type(
+          ('not_supported_provider', 'not_supported_model'))
+
+  def test_not_supported_model_tuple(self):
+    with pytest.raises(ValueError):
+      type_utils.check_provider_model_identifier_type(
+          ('openai', 'not_supported_model'))
+
+  def test_supported_model_tuple(self):
+    type_utils.check_provider_model_identifier_type(
+        ('claude', 'claude-3-opus'))
 
 
 class TestCheckMessagesType:

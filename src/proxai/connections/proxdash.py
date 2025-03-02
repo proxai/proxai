@@ -3,7 +3,6 @@ import copy
 import json
 import requests
 import proxai.types as types
-import proxai.serializers.type_serializer as type_serializer
 import proxai.experiment.experiment as experiment
 from proxai.logging.utils import log_proxdash_message
 from typing import Callable, Dict, List, Optional, Union, Tuple
@@ -294,8 +293,10 @@ class ProxDashConnection(object):
       'hiddenRunKey': self._hidden_run_key,
       'experimentPath': self.experiment_path,
       'callType': logging_record.query_record.call_type,
-      'provider': logging_record.query_record.model[0],
-      'model': logging_record.query_record.model[1],
+      'provider': logging_record.query_record.provider_model.provider,
+      'model': logging_record.query_record.provider_model.model,
+      'providerModelIdentifier': (
+          logging_record.query_record.provider_model.provider_model_identifier),
       'maxTokens': logging_record.query_record.max_tokens,
       'temperature': logging_record.query_record.temperature,
       'stop': stop,

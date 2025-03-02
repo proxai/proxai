@@ -9,12 +9,12 @@ import proxai.type_utils as type_utils
 import proxai.stat_types as stats_type
 import proxai.serializers.hash_serializer as hash_serializer
 import proxai.connections.proxdash as proxdash
+import proxai.connectors.model_configs as model_configs
+import proxai.connectors.model_pricing_configs as model_pricing_configs
 
 
-class ModelConnector(object):
-  model: Optional[types.ModelType]
-  provider: Optional[str]
-  provider_model: Optional[str]
+class ProviderModelConnector(object):
+  provider_model: Optional[types.ProviderModelType]
   _run_type: Optional[types.RunType]
   _get_run_type: Optional[Callable[[], types.RunType]]
   _strict_feature_test: Optional[bool]
@@ -32,7 +32,7 @@ class ModelConnector(object):
 
   def __init__(
       self,
-      model: Optional[types.ModelType] = None,
+      provider_model: Optional[types.ProviderModelType] = None,
       run_type: Optional[types.RunType] = None,
       get_run_type: Optional[Callable[[], types.RunType]] = None,
       strict_feature_test: Optional[bool] = None,
@@ -63,15 +63,17 @@ class ModelConnector(object):
       raise ValueError(
           'init_state and other parameters cannot be set at the same time.')
 
-    if init_state and model and (init_state.model != model):
+    if init_state and provider_model and (
+        init_state.provider_model != provider_model):
       raise ValueError(
-          'init_state.model is not the same as the model parameter.')
+          'init_state.provider_model is not the same as the provider_model '
+          'parameter.')
 
-    if (not init_state or not init_state.model) and not model:
-      raise ValueError('model parameter is required.')
+    if (not init_state or not init_state.provider_model) and not provider_model:
+      raise ValueError('provider_model parameter is required.')
 
     if init_state:
-      model = init_state.model
+      provider_model = init_state.provider_model
       run_type = init_state.run_type
       strict_feature_test = init_state.strict_feature_test
       logging_options = init_state.logging_options
@@ -102,8 +104,7 @@ class ModelConnector(object):
           'proxdash_connection and get_proxdash_connection cannot be set at '
           'the same time.')
 
-    self.model = model
-    self.provider, self.provider_model = model
+    self.provider_model = provider_model
     self.run_type = run_type
     self._get_run_type = get_run_type
     self.strict_feature_test = strict_feature_test
@@ -224,14 +225,17 @@ class ModelConnector(object):
       self, logging_record: types.LoggingRecord) -> int:
     raise NotImplementedError
 
-  def _get_estimated_cost(
-      self, logging_record: types.LoggingRecord) -> float:
-    raise NotImplementedError
+  def _get_estimated_cost(self, logging_record: types.LoggingRecord):
+    query_token_count = self._get_query_token_count(logging_record)
+    response_token_count = self._get_response_token_count(logging_record)
+    return model_pricing_configs.get_provider_model_cost(
+        provider_model_identifier=logging_record.query_record.provider_model,
+        query_token_count=query_token_count,
+        response_token_count=response_token_count)
 
   def _update_stats(self, logging_record: types.LoggingRecord):
     if not self._stats:
       return
-    model = logging_record.query_record.model
     provider_stats = stats_type.BaseProviderStats()
     cache_stats = stats_type.BaseCacheStats()
     if logging_record.response_source == types.ResponseSource.PROVIDER:
@@ -274,12 +278,12 @@ class ModelConnector(object):
       raise ValueError(
         f'Invalid response source.\n{logging_record.response_source}')
 
-    model_stats = stats_type.ModelStats(
-        model=model,
+    provider_model_stats = stats_type.ProviderModelStats(
+        provider_model=self.provider_model,
         provider_stats=provider_stats,
         cache_stats=cache_stats)
-    self._stats[stats_type.GlobalStatType.RUN_TIME] += model_stats
-    self._stats[stats_type.GlobalStatType.SINCE_CONNECT] += model_stats
+    self._stats[stats_type.GlobalStatType.RUN_TIME] += provider_model_stats
+    self._stats[stats_type.GlobalStatType.SINCE_CONNECT] += provider_model_stats
 
   def _update_proxdash(self, logging_record: types.LoggingRecord):
     if not self.proxdash_connection:
@@ -306,7 +310,7 @@ class ModelConnector(object):
       max_tokens: Optional[int] = 100,
       temperature: Optional[float] = None,
       stop: Optional[types.StopType] = None,
-      model: Optional[types.ModelType] = None,
+      provider_model: Optional[types.ProviderModelIdentifierType] = None,
       use_cache: bool = True,
       unique_response_limit: Optional[int] = None) -> types.LoggingRecord:
     if prompt != None and messages != None:
@@ -314,18 +318,19 @@ class ModelConnector(object):
     if messages != None:
       type_utils.check_messages_type(messages)
 
-    query_model = self.model
-    if model != None:
-      provider, _ = model
-      if provider != self.provider:
+    if provider_model is not None:
+      provider_model = model_configs.get_provider_model_config(
+          model_identifier=provider_model)
+      if provider_model != self.provider_model:
         raise ValueError(
-            'Model provider does not match the connector provider.')
-      query_model = model
+            'provider_model does not match the connector provider_model.'
+            f'provider_model: {provider_model}\n'
+            f'connector provider_model: {self.provider_model}')
 
     start_utc_date = datetime.datetime.now(datetime.timezone.utc)
     query_record = types.QueryRecord(
         call_type=types.CallType.GENERATE_TEXT,
-        model=query_model,
+        provider_model=self.provider_model,
         prompt=prompt,
         system=system,
         messages=messages,
@@ -423,7 +428,7 @@ class ModelConnector(object):
 
   def get_init_state(self) -> types.ModelInitState:
     init_state = types.ModelInitState(
-        model=self.model,
+        provider_model=self.provider_model,
         run_type=self.run_type,
         strict_feature_test=self.strict_feature_test,
         logging_options=self.logging_options)
