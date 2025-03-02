@@ -2,42 +2,37 @@ import datetime
 from typing import Any, Dict
 import proxai.types as types
 import proxai.stat_types as stat_types
+import proxai.connectors.model_configs as model_configs
 
 
-def encode_model_type(
-    model_type: types.ModelType) -> Dict[str, Any]:
-  provider, provider_model = model_type
+def encode_provider_model_type(
+    provider_model_type: types.ProviderModelType) -> Dict[str, Any]:
   record = {}
-  if isinstance(provider, types.Provider):
-    record['provider'] = provider.value
-  elif isinstance(provider, str):
-    record['provider'] = provider
-  else:
-    raise ValueError(
-        'Invalid provider type.\n'
-        f'{provider=}\n'
-        f'{type(provider)=}')
-  if isinstance(provider_model, types.ProviderModel):
-    record['provider_model'] = provider_model.value
-  elif isinstance(provider_model, str):
-    record['provider_model'] = provider_model
-  else:
-    raise ValueError(
-        'Invalid provider_model type.\n'
-        f'{provider_model=}\n'
-        f'{type(provider_model)=}')
+  record['provider'] = provider_model_type.provider
+  record['model'] = provider_model_type.model
+  record['provider_model_identifier'] = (
+      provider_model_type.provider_model_identifier)
   return record
 
 
-def decode_model_type(
-    record: Dict[str, Any]) -> types.ModelType:
+def decode_provider_model_type(
+    record: Dict[str, Any]) -> types.ProviderModelType:
   if 'provider' not in record:
     raise ValueError(f'Provider not found in record: {record=}')
-  if 'provider_model' not in record:
-    raise ValueError(f'Provider model not found in record: {record=}')
-  provider = types.Provider(record['provider'])
-  provider_model = types.PROVIDER_MODEL_MAP[provider](record['provider_model'])
-  return (provider, provider_model)
+  if 'model' not in record:
+    raise ValueError(f'Model not found in record: {record=}')
+  if 'provider_model_identifier' not in record:
+    raise ValueError(
+        f'Provider model identifier not found in record: {record=}')
+  provider_model = model_configs.ALL_MODELS[record['provider']][record['model']]
+  if provider_model.provider_model_identifier != record[
+      'provider_model_identifier']:
+    raise ValueError(
+        'Provider model identifier mismatch: '
+        f'{record["provider_model_identifier"]} != '
+        f'{provider_model.provider_model_identifier}'
+        '\nThis can happen if the model config has changed in recent versions.')
+  return provider_model
 
 
 def encode_query_record(
@@ -45,8 +40,9 @@ def encode_query_record(
   record = {}
   if query_record.call_type != None:
     record['call_type'] = query_record.call_type.value
-  if query_record.model != None:
-    record['model'] = encode_model_type(query_record.model)
+  if query_record.provider_model != None:
+    record['provider_model'] = encode_provider_model_type(
+        query_record.provider_model)
   if query_record.prompt != None:
     record['prompt'] = query_record.prompt
   if query_record.system != None:
@@ -69,8 +65,9 @@ def decode_query_record(
   query_record = types.QueryRecord()
   if 'call_type' in record:
     query_record.call_type = types.CallType(record['call_type'])
-  if 'model' in record:
-    query_record.model = decode_model_type(record['model'])
+  if 'provider_model' in record:
+    query_record.provider_model = decode_provider_model_type(
+        record['provider_model'])
   query_record.prompt = record.get('prompt', None)
   query_record.system = record.get('system', None)
   query_record.messages = record.get('messages', None)
@@ -254,20 +251,23 @@ def encode_model_status(
   record = {}
   if model_status.unprocessed_models != None:
     record['unprocessed_models'] = []
-    for model_type in model_status.unprocessed_models:
-      record['unprocessed_models'].append(encode_model_type(model_type))
+    for provider_model in model_status.unprocessed_models:
+      record['unprocessed_models'].append(
+          encode_provider_model_type(provider_model))
   if model_status.working_models != None:
     record['working_models'] = []
-    for model_type in model_status.working_models:
-      record['working_models'].append(encode_model_type(model_type))
+    for provider_model in model_status.working_models:
+      record['working_models'].append(
+          encode_provider_model_type(provider_model))
   if model_status.failed_models != None:
     record['failed_models'] = []
-    for model_type in model_status.failed_models:
-      record['failed_models'].append(encode_model_type(model_type))
+    for provider_model in model_status.failed_models:
+      record['failed_models'].append(encode_provider_model_type(provider_model))
   if model_status.filtered_models != None:
     record['filtered_models'] = []
-    for model_type in model_status.filtered_models:
-      record['filtered_models'].append(encode_model_type(model_type))
+    for provider_model in model_status.filtered_models:
+      record['filtered_models'].append(
+          encode_provider_model_type(provider_model))
   if model_status.provider_queries:
     record['provider_queries'] = []
     for provider_query in model_status.provider_queries:
@@ -279,17 +279,21 @@ def decode_model_status(
     record: Dict[str, Any]) -> types.ModelStatus:
   model_status = types.ModelStatus()
   if 'unprocessed_models' in record:
-    for model_type_record in record['unprocessed_models']:
-      model_status.unprocessed_models.add(decode_model_type(model_type_record))
+    for provider_model_record in record['unprocessed_models']:
+      model_status.unprocessed_models.add(
+          decode_provider_model_type(provider_model_record))
   if 'working_models' in record:
-    for model_type_record in record['working_models']:
-      model_status.working_models.add(decode_model_type(model_type_record))
+    for provider_model_record in record['working_models']:
+      model_status.working_models.add(
+          decode_provider_model_type(provider_model_record))
   if 'failed_models' in record:
-    for model_type_record in record['failed_models']:
-      model_status.failed_models.add(decode_model_type(model_type_record))
+    for provider_model_record in record['failed_models']:
+      model_status.failed_models.add(
+          decode_provider_model_type(provider_model_record))
   if 'filtered_models' in record:
-    for model_type_record in record['filtered_models']:
-      model_status.filtered_models.add(decode_model_type(model_type_record))
+    for provider_model_record in record['filtered_models']:
+      model_status.filtered_models.add(
+          decode_provider_model_type(provider_model_record))
   if 'provider_queries' in record:
     for provider_query_record in record['provider_queries']:
       model_status.provider_queries.append(
@@ -535,70 +539,77 @@ def decode_base_cache_stats(record) -> stat_types.BaseCacheStats:
   return base_cache_stats
 
 
-def encode_model_stats(
-    model_stats: stat_types.ModelStats) -> Dict[str, Any]:
+def encode_provider_model_stats(
+    provider_model_stats: stat_types.ProviderModelStats) -> Dict[str, Any]:
   record = {}
-  if model_stats.model:
-    record['model'] = encode_model_type(model_stats.model)
-  if model_stats.provider_stats:
+  if provider_model_stats.provider_model:
+    record['provider_model'] = encode_provider_model_type(
+        provider_model_stats.provider_model)
+  if provider_model_stats.provider_stats:
     record['provider_stats'] = encode_base_provider_stats(
-        model_stats.provider_stats)
-  if model_stats.cache_stats:
-    record['cache_stats'] = encode_base_cache_stats(model_stats.cache_stats)
+        provider_model_stats.provider_stats)
+  if provider_model_stats.cache_stats:
+    record['cache_stats'] = encode_base_cache_stats(
+        provider_model_stats.cache_stats)
   return record
 
 
-def decode_model_stats(record: Dict[str, Any]) -> stat_types.ModelStats:
-  model_stats = stat_types.ModelStats()
-  if 'model' in record:
-    model_stats.model = decode_model_type(record['model'])
+def decode_provider_model_stats(
+    record: Dict[str, Any]) -> stat_types.ProviderModelStats:
+  provider_model_stats = stat_types.ProviderModelStats()
+  if 'provider_model' in record:
+    provider_model_stats.provider_model = decode_provider_model_type(
+        record['provider_model'])
   if 'provider_stats' in record:
-    model_stats.provider_stats = decode_base_provider_stats(
+    provider_model_stats.provider_stats = decode_base_provider_stats(
         record['provider_stats'])
   if 'cache_stats' in record:
-    model_stats.cache_stats = decode_base_cache_stats(
+    provider_model_stats.cache_stats = decode_base_cache_stats(
         record['cache_stats'])
-  return model_stats
+  return provider_model_stats
 
 
 def encode_provider_stats(
     provider_stats: stat_types.ProviderStats) -> Dict[str, Any]:
   record = {}
   if provider_stats.provider:
-    record['provider'] = provider_stats.provider.value
+    record['provider'] = provider_stats.provider
   if provider_stats.provider_stats:
     record['provider_stats'] = encode_base_provider_stats(
         provider_stats.provider_stats)
   if provider_stats.cache_stats:
     record['cache_stats'] = encode_base_cache_stats(provider_stats.cache_stats)
-  if provider_stats.models:
-    record['models'] = []
-    for k, v in provider_stats.models.items():
-      value = encode_model_type(k)
-      value['model_stats'] = encode_model_stats(v)
-      record['models'].append(value)
+  if provider_stats.provider_models:
+    record['provider_models'] = []
+    for k, v in provider_stats.provider_models.items():
+      value = encode_provider_model_type(k)
+      value['provider_model_stats'] = encode_provider_model_stats(v)
+      record['provider_models'].append(value)
   return record
 
 
 def decode_provider_stats(record: Dict[str, Any]) -> stat_types.ProviderStats:
   provider_stats = stat_types.ProviderStats()
   if 'provider' in record:
-    provider_stats.provider = types.Provider(record['provider'])
+    provider_stats.provider = record['provider']
   if 'provider_stats' in record:
     provider_stats.provider_stats = decode_base_provider_stats(
         record['provider_stats'])
   if 'cache_stats' in record:
     provider_stats.cache_stats = decode_base_cache_stats(
         record['cache_stats'])
-  if 'models' in record:
-    provider_stats.models = {}
-    for model_record in record['models']:
-      model_type = decode_model_type({
-          'provider': model_record['provider'],
-          'provider_model': model_record['provider_model']
+  if 'provider_models' in record:
+    provider_stats.provider_models = {}
+    for provider_model_record in record['provider_models']:
+      provider_model_type = decode_provider_model_type({
+          'provider': provider_model_record['provider'],
+          'model': provider_model_record['model'],
+          'provider_model_identifier': provider_model_record[
+              'provider_model_identifier']
       })
-      provider_stats.models[model_type] = decode_model_stats(
-          model_record['model_stats'])
+      provider_stats.provider_models[provider_model_type] = (
+          decode_provider_model_stats(
+              provider_model_record['provider_model_stats']))
   return provider_stats
 
 
@@ -610,10 +621,10 @@ def encode_run_stats(
         run_stats.provider_stats)
   if run_stats.cache_stats:
     record['cache_stats'] = encode_base_cache_stats(run_stats.cache_stats)
-  if run_stats.provider_stats:
+  if run_stats.providers:
     record['providers'] = {}
     for k, v in run_stats.providers.items():
-      record['providers'][k.value] = encode_provider_stats(v)
+      record['providers'][k] = encode_provider_stats(v)
   return record
 
 
@@ -628,5 +639,5 @@ def decode_run_stats(
   if 'providers' in record:
     run_stats.providers = {}
     for k, v in record['providers'].items():
-      run_stats.provider_stats[types.Provider(k)] = decode_provider_stats(v)
+      run_stats.providers[k] = decode_provider_stats(v)
   return run_stats

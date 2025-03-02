@@ -3,32 +3,31 @@ import datetime
 import tempfile
 from typing import Dict, Optional
 import proxai.types as types
-from proxai.connectors.model_connector import ModelConnector
 import proxai.caching.query_cache as query_cache
 import proxai.stat_types as stats_type
 import proxai.connections.proxdash as proxdash
-import proxai.connectors.mock_model_connector as mock_model_connector
+import proxai.connectors.mock_provider as mock_provider
+import proxai.connectors.model_configs as model_configs
 
 
 class TestModelConnector:
   @pytest.fixture
   def model_connector(self):
-    return mock_model_connector.MockModelConnector(
-        model=(types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL),
+    return mock_provider.MockProviderModelConnector(
+        provider_model=model_configs.ALL_MODELS['mock_provider']['mock_model'],
         run_type=types.RunType.TEST)
 
   def test_initialization(self, model_connector):
-    assert model_connector.model == (types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL)
-    assert model_connector.provider == types.Provider.MOCK_PROVIDER
-    assert model_connector.provider_model == types.MockModel.MOCK_MODEL
+    assert model_connector.provider_model == model_configs.ALL_MODELS[
+        'mock_provider']['mock_model']
     assert model_connector.run_type == types.RunType.TEST
     assert model_connector.strict_feature_test == None
 
   def test_initialization_with_invalid_combinations(self):
     # Both query_cache_manager and get_query_cache_manager are set
     with pytest.raises(ValueError):
-      mock_model_connector.MockModelConnector(
-          model=(types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL),
+      mock_provider.MockProviderModelConnector(
+          provider_model=model_configs.ALL_MODELS['mock_provider']['mock_model'],
           run_type=types.RunType.TEST,
           query_cache_manager=query_cache.QueryCacheManager(
               cache_options=types.CacheOptions(cache_path="test_path")),
@@ -43,8 +42,8 @@ class TestModelConnector:
     assert model_connector.api == "test_api"
 
   def test_feature_fail_strict(self):
-    connector = mock_model_connector.MockModelConnector(
-        model=(types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL),
+    connector = mock_provider.MockProviderModelConnector(
+        provider_model=model_configs.ALL_MODELS['mock_provider']['mock_model'],
         run_type=types.RunType.TEST,
         strict_feature_test=True)
 
@@ -71,8 +70,8 @@ class TestModelConnector:
       cache_manager = query_cache.QueryCacheManager(
           cache_options=types.CacheOptions(cache_path=temp_dir))
 
-      connector = mock_model_connector.MockModelConnector(
-          model=(types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL),
+      connector = mock_provider.MockProviderModelConnector(
+          provider_model=model_configs.ALL_MODELS['mock_provider']['mock_model'],
           run_type=types.RunType.TEST,
           query_cache_manager=cache_manager)
 
@@ -85,14 +84,16 @@ class TestModelConnector:
       assert result2.response_source == types.ResponseSource.CACHE
 
   def test_stats_update(self):
-    model = (types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL)
+    provider_model = model_configs.ALL_MODELS['mock_provider']['mock_model']
     stats = {
-        stats_type.GlobalStatType.RUN_TIME: stats_type.ModelStats(model=model),
-        stats_type.GlobalStatType.SINCE_CONNECT: stats_type.ModelStats(model=model)
+        stats_type.GlobalStatType.RUN_TIME: stats_type.ProviderModelStats(
+            provider_model=provider_model),
+        stats_type.GlobalStatType.SINCE_CONNECT: stats_type.ProviderModelStats(
+            provider_model=provider_model)
     }
 
-    connector = mock_model_connector.MockModelConnector(
-        model=model,
+    connector = mock_provider.MockProviderModelConnector(
+        provider_model=provider_model,
         run_type=types.RunType.TEST,
         stats=stats)
 
@@ -105,13 +106,19 @@ class TestModelConnector:
     assert run_time_stats.provider_stats.total_token_count == 100
 
   def test_invalid_model_combination(self, model_connector):
-    with pytest.raises(ValueError, match="Model provider does not match the connector provider"):
+    with pytest.raises(
+        ValueError,
+        match=(
+            'provider_model does not match the connector provider_model.'
+            'provider_model: *')):
       model_connector.generate_text(
           prompt="Hello",
-          model=(types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_OPUS))
+          provider_model=model_configs.ALL_MODELS['claude']['claude-3-opus'])
 
   def test_mutually_exclusive_params(self, model_connector):
-    with pytest.raises(ValueError, match="prompt and messages cannot be set at the same time"):
+    with pytest.raises(
+        ValueError,
+        match="prompt and messages cannot be set at the same time"):
       model_connector.generate_text(
           prompt="Hello",
           messages=[{"role": "user", "content": "Hello"}])
@@ -130,7 +137,7 @@ class TestModelConnectorInitState:
 
   def test_simple_init_state(self):
     init_state = types.ModelInitState(
-        model=(types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL),
+        provider_model=model_configs.ALL_MODELS['mock_provider']['mock_model'],
         run_type=types.RunType.TEST,
         strict_feature_test=True,
         logging_options=types.LoggingOptions(stdout=True),
@@ -139,12 +146,12 @@ class TestModelConnectorInitState:
             hidden_run_key='test_key',
             api_key='test_api_key'))
 
-    connector = mock_model_connector.MockModelConnector(
-        model=(types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL),
+    connector = mock_provider.MockProviderModelConnector(
+        provider_model=model_configs.ALL_MODELS['mock_provider']['mock_model'],
         init_state=init_state)
 
-    assert connector.model == (
-        types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL)
+    assert connector.provider_model == model_configs.ALL_MODELS[
+        'mock_provider']['mock_model']
     assert connector.run_type == types.RunType.TEST
     assert connector.strict_feature_test == True
     assert connector.logging_options.stdout == True
@@ -154,41 +161,43 @@ class TestModelConnectorInitState:
 
   def test_init_with_mismatched_model(self):
     init_state = types.ModelInitState(
-        model=(types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL),
+        provider_model=model_configs.ALL_MODELS['mock_provider']['mock_model'],
         run_type=types.RunType.TEST)
 
     with pytest.raises(
         ValueError,
-        match='init_state.model is not the same as the model parameter'):
-      mock_model_connector.MockModelConnector(
-          model=(types.Provider.CLAUDE, types.ClaudeModel.CLAUDE_3_OPUS),
+        match=(
+            'init_state.provider_model is not the same as the provider_model '
+            'parameter.')):
+      mock_provider.MockProviderModelConnector(
+          provider_model=model_configs.ALL_MODELS['claude']['claude-3-opus'],
           init_state=init_state)
 
   def test_init_with_invalid_combinations(self):
     init_state = types.ModelInitState(
-        model=(types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL),
+        provider_model=model_configs.ALL_MODELS['mock_provider']['mock_model'],
         run_type=types.RunType.TEST)
 
     with pytest.raises(
         ValueError,
         match='init_state and other parameters cannot be set at the same time'):
-      mock_model_connector.MockModelConnector(
-          model=(types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL),
+      mock_provider.MockProviderModelConnector(
+          provider_model=model_configs.ALL_MODELS['mock_provider']['mock_model'],
           init_state=init_state,
           run_type=types.RunType.TEST)
 
     with pytest.raises(
         ValueError,
         match='init_state and other parameters cannot be set at the same time'):
-      mock_model_connector.MockModelConnector(
-          model=(types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL),
+      mock_provider.MockProviderModelConnector(
+          provider_model=model_configs.ALL_MODELS['mock_provider']['mock_model'],
           init_state=init_state,
           strict_feature_test=True)
 
   def test_init_with_all_options(self):
     with tempfile.TemporaryDirectory() as temp_dir:
       init_state = types.ModelInitState(
-          model=(types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL),
+          provider_model=model_configs.ALL_MODELS['mock_provider']['mock_model'],
           run_type=types.RunType.TEST,
           strict_feature_test=True,
           logging_options=types.LoggingOptions(
@@ -206,12 +215,12 @@ class TestModelConnectorInitState:
                   stdout=True),
               proxdash_options=types.ProxDashOptions(stdout=True)))
 
-      connector = mock_model_connector.MockModelConnector(
-          model=(types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL),
+      connector = mock_provider.MockProviderModelConnector(
+          provider_model=model_configs.ALL_MODELS['mock_provider']['mock_model'],
           init_state=init_state)
 
-      assert connector.model == (
-          types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL)
+      assert connector.provider_model == model_configs.ALL_MODELS[
+          'mock_provider']['mock_model']
       assert connector.run_type == types.RunType.TEST
       assert connector.strict_feature_test == True
       assert connector.logging_options.stdout == True
@@ -237,16 +246,16 @@ class TestModelConnectorInitState:
           experiment_path='test/path',
           logging_options=base_logging_options)
 
-      connector = mock_model_connector.MockModelConnector(
-          model=(types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL),
+      connector = mock_provider.MockProviderModelConnector(
+          provider_model=model_configs.ALL_MODELS['mock_provider']['mock_model'],
           run_type=types.RunType.TEST,
           strict_feature_test=True,
           logging_options=base_logging_options,
           proxdash_connection=proxdash_connection)
 
       init_state = connector.get_init_state()
-      assert init_state.model == (
-          types.Provider.MOCK_PROVIDER, types.MockModel.MOCK_MODEL)
+      assert init_state.provider_model == model_configs.ALL_MODELS[
+          'mock_provider']['mock_model']
       assert init_state.run_type == types.RunType.TEST
       assert init_state.strict_feature_test == True
       assert init_state.logging_options.stdout == True
@@ -262,5 +271,7 @@ class TestModelConnectorInitState:
   def test_init_with_none_model(self):
     init_state = types.ModelInitState(run_type=types.RunType.TEST)
 
-    with pytest.raises(ValueError, match='model parameter is required'):
-      mock_model_connector.MockModelConnector(init_state=init_state)
+    with pytest.raises(
+        ValueError,
+        match='provider_model parameter is required'):
+      mock_provider.MockProviderModelConnector(init_state=init_state)

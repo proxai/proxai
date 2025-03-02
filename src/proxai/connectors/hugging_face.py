@@ -5,8 +5,8 @@ import os
 import requests
 from typing import Union, Optional
 import proxai.types as types
-from .hugging_face_mock import HuggingFaceMock
-from .model_connector import ModelConnector
+import proxai.connectors.hugging_face_mock as hugging_face_mock
+import proxai.connectors.model_connector as model_connector
 
 
 class _HuggingFaceRequest:
@@ -36,12 +36,12 @@ class _HuggingFaceRequest:
     return text
 
 
-class HuggingFaceConnector(ModelConnector):
+class HuggingFaceConnector(model_connector.ProviderModelConnector):
   def init_model(self):
     return _HuggingFaceRequest()
 
   def init_mock_model(self):
-    return HuggingFaceMock()
+    return hugging_face_mock.HuggingFaceMock()
 
   def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
     query_record = copy.deepcopy(query_record)
@@ -76,28 +76,11 @@ class HuggingFaceConnector(ModelConnector):
     # Note: Not implemented yet.
     return logging_record.query_record.max_tokens
 
-  def _get_estimated_cost(self, logging_record: types.LoggingRecord):
-    # Note: Not implemented yet.
-    # Needs to get updated all the time.
-    # This is just a temporary implementation.
-    query_token_count = self._get_query_token_count(logging_record)
-    response_token_count = self._get_response_token_count(logging_record)
-    _, provider_model = logging_record.query_record.model
-    if provider_model in [
-        types.HuggingFaceModel.GOOGLE_GEMMA_7B_IT,
-        types.HuggingFaceModel.MISTRAL_MIXTRAL_8X7B_INSTRUCT,
-        types.HuggingFaceModel.MISTRAL_MISTRAL_7B_INSTRUCT,
-        types.HuggingFaceModel.NOUS_HERMES_2_MIXTRAL_8X7B,
-        types.HuggingFaceModel.OPENCHAT_3_5]:
-      return 0
-    else:
-      raise ValueError(f'Model not found.\n{logging_record.query_record.model}')
-
   def generate_text_proc(self, query_record: types.QueryRecord) -> str:
-    _, provider_model = query_record.model
+    provider_model = query_record.provider_model
     create = functools.partial(
         self.api.generate_content,
-        model=provider_model)
+        model=provider_model.model)
     if query_record.max_tokens != None:
       # Note: Hugging Face uses max_new_tokens instead of max_tokens.
       # This implies that input tokens are not counted.

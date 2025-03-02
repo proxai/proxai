@@ -36,8 +36,7 @@ class TestProxaiApiUseCases:
         max_tokens=100,
         temperature=0.5,
         stop=['\n\n'],
-        provider='openai',
-        model='gpt-4',
+        provider_model=('openai', 'gpt-4'),
         use_cache=False,
         unique_response_limit=1,
         extensive_return=True)
@@ -58,8 +57,8 @@ class TestProxaiApiUseCases:
     assert len(models) < 10
 
   def test_set_model(self):
-    for provider, model in px.models.generate_text(only_largest_models=True):
-      px.set_model(generate_text=(provider, model))
+    for provider_model in px.models.generate_text(only_largest_models=True):
+      px.set_model(generate_text=provider_model)
       assert px.generate_text('hello') == 'mock response'
 
   def test_model_cache_with_different_connect_cache_paths(self):
@@ -465,16 +464,14 @@ class TestProxaiApiUseCases:
     px.generate_text(
         'hello',
         system='You are a helpful assistant.',
-        provider=px.types.Provider.HUGGING_FACE,
-        model=px.types.HuggingFaceModel.GOOGLE_GEMMA_7B_IT)
+        provider_model=('hugging_face', 'google-gemma-7b-it'))
 
     px.connect(strict_feature_test=True)
     with pytest.raises(Exception):
       px.generate_text(
           'hello',
           system='You are a helpful assistant.',
-          provider=px.types.Provider.HUGGING_FACE,
-          model=px.types.HuggingFaceModel.GOOGLE_GEMMA_7B_IT)
+          provider_model=('hugging_face', 'google-gemma-7b-it'))
 
   def test_get_current_options(self):
     options = px.get_current_options()

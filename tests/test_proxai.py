@@ -1,6 +1,7 @@
 import os
 import proxai.types as types
 from proxai import proxai
+import proxai.connectors.model_configs as model_configs
 import pytest
 import tempfile
 import requests
@@ -278,13 +279,10 @@ class TestRetryIfErrorCached:
     proxai.set_run_type(types.RunType.TEST)
     cache_path = tempfile.TemporaryDirectory()
     proxai.connect(cache_path=cache_path.name, allow_multiprocessing=False)
-    provider = types.Provider.MOCK_FAILING_PROVIDER
-    model = types.MockFailingModel.MOCK_FAILING_MODEL
     # First call:
     response = proxai.generate_text(
         'hello',
-        provider=provider,
-        model=model,
+        provider_model=('mock_failing_provider', 'mock_failing_model'),
         extensive_return=True,
         suppress_provider_errors=True)
     assert response.response_source == types.ResponseSource.PROVIDER
@@ -292,8 +290,7 @@ class TestRetryIfErrorCached:
     # Second call:
     response = proxai.generate_text(
         'hello',
-        provider=provider,
-        model=model,
+        provider_model=('mock_failing_provider', 'mock_failing_model'),
         extensive_return=True,
         suppress_provider_errors=True)
     assert response.response_source == types.ResponseSource.CACHE
@@ -306,13 +303,10 @@ class TestRetryIfErrorCached:
       cache_path=cache_path.name,
       cache_options=types.CacheOptions(retry_if_error_cached=True),
       allow_multiprocessing=False)
-    provider = types.Provider.MOCK_FAILING_PROVIDER
-    model = types.MockFailingModel.MOCK_FAILING_MODEL
     # First call:
     response = proxai.generate_text(
         'hello',
-        provider=provider,
-        model=model,
+        provider_model=('mock_failing_provider', 'mock_failing_model'),
         extensive_return=True,
         suppress_provider_errors=True)
     assert response.response_source == types.ResponseSource.PROVIDER
@@ -320,8 +314,7 @@ class TestRetryIfErrorCached:
     # Second call:
     response = proxai.generate_text(
         'hello',
-        provider=provider,
-        model=model,
+        provider_model=('mock_failing_provider', 'mock_failing_model'),
         extensive_return=True,
         suppress_provider_errors=True)
     assert response.response_source == types.ResponseSource.PROVIDER
@@ -330,16 +323,13 @@ class TestRetryIfErrorCached:
 
 class TestSuppressProviderErrors:
   def test_connect_with_suppress_provider_errors(self):
-    provider = types.Provider.MOCK_FAILING_PROVIDER
-    model = types.MockFailingModel.MOCK_FAILING_MODEL
     proxai.set_run_type(types.RunType.TEST)
 
     # Before connect:
     with pytest.raises(Exception):
       proxai.generate_text(
           'hello',
-          provider=provider,
-          model=model,
+          provider_model=('mock_failing_provider', 'mock_failing_model'),
           extensive_return=True)
 
     # After simple connect:
@@ -347,16 +337,14 @@ class TestSuppressProviderErrors:
     with pytest.raises(Exception):
       proxai.generate_text(
           'hello',
-          provider=provider,
-          model=model,
+          provider_model=('mock_failing_provider', 'mock_failing_model'),
           extensive_return=True)
 
     # After connect with suppress_provider_errors=True:
     proxai.connect(suppress_provider_errors=True)
     response = proxai.generate_text(
         'hello',
-        provider=provider,
-        model=model,
+        provider_model=('mock_failing_provider', 'mock_failing_model'),
         extensive_return=True)
     assert response.response_source == types.ResponseSource.PROVIDER
     assert response.response_record.error == 'Temp Error'
@@ -366,28 +354,23 @@ class TestSuppressProviderErrors:
     with pytest.raises(Exception):
       proxai.generate_text(
           'hello',
-          provider=provider,
-          model=model,
+          provider_model=('mock_failing_provider', 'mock_failing_model'),
           extensive_return=True)
 
   def test_generate_text_with_suppress_provider_errors(self):
-    provider = types.Provider.MOCK_FAILING_PROVIDER
-    model = types.MockFailingModel.MOCK_FAILING_MODEL
     proxai.set_run_type(types.RunType.TEST)
 
     # Before connect:
     with pytest.raises(Exception):
       proxai.generate_text(
           'hello',
-          provider=provider,
-          model=model,
+          provider_model=('mock_failing_provider', 'mock_failing_model'),
           extensive_return=True,
           suppress_provider_errors=False)
 
     response = proxai.generate_text(
         'hello',
-        provider=provider,
-        model=model,
+        provider_model=('mock_failing_provider', 'mock_failing_model'),
         extensive_return=True,
         suppress_provider_errors=True)
     assert response.response_source == types.ResponseSource.PROVIDER
@@ -398,23 +381,19 @@ class TestSuppressProviderErrors:
     with pytest.raises(Exception):
       proxai.generate_text(
           'hello',
-          provider=provider,
-          model=model,
+          provider_model=('mock_failing_provider', 'mock_failing_model'),
           extensive_return=True,
           suppress_provider_errors=False)
 
     response = proxai.generate_text(
         'hello',
-        provider=provider,
-        model=model,
+        provider_model=('mock_failing_provider', 'mock_failing_model'),
         extensive_return=True,
         suppress_provider_errors=True)
     assert response.response_source == types.ResponseSource.PROVIDER
     assert response.response_record.error == 'Temp Error'
 
   def test_override_suppress_provider_errors(self):
-    provider = types.Provider.MOCK_FAILING_PROVIDER
-    model = types.MockFailingModel.MOCK_FAILING_MODEL
     proxai.set_run_type(types.RunType.TEST)
 
     # False override:
@@ -422,8 +401,7 @@ class TestSuppressProviderErrors:
     with pytest.raises(Exception):
       proxai.generate_text(
           'hello',
-          provider=provider,
-          model=model,
+          provider_model=('mock_failing_provider', 'mock_failing_model'),
           extensive_return=True,
           suppress_provider_errors=False)
 
@@ -431,8 +409,7 @@ class TestSuppressProviderErrors:
     proxai.connect(suppress_provider_errors=False)
     response = proxai.generate_text(
         'hello',
-        provider=provider,
-        model=model,
+        provider_model=('mock_failing_provider', 'mock_failing_model'),
         extensive_return=True,
         suppress_provider_errors=True)
     assert response.response_source == types.ResponseSource.PROVIDER
@@ -452,42 +429,48 @@ class TestRegisterModel:
   def test_successful_register_model(self):
     proxai.set_run_type(types.RunType.TEST)
     proxai.set_model(generate_text=('openai', 'gpt-3.5-turbo'))
-    assert proxai._REGISTERED_VALUES[types.CallType.GENERATE_TEXT] == (
-        'openai', 'gpt-3.5-turbo')
+    assert proxai._REGISTERED_VALUES[
+        types.CallType.GENERATE_TEXT] == types.ProviderModelType(
+            provider='openai',
+            model='gpt-3.5-turbo',
+            provider_model_identifier='gpt-3.5-turbo')
 
 
 class TestGenerateText:
-  def _test_generate_text(self, model: types.ModelType):
+  def _test_generate_text(
+      self,
+      provider_model: types.ProviderModelIdentifierType):
+    provider_model = model_configs.get_provider_model_config(provider_model)
     proxai.set_run_type(types.RunType.TEST)
-    proxai.set_model(generate_text=model)
-    print(proxai._REGISTERED_VALUES)
-    assert proxai._REGISTERED_VALUES[types.CallType.GENERATE_TEXT] == model
+    proxai.set_model(generate_text=provider_model)
+    assert proxai._REGISTERED_VALUES[
+        types.CallType.GENERATE_TEXT] == provider_model
 
     text = proxai.generate_text('Hello, my name is')
     assert text == 'mock response'
-    assert model in proxai._INITIALIZED_MODEL_CONNECTORS
-    assert proxai._INITIALIZED_MODEL_CONNECTORS[model] is not None
+    assert provider_model in proxai._INITIALIZED_MODEL_CONNECTORS
+    assert proxai._INITIALIZED_MODEL_CONNECTORS[provider_model] is not None
 
   def test_openai(self):
     self._test_generate_text(('openai', 'gpt-3.5-turbo'))
 
   def test_claude(self):
-    self._test_generate_text(('claude', 'claude-3-opus-20240229'))
+    self._test_generate_text(('claude', 'claude-3-opus'))
 
   def test_gemini(self):
-    self._test_generate_text(('gemini', 'models/gemini-1.0-pro'))
+    self._test_generate_text(('gemini', 'gemini-1.0-pro'))
 
   def test_cohere(self):
     self._test_generate_text(('cohere', 'command-r'))
 
   def test_databricks(self):
-    self._test_generate_text(('databricks', 'databricks-dbrx-instruct'))
+    self._test_generate_text(('databricks', 'dbrx-instruct'))
 
   def test_mistral(self):
     self._test_generate_text(('mistral', 'open-mistral-7b'))
 
   def test_hugging_face(self):
-    self._test_generate_text(('hugging_face', 'google/gemma-7b-it'))
+    self._test_generate_text(('hugging_face', 'google-gemma-7b-it'))
 
 
 class TestConnectProxdashConnection:
