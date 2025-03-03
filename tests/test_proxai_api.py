@@ -56,24 +56,29 @@ class TestProxaiApiUseCases:
     models = px.models.get_all_models(only_largest_models=True)
     assert len(models) < 10
 
-  def test_models_get_providers(self):
-    providers = px.models.get_providers(clear_model_cache=True)
-    assert len(providers) > 5
+  def test_models_apis(self):
+    px.models.get_all_models(clear_model_cache=True)
 
-    # Second call should be faster because of model cache:
+    # --- get_providers ---
+    # This should be fast because of model cache:
     start = time.time()
     providers = px.models.get_providers()
     assert len(providers) > 5
     assert time.time() - start < 1
 
-  def test_models_get_provider_models(self):
-    models = px.models.get_provider_models('openai', clear_model_cache=True)
-    assert len(models) > 2
-
-    # Second call should be faster because of model cache:
+    # --- get_provider_models ---
+    # This should be fast because of model cache:
     start = time.time()
     models = px.models.get_provider_models('openai')
     assert len(models) > 2
+    assert time.time() - start < 1
+
+    # --- get_provider_model ---
+    # This should be fast because of model cache:
+    start = time.time()
+    provider_model = px.models.get_provider_model('openai', 'gpt-4')
+    assert provider_model.provider == 'openai'
+    assert provider_model.model == 'gpt-4'
     assert time.time() - start < 1
 
   def test_set_model(self):

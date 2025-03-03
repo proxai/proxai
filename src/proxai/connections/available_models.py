@@ -429,11 +429,16 @@ class AvailableModels:
     if call_type != types.CallType.GENERATE_TEXT:
       raise ValueError(f'Call type not supported: {call_type}')
 
+    if provider not in model_configs.GENERATE_TEXT_MODELS:
+      raise ValueError(
+          f'Provider not found in model_configs: {provider}\n'
+          f'Available providers: {model_configs.GENERATE_TEXT_MODELS.keys()}')
+
     if not self.model_cache_manager:
       self._load_provider_keys()
       if provider not in self._providers_with_key:
         return []
-      return sorted(list(model_configs.ALL_MODELS[provider].values()))
+      return sorted(list(model_configs.GENERATE_TEXT_MODELS[provider].values()))
 
     if clear_model_cache:
       self.model_cache_manager.clear_cache()
@@ -450,3 +455,49 @@ class AvailableModels:
       if model.provider == provider:
         result.append(model)
     return sorted(result)
+
+  def get_provider_model(
+      self,
+      provider: str,
+      model: str,
+      verbose: bool = False,
+      clear_model_cache: bool = False,
+      call_type: types.CallType = types.CallType.GENERATE_TEXT
+  ) -> types.ProviderModelType:
+    if call_type != types.CallType.GENERATE_TEXT:
+      raise ValueError(f'Call type not supported: {call_type}')
+
+    if provider not in model_configs.GENERATE_TEXT_MODELS:
+      raise ValueError(
+          f'Provider not found in model_configs: {provider}\n'
+          f'Available providers: {model_configs.GENERATE_TEXT_MODELS.keys()}')
+
+    if model not in model_configs.GENERATE_TEXT_MODELS[provider]:
+      raise ValueError(
+          f'Model not found in {provider} models: {model}\n'
+          f'Available models: {model_configs.GENERATE_TEXT_MODELS[provider]}')
+
+    if not self.model_cache_manager:
+      self._load_provider_keys()
+      if provider not in self._providers_with_key:
+        raise ValueError(
+            f'Provider key not found in environment variables for {provider}.\n'
+            f'Required keys: {model_configs.PROVIDER_KEY_MAP[provider]}')
+      return model_configs.GENERATE_TEXT_MODELS[provider][model]
+
+    if clear_model_cache:
+      self.model_cache_manager.clear_cache()
+
+    if clear_model_cache or not self._has_fetched_all_models:
+      self.get_all_models(
+          only_largest_models=False,
+          verbose=verbose,
+          call_type=call_type)
+
+    cached_results = self.model_cache_manager.get(call_type=call_type)
+    for working_model in cached_results.working_models:
+      if working_model.provider == provider and working_model.model == model:
+        return working_model
+    raise ValueError(
+        f'Provider model not found in working models: ({provider}, {model})\n'
+        f'Available models: {cached_results.working_models}')
