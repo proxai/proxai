@@ -1,19 +1,19 @@
+import anthropic
 import copy
 import functools
 import math
 from typing import Union, Optional
-import cohere
 import proxai.types as types
-import proxai.connectors.cohere_api_mock as cohere_api_mock
+import proxai.connectors.providers.claude_mock as claude_mock
 import proxai.connectors.model_connector as model_connector
 
 
-class CohereConnector(model_connector.ProviderModelConnector):
+class ClaudeConnector(model_connector.ProviderModelConnector):
   def init_model(self):
-    return cohere.Client()
+    return anthropic.Anthropic()
 
   def init_mock_model(self):
-    return cohere_api_mock.CohereMock()
+    return claude_mock.ClaudeMock()
 
   def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
     return copy.deepcopy(query_record)
@@ -33,32 +33,21 @@ class CohereConnector(model_connector.ProviderModelConnector):
     return logging_record.query_record.max_tokens
 
   def generate_text_proc(self, query_record: types.QueryRecord) -> str:
-    # Note: Cohere uses 'SYSTEM', 'USER', and 'CHATBOT' as roles. Additionally,
-    # system instructions can be provided in two ways: preamble parameter and
-    # chat_history 'SYSTEM' role. The difference is explained in the
-    # documentation. The suggested way is to use the preamble parameter.
+    # Note: Claude uses 'user' and 'assistant' as roles. 'system' is a
+    # different parameter.
     query_messages = []
-    prompt = query_record.prompt
+    if query_record.prompt != None:
+      query_messages.append({'role': 'user', 'content': query_record.prompt})
     if query_record.messages != None:
-      for message in query_record.messages:
-        if message['role'] == 'user':
-          query_messages.append(
-              {'role': 'USER', 'message': message['content']})
-        if message['role'] == 'assistant':
-          query_messages.append(
-              {'role': 'CHATBOT', 'message': message['content']})
-      prompt = query_messages[-1]['message']
-      del query_messages[-1]
+      query_messages.extend(query_record.messages)
     provider_model = query_record.provider_model
 
     create = functools.partial(
-        self.api.chat,
+        self.api.messages.create,
         model=provider_model.model,
-        message=prompt)
+        messages=query_messages)
     if query_record.system != None:
-      create = functools.partial(create, preamble=query_record.system)
-    if query_messages:
-      create = functools.partial(create, chat_history=query_messages)
+      create = functools.partial(create, system=query_record.system)
     if query_record.max_tokens != None:
       create = functools.partial(create, max_tokens=query_record.max_tokens)
     if query_record.temperature != None:
@@ -67,4 +56,4 @@ class CohereConnector(model_connector.ProviderModelConnector):
       create = functools.partial(create, stop_sequences=query_record.stop)
 
     completion = create()
-    return completion.text
+    return completion.content[0].text

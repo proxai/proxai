@@ -1,19 +1,20 @@
 import copy
+import os
 import functools
 import math
-from typing import Union, Optional
-from openai import OpenAI
+from typing import Union, Optional, Type
+from databricks_genai_inference import ChatCompletion
 import proxai.types as types
-import proxai.connectors.openai_mock as openai_mock
+import proxai.connectors.providers.databricks_mock as databricks_mock
 import proxai.connectors.model_connector as model_connector
 
 
-class OpenAIConnector(model_connector.ProviderModelConnector):
+class DatabricksConnector(model_connector.ProviderModelConnector):
   def init_model(self):
-    return OpenAI()
+    return ChatCompletion
 
   def init_mock_model(self):
-    return openai_mock.OpenAIMock()
+    return databricks_mock.DatabricksMock()
 
   def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
     return copy.deepcopy(query_record)
@@ -33,7 +34,12 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
     return logging_record.query_record.max_tokens
 
   def generate_text_proc(self, query_record: types.QueryRecord) -> str:
-    # Note: OpenAI uses 'system', 'user', and 'assistant' as roles.
+    # Note: Databricks tries to use same parameters with OpenAI.
+    # Some parameters seems not working as expected for some models. For
+    # example, the system instruction doesn't have any effect on the completion
+    # for databricks-dbrx-instruct. But the stop parameter works as expected for
+    # this model. However, system instruction works for
+    # databricks-llama-2-70b-chat.
     query_messages = []
     if query_record.system != None:
       query_messages.append({'role': 'system', 'content': query_record.system})
@@ -44,7 +50,7 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
     provider_model = query_record.provider_model
 
     create = functools.partial(
-        self.api.chat.completions.create,
+        self.api.create,
         model=provider_model.model,
         messages=query_messages)
     if query_record.max_tokens != None:
@@ -55,4 +61,4 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
       create = functools.partial(create, stop=query_record.stop)
 
     completion = create()
-    return completion.choices[0].message.content
+    return completion.message

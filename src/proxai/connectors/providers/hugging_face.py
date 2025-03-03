@@ -5,7 +5,7 @@ import os
 import requests
 from typing import Union, Optional
 import proxai.types as types
-import proxai.connectors.hugging_face_mock as hugging_face_mock
+import proxai.connectors.providers.hugging_face_mock as hugging_face_mock
 import proxai.connectors.model_connector as model_connector
 
 
