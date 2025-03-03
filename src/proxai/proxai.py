@@ -488,12 +488,23 @@ def connect(
     proxdash_connection.connect_to_proxdash()
 
 
-def set_model(generate_text: types.ProviderModelIdentifierType=None):
+def set_model(
+    provider_model: types.ProviderModelIdentifierType = None,
+    generate_text: types.ProviderModelIdentifierType = None):
   global _REGISTERED_VALUES
+  if provider_model and generate_text:
+    raise ValueError('provider_model and generate_text cannot be set at the '
+                     'same time. Please set one of them.')
+
+  if not provider_model and not generate_text:
+    raise ValueError('provider_model or generate_text must be set.')
+
   if generate_text:
-    type_utils.check_provider_model_identifier_type(generate_text)
-    provider_model = model_configs.get_provider_model_config(generate_text)
-    _REGISTERED_VALUES[types.CallType.GENERATE_TEXT] = provider_model
+    provider_model = generate_text
+
+  type_utils.check_provider_model_identifier_type(provider_model)
+  provider_model = model_configs.get_provider_model_config(provider_model)
+  _REGISTERED_VALUES[types.CallType.GENERATE_TEXT] = provider_model
 
 
 def generate_text(

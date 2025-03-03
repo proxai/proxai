@@ -305,7 +305,8 @@ class ProxDashConnection(object):
       'errorTraceback': logging_record.response_record.error_traceback,
       'startUTCDate': logging_record.response_record.start_utc_date.isoformat(),
       'endUTCDate': logging_record.response_record.end_utc_date.isoformat(),
-      'localTimeOffsetMinute': logging_record.response_record.local_time_offset_minute,
+      'localTimeOffsetMinute': (
+          logging_record.response_record.local_time_offset_minute),
       'responseTime': (
           logging_record.response_record.response_time.total_seconds() * 1000),
       'estimatedCost': logging_record.response_record.estimated_cost,
