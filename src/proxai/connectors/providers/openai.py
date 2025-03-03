@@ -1,7 +1,5 @@
 import copy
 import functools
-import math
-from typing import Union, Optional
 from openai import OpenAI
 import proxai.types as types
 import proxai.connectors.providers.openai_mock as openai_mock

@@ -3,7 +3,7 @@ import traceback
 import functools
 from typing import Any, Callable, Dict, Optional
 import proxai.types as types
-from proxai.logging.utils import log_logging_record, log_message, log_proxdash_message
+import proxai.logging.utils as logging_utils
 import proxai.caching.query_cache as query_cache
 import proxai.type_utils as type_utils
 import proxai.stat_types as stats_type
@@ -197,14 +197,14 @@ class ProviderModelConnector(object):
       message: str,
       query_record: Optional[types.QueryRecord] = None):
     if self.strict_feature_test:
-      log_message(
+      logging_utils.log_message(
           type=types.LoggingType.ERROR,
           logging_options=self.logging_options,
           query_record=query_record,
           message=message)
       raise Exception(message)
     else:
-      log_message(
+      logging_utils.log_message(
           type=types.LoggingType.WARNING,
           logging_options=self.logging_options,
           query_record=query_record,
@@ -291,7 +291,7 @@ class ProviderModelConnector(object):
     try:
       self.proxdash_connection.upload_logging_record(logging_record)
     except Exception as e:
-      log_proxdash_message(
+      logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
           message=(
               'ProxDash upload_logging_record failed.\n'
@@ -366,7 +366,7 @@ class ProviderModelConnector(object):
             response_source=types.ResponseSource.CACHE)
         logging_record.response_record.estimated_cost = (
             self._get_estimated_cost(logging_record=logging_record))
-        log_logging_record(
+        logging_utils.log_logging_record(
             logging_options=self.logging_options,
             logging_record=logging_record)
         self._update_stats(logging_record=logging_record)
@@ -377,7 +377,7 @@ class ProviderModelConnector(object):
           query_record=query_record,
           look_fail_reason=look_fail_reason,
           response_source=types.ResponseSource.CACHE)
-      log_logging_record(
+      logging_utils.log_logging_record(
           logging_options=self.logging_options,
           logging_record=logging_record)
 
@@ -419,7 +419,7 @@ class ProviderModelConnector(object):
         response_source=types.ResponseSource.PROVIDER)
     logging_record.response_record.estimated_cost = (
         self._get_estimated_cost(logging_record=logging_record))
-    log_logging_record(
+    logging_utils.log_logging_record(
         logging_options=self.logging_options,
         logging_record=logging_record)
     self._update_stats(logging_record=logging_record)

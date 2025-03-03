@@ -3,7 +3,7 @@ import datetime
 import functools
 import os
 import tempfile
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
 import proxai.types as types
 import proxai.type_utils as type_utils
 import proxai.connectors.model_connector as model_connector
@@ -16,7 +16,7 @@ import proxai.connections.available_models as available_models
 import proxai.connections.proxdash as proxdash
 import proxai.experiment.experiment as experiment
 import proxai.connectors.model_configs as model_configs
-from proxai.logging.utils import log_proxdash_message
+import proxai.logging.utils as logging_utils
 
 _RUN_TYPE: types.RunType = types.RunType.PRODUCTION
 _HIDDEN_RUN_KEY: Optional[str] = None
@@ -436,7 +436,7 @@ def check_health(
             (provider, model)].response_record.response_time
         print(f'   [ FAILED  | {duration.total_seconds():6.2f}s ]: {model}')
   if proxdash_connection.status == types.ProxDashConnectionStatus.CONNECTED:
-    log_proxdash_message(
+    logging_utils.log_proxdash_message(
         logging_options=logging_options,
         proxdash_options=proxdash_options,
         message='Results are uploaded to the ProxDash.',

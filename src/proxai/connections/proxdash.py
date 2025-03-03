@@ -4,7 +4,7 @@ import json
 import requests
 import proxai.types as types
 import proxai.experiment.experiment as experiment
-from proxai.logging.utils import log_proxdash_message
+import proxai.logging.utils as logging_utils
 from typing import Callable, Dict, List, Optional, Union, Tuple
 
 _PROXDASH_BACKEND_URL = 'https://proxainest-production.up.railway.app'
@@ -98,7 +98,7 @@ class ProxDashConnection(object):
   ):
     if self.proxdash_options and self.proxdash_options.disable_proxdash:
       self.status = types.ProxDashConnectionStatus.DISABLED
-      log_proxdash_message(
+      logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
           proxdash_options=self.proxdash_options,
           message=(
@@ -113,7 +113,7 @@ class ProxDashConnection(object):
         api_key = os.environ['PROXDASH_API_KEY']
       else:
         self.status = types.ProxDashConnectionStatus.API_KEY_NOT_FOUND
-        log_proxdash_message(
+        logging_utils.log_proxdash_message(
             logging_options=self.logging_options,
             proxdash_options=self.proxdash_options,
             message=(
@@ -206,7 +206,7 @@ class ProxDashConnection(object):
     validation_status, key_info_from_proxdash = self._check_api_key_validity()
     if validation_status == types.ProxDashConnectionStatus.API_KEY_NOT_VALID:
       self.status = types.ProxDashConnectionStatus.API_KEY_NOT_VALID
-      log_proxdash_message(
+      logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
           proxdash_options=self.proxdash_options,
           message=(
@@ -217,7 +217,7 @@ class ProxDashConnection(object):
     elif (validation_status ==
           types.ProxDashConnectionStatus.PROXDASH_INVALID_RETURN):
       self.status = types.ProxDashConnectionStatus.PROXDASH_INVALID_RETURN
-      log_proxdash_message(
+      logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
           proxdash_options=self.proxdash_options,
           message=(
@@ -228,7 +228,7 @@ class ProxDashConnection(object):
     elif validation_status == types.ProxDashConnectionStatus.API_KEY_VALID:
       self.status = types.ProxDashConnectionStatus.CONNECTED
       self._key_info_from_proxdash = key_info_from_proxdash
-      log_proxdash_message(
+      logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
           proxdash_options=self.proxdash_options,
           message='Connected to ProxDash.',
@@ -256,7 +256,7 @@ class ProxDashConnection(object):
     if (self._last_connected_experiment_path != experiment_path and
         self.status == types.ProxDashConnectionStatus.CONNECTED):
       self._last_connected_experiment_path = experiment_path
-      log_proxdash_message(
+      logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
           proxdash_options=self.proxdash_options,
           message=f'Connected to ProxDash experiment: {experiment_path}',
@@ -271,7 +271,7 @@ class ProxDashConnection(object):
     if (self._last_connected_experiment_path != experiment_path and
         self.status == types.ProxDashConnectionStatus.CONNECTED):
       self._last_connected_experiment_path = experiment_path
-      log_proxdash_message(
+      logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
           proxdash_options=self.proxdash_options,
           message=f'Connected to ProxDash experiment: {experiment_path}',
@@ -324,7 +324,7 @@ class ProxDashConnection(object):
         data=data)
 
     if response.status_code != 201 or response.text != 'success':
-      log_proxdash_message(
+      logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
           proxdash_options=self.proxdash_options,
           message=(

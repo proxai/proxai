@@ -1,7 +1,5 @@
 import copy
 import functools
-import math
-from typing import Union, Optional
 from mistralai.client import MistralClient
 from mistralai.models.chat_completion import ChatMessage
 import proxai.types as types
