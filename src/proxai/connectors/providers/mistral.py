@@ -1,23 +1,29 @@
 import copy
-import os
 import functools
 import math
-from typing import Union, Optional, Type
-from databricks_genai_inference import ChatCompletion
+from typing import Union, Optional
+from mistralai.client import MistralClient
+from mistralai.models.chat_completion import ChatMessage
 import proxai.types as types
-import proxai.connectors.databricks_mock as databricks_mock
+import proxai.connectors.providers.mistral_mock as mistral_mock
 import proxai.connectors.model_connector as model_connector
 
 
-class DatabricksConnector(model_connector.ProviderModelConnector):
+class MistralConnector(model_connector.ProviderModelConnector):
   def init_model(self):
-    return ChatCompletion
+    return MistralClient()
 
   def init_mock_model(self):
-    return databricks_mock.DatabricksMock()
+    return mistral_mock.MistralMock()
 
   def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
-    return copy.deepcopy(query_record)
+    query_record = copy.deepcopy(query_record)
+    if query_record.stop != None:
+      self.feature_fail(
+          query_record=query_record,
+          message='Stop sequences are not supported by Mistral')
+      query_record.stop = None
+    return query_record
 
   def _get_token_count(self, logging_record: types.LoggingRecord):
     # Note: This temporary implementation is not accurate.
@@ -34,31 +40,32 @@ class DatabricksConnector(model_connector.ProviderModelConnector):
     return logging_record.query_record.max_tokens
 
   def generate_text_proc(self, query_record: types.QueryRecord) -> str:
-    # Note: Databricks tries to use same parameters with OpenAI.
-    # Some parameters seems not working as expected for some models. For
-    # example, the system instruction doesn't have any effect on the completion
-    # for databricks-dbrx-instruct. But the stop parameter works as expected for
-    # this model. However, system instruction works for
-    # databricks-llama-2-70b-chat.
+    # Note: Mistral uses 'system', 'user', and 'assistant' as roles.
     query_messages = []
     if query_record.system != None:
-      query_messages.append({'role': 'system', 'content': query_record.system})
+      query_messages.append(
+          ChatMessage(role='system', content=query_record.system))
     if query_record.prompt != None:
-      query_messages.append({'role': 'user', 'content': query_record.prompt})
+      query_messages.append(
+          ChatMessage(role='user', content=query_record.prompt))
     if query_record.messages != None:
-      query_messages.extend(query_record.messages)
+      for message in query_record.messages:
+        if message['role'] == 'user':
+          query_messages.append(
+              ChatMessage(role='user', content=message['content']))
+        if message['role'] == 'assistant':
+          query_messages.append(
+              ChatMessage(role='assistant', content=message['content']))
     provider_model = query_record.provider_model
 
     create = functools.partial(
-        self.api.create,
+        self.api.chat,
         model=provider_model.model,
         messages=query_messages)
     if query_record.max_tokens != None:
       create = functools.partial(create, max_tokens=query_record.max_tokens)
     if query_record.temperature != None:
       create = functools.partial(create, temperature=query_record.temperature)
-    if query_record.stop != None:
-      create = functools.partial(create, stop=query_record.stop)
 
     completion = create()
-    return completion.message
+    return completion.choices[0].message.content

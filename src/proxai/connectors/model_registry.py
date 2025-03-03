@@ -1,14 +1,14 @@
 import functools
 from typing import Callable
 import proxai.connectors.model_connector as model_connector
-import proxai.connectors.openai as openai_provider
-import proxai.connectors.claude as claude_provider
-import proxai.connectors.gemini as gemini_provider
-import proxai.connectors.cohere_api as cohere_api_provider
-import proxai.connectors.databricks as databricks_provider
-import proxai.connectors.mistral as mistral_provider
-import proxai.connectors.hugging_face as hugging_face_provider
-import proxai.connectors.mock_provider as mock_provider
+import proxai.connectors.providers.openai as openai_provider
+import proxai.connectors.providers.claude as claude_provider
+import proxai.connectors.providers.gemini as gemini_provider
+import proxai.connectors.providers.cohere_api as cohere_api_provider
+import proxai.connectors.providers.databricks as databricks_provider
+import proxai.connectors.providers.mistral as mistral_provider
+import proxai.connectors.providers.hugging_face as hugging_face_provider
+import proxai.connectors.providers.mock_provider as mock_provider
 import proxai.types as types
 import proxai.connectors.model_configs as model_configs
 

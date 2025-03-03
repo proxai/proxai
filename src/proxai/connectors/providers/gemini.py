@@ -4,7 +4,7 @@ import math
 from typing import Union, Optional
 import google.generativeai as genai
 import proxai.types as types
-import proxai.connectors.gemini_mock as gemini_mock
+import proxai.connectors.providers.gemini_mock as gemini_mock
 import proxai.connectors.model_connector as model_connector
 import proxai.connectors.model_configs as model_configs
 
