@@ -29,19 +29,33 @@ class TestProxaiApiUseCases:
     text = px.generate_text('hello')
     assert text == 'mock response'
 
-  def test_generate_text_with_all_options(self):
-    text = px.generate_text(
+    logging_record = px.generate_text(
+        prompt='hello',
+        provider_model=px.models.get_provider_model(
+            'claude', 'claude-3-haiku', clear_model_cache=True),
+        extensive_return=True)
+    assert logging_record.response_record.response == 'mock response'
+    assert logging_record.query_record.provider_model.model == 'claude-3-haiku'
+    assert logging_record.response_source == px.types.ResponseSource.PROVIDER
+
+    logging_record = px.generate_text(
         prompt='hello',
         system='You are a helpful assistant.',
         max_tokens=100,
         temperature=0.5,
         stop=['\n\n'],
-        provider_model=('openai', 'gpt-4'),
+        provider_model=('openai', 'gpt-3.5-turbo'),
         use_cache=False,
         unique_response_limit=1,
         extensive_return=True)
-    assert text.response_record.response == 'mock response'
-    assert text.response_source == px.types.ResponseSource.PROVIDER
+    assert logging_record.query_record.prompt == 'hello'
+    assert logging_record.query_record.system == 'You are a helpful assistant.'
+    assert logging_record.query_record.max_tokens == 100
+    assert logging_record.query_record.temperature == 0.5
+    assert logging_record.query_record.stop == ['\n\n']
+    assert logging_record.query_record.provider_model.model == 'gpt-3.5-turbo'
+    assert logging_record.response_record.response == 'mock response'
+    assert logging_record.response_source == px.types.ResponseSource.PROVIDER
 
   def test_generate_text_with_use_cache_before_connect(self):
     with pytest.raises(ValueError):
@@ -82,9 +96,41 @@ class TestProxaiApiUseCases:
     assert time.time() - start < 1
 
   def test_set_model(self):
-    for provider_model in px.models.get_all_models(only_largest_models=True):
-      px.set_model(generate_text=provider_model)
-      assert px.generate_text('hello') == 'mock response'
+    px.models.get_all_models(clear_model_cache=True)
+
+    # Test default model
+    px.set_model(('claude', 'claude-3-haiku'))
+    logging_record = px.generate_text('hello', extensive_return=True)
+    assert logging_record.query_record.provider_model.model == 'claude-3-haiku'
+
+    # Test setting model with generate_text parameter
+    px.set_model(generate_text=('openai', 'gpt-4'))
+    logging_record = px.generate_text('hello', extensive_return=True)
+    assert logging_record.query_record.provider_model.model == 'gpt-4'
+
+    # Test setting model with provider_model parameter
+    px.set_model(provider_model=('openai', 'gpt-3.5-turbo'))
+    logging_record = px.generate_text('hello', extensive_return=True)
+    assert logging_record.query_record.provider_model.model == 'gpt-3.5-turbo'
+
+    # Test setting model with provider_model from get_provider_model
+    px.set_model(px.models.get_provider_model('claude', 'claude-3-haiku'))
+    logging_record = px.generate_text('hello', extensive_return=True)
+    assert logging_record.query_record.provider_model.model == 'claude-3-haiku'
+
+    # Test error when both parameters are set
+    with pytest.raises(
+        ValueError,
+        match='provider_model and generate_text cannot be set at the same time'
+    ):
+      px.set_model(
+          provider_model=('openai', 'gpt-4'),
+          generate_text=('openai', 'gpt-3.5-turbo'))
+
+    # Test error when neither parameter is set
+    with pytest.raises(
+        ValueError, match='provider_model or generate_text must be set'):
+      px.set_model()
 
   def test_model_cache_with_different_connect_cache_paths(self):
     # --- Default model cache directory test ---
