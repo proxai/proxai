@@ -47,28 +47,38 @@ class TestProxaiApiUseCases:
     with pytest.raises(ValueError):
       px.generate_text(use_cache=True)
 
-  def test_models_generate_text(self):
-    models = px.models.generate_text()
+  def test_models_get_all_models(self):
+    models = px.models.get_all_models()
     assert len(models) > 10
 
-  def test_models_generate_text_only_largest_models_multiprocessing(self):
+  def test_models_get_all_models_only_largest_models_multiprocessing(self):
     px.models.allow_multiprocessing = True
-    models = px.models.generate_text(only_largest_models=True)
+    models = px.models.get_all_models(only_largest_models=True)
     assert len(models) < 10
 
+  def test_models_get_all_providers(self):
+    providers = px.models.get_providers(clear_model_cache=True)
+    assert len(providers) > 5
+
+    # Second call should be faster because of model cache:
+    start = time.time()
+    providers = px.models.get_providers()
+    assert len(providers) > 5
+    assert time.time() - start < 1
+
   def test_set_model(self):
-    for provider_model in px.models.generate_text(only_largest_models=True):
+    for provider_model in px.models.get_all_models(only_largest_models=True):
       px.set_model(generate_text=provider_model)
       assert px.generate_text('hello') == 'mock response'
 
   def test_model_cache_with_different_connect_cache_paths(self):
     # --- Default model cache directory test ---
     # First call:
-    px.models.generate_text()
+    px.models.get_all_models()
     # Second call should be faster because of model cache:
     start = time.time()
     px.models.allow_multiprocessing = True
-    px.models.generate_text()
+    px.models.get_all_models()
     px.models.allow_multiprocessing = False
     total_time = time.time() - start
     assert total_time < 1
@@ -76,11 +86,11 @@ class TestProxaiApiUseCases:
     # --- First connect without cache path ---
     px.connect(allow_multiprocessing=False)
     # First call:
-    px.models.generate_text()
+    px.models.get_all_models()
     # Second call should be faster because of model cache:
     start = time.time()
     px.models.allow_multiprocessing = True
-    px.models.generate_text()
+    px.models.get_all_models()
     px.models.allow_multiprocessing = False
     total_time = time.time() - start
     assert total_time < 1
@@ -108,7 +118,7 @@ class TestProxaiApiUseCases:
         allow_multiprocessing=False)
     # Cache file is not created yet because nothing saved to ModelCacheManager.
     assert not os.path.exists(os.path.join(cache_path, 'available_models.json'))
-    px.models.generate_text(only_largest_models=True)
+    px.models.get_all_models(only_largest_models=True)
     # Cache file is created because some models are saved to ModelCacheManager.
     _check_model_cache_path(cache_path, min_expected_records=5)
 
@@ -118,7 +128,7 @@ class TestProxaiApiUseCases:
         allow_multiprocessing=True)
     # Cache file is still there because same cache path.
     _check_model_cache_path(cache_path, min_expected_records=5)
-    px.models.generate_text(only_largest_models=False)
+    px.models.get_all_models(only_largest_models=False)
     # Cache file is updated and more models are saved to ModelCacheManager
     # because only_largest_models is False.
     _check_model_cache_path(cache_path, min_expected_records=30)
@@ -132,7 +142,7 @@ class TestProxaiApiUseCases:
     px.connect(
         cache_path=cache_path_2,
         allow_multiprocessing=False)
-    px.models.generate_text(only_largest_models=True)
+    px.models.get_all_models(only_largest_models=True)
     # Cache file is created because some models are saved to ModelCacheManager.
     _check_model_cache_path(cache_path_2, min_expected_records=5)
 
@@ -142,7 +152,7 @@ class TestProxaiApiUseCases:
         allow_multiprocessing=True)
     # Cache file is still there because same cache path.
     _check_model_cache_path(cache_path, min_expected_records=30)
-    px.models.generate_text(only_largest_models=True)
+    px.models.get_all_models(only_largest_models=True)
     # Nothing changed because same cache path and same only_largest_models.
     _check_model_cache_path(cache_path, min_expected_records=30)
 
@@ -151,7 +161,7 @@ class TestProxaiApiUseCases:
     px.connect(cache_path=cache_path, allow_multiprocessing=False)
 
     # At the first call, more than 30 models are saved to cache:
-    px.models.generate_text(only_largest_models=False)
+    px.models.get_all_models(only_largest_models=False)
     with open(os.path.join(cache_path, 'available_models.json'), 'r') as f:
       data = json.load(f)
       assert len(data['GENERATE_TEXT']['working_models']) > 10
@@ -159,7 +169,7 @@ class TestProxaiApiUseCases:
 
     # At the second call, only largest models called but because other models
     # are already cached, so it should have same number of records:
-    px.models.generate_text(only_largest_models=True)
+    px.models.get_all_models(only_largest_models=True)
     with open(os.path.join(cache_path, 'available_models.json'), 'r') as f:
       data = json.load(f)
       assert len(data['GENERATE_TEXT']['working_models']) > 10
@@ -168,7 +178,7 @@ class TestProxaiApiUseCases:
     # At the third call, clear_model_cache is True, so it should have less than
     # 10 records because previous models are deleted and only largest models
     # are called:
-    px.models.generate_text(
+    px.models.get_all_models(
         only_largest_models=True,
         clear_model_cache=True)
     with open(os.path.join(cache_path, 'available_models.json'), 'r') as f:

@@ -403,7 +403,7 @@ def check_health(
       logging_options=logging_options,
       get_initialized_model_connectors=_get_initialized_model_connectors,
       init_model_connector=_init_model_connector)
-  model_status = models.generate_text(
+  model_status = models.get_all_models(
       verbose=verbose, return_all=True)
   if verbose:
     providers = set(
