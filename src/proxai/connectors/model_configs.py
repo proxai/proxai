@@ -353,6 +353,29 @@ GENERATE_TEXT_MODELS: Dict[
 })
 
 
+LARGEST_GENERATE_TEXT_MODELS: Dict[
+    str, types.ProviderModelType] = MappingProxyType({
+  'openai': MappingProxyType({
+    'gpt-4-turbo-preview': ALL_MODELS['openai']['gpt-4-turbo-preview'],
+  }),
+  'claude': MappingProxyType({
+    'claude-3-opus': ALL_MODELS['claude']['claude-3-opus'],
+  }),
+  'gemini': MappingProxyType({
+    'gemini-1.5-pro-latest': ALL_MODELS['gemini']['gemini-1.5-pro-latest'],
+  }),
+  'cohere': MappingProxyType({
+    'command-r-plus': ALL_MODELS['cohere']['command-r-plus'],
+  }),
+  'databricks': MappingProxyType({
+    'llama-3-70b-instruct': ALL_MODELS['databricks']['llama-3-70b-instruct'],
+    'dbrx-instruct': ALL_MODELS['databricks']['dbrx-instruct'],
+  }),
+  'mistral': MappingProxyType({
+    'mistral-large-latest': ALL_MODELS['mistral']['mistral-large-latest'],
+  }),
+})
+
 def get_provider_model_config(
     model_identifier: types.ProviderModelIdentifierType
 ) -> types.ProviderModelType:

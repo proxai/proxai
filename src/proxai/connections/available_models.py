@@ -223,19 +223,11 @@ class AvailableModels:
     self._update_provider_queries(models)
 
   def _filter_largest_models(self, models: types.ModelStatus):
-    # TODO: This is very experimental and require proper design. One alternative
-    # is registering models according to their sizes in px.types. Then, find
-    # working largest model for each provider.
+    _allowed_models = set()
+    for provider_models in model_configs.LARGEST_GENERATE_TEXT_MODELS.values():
+      for provider_model in provider_models.values():
+        _allowed_models.add(provider_model)
 
-    _allowed_models = set([
-        model_configs.ALL_MODELS['openai']['gpt-4-turbo-preview'],
-        model_configs.ALL_MODELS['claude']['claude-3-opus'],
-        model_configs.ALL_MODELS['gemini']['gemini-1.5-pro-latest'],
-        model_configs.ALL_MODELS['cohere']['command-r-plus'],
-        model_configs.ALL_MODELS['databricks']['dbrx-instruct'],
-        model_configs.ALL_MODELS['databricks']['llama-3-70b-instruct'],
-        model_configs.ALL_MODELS['mistral']['mistral-large-latest'],
-    ])
     for model in list(models.unprocessed_models):
       if model not in _allowed_models:
         models.unprocessed_models.remove(model)
