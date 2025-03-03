@@ -7,6 +7,15 @@ import tempfile
 import requests
 
 
+@pytest.fixture(autouse=True)
+def setup_test(monkeypatch):
+  monkeypatch.setenv('PROXDASH_API_KEY', 'test_api_key')
+  for api_key_list in model_configs.PROVIDER_KEY_MAP.values():
+    for api_key in api_key_list:
+      monkeypatch.setenv(api_key, 'test_api_key')
+  yield
+
+
 class TestRunType:
     def test_setup_run_type(self):
       proxai.set_run_type(types.RunType.TEST)

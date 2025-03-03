@@ -8,17 +8,18 @@ from proxai.logging.utils import log_proxdash_message
 import proxai.connectors.model_configs as model_configs
 
 
-class TestProxDashConnectionInit:
-  @pytest.fixture(autouse=True)
-  def setup_test(self, monkeypatch, requests_mock):
-    monkeypatch.delenv('PROXDASH_API_KEY', raising=False)
-    requests_mock.post(
-        'https://proxainest-production.up.railway.app/connect',
-        text='true',
-        status_code=201,
-    )
-    yield
+@pytest.fixture(autouse=True)
+def setup_test(monkeypatch, requests_mock):
+  monkeypatch.delenv('PROXDASH_API_KEY', raising=False)
+  requests_mock.post(
+      'https://proxainest-production.up.railway.app/connect',
+      text='true',
+      status_code=201,
+  )
+  yield
 
+
+class TestProxDashConnectionInit:
   def test_init_disabled(self):
     connection = ProxDashConnection(
         proxdash_options=types.ProxDashOptions(disable_proxdash=True))
@@ -145,16 +146,6 @@ class TestProxDashConnectionInit:
 
 
 class TestProxDashConnectionInitState:
-  @pytest.fixture(autouse=True)
-  def setup_test(self, monkeypatch, requests_mock):
-    monkeypatch.delenv('PROXDASH_API_KEY', raising=False)
-    requests_mock.post(
-        'https://proxainest-production.up.railway.app/connect',
-        text='true',
-        status_code=201,
-    )
-    yield
-
   def test_simple_init_state(self):
     init_state = types.ProxDashInitState(
         status=types.ProxDashConnectionStatus.INITIALIZING,
@@ -286,16 +277,6 @@ class TestProxDashConnectionInitState:
 
 
 class TestProxDashConnectionProperties:
-  @pytest.fixture(autouse=True)
-  def setup_test(self, monkeypatch, requests_mock):
-    monkeypatch.delenv('PROXDASH_API_KEY', raising=False)
-    requests_mock.post(
-        'https://proxainest-production.up.railway.app/connect',
-        text='true',
-        status_code=201,
-    )
-    yield
-
   def test_init_with_get_functions(self):
     def get_logging_options():
       return types.LoggingOptions(stdout=True)
