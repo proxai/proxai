@@ -30,6 +30,7 @@ class AvailableModels:
   _init_model_connector: Callable[
       [types.ProviderModelType], ProviderModelConnector]
   _providers_with_key: Set[str]
+  _has_fetched_all_models: bool
 
   def __init__(
       self,
@@ -82,9 +83,11 @@ class AvailableModels:
     self.allow_multiprocessing = allow_multiprocessing
     self._get_allow_multiprocessing = get_allow_multiprocessing
     self._providers_with_key = set()
+    self._has_fetched_all_models = False
     self._load_provider_keys()
 
   def _load_provider_keys(self):
+    self._providers_with_key = set()
     for provider, provider_key_name in model_configs.PROVIDER_KEY_MAP.items():
       provider_flag = True
       for key_name in provider_key_name:
@@ -156,43 +159,6 @@ class AvailableModels:
   @allow_multiprocessing.setter
   def allow_multiprocessing(self, allow_multiprocessing: bool):
     self._allow_multiprocessing = allow_multiprocessing
-
-  def generate_text(
-      self,
-      only_largest_models: bool = False,
-      verbose: bool = False,
-      return_all: bool = False,
-      clear_model_cache: bool = False
-  ) -> Union[Set[types.ProviderModelType], types.ModelStatus]:
-    start_utc_date = datetime.datetime.now(datetime.timezone.utc)
-    models = types.ModelStatus()
-    self._load_provider_keys()
-    self._get_all_models(models, call_type=types.CallType.GENERATE_TEXT)
-    self._filter_by_provider_key(models)
-    if clear_model_cache and self.model_cache_manager:
-      self.model_cache_manager.clear_cache()
-    self._filter_by_cache(models, call_type=types.CallType.GENERATE_TEXT)
-    if only_largest_models:
-      self._filter_largest_models(models)
-
-    print_flag = bool(verbose and models.unprocessed_models)
-    if print_flag:
-      print(f'From cache;\n'
-            f'  {len(models.working_models)} models are working.\n'
-            f'  {len(models.failed_models)} models are failed.')
-      print(f'Running test for {len(models.unprocessed_models)} models.')
-    self._test_models(models, call_type=types.CallType.GENERATE_TEXT)
-    end_utc_date = datetime.datetime.now(datetime.timezone.utc)
-    if print_flag:
-      print(f'After test;\n'
-            f'  {len(models.working_models)} models are working.\n'
-            f'  {len(models.failed_models)} models are failed.')
-      duration = (end_utc_date - start_utc_date).total_seconds()
-      print(f'Test duration: {duration} seconds.')
-
-    if return_all:
-      return models
-    return self._format_set(models.working_models)
 
   def _get_all_models(self, models: types.ModelStatus, call_type: str):
     if call_type == types.CallType.GENERATE_TEXT:
@@ -380,3 +346,75 @@ class AvailableModels:
         if query.query_record.provider_model in models.working_models or
         query.query_record.provider_model in models.failed_models
     ]
+
+  def get_all_models(
+      self,
+      only_largest_models: bool = False,
+      verbose: bool = False,
+      return_all: bool = False,
+      clear_model_cache: bool = False,
+      call_type: types.CallType = types.CallType.GENERATE_TEXT
+  ) -> Union[Set[types.ProviderModelType], types.ModelStatus]:
+    if call_type != types.CallType.GENERATE_TEXT:
+      raise ValueError(f'Call type not supported: {call_type}')
+
+    start_utc_date = datetime.datetime.now(datetime.timezone.utc)
+    models = types.ModelStatus()
+    self._load_provider_keys()
+    self._get_all_models(models, call_type=call_type)
+    self._filter_by_provider_key(models)
+    if clear_model_cache and self.model_cache_manager:
+      self.model_cache_manager.clear_cache()
+    self._filter_by_cache(models, call_type=types.CallType.GENERATE_TEXT)
+    if only_largest_models:
+      self._filter_largest_models(models)
+
+    print_flag = bool(verbose and models.unprocessed_models)
+    if print_flag:
+      print(f'From cache;\n'
+            f'  {len(models.working_models)} models are working.\n'
+            f'  {len(models.failed_models)} models are failed.')
+      print(f'Running test for {len(models.unprocessed_models)} models.')
+    self._test_models(models, call_type=types.CallType.GENERATE_TEXT)
+    end_utc_date = datetime.datetime.now(datetime.timezone.utc)
+    if print_flag:
+      print(f'After test;\n'
+            f'  {len(models.working_models)} models are working.\n'
+            f'  {len(models.failed_models)} models are failed.')
+      duration = (end_utc_date - start_utc_date).total_seconds()
+      print(f'Test duration: {duration} seconds.')
+
+    if not only_largest_models:
+      self._has_fetched_all_models = True
+
+    if return_all:
+      return models
+    return self._format_set(models.working_models)
+
+  def get_providers(
+      self,
+      verbose: bool = False,
+      clear_model_cache: bool = False,
+      call_type: types.CallType = types.CallType.GENERATE_TEXT
+  ) -> List[str]:
+    if call_type != types.CallType.GENERATE_TEXT:
+      raise ValueError(f'Call type not supported: {call_type}')
+
+    if not self.model_cache_manager:
+      self._load_provider_keys()
+      return sorted(list(self._providers_with_key))
+
+    if clear_model_cache:
+      self.model_cache_manager.clear_cache()
+
+    if clear_model_cache or not self._has_fetched_all_models:
+      self.get_all_models(
+          only_largest_models=False,
+          verbose=verbose,
+          call_type=call_type)
+
+    cached_results = self.model_cache_manager.get(call_type=call_type)
+    providers = set([
+        model.provider
+        for model in cached_results.working_models])
+    return sorted(list(providers))

@@ -206,18 +206,18 @@ class TestAvailableModels:
     assert loaded_data.failed_models == set([
         model_configs.ALL_MODELS['mock_failing_provider']['mock_failing_model']])
 
-  def test_generate_text(self, monkeypatch):
+  def test_get_all_models(self, monkeypatch):
     # Set only OpenAI key
     monkeypatch.setenv(
         model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key')
     available_models_manager = self._get_available_models()
-    models = available_models_manager.generate_text()
+    models = available_models_manager.get_all_models()
     assert models == [
         model_configs.ALL_MODELS['openai']['gpt-3.5-turbo'],
         model_configs.ALL_MODELS['openai']['gpt-4'],
         model_configs.ALL_MODELS['openai']['gpt-4-turbo-preview']]
 
-  def test_generate_text_filters(self, monkeypatch):
+  def test_get_all_models_filters(self, monkeypatch):
     # Set only OpenAI key
     monkeypatch.setenv(
         model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key')
@@ -230,7 +230,7 @@ class TestAvailableModels:
     available_models_manager = self._get_available_models()
 
     # Check that the failed model was filtered out
-    models = available_models_manager.generate_text()
+    models = available_models_manager.get_all_models()
     assert models == [
         model_configs.ALL_MODELS['mock_provider']['mock_model'],
         model_configs.ALL_MODELS['openai']['gpt-3.5-turbo'],
@@ -289,3 +289,49 @@ class TestAvailableModels:
     assert len(models.provider_queries) == 1
     assert models.provider_queries[0].query_record.provider_model == (
         model_configs.ALL_MODELS['claude']['claude-3-haiku'])
+
+  def test_get_providers_without_cache(self, monkeypatch):
+    monkeypatch.setenv(
+        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key')
+    monkeypatch.setenv(
+        model_configs.PROVIDER_KEY_MAP['claude'][0], 'test_api_key')
+    available_models_manager = self._get_available_models()
+    providers = available_models_manager.get_providers()
+    assert providers == ['claude', 'openai']
+
+  def test_get_providers_with_cache(self, monkeypatch):
+    self._save_temp_cache_state()
+    monkeypatch.setenv(
+        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key')
+    monkeypatch.setenv(
+        model_configs.PROVIDER_KEY_MAP['claude'][0], 'test_api_key')
+    available_models_manager = self._get_available_models()
+
+    # First call should test all models since get_all_models hasn't been called
+    # yet
+    providers = available_models_manager.get_providers()
+    assert set(providers) == set(['openai', 'claude'])
+
+    # Second call should use existing results since get_all_models was already
+    # called
+    monkeypatch.delenv(
+        model_configs.PROVIDER_KEY_MAP['claude'][0], raising=False)
+    providers = available_models_manager.get_providers()
+    assert set(providers) == set(['openai', 'claude'])
+
+    # Clear cache and verify all providers are tested again
+    providers = available_models_manager.get_providers(clear_model_cache=True)
+    assert set(providers) == set(['openai'])
+
+  def test_get_providers_invalid_call_type(self):
+    available_models_manager = self._get_available_models()
+    with pytest.raises(ValueError, match='Call type not supported:'):
+      available_models_manager.get_providers(call_type='invalid_type')
+
+  def test_get_providers_verbose(self, monkeypatch):
+    self._save_temp_cache_state()
+    monkeypatch.setenv(
+        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key')
+    available_models_manager = self._get_available_models()
+    providers = available_models_manager.get_providers(verbose=True)
+    assert set(providers) == set(['openai'])
