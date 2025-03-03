@@ -1,7 +1,4 @@
 import copy
-import functools
-import math
-from typing import Union, Optional
 import google.generativeai as genai
 import proxai.types as types
 import proxai.connectors.providers.gemini_mock as gemini_mock

@@ -1,8 +1,6 @@
 import anthropic
 import copy
 import functools
-import math
-from typing import Union, Optional
 import proxai.types as types
 import proxai.connectors.providers.claude_mock as claude_mock
 import proxai.connectors.model_connector as model_connector

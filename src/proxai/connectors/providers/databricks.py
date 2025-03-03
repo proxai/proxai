@@ -1,8 +1,5 @@
 import copy
-import os
 import functools
-import math
-from typing import Union, Optional, Type
 from databricks_genai_inference import ChatCompletion
 import proxai.types as types
 import proxai.connectors.providers.databricks_mock as databricks_mock

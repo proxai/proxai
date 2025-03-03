@@ -1,7 +1,6 @@
 import os
 import copy
 from datetime import datetime
-from dataclasses import dataclass
 from typing import Dict, Optional
 import proxai.types as types
 import proxai.serializers.type_serializer as type_serializer

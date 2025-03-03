@@ -7,8 +7,8 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 import proxai.types as types
 import proxai.caching.model_cache as model_cache
 import proxai.connectors.model_registry as model_registry
-from proxai.connectors.model_connector import ProviderModelConnector
-from proxai.connections.proxdash import ProxDashConnection
+import proxai.connectors.model_connector as model_connector
+import proxai.connections.proxdash as proxdash
 import proxai.connectors.model_configs as model_configs
 
 
@@ -23,21 +23,21 @@ class AvailableModels:
   _get_logging_options: Callable[[], types.LoggingOptions]
   _allow_multiprocessing: bool
   _get_allow_multiprocessing: Callable[[], bool]
-  _proxdash_connection: ProxDashConnection
-  _get_proxdash_connection: Callable[[], ProxDashConnection]
+  _proxdash_connection: proxdash.ProxDashConnection
+  _get_proxdash_connection: Callable[[], proxdash.ProxDashConnection]
   _get_initialized_model_connectors: Callable[
-      [], Dict[types.ProviderModelType, ProviderModelConnector]]
+      [], Dict[types.ProviderModelType, model_connector.ProviderModelConnector]]
   _init_model_connector: Callable[
-      [types.ProviderModelType], ProviderModelConnector]
+      [types.ProviderModelType], model_connector.ProviderModelConnector]
   _providers_with_key: Set[str]
   _has_fetched_all_models: bool
 
   def __init__(
       self,
       get_initialized_model_connectors: Callable[
-          [], Dict[types.ProviderModelType, ProviderModelConnector]],
+          [], Dict[types.ProviderModelType, model_connector.ProviderModelConnector]],
       init_model_connector: Callable[
-          [types.ProviderModelType], ProviderModelConnector],
+          [types.ProviderModelType], model_connector.ProviderModelConnector],
       run_type: types.RunType = None,
       get_run_type: Callable[[], types.RunType] = None,
       model_cache_manager: Optional[model_cache.ModelCacheManager] = None,
@@ -45,9 +45,9 @@ class AvailableModels:
           Callable[[], model_cache.ModelCacheManager]] = None,
       logging_options: Optional[types.LoggingOptions] = None,
       get_logging_options: Optional[Callable[[], types.LoggingOptions]] = None,
-      proxdash_connection: Optional[ProxDashConnection] = None,
+      proxdash_connection: Optional[proxdash.ProxDashConnection] = None,
       get_proxdash_connection: Optional[
-          Callable[[], ProxDashConnection]] = None,
+          Callable[[], proxdash.ProxDashConnection]] = None,
       allow_multiprocessing: bool = None,
       get_allow_multiprocessing: Optional[Callable[[], bool]] = None):
     if run_type and get_run_type:
@@ -135,7 +135,7 @@ class AvailableModels:
     self._model_cache_manager = model_cache_manager
 
   @property
-  def proxdash_connection(self) -> ProxDashConnection:
+  def proxdash_connection(self) -> proxdash.ProxDashConnection:
     if self.run_type == types.RunType.TEST:
       return None
     if self._proxdash_connection:
@@ -145,7 +145,7 @@ class AvailableModels:
     return None
 
   @proxdash_connection.setter
-  def proxdash_connection(self, proxdash_connection: ProxDashConnection):
+  def proxdash_connection(self, proxdash_connection: proxdash.ProxDashConnection):
     self._proxdash_connection = proxdash_connection
 
   @property

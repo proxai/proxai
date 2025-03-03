@@ -1,9 +1,8 @@
 import copy
 import functools
-import math
 import os
 import requests
-from typing import Union, Optional
+from typing import Optional
 import proxai.types as types
 import proxai.connectors.providers.hugging_face_mock as hugging_face_mock
 import proxai.connectors.model_connector as model_connector

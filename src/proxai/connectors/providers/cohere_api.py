@@ -1,7 +1,5 @@
 import copy
 import functools
-import math
-from typing import Union, Optional
 import cohere
 import proxai.types as types
 import proxai.connectors.providers.cohere_api_mock as cohere_api_mock

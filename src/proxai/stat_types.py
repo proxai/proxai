@@ -1,7 +1,7 @@
 import copy
 import dataclasses
 import enum
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 import proxai.types as types
 
 
