@@ -335,3 +335,74 @@ class TestAvailableModels:
     available_models_manager = self._get_available_models()
     providers = available_models_manager.get_providers(verbose=True)
     assert set(providers) == set(['openai'])
+
+  def test_get_provider_models_without_cache(self, monkeypatch):
+    # Set only OpenAI key
+    monkeypatch.setenv(
+        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key')
+    available_models_manager = self._get_available_models()
+
+    # Test provider with key
+    models = available_models_manager.get_provider_models('openai')
+    assert set(models) == set(
+        model_configs.GENERATE_TEXT_MODELS['openai'].values())
+
+    # Test provider without key
+    models = available_models_manager.get_provider_models('claude')
+    assert set(models) == set()
+
+  def test_get_provider_models_with_cache(self, monkeypatch):
+    self._save_temp_cache_state()
+    monkeypatch.setenv(
+        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key')
+    monkeypatch.setenv(
+        model_configs.PROVIDER_KEY_MAP['claude'][0], 'test_api_key')
+    available_models_manager = self._get_available_models()
+
+    # First call should test all models since get_all_models hasn't been called yet
+    models = available_models_manager.get_provider_models('openai')
+    # 'gpt-4-turbo-preview' saved as failed model, so it should be included
+    assert set(models) == set([
+        model_configs.GENERATE_TEXT_MODELS['openai']['gpt-3.5-turbo'],
+        model_configs.GENERATE_TEXT_MODELS['openai']['gpt-4']])
+
+    models = available_models_manager.get_provider_models('claude')
+    assert set(models) == set(
+        model_configs.GENERATE_TEXT_MODELS['claude'].values())
+
+    # Second call should use existing results since get_all_models was already called
+    monkeypatch.delenv(
+        model_configs.PROVIDER_KEY_MAP['claude'][0], raising=False)
+    models = available_models_manager.get_provider_models('openai')
+    assert set(models) == set([
+        model_configs.GENERATE_TEXT_MODELS['openai']['gpt-3.5-turbo'],
+        model_configs.GENERATE_TEXT_MODELS['openai']['gpt-4']])
+
+    models = available_models_manager.get_provider_models('claude')
+    assert set(models) == set(
+        model_configs.GENERATE_TEXT_MODELS['claude'].values())
+
+    # Clear cache and verify all models are tested again
+    models = available_models_manager.get_provider_models(
+        'openai', clear_model_cache=True)
+    assert set(models) == set(
+        model_configs.GENERATE_TEXT_MODELS['openai'].values())
+    models = available_models_manager.get_provider_models('claude')
+    assert set(models) == set()
+
+  def test_get_provider_models_invalid_call_type(self):
+    available_models_manager = self._get_available_models()
+    with pytest.raises(ValueError, match='Call type not supported:'):
+      available_models_manager.get_provider_models(
+          'openai', call_type='invalid_type')
+
+  def test_get_provider_models_verbose(self, monkeypatch):
+    self._save_temp_cache_state()
+    monkeypatch.setenv(
+        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key')
+    available_models_manager = self._get_available_models()
+    models = available_models_manager.get_provider_models(
+        'openai', verbose=True)
+    assert set(models) == set([
+        model_configs.ALL_MODELS['openai']['gpt-3.5-turbo'],
+        model_configs.ALL_MODELS['openai']['gpt-4']])

@@ -418,3 +418,35 @@ class AvailableModels:
         model.provider
         for model in cached_results.working_models])
     return sorted(list(providers))
+
+  def get_provider_models(
+      self,
+      provider: str,
+      verbose: bool = False,
+      clear_model_cache: bool = False,
+      call_type: types.CallType = types.CallType.GENERATE_TEXT
+  ) -> List[types.ProviderModelType]:
+    if call_type != types.CallType.GENERATE_TEXT:
+      raise ValueError(f'Call type not supported: {call_type}')
+
+    if not self.model_cache_manager:
+      self._load_provider_keys()
+      if provider not in self._providers_with_key:
+        return []
+      return sorted(list(model_configs.ALL_MODELS[provider].values()))
+
+    if clear_model_cache:
+      self.model_cache_manager.clear_cache()
+
+    if clear_model_cache or not self._has_fetched_all_models:
+      self.get_all_models(
+          only_largest_models=False,
+          verbose=verbose,
+          call_type=call_type)
+
+    cached_results = self.model_cache_manager.get(call_type=call_type)
+    result = []
+    for model in cached_results.working_models:
+      if model.provider == provider:
+        result.append(model)
+    return sorted(result)
