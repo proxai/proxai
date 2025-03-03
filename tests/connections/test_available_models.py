@@ -12,6 +12,15 @@ import proxai.connectors.model_configs as model_configs
 import time
 
 
+@pytest.fixture(autouse=True)
+def setup_test(monkeypatch):
+  monkeypatch.delenv('PROXDASH_API_KEY', raising=False)
+  for api_key_list in model_configs.PROVIDER_KEY_MAP.values():
+    for api_key in api_key_list:
+      monkeypatch.delenv(api_key, raising=False)
+  yield
+
+
 class TestAvailableModels:
   cache_dir: Optional[
       tempfile.TemporaryDirectory] = None
@@ -19,14 +28,6 @@ class TestAvailableModels:
       Dict[types.ProviderModelType, model_connector.ProviderModelConnector]] = None
   model_cache_manager: Optional[
       model_cache.ModelCacheManager] = None
-
-  @pytest.fixture(autouse=True)
-  def setup_test(self, monkeypatch):
-    monkeypatch.delenv('PROXDASH_API_KEY', raising=False)
-    for api_key_list in model_configs.PROVIDER_KEY_MAP.values():
-      for api_key in api_key_list:
-        monkeypatch.delenv(api_key, raising=False)
-    yield
 
   def _init_test_variables(self):
     if self.cache_dir is None:
