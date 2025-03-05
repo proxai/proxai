@@ -52,6 +52,7 @@ def _init_globals():
   global _LOGGING_OPTIONS
   global _CACHE_OPTIONS
   global _PROXDASH_OPTIONS
+  global _PROXDASH_CONNECTION
   global _QUERY_CACHE_MANAGER
   global _MODEL_CACHE_MANAGER
   global _STRICT_FEATURE_TEST
@@ -65,6 +66,7 @@ def _init_globals():
   _LOGGING_OPTIONS = types.LoggingOptions()
   _CACHE_OPTIONS = types.CacheOptions()
   _PROXDASH_OPTIONS = types.ProxDashOptions()
+  _PROXDASH_CONNECTION = None
   _QUERY_CACHE_MANAGER = None
   _MODEL_CACHE_MANAGER = None
   _STRICT_FEATURE_TEST = False
@@ -323,8 +325,8 @@ def _get_proxdash_connection() -> proxdash.ProxDashConnection:
 
 
 def _get_model_connector(
-    call_type: types.CallType,
-    provider_model_identifier: Optional[types.ProviderModelIdentifierType]=None
+    provider_model_identifier: Optional[types.ProviderModelIdentifierType]=None,
+    call_type: types.CallType = types.CallType.GENERATE_TEXT
 ) -> model_connector.ProviderModelConnector:
   global _REGISTERED_VALUES
   global _INITIALIZED_MODEL_CONNECTORS
@@ -398,11 +400,10 @@ def check_health(
     print('> Starting to test each model...')
   models = available_models.AvailableModels(
       get_run_type=_get_run_type,
+      get_model_connector=_get_model_connector,
       proxdash_connection=proxdash_connection,
       allow_multiprocessing=allow_multiprocessing,
-      logging_options=logging_options,
-      get_initialized_model_connectors=_get_initialized_model_connectors,
-      init_model_connector=_init_model_connector)
+      logging_options=logging_options)
   model_status = models.get_all_models(
       verbose=verbose, return_all=True)
   if verbose:
@@ -532,8 +533,8 @@ def generate_text(
     use_cache = True
 
   model_connector = _get_model_connector(
-      call_type=types.CallType.GENERATE_TEXT,
-      provider_model_identifier=provider_model)
+      provider_model_identifier=provider_model,
+      call_type=types.CallType.GENERATE_TEXT)
   logging_record: types.LoggingRecord = model_connector.generate_text(
       prompt=prompt,
       system=system,
@@ -584,12 +585,11 @@ def get_summary(
 def get_available_models() -> available_models.AvailableModels:
   return available_models.AvailableModels(
       get_run_type=_get_run_type,
+      get_model_connector=_get_model_connector,
       get_allow_multiprocessing=_get_allow_multiprocessing,
       get_logging_options=_get_logging_options,
       get_model_cache_manager=_get_model_cache_manager,
-      get_initialized_model_connectors=_get_initialized_model_connectors,
-      get_proxdash_connection=_get_proxdash_connection,
-      init_model_connector=_init_model_connector)
+      get_proxdash_connection=_get_proxdash_connection)
 
 
 def get_current_options(
@@ -605,3 +605,6 @@ def get_current_options(
   if json:
     return type_serializer.encode_run_options(run_options=run_options)
   return run_options
+
+def clear_state():
+  _init_globals()
