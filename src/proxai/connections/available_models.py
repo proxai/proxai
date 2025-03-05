@@ -6,10 +6,11 @@ import traceback
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 import proxai.types as types
 import proxai.caching.model_cache as model_cache
+import proxai.connections.proxdash as proxdash
 import proxai.connectors.model_registry as model_registry
 import proxai.connectors.model_connector as model_connector
-import proxai.connections.proxdash as proxdash
 import proxai.connectors.model_configs as model_configs
+import proxai.logging.utils as logging_utils
 
 
 class AvailableModels:
@@ -17,6 +18,8 @@ class AvailableModels:
   _generate_text: Dict[types.ProviderModelType, Any]
   _run_type: types.RunType
   _get_run_type: Callable[[], types.RunType]
+  _get_model_connector: Callable[
+      [types.ProviderModelType], model_connector.ProviderModelConnector]
   _cache_options: types.CacheOptions
   _get_cache_options: Callable[[], types.CacheOptions]
   _logging_options: types.LoggingOptions
@@ -25,21 +28,16 @@ class AvailableModels:
   _get_allow_multiprocessing: Callable[[], bool]
   _proxdash_connection: proxdash.ProxDashConnection
   _get_proxdash_connection: Callable[[], proxdash.ProxDashConnection]
-  _get_initialized_model_connectors: Callable[
-      [], Dict[types.ProviderModelType, model_connector.ProviderModelConnector]]
-  _init_model_connector: Callable[
-      [types.ProviderModelType], model_connector.ProviderModelConnector]
   _providers_with_key: Set[str]
   _has_fetched_all_models: bool
+  _latest_model_cache_path_used_for_update: Optional[str]
 
   def __init__(
       self,
-      get_initialized_model_connectors: Callable[
-          [], Dict[types.ProviderModelType, model_connector.ProviderModelConnector]],
-      init_model_connector: Callable[
-          [types.ProviderModelType], model_connector.ProviderModelConnector],
       run_type: types.RunType = None,
       get_run_type: Callable[[], types.RunType] = None,
+      get_model_connector: Callable[
+          [], model_connector.ProviderModelConnector] = None,
       model_cache_manager: Optional[model_cache.ModelCacheManager] = None,
       get_model_cache_manager: Optional[
           Callable[[], model_cache.ModelCacheManager]] = None,
@@ -72,18 +70,18 @@ class AvailableModels:
     self.run_type = run_type
     self._generate_text = {}
     self._get_run_type = get_run_type
+    self.get_model_connector = get_model_connector
     self.model_cache_manager = model_cache_manager
     self._get_model_cache_manager = get_model_cache_manager
     self.logging_options = logging_options
     self._get_logging_options = get_logging_options
     self.proxdash_connection = proxdash_connection
     self._get_proxdash_connection = get_proxdash_connection
-    self._get_initialized_model_connectors = get_initialized_model_connectors
-    self._init_model_connector= init_model_connector
     self.allow_multiprocessing = allow_multiprocessing
     self._get_allow_multiprocessing = get_allow_multiprocessing
     self._providers_with_key = set()
     self._has_fetched_all_models = False
+    self._latest_model_cache_path_used_for_update = None
     self._load_provider_keys()
 
   def _load_provider_keys(self):
@@ -249,7 +247,6 @@ class AvailableModels:
     model_connector = model_registry.get_model_connector(
         model_init_state.provider_model)
     model_connector = model_connector(init_state=model_init_state)
-
     try:
       logging_record: types.LoggingRecord = model_connector.generate_text(
           prompt=prompt,
@@ -277,11 +274,10 @@ class AvailableModels:
     if not models.unprocessed_models:
       return
 
-    initialized_model_connectors = self._get_initialized_model_connectors()
+    model_connectors = {}
     for provider_model in models.unprocessed_models:
-      if provider_model not in initialized_model_connectors:
-        initialized_model_connectors[
-            provider_model] = self._init_model_connector(provider_model)
+      model_connectors[provider_model] = self.get_model_connector(
+          provider_model)
 
     test_provider_models = list(models.unprocessed_models)
     test_func = None
@@ -296,7 +292,7 @@ class AvailableModels:
       for test_provider_model in test_provider_models:
         result = pool.apply_async(
             test_func,
-            args=(initialized_model_connectors[test_provider_model].get_init_state(),))
+            args=(model_connectors[test_provider_model].get_init_state(),))
         test_results.append(result)
       pool.close()
       pool.join()
@@ -306,7 +302,7 @@ class AvailableModels:
       for test_provider_model in test_provider_models:
         test_results.append(
             test_func(
-                initialized_model_connectors[test_provider_model].get_init_state()))
+                model_connectors[test_provider_model].get_init_state()))
 
     update_models = types.ModelStatus()
     for logging_record in test_results:
@@ -322,6 +318,8 @@ class AvailableModels:
     if self.model_cache_manager:
       self.model_cache_manager.update(
           model_status=update_models, call_type=call_type)
+      self._latest_model_cache_path_used_for_update = (
+          self.model_cache_manager.get_cache_path())
     self._update_provider_queries(models)
 
   def _format_set(
@@ -339,27 +337,24 @@ class AvailableModels:
         query.query_record.provider_model in models.failed_models
     ]
 
-  def get_all_models(
+  def _fetch_all_models(
       self,
-      only_largest_models: bool = False,
       verbose: bool = False,
-      return_all: bool = False,
       clear_model_cache: bool = False,
       call_type: types.CallType = types.CallType.GENERATE_TEXT
-  ) -> Union[Set[types.ProviderModelType], types.ModelStatus]:
+  ) -> types.ModelStatus:
     if call_type != types.CallType.GENERATE_TEXT:
       raise ValueError(f'Call type not supported: {call_type}')
+
+    if self.model_cache_manager and clear_model_cache:
+      self.model_cache_manager.clear_cache()
 
     start_utc_date = datetime.datetime.now(datetime.timezone.utc)
     models = types.ModelStatus()
     self._load_provider_keys()
     self._get_all_models(models, call_type=call_type)
     self._filter_by_provider_key(models)
-    if clear_model_cache and self.model_cache_manager:
-      self.model_cache_manager.clear_cache()
     self._filter_by_cache(models, call_type=types.CallType.GENERATE_TEXT)
-    if only_largest_models:
-      self._filter_largest_models(models)
 
     print_flag = bool(verbose and models.unprocessed_models)
     if print_flag:
@@ -376,8 +371,49 @@ class AvailableModels:
       duration = (end_utc_date - start_utc_date).total_seconds()
       print(f'Test duration: {duration} seconds.')
 
-    if not only_largest_models:
-      self._has_fetched_all_models = True
+    self._has_fetched_all_models = True
+    return models
+
+  def _check_model_cache_path_same(self):
+    model_cache_path = None
+    if not self.model_cache_manager:
+      model_cache_path = None
+    else:
+      model_cache_path = self.model_cache_manager.get_cache_path()
+    return model_cache_path == self._latest_model_cache_path_used_for_update
+
+  def get_all_models(
+      self,
+      only_largest_models: bool = False,
+      verbose: bool = False,
+      return_all: bool = False,
+      clear_model_cache: bool = False,
+      call_type: types.CallType = types.CallType.GENERATE_TEXT
+  ) -> Union[Set[types.ProviderModelType], types.ModelStatus]:
+    if call_type != types.CallType.GENERATE_TEXT:
+      raise ValueError(f'Call type not supported: {call_type}')
+
+    models: Optional[types.ModelStatus] = None
+    if not self.model_cache_manager:
+      logging_utils.log_message(
+          logging_options=self.logging_options,
+          message='Model cache is not enabled. Fetching all models from '
+          'providers. This is not ideal for performance.',
+          type=types.LoggingType.WARNING)
+      models = self._fetch_all_models()
+    elif (
+        clear_model_cache or
+        not self._check_model_cache_path_same() or
+        not self._has_fetched_all_models):
+      models = self._fetch_all_models(
+          verbose=verbose,
+          clear_model_cache=clear_model_cache,
+          call_type=call_type)
+    else:
+      models = self.model_cache_manager.get(call_type=call_type)
+
+    if only_largest_models:
+      self._filter_largest_models(models)
 
     if return_all:
       return models
@@ -392,24 +428,30 @@ class AvailableModels:
     if call_type != types.CallType.GENERATE_TEXT:
       raise ValueError(f'Call type not supported: {call_type}')
 
+    providers_with_key: Optional[Set[str]] = None
     if not self.model_cache_manager:
+      # For performance, we only load the provider keys if the model cache is
+      # not enabled instead of fetching all models.
       self._load_provider_keys()
-      return sorted(list(self._providers_with_key))
-
-    if clear_model_cache:
-      self.model_cache_manager.clear_cache()
-
-    if clear_model_cache or not self._has_fetched_all_models:
-      self.get_all_models(
-          only_largest_models=False,
+      providers_with_key = self._providers_with_key
+    elif (
+        clear_model_cache or
+        not self._check_model_cache_path_same() or
+        not self._has_fetched_all_models):
+      models = self._fetch_all_models(
           verbose=verbose,
+          clear_model_cache=clear_model_cache,
           call_type=call_type)
+      providers_with_key = set([
+          model.provider
+          for model in models.working_models])
+    else:
+      models = self.model_cache_manager.get(call_type=call_type)
+      providers_with_key = set([
+          model.provider
+          for model in models.working_models])
 
-    cached_results = self.model_cache_manager.get(call_type=call_type)
-    providers = set([
-        model.provider
-        for model in cached_results.working_models])
-    return sorted(list(providers))
+    return sorted(list(providers_with_key))
 
   def get_provider_models(
       self,
@@ -426,27 +468,37 @@ class AvailableModels:
           f'Provider not found in model_configs: {provider}\n'
           f'Available providers: {model_configs.GENERATE_TEXT_MODELS.keys()}')
 
+    provider_models: Optional[List[types.ProviderModelType]] = None
     if not self.model_cache_manager:
+      # For performance, we only load the provider keys if the model cache is
+      # not enabled instead of fetching all models.
       self._load_provider_keys()
       if provider not in self._providers_with_key:
-        return []
-      return sorted(list(model_configs.GENERATE_TEXT_MODELS[provider].values()))
-
-    if clear_model_cache:
-      self.model_cache_manager.clear_cache()
-
-    if clear_model_cache or not self._has_fetched_all_models:
-      self.get_all_models(
-          only_largest_models=False,
+        raise ValueError(
+            f'Provider key not found in environment variables for {provider}.\n'
+            f'Required keys: {model_configs.PROVIDER_KEY_MAP[provider]}')
+      provider_models = list(
+          model_configs.GENERATE_TEXT_MODELS[provider].values())
+    elif (
+        clear_model_cache or
+        not self._check_model_cache_path_same() or
+        not self._has_fetched_all_models):
+      models = self._fetch_all_models(
           verbose=verbose,
+          clear_model_cache=clear_model_cache,
           call_type=call_type)
+      provider_models = []
+      for model in models.working_models:
+        if model.provider == provider:
+          provider_models.append(model)
+    else:
+      models = self.model_cache_manager.get(call_type=call_type)
+      provider_models = []
+      for model in models.working_models:
+        if model.provider == provider:
+          provider_models.append(model)
 
-    cached_results = self.model_cache_manager.get(call_type=call_type)
-    result = []
-    for model in cached_results.working_models:
-      if model.provider == provider:
-        result.append(model)
-    return sorted(result)
+    return sorted(provider_models)
 
   def get_provider_model(
       self,
@@ -470,26 +522,28 @@ class AvailableModels:
           f'Available models: {model_configs.GENERATE_TEXT_MODELS[provider]}')
 
     if not self.model_cache_manager:
+      # For performance, we only load the provider keys if the model cache is
+      # not enabled instead of fetching all models.
       self._load_provider_keys()
       if provider not in self._providers_with_key:
         raise ValueError(
             f'Provider key not found in environment variables for {provider}.\n'
             f'Required keys: {model_configs.PROVIDER_KEY_MAP[provider]}')
       return model_configs.GENERATE_TEXT_MODELS[provider][model]
-
-    if clear_model_cache:
-      self.model_cache_manager.clear_cache()
-
-    if clear_model_cache or not self._has_fetched_all_models:
-      self.get_all_models(
-          only_largest_models=False,
+    elif (
+        clear_model_cache or
+        not self._check_model_cache_path_same() or
+        not self._has_fetched_all_models):
+      models = self._fetch_all_models(
           verbose=verbose,
+          clear_model_cache=clear_model_cache,
           call_type=call_type)
+    else:
+      models = self.model_cache_manager.get(call_type=call_type)
 
-    cached_results = self.model_cache_manager.get(call_type=call_type)
-    for working_model in cached_results.working_models:
+    for working_model in models.working_models:
       if working_model.provider == provider and working_model.model == model:
         return working_model
     raise ValueError(
         f'Provider model not found in working models: ({provider}, {model})\n'
-        f'Available models: {cached_results.working_models}')
+        f'Available models: {models.working_models}')

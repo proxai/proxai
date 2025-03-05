@@ -43,12 +43,15 @@ class TestAvailableModels:
         run_type=types.RunType.TEST)
     return self.initialized_model_connectors[provider_model]
 
+  def _get_model_connector(self, provider_model: types.ProviderModelType):
+    return self._init_model_connector(provider_model)
+
   def _get_initialized_model_connectors(self):
     return self.initialized_model_connectors
 
   def _get_available_models(
         self,
-        allow_multiprocessing: bool = True,
+        allow_multiprocessing: bool = False,
         set_model_cache_manager: bool = True):
     self._init_test_variables()
     if set_model_cache_manager:
@@ -56,11 +59,10 @@ class TestAvailableModels:
           cache_options=types.CacheOptions(cache_path=self.cache_dir.name))
     available_models_manager = available_models.AvailableModels(
         run_type=types.RunType.TEST,
+        get_model_connector=self._get_model_connector,
         allow_multiprocessing=allow_multiprocessing,
         model_cache_manager=(
             self.model_cache_manager if set_model_cache_manager else None),
-        get_initialized_model_connectors=self._get_initialized_model_connectors,
-        init_model_connector=self._init_model_connector,
     )
     return available_models_manager
 
@@ -355,8 +357,11 @@ class TestAvailableModels:
         model_configs.GENERATE_TEXT_MODELS['openai'].values())
 
     # Test provider without key
-    models = available_models_manager.get_provider_models('claude')
-    assert set(models) == set()
+    with pytest.raises(
+        ValueError,
+        match='Provider key not found in environment variables for claude.\n'
+        'Required keys'):
+      available_models_manager.get_provider_models('claude')
 
   def test_get_provider_models_with_cache(self, monkeypatch):
     self._save_temp_cache_state()

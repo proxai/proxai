@@ -100,3 +100,6 @@ class ModelCacheManager:
     for provider_query in model_status.provider_queries:
       self._data[call_type].provider_queries.append(provider_query)
     self._save_to_cache()
+
+  def get_cache_path(self) -> str:
+    return self._cache_path
