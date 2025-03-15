@@ -153,3 +153,7 @@ def log_proxdash_message(
       logging_options=logging_options,
       file_name=PROXDASH_LOGGING_FILE_NAME,
       data=result)
+  _write_log(
+      logging_options=logging_options,
+      file_name=MERGED_LOGGING_FILE_NAME,
+      data=result)

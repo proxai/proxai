@@ -197,15 +197,13 @@ class ProxDashConnectionStatus(str, enum.Enum):
   INITIALIZING = 'INITIALIZING'
   DISABLED = 'DISABLED'
   API_KEY_NOT_FOUND = 'API_KEY_NOT_FOUND'
-  API_KEY_FOUND = 'API_KEY_FOUND'
   API_KEY_NOT_VALID = 'API_KEY_NOT_VALID'
   PROXDASH_INVALID_RETURN = 'PROXDASH_INVALID_RETURN'
-  API_KEY_VALID = 'API_KEY_VALID'
   CONNECTED = 'CONNECTED'
 
 
 @dataclasses.dataclass
-class ProxDashInitState:
+class ProxDashConnectionState:
   status: Optional[ProxDashConnectionStatus] = None
   hidden_run_key: Optional[str] = None
   api_key: Optional[str] = None
@@ -213,6 +211,7 @@ class ProxDashInitState:
   logging_options: Optional[LoggingOptions] = None
   proxdash_options: Optional[ProxDashOptions] = None
   key_info_from_proxdash: Optional[Dict] = None
+  connected_experiment_path: Optional[str] = None
 
 
 @dataclasses.dataclass
@@ -221,4 +220,4 @@ class ModelInitState:
   run_type: Optional[RunType] = None
   strict_feature_test: Optional[bool] = None
   logging_options: Optional[LoggingOptions] = None
-  proxdash_init_state: Optional[ProxDashInitState] = None
+  proxdash_connection_state: Optional[ProxDashConnectionState] = None
