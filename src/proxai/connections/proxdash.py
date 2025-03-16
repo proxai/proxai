@@ -47,9 +47,10 @@ class ProxDashConnection(object):
           Callable[[], types.ProxDashOptions]] = None,
       init_state: Optional[types.ProxDashConnectionState] = None):
     if init_state and (
-        hidden_run_key or api_key or experiment_path or
-        get_experiment_path or logging_options or get_logging_options or
-        proxdash_options or get_proxdash_options):
+        hidden_run_key is not None or api_key is not None or
+        experiment_path is not None or get_experiment_path is not None or
+        logging_options is not None or get_logging_options is not None or
+        proxdash_options is not None or get_proxdash_options is not None):
       raise ValueError(
           'If init_state is provided, none of the other arguments should be '
           'provided.')
@@ -102,23 +103,30 @@ class ProxDashConnection(object):
   def _load_proxdash_connection_state(
       self,
       state: types.ProxDashConnectionState):
-    if state.status:
-      self._manual_setter('status', state.status)
-    if state.hidden_run_key:
-      self._manual_setter('hidden_run_key', state.hidden_run_key)
-    if state.api_key:
-      self._manual_setter('api_key', state.api_key)
-    if state.experiment_path:
-      self._manual_setter('experiment_path', state.experiment_path)
-    if state.logging_options:
-      self._manual_setter('logging_options', state.logging_options)
-    if state.proxdash_options:
-      self._manual_setter('proxdash_options', state.proxdash_options)
-    if state.key_info_from_proxdash:
-      self._manual_setter('key_info_from_proxdash', state.key_info_from_proxdash)
-    if state.connected_experiment_path:
-      self._manual_setter(
-          'connected_experiment_path', state.connected_experiment_path)
+    if state.status is not None:
+      ProxDashStateController.set_property_directly(
+          self, 'status', state.status)
+    if state.hidden_run_key is not None:
+      ProxDashStateController.set_property_directly(
+          self, 'hidden_run_key', state.hidden_run_key)
+    if state.api_key is not None:
+      ProxDashStateController.set_property_directly(
+          self, 'api_key', state.api_key)
+    if state.experiment_path is not None:
+      ProxDashStateController.set_property_directly(
+          self, 'experiment_path', state.experiment_path)
+    if state.logging_options is not None:
+      ProxDashStateController.set_property_directly(
+          self, 'logging_options', state.logging_options)
+    if state.proxdash_options is not None:
+      ProxDashStateController.set_property_directly(
+          self, 'proxdash_options', state.proxdash_options)
+    if state.key_info_from_proxdash is not None:
+      ProxDashStateController.set_property_directly(
+          self, 'key_info_from_proxdash', state.key_info_from_proxdash)
+    if state.connected_experiment_path is not None:
+      ProxDashStateController.set_property_directly(
+          self, 'connected_experiment_path', state.connected_experiment_path)
 
 
   def _init_from_parameters(
@@ -178,7 +186,8 @@ class ProxDashConnection(object):
       # Note: There is no longer any connection to ProxDash. This change
       # shouldn't be logged, so, self.connected_experiment_path setter should
       # not be used here.
-      self._manual_setter('connected_experiment_path', None)
+      ProxDashStateController.set_property_directly(
+          self, 'connected_experiment_path', None)
       return
 
     if result_state.api_key is None:
@@ -187,7 +196,8 @@ class ProxDashConnection(object):
       # Note: There is no longer any connection to ProxDash. This change
       # shouldn't be logged, so, self.connected_experiment_path setter should
       # not be used here.
-      self._manual_setter('connected_experiment_path', None)
+      ProxDashStateController.set_property_directly(
+          self, 'connected_experiment_path', None)
       return
 
     api_key_query_required = False
@@ -235,14 +245,6 @@ class ProxDashConnection(object):
       self.key_info_from_proxdash = result_state.key_info_from_proxdash
     if self.connected_experiment_path != self.experiment_path:
       self.connected_experiment_path = self.experiment_path
-
-  def _manual_setter(self, key: str, value: Any):
-    """
-    This is a helper function for setting a value without triggering the
-    setters.
-    """
-    setattr(self, f'_{key}', value)
-    setattr(self._proxdash_connection_state, key, value)
 
   @property
   @ProxDashStateController.getter

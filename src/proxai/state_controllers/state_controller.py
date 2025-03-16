@@ -31,7 +31,7 @@ type. Further optimizations can be made in the future for specific use cases.
 """
 import copy
 from functools import wraps
-from typing import List, Callable
+from typing import List, Callable, Any
 
 
 class StateController:
@@ -80,6 +80,22 @@ class StateController:
       setattr(internal_state, func.__name__, copied_value)
       return result
     return wrapper
+
+  @classmethod
+  def set_property_directly(
+      cls,
+      instance: Any,
+      key: str,
+      value: Any):
+    """
+    This is a helper function for setting a value without triggering the
+    setters.
+    """
+    setattr(instance, f'_{key}', value)
+    setattr(
+        getattr(instance, cls.get_internal_state_property_name()),
+        key,
+        value)
 
   @classmethod
   def requires_dependencies(
