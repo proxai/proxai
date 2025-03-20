@@ -14,13 +14,7 @@ _PROXDASH_STATE_PROPERTY = '_proxdash_connection_state'
 _NOT_SET_EXPERIMENT_PATH_VALUE = '(not set)'
 
 
-class ProxDashStateController(state_controller.StateController):
-  @classmethod
-  def get_internal_state_property_name(cls):
-    return _PROXDASH_STATE_PROPERTY
-
-
-class ProxDashConnection(object):
+class ProxDashConnection(state_controller.StateControlled):
   _status: Optional[types.ProxDashConnectionStatus]
   _hidden_run_key: Optional[str]
   _api_key: str
@@ -55,105 +49,46 @@ class ProxDashConnection(object):
           'If init_state is provided, none of the other arguments should be '
           'provided.')
 
-    if experiment_path and get_experiment_path:
-      raise ValueError(
-          'Only one of experiment_path or get_experiment_path should be '
-          'provided.')
-    if logging_options and get_logging_options:
-      raise ValueError(
-          'Only one of logging_options or get_logging_options should be '
-          'provided.')
-    if proxdash_options and get_proxdash_options:
-      raise ValueError(
-          'Only one of proxdash_options or get_proxdash_options should be '
-          'provided.')
+    super().__init__(
+        hidden_run_key=hidden_run_key,
+        api_key=api_key,
+        experiment_path=experiment_path,
+        get_experiment_path=get_experiment_path,
+        logging_options=logging_options,
+        get_logging_options=get_logging_options,
+        proxdash_options=proxdash_options,
+        get_proxdash_options=get_proxdash_options)
 
-    initial_state = self._init_proxdash_connection_state()
+    self.init_state()
+    self.set_property_value(
+        'status', types.ProxDashConnectionStatus.INITIALIZING)
 
     if init_state:
-      self._load_proxdash_connection_state(init_state)
+      self.load_state(init_state)
     else:
-      self._init_from_parameters(
-          get_experiment_path=get_experiment_path,
-          get_logging_options=get_logging_options,
-          get_proxdash_options=get_proxdash_options,
-          hidden_run_key=hidden_run_key,
-          logging_options=logging_options,
-          proxdash_options=proxdash_options,
-          api_key=api_key,
-          experiment_path=experiment_path)
-      self._handle_proxdash_connection_state_change(initial_state)
+      initial_state = self.get_state()
+      self._get_experiment_path = get_experiment_path
+      self._get_logging_options = get_logging_options
+      self._get_proxdash_options = get_proxdash_options
 
-  def _init_proxdash_connection_state(self):
-    self._proxdash_connection_state = types.ProxDashConnectionState()
+      self.hidden_run_key = hidden_run_key
+      self.logging_options = logging_options
+      self.proxdash_options = proxdash_options
+      self.api_key = api_key
+      self.experiment_path = experiment_path
+      self.handle_changes(initial_state, self.get_state())
 
-    self._status =  types.ProxDashConnectionStatus.INITIALIZING
-    self.hidden_run_key = None
-    self.api_key = None
-    self.experiment_path = None
-    self._get_experiment_path = None
-    self.logging_options = None
-    self._get_logging_options = None
-    self.proxdash_options = None
-    self._get_proxdash_options = None
-    self.key_info_from_proxdash = None
-    self.connected_experiment_path = None
-    return self.get_state()
+  def get_internal_state_property_name(cls):
+    return _PROXDASH_STATE_PROPERTY
 
-  def _load_proxdash_connection_state(
+  def get_internal_state_type(cls):
+    return types.ProxDashConnectionState
+
+  def handle_changes(
       self,
-      state: types.ProxDashConnectionState):
-    if state.status is not None:
-      ProxDashStateController.set_property_directly(
-          self, 'status', state.status)
-    if state.hidden_run_key is not None:
-      ProxDashStateController.set_property_directly(
-          self, 'hidden_run_key', state.hidden_run_key)
-    if state.api_key is not None:
-      ProxDashStateController.set_property_directly(
-          self, 'api_key', state.api_key)
-    if state.experiment_path is not None:
-      ProxDashStateController.set_property_directly(
-          self, 'experiment_path', state.experiment_path)
-    if state.logging_options is not None:
-      ProxDashStateController.set_property_directly(
-          self, 'logging_options', state.logging_options)
-    if state.proxdash_options is not None:
-      ProxDashStateController.set_property_directly(
-          self, 'proxdash_options', state.proxdash_options)
-    if state.key_info_from_proxdash is not None:
-      ProxDashStateController.set_property_directly(
-          self, 'key_info_from_proxdash', state.key_info_from_proxdash)
-    if state.connected_experiment_path is not None:
-      ProxDashStateController.set_property_directly(
-          self, 'connected_experiment_path', state.connected_experiment_path)
-
-
-  def _init_from_parameters(
-      self,
-      get_experiment_path: Optional[Callable[[], str]],
-      get_logging_options: Optional[Callable[[], types.LoggingOptions]],
-      get_proxdash_options: Optional[Callable[[], types.ProxDashOptions]],
-      hidden_run_key: Optional[str],
-      logging_options: Optional[types.LoggingOptions],
-      proxdash_options: Optional[types.ProxDashOptions],
-      api_key: Optional[str],
-      experiment_path: Optional[str]):
-    self._get_experiment_path = get_experiment_path
-    self._get_logging_options = get_logging_options
-    self._get_proxdash_options = get_proxdash_options
-
-    self.hidden_run_key = hidden_run_key
-    self.logging_options = logging_options
-    self.proxdash_options = proxdash_options
-    self.api_key = api_key
-    self.experiment_path = experiment_path
-
-  def _handle_proxdash_connection_state_change(
-      self,
-      old_state: types.ProxDashConnectionState):
+      old_state: types.ProxDashConnectionState,
+      current_state: types.ProxDashConnectionState):
     result_state = copy.deepcopy(old_state)
-    current_state = self.get_state()
     if current_state.logging_options is not None:
       result_state.logging_options = current_state.logging_options
     if current_state.proxdash_options is not None:
@@ -186,8 +121,8 @@ class ProxDashConnection(object):
       # Note: There is no longer any connection to ProxDash. This change
       # shouldn't be logged, so, self.connected_experiment_path setter should
       # not be used here.
-      ProxDashStateController.set_property_directly(
-          self, 'connected_experiment_path', None)
+      self.set_property_value_without_triggering_getters(
+          'connected_experiment_path', None)
       return
 
     if result_state.api_key is None:
@@ -196,8 +131,8 @@ class ProxDashConnection(object):
       # Note: There is no longer any connection to ProxDash. This change
       # shouldn't be logged, so, self.connected_experiment_path setter should
       # not be used here.
-      ProxDashStateController.set_property_directly(
-          self, 'connected_experiment_path', None)
+      self.set_property_value_without_triggering_getters(
+          'connected_experiment_path', None)
       return
 
     api_key_query_required = False
@@ -248,73 +183,68 @@ class ProxDashConnection(object):
 
   @property
   def hidden_run_key(self) -> Optional[str]:
-    return getattr(self, '_hidden_run_key', None)
+    return self.get_property_value('hidden_run_key')
 
   @hidden_run_key.setter
   def hidden_run_key(self, hidden_run_key: Optional[str]):
-    self._hidden_run_key = hidden_run_key
+    self.set_property_value('hidden_run_key', hidden_run_key)
 
   @property
   def logging_options(self) -> types.LoggingOptions:
-    if getattr(self, '_logging_options', None):
-      return self._logging_options
-    elif getattr(self, '_get_logging_options', None):
-      return self._get_logging_options()
-    else:
-      return None
+    return self.get_property_value('logging_options')
 
   @logging_options.setter
   def logging_options(self, logging_options: types.LoggingOptions):
-    self._logging_options = logging_options
+    self.set_property_value('logging_options', logging_options)
 
   @property
   def proxdash_options(self) -> types.ProxDashOptions:
-    if getattr(self, '_proxdash_options', None):
-      return self._proxdash_options
-    elif getattr(self, '_get_proxdash_options', None):
-      return self._get_proxdash_options()
-    else:
-      return None
+    return self.get_property_value('proxdash_options')
 
   @proxdash_options.setter
   def proxdash_options(self, proxdash_options: types.ProxDashOptions):
-    self._proxdash_options = proxdash_options
+    self.set_property_value('proxdash_options', proxdash_options)
 
   @property
   def api_key(self) -> str:
-    return getattr(self, '_api_key', None)
+    return self.get_property_value('api_key')
 
   @api_key.setter
   def api_key(self, api_key: Optional[str]):
-    self._api_key = None
+    self.set_property_value_without_triggering_getters('api_key', None)
     if api_key is not None:
-      self._api_key = api_key
+      self.set_property_value_without_triggering_getters('api_key', api_key)
     elif 'PROXDASH_API_KEY' in os.environ:
-      self._api_key = os.environ['PROXDASH_API_KEY']
+      self.set_property_value_without_triggering_getters(
+          'api_key', os.environ['PROXDASH_API_KEY'])
 
   @property
   def key_info_from_proxdash(self) -> Optional[Dict]:
-    return getattr(self, '_key_info_from_proxdash', None)
+    return self.get_property_value('key_info_from_proxdash')
 
   @key_info_from_proxdash.setter
   def key_info_from_proxdash(self, key_info_from_proxdash: Optional[Dict]):
-    self._key_info_from_proxdash = key_info_from_proxdash
+    self.set_property_value('key_info_from_proxdash', key_info_from_proxdash)
 
   @property
   def experiment_path(self) -> str:
+    internal_experiment_path = self.get_property_internal_value(
+        'experiment_path')
+    internal_get_experiment_path = self.get_property_func_getter(
+        'experiment_path')
+
     experiment_path = None
-    if (
-        getattr(self, '_experiment_path', None) is not None and
-        getattr(self, '_experiment_path', None) !=
-        _NOT_SET_EXPERIMENT_PATH_VALUE
-    ):
-      experiment_path = self._experiment_path
-    elif getattr(self, '_get_experiment_path', None):
-      experiment_path = self._get_experiment_path()
+    if (internal_experiment_path is not None and
+        internal_experiment_path != _NOT_SET_EXPERIMENT_PATH_VALUE):
+      experiment_path = internal_experiment_path
+    elif internal_get_experiment_path is not None:
+      experiment_path = internal_get_experiment_path()
 
     if experiment_path is None:
       experiment_path = _NOT_SET_EXPERIMENT_PATH_VALUE
 
+    self.set_property_internal_state_value(
+        'experiment_path', experiment_path)
     return experiment_path
 
   @experiment_path.setter
@@ -324,11 +254,11 @@ class ProxDashConnection(object):
     else:
       experiment_path = _NOT_SET_EXPERIMENT_PATH_VALUE
 
-    self._experiment_path = experiment_path
+    self.set_property_value('experiment_path', experiment_path)
 
   @property
   def connected_experiment_path(self) -> str:
-    return getattr(self, '_connected_experiment_path', None)
+    return self.get_property_value('connected_experiment_path')
 
   @connected_experiment_path.setter
   def connected_experiment_path(self, connected_experiment_path: Optional[str]):
@@ -337,10 +267,12 @@ class ProxDashConnection(object):
         raise ValueError(
             'Connected experiment path can only be set if the ProxDash '
             'connection is connected.')
-      self._connected_experiment_path = None
+      self.set_property_value_without_triggering_getters(
+          'connected_experiment_path', None)
       return
 
-    previous_experiment_path = self._connected_experiment_path
+    previous_experiment_path = self.get_property_internal_value(
+        'connected_experiment_path')
     if previous_experiment_path is None:
       previous_experiment_path = _NOT_SET_EXPERIMENT_PATH_VALUE
 
@@ -357,15 +289,16 @@ class ProxDashConnection(object):
               f'{new_experiment_path}'),
           type=types.LoggingType.INFO)
 
-    self._connected_experiment_path = connected_experiment_path
+    self.set_property_value(
+        'connected_experiment_path', connected_experiment_path)
 
   @property
   def status(self) -> types.ProxDashConnectionStatus:
-    return getattr(self, '_status', None)
+    return self.get_property_value('status')
 
   @status.setter
   def status(self, status: types.ProxDashConnectionStatus):
-    self._status = status
+    self.set_property_value('status', status)
     if status == types.ProxDashConnectionStatus.INITIALIZING:
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
@@ -429,26 +362,6 @@ class ProxDashConnection(object):
     except Exception:
       return types.ProxDashConnectionStatus.PROXDASH_INVALID_RETURN, None
 
-  def get_state(self) -> types.ProxDashConnectionState:
-    return copy.deepcopy(self._proxdash_connection_state)
-
-  def _check_external_state_change(self) -> bool:
-    last_proxdash_options = self._proxdash_connection_state.proxdash_options
-    last_logging_options = self._proxdash_connection_state.logging_options
-    if (last_proxdash_options != self.proxdash_options or
-        last_logging_options != self.logging_options):
-      return True
-    return False
-
-  def update_state(
-      self,
-      changes: Optional[types.ProxDashConnectionState] = None):
-    if changes is None:
-      changes = types.ProxDashConnectionState()
-    old_state = self.get_state()
-    self._load_proxdash_connection_state(changes)
-    self._handle_proxdash_connection_state_change(old_state)
-
   def _hide_sensitive_content_logging_record(
       self, logging_record: types.LoggingRecord) -> types.LoggingRecord:
     logging_record = copy.deepcopy(logging_record)
@@ -469,8 +382,8 @@ class ProxDashConnection(object):
     return logging_record
 
   def upload_logging_record(self, logging_record: types.LoggingRecord):
-    if self._check_external_state_change():
-      self.update_state()
+    if self.get_external_state_changes():
+      self.apply_state_changes()
 
     if self.status != types.ProxDashConnectionStatus.CONNECTED:
       return

@@ -31,12 +31,12 @@ type. Further optimizations can be made in the future for specific use cases.
 """
 import copy
 from functools import wraps
-from typing import List, Callable, Any
+from typing import List, Callable, Any, Optional
 from abc import ABC, abstractmethod
 import dataclasses
 
 
-class StateController(ABC):
+class StateControlled(ABC):
   def __init__(self, **kwargs):
     available_properties = set([
         field.name
@@ -111,6 +111,15 @@ class StateController(ABC):
     """Direct internal value getter."""
     return getattr(self, self.get_property_internal_name(property_name))
 
+  def get_property_func_getter(self, property_name: str) -> Any:
+    func = getattr(
+        self,
+        self.get_property_func_internal_getter_name(property_name),
+        None)
+    if func is None:
+      return None
+    return func
+
   def get_property_internal_value_or_from_getter(
       self, property_name: str) -> Any:
     """Getter for the properties that support both direct and getter values.
@@ -119,19 +128,13 @@ class StateController(ABC):
     value from the getter function. If the property is not set directly or by
     the getter function, returns None.
     """
-    literal_value = getattr(
-        self,
-        self.get_property_internal_name(property_name),
-        None)
+    literal_value = self.get_property_internal_value(property_name)
     if literal_value is not None:
       return literal_value
 
-    func_value = getattr(
-        self,
-        self.get_property_func_internal_getter_name(property_name),
-        None)
-    if func_value is not None:
-      return func_value()
+    func = self.get_property_func_getter(property_name)
+    if func is not None:
+      return func()
 
     return None
 
@@ -215,10 +218,15 @@ class StateController(ABC):
   def get_external_state_changes(self) -> Any:
     internal_state = self.get_internal_state()
     changes = self.get_internal_state_type()()
-
+    state_changed = False
     for field in dataclasses.fields(self.get_internal_state_type()):
-      if getattr(internal_state, field.name, None) != getattr(self, field.name):
-        setattr(changes, field.name, getattr(self, field.name))
+      property_value = getattr(self, field.name)
+      if getattr(internal_state, field.name, None) != property_value:
+        setattr(changes, field.name, property_value)
+        state_changed = True
+
+    if not state_changed:
+      return None
     return changes
 
   def load_state(self, state: Any):
@@ -232,7 +240,7 @@ class StateController(ABC):
       if value is not None:
         self.set_property_value_without_triggering_getters(field.name, value)
 
-  def apply_state_changes(self, changes: Any):
+  def apply_state_changes(self, changes: Optional[Any] = None):
     if changes is None:
       changes = self.get_internal_state_type()()
 
