@@ -11,7 +11,7 @@ class ExampleState:
   property_3: Optional[Any] = None
 
 
-class ExampleStateControlledClass(state_controller.StateController):
+class ExampleStateControlledClass(state_controller.StateControlled):
   _property_1: Any
   _property_2: Any
   _get_property_2: Callable[[], Any]
@@ -162,6 +162,16 @@ class TestStateControlled:
     example_obj.set_property_internal_value('property_3', 'test')
     assert example_obj._property_3 == 'test'
     assert example_obj._state.property_3 is None
+    assert example_obj.property_3_getter_called == False
+    assert example_obj.property_3_setter_called == False
+
+  def test_get_property_func_getter(self):
+    example_obj = ExampleStateControlledClass(
+        get_property_3=lambda: 'test')
+    example_obj.property_3_getter_called = False
+    example_obj.property_3_setter_called = False
+
+    assert example_obj.get_property_func_getter('property_3')() == 'test'
     assert example_obj.property_3_getter_called == False
     assert example_obj.property_3_setter_called == False
 
@@ -354,7 +364,7 @@ class TestStateControlled:
         property_2='value_2',
         property_3='value_2')
     # Second call should return empty changes as the values are already updated.
-    assert example_obj.get_external_state_changes() == ExampleState()
+    assert example_obj.get_external_state_changes() is None
 
   def test_get_external_state_changes_non_primitive_types(self):
     dynamic_property_2_value = {'property_2': 'value_1'}
@@ -382,7 +392,7 @@ class TestStateControlled:
         property_2={'property_2': 'value_2'},
         property_3={'property_3': 'value_2'})
     # Second call should return empty changes as the values are already updated.
-    assert example_obj.get_external_state_changes() == ExampleState()
+    assert example_obj.get_external_state_changes() is None
 
   def test_load_state_incorrect_state_type(self):
     with pytest.raises(
