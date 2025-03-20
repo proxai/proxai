@@ -247,17 +247,14 @@ class ProxDashConnection(object):
       self.connected_experiment_path = self.experiment_path
 
   @property
-  @ProxDashStateController.getter
   def hidden_run_key(self) -> Optional[str]:
     return getattr(self, '_hidden_run_key', None)
 
   @hidden_run_key.setter
-  @ProxDashStateController.setter
   def hidden_run_key(self, hidden_run_key: Optional[str]):
     self._hidden_run_key = hidden_run_key
 
   @property
-  @ProxDashStateController.getter
   def logging_options(self) -> types.LoggingOptions:
     if getattr(self, '_logging_options', None):
       return self._logging_options
@@ -267,12 +264,10 @@ class ProxDashConnection(object):
       return None
 
   @logging_options.setter
-  @ProxDashStateController.setter
   def logging_options(self, logging_options: types.LoggingOptions):
     self._logging_options = logging_options
 
   @property
-  @ProxDashStateController.getter
   def proxdash_options(self) -> types.ProxDashOptions:
     if getattr(self, '_proxdash_options', None):
       return self._proxdash_options
@@ -282,17 +277,14 @@ class ProxDashConnection(object):
       return None
 
   @proxdash_options.setter
-  @ProxDashStateController.setter
   def proxdash_options(self, proxdash_options: types.ProxDashOptions):
     self._proxdash_options = proxdash_options
 
   @property
-  @ProxDashStateController.getter
   def api_key(self) -> str:
     return getattr(self, '_api_key', None)
 
   @api_key.setter
-  @ProxDashStateController.setter
   def api_key(self, api_key: Optional[str]):
     self._api_key = None
     if api_key is not None:
@@ -301,17 +293,14 @@ class ProxDashConnection(object):
       self._api_key = os.environ['PROXDASH_API_KEY']
 
   @property
-  @ProxDashStateController.getter
   def key_info_from_proxdash(self) -> Optional[Dict]:
     return getattr(self, '_key_info_from_proxdash', None)
 
   @key_info_from_proxdash.setter
-  @ProxDashStateController.setter
   def key_info_from_proxdash(self, key_info_from_proxdash: Optional[Dict]):
     self._key_info_from_proxdash = key_info_from_proxdash
 
   @property
-  @ProxDashStateController.getter
   def experiment_path(self) -> str:
     experiment_path = None
     if (
@@ -329,7 +318,6 @@ class ProxDashConnection(object):
     return experiment_path
 
   @experiment_path.setter
-  @ProxDashStateController.setter
   def experiment_path(self, experiment_path: Optional[str]):
     if experiment_path is not None:
       experiment.validate_experiment_path(experiment_path)
@@ -339,12 +327,10 @@ class ProxDashConnection(object):
     self._experiment_path = experiment_path
 
   @property
-  @ProxDashStateController.getter
   def connected_experiment_path(self) -> str:
     return getattr(self, '_connected_experiment_path', None)
 
   @connected_experiment_path.setter
-  @ProxDashStateController.setter
   def connected_experiment_path(self, connected_experiment_path: Optional[str]):
     if self.status != types.ProxDashConnectionStatus.CONNECTED:
       if connected_experiment_path is not None:
@@ -374,12 +360,10 @@ class ProxDashConnection(object):
     self._connected_experiment_path = connected_experiment_path
 
   @property
-  @ProxDashStateController.getter
   def status(self) -> types.ProxDashConnectionStatus:
     return getattr(self, '_status', None)
 
   @status.setter
-  @ProxDashStateController.setter
   def status(self, status: types.ProxDashConnectionStatus):
     self._status = status
     if status == types.ProxDashConnectionStatus.INITIALIZING:
