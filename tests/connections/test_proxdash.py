@@ -6,7 +6,6 @@ import tempfile
 import pytest
 import proxai.types as types
 import proxai.connections.proxdash as proxdash
-from proxai.logging.utils import log_proxdash_message
 import proxai.connectors.model_configs as model_configs
 from dataclasses import dataclass
 from typing import Optional, List, Dict, Tuple, Union
@@ -1836,6 +1835,36 @@ class TestProxDashConnectionScenarios:
                 {"role": "user", "content": "test user message"},
                 {"role": "assistant", "content": "test assistant message"}],
             'response': 'test response'})
+
+  def test_experiment_path_logging(self, requests_mock):
+    requests_mock.post(
+        'https://proxainest-production.up.railway.app/logging-record',
+        text='success',
+        status_code=201
+    )
+    temp_dir, temp_dir_obj = _get_path_dir('test_upload_logging_record')
+    logging_record = _create_test_logging_record()
+    dynamic_experiment_path = 'test_experiment_path'
+    def get_experiment_path():
+      return dynamic_experiment_path
+
+    connection = proxdash.ProxDashConnection(
+      api_key='test_api_key',
+      logging_options=types.LoggingOptions(logging_path=temp_dir),
+      proxdash_options=types.ProxDashOptions(),
+      get_experiment_path=get_experiment_path,
+    )
+    connection.upload_logging_record(logging_record)
+
+    dynamic_experiment_path = 'test_experiment_path_2'
+    connection.upload_logging_record(logging_record)
+    _verify_log_messages(temp_dir, [
+      ('Connected to ProxDash.', types.LoggingType.INFO),
+      ('Connected to ProxDash experiment: test_experiment_path',
+       types.LoggingType.INFO),
+      ('Connected to ProxDash experiment: test_experiment_path_2',
+       types.LoggingType.INFO),
+    ])
 
   # def test_rapid_state_updates(self):
   #   """Tests behavior when state is updated multiple times in rapid succession"""

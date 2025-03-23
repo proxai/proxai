@@ -78,7 +78,7 @@ class ProxDashConnection(state_controller.StateControlled):
       self.experiment_path = experiment_path
       self.handle_changes(initial_state, self.get_state())
 
-  def get_internal_state_property_name(cls):
+  def get_internal_state_property_name(self):
     return _PROXDASH_STATE_PROPERTY
 
   def get_internal_state_type(cls):
@@ -382,8 +382,7 @@ class ProxDashConnection(state_controller.StateControlled):
     return logging_record
 
   def upload_logging_record(self, logging_record: types.LoggingRecord):
-    if self.get_external_state_changes():
-      self.apply_state_changes()
+    self.apply_external_state_changes()
 
     if self.status != types.ProxDashConnectionStatus.CONNECTED:
       return

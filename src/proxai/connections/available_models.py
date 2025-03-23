@@ -239,14 +239,14 @@ class AvailableModels:
 
   @staticmethod
   def _test_generate_text(
-      model_init_state: types.ModelInitState,
+      provider_model_state: types.ProviderModelState,
   ) -> List[types.LoggingRecord]:
     start_utc_date = datetime.datetime.now(datetime.timezone.utc)
     prompt = 'Hello model!'
     max_tokens = 100
     model_connector = model_registry.get_model_connector(
-        model_init_state.provider_model)
-    model_connector = model_connector(init_state=model_init_state)
+        provider_model_state.provider_model)
+    model_connector = model_connector(init_state=provider_model_state)
     try:
       logging_record: types.LoggingRecord = model_connector.generate_text(
           prompt=prompt,
@@ -257,7 +257,7 @@ class AvailableModels:
       return types.LoggingRecord(
           query_record=types.QueryRecord(
               call_type=types.CallType.GENERATE_TEXT,
-              provider_model=model_init_state.provider_model,
+              provider_model=provider_model_state.provider_model,
               prompt=prompt,
               max_tokens=max_tokens),
           response_record=types.QueryResponseRecord(
@@ -292,7 +292,7 @@ class AvailableModels:
       for test_provider_model in test_provider_models:
         result = pool.apply_async(
             test_func,
-            args=(model_connectors[test_provider_model].get_init_state(),))
+            args=(model_connectors[test_provider_model].get_state(),))
         test_results.append(result)
       pool.close()
       pool.join()
@@ -302,7 +302,7 @@ class AvailableModels:
       for test_provider_model in test_provider_models:
         test_results.append(
             test_func(
-                model_connectors[test_provider_model].get_init_state()))
+                model_connectors[test_provider_model].get_state()))
 
     update_models = types.ModelStatus()
     for logging_record in test_results:
