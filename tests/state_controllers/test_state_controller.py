@@ -2,13 +2,57 @@ import pytest
 import proxai.state_controllers.state_controller as state_controller
 from dataclasses import dataclass
 from typing import Any, Callable, Optional, List, Tuple
+import proxai.types as types
 
 
 @dataclass
-class ExampleState:
+class ExampleSubState(types.StateContainer):
+  sub_property_1: Optional[Any] = None
+
+
+class ExampleSubStateControlledClass(state_controller.StateControlled):
+  _sub_property_1: Any
+  _get_sub_property_1: Callable[[], Any]
+  _state: ExampleSubState
+
+  def __init__(
+      self,
+      sub_property_1: Optional[Any] = None,
+      get_sub_property_1: Optional[Callable[[], Any]] = None):
+    super().__init__(
+        sub_property_1=sub_property_1,
+        get_sub_property_1=get_sub_property_1)
+    self.init_state()
+    self._sub_property_1 = sub_property_1
+    self._get_sub_property_1 = get_sub_property_1
+
+  def get_internal_state_property_name(cls):
+    return '_state'
+
+  def get_internal_state_type(cls):
+    return ExampleSubState
+
+  def handle_changes(
+      self,
+      old_state: ExampleSubState,
+      current_state: ExampleSubState):
+    pass
+
+  @property
+  def sub_property_1(self):
+    return self.get_property_value('sub_property_1')
+
+  @sub_property_1.setter
+  def sub_property_1(self, value):
+    self.set_property_value('sub_property_1', value)
+
+
+@dataclass
+class ExampleState(types.StateContainer):
   property_1: Optional[Any] = None
   property_2: Optional[Any] = None
   property_3: Optional[Any] = None
+  sub_state: Optional[ExampleSubState] = None
 
 
 class ExampleStateControlledClass(state_controller.StateControlled):
@@ -17,9 +61,11 @@ class ExampleStateControlledClass(state_controller.StateControlled):
   _get_property_2: Callable[[], Any]
   _property_3: Any
   _get_property_3: Callable[[], Any]
-  _state: ExampleState
+  _sub_state: Optional[ExampleSubStateControlledClass] = None
+  _get_sub_state: Callable[[], ExampleSubStateControlledClass]
   property_3_getter_called: bool
   property_3_setter_called: bool
+  sub_state_getter_called: bool
   change_list: List[Tuple[str, Any, Any]]
 
   def __init__(
@@ -29,6 +75,8 @@ class ExampleStateControlledClass(state_controller.StateControlled):
       get_property_2: Optional[Callable[[], str]] = None,
       property_3: Optional[str] = None,
       get_property_3: Optional[Callable[[], str]] = None,
+      sub_state: Optional[ExampleSubState] = None,
+      get_sub_state: Optional[Callable[[], ExampleSubState]] = None,
       non_available_property: Optional[str] = None):
 
     super().__init__(
@@ -37,12 +85,15 @@ class ExampleStateControlledClass(state_controller.StateControlled):
         get_property_2=get_property_2,
         property_3=property_3,
         get_property_3=get_property_3,
+        sub_state=sub_state,
+        get_sub_state=get_sub_state,
         non_available_property=non_available_property)
 
     init_state = self.init_state()
 
     self.property_3_getter_called = False
     self.property_3_setter_called = False
+    self.sub_state_getter_called = False
     self.change_list = []
 
     self._property_1 = property_1
@@ -50,6 +101,8 @@ class ExampleStateControlledClass(state_controller.StateControlled):
     self._get_property_2 = get_property_2
     self._property_3 = property_3
     self._get_property_3 = get_property_3
+    self._sub_state = sub_state
+    self._get_sub_state = get_sub_state
 
     self.handle_changes(init_state, self.get_state())
 
@@ -99,6 +152,21 @@ class ExampleStateControlledClass(state_controller.StateControlled):
     self.property_3_setter_called = True
     self.set_property_value('property_3', value)
 
+  @property
+  def sub_state(self):
+    self.sub_state_getter_called = True
+    return self.get_state_controlled_property_value('sub_state')
+
+  @sub_state.setter
+  def sub_state(self, value):
+    self.set_state_controlled_property_value('sub_state', value)
+
+  def sub_state_deserializer(
+      self,
+      state_value: ExampleSubState):
+    return ExampleSubStateControlledClass(
+        sub_property_1=state_value.sub_property_1)
+
 
 class TestStateControlled:
   def test_get_property_func_conversions(self):
@@ -111,6 +179,8 @@ class TestStateControlled:
         'property_1') == 'get_property_1'
     assert example_obj.get_property_name_from_func_getter_name(
         'get_property_1') == 'property_1'
+    assert example_obj.get_state_controlled_deserializer_name(
+        'property_1') == 'property_1_deserializer'
 
   def test_get_property_internal_value(self):
     example_obj = ExampleStateControlledClass()
@@ -521,6 +591,40 @@ class TestStateControlled:
         ('property_2', {'property_2': 'value_1'}, 'value_2'),
         ('property_3', {'property_3': 'value_1'}, 'value_2')]
 
+  def test_apply_external_state_changes(self):
+    dynamic_property_2_value = {'property_2': 'value_1'}
+    dynamic_property_3_value = {'property_3': 'value_1'}
+    example_obj = ExampleStateControlledClass(
+        get_property_2=lambda: dynamic_property_2_value,
+        get_property_3=lambda: dynamic_property_3_value)
+    assert example_obj.get_internal_state() == ExampleState(
+        property_1=None,
+        property_2={'property_2': 'value_1'},
+        property_3={'property_3': 'value_1'})
+    example_obj.change_list = []
+
+    example_obj.apply_external_state_changes()
+    assert example_obj.get_internal_state() == ExampleState(
+        property_1=None,
+        property_2={'property_2': 'value_1'},
+        property_3={'property_3': 'value_1'})
+    assert example_obj.change_list == []
+
+    dynamic_property_2_value['property_2'] = 'value_2'
+    dynamic_property_3_value['property_3'] = 'value_2'
+    example_obj.apply_external_state_changes()
+    assert example_obj.get_internal_state() == ExampleState(
+        property_1=None,
+        property_2={'property_2': 'value_2'},
+        property_3={'property_3': 'value_2'})
+    assert example_obj.change_list == [
+        ('property_2',
+         {'property_2': 'value_1'},
+         {'property_2': 'value_2'}),
+        ('property_3',
+         {'property_3': 'value_1'},
+         {'property_3': 'value_2'})]
+
   def test_property_setter(self):
     example_obj = ExampleStateControlledClass()
     assert example_obj.get_internal_state() == ExampleState(
@@ -632,3 +736,106 @@ class TestStateControlled:
         property_1=None,
         property_2={'property_2': 'value_2'},
         property_3={'property_3': 'value_2'})
+
+
+class TestSubState:
+  def test_sub_state_literal(self):
+    example_obj = ExampleStateControlledClass(
+        sub_state=ExampleSubStateControlledClass(
+            sub_property_1='sub_property_1_value_1'))
+    assert example_obj.get_internal_state() == ExampleState(
+        property_1=None,
+        property_2=None,
+        property_3=None,
+        sub_state=ExampleSubState(
+            sub_property_1='sub_property_1_value_1'))
+    assert example_obj.sub_state.sub_property_1 == 'sub_property_1_value_1'
+
+  def test_sub_state_function(self):
+    dynamic_sub_state_value = ExampleSubStateControlledClass(
+        sub_property_1='sub_property_1_value_1')
+    example_obj = ExampleStateControlledClass(
+        get_sub_state=lambda: dynamic_sub_state_value)
+    assert example_obj.get_internal_state() == ExampleState(
+        property_1=None,
+        property_2=None,
+        property_3=None,
+        sub_state=ExampleSubState(
+            sub_property_1='sub_property_1_value_1'))
+    assert example_obj.sub_state.sub_property_1 == 'sub_property_1_value_1'
+    assert (
+      example_obj.sub_state._state.sub_property_1 == 'sub_property_1_value_1')
+
+    dynamic_sub_state_value.sub_property_1 = 'sub_property_1_value_2'
+    assert example_obj.get_internal_state() == ExampleState(
+        property_1=None,
+        property_2=None,
+        property_3=None,
+        sub_state=ExampleSubState(
+            sub_property_1='sub_property_1_value_1'))
+
+    # Getter triggers update of the internal state.
+    assert example_obj.sub_state.sub_property_1 == 'sub_property_1_value_2'
+    assert example_obj.get_internal_state() == ExampleState(
+        property_1=None,
+        property_2=None,
+        property_3=None,
+        sub_state=ExampleSubState(
+            sub_property_1='sub_property_1_value_2'))
+    assert (
+      example_obj.sub_state._state.sub_property_1 == 'sub_property_1_value_2')
+
+  def test_sub_state_setter(self):
+    example_obj = ExampleStateControlledClass()
+    assert example_obj.sub_state is None
+
+    example_obj.sub_state = ExampleSubStateControlledClass(
+        sub_property_1='sub_property_1_value_1')
+    assert example_obj.sub_state is not None
+    assert example_obj.sub_state.sub_property_1 == 'sub_property_1_value_1'
+    assert example_obj.get_internal_state() == ExampleState(
+        property_1=None,
+        property_2=None,
+        property_3=None,
+        sub_state=ExampleSubState(
+            sub_property_1='sub_property_1_value_1'))
+
+  def test_set_property_value_without_triggering_getters(self):
+    example_obj = ExampleStateControlledClass()
+    example_obj.sub_state_getter_called = False
+
+    example_obj.set_property_value_without_triggering_getters(
+        'sub_state',
+        ExampleSubStateControlledClass(
+            sub_property_1='sub_property_1_value_1'))
+    assert example_obj.sub_state_getter_called == False
+
+    assert example_obj.get_internal_state() == ExampleState(
+        property_1=None,
+        property_2=None,
+        property_3=None,
+        sub_state=ExampleSubState(
+            sub_property_1='sub_property_1_value_1'))
+    assert example_obj.sub_state.sub_property_1 == 'sub_property_1_value_1'
+    assert example_obj.sub_state_getter_called == True
+
+  def test_load_state(self):
+    example_obj = ExampleStateControlledClass(
+        sub_state=ExampleSubStateControlledClass(
+            sub_property_1='sub_property_1_value_1'))
+    assert example_obj.get_internal_state() == ExampleState(
+        property_1=None,
+        property_2=None,
+        property_3=None,
+        sub_state=ExampleSubState(
+            sub_property_1='sub_property_1_value_1'))
+
+    example_obj_2 = ExampleStateControlledClass()
+    example_obj_2.load_state(example_obj.get_state())
+    assert example_obj_2.get_internal_state() == ExampleState(
+        property_1=None,
+        property_2=None,
+        property_3=None,
+        sub_state=ExampleSubState(
+            sub_property_1='sub_property_1_value_1'))
+    assert example_obj_2.sub_state.sub_property_1 == 'sub_property_1_value_1'

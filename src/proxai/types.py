@@ -2,6 +2,7 @@ import dataclasses
 import datetime
 import enum
 from typing import Dict, List, Optional, Tuple, Set, Union
+from abc import ABC
 
 
 class RunType(enum.Enum):
@@ -202,8 +203,13 @@ class ProxDashConnectionStatus(str, enum.Enum):
   CONNECTED = 'CONNECTED'
 
 
+class StateContainer(ABC):
+    """Base class for all state objects in the system."""
+    pass
+
+
 @dataclasses.dataclass
-class ProxDashConnectionState:
+class ProxDashConnectionState(StateContainer):
   status: Optional[ProxDashConnectionStatus] = None
   hidden_run_key: Optional[str] = None
   api_key: Optional[str] = None
@@ -215,9 +221,9 @@ class ProxDashConnectionState:
 
 
 @dataclasses.dataclass
-class ModelInitState:
+class ProviderModelState(StateContainer):
   provider_model: Optional[ProviderModelType] = None
   run_type: Optional[RunType] = None
   strict_feature_test: Optional[bool] = None
   logging_options: Optional[LoggingOptions] = None
-  proxdash_connection_state: Optional[ProxDashConnectionState] = None
+  proxdash_connection: Optional[ProxDashConnectionState] = None

@@ -34,9 +34,15 @@ from functools import wraps
 from typing import List, Callable, Any, Optional
 from abc import ABC, abstractmethod
 import dataclasses
+import proxai.types as types
 
 
-class StateControlled(ABC):
+class BaseStateControlled(ABC):
+  def __init__(self, **kwargs):
+    pass
+
+
+class StateControlled(BaseStateControlled):
   def __init__(self, **kwargs):
     available_properties = set([
         field.name
@@ -72,11 +78,11 @@ class StateControlled(ABC):
             'while initializing the StateControlled object.')
 
   @abstractmethod
-  def get_internal_state_property_name(cls):
+  def get_internal_state_property_name(self):
     raise NotImplementedError('Subclasses must implement this method')
 
   @abstractmethod
-  def get_internal_state_type(cls):
+  def get_internal_state_type(self):
     raise NotImplementedError('Subclasses must implement this method')
 
   @abstractmethod
@@ -98,6 +104,10 @@ class StateControlled(ABC):
   @staticmethod
   def get_property_func_getter_name(field: str) -> str:
     return f'get_{field}'
+
+  @staticmethod
+  def get_state_controlled_deserializer_name(field: str) -> str:
+    return f'{field}_deserializer'
 
   @staticmethod
   def get_property_name_from_func_getter_name(func_getter_name: str) -> str:
@@ -181,11 +191,61 @@ class StateControlled(ABC):
     updated_value = getattr(self, property_name)
     self.set_property_internal_state_value(property_name, updated_value)
 
+  def get_state_controlled_property_value(self, property_name: str) -> Any:
+    result = self.get_property_internal_value_or_from_getter(property_name)
+
+    if result is None:
+      self.set_property_internal_state_value(property_name, None)
+      return None
+
+    if not isinstance(result, BaseStateControlled):
+      raise ValueError(
+          f'Invalid property value. Expected a StateControlled object. '
+          f'Got: {type(result)}')
+
+    self.set_property_internal_state_value(property_name, result.get_state())
+    return result
+
+  def set_state_controlled_property_value(
+      self,
+      property_name: str,
+      value: Any):
+    if value is None:
+      self.set_property_internal_value(property_name, None)
+    elif isinstance(value, BaseStateControlled):
+      self.set_property_internal_value(property_name, value)
+    elif isinstance(value, types.StateContainer):
+      value = getattr(
+          self,
+          self.get_state_controlled_deserializer_name(property_name))(value)
+      self.set_property_internal_value(property_name, value)
+    else:
+      raise ValueError(
+          f'Invalid property value. Expected a StateControlled object. '
+          f'Got: {type(value)}')
+
+    # Call actual getter to get the updated state value:
+    updated_value = getattr(self, property_name)
+
+    if updated_value is None:
+      self.set_property_internal_state_value(property_name, None)
+      return
+
+    if not isinstance(updated_value, BaseStateControlled):
+      raise ValueError(
+          f'Invalid property value. Expected a StateControlled object. '
+          f'Got: {type(updated_value)}')
+
+    self.set_property_internal_state_value(
+        property_name, updated_value.get_state())
+
   def set_property_value_without_triggering_getters(
       self,
       property_name: str,
       value: Any):
     self.set_property_internal_value(property_name, value)
+    if isinstance(value, BaseStateControlled):
+      value = value.get_state()
     self.set_property_internal_state_value(property_name, value)
 
   def init_state(self):
@@ -237,8 +297,13 @@ class StateControlled(ABC):
 
     for field in dataclasses.fields(self.get_internal_state_type()):
       value = getattr(state, field.name, None)
-      if value is not None:
-        self.set_property_value_without_triggering_getters(field.name, value)
+      if value is None:
+        continue
+      if isinstance(value, types.StateContainer):
+        value = getattr(
+            self,
+            self.get_state_controlled_deserializer_name(field.name))(value)
+      self.set_property_value_without_triggering_getters(field.name, value)
 
   def apply_state_changes(self, changes: Optional[Any] = None):
     if changes is None:
@@ -251,4 +316,15 @@ class StateControlled(ABC):
 
     old_state = self.get_internal_state()
     self.load_state(changes)
+    self.handle_changes(old_state, self.get_internal_state())
+
+  def apply_external_state_changes(self) -> Any:
+    old_state = self.get_internal_state()
+    state_changed = False
+    for field in dataclasses.fields(self.get_internal_state_type()):
+      property_value = getattr(self, field.name)
+      if getattr(old_state, field.name, None) != property_value:
+        state_changed = True
+    if not state_changed:
+      return None
     self.handle_changes(old_state, self.get_internal_state())
