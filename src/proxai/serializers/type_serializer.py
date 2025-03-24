@@ -1,4 +1,5 @@
 import datetime
+import json
 from typing import Any, Dict
 import proxai.types as types
 import proxai.stat_types as stat_types
@@ -268,10 +269,12 @@ def encode_model_status(
     for provider_model in model_status.filtered_models:
       record['filtered_models'].append(
           encode_provider_model_type(provider_model))
-  if model_status.provider_queries:
-    record['provider_queries'] = []
-    for provider_query in model_status.provider_queries:
-      record['provider_queries'].append(encode_logging_record(provider_query))
+  if model_status.provider_queries != None:
+    record['provider_queries'] = {}
+    for provider_model, provider_query in model_status.provider_queries.items():
+      provider_model = json.dumps(encode_provider_model_type(provider_model))
+      record['provider_queries'][provider_model] = (
+          encode_logging_record(provider_query))
   return record
 
 
@@ -295,8 +298,11 @@ def decode_model_status(
       model_status.filtered_models.add(
           decode_provider_model_type(provider_model_record))
   if 'provider_queries' in record:
-    for provider_query_record in record['provider_queries']:
-      model_status.provider_queries.append(
+    for provider_model, provider_query_record in record[
+        'provider_queries'].items():
+      provider_model = json.loads(provider_model)
+      provider_model = decode_provider_model_type(provider_model)
+      model_status.provider_queries[provider_model] = (
           decode_logging_record(provider_query_record))
   return model_status
 

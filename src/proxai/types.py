@@ -80,11 +80,14 @@ class LoggingType(str, enum.Enum):
 @dataclasses.dataclass
 class CacheOptions:
   cache_path: Optional[str] = None
+
   unique_response_limit: Optional[int] = 1
-  duration: Optional[int] = None
   retry_if_error_cached: bool = False
   clear_query_cache_on_connect: bool = False
+
+  disable_model_cache: bool = False
   clear_model_cache_on_connect: bool = False
+  model_cache_duration: Optional[int] = None
 
 
 @dataclasses.dataclass
@@ -190,8 +193,20 @@ class ModelStatus:
       default_factory=set)
   filtered_models: Set[ProviderModelType] = dataclasses.field(
       default_factory=set)
-  provider_queries: List[LoggingRecord] = (
-      dataclasses.field(default_factory=list))
+  provider_queries: Dict[ProviderModelType, LoggingRecord] = (
+      dataclasses.field(default_factory=dict))
+
+
+ModelStatusByCallType = Dict[CallType, ModelStatus]
+
+
+class ModelCacheManagerStatus(str, enum.Enum):
+  INITIALIZING = 'INITIALIZING'
+  CACHE_OPTIONS_NOT_FOUND = 'CACHE_OPTIONS_NOT_FOUND'
+  CACHE_PATH_NOT_FOUND = 'CACHE_PATH_NOT_FOUND'
+  CACHE_PATH_NOT_WRITABLE = 'CACHE_PATH_NOT_WRITABLE'
+  DISABLED = 'DISABLED'
+  WORKING = 'WORKING'
 
 
 class ProxDashConnectionStatus(str, enum.Enum):
@@ -206,6 +221,12 @@ class ProxDashConnectionStatus(str, enum.Enum):
 class StateContainer(ABC):
     """Base class for all state objects in the system."""
     pass
+
+
+@dataclasses.dataclass
+class ModelCacheManagerState(StateContainer):
+  status: Optional[ModelCacheManagerStatus] = None
+  cache_options: Optional[CacheOptions] = None
 
 
 @dataclasses.dataclass

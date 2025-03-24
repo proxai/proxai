@@ -180,12 +180,13 @@ def _get_model_status_options():
       {'working_models': {model_1, model_2}},
       {'failed_models': {model_1, model_2, model_3}},
       {'filtered_models': {model_1, model_2, model_3, model_4}},
-      {'provider_queries': [
-          types.LoggingRecord(
-            query_record=types.QueryRecord(
-                call_type=types.CallType.GENERATE_TEXT),
-            response_record=types.QueryResponseRecord(
-                response='Hello, world!'))]},
+      {'provider_queries': {
+          model_1: types.LoggingRecord(
+              query_record=types.QueryRecord(
+                  call_type=types.CallType.GENERATE_TEXT,
+                  provider_model=model_1),
+              response_record=types.QueryResponseRecord(
+                  response='Hello, world!'))}},
       {'unprocessed_models': {model_1},
        'working_models': {model_2},
        'failed_models': {model_3},
@@ -194,12 +195,13 @@ def _get_model_status_options():
        'working_models': {model_2, model_3},
        'failed_models': {model_3, model_4},
        'filtered_models': {model_4, model_1},
-       'provider_queries': [
-          types.LoggingRecord(
-            query_record=types.QueryRecord(
-                call_type=types.CallType.GENERATE_TEXT),
-            response_record=types.QueryResponseRecord(
-                response='Hello, world!'))]}]
+       'provider_queries': {
+          model_1: types.LoggingRecord(
+              query_record=types.QueryRecord(
+                  call_type=types.CallType.GENERATE_TEXT,
+                  provider_model=model_1),
+              response_record=types.QueryResponseRecord(
+                  response='Hello, world!'))}}]
 
 
 def _get_base_provider_stats_options():
