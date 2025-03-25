@@ -62,7 +62,7 @@ def _create_cache_record(
       call_count=call_count)
   if not all_values:
     return cache_record
-  light_record = query_cache.BaseQueryCache._to_light_cache_record(cache_record)
+  light_record = query_cache._to_light_cache_record(cache_record)
   return (
       query_record.hash_value,
       cache_record,
@@ -91,7 +91,7 @@ def _get_example_records(shard_dir=None, shard_count=None):
         record.query_record.hash_value = new_hash_value
       cache_records[hash_value] = record
       light_cache_records[hash_value] = (
-          query_cache.BaseQueryCache._to_light_cache_record(record))
+          query_cache._to_light_cache_record(record))
       enc_cache_records[hash_value] = (
           type_serializer.encode_cache_record(record))
       enc_light_cache_records[hash_value] = (
@@ -322,7 +322,7 @@ class TestBaseQueryCache:
         last_access_time=datetime.datetime.now(),
         call_count=7)
 
-    light_cache_record = query_cache.BaseQueryCache._to_light_cache_record(
+    light_cache_record = query_cache._to_light_cache_record(
         cache_record=cache_record)
     assert light_cache_record.query_record_hash == (
         hash_serializer.get_query_record_hash(
@@ -335,10 +335,10 @@ class TestBaseQueryCache:
   def test_get_cache_size(self):
     cache_record = types.CacheRecord(
         query_record=types.QueryRecord(call_type=types.CallType.GENERATE_TEXT))
-    light_cache_record = query_cache.BaseQueryCache._to_light_cache_record(
+    light_cache_record = query_cache._to_light_cache_record(
         cache_record=cache_record)
-    cache_record_size = query_cache.BaseQueryCache._get_cache_size(cache_record)
-    light_cache_record_size = query_cache.BaseQueryCache._get_cache_size(
+    cache_record_size = query_cache._get_cache_size(cache_record)
+    light_cache_record_size = query_cache._get_cache_size(
         light_cache_record)
     assert cache_record_size == light_cache_record_size == 1
 
@@ -347,10 +347,10 @@ class TestBaseQueryCache:
         query_responses=[
           types.QueryResponseRecord(response='Hello, world! - 1'),
           types.QueryResponseRecord(response='Hello, world! - 2'),])
-    light_cache_record = query_cache.BaseQueryCache._to_light_cache_record(
+    light_cache_record = query_cache._to_light_cache_record(
         cache_record=cache_record)
-    cache_record_size = query_cache.BaseQueryCache._get_cache_size(cache_record)
-    light_cache_record_size = query_cache.BaseQueryCache._get_cache_size(
+    cache_record_size = query_cache._get_cache_size(cache_record)
+    light_cache_record_size = query_cache._get_cache_size(
         light_cache_record)
     assert cache_record_size == light_cache_record_size == 3
 
