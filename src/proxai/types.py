@@ -209,6 +209,15 @@ class ModelCacheManagerStatus(str, enum.Enum):
   WORKING = 'WORKING'
 
 
+class QueryCacheManagerStatus(str, enum.Enum):
+  INITIALIZING = 'INITIALIZING'
+  CACHE_OPTIONS_NOT_FOUND = 'CACHE_OPTIONS_NOT_FOUND'
+  CACHE_PATH_NOT_FOUND = 'CACHE_PATH_NOT_FOUND'
+  CACHE_PATH_NOT_WRITABLE = 'CACHE_PATH_NOT_WRITABLE'
+  DISABLED = 'DISABLED'
+  WORKING = 'WORKING'
+
+
 class ProxDashConnectionStatus(str, enum.Enum):
   INITIALIZING = 'INITIALIZING'
   DISABLED = 'DISABLED'
@@ -230,6 +239,15 @@ class ModelCacheManagerState(StateContainer):
 
 
 @dataclasses.dataclass
+class QueryCacheManagerState(StateContainer):
+  status: Optional[QueryCacheManagerStatus] = None
+  cache_options: Optional[CacheOptions] = None
+  shard_count: Optional[int] = 800
+  response_per_file: Optional[int] = 200
+  cache_response_size: Optional[int] = 40000
+
+
+@dataclasses.dataclass
 class ProxDashConnectionState(StateContainer):
   status: Optional[ProxDashConnectionStatus] = None
   hidden_run_key: Optional[str] = None
@@ -246,5 +264,6 @@ class ProviderModelState(StateContainer):
   provider_model: Optional[ProviderModelType] = None
   run_type: Optional[RunType] = None
   strict_feature_test: Optional[bool] = None
+  query_cache_manager: Optional[QueryCacheManagerState] = None
   logging_options: Optional[LoggingOptions] = None
   proxdash_connection: Optional[ProxDashConnectionState] = None

@@ -408,6 +408,7 @@ class TestBaseQueryCache:
           shard_count=_SHARD_COUNT,
           response_per_file=_RESPONSE_PER_FILE,
           cache_response_size=10)
+      query_cache_manager_3.reset_cache()
 
       # Verify records are cleared
       assert query_cache_manager_3.look(query_record_1).look_fail_reason
@@ -1870,3 +1871,98 @@ class TestQueryCache:
           query_record_1).query_response == response_record_1
       assert query_cache_manager.look(
           query_record_1).query_response == response_record_3
+
+
+class TestQueryCacheState:
+  def test_invalid_combinations(self):
+    with pytest.raises(ValueError):
+      query_cache.QueryCacheManager(
+          cache_options=types.CacheOptions(cache_path=''),
+          get_cache_options=lambda: types.CacheOptions(cache_path=''),
+          shard_count=1,
+          response_per_file=1,
+          cache_response_size=10)
+
+  def test_init_none_cache_options(self):
+    query_cache_manager = query_cache.QueryCacheManager()
+    assert (
+        query_cache_manager.status ==
+        types.QueryCacheManagerStatus.CACHE_OPTIONS_NOT_FOUND)
+
+  def test_init_none_cache_path(self):
+    query_cache_manager = query_cache.QueryCacheManager(
+        cache_options=types.CacheOptions())
+    assert (
+        query_cache_manager.status ==
+        types.QueryCacheManagerStatus.CACHE_PATH_NOT_FOUND)
+
+  def test_status_working(self):
+    with tempfile.TemporaryDirectory() as temp_dir:
+      query_cache_manager = query_cache.QueryCacheManager(
+          cache_options=types.CacheOptions(cache_path=temp_dir),
+          shard_count=_SHARD_COUNT,
+          response_per_file=_RESPONSE_PER_FILE,
+          cache_response_size=10)
+      assert (
+          query_cache_manager.status == types.QueryCacheManagerStatus.WORKING)
+
+  def test_init_state(self):
+    with tempfile.TemporaryDirectory() as temp_dir:
+      query_cache_manager = query_cache.QueryCacheManager(
+          cache_options=types.CacheOptions(cache_path=temp_dir),
+          shard_count=_SHARD_COUNT,
+          response_per_file=_RESPONSE_PER_FILE,
+          cache_response_size=10)
+
+      query_cache_manager_2 = query_cache.QueryCacheManager(
+          init_state=query_cache_manager.get_state())
+      assert (
+          query_cache_manager_2.get_state() == query_cache_manager.get_state())
+
+  def test_init_default_values(self):
+    with tempfile.TemporaryDirectory() as temp_dir:
+      query_cache_manager = query_cache.QueryCacheManager(
+          cache_options=types.CacheOptions(cache_path=temp_dir))
+
+      default_values = types.QueryCacheManagerState()
+      assert (
+          query_cache_manager.status == types.QueryCacheManagerStatus.WORKING)
+      assert (
+          query_cache_manager.cache_options.cache_path == temp_dir)
+      assert (
+          query_cache_manager.shard_count == default_values.shard_count)
+      assert (
+          query_cache_manager.response_per_file ==
+          default_values.response_per_file)
+      assert (
+          query_cache_manager.cache_response_size ==
+          default_values.cache_response_size)
+
+  def test_not_working_state_calls(self):
+    with tempfile.TemporaryDirectory() as temp_dir:
+      query_cache_manager = query_cache.QueryCacheManager(
+          cache_options=types.CacheOptions())
+      assert (
+          query_cache_manager.status ==
+          types.QueryCacheManagerStatus.CACHE_PATH_NOT_FOUND)
+
+      with pytest.raises(
+          ValueError,
+          match='QueryCacheManager status is CACHE_PATH_NOT_FOUND'):
+        query_cache_manager.reset_cache()
+
+      with pytest.raises(
+          ValueError,
+          match='QueryCacheManager status is CACHE_PATH_NOT_FOUND'):
+        query_cache_manager.look(types.QueryRecord(prompt='p1'))
+
+      with pytest.raises(
+          ValueError,
+          match='QueryCacheManager status is CACHE_PATH_NOT_FOUND'):
+        query_cache_manager.cache(
+            types.QueryRecord(prompt='p1'),
+            types.QueryResponseRecord(response='r1'))
+
+  def handle_state_changes(self):
+    # TODO: Implement additional tests for handle_state_changes
+    pass
