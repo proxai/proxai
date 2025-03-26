@@ -75,6 +75,8 @@ class ProviderModelConnector(state_controller.StateControlled):
         get_run_type=get_run_type,
         strict_feature_test=strict_feature_test,
         get_strict_feature_test=get_strict_feature_test,
+        query_cache_manager=query_cache_manager,
+        get_query_cache_manager=get_query_cache_manager,
         logging_options=logging_options,
         get_logging_options=get_logging_options,
         proxdash_connection=proxdash_connection,
@@ -192,11 +194,11 @@ class ProviderModelConnector(state_controller.StateControlled):
 
   @property
   def query_cache_manager(self):
-    return self.get_property_value('query_cache_manager')
+    return self.get_state_controlled_property_value('query_cache_manager')
 
   @query_cache_manager.setter
   def query_cache_manager(self, value):
-    self.set_property_value('query_cache_manager', value)
+    self.set_state_controlled_property_value('query_cache_manager', value)
 
   @property
   def logging_options(self):

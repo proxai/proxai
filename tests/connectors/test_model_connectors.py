@@ -2,7 +2,7 @@ import pytest
 import datetime
 import tempfile
 import copy
-from typing import Dict, Optional
+from typing import Dict, Optional, Callable
 import proxai.types as types
 import proxai.caching.query_cache as query_cache
 import proxai.stat_types as stats_type
@@ -28,6 +28,8 @@ def setup_test(monkeypatch, requests_mock):
 def get_mock_provider_model_connector(
     strict_feature_test: Optional[bool] = None,
     query_cache_manager: Optional[query_cache.QueryCacheManager] = None,
+    get_query_cache_manager: Optional[
+        Callable[[], query_cache.QueryCacheManager]] = None,
     stats: Optional[Dict[str, stats_type.ProviderModelStats]] = None,
 ):
   connector = mock_provider.MockProviderModelConnector(
@@ -36,6 +38,7 @@ def get_mock_provider_model_connector(
       logging_options=types.LoggingOptions(),
       strict_feature_test=strict_feature_test,
       query_cache_manager=query_cache_manager,
+      get_query_cache_manager=get_query_cache_manager,
       stats=stats,
       proxdash_connection=proxdash.ProxDashConnection(
           init_state=types.ProxDashConnectionState(
@@ -332,6 +335,35 @@ class TestModelConnector:
       # Second call - should hit the cache
       result2 = connector.generate_text(prompt="Hello")
       assert result2.response_source == types.ResponseSource.CACHE
+
+  def test_generate_text_with_query_cache_manager_function(self):
+    with tempfile.TemporaryDirectory() as temp_dir:
+      dynamic_cache_options = types.CacheOptions(cache_path=temp_dir)
+
+      def get_cache_options():
+        return dynamic_cache_options
+
+      def get_query_cache_manager():
+        return query_cache.QueryCacheManager(
+            get_cache_options=get_cache_options)
+
+      connector = get_mock_provider_model_connector(
+          get_query_cache_manager=get_query_cache_manager)
+
+      dynamic_cache_options.unique_response_limit = 2
+      connector.apply_external_state_changes()
+
+      # First call - should hit the provider
+      result1 = connector.generate_text(prompt="Hello")
+      assert result1.response_source == types.ResponseSource.PROVIDER
+
+      # Second call - should hit the provider
+      result2 = connector.generate_text(prompt="Hello")
+      assert result2.response_source == types.ResponseSource.PROVIDER
+
+      # Third call - should hit the cache
+      result3 = connector.generate_text(prompt="Hello")
+      assert result3.response_source == types.ResponseSource.CACHE
 
   def test_stats_update(self):
     provider_model = model_configs.ALL_MODELS['mock_provider']['mock_model']
