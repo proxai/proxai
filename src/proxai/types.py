@@ -267,3 +267,16 @@ class ProviderModelState(StateContainer):
   query_cache_manager: Optional[QueryCacheManagerState] = None
   logging_options: Optional[LoggingOptions] = None
   proxdash_connection: Optional[ProxDashConnectionState] = None
+
+
+@dataclasses.dataclass
+class AvailableModelsState(StateContainer):
+  run_type: Optional[RunType] = None
+  model_cache_manager: Optional[ModelCacheManagerState] = None
+  logging_options: Optional[LoggingOptions] = None
+  proxdash_connection: Optional[ProxDashConnectionState] = None
+  allow_multiprocessing: Optional[bool] = None
+
+  providers_with_key: Optional[Set[str]] = None
+  has_fetched_all_models: Optional[bool] = None
+  latest_model_cache_path_used_for_update: Optional[str] = None

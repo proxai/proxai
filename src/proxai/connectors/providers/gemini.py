@@ -7,6 +7,9 @@ import proxai.connectors.model_configs as model_configs
 
 
 class GeminiConnector(model_connector.ProviderModelConnector):
+  def get_provider_name(self):
+    return 'gemini'
+
   def init_model(self):
     return genai.GenerativeModel
 
@@ -26,17 +29,17 @@ class GeminiConnector(model_connector.ProviderModelConnector):
       query_record.system = None
     return query_record
 
-  def _get_token_count(self, logging_record: types.LoggingRecord):
+  def get_token_count(self, logging_record: types.LoggingRecord):
     # Note: This temporary implementation is not accurate.
     # Better version should be calculated from the api response or at least
     # libraries like tiktoker.
     return logging_record.query_record.max_tokens
 
-  def _get_query_token_count(self, logging_record: types.LoggingRecord):
+  def get_query_token_count(self, logging_record: types.LoggingRecord):
     # Note: Not implemented yet.
     return 0
 
-  def _get_response_token_count(self, logging_record: types.LoggingRecord):
+  def get_response_token_count(self, logging_record: types.LoggingRecord):
     # Note: Not implemented yet.
     return logging_record.query_record.max_tokens
 
