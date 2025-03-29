@@ -3,6 +3,9 @@ import proxai.connectors.model_connector as model_connector
 
 
 class MockProviderModelConnector(model_connector.ProviderModelConnector):
+  def get_provider_name(self):
+    return "mock_provider"
+
   def init_model(self):
     return None
 
@@ -20,15 +23,15 @@ class MockProviderModelConnector(model_connector.ProviderModelConnector):
 
   def get_response_token_count(self, logging_record: types.LoggingRecord):
     return 50
-
-  def get_provider_name(self):
-    return "mock_provider"
 
   def generate_text_proc(self, query_record: types.QueryRecord):
     return "mock response"
 
 
 class MockFailingProviderModelConnector(model_connector.ProviderModelConnector):
+  def get_provider_name(self):
+    return "mock_failing_provider"
+
   def init_model(self):
     return None
 
@@ -46,9 +49,6 @@ class MockFailingProviderModelConnector(model_connector.ProviderModelConnector):
 
   def get_response_token_count(self, logging_record: types.LoggingRecord):
     return 50
-
-  def get_provider_name(self):
-    return "mock_failing_provider"
 
   def generate_text_proc(self, query_record: types.QueryRecord):
     raise ValueError('Temp Error')

@@ -11,11 +11,13 @@ import proxai.connectors.model_registry as model_registry
 import proxai.connectors.model_connector as model_connector
 import proxai.connectors.model_configs as model_configs
 import proxai.logging.utils as logging_utils
+import proxai.state_controllers.state_controller as state_controller
+
+_AVAILABLE_MODELS_STATE_PROPERTY = '_available_models_state'
 
 
-class AvailableModels:
+class AvailableModels(state_controller.StateControlled):
   _model_cache_manager: Optional[model_cache.ModelCacheManager]
-  _generate_text: Dict[types.ProviderModelType, Any]
   _run_type: types.RunType
   _get_run_type: Callable[[], types.RunType]
   _get_model_connector: Callable[
@@ -31,13 +33,12 @@ class AvailableModels:
   _providers_with_key: Set[str]
   _has_fetched_all_models: bool
   _latest_model_cache_path_used_for_update: Optional[str]
+  _available_models_state: types.AvailableModelsState
 
   def __init__(
       self,
-      run_type: types.RunType = None,
-      get_run_type: Callable[[], types.RunType] = None,
-      get_model_connector: Callable[
-          [], model_connector.ProviderModelConnector] = None,
+      run_type: Optional[types.RunType] = None,
+      get_run_type: Optional[Callable[[], types.RunType]] = None,
       model_cache_manager: Optional[model_cache.ModelCacheManager] = None,
       get_model_cache_manager: Optional[
           Callable[[], model_cache.ModelCacheManager]] = None,
@@ -47,45 +48,78 @@ class AvailableModels:
       get_proxdash_connection: Optional[
           Callable[[], proxdash.ProxDashConnection]] = None,
       allow_multiprocessing: bool = None,
-      get_allow_multiprocessing: Optional[Callable[[], bool]] = None):
-    if run_type and get_run_type:
+      get_allow_multiprocessing: Optional[Callable[[], bool]] = None,
+      get_model_connector: Optional[
+          Callable[[], model_connector.ProviderModelConnector]] = None,
+      init_state: Optional[types.AvailableModelsState] = None):
+
+    if init_state and (
+        run_type is not None or
+        get_run_type is not None or
+        model_cache_manager is not None or
+        get_model_cache_manager is not None or
+        logging_options is not None or
+        get_logging_options is not None or
+        proxdash_connection is not None or
+        get_proxdash_connection is not None or
+        allow_multiprocessing is not None or
+        get_allow_multiprocessing is not None):
       raise ValueError(
-          'Only one of run_type or get_run_type should be provided.')
-    if logging_options and get_logging_options:
-      raise ValueError(
-          'Only one of logging_options or get_logging_options should be '
-          'provided.')
-    if proxdash_connection and get_proxdash_connection:
-      raise ValueError(
-          'Only one of proxdash_connection or get_proxdash_connection should '
-          'be provided.')
-    if allow_multiprocessing and get_allow_multiprocessing:
-      raise ValueError(
-          'Only one of allow_multiprocessing or get_allow_multiprocessing should '
-          'be provided.')
-    if model_cache_manager and get_model_cache_manager:
-      raise ValueError(
-          'Only one of model_cache_manager or get_model_cache_manager should '
-          'be provided.')
-    self.run_type = run_type
-    self._generate_text = {}
-    self._get_run_type = get_run_type
-    self.get_model_connector = get_model_connector
-    self.model_cache_manager = model_cache_manager
-    self._get_model_cache_manager = get_model_cache_manager
-    self.logging_options = logging_options
-    self._get_logging_options = get_logging_options
-    self.proxdash_connection = proxdash_connection
-    self._get_proxdash_connection = get_proxdash_connection
-    self.allow_multiprocessing = allow_multiprocessing
-    self._get_allow_multiprocessing = get_allow_multiprocessing
-    self._providers_with_key = set()
-    self._has_fetched_all_models = False
-    self._latest_model_cache_path_used_for_update = None
-    self._load_provider_keys()
+          'init_state and other parameters cannot be set at the same time.')
+
+    super().__init__(
+        run_type=run_type,
+        get_run_type=get_run_type,
+        model_cache_manager=model_cache_manager,
+        get_model_cache_manager=get_model_cache_manager,
+        logging_options=logging_options,
+        get_logging_options=get_logging_options,
+        proxdash_connection=proxdash_connection,
+        get_proxdash_connection=get_proxdash_connection,
+        allow_multiprocessing=allow_multiprocessing,
+        get_allow_multiprocessing=get_allow_multiprocessing)
+
+    self.init_state()
+
+    if init_state:
+      self.load_state(init_state)
+    else:
+      initial_state = self.get_state()
+      self._get_run_type = get_run_type
+      self._get_model_cache_manager = get_model_cache_manager
+      self._get_logging_options = get_logging_options
+      self._get_proxdash_connection = get_proxdash_connection
+      self._get_allow_multiprocessing = get_allow_multiprocessing
+      self._get_model_connector = get_model_connector
+
+      self.run_type = run_type
+      self.model_cache_manager = model_cache_manager
+      self.logging_options = logging_options
+      self.proxdash_connection = proxdash_connection
+      self.allow_multiprocessing = allow_multiprocessing
+      self.get_model_connector = get_model_connector
+
+      self.providers_with_key = set()
+      self.has_fetched_all_models = False
+      self.latest_model_cache_path_used_for_update = None
+      self._load_provider_keys()
+
+      self.handle_changes(initial_state, self.get_state())
+
+  def get_internal_state_property_name(self):
+    return _AVAILABLE_MODELS_STATE_PROPERTY
+
+  def get_internal_state_type(self):
+    return types.AvailableModelsState
+
+  def handle_changes(
+      self,
+      old_state: types.AvailableModelsState,
+      current_state: types.AvailableModelsState):
+    pass
 
   def _load_provider_keys(self):
-    self._providers_with_key = set()
+    self.providers_with_key = set()
     for provider, provider_key_name in model_configs.PROVIDER_KEY_MAP.items():
       provider_flag = True
       for key_name in provider_key_name:
@@ -93,70 +127,73 @@ class AvailableModels:
           provider_flag = False
           break
       if provider_flag:
-        self._providers_with_key.add(provider)
+        self.providers_with_key.add(provider)
 
   @property
   def run_type(self) -> types.RunType:
-    if self._run_type:
-      return self._run_type
-    if self._get_run_type:
-      return self._get_run_type()
-    return None
+    return self.get_property_value('run_type')
 
   @run_type.setter
   def run_type(self, run_type: types.RunType):
-    self._run_type = run_type
+    self.set_property_value('run_type', run_type)
 
   @property
   def logging_options(self) -> types.LoggingOptions:
-    if self._logging_options:
-      return self._logging_options
-    if self._get_logging_options:
-      return self._get_logging_options()
-    return None
+    return self.get_property_value('logging_options')
 
   @logging_options.setter
   def logging_options(self, logging_options: types.LoggingOptions):
-    self._logging_options = logging_options
+    self.set_property_value('logging_options', logging_options)
 
   @property
   def model_cache_manager(self) -> model_cache.ModelCacheManager:
-    if self._model_cache_manager:
-      return self._model_cache_manager
-    if self._get_model_cache_manager:
-      return self._get_model_cache_manager()
-    return None
+    return self.get_state_controlled_property_value('model_cache_manager')
 
   @model_cache_manager.setter
   def model_cache_manager(
-      self, model_cache_manager: model_cache.ModelCacheManager):
-    self._model_cache_manager = model_cache_manager
+      self, value: model_cache.ModelCacheManager):
+    self.set_state_controlled_property_value('model_cache_manager', value)
 
   @property
   def proxdash_connection(self) -> proxdash.ProxDashConnection:
-    if self.run_type == types.RunType.TEST:
-      return None
-    if self._proxdash_connection:
-      return self._proxdash_connection
-    if self._get_proxdash_connection:
-      return self._get_proxdash_connection()
-    return None
+    return self.get_state_controlled_property_value('proxdash_connection')
 
   @proxdash_connection.setter
-  def proxdash_connection(self, proxdash_connection: proxdash.ProxDashConnection):
-    self._proxdash_connection = proxdash_connection
+  def proxdash_connection(self, value: proxdash.ProxDashConnection):
+    self.set_state_controlled_property_value('proxdash_connection', value)
 
   @property
   def allow_multiprocessing(self) -> bool:
-    if self._allow_multiprocessing is not None:
-      return self._allow_multiprocessing
-    if self._get_allow_multiprocessing:
-      return self._get_allow_multiprocessing()
-    return None
+    return self.get_property_value('allow_multiprocessing')
 
   @allow_multiprocessing.setter
-  def allow_multiprocessing(self, allow_multiprocessing: bool):
-    self._allow_multiprocessing = allow_multiprocessing
+  def allow_multiprocessing(self, value: bool):
+    self.set_property_value('allow_multiprocessing', value)
+
+  @property
+  def providers_with_key(self) -> Set[str]:
+    return self.get_property_value('providers_with_key')
+
+  @providers_with_key.setter
+  def providers_with_key(self, value: Set[str]):
+    self.set_property_value('providers_with_key', value)
+
+  @property
+  def has_fetched_all_models(self) -> bool:
+    return self.get_property_value('has_fetched_all_models')
+
+  @has_fetched_all_models.setter
+  def has_fetched_all_models(self, value: bool):
+    self.set_property_value('has_fetched_all_models', value)
+
+  @property
+  def latest_model_cache_path_used_for_update(self) -> Optional[str]:
+    return self.get_property_value('latest_model_cache_path_used_for_update')
+
+  @latest_model_cache_path_used_for_update.setter
+  def latest_model_cache_path_used_for_update(
+      self, value: Optional[str]):
+    self.set_property_value('latest_model_cache_path_used_for_update', value)
 
   def _get_all_models(self, models: types.ModelStatus, call_type: str):
     if call_type == types.CallType.GENERATE_TEXT:
@@ -175,7 +212,7 @@ class AvailableModels:
     ) -> Tuple[Set[types.ProviderModelType], Set[types.ProviderModelType]]:
       not_filtered = set()
       for provider_model in provider_model_set:
-        if provider_model.provider in self._providers_with_key:
+        if provider_model.provider in self.providers_with_key:
           not_filtered.add(provider_model)
         else:
           models.filtered_models.add(provider_model)
@@ -203,21 +240,18 @@ class AvailableModels:
       if provider_model in models.failed_models:
         models.failed_models.remove(provider_model)
 
-    provider_query_map = {
-        query.query_record.provider_model: query
-        for query in cache_result.provider_queries
-    }
-
     for provider_model in cache_result.working_models:
       if provider_model not in models.filtered_models:
         _remove_model(provider_model)
         models.working_models.add(provider_model)
-        models.provider_queries.append(provider_query_map[provider_model])
+        models.provider_queries[
+            provider_model] = cache_result.provider_queries[provider_model]
     for provider_model in cache_result.failed_models:
       if provider_model not in models.filtered_models:
         _remove_model(provider_model)
         models.failed_models.add(provider_model)
-        models.provider_queries.append(provider_query_map[provider_model])
+        models.provider_queries[
+            provider_model] = cache_result.provider_queries[provider_model]
     self._update_provider_queries(models)
 
   def _filter_largest_models(self, models: types.ModelStatus):
@@ -245,7 +279,8 @@ class AvailableModels:
     prompt = 'Hello model!'
     max_tokens = 100
     model_connector = model_registry.get_model_connector(
-        provider_model_state.provider_model)
+        provider_model_state.provider_model,
+        without_additional_args=True)
     model_connector = model_connector(init_state=provider_model_state)
     try:
       logging_record: types.LoggingRecord = model_connector.generate_text(
@@ -313,13 +348,15 @@ class AvailableModels:
       else:
         models.failed_models.add(logging_record.query_record.provider_model)
         update_models.failed_models.add(logging_record.query_record.provider_model)
-      models.provider_queries.append(logging_record)
-      update_models.provider_queries.append(logging_record)
+      models.provider_queries[
+          logging_record.query_record.provider_model] = logging_record
+      update_models.provider_queries[
+          logging_record.query_record.provider_model] = logging_record
     if self.model_cache_manager:
       self.model_cache_manager.update(
-          model_status=update_models, call_type=call_type)
-      self._latest_model_cache_path_used_for_update = (
-          self.model_cache_manager.get_cache_path())
+          model_status_updates=update_models, call_type=call_type)
+      self.latest_model_cache_path_used_for_update = (
+          self.model_cache_manager.cache_path)
     self._update_provider_queries(models)
 
   def _format_set(
@@ -331,11 +368,12 @@ class AvailableModels:
   def _update_provider_queries(
       self,
       models: types.ModelStatus):
-    models.provider_queries = [
-        query for query in models.provider_queries
-        if query.query_record.provider_model in models.working_models or
-        query.query_record.provider_model in models.failed_models
-    ]
+    models.provider_queries = {
+        provider_model: query
+        for provider_model, query in models.provider_queries.items()
+        if provider_model in models.working_models or
+        provider_model in models.failed_models
+    }
 
   def _fetch_all_models(
       self,
@@ -371,7 +409,7 @@ class AvailableModels:
       duration = (end_utc_date - start_utc_date).total_seconds()
       print(f'Test duration: {duration} seconds.')
 
-    self._has_fetched_all_models = True
+    self.has_fetched_all_models = True
     return models
 
   def _check_model_cache_path_same(self):
@@ -379,8 +417,8 @@ class AvailableModels:
     if not self.model_cache_manager:
       model_cache_path = None
     else:
-      model_cache_path = self.model_cache_manager.get_cache_path()
-    return model_cache_path == self._latest_model_cache_path_used_for_update
+      model_cache_path = self.model_cache_manager.cache_path
+    return model_cache_path == self.latest_model_cache_path_used_for_update
 
   def get_all_models(
       self,
@@ -404,7 +442,7 @@ class AvailableModels:
     elif (
         clear_model_cache or
         not self._check_model_cache_path_same() or
-        not self._has_fetched_all_models):
+        not self.has_fetched_all_models):
       models = self._fetch_all_models(
           verbose=verbose,
           clear_model_cache=clear_model_cache,
@@ -433,11 +471,11 @@ class AvailableModels:
       # For performance, we only load the provider keys if the model cache is
       # not enabled instead of fetching all models.
       self._load_provider_keys()
-      providers_with_key = self._providers_with_key
+      providers_with_key = self.providers_with_key
     elif (
         clear_model_cache or
         not self._check_model_cache_path_same() or
-        not self._has_fetched_all_models):
+        not self.has_fetched_all_models):
       models = self._fetch_all_models(
           verbose=verbose,
           clear_model_cache=clear_model_cache,
@@ -473,7 +511,7 @@ class AvailableModels:
       # For performance, we only load the provider keys if the model cache is
       # not enabled instead of fetching all models.
       self._load_provider_keys()
-      if provider not in self._providers_with_key:
+      if provider not in self.providers_with_key:
         raise ValueError(
             f'Provider key not found in environment variables for {provider}.\n'
             f'Required keys: {model_configs.PROVIDER_KEY_MAP[provider]}')
@@ -482,7 +520,7 @@ class AvailableModels:
     elif (
         clear_model_cache or
         not self._check_model_cache_path_same() or
-        not self._has_fetched_all_models):
+        not self.has_fetched_all_models):
       models = self._fetch_all_models(
           verbose=verbose,
           clear_model_cache=clear_model_cache,
@@ -525,7 +563,7 @@ class AvailableModels:
       # For performance, we only load the provider keys if the model cache is
       # not enabled instead of fetching all models.
       self._load_provider_keys()
-      if provider not in self._providers_with_key:
+      if provider not in self.providers_with_key:
         raise ValueError(
             f'Provider key not found in environment variables for {provider}.\n'
             f'Required keys: {model_configs.PROVIDER_KEY_MAP[provider]}')
@@ -533,7 +571,7 @@ class AvailableModels:
     elif (
         clear_model_cache or
         not self._check_model_cache_path_same() or
-        not self._has_fetched_all_models):
+        not self.has_fetched_all_models):
       models = self._fetch_all_models(
           verbose=verbose,
           clear_model_cache=clear_model_cache,

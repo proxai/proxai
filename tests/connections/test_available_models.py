@@ -9,6 +9,7 @@ import proxai.caching.model_cache as model_cache
 import proxai.connectors.model_registry as model_registry
 import proxai.connectors.model_connector as model_connector
 import proxai.connectors.model_configs as model_configs
+import proxai.connections.proxdash as proxdash
 import time
 
 
@@ -25,7 +26,9 @@ class TestAvailableModels:
   cache_dir: Optional[
       tempfile.TemporaryDirectory] = None
   initialized_model_connectors: Optional[
-      Dict[types.ProviderModelType, model_connector.ProviderModelConnector]] = None
+      Dict[
+          types.ProviderModelType,
+          model_connector.ProviderModelConnector]] = None
   model_cache_manager: Optional[
       model_cache.ModelCacheManager] = None
 
@@ -40,6 +43,11 @@ class TestAvailableModels:
       return self.initialized_model_connectors[provider_model]
     connector = model_registry.get_model_connector(provider_model)
     self.initialized_model_connectors[provider_model] = connector(
+        logging_options=types.LoggingOptions(),
+        proxdash_connection=proxdash.ProxDashConnection(
+            logging_options=types.LoggingOptions(),
+            proxdash_options=types.ProxDashOptions(
+                disable_proxdash=True)),
         run_type=types.RunType.TEST)
     return self.initialized_model_connectors[provider_model]
 
@@ -75,23 +83,25 @@ class TestAvailableModels:
         model_configs.ALL_MODELS['openai']['gpt-4'])
     data.failed_models.add(
         model_configs.ALL_MODELS['openai']['gpt-4-turbo-preview'])
-    data.provider_queries.append(
-        types.LoggingRecord(
-            query_record=types.QueryRecord(
-                provider_model=model_configs.ALL_MODELS['openai']['gpt-4']),
-            response_record=types.QueryResponseRecord(response='response1')))
-    data.provider_queries.append(
-        types.LoggingRecord(
-            query_record=types.QueryRecord(
-                provider_model=model_configs.ALL_MODELS[
-                    'openai']['gpt-4-turbo-preview']),
-            response_record=types.QueryResponseRecord(error='error1')))
+    data.provider_queries[
+        model_configs.ALL_MODELS['openai']['gpt-4']
+    ] = types.LoggingRecord(
+        query_record=types.QueryRecord(
+            provider_model=model_configs.ALL_MODELS['openai']['gpt-4']),
+        response_record=types.QueryResponseRecord(response='response1'))
+    data.provider_queries[
+        model_configs.ALL_MODELS['openai']['gpt-4-turbo-preview']
+    ] = types.LoggingRecord(
+        query_record=types.QueryRecord(
+            provider_model=model_configs.ALL_MODELS[
+                'openai']['gpt-4-turbo-preview']),
+        response_record=types.QueryResponseRecord(error='error1'))
     save_cache.update(
-        model_status=data, call_type=types.CallType.GENERATE_TEXT)
+        model_status_updates=data, call_type=types.CallType.GENERATE_TEXT)
 
   def test_filter_by_key(self):
     available_models_manager = self._get_available_models()
-    available_models_manager._providers_with_key = [
+    available_models_manager.providers_with_key = [
         'openai',
         'claude']
     models = types.ModelStatus()
@@ -105,12 +115,12 @@ class TestAvailableModels:
         model_configs.ALL_MODELS['claude']['claude-3-haiku'],
         model_configs.ALL_MODELS['claude']['claude-3-opus'],
         model_configs.ALL_MODELS['claude']['claude-3-sonnet']])
-    assert models.provider_queries == []  # No queries should be filtered out since no queries exist yet
+    assert models.provider_queries == {}  # No queries should be filtered out since no queries exist yet
 
   def test_filter_by_cache(self):
     self._save_temp_cache_state()
     available_models_manager = self._get_available_models()
-    available_models_manager._providers_with_key = ['openai']
+    available_models_manager.providers_with_key = ['openai']
     models = types.ModelStatus()
     available_models_manager._get_all_models(
         models, call_type=types.CallType.GENERATE_TEXT)
@@ -124,15 +134,18 @@ class TestAvailableModels:
     assert models.failed_models == set([
         model_configs.ALL_MODELS['openai']['gpt-4-turbo-preview']])
     assert len(models.provider_queries) == 2  # Should contain both the success and error queries from cache
-    assert models.provider_queries[0].response_record.response == 'response1'
-    assert models.provider_queries[1].response_record.error == 'error1'
+    assert models.provider_queries[
+        model_configs.ALL_MODELS['openai']['gpt-4']
+    ].response_record.response == 'response1'
+    assert models.provider_queries[
+        model_configs.ALL_MODELS['openai']['gpt-4-turbo-preview']
+    ].response_record.error == 'error1'
 
     # Verify provider queries are properly maintained
     assert len(models.provider_queries) == 2
     assert all(
-        query.query_record.provider_model in models.working_models.union(
-            models.failed_models)
-        for query in models.provider_queries)
+        provider_model in models.working_models.union(models.failed_models)
+        for provider_model in models.provider_queries)
 
   def test_filter_largest_models(self):
     available_models_manager = self._get_available_models()
@@ -149,18 +162,20 @@ class TestAvailableModels:
         model_configs.ALL_MODELS['claude']['claude-3-opus'])
 
     # Add a provider query for a model that will be filtered out
-    models.provider_queries.append(
-        types.LoggingRecord(
-            query_record=types.QueryRecord(
-                provider_model=model_configs.ALL_MODELS['claude']['claude-3-haiku']),
-            response_record=types.QueryResponseRecord(response='response1')))
+    models.provider_queries[
+        model_configs.ALL_MODELS['claude']['claude-3-haiku']
+    ] = types.LoggingRecord(
+      query_record=types.QueryRecord(
+          provider_model=model_configs.ALL_MODELS['claude']['claude-3-haiku']),
+          response_record=types.QueryResponseRecord(response='response1'))
 
     # Add a provider query for a model that will remain
-    models.provider_queries.append(
-        types.LoggingRecord(
-            query_record=types.QueryRecord(
-                provider_model=model_configs.ALL_MODELS['claude']['claude-3-opus']),
-            response_record=types.QueryResponseRecord(response='response2')))
+    models.provider_queries[
+        model_configs.ALL_MODELS['claude']['claude-3-opus']
+    ] = types.LoggingRecord(
+        query_record=types.QueryRecord(
+            provider_model=model_configs.ALL_MODELS['claude']['claude-3-opus']),
+        response_record=types.QueryResponseRecord(response='response2'))
 
     available_models_manager._filter_largest_models(models)
 
@@ -177,14 +192,16 @@ class TestAvailableModels:
 
     # Check that provider queries for filtered models were removed
     assert len(models.provider_queries) == 1
-    assert models.provider_queries[0].query_record.provider_model == (
+    assert models.provider_queries[
+        model_configs.ALL_MODELS['claude']['claude-3-opus']
+    ].query_record.provider_model == (
         model_configs.ALL_MODELS['claude']['claude-3-opus'])
 
   @pytest.mark.parametrize('allow_multiprocessing', [True, False])
   def test_test_models(self, allow_multiprocessing):
     available_models_manager = self._get_available_models(
         allow_multiprocessing=allow_multiprocessing)
-    available_models_manager._providers_with_key = [
+    available_models_manager.providers_with_key = [
         'openai',
         'mock_failing_provider']
     models = types.ModelStatus()
@@ -273,16 +290,18 @@ class TestAvailableModels:
     models = types.ModelStatus()
 
     # Add some test queries
-    models.provider_queries.append(
-        types.LoggingRecord(
-            query_record=types.QueryRecord(
-                provider_model=model_configs.ALL_MODELS['openai']['gpt-4']),
-            response_record=types.QueryResponseRecord(response='response1')))
-    models.provider_queries.append(
-        types.LoggingRecord(
-            query_record=types.QueryRecord(
-                provider_model=model_configs.ALL_MODELS['claude']['claude-3-haiku']),
-            response_record=types.QueryResponseRecord(response='response2')))
+    models.provider_queries[
+        model_configs.ALL_MODELS['openai']['gpt-4']
+    ] = types.LoggingRecord(
+        query_record=types.QueryRecord(
+            provider_model=model_configs.ALL_MODELS['openai']['gpt-4']),
+        response_record=types.QueryResponseRecord(response='response1'))
+    models.provider_queries[
+        model_configs.ALL_MODELS['claude']['claude-3-haiku']
+    ] = types.LoggingRecord(
+        query_record=types.QueryRecord(
+            provider_model=model_configs.ALL_MODELS['claude']['claude-3-haiku']),
+        response_record=types.QueryResponseRecord(response='response2'))
 
     # Add models to working set
     models.working_models.add(
@@ -294,7 +313,9 @@ class TestAvailableModels:
     # Test that queries for filtered models are removed
     available_models_manager._update_provider_queries(models)
     assert len(models.provider_queries) == 1
-    assert models.provider_queries[0].query_record.provider_model == (
+    assert models.provider_queries[
+        model_configs.ALL_MODELS['claude']['claude-3-haiku']
+    ].query_record.provider_model == (
         model_configs.ALL_MODELS['claude']['claude-3-haiku'])
 
   def test_get_providers_without_cache(self, monkeypatch):
@@ -495,3 +516,8 @@ class TestAvailableModels:
     with pytest.raises(ValueError, match='Call type not supported:'):
       available_models_manager.get_provider_model(
           'openai', 'gpt-4', call_type='invalid_type')
+
+
+class TestAvailableModelsState:
+  # TODO: Add tests for AvailableModels state controlled properties
+  pass
