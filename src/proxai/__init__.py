@@ -12,11 +12,11 @@ from proxai.proxai import (
     get_summary,
     get_available_models,
     get_current_options,
-    clear_state,
-    _init_hidden_run_key,
+    reset_state,
+    _init_globals,
 )
 
 
 __version__ = version("proxai")
-_init_hidden_run_key()
+_init_globals()
 models = get_available_models()

@@ -135,6 +135,10 @@ def _get_run_options_options():
   return [
       {},
       {'run_type': types.RunType.TEST},
+      {'hidden_run_key': 'hidden_run_key'},
+      {'experiment_path': 'experiment_path'},
+      {'root_logging_path': 'root_logging_path'},
+      {'default_model_cache_path': 'default_model_cache_path'},
       {'logging_options': types.LoggingOptions(
           logging_path='logging_path',
           stdout=True,
@@ -153,6 +157,10 @@ def _get_run_options_options():
       {'strict_feature_test': True},
       {'suppress_provider_errors': True},
       {'run_type': types.RunType.TEST,
+       'hidden_run_key': 'hidden_run_key',
+       'experiment_path': 'experiment_path',
+       'root_logging_path': 'root_logging_path',
+       'default_model_cache_path': 'default_model_cache_path',
        'logging_options': types.LoggingOptions(
           logging_path='logging_path',
           stdout=True,

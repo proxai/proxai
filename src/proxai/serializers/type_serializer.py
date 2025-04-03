@@ -354,6 +354,14 @@ def encode_run_options(
   record = {}
   if run_options.run_type != None:
     record['run_type'] = run_options.run_type.value
+  if run_options.hidden_run_key != None:
+    record['hidden_run_key'] = run_options.hidden_run_key
+  if run_options.experiment_path != None:
+    record['experiment_path'] = run_options.experiment_path
+  if run_options.root_logging_path != None:
+    record['root_logging_path'] = run_options.root_logging_path
+  if run_options.default_model_cache_path != None:
+    record['default_model_cache_path'] = run_options.default_model_cache_path
   if run_options.logging_options != None:
     record['logging_options'] = encode_logging_options(
         run_options.logging_options)
@@ -419,6 +427,14 @@ def decode_run_options(
   run_options = types.RunOptions()
   if 'run_type' in record:
     run_options.run_type = types.RunType(record['run_type'])
+  if 'hidden_run_key' in record:
+    run_options.hidden_run_key = record['hidden_run_key']
+  if 'experiment_path' in record:
+    run_options.experiment_path = record['experiment_path']
+  if 'root_logging_path' in record:
+    run_options.root_logging_path = record['root_logging_path']
+  if 'default_model_cache_path' in record:
+    run_options.default_model_cache_path = record['default_model_cache_path']
   if 'logging_options' in record:
     run_options.logging_options = decode_logging_options(
         record['logging_options'])

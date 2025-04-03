@@ -408,7 +408,7 @@ class TestBaseQueryCache:
           shard_count=_SHARD_COUNT,
           response_per_file=_RESPONSE_PER_FILE,
           cache_response_size=10)
-      query_cache_manager_3.reset_cache()
+      query_cache_manager_3.clear_cache()
 
       # Verify records are cleared
       assert query_cache_manager_3.look(query_record_1).look_fail_reason
@@ -1949,7 +1949,7 @@ class TestQueryCacheState:
       with pytest.raises(
           ValueError,
           match='QueryCacheManager status is CACHE_PATH_NOT_FOUND'):
-        query_cache_manager.reset_cache()
+        query_cache_manager.clear_cache()
 
       with pytest.raises(
           ValueError,
