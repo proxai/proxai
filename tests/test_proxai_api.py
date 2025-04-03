@@ -15,7 +15,7 @@ class TestProxaiApiUseCases:
       for api_key in api_key_list:
         monkeypatch.setenv(api_key, 'test_api_key')
     self.temp_paths = {}
-    px.clear_state()
+    px.reset_state()
     px.set_run_type(px.types.RunType.TEST)
     px.models.allow_multiprocessing = False
     yield
@@ -34,7 +34,7 @@ class TestProxaiApiUseCases:
     # Check that model cache is not created yet:
     assert px.models.model_cache_manager.get(
         'GENERATE_TEXT').working_models == set()
-    assert not os.path.exists(px.models.model_cache_manager._cache_path)
+    assert not os.path.exists(px.models.model_cache_manager.cache_path)
 
     # If multiprocessing is disabled, it should be fast:
     start = time.time()
@@ -45,8 +45,8 @@ class TestProxaiApiUseCases:
     assert total_time < 1
 
     # Check that model cache is created in the cache path:
-    assert os.path.exists(px.models.model_cache_manager._cache_path)
-    with open(px.models.model_cache_manager._cache_path, 'r') as f:
+    assert os.path.exists(px.models.model_cache_manager.cache_path)
+    with open(px.models.model_cache_manager.cache_path, 'r') as f:
       data = json.load(f)
       assert len(data['GENERATE_TEXT']['failed_models']) == 1
       assert data['GENERATE_TEXT']['unprocessed_models'] == []
@@ -58,8 +58,8 @@ class TestProxaiApiUseCases:
     # Check that model cache is created:
     assert len(px.models.model_cache_manager.get(
         'GENERATE_TEXT').working_models) > 30
-    assert os.path.exists(px.models.model_cache_manager._cache_path)
-    with open(px.models.model_cache_manager._cache_path, 'r') as f:
+    assert os.path.exists(px.models.model_cache_manager.cache_path)
+    with open(px.models.model_cache_manager.cache_path, 'r') as f:
       data = json.load(f)
       assert len(data['GENERATE_TEXT']['failed_models']) == 1
       assert data['GENERATE_TEXT']['unprocessed_models'] == []
@@ -77,8 +77,8 @@ class TestProxaiApiUseCases:
     assert total_time < 1
 
     # Check that model cache in cache path is not changed:
-    assert os.path.exists(px.models.model_cache_manager._cache_path)
-    with open(px.models.model_cache_manager._cache_path, 'r') as f:
+    assert os.path.exists(px.models.model_cache_manager.cache_path)
+    with open(px.models.model_cache_manager.cache_path, 'r') as f:
       data = json.load(f)
       assert len(data['GENERATE_TEXT']['failed_models']) == 1
       assert data['GENERATE_TEXT']['unprocessed_models'] == []
@@ -228,14 +228,7 @@ class TestProxaiApiUseCases:
 
     # --- First connect without cache path ---
     px.connect()
-    # First call should be fast because temporary model cache is enabled and
-    # model cache file is created by the first call.
-    # TODO: This is not working because current implementation of proxai.py
-    # destroys the _DEFAULT_MODEL_CACHE_MANAGER and _DEFAULT_MODEL_CACHE_PATH.
-    # Eventually change to _test_cached_get_all_models() after the issue is
-    # fixed.
-    self._test_uncached_get_all_models()
-    # Second call should be also fast because of model cache:
+    # Call should be fast because still using default model cache:
     self._test_cached_get_all_models()
 
     # --- Second connect with new cache_path ---
@@ -249,37 +242,26 @@ class TestProxaiApiUseCases:
 
     # --- Third connect with same cache_path ---
     px.connect(cache_path=cache_path)
-    # First call should be fast because of model cache:
-    self._test_cached_get_all_models()
-    # Second call should be also fast because of model cache:
+    # Call should be fast because of the same cache path:
     self._test_cached_get_all_models()
 
     # --- Fourth connect with new cache_path_2 ---
     cache_path_2 = self._get_path_dir(
         'test_model_cache_with_different_connect_cache_paths_cache_path_2')
     px.connect(cache_path=cache_path_2)
-    # First call should be slow because temporary model cache is enabled but
-    # no model cache file is created yet.
+    # First call:
     self._test_uncached_get_all_models()
     # Second call should be fast because of model cache:
     self._test_cached_get_all_models()
 
     # --- Fifth connect with same cache path ---
     px.connect(cache_path=cache_path)
-    # First call should be fast because of model cache:
-    self._test_cached_get_all_models()
-    # Second call should be also fast because of model cache:
+    # Call should be fast because of the previously used cache path:
     self._test_cached_get_all_models()
 
     # --- Sixth connect with default cache path ---
     px.connect()
-    # First call should be fast because of model cache:
-    # TODO: This is not working because current implementation of proxai.py
-    # destroys the _DEFAULT_MODEL_CACHE_MANAGER and _DEFAULT_MODEL_CACHE_PATH.
-    # Eventually change to _test_cached_get_all_models() after the issue is
-    # fixed.
-    self._test_uncached_get_all_models()
-    # Second call should be also fast because of model cache:
+    # Call should be fast because using default model cache:
     self._test_cached_get_all_models()
 
   def test_query_cache_with_different_connect_cache_paths(self):
@@ -585,7 +567,7 @@ class TestProxaiApiUseCases:
     assert options.logging_options.hide_sensitive_content == False
     assert options.cache_options.cache_path == None
     assert options.cache_options.unique_response_limit == 1
-    assert options.cache_options.duration == None
+    assert options.cache_options.model_cache_duration == None
     assert options.cache_options.retry_if_error_cached == False
     assert options.cache_options.clear_query_cache_on_connect == False
     assert options.cache_options.clear_model_cache_on_connect == False

@@ -105,6 +105,10 @@ class SummaryOptions:
 @dataclasses.dataclass
 class RunOptions:
   run_type: Optional[RunType] = None
+  hidden_run_key: Optional[str] = None
+  experiment_path: Optional[str] = None
+  root_logging_path: Optional[str] = None
+  default_model_cache_path: Optional[str] = None
   logging_options: Optional[LoggingOptions] = None
   cache_options: Optional[CacheOptions] = None
   proxdash_options: Optional[ProxDashOptions] = None

@@ -511,8 +511,12 @@ class QueryCacheManager(state_controller.StateControlled):
 
     self.status = types.QueryCacheManagerStatus.WORKING
 
-  def reset_cache(self):
-    if self.status != types.QueryCacheManagerStatus.WORKING:
+  def clear_cache(self):
+    if (
+        self.status == types.QueryCacheManagerStatus.INITIALIZING or
+        self.status == types.QueryCacheManagerStatus.CACHE_OPTIONS_NOT_FOUND or
+        self.status == types.QueryCacheManagerStatus.CACHE_PATH_NOT_FOUND or
+        self.status == types.QueryCacheManagerStatus.CACHE_PATH_NOT_WRITABLE):
       raise ValueError(f'QueryCacheManager status is {self.status}')
     cache_dir = self._get_cache_dir(self.cache_options.cache_path)
     if os.path.exists(cache_dir):

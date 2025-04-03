@@ -144,6 +144,7 @@ class ModelCacheManager(state_controller.StateControlled):
       json.dump(data, f)
 
   def _load_from_cache_path(self):
+    self.model_status_by_call_type = {}
     if self.cache_path is None:
       return
     if not os.path.exists(self.cache_path):
