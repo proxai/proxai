@@ -308,8 +308,7 @@ def _get_registered_model_connector(
   global _REGISTERED_MODEL_CONNECTORS
   if call_type not in _REGISTERED_MODEL_CONNECTORS:
     if call_type == types.CallType.GENERATE_TEXT:
-      default_provider_model = _get_model_connector(
-          ('openai', 'gpt-3.5-turbo-instruct'))
+      default_provider_model = _get_model_connector(('openai', 'gpt-4'))
       _REGISTERED_MODEL_CONNECTORS[call_type] = default_provider_model
 
   return _REGISTERED_MODEL_CONNECTORS[call_type]

@@ -5,15 +5,15 @@ from pprint import pprint
 from dataclasses import asdict
 
 def main():
-  pprint(asdict(px.get_current_options()))
+  pprint(px.get_current_options(json=True))
 
   start_time = datetime.datetime.now()
-  print(f'len = {len(px.models.generate_text())}')
+  print(f'len = {len(px.models.get_all_models())}')
   end_time = datetime.datetime.now()
   print(f'> First call Time taken: {end_time - start_time}')
 
   start_time = datetime.datetime.now()
-  print(f'len = {len(px.models.generate_text())}')
+  print(f'len = {len(px.models.get_all_models())}')
   end_time = datetime.datetime.now()
   print(f'> Second call Time taken: {end_time - start_time}')
 
@@ -24,15 +24,15 @@ def main():
       proxdash_options=px.ProxDashOptions(stdout=True))
 
   print()
-  pprint(px.get_current_options())
+  pprint(px.get_current_options(json=True))
 
   start_time = datetime.datetime.now()
-  print(f'len = {len(px.models.generate_text())}')
+  print(f'len = {len(px.models.get_all_models())}')
   end_time = datetime.datetime.now()
   print(f'> Third call Time taken: {end_time - start_time}')
 
   start_time = datetime.datetime.now()
-  print(f'len = {len(px.models.generate_text())}')
+  print(f'len = {len(px.models.get_all_models())}')
   end_time = datetime.datetime.now()
   print(f'> Fourth call Time taken: {end_time - start_time}')
 
