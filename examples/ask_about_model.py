@@ -10,24 +10,24 @@ import proxai.types as px_types
 from pprint import pprint
 
 _BREAK_CACHES = True
-_ONLY_LARGEST_MODELS = True
+_ONLY_LARGEST_MODELS = False
 
 
 def get_models(verbose=True):
-  models = px.models.generate_text(
+  provider_models = px.models.get_all_models(
       only_largest_models=_ONLY_LARGEST_MODELS,
       verbose=True)
   grouped_models = collections.defaultdict(list)
-  for provider, model in models:
-    grouped_models[provider].append(model)
+  for provider_model in provider_models:
+    grouped_models[provider_model.provider].append(provider_model.model)
   if verbose:
     print('Available models:')
-    for provider, provider_models in grouped_models.items():
+    for provider, models in grouped_models.items():
       print(f'{provider}:')
-      for provider_model in provider_models:
-        print(f'   {provider_model}')
+      for model in models:
+        print(f'   {model}')
     print()
-  return models
+  return provider_models
 
 
 def test_query(break_caches: bool=False):
@@ -50,17 +50,18 @@ def print_summary():
   print()
 
 
-def run_tests(models, query_func):
+def run_tests(provider_models, query_func):
   print(f'{"PROVIDER":10} | {"MODEL":45} | {"DURATION":13} | {"RESPONSE"}')
-  for provider, provider_model in models:
-    px.set_model(generate_text=(provider, provider_model))
+  for provider_model in provider_models:
+    px.set_model(generate_text=(provider_model.provider, provider_model.model))
     start_time = datetime.datetime.now()
     response = query_func()
     end_time = datetime.datetime.now()
     duration = (end_time - start_time).total_seconds() * 1000
     response = response.strip().split('\n')[0][:100] + (
       '...' if len(response) > 100 else '')
-    print(f'{provider:10} | {provider_model:45} | {duration:10.0f} ms | {response}')
+    print(f'{provider_model.provider:10} | {provider_model.model:45} | '
+          f'{duration:10.0f} ms | {response}')
 
 
 def main():
@@ -71,8 +72,8 @@ def main():
       proxdash_options=px.ProxDashOptions(
           stdout=True,
           hide_sensitive_content=True))
-  models = get_models()
-  run_tests(models, functools.partial(test_query, break_caches=_BREAK_CACHES))
+  provider_models = get_models()
+  run_tests(provider_models, functools.partial(test_query, break_caches=_BREAK_CACHES))
 
 
 if __name__ == '__main__':

@@ -71,15 +71,13 @@ def feature_complete_test(hard_start=False):
 
 
 def make_query(
-    provider,
-    model,
+    provider_model,
     use_cache,
     px_generate_text):
   global TOTAL_CACHE_HITS, TOTAL_PROVIDER_CALLS
   try:
     logging_record: px_types.LoggingRecord = px_generate_text(
-        provider=provider,
-        model=model,
+        provider_model=provider_model,
         use_cache=use_cache,
         extensive_return=True)
     if logging_record.response_source == px_types.ResponseSource.CACHE:
@@ -104,20 +102,20 @@ def run_queries(
           unique_response_limit=1,
           retry_if_error_cached=retry_if_error_cached),
       strict_feature_test=strict_feature_test)
-  models = px.models.generate_text(verbose=True)
+  provider_models = px.models.get_all_models(verbose=True)
   print(f'{"PROVIDER":10} | {"MODEL":45} | {"DURATION":13} | {"RESPONSE"}')
-  for provider, provider_model in models:
+  for provider_model in provider_models:
     start_time = datetime.datetime.now()
     response = make_query(
-        provider=provider,
-        model=provider_model,
+        provider_model=provider_model,
         use_cache=use_cache,
         px_generate_text=px_generate_text)
     end_time = datetime.datetime.now()
     duration = (end_time - start_time).total_seconds() * 1000
     response = response.strip().split('\n')[0][:100] + (
       '...' if len(response) > 100 else '')
-    print(f'{provider:10} | {provider_model:45} | {duration:10.0f} ms | {response}')
+    print(f'{provider_model.provider:10} | {provider_model.model:45} | '
+          f'{duration:10.0f} ms | {response}')
 
 
 def run_tests(options, px_generate_text):
