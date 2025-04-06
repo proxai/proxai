@@ -39,7 +39,7 @@ class TestProxaiApiUseCases:
     # If multiprocessing is disabled, it should be fast:
     start = time.time()
     px.models.allow_multiprocessing = False
-    px.models.get_all_models()
+    px.models.list_models()
     px.models.allow_multiprocessing = None
     total_time = time.time() - start
     assert total_time < 1
@@ -71,7 +71,7 @@ class TestProxaiApiUseCases:
     # fast:
     start = time.time()
     px.models.allow_multiprocessing = True
-    px.models.get_all_models()
+    px.models.list_models()
     px.models.allow_multiprocessing = None
     total_time = time.time() - start
     assert total_time < 1
@@ -92,7 +92,7 @@ class TestProxaiApiUseCases:
 
     logging_record = px.generate_text(
         prompt='hello',
-        provider_model=px.models.get_provider_model(
+        provider_model=px.models.get_model(
             'claude', 'claude-3-haiku', clear_model_cache=True),
         extensive_return=True)
     assert logging_record.response_record.response == 'mock response'
@@ -124,19 +124,19 @@ class TestProxaiApiUseCases:
 
   def test_models_get_all_models(self):
     start = time.time()
-    models = px.models.get_all_models(clear_model_cache=True)
+    models = px.models.list_models(clear_model_cache=True)
     assert len(models) > 10
     assert time.time() - start < 1
 
     start = time.time()
-    models = px.models.get_all_models(only_largest_models=True)
+    models = px.models.list_models(only_largest_models=True)
     assert len(models) < 10
     assert time.time() - start < 1
 
   def test_models_get_all_models_multiprocessing(self):
     start = time.time()
     px.models.allow_multiprocessing = True
-    models = px.models.get_all_models()
+    models = px.models.list_models()
     px.models.allow_multiprocessing = None
     assert len(models) > 10
     assert time.time() - start > 1
@@ -149,41 +149,41 @@ class TestProxaiApiUseCases:
     # --- get_providers ---
     # This should be fast because of model cache:
     start = time.time()
-    providers = px.models.get_providers()
+    providers = px.models.list_providers()
     assert len(providers) > 5
     assert time.time() - start < 1
 
     # --- get_provider_models ---
     # This should be fast because of model cache:
     start = time.time()
-    models = px.models.get_provider_models('openai')
+    models = px.models.list_provider_models('openai')
     assert len(models) > 2
     assert time.time() - start < 1
 
     # --- get_provider_model ---
     # This should be fast because of model cache:
     start = time.time()
-    provider_model = px.models.get_provider_model('openai', 'gpt-4')
+    provider_model = px.models.get_model('openai', 'gpt-4')
     assert provider_model.provider == 'openai'
     assert provider_model.model == 'gpt-4'
     assert time.time() - start < 1
 
     # --- get_all_models with largest models ---
     start = time.time()
-    models = px.models.get_all_models(only_largest_models=True)
+    models = px.models.list_models(only_largest_models=True)
     assert len(models) < 10
     assert time.time() - start < 1
 
     # --- get_all_models with clear_model_cache ---
     start = time.time()
     px.models.allow_multiprocessing = False
-    models = px.models.get_all_models(clear_model_cache=True)
+    models = px.models.list_models(clear_model_cache=True)
     px.models.allow_multiprocessing = None
     assert len(models) > 10
     assert time.time() - start < 1
 
   def test_set_model(self):
-    px.models.get_all_models(clear_model_cache=True)
+    px.models.list_models(clear_model_cache=True)
 
     # Test default model
     px.set_model(('claude', 'claude-3-haiku'))
@@ -201,7 +201,7 @@ class TestProxaiApiUseCases:
     assert logging_record.query_record.provider_model.model == 'gpt-3.5-turbo'
 
     # Test setting model with provider_model from get_provider_model
-    px.set_model(px.models.get_provider_model('claude', 'claude-3-haiku'))
+    px.set_model(px.models.get_model('claude', 'claude-3-haiku'))
     logging_record = px.generate_text('hello', extensive_return=True)
     assert logging_record.query_record.provider_model.model == 'claude-3-haiku'
 

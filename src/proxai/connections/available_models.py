@@ -446,7 +446,7 @@ class AvailableModels(state_controller.StateControlled):
       model_cache_path = self.model_cache_manager.cache_path
     return model_cache_path == self.latest_model_cache_path_used_for_update
 
-  def get_all_models(
+  def list_models(
       self,
       only_largest_models: bool = False,
       verbose: bool = False,
@@ -484,7 +484,7 @@ class AvailableModels(state_controller.StateControlled):
       return models
     return self._format_set(models.working_models)
 
-  def get_providers(
+  def list_providers(
       self,
       verbose: bool = False,
       clear_model_cache: bool = False,
@@ -518,7 +518,7 @@ class AvailableModels(state_controller.StateControlled):
 
     return sorted(list(providers_with_key))
 
-  def get_provider_models(
+  def list_provider_models(
       self,
       provider: str,
       verbose: bool = False,
@@ -565,7 +565,7 @@ class AvailableModels(state_controller.StateControlled):
 
     return sorted(provider_models)
 
-  def get_provider_model(
+  def get_model(
       self,
       provider: str,
       model: str,

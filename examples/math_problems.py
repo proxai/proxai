@@ -61,7 +61,7 @@ def connect_to_proxai():
 
 
 def get_models(verbose=True):
-  provider_models = px.models.get_all_models(
+  provider_models = px.models.list_models(
       only_largest_models=True,
       verbose=True)
   grouped_models = collections.defaultdict(list)

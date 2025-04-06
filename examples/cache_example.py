@@ -16,7 +16,7 @@ if __name__ == '__main__':
           unique_response_limit=_UNIQUE_RESPONSE_LIMIT,
           clear_query_cache_on_connect=True))
 
-  provider_models = px.models.get_all_models(
+  provider_models = px.models.list_models(
       only_largest_models=True, verbose=True)
   for provider_model in provider_models:
     print(f'{provider_model.provider:>10} - {provider_model.model}')

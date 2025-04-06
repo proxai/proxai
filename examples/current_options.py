@@ -8,12 +8,12 @@ def main():
   pprint(px.get_current_options(json=True))
 
   start_time = datetime.datetime.now()
-  print(f'len = {len(px.models.get_all_models())}')
+  print(f'len = {len(px.models.list_models())}')
   end_time = datetime.datetime.now()
   print(f'> First call Time taken: {end_time - start_time}')
 
   start_time = datetime.datetime.now()
-  print(f'len = {len(px.models.get_all_models())}')
+  print(f'len = {len(px.models.list_models())}')
   end_time = datetime.datetime.now()
   print(f'> Second call Time taken: {end_time - start_time}')
 
@@ -27,12 +27,12 @@ def main():
   pprint(px.get_current_options(json=True))
 
   start_time = datetime.datetime.now()
-  print(f'len = {len(px.models.get_all_models())}')
+  print(f'len = {len(px.models.list_models())}')
   end_time = datetime.datetime.now()
   print(f'> Third call Time taken: {end_time - start_time}')
 
   start_time = datetime.datetime.now()
-  print(f'len = {len(px.models.get_all_models())}')
+  print(f'len = {len(px.models.list_models())}')
   end_time = datetime.datetime.now()
   print(f'> Fourth call Time taken: {end_time - start_time}')
 
