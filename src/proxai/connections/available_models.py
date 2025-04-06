@@ -323,14 +323,40 @@ class AvailableModels(state_controller.StateControlled):
 
     test_results = []
     if self.allow_multiprocessing:
-      pool = multiprocessing.Pool(processes=len(test_provider_models))
-      for test_provider_model in test_provider_models:
-        result = pool.apply_async(
-            test_func,
-            args=(model_connectors[test_provider_model].get_state(),))
-        test_results.append(result)
-      pool.close()
-      pool.join()
+      process_count = max(1, multiprocessing.cpu_count() - 1)
+      try:
+        pool = multiprocessing.Pool(processes=process_count)
+        for test_provider_model in test_provider_models:
+          result = pool.apply_async(
+              test_func,
+              args=(model_connectors[test_provider_model].get_state(),))
+          test_results.append(result)
+        pool.close()
+        pool.join()
+      except Exception as e:
+        error_str = str(e).lower()
+        is_bootstrapping_error = (
+          "an attempt has been made to start a new process before" in error_str and
+          "current process has finished its bootstrapping phase" in error_str
+        )
+        if is_bootstrapping_error:
+          raise Exception(
+              f'{e}\n\nMultiprocessing initialization error: Unable to start new '
+              'processes because the proxai library was imported and used '
+              'outside of the "if __name__ == \'__main__\':" block. To fix '
+              'this:\n'
+              '1. Move your proxai code inside a "if __name__ == \'__main__\':"'
+              ' block, or\n'
+              '2. Disable multiprocessing by setting '
+              'allow_multiprocessing=False on px.connect()\n'
+              'For more details, see followings:\n'
+              '- https://www.proxai.co/proxai-docs/advanced/multiprocessing\n'
+              '- https://docs.python.org/3/library/multiprocessing.html#the-'
+              'spawn-and-forkserver-start-methods\n')
+        else:
+          raise e
+
+
       test_results: List[types.LoggingRecord] = [
           result.get() for result in test_results]
     else:
