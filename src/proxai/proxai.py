@@ -599,7 +599,7 @@ def check_health(
       proxdash_connection=proxdash_connection,
       allow_multiprocessing=allow_multiprocessing,
       get_model_connector=_get_model_connector)
-  model_status = models.get_all_models(
+  model_status = models.list_models(
       verbose=verbose, return_all=True)
   if verbose:
     providers = set(

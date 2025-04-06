@@ -102,7 +102,7 @@ def run_queries(
           unique_response_limit=1,
           retry_if_error_cached=retry_if_error_cached),
       strict_feature_test=strict_feature_test)
-  provider_models = px.models.get_all_models(verbose=True)
+  provider_models = px.models.list_models(verbose=True)
   print(f'{"PROVIDER":10} | {"MODEL":45} | {"DURATION":13} | {"RESPONSE"}')
   for provider_model in provider_models:
     start_time = datetime.datetime.now()

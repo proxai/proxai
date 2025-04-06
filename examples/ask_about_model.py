@@ -14,7 +14,7 @@ _ONLY_LARGEST_MODELS = False
 
 
 def get_models(verbose=True):
-  provider_models = px.models.get_all_models(
+  provider_models = px.models.list_models(
       only_largest_models=_ONLY_LARGEST_MODELS,
       verbose=True)
   grouped_models = collections.defaultdict(list)
