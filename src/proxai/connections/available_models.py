@@ -477,6 +477,7 @@ class AvailableModels(state_controller.StateControlled):
       models = self.model_cache_manager.get(call_type=call_type)
 
     if only_largest_models:
+      models = copy.deepcopy(models)
       self._filter_largest_models(models)
 
     if return_all:
