@@ -567,7 +567,7 @@ def check_health(
     experiment_path: Optional[str]=None,
     verbose: bool = True,
     allow_multiprocessing: bool = True,
-    detailed: bool = False,
+    extensive_return: bool = False,
 ) -> types.ModelStatus:
   if experiment_path is None:
     now = datetime.datetime.now()
@@ -582,7 +582,7 @@ def check_health(
         stdout=False,
         disable_proxdash=True)
   else:
-    proxdash_options = types.ProxDashOptions(stdout=True)
+    proxdash_options = types.ProxDashOptions(stdout=True, verbose=verbose)
   allow_multiprocessing = _set_allow_multiprocessing(
       allow_multiprocessing=allow_multiprocessing)
 
@@ -635,5 +635,5 @@ def check_health(
         proxdash_options=proxdash_options,
         message='Results are uploaded to the ProxDash.',
         type=types.LoggingType.INFO)
-  if detailed:
+  if extensive_return:
     return model_status
