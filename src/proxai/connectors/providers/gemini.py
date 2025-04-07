@@ -58,16 +58,19 @@ class GeminiConnector(model_connector.ProviderModelConnector):
     provider_model = query_record.provider_model
 
     if query_record.system == None:
-      generate_content = self.api(model_name=provider_model).generate_content
+      generate_content = self.api(
+          model_name=provider_model.provider_model_identifier
+      ).generate_content
     else:
       if provider_model == model_configs.ALL_MODELS[
           'gemini']['gemini_1_5_pro_latest']:
         generate_content = self.api(
-            model_name=provider_model.model,
+            model_name=provider_model.provider_model_identifier,
             system_instruction=query_record.system).generate_content
       else:
         generate_content = self.api(
-            model_name=provider_model.model).generate_content
+            model_name=provider_model.provider_model_identifier
+        ).generate_content
 
     generation_config = genai.GenerationConfig()
     if query_record.max_tokens != None:

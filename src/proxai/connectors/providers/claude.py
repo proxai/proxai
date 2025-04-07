@@ -45,7 +45,7 @@ class ClaudeConnector(model_connector.ProviderModelConnector):
 
     create = functools.partial(
         self.api.messages.create,
-        model=provider_model.model,
+        model=provider_model.provider_model_identifier,
         messages=query_messages)
     if query_record.system != None:
       create = functools.partial(create, system=query_record.system)

@@ -82,7 +82,7 @@ class HuggingFaceConnector(model_connector.ProviderModelConnector):
     provider_model = query_record.provider_model
     create = functools.partial(
         self.api.generate_content,
-        model=provider_model.model)
+        model=provider_model.provider_model_identifier)
     if query_record.max_tokens != None:
       # Note: Hugging Face uses max_new_tokens instead of max_tokens.
       # This implies that input tokens are not counted.
