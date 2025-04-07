@@ -54,7 +54,7 @@ class CohereConnector(model_connector.ProviderModelConnector):
 
     create = functools.partial(
         self.api.chat,
-        model=provider_model.model,
+        model=provider_model.provider_model_identifier,
         message=prompt)
     if query_record.system != None:
       create = functools.partial(create, preamble=query_record.system)

@@ -46,7 +46,7 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
 
     create = functools.partial(
         self.api.chat.completions.create,
-        model=provider_model.model,
+        model=provider_model.provider_model_identifier,
         messages=query_messages)
     if query_record.max_tokens != None:
       create = functools.partial(create, max_tokens=query_record.max_tokens)

@@ -582,7 +582,7 @@ def check_health(
         stdout=False,
         disable_proxdash=True)
   else:
-    proxdash_options = types.ProxDashOptions(stdout=True, verbose=verbose)
+    proxdash_options = types.ProxDashOptions(stdout=verbose)
   allow_multiprocessing = _set_allow_multiprocessing(
       allow_multiprocessing=allow_multiprocessing)
 
