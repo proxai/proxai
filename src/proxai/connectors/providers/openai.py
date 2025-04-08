@@ -17,7 +17,36 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
     return openai_mock.OpenAIMock()
 
   def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
-    return copy.deepcopy(query_record)
+    query_record = copy.deepcopy(query_record)
+    if self.provider_model.model in [
+        'gpt-4o-search-preview',
+        'gpt-4o-mini-search-preview']:
+      if query_record.temperature is not None:
+        self.feature_fail(
+            query_record=query_record,
+            message=(
+                'gpt-4o-mini-search-preview does not support temperature.'))
+        query_record.temperature = None
+      if query_record.stop is not None:
+        self.feature_fail(
+            query_record=query_record,
+            message=(
+                'gpt-4o-mini-search-preview does not support stop tokens.'))
+        query_record.stop = None
+    elif self.provider_model.model == 'o1-mini':
+      if query_record.system is not None:
+        self.feature_fail(
+            query_record=query_record,
+            message=(
+                'o1-mini does not support system messages.'))
+        query_record.system = None
+      if query_record.temperature is not None:
+        self.feature_fail(
+            query_record=query_record,
+            message=(
+                'o1-mini does not support temperature.'))
+        query_record.temperature = None
+    return query_record
 
   def get_token_count(self, logging_record: types.LoggingRecord):
     # Note: This temporary implementation is not accurate.
@@ -36,11 +65,11 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
   def generate_text_proc(self, query_record: types.QueryRecord) -> str:
     # Note: OpenAI uses 'system', 'user', and 'assistant' as roles.
     query_messages = []
-    if query_record.system != None:
+    if query_record.system is not None:
       query_messages.append({'role': 'system', 'content': query_record.system})
-    if query_record.prompt != None:
+    if query_record.prompt is not None:
       query_messages.append({'role': 'user', 'content': query_record.prompt})
-    if query_record.messages != None:
+    if query_record.messages is not None:
       query_messages.extend(query_record.messages)
     provider_model = query_record.provider_model
 
@@ -48,11 +77,12 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
         self.api.chat.completions.create,
         model=provider_model.provider_model_identifier,
         messages=query_messages)
-    if query_record.max_tokens != None:
-      create = functools.partial(create, max_tokens=query_record.max_tokens)
-    if query_record.temperature != None:
+    if query_record.max_tokens is not None:
+      create = functools.partial(
+          create, max_completion_tokens=query_record.max_tokens)
+    if query_record.temperature is not None:
       create = functools.partial(create, temperature=query_record.temperature)
-    if query_record.stop != None:
+    if query_record.stop is not None:
       create = functools.partial(create, stop=query_record.stop)
 
     completion = create()

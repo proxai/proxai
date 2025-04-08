@@ -24,29 +24,77 @@ GENERATE_TEXT_PRICING: Dict[
 
   # OpenAI
   'openai': MappingProxyType({
-    'gpt-4': types.ProviderModelPricingType(
-      per_response_token_cost=60.0,
-      per_query_token_cost=30.0,
+      'gpt-4.5-preview': types.ProviderModelPricingType(
+      per_response_token_cost=75.00,
+      per_query_token_cost=150.00,
     ),
-    'gpt-4-turbo-preview': types.ProviderModelPricingType(
-      per_response_token_cost=30.0,
-      per_query_token_cost=10.0,
+    'gpt-4o': types.ProviderModelPricingType(
+      per_response_token_cost=2.50,
+      per_query_token_cost=10.00,
+    ),
+    'gpt-4o-audio-preview': types.ProviderModelPricingType(
+      per_response_token_cost=2.50,
+      per_query_token_cost=10.00,
+    ),
+    'gpt-4o-realtime-preview': types.ProviderModelPricingType(
+      per_response_token_cost=5.00,
+      per_query_token_cost=20.00,
+    ),
+    'gpt-4o-mini': types.ProviderModelPricingType(
+      per_response_token_cost=0.15,
+      per_query_token_cost=0.60,
+    ),
+    'gpt-4o-mini-audio-preview': types.ProviderModelPricingType(
+      per_response_token_cost=0.15,
+      per_query_token_cost=0.60,
+    ),
+    'gpt-4o-mini-realtime-preview': types.ProviderModelPricingType(
+      per_response_token_cost=0.60,
+      per_query_token_cost=2.40,
+    ),
+    'o1': types.ProviderModelPricingType(
+      per_response_token_cost=15.00,
+      per_query_token_cost=60.00,
+    ),
+    'o1-pro': types.ProviderModelPricingType(
+      per_response_token_cost=150.00,
+      per_query_token_cost=600.00,
+    ),
+    'o3-mini': types.ProviderModelPricingType(
+      per_response_token_cost=1.10,
+      per_query_token_cost=4.40,
+    ),
+    'o1-mini': types.ProviderModelPricingType(
+      per_response_token_cost=1.10,
+      per_query_token_cost=4.40,
+    ),
+    'gpt-4o-mini-search-preview': types.ProviderModelPricingType(
+      per_response_token_cost=0.15,
+      per_query_token_cost=0.60,
+    ),
+    'gpt-4o-search-preview': types.ProviderModelPricingType(
+      per_response_token_cost=2.50,
+      per_query_token_cost=10.00,
+    ),
+    'computer-use-preview': types.ProviderModelPricingType(
+      per_response_token_cost=3.00,
+      per_query_token_cost=12.00,
+    ),
+    'gpt-4-turbo': types.ProviderModelPricingType(
+      per_response_token_cost=10.00,
+      per_query_token_cost=30.00,
+    ),
+    'gpt-4': types.ProviderModelPricingType(
+      per_response_token_cost=30.00,
+      per_query_token_cost=60.00,
+    ),
+    'gpt-4-32k': types.ProviderModelPricingType(
+      per_response_token_cost=60.00,
+      per_query_token_cost=120.00,
     ),
     'gpt-3.5-turbo': types.ProviderModelPricingType(
-      per_response_token_cost=1.5,
-      per_query_token_cost=0.5,
-    ),
-    'babbage': types.ProviderModelPricingType(
-      per_response_token_cost=0.4,
-      per_query_token_cost=0.4,
-    ),
-    'davinci': types.ProviderModelPricingType(
-      per_response_token_cost=2.0,
-      per_query_token_cost=2.0,
-    ),
-    'gpt-3.5-turbo-instruct': types.ProviderModelPricingType(
-      per_response_token_cost=2.0,
-      per_query_token_cost=1.5,
+      per_response_token_cost=0.50,
+      per_query_token_cost=1.50,
     ),
   }),
 
