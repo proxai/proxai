@@ -1,5 +1,7 @@
 import copy
-import google.generativeai as genai
+import functools
+from google import genai
+from google.genai import types as genai_types
 import proxai.types as types
 import proxai.connectors.providers.gemini_mock as gemini_mock
 import proxai.connectors.model_connector as model_connector
@@ -11,23 +13,13 @@ class GeminiConnector(model_connector.ProviderModelConnector):
     return 'gemini'
 
   def init_model(self):
-    return genai.GenerativeModel
+    return genai.Client()
 
   def init_mock_model(self):
     return gemini_mock.GeminiMock
 
   def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
-    query_record = copy.deepcopy(query_record)
-    provider_model = query_record.provider_model
-    if (query_record.system != None
-        and provider_model != types.GeminiModel.GEMINI_1_5_PRO_LATEST):
-      self.feature_fail(
-          query_record=query_record,
-          message=(
-              'System instructions are only supported for the '
-              'GEMINI_1_5_PRO_LATEST model.'))
-      query_record.system = None
-    return query_record
+    return copy.deepcopy(query_record)
 
   def get_token_count(self, logging_record: types.LoggingRecord):
     # Note: This temporary implementation is not accurate.
@@ -47,42 +39,35 @@ class GeminiConnector(model_connector.ProviderModelConnector):
     # Note: Gemini uses 'user' and 'model' as roles.  'system_instruction' is a
     # different parameter.
     contents = []
-    if query_record.prompt != None:
-      contents.append({'role': 'user', 'parts': query_record.prompt})
-    if query_record.messages != None:
+    if query_record.prompt is not None:
+      contents.append(genai_types.Content(
+          parts=[genai_types.Part(text=query_record.prompt)], role='user'))
+    if query_record.messages is not None:
       for message in query_record.messages:
         if message['role'] == 'assistant':
-          contents.append({'role': 'model', 'parts': message['content']})
+          contents.append(genai_types.Content(
+              parts=[genai_types.Part(text=message['content'])],
+              role='model'))
         if message['role'] == 'user':
-          contents.append({'role': 'user', 'parts': message['content']})
-    provider_model = query_record.provider_model
+          contents.append(genai_types.Content(
+              parts=[genai_types.Part(text=message['content'])],
+              role='user'))
 
-    if query_record.system == None:
-      generate_content = self.api(
-          model_name=provider_model.provider_model_identifier
-      ).generate_content
-    else:
-      if provider_model == model_configs.ALL_MODELS[
-          'gemini']['gemini_1_5_pro_latest']:
-        generate_content = self.api(
-            model_name=provider_model.provider_model_identifier,
-            system_instruction=query_record.system).generate_content
-      else:
-        generate_content = self.api(
-            model_name=provider_model.provider_model_identifier
-        ).generate_content
-
-    generation_config = genai.GenerationConfig()
-    if query_record.max_tokens != None:
-      generation_config.max_output_tokens = query_record.max_tokens
-    if query_record.temperature != None:
-      generation_config.temperature = query_record.temperature
-    if query_record.stop != None:
+    config = genai_types.GenerateContentConfig()
+    if query_record.system is not None:
+      config.system_instruction = query_record.system
+    if query_record.max_tokens is not None:
+      config.max_output_tokens = query_record.max_tokens
+    if query_record.temperature is not None:
+      config.temperature = query_record.temperature
+    if query_record.stop is not None:
       if isinstance(query_record.stop, str):
-        query_record.stop = [query_record.stop]
-      generation_config.stop_sequences = query_record.stop
-
-    response = generate_content(
-        contents=contents,
-        generation_config=generation_config)
+        config.stop_sequences = [query_record.stop]
+      else:
+        config.stop_sequences = query_record.stop
+    response = self.api.models.generate_content(
+        model=self.provider_model.provider_model_identifier,
+        config=config,
+        contents=contents
+    )
     return response.text

@@ -6,7 +6,7 @@ import proxai.type_utils as type_utils
 PROVIDER_KEY_MAP: Dict[str, Tuple[str]] = MappingProxyType({
     'openai': tuple(['OPENAI_API_KEY']),
     'claude': tuple(['ANTHROPIC_API_KEY']),
-    'gemini': tuple(['GOOGLE_API_KEY']),
+    'gemini': tuple(['GEMINI_API_KEY']),
     'cohere': tuple(['CO_API_KEY']),
     'databricks': tuple(['DATABRICKS_TOKEN', 'DATABRICKS_HOST']),
     'mistral': tuple(['MISTRAL_API_KEY']),
@@ -99,40 +99,35 @@ ALL_MODELS: Dict[str, Dict[str, types.ProviderModelType]] = MappingProxyType({
   # Models provided by Gemini:
   # https://ai.google.dev/models/gemini
   'gemini': MappingProxyType({
-    'gemini-1.0-pro': types.ProviderModelType(
+    'gemini-1.5-pro': types.ProviderModelType(
       provider='gemini',
-      model='gemini-1.0-pro',
-      provider_model_identifier='gemini-1.0-pro'
+      model='gemini-1.5-pro',
+      provider_model_identifier='gemini-1.5-pro'
     ),
-    'gemini-1.0-pro-001': types.ProviderModelType(
+    'gemini-1.5-flash-8b': types.ProviderModelType(
       provider='gemini',
-      model='gemini-1.0-pro-001',
-      provider_model_identifier='gemini-1.0-pro-001'
+      model='gemini-1.5-flash-8b',
+      provider_model_identifier='gemini-1.5-flash-8b'
     ),
-    'gemini-1.0-pro-latest': types.ProviderModelType(
+    'gemini-1.5-flash': types.ProviderModelType(
       provider='gemini',
-      model='gemini-1.0-pro-latest',
-      provider_model_identifier='gemini-1.0-pro-latest'
+      model='gemini-1.5-flash',
+      provider_model_identifier='gemini-1.5-flash'
     ),
-    'gemini-1.0-pro-vision-latest': types.ProviderModelType(
+    'gemini-2.0-flash-lite': types.ProviderModelType(
       provider='gemini',
-      model='gemini-1.0-pro-vision-latest',
-      provider_model_identifier='gemini-1.0-pro-vision-latest'
+      model='gemini-2.0-flash-lite',
+      provider_model_identifier='gemini-2.0-flash-lite'
     ),
-    'gemini-1.5-pro-latest': types.ProviderModelType(
+    'gemini-2.0-flash': types.ProviderModelType(
       provider='gemini',
-      model='gemini-1.5-pro-latest',
-      provider_model_identifier='gemini-1.5-pro-latest'
+      model='gemini-2.0-flash',
+      provider_model_identifier='gemini-2.0-flash'
     ),
-    'gemini-pro': types.ProviderModelType(
+    'gemini-2.5-pro-preview-03-25': types.ProviderModelType(
       provider='gemini',
-      model='gemini-pro',
-      provider_model_identifier='gemini-pro'
-    ),
-    'gemini-pro-vision': types.ProviderModelType(
-      provider='gemini',
-      model='gemini-pro-vision',
-      provider_model_identifier='gemini-pro-vision'
+      model='gemini-2.5-pro-preview-03-25',
+      provider_model_identifier='gemini-2.5-pro-preview-03-25'
     ),
   }),
 
@@ -306,11 +301,12 @@ GENERATE_TEXT_MODELS: Dict[
   }),
 
   'gemini': MappingProxyType({
-    'gemini-1.0-pro': ALL_MODELS['gemini']['gemini-1.0-pro'],
-    'gemini-1.0-pro-001': ALL_MODELS['gemini']['gemini-1.0-pro-001'],
-    'gemini-1.0-pro-latest': ALL_MODELS['gemini']['gemini-1.0-pro-latest'],
-    'gemini-1.5-pro-latest': ALL_MODELS['gemini']['gemini-1.5-pro-latest'],
-    'gemini-pro': ALL_MODELS['gemini']['gemini-pro'],
+    'gemini-1.5-pro': ALL_MODELS['gemini']['gemini-1.5-pro'],
+    'gemini-1.5-flash-8b': ALL_MODELS['gemini']['gemini-1.5-flash-8b'],
+    'gemini-1.5-flash': ALL_MODELS['gemini']['gemini-1.5-flash'],
+    'gemini-2.0-flash-lite': ALL_MODELS['gemini']['gemini-2.0-flash-lite'],
+    'gemini-2.0-flash': ALL_MODELS['gemini']['gemini-2.0-flash'],
+    'gemini-2.5-pro-preview-03-25': ALL_MODELS['gemini']['gemini-2.5-pro-preview-03-25'],
   }),
 
   'cohere': MappingProxyType({
@@ -362,7 +358,8 @@ LARGEST_GENERATE_TEXT_MODELS: Dict[
     'claude-3-opus': ALL_MODELS['claude']['claude-3-opus'],
   }),
   'gemini': MappingProxyType({
-    'gemini-1.5-pro-latest': ALL_MODELS['gemini']['gemini-1.5-pro-latest'],
+    'gemini-2.5-pro-preview-03-25': ALL_MODELS[
+        'gemini']['gemini-2.5-pro-preview-03-25'],
   }),
   'cohere': MappingProxyType({
     'command-r-plus': ALL_MODELS['cohere']['command-r-plus'],
