@@ -39,38 +39,95 @@ ALL_MODELS: Dict[str, Dict[str, types.ProviderModelType]] = MappingProxyType({
   # Models provided by OpenAI:
   # https://platform.openai.com/docs/guides/text-generation
   'openai': MappingProxyType({
-    # Newer models (2023–)
+    'gpt-4.5-preview': types.ProviderModelType(
+      provider='openai',
+      model='gpt-4.5-preview',
+      provider_model_identifier='gpt-4.5-preview-2025-02-27'
+    ),
+    'gpt-4o': types.ProviderModelType(
+      provider='openai',
+      model='gpt-4o',
+      provider_model_identifier='gpt-4o-2024-08-06'
+    ),
+    'gpt-4o-audio-preview': types.ProviderModelType(
+      provider='openai',
+      model='gpt-4o-audio-preview',
+      provider_model_identifier='gpt-4o-audio-preview-2024-12-17'
+    ),
+    'gpt-4o-realtime-preview': types.ProviderModelType(
+      provider='openai',
+      model='gpt-4o-realtime-preview',
+      provider_model_identifier='gpt-4o-realtime-preview-2024-12-17'
+    ),
+    'gpt-4o-mini': types.ProviderModelType(
+      provider='openai',
+      model='gpt-4o-mini',
+      provider_model_identifier='gpt-4o-mini-2024-07-18'
+    ),
+    'gpt-4o-mini-audio-preview': types.ProviderModelType(
+      provider='openai',
+      model='gpt-4o-mini-audio-preview',
+      provider_model_identifier='gpt-4o-mini-audio-preview-2024-12-17'
+    ),
+    'gpt-4o-mini-realtime-preview': types.ProviderModelType(
+      provider='openai',
+      model='gpt-4o-mini-realtime-preview',
+      provider_model_identifier='gpt-4o-mini-realtime-preview-2024-12-17'
+    ),
+    'o1': types.ProviderModelType(
+      provider='openai',
+      model='o1',
+      provider_model_identifier='o1-2024-12-17'
+    ),
+    'o1-pro': types.ProviderModelType(
+      provider='openai',
+      model='o1-pro',
+      provider_model_identifier='o1-pro-2025-03-19'
+    ),
+    'o3-mini': types.ProviderModelType(
+      provider='openai',
+      model='o3-mini',
+      provider_model_identifier='o3-mini-2025-01-31'
+    ),
+    'o1-mini': types.ProviderModelType(
+      provider='openai',
+      model='o1-mini',
+      provider_model_identifier='o1-mini-2024-09-12'
+    ),
+    'gpt-4o-mini-search-preview': types.ProviderModelType(
+      provider='openai',
+      model='gpt-4o-mini-search-preview',
+      provider_model_identifier='gpt-4o-mini-search-preview-2025-03-11'
+    ),
+    'gpt-4o-search-preview': types.ProviderModelType(
+      provider='openai',
+      model='gpt-4o-search-preview',
+      provider_model_identifier='gpt-4o-search-preview-2025-03-11'
+    ),
+    'computer-use-preview': types.ProviderModelType(
+      provider='openai',
+      model='computer-use-preview',
+      provider_model_identifier='computer-use-preview-2025-03-11'
+    ),
+    'gpt-4-turbo': types.ProviderModelType(
+      provider='openai',
+      model='gpt-4-turbo',
+      provider_model_identifier='gpt-4-turbo-2024-04-09'
+    ),
     'gpt-4': types.ProviderModelType(
       provider='openai',
       model='gpt-4',
-      provider_model_identifier='gpt-4'
+      provider_model_identifier='gpt-4-0613'
     ),
-    'gpt-4-turbo-preview': types.ProviderModelType(
+    'gpt-4-32k': types.ProviderModelType(
       provider='openai',
-      model='gpt-4-turbo-preview',
-      provider_model_identifier='gpt-4-turbo-preview'
+      model='gpt-4-32k',
+      provider_model_identifier='gpt-4-32k'
     ),
     'gpt-3.5-turbo': types.ProviderModelType(
       provider='openai',
       model='gpt-3.5-turbo',
-      provider_model_identifier='gpt-3.5-turbo'
-    ),
-
-    # Updated legacy models (2023)
-    'babbage': types.ProviderModelType(
-      provider='openai',
-      model='babbage',
-      provider_model_identifier='babbage-002'
-    ),
-    'davinci': types.ProviderModelType(
-      provider='openai',
-      model='davinci',
-      provider_model_identifier='davinci-002'
-    ),
-    'gpt-3.5-turbo-instruct': types.ProviderModelType(
-      provider='openai',
-      model='gpt-3.5-turbo-instruct',
-      provider_model_identifier='gpt-3.5-turbo-instruct'
+      provider_model_identifier='gpt-3.5-turbo-0125'
     ),
   }),
 
@@ -289,8 +346,23 @@ GENERATE_TEXT_MODELS: Dict[
   }),
 
   'openai': MappingProxyType({
+    'gpt-4.5-preview': ALL_MODELS['openai']['gpt-4.5-preview'],
+    'gpt-4o': ALL_MODELS['openai']['gpt-4o'],
+    'gpt-4o-audio-preview': ALL_MODELS['openai']['gpt-4o-audio-preview'],
+    'gpt-4o-realtime-preview': ALL_MODELS['openai']['gpt-4o-realtime-preview'],
+    'gpt-4o-mini': ALL_MODELS['openai']['gpt-4o-mini'],
+    'gpt-4o-mini-audio-preview': ALL_MODELS['openai']['gpt-4o-mini-audio-preview'],
+    'gpt-4o-mini-realtime-preview': ALL_MODELS['openai']['gpt-4o-mini-realtime-preview'],
+    'o1': ALL_MODELS['openai']['o1'],
+    'o1-pro': ALL_MODELS['openai']['o1-pro'],
+    'o3-mini': ALL_MODELS['openai']['o3-mini'],
+    'o1-mini': ALL_MODELS['openai']['o1-mini'],
+    'gpt-4o-mini-search-preview': ALL_MODELS['openai']['gpt-4o-mini-search-preview'],
+    'gpt-4o-search-preview': ALL_MODELS['openai']['gpt-4o-search-preview'],
+    'computer-use-preview': ALL_MODELS['openai']['computer-use-preview'],
+    'gpt-4-turbo': ALL_MODELS['openai']['gpt-4-turbo'],
     'gpt-4': ALL_MODELS['openai']['gpt-4'],
-    'gpt-4-turbo-preview': ALL_MODELS['openai']['gpt-4-turbo-preview'],
+    'gpt-4-32k': ALL_MODELS['openai']['gpt-4-32k'],
     'gpt-3.5-turbo': ALL_MODELS['openai']['gpt-3.5-turbo'],
   }),
 
@@ -352,7 +424,7 @@ GENERATE_TEXT_MODELS: Dict[
 LARGEST_GENERATE_TEXT_MODELS: Dict[
     str, types.ProviderModelType] = MappingProxyType({
   'openai': MappingProxyType({
-    'gpt-4-turbo-preview': ALL_MODELS['openai']['gpt-4-turbo-preview'],
+    'o1-pro': ALL_MODELS['openai']['o1-pro'],
   }),
   'claude': MappingProxyType({
     'claude-3-opus': ALL_MODELS['claude']['claude-3-opus'],
