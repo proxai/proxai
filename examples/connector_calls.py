@@ -34,7 +34,7 @@ if __name__ == '__main__':
           clear_query_cache_on_connect=True,
       ),
       proxdash_options=px.ProxDashOptions(stdout=True))
-  models = px.models.list_provider_models(provider='claude')
+  models = px.models.list_provider_models(provider='cohere')
   print('--- Base call ---')
   for model in models:
     print(f'Model: {model}')

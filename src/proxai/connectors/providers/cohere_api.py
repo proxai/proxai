@@ -40,7 +40,7 @@ class CohereConnector(model_connector.ProviderModelConnector):
     # documentation. The suggested way is to use the preamble parameter.
     query_messages = []
     prompt = query_record.prompt
-    if query_record.messages != None:
+    if query_record.messages is not None:
       for message in query_record.messages:
         if message['role'] == 'user':
           query_messages.append(
@@ -56,16 +56,19 @@ class CohereConnector(model_connector.ProviderModelConnector):
         self.api.chat,
         model=provider_model.provider_model_identifier,
         message=prompt)
-    if query_record.system != None:
+    if query_record.system is not None:
       create = functools.partial(create, preamble=query_record.system)
     if query_messages:
       create = functools.partial(create, chat_history=query_messages)
-    if query_record.max_tokens != None:
+    if query_record.max_tokens is not None:
       create = functools.partial(create, max_tokens=query_record.max_tokens)
-    if query_record.temperature != None:
+    if query_record.temperature is not None:
       create = functools.partial(create, temperature=query_record.temperature)
-    if query_record.stop != None:
-      create = functools.partial(create, stop_sequences=query_record.stop)
+    if query_record.stop is not None:
+      if isinstance(query_record.stop, list):
+        create = functools.partial(create, stop_sequences=query_record.stop)
+      else:
+        create = functools.partial(create, stop_sequences=[query_record.stop])
 
     completion = create()
     return completion.text
