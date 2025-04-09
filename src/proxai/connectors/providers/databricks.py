@@ -1,6 +1,7 @@
+import os
 import copy
 import functools
-from databricks_genai_inference import ChatCompletion
+from databricks.sdk import WorkspaceClient
 import proxai.types as types
 import proxai.connectors.providers.databricks_mock as databricks_mock
 import proxai.connectors.model_connector as model_connector
@@ -11,7 +12,8 @@ class DatabricksConnector(model_connector.ProviderModelConnector):
     return 'databricks'
 
   def init_model(self):
-    return ChatCompletion
+    w = WorkspaceClient()
+    return w.serving_endpoints.get_open_ai_client()
 
   def init_mock_model(self):
     return databricks_mock.DatabricksMock()
@@ -50,7 +52,7 @@ class DatabricksConnector(model_connector.ProviderModelConnector):
     provider_model = query_record.provider_model
 
     create = functools.partial(
-        self.api.create,
+        self.api.chat.completions.create,
         model=provider_model.provider_model_identifier,
         messages=query_messages)
     if query_record.max_tokens != None:
@@ -61,4 +63,4 @@ class DatabricksConnector(model_connector.ProviderModelConnector):
       create = functools.partial(create, stop=query_record.stop)
 
     completion = create()
-    return completion.message
+    return completion.choices[0].message.content

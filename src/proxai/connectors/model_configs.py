@@ -263,40 +263,42 @@ ALL_MODELS: Dict[str, Dict[str, types.ProviderModelType]] = MappingProxyType({
   # Models provided by Databricks:
   # https://docs.databricks.com/en/machine-learning/foundation-models/index.html#provisioned-throughput-foundation-model-apis
   'databricks': MappingProxyType({
-    'dbrx-instruct': types.ProviderModelType(
+    'llama-4-maverick': types.ProviderModelType(
       provider='databricks',
-      model='dbrx-instruct',
+      model='llama-4-maverick',
+      provider_model_identifier='databricks-llama-4-maverick'
+    ),
+    'claude-3-7-sonnet': types.ProviderModelType(
+      provider='databricks',
+      model='claude-3-7-sonnet',
+      provider_model_identifier='databricks-claude-3-7-sonnet'
+    ),
+    'meta-llama-3-1-8b-it': types.ProviderModelType(
+      provider='databricks',
+      model='meta-llama-3-1-8b-it',
+      provider_model_identifier='databricks-meta-llama-3-1-8b-instruct'
+    ),
+    'meta-llama-3-3-70b-it': types.ProviderModelType(
+      provider='databricks',
+      model='meta-llama-3-3-70b-it',
+      provider_model_identifier='databricks-meta-llama-3-3-70b-instruct'
+    ),
+    # TODO: This is extremely slow model. Until better filtering, it is not
+    # included in the list.
+    # 'meta-llama-3-1-405b-it': types.ProviderModelType(
+    #   provider='databricks',
+    #   model='meta-llama-3-1-405b-it',
+    #   provider_model_identifier='databricks-meta-llama-3-1-405b-instruct'
+    # ),
+    'dbrx-it': types.ProviderModelType(
+      provider='databricks',
+      model='dbrx-it',
       provider_model_identifier='databricks-dbrx-instruct'
     ),
-    'mixtral-8x7b-instruct': types.ProviderModelType(
+    'mixtral-8x7b-it': types.ProviderModelType(
       provider='databricks',
-      model='mixtral-8x7b-instruct',
+      model='mixtral-8x7b-it',
       provider_model_identifier='databricks-mixtral-8x7b-instruct'
-    ),
-    'llama-2-70b-chat': types.ProviderModelType(
-      provider='databricks',
-      model='llama-2-70b-chat',
-      provider_model_identifier='databricks-llama-2-70b-chat'
-    ),
-    'llama-3-70b-instruct': types.ProviderModelType(
-      provider='databricks',
-      model='llama-3-70b-instruct',
-      provider_model_identifier='databricks-meta-llama-3-70b-instruct'
-    ),
-    'bge-large-en': types.ProviderModelType(
-      provider='databricks',
-      model='bge-large-en',
-      provider_model_identifier='databricks-bge-large-en'
-    ),
-    'mpt-30b-instruct': types.ProviderModelType(
-      provider='databricks',
-      model='mpt-30b-instruct',
-      provider_model_identifier='databricks-mpt-30b-instruct'
-    ),
-    'mpt-7b-instruct': types.ProviderModelType(
-      provider='databricks',
-      model='mpt-7b-instruct',
-      provider_model_identifier='databricks-mpt-7b-instruct'
     ),
   }),
 
@@ -433,13 +435,15 @@ GENERATE_TEXT_MODELS: Dict[
   }),
 
   'databricks': MappingProxyType({
-    'dbrx-instruct': ALL_MODELS['databricks']['dbrx-instruct'],
-    'mixtral-8x7b-instruct': ALL_MODELS['databricks']['mixtral-8x7b-instruct'],
-    'llama-2-70b-chat': ALL_MODELS['databricks']['llama-2-70b-chat'],
-    'llama-3-70b-instruct': ALL_MODELS['databricks']['llama-3-70b-instruct'],
-    'bge-large-en': ALL_MODELS['databricks']['bge-large-en'],
-    'mpt-30b-instruct': ALL_MODELS['databricks']['mpt-30b-instruct'],
-    'mpt-7b-instruct': ALL_MODELS['databricks']['mpt-7b-instruct'],
+    'llama-4-maverick': ALL_MODELS['databricks']['llama-4-maverick'],
+    'claude-3-7-sonnet': ALL_MODELS['databricks']['claude-3-7-sonnet'],
+    'meta-llama-3-1-8b-it': ALL_MODELS['databricks']['meta-llama-3-1-8b-it'],
+    'meta-llama-3-3-70b-it': ALL_MODELS['databricks']['meta-llama-3-3-70b-it'],
+    # TODO: This is extremely slow model. Until better filtering, it is not
+    # included in the list.
+    # 'meta-llama-3-1-405b-it': ALL_MODELS['databricks']['meta-llama-3-1-405b-it'],
+    'dbrx-it': ALL_MODELS['databricks']['dbrx-it'],
+    'mixtral-8x7b-it': ALL_MODELS['databricks']['mixtral-8x7b-it'],
   }),
 
   'mistral': MappingProxyType({
@@ -479,8 +483,11 @@ LARGEST_GENERATE_TEXT_MODELS: Dict[
     'command-a': ALL_MODELS['cohere']['command-a'],
   }),
   'databricks': MappingProxyType({
-    'llama-3-70b-instruct': ALL_MODELS['databricks']['llama-3-70b-instruct'],
-    'dbrx-instruct': ALL_MODELS['databricks']['dbrx-instruct'],
+    'llama-4-maverick': ALL_MODELS['databricks']['llama-4-maverick'],
+    # TODO: This is extremely slow model. Until better filtering, it is not
+    # included in the list.
+    # 'meta-llama-3-1-405b-it': ALL_MODELS['databricks']['meta-llama-3-1-405b-it'],
+    'dbrx-it': ALL_MODELS['databricks']['dbrx-it'],
   }),
   'mistral': MappingProxyType({
     'mistral-large-latest': ALL_MODELS['mistral']['mistral-large-latest'],

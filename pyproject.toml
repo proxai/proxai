@@ -12,9 +12,9 @@ urllib3 = "<2.0.0"
 openai = "^1.14.3"
 anthropic = "^0.21.3"
 cohere = "^5.1.7"
-databricks-genai-inference = "^0.2.3"
 mistralai = "^0.1.8"
 google-genai = "<1.9.0"
+databricks-sdk = {version = "^0.35.0", extras = ["openai"]}
 
 [tool.poetry.dev-dependencies]
 
