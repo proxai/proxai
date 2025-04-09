@@ -212,15 +212,30 @@ ALL_MODELS: Dict[str, Dict[str, types.ProviderModelType]] = MappingProxyType({
   # Models provided by Cohere:
   # https://docs.cohere.com/docs/models
   'cohere': MappingProxyType({
-    'command-light': types.ProviderModelType(
+    'command-a': types.ProviderModelType(
       provider='cohere',
-      model='command-light',
-      provider_model_identifier='command-light'
+      model='command-a',
+      provider_model_identifier='command-a-03-2025'
     ),
-    'command-light-nightly': types.ProviderModelType(
+    'command-r7b': types.ProviderModelType(
       provider='cohere',
-      model='command-light-nightly',
-      provider_model_identifier='command-light-nightly'
+      model='command-r7b',
+      provider_model_identifier='command-r7b-12-2024'
+    ),
+    'command-r-plus': types.ProviderModelType(
+      provider='cohere',
+      model='command-r-plus',
+      provider_model_identifier='command-r-plus'
+    ),
+    'command-r-08-2024': types.ProviderModelType(
+      provider='cohere',
+      model='command-r-08-2024',
+      provider_model_identifier='command-r-08-2024'
+    ),
+    'command-r': types.ProviderModelType(
+      provider='cohere',
+      model='command-r',
+      provider_model_identifier='command-r'
     ),
     'command': types.ProviderModelType(
       provider='cohere',
@@ -232,15 +247,15 @@ ALL_MODELS: Dict[str, Dict[str, types.ProviderModelType]] = MappingProxyType({
       model='command-nightly',
       provider_model_identifier='command-nightly'
     ),
-    'command-r': types.ProviderModelType(
+    'command-light': types.ProviderModelType(
       provider='cohere',
-      model='command-r',
-      provider_model_identifier='command-r'
+      model='command-light',
+      provider_model_identifier='command-light'
     ),
-    'command-r-plus': types.ProviderModelType(
+    'command-light-nightly': types.ProviderModelType(
       provider='cohere',
-      model='command-r-plus',
-      provider_model_identifier='command-r-plus'
+      model='command-light-nightly',
+      provider_model_identifier='command-light-nightly'
     ),
   }),
 
@@ -406,12 +421,15 @@ GENERATE_TEXT_MODELS: Dict[
   }),
 
   'cohere': MappingProxyType({
-    'command-light': ALL_MODELS['cohere']['command-light'],
-    'command-light-nightly': ALL_MODELS['cohere']['command-light-nightly'],
+    'command-a': ALL_MODELS['cohere']['command-a'],
+    'command-r7b': ALL_MODELS['cohere']['command-r7b'],
+    'command-r-plus': ALL_MODELS['cohere']['command-r-plus'],
+    'command-r-08-2024': ALL_MODELS['cohere']['command-r-08-2024'],
+    'command-r': ALL_MODELS['cohere']['command-r'],
     'command': ALL_MODELS['cohere']['command'],
     'command-nightly': ALL_MODELS['cohere']['command-nightly'],
-    'command-r': ALL_MODELS['cohere']['command-r'],
-    'command-r-plus': ALL_MODELS['cohere']['command-r-plus'],
+    'command-light': ALL_MODELS['cohere']['command-light'],
+    'command-light-nightly': ALL_MODELS['cohere']['command-light-nightly'],
   }),
 
   'databricks': MappingProxyType({
@@ -458,7 +476,7 @@ LARGEST_GENERATE_TEXT_MODELS: Dict[
         'gemini']['gemini-2.5-pro-preview-03-25'],
   }),
   'cohere': MappingProxyType({
-    'command-r-plus': ALL_MODELS['cohere']['command-r-plus'],
+    'command-a': ALL_MODELS['cohere']['command-a'],
   }),
   'databricks': MappingProxyType({
     'llama-3-70b-instruct': ALL_MODELS['databricks']['llama-3-70b-instruct'],

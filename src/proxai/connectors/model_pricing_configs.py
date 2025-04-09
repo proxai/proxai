@@ -157,15 +157,28 @@ GENERATE_TEXT_PRICING: Dict[
       per_query_token_cost=10.00,
     ),
   }),
+
   # Cohere
   'cohere': MappingProxyType({
-    'command-light': types.ProviderModelPricingType(
-      per_response_token_cost=0.5,
-      per_query_token_cost=1.5,
+    'command-a': types.ProviderModelPricingType(
+      per_response_token_cost=2.5,
+      per_query_token_cost=10.0,
     ),
-    'command-light-nightly': types.ProviderModelPricingType(
-      per_response_token_cost=0.5,
-      per_query_token_cost=1.5,
+    'command-r7b': types.ProviderModelPricingType(
+      per_response_token_cost=0.0375,
+      per_query_token_cost=0.15,
+    ),
+    'command-r-plus': types.ProviderModelPricingType(
+      per_response_token_cost=2.5,
+      per_query_token_cost=10.0,
+    ),
+    'command-r-08-2024': types.ProviderModelPricingType(
+      per_response_token_cost=0.15,
+      per_query_token_cost=0.6,
+    ),
+    'command-r': types.ProviderModelPricingType(
+      per_response_token_cost=0.15,
+      per_query_token_cost=0.6,
     ),
     'command': types.ProviderModelPricingType(
       per_response_token_cost=0.5,
@@ -175,13 +188,13 @@ GENERATE_TEXT_PRICING: Dict[
       per_response_token_cost=0.5,
       per_query_token_cost=1.5,
     ),
-    'command-r': types.ProviderModelPricingType(
-      per_response_token_cost=0.5,
-      per_query_token_cost=1.5,
+    'command-light': types.ProviderModelPricingType(
+      per_response_token_cost=0.0375,
+      per_query_token_cost=0.15,
     ),
-    'command-r-plus': types.ProviderModelPricingType(
-      per_response_token_cost=3.0,
-      per_query_token_cost=15.0,
+    'command-light-nightly': types.ProviderModelPricingType(
+      per_response_token_cost=0.0375,
+      per_query_token_cost=0.15,
     ),
   }),
 
