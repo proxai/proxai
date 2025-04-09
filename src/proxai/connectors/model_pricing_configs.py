@@ -200,33 +200,35 @@ GENERATE_TEXT_PRICING: Dict[
 
   # Databricks
   'databricks': MappingProxyType({
-    'dbrx-instruct': types.ProviderModelPricingType(
-      per_response_token_cost=32.14,
-      per_query_token_cost=96.42,
+    'llama-4-maverick': types.ProviderModelPricingType(
+      per_response_token_cost=2.5,
+      per_query_token_cost=12.5,
     ),
-    'mixtral-8x7b-instruct': types.ProviderModelPricingType(
-      per_response_token_cost=21.42,
-      per_query_token_cost=21.42,
+    'claude-3-7-sonnet': types.ProviderModelPricingType(
+      per_response_token_cost=2.5,
+      per_query_token_cost=12.5,
     ),
-    'llama-2-70b-chat': types.ProviderModelPricingType(
-      per_response_token_cost=28.57,
-      per_query_token_cost=28.57,
+    'meta-llama-3-1-8b-it': types.ProviderModelPricingType(
+      per_response_token_cost=2.5,
+      per_query_token_cost=12.5,
     ),
-    'llama-3-70b-instruct': types.ProviderModelPricingType(
-      per_response_token_cost=14.28,
-      per_query_token_cost=42.85,
+    'meta-llama-3-3-70b-it': types.ProviderModelPricingType(
+      per_response_token_cost=2.5,
+      per_query_token_cost=12.5,
     ),
-    'bge-large-en': types.ProviderModelPricingType(
-      per_response_token_cost=1.42,
-      per_query_token_cost=1.42,
+    # TODO: This is extremely slow model. Until better filtering, it is not
+    # included in the list.
+    # 'meta-llama-3-1-405b-it': types.ProviderModelPricingType(
+    #   per_response_token_cost=2.5,
+    #   per_query_token_cost=12.5,
+    # ),
+    'dbrx-it': types.ProviderModelPricingType(
+      per_response_token_cost=2.5,
+      per_query_token_cost=12.5,
     ),
-    'mpt-30b-instruct': types.ProviderModelPricingType(
-      per_response_token_cost=14.28,
-      per_query_token_cost=14.28,
-    ),
-    'mpt-7b-instruct': types.ProviderModelPricingType(
-      per_response_token_cost=7.14,
-      per_query_token_cost=7.14,
+    'mixtral-8x7b-it': types.ProviderModelPricingType(
+      per_response_token_cost=2.5,
+      per_query_token_cost=12.5,
     ),
   }),
 
