@@ -54,7 +54,10 @@ class ClaudeConnector(model_connector.ProviderModelConnector):
     if query_record.temperature != None:
       create = functools.partial(create, temperature=query_record.temperature)
     if query_record.stop != None:
-      create = functools.partial(create, stop_sequences=query_record.stop)
+      if isinstance(query_record.stop, str):
+        create = functools.partial(create, stop_sequences=[query_record.stop])
+      else:
+        create = functools.partial(create, stop_sequences=query_record.stop)
 
     completion = create()
     return completion.content[0].text

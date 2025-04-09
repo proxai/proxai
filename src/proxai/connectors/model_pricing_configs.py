@@ -100,15 +100,31 @@ GENERATE_TEXT_PRICING: Dict[
 
   # Claude
   'claude': MappingProxyType({
-    'claude-3-opus': types.ProviderModelPricingType(
-      per_response_token_cost=15.0,
-      per_query_token_cost=75.0,
-    ),
-    'claude-3-sonnet': types.ProviderModelPricingType(
+    'sonnet': types.ProviderModelPricingType(
       per_response_token_cost=3.0,
       per_query_token_cost=15.0,
     ),
-    'claude-3-haiku': types.ProviderModelPricingType(
+    'haiku': types.ProviderModelPricingType(
+      per_response_token_cost=0.8,
+      per_query_token_cost=4.0,
+    ),
+    '3.5-sonnet-v2': types.ProviderModelPricingType(
+      per_response_token_cost=3.0,
+      per_query_token_cost=15.0,
+    ),
+    '3.5-sonnet': types.ProviderModelPricingType(
+      per_response_token_cost=3.0,
+      per_query_token_cost=15.0,
+    ),
+    'opus': types.ProviderModelPricingType(
+      per_response_token_cost=15.0,
+      per_query_token_cost=75.0,
+    ),
+    '3-sonnet': types.ProviderModelPricingType(
+      per_response_token_cost=3.00,
+      per_query_token_cost=15.00,
+    ),
+    '3-haiku': types.ProviderModelPricingType(
       per_response_token_cost=0.25,
       per_query_token_cost=1.25,
     ),
