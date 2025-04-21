@@ -1,11 +1,21 @@
-import os
 from pathlib import Path
 import proxai as px
 import random
 import time
+from pprint import pprint
 
 
-def main():
+def simple_model_test():
+  random_int = random.randint(1, 1000000)
+  result = px.generate_text(
+      'This is a test message to check if the cache is working or '
+      f'not. {random_int}',
+      provider_model=('openai', 'o3'),
+      extensive_return=True)
+  pprint(result)
+
+
+def simple_cache_test():
   px.connect(
       experiment_path='simple_test/run_1',
       logging_path=f'{Path.home()}/proxai_log/',
@@ -28,6 +38,11 @@ def main():
       'This is a test message to check if the cache is working or '
       f'not. {random_int}')
   print(f'3: {result}')
+
+
+def main():
+  simple_model_test()
+  simple_cache_test()
 
 
 if __name__ == '__main__':

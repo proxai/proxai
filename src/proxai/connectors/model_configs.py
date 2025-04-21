@@ -39,6 +39,21 @@ ALL_MODELS: Dict[str, Dict[str, types.ProviderModelType]] = MappingProxyType({
   # Models provided by OpenAI:
   # https://platform.openai.com/docs/guides/text-generation
   'openai': MappingProxyType({
+    'gpt-4.1': types.ProviderModelType(
+      provider='openai',
+      model='gpt-4.1',
+      provider_model_identifier='gpt-4.1-2025-04-14'
+    ),
+    'gpt-4.1-mini': types.ProviderModelType(
+      provider='openai',
+      model='gpt-4.1-mini',
+      provider_model_identifier='gpt-4.1-mini-2025-04-14'
+    ),
+    'gpt-4.1-nano': types.ProviderModelType(
+      provider='openai',
+      model='gpt-4.1-nano',
+      provider_model_identifier='gpt-4.1-nano-2025-04-14'
+    ),
     'gpt-4.5-preview': types.ProviderModelType(
       provider='openai',
       model='gpt-4.5-preview',
@@ -84,6 +99,16 @@ ALL_MODELS: Dict[str, Dict[str, types.ProviderModelType]] = MappingProxyType({
       model='o1-pro',
       provider_model_identifier='o1-pro-2025-03-19'
     ),
+    'o3': types.ProviderModelType(
+      provider='openai',
+      model='o3',
+      provider_model_identifier='o3-2025-04-16'
+    ),
+    'o4-mini': types.ProviderModelType(
+      provider='openai',
+      model='o4-mini',
+      provider_model_identifier='o4-mini-2025-04-16'
+    ),
     'o3-mini': types.ProviderModelType(
       provider='openai',
       model='o3-mini',
@@ -108,6 +133,11 @@ ALL_MODELS: Dict[str, Dict[str, types.ProviderModelType]] = MappingProxyType({
       provider='openai',
       model='computer-use-preview',
       provider_model_identifier='computer-use-preview-2025-03-11'
+    ),
+    'chatgpt-4o-latest': types.ProviderModelType(
+      provider='openai',
+      model='chatgpt-4o-latest',
+      provider_model_identifier='chatgpt-4o-latest'
     ),
     'gpt-4-turbo': types.ProviderModelType(
       provider='openai',
@@ -383,23 +413,23 @@ GENERATE_TEXT_MODELS: Dict[
   }),
 
   'openai': MappingProxyType({
+    'gpt-4.1': ALL_MODELS['openai']['gpt-4.1'],
+    'gpt-4.1-mini': ALL_MODELS['openai']['gpt-4.1-mini'],
+    'gpt-4.1-nano': ALL_MODELS['openai']['gpt-4.1-nano'],
     'gpt-4.5-preview': ALL_MODELS['openai']['gpt-4.5-preview'],
     'gpt-4o': ALL_MODELS['openai']['gpt-4o'],
-    'gpt-4o-audio-preview': ALL_MODELS['openai']['gpt-4o-audio-preview'],
-    'gpt-4o-realtime-preview': ALL_MODELS['openai']['gpt-4o-realtime-preview'],
     'gpt-4o-mini': ALL_MODELS['openai']['gpt-4o-mini'],
-    'gpt-4o-mini-audio-preview': ALL_MODELS['openai']['gpt-4o-mini-audio-preview'],
-    'gpt-4o-mini-realtime-preview': ALL_MODELS['openai']['gpt-4o-mini-realtime-preview'],
     'o1': ALL_MODELS['openai']['o1'],
     'o1-pro': ALL_MODELS['openai']['o1-pro'],
+    'o3': ALL_MODELS['openai']['o3'],
+    'o4-mini': ALL_MODELS['openai']['o4-mini'],
     'o3-mini': ALL_MODELS['openai']['o3-mini'],
     'o1-mini': ALL_MODELS['openai']['o1-mini'],
     'gpt-4o-mini-search-preview': ALL_MODELS['openai']['gpt-4o-mini-search-preview'],
     'gpt-4o-search-preview': ALL_MODELS['openai']['gpt-4o-search-preview'],
-    'computer-use-preview': ALL_MODELS['openai']['computer-use-preview'],
+    'chatgpt-4o-latest': ALL_MODELS['openai']['chatgpt-4o-latest'],
     'gpt-4-turbo': ALL_MODELS['openai']['gpt-4-turbo'],
     'gpt-4': ALL_MODELS['openai']['gpt-4'],
-    'gpt-4-32k': ALL_MODELS['openai']['gpt-4-32k'],
     'gpt-3.5-turbo': ALL_MODELS['openai']['gpt-3.5-turbo'],
   }),
 
