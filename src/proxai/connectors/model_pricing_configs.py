@@ -24,7 +24,19 @@ GENERATE_TEXT_PRICING: Dict[
 
   # OpenAI
   'openai': MappingProxyType({
-      'gpt-4.5-preview': types.ProviderModelPricingType(
+    'gpt-4.1': types.ProviderModelPricingType(
+      per_response_token_cost=2.00,
+      per_query_token_cost=8.00,
+    ),
+    'gpt-4.1-mini': types.ProviderModelPricingType(
+      per_response_token_cost=0.40,
+      per_query_token_cost=1.60,
+    ),
+    'gpt-4.1-nano': types.ProviderModelPricingType(
+      per_response_token_cost=0.10,
+      per_query_token_cost=0.40,
+    ),
+    'gpt-4.5-preview': types.ProviderModelPricingType(
       per_response_token_cost=75.00,
       per_query_token_cost=150.00,
     ),
@@ -60,6 +72,14 @@ GENERATE_TEXT_PRICING: Dict[
       per_response_token_cost=150.00,
       per_query_token_cost=600.00,
     ),
+    'o3': types.ProviderModelPricingType(
+      per_response_token_cost=10.00,
+      per_query_token_cost=40.00,
+    ),
+    'o4-mini': types.ProviderModelPricingType(
+      per_response_token_cost=1.10,
+      per_query_token_cost=4.40,
+    ),
     'o3-mini': types.ProviderModelPricingType(
       per_response_token_cost=1.10,
       per_query_token_cost=4.40,
@@ -79,6 +99,10 @@ GENERATE_TEXT_PRICING: Dict[
     'computer-use-preview': types.ProviderModelPricingType(
       per_response_token_cost=3.00,
       per_query_token_cost=12.00,
+    ),
+    'chatgpt-4o-latest': types.ProviderModelPricingType(
+      per_response_token_cost=5.00,
+      per_query_token_cost=15.00,
     ),
     'gpt-4-turbo': types.ProviderModelPricingType(
       per_response_token_cost=10.00,
