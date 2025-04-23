@@ -258,29 +258,53 @@ GENERATE_TEXT_PRICING: Dict[
 
   # Mistral
   'mistral': MappingProxyType({
+    'ministral-3b': types.ProviderModelPricingType(
+      per_response_token_cost=0.04,
+      per_query_token_cost=0.04,
+    ),
+    'ministral-8b': types.ProviderModelPricingType(
+      per_response_token_cost=0.1,
+      per_query_token_cost=0.1,
+    ),
     'open-mistral-7b': types.ProviderModelPricingType(
       per_response_token_cost=0.25,
       per_query_token_cost=0.25,
+    ),
+    'open-mistral-nemo': types.ProviderModelPricingType(
+      per_response_token_cost=0.15,
+      per_query_token_cost=0.15,
     ),
     'open-mixtral-8x7b': types.ProviderModelPricingType(
       per_response_token_cost=0.7,
       per_query_token_cost=0.7,
     ),
     'open-mixtral-8x22b': types.ProviderModelPricingType(
-      per_response_token_cost=2.0,
-      per_query_token_cost=6.0,
+      per_response_token_cost=2,
+      per_query_token_cost=6,
     ),
-    'mistral-small-latest': types.ProviderModelPricingType(
-      per_response_token_cost=2.0,
-      per_query_token_cost=6.0,
+    'mistral-small': types.ProviderModelPricingType(
+      per_response_token_cost=0.1,
+      per_query_token_cost=0.3,
     ),
-    'mistral-medium-latest': types.ProviderModelPricingType(
-      per_response_token_cost=2.7,
-      per_query_token_cost=8.1,
+    'mistral-large': types.ProviderModelPricingType(
+      per_response_token_cost=2,
+      per_query_token_cost=6,
     ),
-    'mistral-large-latest': types.ProviderModelPricingType(
-      per_response_token_cost=8.0,
-      per_query_token_cost=24.0,
+    'pixtral-large': types.ProviderModelPricingType(
+      per_response_token_cost=2,
+      per_query_token_cost=6,
+    ),
+    'codestral': types.ProviderModelPricingType(
+      per_response_token_cost=0.3,
+      per_query_token_cost=0.9,
+    ),
+    'pixtral-12b': types.ProviderModelPricingType(
+      per_response_token_cost=0.15,
+      per_query_token_cost=0.15,
+    ),
+    'mistral-saba': types.ProviderModelPricingType(
+      per_response_token_cost=0.2,
+      per_query_token_cost=0.6,
     ),
   }),
 

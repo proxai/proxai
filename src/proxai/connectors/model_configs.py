@@ -336,10 +336,25 @@ ALL_MODELS: Dict[str, Dict[str, types.ProviderModelType]] = MappingProxyType({
   # Models provided by Mistral:
   # https://docs.mistral.ai/platform/endpoints/
   'mistral': MappingProxyType({
+    'ministral-3b': types.ProviderModelType(
+      provider='mistral',
+      model='ministral-3b',
+      provider_model_identifier='ministral-3b-2410'
+    ),
+    'ministral-8b': types.ProviderModelType(
+      provider='mistral',
+      model='ministral-8b',
+      provider_model_identifier='ministral-8b-2410'
+    ),
     'open-mistral-7b': types.ProviderModelType(
       provider='mistral',
       model='open-mistral-7b',
       provider_model_identifier='open-mistral-7b'
+    ),
+    'open-mistral-nemo': types.ProviderModelType(
+      provider='mistral',
+      model='open-mistral-nemo',
+      provider_model_identifier='open-mistral-nemo'
     ),
     'open-mixtral-8x7b': types.ProviderModelType(
       provider='mistral',
@@ -351,20 +366,35 @@ ALL_MODELS: Dict[str, Dict[str, types.ProviderModelType]] = MappingProxyType({
       model='open-mixtral-8x22b',
       provider_model_identifier='open-mixtral-8x22b'
     ),
-    'mistral-small-latest': types.ProviderModelType(
+    'mistral-small': types.ProviderModelType(
       provider='mistral',
-      model='mistral-small-latest',
-      provider_model_identifier='mistral-small-latest'
+      model='mistral-small',
+      provider_model_identifier='mistral-small-2503'
     ),
-    'mistral-medium-latest': types.ProviderModelType(
+    'mistral-large': types.ProviderModelType(
       provider='mistral',
-      model='mistral-medium-latest',
-      provider_model_identifier='mistral-medium-latest'
+      model='mistral-large',
+      provider_model_identifier='mistral-large-2411'
     ),
-    'mistral-large-latest': types.ProviderModelType(
+    'pixtral-large': types.ProviderModelType(
       provider='mistral',
-      model='mistral-large-latest',
-      provider_model_identifier='mistral-large-latest'
+      model='pixtral-large',
+      provider_model_identifier='pixtral-large-2411'
+    ),
+    'codestral': types.ProviderModelType(
+      provider='mistral',
+      model='codestral',
+      provider_model_identifier='codestral-2501'
+    ),
+    'pixtral-12b': types.ProviderModelType(
+      provider='mistral',
+      model='pixtral-12b',
+      provider_model_identifier='pixtral-12b-2409'
+    ),
+    'mistral-saba': types.ProviderModelType(
+      provider='mistral',
+      model='mistral-saba',
+      provider_model_identifier='mistral-saba-2502'
     ),
   }),
 
@@ -477,11 +507,18 @@ GENERATE_TEXT_MODELS: Dict[
   }),
 
   'mistral': MappingProxyType({
+    'ministral-3b': ALL_MODELS['mistral']['ministral-3b'],
+    'ministral-8b': ALL_MODELS['mistral']['ministral-8b'],
     'open-mistral-7b': ALL_MODELS['mistral']['open-mistral-7b'],
+    'open-mistral-nemo': ALL_MODELS['mistral']['open-mistral-nemo'],
     'open-mixtral-8x7b': ALL_MODELS['mistral']['open-mixtral-8x7b'],
-    'mistral-small-latest': ALL_MODELS['mistral']['mistral-small-latest'],
-    'mistral-medium-latest': ALL_MODELS['mistral']['mistral-medium-latest'],
-    'mistral-large-latest': ALL_MODELS['mistral']['mistral-large-latest'],
+    'open-mixtral-8x22b': ALL_MODELS['mistral']['open-mixtral-8x22b'],
+    'mistral-small': ALL_MODELS['mistral']['mistral-small'],
+    'mistral-large': ALL_MODELS['mistral']['mistral-large'],
+    'pixtral-large': ALL_MODELS['mistral']['pixtral-large'],
+    'codestral': ALL_MODELS['mistral']['codestral'],
+    'pixtral-12b': ALL_MODELS['mistral']['pixtral-12b'],
+    'mistral-saba': ALL_MODELS['mistral']['mistral-saba'],
   }),
 
   'hugging_face': MappingProxyType({
@@ -520,7 +557,8 @@ LARGEST_GENERATE_TEXT_MODELS: Dict[
     'dbrx-it': ALL_MODELS['databricks']['dbrx-it'],
   }),
   'mistral': MappingProxyType({
-    'mistral-large-latest': ALL_MODELS['mistral']['mistral-large-latest'],
+    'mistral-large': ALL_MODELS['mistral']['mistral-large'],
+    'pixtral-large': ALL_MODELS['mistral']['pixtral-large'],
   }),
 })
 
