@@ -179,9 +179,9 @@ def _get_run_options_options():
 
 def _get_model_status_options():
   model_1 = model_configs.ALL_MODELS['openai']['gpt-4']
-  model_2 = model_configs.ALL_MODELS['openai']['gpt-3.5-turbo-instruct']
-  model_3 = model_configs.ALL_MODELS['claude']['claude-3-opus']
-  model_4 = model_configs.ALL_MODELS['claude']['claude-3-sonnet']
+  model_2 = model_configs.ALL_MODELS['openai']['o3-mini']
+  model_3 = model_configs.ALL_MODELS['claude']['opus']
+  model_4 = model_configs.ALL_MODELS['claude']['sonnet']
   return [
       {},
       {'unprocessed_models': {model_1}},

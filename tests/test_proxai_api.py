@@ -93,10 +93,10 @@ class TestProxaiApiUseCases:
     logging_record = px.generate_text(
         prompt='hello',
         provider_model=px.models.get_model(
-            'claude', 'claude-3-haiku', clear_model_cache=True),
+            'claude', 'haiku', clear_model_cache=True),
         extensive_return=True)
     assert logging_record.response_record.response == 'mock response'
-    assert logging_record.query_record.provider_model.model == 'claude-3-haiku'
+    assert logging_record.query_record.provider_model.model == 'haiku'
     assert logging_record.response_source == px.types.ResponseSource.PROVIDER
 
     logging_record = px.generate_text(
@@ -125,12 +125,12 @@ class TestProxaiApiUseCases:
   def test_models_get_all_models(self):
     start = time.time()
     models = px.models.list_models(clear_model_cache=True)
-    assert len(models) > 10
+    assert len(models) > 15
     assert time.time() - start < 1
 
     start = time.time()
     models = px.models.list_models(only_largest_models=True)
-    assert len(models) < 10
+    assert len(models) < 15
     assert time.time() - start < 1
 
   def test_models_get_all_models_multiprocessing(self):
@@ -171,7 +171,7 @@ class TestProxaiApiUseCases:
     # --- get_all_models with largest models ---
     start = time.time()
     models = px.models.list_models(only_largest_models=True)
-    assert len(models) < 10
+    assert len(models) < 15
     assert time.time() - start < 1
 
     # --- get_all_models with clear_model_cache ---
@@ -179,16 +179,16 @@ class TestProxaiApiUseCases:
     px.models.allow_multiprocessing = False
     models = px.models.list_models(clear_model_cache=True)
     px.models.allow_multiprocessing = None
-    assert len(models) > 10
+    assert len(models) > 15
     assert time.time() - start < 1
 
   def test_set_model(self):
     px.models.list_models(clear_model_cache=True)
 
     # Test default model
-    px.set_model(('claude', 'claude-3-haiku'))
+    px.set_model(('claude', 'haiku'))
     logging_record = px.generate_text('hello', extensive_return=True)
-    assert logging_record.query_record.provider_model.model == 'claude-3-haiku'
+    assert logging_record.query_record.provider_model.model == 'haiku'
 
     # Test setting model with generate_text parameter
     px.set_model(generate_text=('openai', 'gpt-4'))
@@ -201,9 +201,9 @@ class TestProxaiApiUseCases:
     assert logging_record.query_record.provider_model.model == 'gpt-3.5-turbo'
 
     # Test setting model with provider_model from get_provider_model
-    px.set_model(px.models.get_model('claude', 'claude-3-haiku'))
+    px.set_model(px.models.get_model('claude', 'haiku'))
     logging_record = px.generate_text('hello', extensive_return=True)
-    assert logging_record.query_record.provider_model.model == 'claude-3-haiku'
+    assert logging_record.query_record.provider_model.model == 'haiku'
 
     # Test error when both parameters are set
     with pytest.raises(
@@ -549,15 +549,15 @@ class TestProxaiApiUseCases:
     px.connect(strict_feature_test=False)
     px.generate_text(
         'hello',
-        system='You are a helpful assistant.',
-        provider_model=('hugging_face', 'google-gemma-7b-it'))
+        stop='STOP',
+        provider_model=('mistral', 'mistral-large'))
 
     px.connect(strict_feature_test=True)
     with pytest.raises(Exception):
       px.generate_text(
           'hello',
-          system='You are a helpful assistant.',
-          provider_model=('hugging_face', 'google-gemma-7b-it'))
+          stop='STOP',
+          provider_model=('mistral', 'mistral-large'))
 
   def test_get_current_options(self):
     options = px.get_current_options()

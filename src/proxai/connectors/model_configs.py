@@ -10,7 +10,7 @@ PROVIDER_KEY_MAP: Dict[str, Tuple[str]] = MappingProxyType({
     'cohere': tuple(['CO_API_KEY']),
     'databricks': tuple(['DATABRICKS_TOKEN', 'DATABRICKS_HOST']),
     'mistral': tuple(['MISTRAL_API_KEY']),
-    'hugging_face': tuple(['HUGGINGFACE_API_KEY']),
+    'huggingface': tuple(['HUGGINGFACE_API_KEY']),
     'mock_provider': tuple(['MOCK_PROVIDER_API_KEY']),
     'mock_failing_provider': tuple(['MOCK_FAILING_PROVIDER']),
 })
@@ -398,34 +398,33 @@ ALL_MODELS: Dict[str, Dict[str, types.ProviderModelType]] = MappingProxyType({
     ),
   }),
 
-  # Hugging Face models.
-  # Models provided by Hugging Face on HuggingFaceChat:
-  # https://huggingface.co/chat/models
-  'hugging_face': MappingProxyType({
-    'google-gemma-7b-it': types.ProviderModelType(
-      provider='hugging_face',
-      model='google-gemma-7b-it',
-      provider_model_identifier='google/gemma-7b-it'
+  # Hugging Face models suggested in:
+  # https://huggingface.co/docs/inference-providers/en/tasks/chat-completion
+  'huggingface': MappingProxyType({
+    'gemma-2-2b-it': types.ProviderModelType(
+      provider='huggingface',
+      model='gemma-2-2b-it',
+      provider_model_identifier='google/gemma-2-2b-it'
     ),
-    'mistral-mixtral-8x7b-instruct': types.ProviderModelType(
-      provider='hugging_face',
-      model='mistral-mixtral-8x7b-instruct',
-      provider_model_identifier='mistralai/Mixtral-8x7B-Instruct-v0.1'
+    'meta-llama-3.1-8b-it': types.ProviderModelType(
+      provider='huggingface',
+      model='meta-llama-3.1-8b-it',
+      provider_model_identifier='meta-llama/Meta-Llama-3.1-8B-Instruct'
     ),
-    'mistral-mistral-7b-instruct': types.ProviderModelType(
-      provider='hugging_face',
-      model='mistral-mistral-7b-instruct',
-      provider_model_identifier='mistralai/Mistral-7B-Instruct-v0.2'
+    'phi-4': types.ProviderModelType(
+      provider='huggingface',
+      model='phi-4',
+      provider_model_identifier='microsoft/phi-4'
     ),
-    'nous-hermes-2-mixtral-8x7b': types.ProviderModelType(
-      provider='hugging_face',
-      model='nous-hermes-2-mixtral-8x7b',
-      provider_model_identifier='NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO'
+    'qwen2.5-coder-32b-it': types.ProviderModelType(
+      provider='huggingface',
+      model='qwen2.5-coder-32b-it',
+      provider_model_identifier='Qwen/Qwen2.5-Coder-32B-Instruct'
     ),
-    'openchat-3.5': types.ProviderModelType(
-      provider='hugging_face',
-      model='openchat-3.5',
-      provider_model_identifier='openchat/openchat-3.5-0106'
+    'deepseek-r1': types.ProviderModelType(
+      provider='huggingface',
+      model='deepseek-r1',
+      provider_model_identifier='deepseek-ai/DeepSeek-R1'
     ),
   }),
 })
@@ -521,15 +520,12 @@ GENERATE_TEXT_MODELS: Dict[
     'mistral-saba': ALL_MODELS['mistral']['mistral-saba'],
   }),
 
-  'hugging_face': MappingProxyType({
-    'google-gemma-7b-it': ALL_MODELS['hugging_face']['google-gemma-7b-it'],
-    'mistral-mixtral-8x7b-instruct': ALL_MODELS[
-        'hugging_face']['mistral-mixtral-8x7b-instruct'],
-    'mistral-mistral-7b-instruct': ALL_MODELS[
-        'hugging_face']['mistral-mistral-7b-instruct'],
-    'nous-hermes-2-mixtral-8x7b': ALL_MODELS[
-        'hugging_face']['nous-hermes-2-mixtral-8x7b'],
-    'openchat-3.5': ALL_MODELS['hugging_face']['openchat-3.5'],
+  'huggingface': MappingProxyType({
+    'gemma-2-2b-it': ALL_MODELS['huggingface']['gemma-2-2b-it'],
+    'meta-llama-3.1-8b-it': ALL_MODELS['huggingface']['meta-llama-3.1-8b-it'],
+    'phi-4': ALL_MODELS['huggingface']['phi-4'],
+    'qwen2.5-coder-32b-it': ALL_MODELS['huggingface']['qwen2.5-coder-32b-it'],
+    'deepseek-r1': ALL_MODELS['huggingface']['deepseek-r1'],
   }),
 })
 
@@ -551,14 +547,18 @@ LARGEST_GENERATE_TEXT_MODELS: Dict[
   }),
   'databricks': MappingProxyType({
     'llama-4-maverick': ALL_MODELS['databricks']['llama-4-maverick'],
+    'dbrx-it': ALL_MODELS['databricks']['dbrx-it'],
     # TODO: This is extremely slow model. Until better filtering, it is not
     # included in the list.
     # 'meta-llama-3-1-405b-it': ALL_MODELS['databricks']['meta-llama-3-1-405b-it'],
-    'dbrx-it': ALL_MODELS['databricks']['dbrx-it'],
   }),
   'mistral': MappingProxyType({
     'mistral-large': ALL_MODELS['mistral']['mistral-large'],
     'pixtral-large': ALL_MODELS['mistral']['pixtral-large'],
+  }),
+  'huggingface': MappingProxyType({
+    'phi-4': ALL_MODELS['huggingface']['phi-4'],
+    'qwen2.5-coder-32b-it': ALL_MODELS['huggingface']['qwen2.5-coder-32b-it'],
   }),
 })
 

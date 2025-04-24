@@ -25,7 +25,7 @@ class _MockCompletions(object):
       self,
       model: str,
       messages: List[Dict],
-      max_tokens: Optional[int]=None,
+      max_completion_tokens: Optional[int]=None,
       temperature: Optional[float]=None,
       stop: Optional[List[str]]=None) -> _MockResponse:
     return _MockResponse()

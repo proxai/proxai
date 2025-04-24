@@ -8,10 +8,17 @@ class _MockResponse(object):
     self.text = 'mock response'
 
 
-class GeminiMock(object):
-  def __init__(self, model_name: str, system_instruction: Optional[str]=None):
-    pass
-
+class _MockModel(object):
   def generate_content(
-      self, contents, generation_config) -> _MockResponse:
+      self,
+      model,
+      config,
+      contents) -> _MockResponse:
     return _MockResponse()
+
+
+class GeminiMock(object):
+  models: _MockModel
+
+  def __init__(self):
+    self.models = _MockModel()
