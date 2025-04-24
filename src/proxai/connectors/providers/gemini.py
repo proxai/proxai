@@ -16,7 +16,7 @@ class GeminiConnector(model_connector.ProviderModelConnector):
     return genai.Client()
 
   def init_mock_model(self):
-    return gemini_mock.GeminiMock
+    return gemini_mock.GeminiMock()
 
   def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
     return copy.deepcopy(query_record)

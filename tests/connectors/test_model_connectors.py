@@ -172,7 +172,7 @@ class TestModelConnectorInit:
 
   def test_init_with_mismatched_model(self):
     init_state = types.ProviderModelState(
-        provider_model=model_configs.ALL_MODELS['claude']['claude-3-opus'],
+        provider_model=model_configs.ALL_MODELS['claude']['opus'],
         run_type=types.RunType.TEST)
 
     with pytest.raises(
@@ -285,7 +285,7 @@ class TestModelConnectorInit:
             'provider_model: *')):
       connector.generate_text(
           prompt="Hello",
-          provider_model=model_configs.ALL_MODELS['claude']['claude-3-opus'])
+          provider_model=model_configs.ALL_MODELS['claude']['opus'])
 
 
 class TestModelConnector:

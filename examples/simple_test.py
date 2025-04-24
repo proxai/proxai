@@ -10,7 +10,7 @@ def simple_model_test():
   result = px.generate_text(
       'This is a test message to check if the cache is working or '
       f'not. {random_int}',
-      provider_model=('mistral', 'mistral-large'),
+      provider_model=('huggingface', 'meta-llama-3.1-8b-it'),
       extensive_return=True)
   pprint(result)
 

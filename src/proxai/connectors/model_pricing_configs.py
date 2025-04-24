@@ -309,26 +309,26 @@ GENERATE_TEXT_PRICING: Dict[
   }),
 
   # Hugging Face
-  'hugging_face': MappingProxyType({
-    'google-gemma-7b-it': types.ProviderModelPricingType(
-      per_response_token_cost=0.0,
-      per_query_token_cost=0.0,
+  'huggingface': MappingProxyType({
+    'gemma-2-2b-it': types.ProviderModelPricingType(
+      per_response_token_cost=1.48,
+      per_query_token_cost=3.7,
     ),
-    'mistral-mixtral-8x7b-instruct': types.ProviderModelPricingType(
-      per_response_token_cost=0.0,
-      per_query_token_cost=0.0,
+    'meta-llama-3.1-8b-it': types.ProviderModelPricingType(
+      per_response_token_cost=1.94,
+      per_query_token_cost=2.22,
     ),
-    'mistral-mistral-7b-instruct': types.ProviderModelPricingType(
-      per_response_token_cost=0.0,
-      per_query_token_cost=0.0,
+    'phi-4': types.ProviderModelPricingType(
+      per_response_token_cost=33.33,
+      per_query_token_cost=37.0,
     ),
-    'nous-hermes-2-mixtral-8x7b': types.ProviderModelPricingType(
-      per_response_token_cost=0.0,
-      per_query_token_cost=0.0,
+    'qwen2.5-coder-32b-it': types.ProviderModelPricingType(
+      per_response_token_cost=28.57,
+      per_query_token_cost=31.74,
     ),
-    'openchat-3.5': types.ProviderModelPricingType(
-      per_response_token_cost=0.0,
-      per_query_token_cost=0.0,
+    'deepseek-r1': types.ProviderModelPricingType(
+      per_response_token_cost=50.0,
+      per_query_token_cost=55.56,
     ),
   }),
 })

@@ -438,12 +438,12 @@ class TestRegisterModel:
 
   def test_successful_register_model(self):
     proxai.set_run_type(types.RunType.TEST)
-    proxai.set_model(generate_text=('openai', 'gpt-3.5-turbo'))
+    proxai.set_model(generate_text=('openai', 'o1'))
     assert proxai._REGISTERED_MODEL_CONNECTORS[
         types.CallType.GENERATE_TEXT].provider_model == types.ProviderModelType(
             provider='openai',
-            model='gpt-3.5-turbo',
-            provider_model_identifier='gpt-3.5-turbo')
+            model='o1',
+            provider_model_identifier='o1-2024-12-17')
 
 
 class TestGenerateText:
@@ -462,25 +462,25 @@ class TestGenerateText:
     assert proxai._MODEL_CONNECTORS[provider_model] is not None
 
   def test_openai(self):
-    self._test_generate_text(('openai', 'gpt-3.5-turbo'))
+    self._test_generate_text(('openai', 'gpt-4.1'))
 
   def test_claude(self):
-    self._test_generate_text(('claude', 'claude-3-opus'))
+    self._test_generate_text(('claude', 'opus'))
 
   def test_gemini(self):
-    self._test_generate_text(('gemini', 'gemini-1.0-pro'))
+    self._test_generate_text(('gemini', 'gemini-1.5-pro'))
 
   def test_cohere(self):
     self._test_generate_text(('cohere', 'command-r'))
 
   def test_databricks(self):
-    self._test_generate_text(('databricks', 'dbrx-instruct'))
+    self._test_generate_text(('databricks', 'llama-4-maverick'))
 
   def test_mistral(self):
     self._test_generate_text(('mistral', 'open-mistral-7b'))
 
-  def test_hugging_face(self):
-    self._test_generate_text(('hugging_face', 'google-gemma-7b-it'))
+  def test_huggingface(self):
+    self._test_generate_text(('huggingface', 'gemma-2-2b-it'))
 
 
 class TestConnectProxdashConnection:

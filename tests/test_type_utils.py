@@ -29,13 +29,13 @@ class TestCheckProviderModelType:
       type_utils.check_provider_model_identifier_type(
           types.ProviderModelType(
               provider='claude',
-              model='claude-3-opus',
+              model='opus',
               provider_model_identifier=(
                   'not_supported_provider_model_identifier')))
 
   def test_supported_provider_model_identifier(self):
     type_utils.check_provider_model_identifier_type(
-        model_configs.ALL_MODELS['claude']['claude-3-opus'])
+        model_configs.ALL_MODELS['claude']['opus'])
 
   def test_not_supported_provider_tuple(self):
     with pytest.raises(ValueError):
@@ -49,7 +49,7 @@ class TestCheckProviderModelType:
 
   def test_supported_model_tuple(self):
     type_utils.check_provider_model_identifier_type(
-        ('claude', 'claude-3-opus'))
+        ('claude', 'opus'))
 
 
 class TestCheckMessagesType:

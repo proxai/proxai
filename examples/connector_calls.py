@@ -20,7 +20,7 @@ def advanced_call():
       max_tokens=500,
       temperature=0.7,
       stop='STOP',
-      )
+  )
   print('Advanced call response: ', response.replace('\n', ' ')[:100])
 
 
@@ -34,7 +34,7 @@ if __name__ == '__main__':
           clear_query_cache_on_connect=True,
       ),
       proxdash_options=px.ProxDashOptions(stdout=True))
-  models = px.models.list_provider_models(provider='mistral')
+  models = px.models.list_provider_models(provider='huggingface')
   print('--- Base call ---')
   for model in models:
     print(f'Model: {model}')
