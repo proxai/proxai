@@ -335,6 +335,18 @@ GENERATE_TEXT_PRICING: Dict[
       per_query_token_cost=27.78,
     ),
   }),
+
+  # DeepSeek
+  'deepseek': MappingProxyType({
+    'deepseek-v3': types.ProviderModelPricingType(
+      per_response_token_cost=0.27,
+      per_query_token_cost=1.10,
+    ),
+    'deepseek-r1': types.ProviderModelPricingType(
+      per_response_token_cost=0.55,
+      per_query_token_cost=2.19,
+    ),
+  }),
 })
 
 
