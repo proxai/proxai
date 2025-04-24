@@ -12,6 +12,7 @@ PROVIDER_KEY_MAP: Dict[str, Tuple[str]] = MappingProxyType({
     'mistral': tuple(['MISTRAL_API_KEY']),
     'huggingface': tuple(['HUGGINGFACE_API_KEY']),
     'deepseek': tuple(['DEEPSEEK_API_KEY']),
+    'grok': tuple(['XAI_API_KEY']),
     'mock_provider': tuple(['MOCK_PROVIDER_API_KEY']),
     'mock_failing_provider': tuple(['MOCK_FAILING_PROVIDER']),
 })
@@ -446,6 +447,29 @@ ALL_MODELS: Dict[str, Dict[str, types.ProviderModelType]] = MappingProxyType({
       provider_model_identifier='deepseek-reasoner'
     ),
   }),
+
+  'grok': MappingProxyType({
+    'grok-3-beta': types.ProviderModelType(
+      provider='grok',
+      model='grok-3-beta',
+      provider_model_identifier='grok-3-beta'
+    ),
+    'grok-3-fast-beta': types.ProviderModelType(
+      provider='grok',
+      model='grok-3-fast-beta',
+      provider_model_identifier='grok-3-fast-beta'
+    ),
+    'grok-3-mini-beta': types.ProviderModelType(
+      provider='grok',
+      model='grok-3-mini-beta',
+      provider_model_identifier='grok-3-mini-beta'
+    ),
+    'grok-3-mini-fast-beta': types.ProviderModelType(
+      provider='grok',
+      model='grok-3-mini-fast-beta',
+      provider_model_identifier='grok-3-mini-fast-beta'
+    ),
+  }),
 })
 
 
@@ -552,6 +576,13 @@ GENERATE_TEXT_MODELS: Dict[
     'deepseek-v3': ALL_MODELS['deepseek']['deepseek-v3'],
     'deepseek-r1': ALL_MODELS['deepseek']['deepseek-r1'],
   }),
+
+  'grok': MappingProxyType({
+    'grok-3-beta': ALL_MODELS['grok']['grok-3-beta'],
+    'grok-3-fast-beta': ALL_MODELS['grok']['grok-3-fast-beta'],
+    'grok-3-mini-beta': ALL_MODELS['grok']['grok-3-mini-beta'],
+    'grok-3-mini-fast-beta': ALL_MODELS['grok']['grok-3-mini-fast-beta'],
+  }),
 })
 
 
@@ -588,6 +619,9 @@ LARGEST_GENERATE_TEXT_MODELS: Dict[
   }),
   'deepseek': MappingProxyType({
     'deepseek-v3': ALL_MODELS['deepseek']['deepseek-v3'],
+  }),
+  'grok': MappingProxyType({
+    'grok-3-fast-beta': ALL_MODELS['grok']['grok-3-fast-beta'],
   }),
 })
 

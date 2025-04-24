@@ -62,7 +62,7 @@ def check_messages_type(messages: types.MessagesType):
 
 
 def is_provider_model_tuple(value: Any) -> bool:
-    return (isinstance(value, tuple)
+    return (type(value) == tuple
             and len(value) == 2
-            and isinstance(value[0], str)
-            and isinstance(value[1], str))
+            and type(value[0]) == str
+            and type(value[1]) == str)

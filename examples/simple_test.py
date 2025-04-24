@@ -10,7 +10,7 @@ def simple_model_test():
   result = px.generate_text(
       'This is a test message to check if the cache is working or '
       f'not. {random_int}',
-      provider_model=('deepseek', 'deepseek-v3'),
+      provider_model=('grok', 'grok-3-mini-fast-beta'),
       extensive_return=True)
   pprint(result)
 
