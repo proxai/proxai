@@ -330,6 +330,10 @@ GENERATE_TEXT_PRICING: Dict[
       per_response_token_cost=50.0,
       per_query_token_cost=55.56,
     ),
+    'deepseek-v3': types.ProviderModelPricingType(
+      per_response_token_cost=25.0,
+      per_query_token_cost=27.78,
+    ),
   }),
 })
 
