@@ -40,12 +40,63 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
             message=(
                 'o1-mini does not support system messages.'))
         query_record.system = None
+      if query_record.max_tokens is not None:
+        self.feature_fail(
+            query_record=query_record,
+            message=(
+                'o1-mini does not support max tokens.'))
+        query_record.max_tokens = None
       if query_record.temperature is not None:
         self.feature_fail(
             query_record=query_record,
             message=(
                 'o1-mini does not support temperature.'))
         query_record.temperature = None
+      if query_record.stop is not None:
+        self.feature_fail(
+            query_record=query_record,
+            message=(
+                'o1-mini does not support stop tokens.'))
+        query_record.stop = None
+    elif self.provider_model.model == 'o1':
+      if query_record.temperature is not None:
+        self.feature_fail(
+            query_record=query_record,
+            message=(
+                'o1 does not support temperature.'))
+        query_record.temperature = None
+    elif self.provider_model.model == 'o3-mini':
+      if query_record.max_tokens is not None:
+        self.feature_fail(
+            query_record=query_record,
+            message=(
+                'o3-mini does not support max tokens.'))
+        query_record.max_tokens = None
+      if query_record.temperature is not None:
+        self.feature_fail(
+            query_record=query_record,
+            message=(
+                'o3-mini does not support temperature.'))
+        query_record.temperature = None
+    elif self.provider_model.model == 'o4-mini':
+      if query_record.max_tokens is not None:
+        self.feature_fail(
+            query_record=query_record,
+            message=(
+                'o4-mini does not support max tokens.'))
+        query_record.max_tokens = None
+      if query_record.temperature is not None:
+        self.feature_fail(
+            query_record=query_record,
+            message=(
+                'o4-mini does not support temperature.'))
+        query_record.temperature = None
+      if query_record.stop is not None:
+        self.feature_fail(
+            query_record=query_record,
+            message=(
+                'o4-mini does not support stop tokens.'))
+        query_record.stop = None
     return query_record
 
   def get_token_count(self, logging_record: types.LoggingRecord):

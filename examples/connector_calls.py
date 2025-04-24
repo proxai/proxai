@@ -30,11 +30,11 @@ if __name__ == '__main__':
       logging_path=f'{Path.home()}/proxai_log/',
       cache_path=f'{Path.home()}/proxai_cache/',
       cache_options=px.CacheOptions(
-          clear_model_cache_on_connect=True,
+          clear_model_cache_on_connect=False,
           clear_query_cache_on_connect=True,
       ),
       proxdash_options=px.ProxDashOptions(stdout=True))
-  models = px.models.list_provider_models(provider='deepseek')
+  models = px.models.list_provider_models(provider='openai')
   print('--- Base call ---')
   for model in models:
     print(f'Model: {model}')

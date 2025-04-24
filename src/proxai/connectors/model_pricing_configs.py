@@ -347,6 +347,26 @@ GENERATE_TEXT_PRICING: Dict[
       per_query_token_cost=2.19,
     ),
   }),
+
+  # Grok
+  'grok': MappingProxyType({
+    'grok-3-beta': types.ProviderModelPricingType(
+      per_response_token_cost=3.00,
+      per_query_token_cost=15.00,
+    ),
+    'grok-3-fast-beta': types.ProviderModelPricingType(
+      per_response_token_cost=5.00,
+      per_query_token_cost=25.00,
+    ),
+    'grok-3-mini-beta': types.ProviderModelPricingType(
+      per_response_token_cost=0.30,
+      per_query_token_cost=0.50,
+    ),
+    'grok-3-mini-fast-beta': types.ProviderModelPricingType(
+      per_response_token_cost=0.60,
+      per_query_token_cost=4.00,
+    ),
+  }),
 })
 
 
