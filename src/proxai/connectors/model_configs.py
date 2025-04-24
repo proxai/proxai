@@ -11,6 +11,7 @@ PROVIDER_KEY_MAP: Dict[str, Tuple[str]] = MappingProxyType({
     'databricks': tuple(['DATABRICKS_TOKEN', 'DATABRICKS_HOST']),
     'mistral': tuple(['MISTRAL_API_KEY']),
     'huggingface': tuple(['HUGGINGFACE_API_KEY']),
+    'deepseek': tuple(['DEEPSEEK_API_KEY']),
     'mock_provider': tuple(['MOCK_PROVIDER_API_KEY']),
     'mock_failing_provider': tuple(['MOCK_FAILING_PROVIDER']),
 })
@@ -432,6 +433,19 @@ ALL_MODELS: Dict[str, Dict[str, types.ProviderModelType]] = MappingProxyType({
       provider_model_identifier='deepseek-ai/DeepSeek-V3'
     ),
   }),
+
+  'deepseek': MappingProxyType({
+    'deepseek-v3': types.ProviderModelType(
+      provider='deepseek',
+      model='deepseek-v3',
+      provider_model_identifier='deepseek-chat'
+    ),
+    'deepseek-r1': types.ProviderModelType(
+      provider='deepseek',
+      model='deepseek-r1',
+      provider_model_identifier='deepseek-reasoner'
+    ),
+  }),
 })
 
 
@@ -533,6 +547,11 @@ GENERATE_TEXT_MODELS: Dict[
     'deepseek-r1': ALL_MODELS['huggingface']['deepseek-r1'],
     'deepseek-v3': ALL_MODELS['huggingface']['deepseek-v3'],
   }),
+
+  'deepseek': MappingProxyType({
+    'deepseek-v3': ALL_MODELS['deepseek']['deepseek-v3'],
+    'deepseek-r1': ALL_MODELS['deepseek']['deepseek-r1'],
+  }),
 })
 
 
@@ -566,6 +585,9 @@ LARGEST_GENERATE_TEXT_MODELS: Dict[
     'phi-4': ALL_MODELS['huggingface']['phi-4'],
     'qwen2.5-coder-32b-it': ALL_MODELS['huggingface']['qwen2.5-coder-32b-it'],
     'deepseek-v3': ALL_MODELS['huggingface']['deepseek-v3'],
+  }),
+  'deepseek': MappingProxyType({
+    'deepseek-v3': ALL_MODELS['deepseek']['deepseek-v3'],
   }),
 })
 

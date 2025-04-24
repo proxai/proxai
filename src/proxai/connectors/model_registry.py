@@ -9,6 +9,7 @@ import proxai.connectors.providers.databricks as databricks_provider
 import proxai.connectors.providers.mistral as mistral_provider
 import proxai.connectors.providers.huggingface as huggingface_provider
 import proxai.connectors.providers.mock_provider as mock_provider
+import proxai.connectors.providers.deepseek as deepseek_provider
 import proxai.types as types
 import proxai.connectors.model_configs as model_configs
 
@@ -20,6 +21,7 @@ _MODEL_CONNECTOR_MAP = {
   'databricks': databricks_provider.DatabricksConnector,
   'mistral': mistral_provider.MistralConnector,
   'huggingface': huggingface_provider.HuggingFaceConnector,
+  'deepseek': deepseek_provider.DeepSeekConnector,
   'mock_provider': mock_provider.MockProviderModelConnector,
   'mock_failing_provider': mock_provider.MockFailingProviderModelConnector,
 }
