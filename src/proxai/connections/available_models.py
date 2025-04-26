@@ -453,7 +453,7 @@ class AvailableModels(state_controller.StateControlled):
       return_all: bool = False,
       clear_model_cache: bool = False,
       call_type: types.CallType = types.CallType.GENERATE_TEXT
-  ) -> Union[Set[types.ProviderModelType], types.ModelStatus]:
+  ) -> Union[List[types.ProviderModelType], types.ModelStatus]:
     if call_type != types.CallType.GENERATE_TEXT:
       raise ValueError(f'Call type not supported: {call_type}')
 
