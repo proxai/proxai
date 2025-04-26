@@ -43,10 +43,11 @@ def get_mock_provider_model_connector(
       proxdash_connection=proxdash.ProxDashConnection(
           init_state=types.ProxDashConnectionState(
               status=types.ProxDashConnectionStatus.CONNECTED,
-              api_key='test_api_key',
               experiment_path='test/path',
               logging_options=types.LoggingOptions(),
-              proxdash_options=types.ProxDashOptions(),
+              proxdash_options=types.ProxDashOptions(
+                  api_key='test_api_key',
+              ),
               key_info_from_proxdash={'permission': 'ALL'},
               connected_experiment_path='test/path')))
   return connector
@@ -86,7 +87,9 @@ class TestModelConnectorGettersSetters:
     assert (
         connector.proxdash_connection.status ==
         types.ProxDashConnectionStatus.CONNECTED)
-    assert connector.proxdash_connection.api_key == 'test_api_key'
+    assert (
+        connector.proxdash_connection.proxdash_options.api_key ==
+        'test_api_key')
     assert connector.proxdash_connection.experiment_path == 'test/path'
 
     assert isinstance(
@@ -100,10 +103,11 @@ class TestModelConnectorGettersSetters:
     dynamic_proxdash_connection = proxdash.ProxDashConnection(
         init_state=types.ProxDashConnectionState(
             status=types.ProxDashConnectionStatus.CONNECTED,
-            api_key='test_api_key',
             experiment_path='test/path',
             logging_options=types.LoggingOptions(),
-            proxdash_options=types.ProxDashOptions(),
+            proxdash_options=types.ProxDashOptions(
+                api_key='test_api_key',
+            ),
             key_info_from_proxdash={'permission': 'ALL'},
             connected_experiment_path='test/path'))
 
@@ -152,9 +156,10 @@ class TestModelConnectorInit:
             status=types.ProxDashConnectionStatus.CONNECTED,
             hidden_run_key='test_key',
             experiment_path='test/path',
-            api_key='test_api_key',
             logging_options=types.LoggingOptions(stdout=True),
-            proxdash_options=types.ProxDashOptions(),
+            proxdash_options=types.ProxDashOptions(
+                api_key='test_api_key',
+            ),
             key_info_from_proxdash={'permission': 'ALL'},
             connected_experiment_path='test/path'))
 
@@ -168,7 +173,9 @@ class TestModelConnectorInit:
     assert (
         connector.proxdash_connection.status ==
         types.ProxDashConnectionStatus.CONNECTED)
-    assert connector.proxdash_connection.api_key == 'test_api_key'
+    assert (
+        connector.proxdash_connection.proxdash_options.api_key ==
+        'test_api_key')
 
   def test_init_with_mismatched_model(self):
     init_state = types.ProviderModelState(
@@ -195,13 +202,14 @@ class TestModelConnectorInit:
           proxdash_connection=types.ProxDashConnectionState(
               status=types.ProxDashConnectionStatus.CONNECTED,
               hidden_run_key='test_key',
-              api_key='test_api_key',
               experiment_path='test/path',
               logging_options=types.LoggingOptions(
                   logging_path=temp_dir,
                   hide_sensitive_content=True,
                   stdout=True),
-              proxdash_options=types.ProxDashOptions(stdout=True)))
+              proxdash_options=types.ProxDashOptions(
+                  stdout=True,
+                  api_key='test_api_key')))
 
       connector = mock_provider.MockProviderModelConnector(
           init_state=init_state)
@@ -217,7 +225,9 @@ class TestModelConnectorInit:
           connector.proxdash_connection.status ==
           types.ProxDashConnectionStatus.CONNECTED)
       assert connector.proxdash_connection._hidden_run_key == 'test_key'
-      assert connector.proxdash_connection._api_key == 'test_api_key'
+      assert (
+          connector.proxdash_connection.proxdash_options.api_key ==
+          'test_api_key')
       assert connector.proxdash_connection.experiment_path == 'test/path'
 
   def test_init_with_literals(self):
@@ -229,10 +239,11 @@ class TestModelConnectorInit:
 
       proxdash_connection = proxdash.ProxDashConnection(
           hidden_run_key='test_key',
-          api_key='test_api_key',
           experiment_path='test/path',
           logging_options=base_logging_options,
-          proxdash_options=types.ProxDashOptions(stdout=True))
+          proxdash_options=types.ProxDashOptions(
+              stdout=True,
+              api_key='test_api_key'))
 
       connector = mock_provider.MockProviderModelConnector(
           provider_model=model_configs.ALL_MODELS['mock_provider']['mock_model'],
@@ -253,7 +264,9 @@ class TestModelConnectorInit:
           init_state.proxdash_connection.status ==
           types.ProxDashConnectionStatus.CONNECTED)
       assert init_state.proxdash_connection.hidden_run_key == 'test_key'
-      assert init_state.proxdash_connection.api_key == 'test_api_key'
+      assert (
+          init_state.proxdash_connection.proxdash_options.api_key ==
+          'test_api_key')
       assert init_state.proxdash_connection.experiment_path == 'test/path'
 
   def test_init_with_none_model(self):

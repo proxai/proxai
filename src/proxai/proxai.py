@@ -218,6 +218,8 @@ def _set_proxdash_options(
     result_proxdash_options.hide_sensitive_content = (
         proxdash_options.hide_sensitive_content)
     result_proxdash_options.disable_proxdash = proxdash_options.disable_proxdash
+    result_proxdash_options.api_key = proxdash_options.api_key
+    result_proxdash_options.base_url = proxdash_options.base_url
 
   if global_set:
     global _PROXDASH_OPTIONS
