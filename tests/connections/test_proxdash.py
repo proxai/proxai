@@ -79,7 +79,6 @@ def _create_test_logging_record(
 
 
 def _create_connection(
-    api_key: str = "test_api_key",
     status: types.ProxDashConnectionStatus = types.ProxDashConnectionStatus.CONNECTED,
     hide_sensitive_content: bool = False,
     permission: str = "ALL",
@@ -90,10 +89,10 @@ def _create_connection(
       temp_dir, temp_dir_obj = _get_path_dir('test_upload_logging_record')
 
   connection = proxdash.ProxDashConnection(
-      api_key=api_key,
       logging_options=types.LoggingOptions(logging_path=temp_dir),
       proxdash_options=types.ProxDashOptions(
-          hide_sensitive_content=hide_sensitive_content),
+          hide_sensitive_content=hide_sensitive_content,
+          api_key='test_api_key'),
   )
   connection.status = status
   connection.key_info_from_proxdash = {'permission': permission}
@@ -287,11 +286,13 @@ class TestProxDashConnectionGetterSetters:
         logging_options=types.LoggingOptions(),
         proxdash_options=types.ProxDashOptions(),
     )
-    assert connection.api_key is None
-    assert connection._proxdash_connection_state.api_key is None
-    connection.api_key = 'test_api_key'
-    assert connection.api_key == 'test_api_key'
-    assert connection._proxdash_connection_state.api_key == 'test_api_key'
+    assert connection.proxdash_options.api_key is None
+    assert connection._proxdash_connection_state.proxdash_options.api_key is None
+    connection.proxdash_options.api_key = 'test_api_key'
+    assert connection.proxdash_options.api_key == 'test_api_key'
+    assert (
+        connection._proxdash_connection_state.proxdash_options.api_key ==
+        'test_api_key')
 
   def test_api_key_env_var(self, monkeypatch):
     monkeypatch.setenv('PROXDASH_API_KEY', 'test_env_api_key')
@@ -299,21 +300,29 @@ class TestProxDashConnectionGetterSetters:
         logging_options=types.LoggingOptions(),
         proxdash_options=types.ProxDashOptions(),
     )
-    assert connection.api_key == 'test_env_api_key'
-    assert connection._proxdash_connection_state.api_key == 'test_env_api_key'
+    assert connection.proxdash_options.api_key == 'test_env_api_key'
+    assert (
+        connection._proxdash_connection_state.proxdash_options.api_key ==
+        'test_env_api_key')
 
   def test_api_key_env_var_after_setting_none(self, monkeypatch):
     monkeypatch.setenv('PROXDASH_API_KEY', 'test_env_api_key')
     connection = proxdash.ProxDashConnection(
-        api_key='test_api_key',
         logging_options=types.LoggingOptions(),
-        proxdash_options=types.ProxDashOptions(),
+        proxdash_options=types.ProxDashOptions(
+            api_key='test_api_key',
+        ),
     )
-    assert connection.api_key == 'test_api_key'
-    assert connection._proxdash_connection_state.api_key == 'test_api_key'
-    connection.api_key = None
-    assert connection.api_key == 'test_env_api_key'
-    assert connection._proxdash_connection_state.api_key == 'test_env_api_key'
+    assert connection.proxdash_options.api_key == 'test_api_key'
+    assert (
+        connection._proxdash_connection_state.proxdash_options.api_key ==
+        'test_api_key')
+    connection.proxdash_options.api_key = None
+    connection.apply_external_state_changes()
+    assert connection.proxdash_options.api_key == 'test_env_api_key'
+    assert (
+        connection._proxdash_connection_state.proxdash_options.api_key ==
+        'test_env_api_key')
 
   def test_key_info_from_proxdash_literal(self):
     connection = proxdash.ProxDashConnection(
@@ -427,7 +436,7 @@ class TestProxDashConnectionGetterSetters:
           'ProxDash connection disabled. Please provide a valid API key '
           'either as an argument or as an environment variable.')
       assert data[1]['logging_type'] == 'INFO'
-      assert data[1]['message'] == 'Connected to ProxDash.'
+      assert data[1]['message'].startswith('Connected to ProxDash at ')
       assert data[2]['logging_type'] == 'INFO'
       assert data[2]['message'] == 'Connected to ProxDash experiment: test/path'
       assert data[3]['logging_type'] == 'INFO'
@@ -503,7 +512,7 @@ class TestProxDashConnectionGetterSetters:
           'ProxDash returned an invalid response.\nPlease report this '
           'issue to the https://github.com/proxai/proxai.\n'
           'Also, please check latest stable version of ProxAI.')
-      assert data[6]['message'] == 'Connected to ProxDash.'
+      assert data[6]['message'].startswith('Connected to ProxDash at ')
 
 
 class TestProxDashConnectionInit:
@@ -512,17 +521,20 @@ class TestProxDashConnectionInit:
         'test_init_literals_logging_path')
     connection = proxdash.ProxDashConnection(
         hidden_run_key='test_hidden_run_key',
-        api_key='test_api_key',
         experiment_path='test/path',
         logging_options=types.LoggingOptions(logging_path=temp_dir),
-        proxdash_options=types.ProxDashOptions(stdout=True),
+        proxdash_options=types.ProxDashOptions(
+            stdout=True,
+            api_key='test_api_key'),
     )
     assert connection.hidden_run_key == 'test_hidden_run_key'
-    assert connection.api_key == 'test_api_key'
+    assert connection.proxdash_options.api_key == 'test_api_key'
     assert connection.experiment_path == 'test/path'
     assert connection.logging_options == types.LoggingOptions(
         logging_path=temp_dir)
-    assert connection.proxdash_options == types.ProxDashOptions(stdout=True)
+    assert connection.proxdash_options == types.ProxDashOptions(
+        stdout=True,
+        api_key='test_api_key')
     assert connection.status == types.ProxDashConnectionStatus.CONNECTED
     assert connection.key_info_from_proxdash == {'permission': 'ALL'}
     assert connection.connected_experiment_path == 'test/path'
@@ -530,10 +542,11 @@ class TestProxDashConnectionInit:
         connection._proxdash_connection_state ==
         types.ProxDashConnectionState(
             hidden_run_key='test_hidden_run_key',
-            api_key='test_api_key',
             experiment_path='test/path',
             logging_options=types.LoggingOptions(logging_path=temp_dir),
-            proxdash_options=types.ProxDashOptions(stdout=True),
+            proxdash_options=types.ProxDashOptions(
+                stdout=True,
+                api_key='test_api_key'),
             status=types.ProxDashConnectionStatus.CONNECTED,
             key_info_from_proxdash={'permission': 'ALL'},
             connected_experiment_path='test/path'))
@@ -541,7 +554,7 @@ class TestProxDashConnectionInit:
     with open(os.path.join(temp_dir, 'merged.log'), 'r') as f:
       data = [json.loads(line) for line in f]
       assert len(data) == 2
-      assert data[0]['message'] == 'Connected to ProxDash.'
+      assert data[0]['message'].startswith('Connected to ProxDash at ')
       assert data[1]['message'] == 'Connected to ProxDash experiment: test/path'
 
   def test_init_literals_with_disabled_proxdash(self):
@@ -549,21 +562,22 @@ class TestProxDashConnectionInit:
         'test_init_literals_logging_path')
     connection = proxdash.ProxDashConnection(
         hidden_run_key='test_hidden_run_key',
-        api_key='test_api_key',
         experiment_path='test/path',
         logging_options=types.LoggingOptions(logging_path=temp_dir),
         proxdash_options=types.ProxDashOptions(
             stdout=True,
-            disable_proxdash=True),
+            disable_proxdash=True,
+            api_key='test_api_key'),
     )
     assert connection.hidden_run_key == 'test_hidden_run_key'
-    assert connection.api_key == 'test_api_key'
+    assert connection.proxdash_options.api_key == 'test_api_key'
     assert connection.experiment_path == 'test/path'
     assert connection.logging_options == types.LoggingOptions(
         logging_path=temp_dir)
     assert connection.proxdash_options == types.ProxDashOptions(
         stdout=True,
-        disable_proxdash=True)
+        disable_proxdash=True,
+        api_key='test_api_key')
     assert connection.status == types.ProxDashConnectionStatus.DISABLED
     assert connection.key_info_from_proxdash is None
     assert connection.connected_experiment_path is None
@@ -571,12 +585,12 @@ class TestProxDashConnectionInit:
         connection._proxdash_connection_state ==
         types.ProxDashConnectionState(
             hidden_run_key='test_hidden_run_key',
-            api_key='test_api_key',
             experiment_path='test/path',
             logging_options=types.LoggingOptions(logging_path=temp_dir),
             proxdash_options=types.ProxDashOptions(
                 stdout=True,
-                disable_proxdash=True),
+                disable_proxdash=True,
+                api_key='test_api_key'),
             status=types.ProxDashConnectionStatus.DISABLED,
             key_info_from_proxdash=None,
             connected_experiment_path=None))
@@ -590,7 +604,9 @@ class TestProxDashConnectionInit:
     temp_dir, temp_dir_obj = _get_path_dir(
         'test_init_functions_logging_path')
     dynamic_logging_options = types.LoggingOptions(logging_path=temp_dir)
-    dynamic_proxdash_options = types.ProxDashOptions(stdout=True)
+    dynamic_proxdash_options = types.ProxDashOptions(
+        stdout=True,
+        api_key='test_api_key')
     dynamic_experiment_path = 'test/path'
     def get_logging_options():
       return dynamic_logging_options
@@ -600,13 +616,11 @@ class TestProxDashConnectionInit:
       return dynamic_experiment_path
     connection = proxdash.ProxDashConnection(
         hidden_run_key='test_hidden_run_key',
-        api_key='test_api_key',
         get_logging_options=get_logging_options,
         get_proxdash_options=get_proxdash_options,
         get_experiment_path=get_experiment_path,
     )
     assert connection.hidden_run_key == 'test_hidden_run_key'
-    assert connection.api_key == 'test_api_key'
     assert connection.logging_options == dynamic_logging_options
     assert connection.proxdash_options == dynamic_proxdash_options
     assert connection.experiment_path == dynamic_experiment_path
@@ -617,7 +631,6 @@ class TestProxDashConnectionInit:
         connection._proxdash_connection_state ==
         types.ProxDashConnectionState(
             hidden_run_key='test_hidden_run_key',
-            api_key='test_api_key',
             experiment_path=dynamic_experiment_path,
             logging_options=dynamic_logging_options,
             proxdash_options=dynamic_proxdash_options,
@@ -628,12 +641,14 @@ class TestProxDashConnectionInit:
     dynamic_logging_options = types.LoggingOptions(
         logging_path=temp_dir,
         stdout=True)
-    dynamic_proxdash_options = types.ProxDashOptions(stdout=False)
+    dynamic_proxdash_options = types.ProxDashOptions(
+        stdout=False,
+        api_key='test_api_key')
     dynamic_experiment_path = None
 
     connection.apply_state_changes()
     assert connection.hidden_run_key == 'test_hidden_run_key'
-    assert connection.api_key == 'test_api_key'
+    assert connection.proxdash_options.api_key == 'test_api_key'
     assert connection.logging_options == dynamic_logging_options
     assert connection.proxdash_options == dynamic_proxdash_options
     assert connection.experiment_path == '(not set)'
@@ -644,7 +659,6 @@ class TestProxDashConnectionInit:
         connection._proxdash_connection_state ==
         types.ProxDashConnectionState(
             hidden_run_key='test_hidden_run_key',
-            api_key='test_api_key',
             experiment_path='(not set)',
             logging_options=dynamic_logging_options,
             proxdash_options=dynamic_proxdash_options,
@@ -655,7 +669,7 @@ class TestProxDashConnectionInit:
     with open(os.path.join(temp_dir, 'merged.log'), 'r') as f:
       data = [json.loads(line) for line in f]
       assert len(data) == 3
-      assert data[0]['message'] == 'Connected to ProxDash.'
+      assert data[0]['message'].startswith('Connected to ProxDash at ')
       assert data[1]['message'] == 'Connected to ProxDash experiment: test/path'
       assert data[2]['message'] == 'Connected to ProxDash experiment: (not set)'
 
@@ -663,10 +677,6 @@ class TestProxDashConnectionInit:
     with pytest.raises(ValueError):
       proxdash.ProxDashConnection(
           hidden_run_key='test_hidden_run_key',
-          init_state=types.ProxDashConnectionState())
-    with pytest.raises(ValueError):
-      proxdash.ProxDashConnection(
-          api_key='test_api_key',
           init_state=types.ProxDashConnectionState())
     with pytest.raises(ValueError):
       proxdash.ProxDashConnection(
@@ -710,7 +720,6 @@ class TestProxDashConnectionInit:
     init_state = types.ProxDashConnectionState()
     connection = proxdash.ProxDashConnection(init_state=init_state)
     assert connection.hidden_run_key is None
-    assert connection.api_key is None
     assert connection.experiment_path == '(not set)'
     assert connection.logging_options is None
     assert connection.proxdash_options is None
@@ -721,7 +730,6 @@ class TestProxDashConnectionInit:
         connection._proxdash_connection_state ==
         types.ProxDashConnectionState(
             hidden_run_key=None,
-            api_key=None,
             experiment_path='(not set)',
             logging_options=None,
             proxdash_options=None,
@@ -732,9 +740,9 @@ class TestProxDashConnectionInit:
   def test_init_state_with_values(self):
     init_state = types.ProxDashConnectionState(
         hidden_run_key='test_hidden_run_key',
-        api_key='test_api_key',
         logging_options=types.LoggingOptions(stdout=True),
-        proxdash_options=types.ProxDashOptions(stdout=True),
+        proxdash_options=types.ProxDashOptions(stdout=True,
+            api_key='test_api_key'),
         status=types.ProxDashConnectionStatus.CONNECTED,
         experiment_path='test/path',
         key_info_from_proxdash={'permission': 'ALL'},
@@ -742,10 +750,11 @@ class TestProxDashConnectionInit:
     )
     connection = proxdash.ProxDashConnection(init_state=init_state)
     assert connection.hidden_run_key == 'test_hidden_run_key'
-    assert connection.api_key == 'test_api_key'
     assert connection.experiment_path == 'test/path'
     assert connection.logging_options == types.LoggingOptions(stdout=True)
-    assert connection.proxdash_options == types.ProxDashOptions(stdout=True)
+    assert connection.proxdash_options == types.ProxDashOptions(
+        stdout=True,
+        api_key='test_api_key')
     assert connection.status == types.ProxDashConnectionStatus.CONNECTED
     assert connection.key_info_from_proxdash == {'permission': 'ALL'}
     assert connection.connected_experiment_path == 'test/path'
@@ -753,10 +762,11 @@ class TestProxDashConnectionInit:
         connection._proxdash_connection_state ==
         types.ProxDashConnectionState(
             hidden_run_key='test_hidden_run_key',
-            api_key='test_api_key',
             experiment_path='test/path',
             logging_options=types.LoggingOptions(stdout=True),
-            proxdash_options=types.ProxDashOptions(stdout=True),
+            proxdash_options=types.ProxDashOptions(
+                stdout=True,
+                api_key='test_api_key'),
             status=types.ProxDashConnectionStatus.CONNECTED,
             key_info_from_proxdash={'permission': 'ALL'},
             connected_experiment_path='test/path'))
@@ -766,9 +776,10 @@ class TestProxDashConnectionInit:
     # without any modifications.
     init_state = types.ProxDashConnectionState(
         hidden_run_key='test_hidden_run_key',
-        api_key=None,
         logging_options=types.LoggingOptions(stdout=True),
-        proxdash_options=types.ProxDashOptions(stdout=True),
+        proxdash_options=types.ProxDashOptions(
+            stdout=True,
+            api_key=None),
         status=types.ProxDashConnectionStatus.CONNECTED,
         experiment_path='test/path',
         key_info_from_proxdash={'permission': 'ALL'},
@@ -776,7 +787,6 @@ class TestProxDashConnectionInit:
     )
     connection = proxdash.ProxDashConnection(init_state=init_state)
     assert connection.hidden_run_key == 'test_hidden_run_key'
-    assert connection.api_key is None
     assert connection.experiment_path == 'test/path'
     assert connection.logging_options == types.LoggingOptions(stdout=True)
     assert connection.proxdash_options == types.ProxDashOptions(stdout=True)
@@ -787,7 +797,6 @@ class TestProxDashConnectionInit:
         connection._proxdash_connection_state ==
         types.ProxDashConnectionState(
             hidden_run_key='test_hidden_run_key',
-            api_key=None,
             experiment_path='test/path',
             logging_options=types.LoggingOptions(stdout=True),
             proxdash_options=types.ProxDashOptions(stdout=True),
@@ -800,9 +809,9 @@ class TestProxDashConnectionGetState:
   def test_get_state(self):
     init_state = types.ProxDashConnectionState(
         hidden_run_key='test_hidden_run_key',
-        api_key='test_api_key',
         logging_options=types.LoggingOptions(stdout=True),
-        proxdash_options=types.ProxDashOptions(stdout=True),
+        proxdash_options=types.ProxDashOptions(stdout=True,
+            api_key='test_api_key'),
         status=types.ProxDashConnectionStatus.CONNECTED,
         experiment_path='test/path',
         key_info_from_proxdash={'permission': 'ALL'},
@@ -892,18 +901,18 @@ class TestProxDashConnectionUpdateState:
     temp_dir, temp_dir_obj = _get_path_dir(
         'test_proxdash_options_with_disabled_proxdash_logging_path')
     connection = proxdash.ProxDashConnection(
-        api_key='test_api_key',
         logging_options=types.LoggingOptions(logging_path=temp_dir),
-        proxdash_options=types.ProxDashOptions(),
+        proxdash_options=types.ProxDashOptions(
+            api_key='test_api_key'),
     )
     assert connection.status == types.ProxDashConnectionStatus.CONNECTED
-    assert connection.api_key == 'test_api_key'
+    assert connection.proxdash_options.api_key == 'test_api_key'
     assert (
         connection._proxdash_connection_state ==
         types.ProxDashConnectionState(
-            api_key='test_api_key',
             logging_options=types.LoggingOptions(logging_path=temp_dir),
-            proxdash_options=types.ProxDashOptions(),
+            proxdash_options=types.ProxDashOptions(
+                api_key='test_api_key'),
             status=types.ProxDashConnectionStatus.CONNECTED,
             experiment_path='(not set)',
             connected_experiment_path='(not set)',
@@ -911,31 +920,37 @@ class TestProxDashConnectionUpdateState:
 
     connection.apply_state_changes(
         types.ProxDashConnectionState(
-            proxdash_options=types.ProxDashOptions(disable_proxdash=True)))
+            proxdash_options=types.ProxDashOptions(
+                disable_proxdash=True,
+                api_key='test_api_key')))
     assert connection.status == types.ProxDashConnectionStatus.DISABLED
-    assert connection.api_key == 'test_api_key'
+    assert connection.proxdash_options.api_key == 'test_api_key'
     assert connection.proxdash_options.disable_proxdash == True
     assert (
         connection._proxdash_connection_state ==
         types.ProxDashConnectionState(
-            api_key='test_api_key',
             logging_options=types.LoggingOptions(logging_path=temp_dir),
-            proxdash_options=types.ProxDashOptions(disable_proxdash=True),
+            proxdash_options=types.ProxDashOptions(
+                disable_proxdash=True,
+                api_key='test_api_key'),
             status=types.ProxDashConnectionStatus.DISABLED,
             experiment_path='(not set)'))
 
     connection.apply_state_changes(
         types.ProxDashConnectionState(
-            proxdash_options=types.ProxDashOptions(disable_proxdash=False)))
+            proxdash_options=types.ProxDashOptions(
+                disable_proxdash=False,
+                api_key='test_api_key')))
     assert connection.status == types.ProxDashConnectionStatus.CONNECTED
-    assert connection.api_key == 'test_api_key'
+    assert connection.proxdash_options.api_key == 'test_api_key'
     assert connection.proxdash_options.disable_proxdash == False
     assert (
         connection._proxdash_connection_state ==
         types.ProxDashConnectionState(
-            api_key='test_api_key',
             logging_options=types.LoggingOptions(logging_path=temp_dir),
-            proxdash_options=types.ProxDashOptions(disable_proxdash=False),
+            proxdash_options=types.ProxDashOptions(
+                disable_proxdash=False,
+                api_key='test_api_key'),
             status=types.ProxDashConnectionStatus.CONNECTED,
             experiment_path='(not set)',
             connected_experiment_path='(not set)',
@@ -973,7 +988,7 @@ class TestProxDashConnectionUpdateState:
         logging_options=types.LoggingOptions(),
         proxdash_options=types.ProxDashOptions(),
     )
-    assert connection.api_key is None
+    assert connection.proxdash_options.api_key is None
     assert connection.status == types.ProxDashConnectionStatus.API_KEY_NOT_FOUND
     assert (
         connection._proxdash_connection_state.status ==
@@ -982,10 +997,12 @@ class TestProxDashConnectionUpdateState:
     assert (
         connection._proxdash_connection_state.key_info_from_proxdash is None)
     connection.apply_state_changes(
-        types.ProxDashConnectionState(api_key='test_api_key'))
-    assert connection.api_key == 'test_api_key'
+        types.ProxDashConnectionState(
+            proxdash_options=types.ProxDashOptions(
+                api_key='test_api_key')))
+    assert connection.proxdash_options.api_key == 'test_api_key'
     assert (
-        connection._proxdash_connection_state.api_key ==
+        connection._proxdash_connection_state.proxdash_options.api_key ==
         'test_api_key')
     assert connection.status == types.ProxDashConnectionStatus.CONNECTED
     assert (
@@ -996,49 +1013,68 @@ class TestProxDashConnectionUpdateState:
         connection._proxdash_connection_state.key_info_from_proxdash ==
         {'permission': 'ALL'})
 
-  def test_api_key_with_disabled_proxdash(self):
+  def test_api_key_with_disabled_proxdash(self, monkeypatch):
+    monkeypatch.setenv('PROXDASH_API_KEY', 'test_env_api_key')
     connection = proxdash.ProxDashConnection(
         logging_options=types.LoggingOptions(),
         proxdash_options=types.ProxDashOptions(disable_proxdash=True),
     )
     assert connection.status == types.ProxDashConnectionStatus.DISABLED
-    assert connection.api_key is None
+    assert connection.proxdash_options.api_key is None
     assert connection.key_info_from_proxdash is None
     connection.apply_state_changes(
-        types.ProxDashConnectionState(api_key='test_api_key'))
-    assert connection.api_key == 'test_api_key'
+        types.ProxDashConnectionState(
+            proxdash_options=types.ProxDashOptions(
+                disable_proxdash=True,
+                api_key='test_api_key')))
+    assert connection.proxdash_options.api_key == 'test_api_key'
     assert connection.status == types.ProxDashConnectionStatus.DISABLED
     assert connection.key_info_from_proxdash is None
+    connection.apply_state_changes(
+        types.ProxDashConnectionState(
+            proxdash_options=types.ProxDashOptions(
+                disable_proxdash=False,
+                api_key='test_api_key')))
+    assert connection.proxdash_options.api_key == 'test_api_key'
+    assert connection.status == types.ProxDashConnectionStatus.CONNECTED
+    assert connection.key_info_from_proxdash == {'permission': 'ALL'}
 
   def test_api_key_with_disabled_proxdash_with_env_api_key(self, monkeypatch):
     monkeypatch.setenv('PROXDASH_API_KEY', 'test_env_api_key')
     connection = proxdash.ProxDashConnection(
         logging_options=types.LoggingOptions(),
-        proxdash_options=types.ProxDashOptions(disable_proxdash=True)
+        proxdash_options=types.ProxDashOptions(
+            disable_proxdash=True,
+            api_key='test_env_api_key'),
     )
-    assert connection.api_key == 'test_env_api_key'
+    assert connection.proxdash_options.api_key == 'test_env_api_key'
     assert connection.status == types.ProxDashConnectionStatus.DISABLED
     assert connection.key_info_from_proxdash is None
 
     connection.apply_state_changes(
-        types.ProxDashConnectionState(api_key='test_api_key'))
-    assert connection.api_key == 'test_api_key'
+        types.ProxDashConnectionState(
+            proxdash_options=types.ProxDashOptions(
+                disable_proxdash=True,
+                api_key='test_api_key')))
+    assert connection.proxdash_options.api_key == 'test_api_key'
     assert connection.status == types.ProxDashConnectionStatus.DISABLED
     assert connection.key_info_from_proxdash is None
 
-    # Note: Current implementation does not allow to set api_key to None.
-    # This is a workaround to ensure that the api_key is None.
-    connection.api_key = None
-    assert connection.api_key == 'test_env_api_key'
-    assert connection.status == types.ProxDashConnectionStatus.DISABLED
-    assert connection.key_info_from_proxdash is None
+    connection.apply_state_changes(
+        types.ProxDashConnectionState(
+            proxdash_options=types.ProxDashOptions(
+                disable_proxdash=False,
+                api_key=None)))
+    assert connection.proxdash_options.api_key == 'test_env_api_key'
+    assert connection.status == types.ProxDashConnectionStatus.CONNECTED
+    assert connection.key_info_from_proxdash == {'permission': 'ALL'}
 
   def test_api_key_not_found(self):
     connection = proxdash.ProxDashConnection(
         logging_options=types.LoggingOptions(),
         proxdash_options=types.ProxDashOptions(),
     )
-    assert connection.api_key is None
+    assert connection.proxdash_options.api_key is None
     assert connection.status == types.ProxDashConnectionStatus.API_KEY_NOT_FOUND
     assert connection.key_info_from_proxdash is None
 
@@ -1054,8 +1090,10 @@ class TestProxDashConnectionUpdateState:
     )
     with pytest.raises(ValueError):
       connection.apply_state_changes(
-          types.ProxDashConnectionState(api_key='test_api_key'))
-    assert connection.api_key == 'test_api_key'
+          types.ProxDashConnectionState(
+              proxdash_options=types.ProxDashOptions(
+                  api_key='test_api_key')))
+    assert connection.proxdash_options.api_key == 'test_api_key'
     assert connection.status == types.ProxDashConnectionStatus.API_KEY_NOT_VALID
     assert connection.key_info_from_proxdash is None
 
@@ -1071,8 +1109,10 @@ class TestProxDashConnectionUpdateState:
     )
     with pytest.raises(ValueError):
       connection.apply_state_changes(
-          types.ProxDashConnectionState(api_key='test_api_key'))
-    assert connection.api_key == 'test_api_key'
+          types.ProxDashConnectionState(
+              proxdash_options=types.ProxDashOptions(
+                  api_key='test_api_key')))
+    assert connection.proxdash_options.api_key == 'test_api_key'
     assert (
         connection.status ==
         types.ProxDashConnectionStatus.PROXDASH_INVALID_RETURN)
@@ -1085,7 +1125,9 @@ class TestProxDashConnectionUpdateState:
     )
     assert connection.key_info_from_proxdash is None
     connection.apply_state_changes(
-        types.ProxDashConnectionState(api_key='test_api_key'))
+        types.ProxDashConnectionState(
+            proxdash_options=types.ProxDashOptions(
+                api_key='test_api_key')))
     assert connection.key_info_from_proxdash == {'permission': 'ALL'}
 
     connection.apply_state_changes(
@@ -1110,7 +1152,9 @@ class TestProxDashConnectionUpdateState:
         connection._proxdash_connection_state.connected_experiment_path is None)
     # 2 - Set API key and check connected experiment path:
     connection.apply_state_changes(
-        types.ProxDashConnectionState(api_key='test_api_key'))
+        types.ProxDashConnectionState(
+            proxdash_options=types.ProxDashOptions(
+                api_key='test_api_key')))
     assert connection.status == types.ProxDashConnectionStatus.CONNECTED
     assert connection.experiment_path == 'test/path'
     assert connection.connected_experiment_path == 'test/path'
@@ -1252,17 +1296,18 @@ class TestProxDashConnectionUpdateState:
     # overrides it.
     connection.apply_state_changes(
         types.ProxDashConnectionState(
-            api_key='test_api_key',
-            connected_experiment_path='test/connected/path'))
+            connected_experiment_path='test/connected/path',
+            proxdash_options=types.ProxDashOptions(
+                api_key='test_api_key')))
     assert connection.status == types.ProxDashConnectionStatus.CONNECTED
     assert connection.experiment_path == '(not set)'
     assert connection.connected_experiment_path == '(not set)'
     assert (
         connection._proxdash_connection_state ==
         types.ProxDashConnectionState(
-            api_key='test_api_key',
             logging_options=types.LoggingOptions(),
-            proxdash_options=types.ProxDashOptions(),
+            proxdash_options=types.ProxDashOptions(
+                api_key='test_api_key'),
             status=types.ProxDashConnectionStatus.CONNECTED,
             experiment_path='(not set)',
             connected_experiment_path='(not set)',
@@ -1280,9 +1325,9 @@ class TestProxDashConnectionUpdateState:
     assert (
         connection._proxdash_connection_state ==
         types.ProxDashConnectionState(
-            api_key='test_api_key',
             logging_options=types.LoggingOptions(),
-            proxdash_options=types.ProxDashOptions(),
+            proxdash_options=types.ProxDashOptions(
+                api_key='test_api_key'),
             status=types.ProxDashConnectionStatus.CONNECTED,
             experiment_path='test/path',
             connected_experiment_path='test/path',
@@ -1778,12 +1823,13 @@ class TestProxDashConnectionScenarios:
 
   def test_proxdash_options_function_change_via_literal(self, requests_mock):
     logging_record = _create_test_logging_record()
-    dynamic_proxdash_options = types.ProxDashOptions()
+    dynamic_proxdash_options = types.ProxDashOptions(
+        api_key='test_api_key',
+    )
     def get_proxdash_options():
       return copy.deepcopy(dynamic_proxdash_options)
 
     connection = proxdash.ProxDashConnection(
-        api_key='test_api_key',
         logging_options=types.LoggingOptions(),
         get_proxdash_options=get_proxdash_options,
     )
@@ -1808,12 +1854,13 @@ class TestProxDashConnectionScenarios:
 
   def test_proxdash_options_function_change_via_reference(self, requests_mock):
     logging_record = _create_test_logging_record()
-    dynamic_proxdash_options = types.ProxDashOptions()
+    dynamic_proxdash_options = types.ProxDashOptions(
+        api_key='test_api_key',
+    )
     def get_proxdash_options():
       return dynamic_proxdash_options
 
     connection = proxdash.ProxDashConnection(
-        api_key='test_api_key',
         logging_options=types.LoggingOptions(),
         get_proxdash_options=get_proxdash_options,
     )
@@ -1837,8 +1884,9 @@ class TestProxDashConnectionScenarios:
             'response': 'test response'})
 
   def test_experiment_path_logging(self, requests_mock):
+    base_url = 'https://proxainest-production.up.railway.app'
     requests_mock.post(
-        'https://proxainest-production.up.railway.app/logging-record',
+        f'{base_url}/logging-record',
         text='success',
         status_code=201
     )
@@ -1849,9 +1897,11 @@ class TestProxDashConnectionScenarios:
       return dynamic_experiment_path
 
     connection = proxdash.ProxDashConnection(
-      api_key='test_api_key',
       logging_options=types.LoggingOptions(logging_path=temp_dir),
-      proxdash_options=types.ProxDashOptions(),
+      proxdash_options=types.ProxDashOptions(
+          api_key='test_api_key',
+          base_url=base_url,
+      ),
       get_experiment_path=get_experiment_path,
     )
     connection.upload_logging_record(logging_record)
@@ -1859,7 +1909,7 @@ class TestProxDashConnectionScenarios:
     dynamic_experiment_path = 'test_experiment_path_2'
     connection.upload_logging_record(logging_record)
     _verify_log_messages(temp_dir, [
-      ('Connected to ProxDash.', types.LoggingType.INFO),
+      (f'Connected to ProxDash at {base_url}', types.LoggingType.INFO),
       ('Connected to ProxDash experiment: test_experiment_path',
        types.LoggingType.INFO),
       ('Connected to ProxDash experiment: test_experiment_path_2',

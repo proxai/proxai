@@ -20,7 +20,10 @@ def simple_cache_test():
       experiment_path='simple_test/run_1',
       logging_path=f'{Path.home()}/proxai_log/',
       cache_path=f'{Path.home()}/proxai_cache/',
-      proxdash_options=px.ProxDashOptions(stdout=True))
+      proxdash_options=px.ProxDashOptions(
+          stdout=True,
+          base_url='http://localhost:3001',
+          api_key='bry2oe2-m9xev24i-q2pjebcpc9'))
   random_int = random.randint(1, 1000000)
   result = px.generate_text(
       'This is a test message to check if the cache is working or '
@@ -41,7 +44,7 @@ def simple_cache_test():
 
 
 def main():
-  simple_model_test()
+  # simple_model_test()
   simple_cache_test()
 
 

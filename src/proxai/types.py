@@ -95,6 +95,8 @@ class ProxDashOptions:
   stdout: bool = False
   hide_sensitive_content: bool = False
   disable_proxdash: bool = False
+  api_key: Optional[str] = None
+  base_url: Optional[str] = 'https://proxainest-production.up.railway.app'
 
 
 @dataclasses.dataclass
@@ -255,7 +257,6 @@ class QueryCacheManagerState(StateContainer):
 class ProxDashConnectionState(StateContainer):
   status: Optional[ProxDashConnectionStatus] = None
   hidden_run_key: Optional[str] = None
-  api_key: Optional[str] = None
   experiment_path: Optional[str] = None
   logging_options: Optional[LoggingOptions] = None
   proxdash_options: Optional[ProxDashOptions] = None
