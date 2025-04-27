@@ -10,7 +10,7 @@ def simple_model_test():
   result = px.generate_text(
       'This is a test message to check if the cache is working or '
       f'not. {random_int}',
-      provider_model=('grok', 'grok-3-mini-fast-beta'),
+      provider_model=('gemini', 'gemini-1.5-flash'),
       extensive_return=True)
   pprint(result)
 
@@ -44,8 +44,8 @@ def simple_cache_test():
 
 
 def main():
-  # simple_model_test()
-  simple_cache_test()
+  simple_model_test()
+  # simple_cache_test()
 
 
 if __name__ == '__main__':
