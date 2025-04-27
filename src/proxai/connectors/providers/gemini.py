@@ -1,5 +1,6 @@
 import copy
 import functools
+import os
 from google import genai
 from google.genai import types as genai_types
 import proxai.types as types
@@ -13,7 +14,9 @@ class GeminiConnector(model_connector.ProviderModelConnector):
     return 'gemini'
 
   def init_model(self):
-    return genai.Client()
+    return genai.Client(
+      api_key=os.environ['GEMINI_API_KEY']
+    )
 
   def init_mock_model(self):
     return gemini_mock.GeminiMock()
