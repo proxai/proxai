@@ -26,6 +26,7 @@ _MODEL_CONNECTOR_MAP = {
   'grok': grok_provider.GrokConnector,
   'mock_provider': mock_provider.MockProviderModelConnector,
   'mock_failing_provider': mock_provider.MockFailingProviderModelConnector,
+  'mock_slow_provider': mock_provider.MockSlowProviderModelConnector,
 }
 
 

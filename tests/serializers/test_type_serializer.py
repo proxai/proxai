@@ -154,6 +154,7 @@ def _get_run_options_options():
           hide_sensitive_content=True,
           disable_proxdash=True)},
       {'allow_multiprocessing': True},
+      {'model_test_timeout': 25},
       {'strict_feature_test': True},
       {'suppress_provider_errors': True},
       {'run_type': types.RunType.TEST,
@@ -174,7 +175,9 @@ def _get_run_options_options():
        'proxdash_options': types.ProxDashOptions(
           stdout=True,
           hide_sensitive_content=True,
-          disable_proxdash=True)}]
+          disable_proxdash=True),
+       'allow_multiprocessing': True,
+       'model_test_timeout': 25},]
 
 
 def _get_model_status_options():

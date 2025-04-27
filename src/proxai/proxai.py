@@ -40,6 +40,7 @@ _PROXDASH_CONNECTION: Optional[proxdash.ProxDashConnection]
 _STRICT_FEATURE_TEST: bool
 _SUPPRESS_PROVIDER_ERRORS: bool
 _ALLOW_MULTIPROCESSING: bool
+_MODEL_TEST_TIMEOUT: Optional[int]
 
 _STATS: Dict[stat_types.GlobalStatType, stat_types.RunStats]
 
@@ -69,6 +70,7 @@ def _init_globals():
   global _STRICT_FEATURE_TEST
   global _SUPPRESS_PROVIDER_ERRORS
   global _ALLOW_MULTIPROCESSING
+  global _MODEL_TEST_TIMEOUT
 
   global _STATS
 
@@ -94,6 +96,7 @@ def _init_globals():
   _STRICT_FEATURE_TEST = False
   _SUPPRESS_PROVIDER_ERRORS = False
   _ALLOW_MULTIPROCESSING = True
+  _MODEL_TEST_TIMEOUT = 25
 
   _STATS = {
       stat_types.GlobalStatType.RUN_TIME: stat_types.RunStats(),
@@ -238,6 +241,19 @@ def _set_allow_multiprocessing(
   return allow_multiprocessing
 
 
+def _set_model_test_timeout(
+    model_test_timeout: Optional[int] = None,
+    global_set: Optional[bool] = False) -> Optional[int]:
+  if model_test_timeout is None:
+    return None
+  if model_test_timeout < 1:
+    raise ValueError('model_test_timeout must be greater than 0.')
+  if global_set:
+    global _MODEL_TEST_TIMEOUT
+    _MODEL_TEST_TIMEOUT = model_test_timeout
+  return model_test_timeout
+
+
 def _set_strict_feature_test(
     strict_feature_test: Optional[bool] = None,
     global_set: Optional[bool] = False) -> Optional[bool]:
@@ -356,6 +372,10 @@ def _get_allow_multiprocessing() -> bool:
   return _ALLOW_MULTIPROCESSING
 
 
+def _get_model_test_timeout() -> int:
+  return _MODEL_TEST_TIMEOUT
+
+
 def _get_strict_feature_test() -> bool:
   return _STRICT_FEATURE_TEST
 
@@ -400,6 +420,7 @@ def connect(
     logging_options: Optional[LoggingOptions]=None,
     proxdash_options: Optional[ProxDashOptions]=None,
     allow_multiprocessing: Optional[bool]=True,
+    model_test_timeout: Optional[int]=25,
     strict_feature_test: Optional[bool]=False,
     suppress_provider_errors: Optional[bool]=False):
   _set_experiment_path(
@@ -419,6 +440,9 @@ def connect(
       global_set=True)
   _set_allow_multiprocessing(
       allow_multiprocessing=allow_multiprocessing,
+      global_set=True)
+  _set_model_test_timeout(
+      model_test_timeout=model_test_timeout,
       global_set=True)
   _set_strict_feature_test(
       strict_feature_test=strict_feature_test,
@@ -537,6 +561,7 @@ def get_available_models() -> available_models.AvailableModels:
       get_run_type=_get_run_type,
       get_model_connector=_get_model_connector,
       get_allow_multiprocessing=_get_allow_multiprocessing,
+      get_model_test_timeout=_get_model_test_timeout,
       get_logging_options=_get_logging_options,
       get_model_cache_manager=_get_model_cache_manager,
       get_proxdash_connection=_get_proxdash_connection)
@@ -555,7 +580,8 @@ def get_current_options(
       proxdash_options=_get_proxdash_options(),
       strict_feature_test=_get_strict_feature_test(),
       suppress_provider_errors=_get_suppress_provider_errors(),
-      allow_multiprocessing=_get_allow_multiprocessing())
+      allow_multiprocessing=_get_allow_multiprocessing(),
+      model_test_timeout=_get_model_test_timeout())
   if json:
     return type_serializer.encode_run_options(run_options=run_options)
   return run_options
@@ -569,6 +595,7 @@ def check_health(
     experiment_path: Optional[str]=None,
     verbose: bool = True,
     allow_multiprocessing: bool = True,
+    model_test_timeout: int = 25,
     extensive_return: bool = False,
 ) -> types.ModelStatus:
   if experiment_path is None:
@@ -587,6 +614,8 @@ def check_health(
     proxdash_options = types.ProxDashOptions(stdout=verbose)
   allow_multiprocessing = _set_allow_multiprocessing(
       allow_multiprocessing=allow_multiprocessing)
+  model_test_timeout = _set_model_test_timeout(
+      model_test_timeout=model_test_timeout)
 
   proxdash_connection = proxdash.ProxDashConnection(
       hidden_run_key=_get_hidden_run_key(),
@@ -600,6 +629,7 @@ def check_health(
       logging_options=logging_options,
       proxdash_connection=proxdash_connection,
       allow_multiprocessing=allow_multiprocessing,
+      model_test_timeout=model_test_timeout,
       get_model_connector=_get_model_connector)
   model_status = models.list_models(
       verbose=verbose, return_all=True)

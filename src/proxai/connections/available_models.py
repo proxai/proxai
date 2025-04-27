@@ -15,7 +15,6 @@ import proxai.state_controllers.state_controller as state_controller
 import concurrent.futures
 
 _AVAILABLE_MODELS_STATE_PROPERTY = '_available_models_state'
-_TEST_MODEL_TIMEOUT = 25
 _GENERATE_TEXT_TEST_PROMPT = 'Hello model!'
 _GENERATE_TEXT_TEST_MAX_TOKENS = 1000
 
@@ -32,6 +31,8 @@ class AvailableModels(state_controller.StateControlled):
   _get_logging_options: Callable[[], types.LoggingOptions]
   _allow_multiprocessing: bool
   _get_allow_multiprocessing: Callable[[], bool]
+  _model_test_timeout: int
+  _get_model_test_timeout: Callable[[], int]
   _proxdash_connection: proxdash.ProxDashConnection
   _get_proxdash_connection: Callable[[], proxdash.ProxDashConnection]
   _providers_with_key: Set[str]
@@ -53,6 +54,8 @@ class AvailableModels(state_controller.StateControlled):
           Callable[[], proxdash.ProxDashConnection]] = None,
       allow_multiprocessing: bool = None,
       get_allow_multiprocessing: Optional[Callable[[], bool]] = None,
+      model_test_timeout: Optional[int] = None,
+      get_model_test_timeout: Optional[Callable[[], int]] = None,
       get_model_connector: Optional[
           Callable[[], model_connector.ProviderModelConnector]] = None,
       init_state: Optional[types.AvailableModelsState] = None):
@@ -67,7 +70,9 @@ class AvailableModels(state_controller.StateControlled):
         proxdash_connection is not None or
         get_proxdash_connection is not None or
         allow_multiprocessing is not None or
-        get_allow_multiprocessing is not None):
+        get_allow_multiprocessing is not None or
+        model_test_timeout is not None or
+        get_model_test_timeout is not None):
       raise ValueError(
           'init_state and other parameters cannot be set at the same time.')
 
@@ -81,7 +86,9 @@ class AvailableModels(state_controller.StateControlled):
         proxdash_connection=proxdash_connection,
         get_proxdash_connection=get_proxdash_connection,
         allow_multiprocessing=allow_multiprocessing,
-        get_allow_multiprocessing=get_allow_multiprocessing)
+        get_allow_multiprocessing=get_allow_multiprocessing,
+        model_test_timeout=model_test_timeout,
+        get_model_test_timeout=get_model_test_timeout)
 
     self.init_state()
 
@@ -94,6 +101,7 @@ class AvailableModels(state_controller.StateControlled):
       self._get_logging_options = get_logging_options
       self._get_proxdash_connection = get_proxdash_connection
       self._get_allow_multiprocessing = get_allow_multiprocessing
+      self._get_model_test_timeout = get_model_test_timeout
       self._get_model_connector = get_model_connector
 
       self.run_type = run_type
@@ -101,6 +109,7 @@ class AvailableModels(state_controller.StateControlled):
       self.logging_options = logging_options
       self.proxdash_connection = proxdash_connection
       self.allow_multiprocessing = allow_multiprocessing
+      self.model_test_timeout = model_test_timeout
       self.get_model_connector = get_model_connector
 
       self.providers_with_key = set()
@@ -173,6 +182,14 @@ class AvailableModels(state_controller.StateControlled):
   @allow_multiprocessing.setter
   def allow_multiprocessing(self, value: bool):
     self.set_property_value('allow_multiprocessing', value)
+
+  @property
+  def model_test_timeout(self) -> int:
+    return self.get_property_value('model_test_timeout')
+
+  @model_test_timeout.setter
+  def model_test_timeout(self, value: int):
+    self.set_property_value('model_test_timeout', value)
 
   @property
   def providers_with_key(self) -> Set[str]:
@@ -315,7 +332,7 @@ class AvailableModels(state_controller.StateControlled):
       provider_model: types.ProviderModelType):
     end_utc_date = datetime.datetime.now(datetime.timezone.utc)
     start_utc_date = end_utc_date - datetime.timedelta(
-        seconds=_TEST_MODEL_TIMEOUT)
+        seconds=self.model_test_timeout)
     return types.LoggingRecord(
         query_record=types.QueryRecord(
             call_type=types.CallType.GENERATE_TEXT,
@@ -325,7 +342,7 @@ class AvailableModels(state_controller.StateControlled):
         response_record=types.QueryResponseRecord(
             error=(
                 f'Model {provider_model} took longer than '
-                f'{_TEST_MODEL_TIMEOUT} seconds to respond'),
+                f'{self.model_test_timeout} seconds to respond'),
             error_traceback=traceback.format_exc(),
             start_utc_date=start_utc_date,
             end_utc_date=end_utc_date,
@@ -380,12 +397,12 @@ class AvailableModels(state_controller.StateControlled):
       pool.close()
       for provider_model, pool_result in pool_results:
         try:
-          test_results.append(pool_result.get(timeout=_TEST_MODEL_TIMEOUT))
+          test_results.append(pool_result.get(timeout=self.model_test_timeout))
         except multiprocessing.TimeoutError:
           if verbose:
             print(
                 f"> {provider_model} query took longer than "
-                f'{_TEST_MODEL_TIMEOUT} seconds to respond')
+                f'{self.model_test_timeout} seconds to respond')
           test_results.append(self._get_timeout_logging_record(provider_model))
       pool.terminate()
       pool.join()
@@ -397,12 +414,18 @@ class AvailableModels(state_controller.StateControlled):
         raise e
     return test_results
 
-  def _test_models_with_single_processing(
+  def _test_models_sequentially(
       self,
       model_connectors: Dict[
         types.ProviderModelType, model_connector.ProviderModelConnector],
       call_type: str,
       verbose: bool = False):
+    """Tests provider models sequentially.
+
+    This function is used when multiprocessing is disabled. Note that this
+    function cannot handle model timeouts because of the python's limitation
+    on timeout handling without multiprocessing/threading.
+    """
     test_func = None
     if call_type == types.CallType.GENERATE_TEXT:
       test_func = self._test_generate_text
@@ -410,18 +433,8 @@ class AvailableModels(state_controller.StateControlled):
       raise ValueError(f'Call type not supported: {call_type}')
 
     test_results = []
-    for provider_model, connector in model_connectors.items():
-      with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-        future = executor.submit(test_func, connector.get_state(), verbose)
-        try:
-          result = future.result(timeout=_TEST_MODEL_TIMEOUT)
-          test_results.append(result)
-        except concurrent.futures.TimeoutError:
-          if verbose:
-            print(
-                f"> {provider_model} query took longer than "
-                f'{_TEST_MODEL_TIMEOUT} seconds to respond')
-          test_results.append(self._get_timeout_logging_record(provider_model))
+    for connector in model_connectors.values():
+      test_results.append(test_func(connector.get_state(), verbose))
 
     return test_results
 
@@ -444,7 +457,7 @@ class AvailableModels(state_controller.StateControlled):
           call_type=call_type,
           verbose=verbose)
     else:
-      test_results = self._test_models_with_single_processing(
+      test_results = self._test_models_sequentially(
           model_connectors=model_connectors,
           call_type=call_type,
           verbose=verbose)
