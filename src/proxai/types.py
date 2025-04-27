@@ -115,6 +115,7 @@ class RunOptions:
   cache_options: Optional[CacheOptions] = None
   proxdash_options: Optional[ProxDashOptions] = None
   allow_multiprocessing: Optional[bool] = None
+  model_test_timeout: Optional[int] = None
   strict_feature_test: Optional[bool] = None
   suppress_provider_errors: Optional[bool] = None
 
@@ -281,7 +282,7 @@ class AvailableModelsState(StateContainer):
   logging_options: Optional[LoggingOptions] = None
   proxdash_connection: Optional[ProxDashConnectionState] = None
   allow_multiprocessing: Optional[bool] = None
-
+  model_test_timeout: Optional[int] = None
   providers_with_key: Optional[Set[str]] = None
   has_fetched_all_models: Optional[bool] = None
   latest_model_cache_path_used_for_update: Optional[str] = None

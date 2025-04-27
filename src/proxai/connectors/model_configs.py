@@ -15,6 +15,7 @@ PROVIDER_KEY_MAP: Dict[str, Tuple[str]] = MappingProxyType({
     'grok': tuple(['XAI_API_KEY']),
     'mock_provider': tuple(['MOCK_PROVIDER_API_KEY']),
     'mock_failing_provider': tuple(['MOCK_FAILING_PROVIDER']),
+    'mock_slow_provider': tuple(['MOCK_SLOW_PROVIDER']),
 })
 
 
@@ -34,6 +35,15 @@ ALL_MODELS: Dict[str, Dict[str, types.ProviderModelType]] = MappingProxyType({
       provider='mock_failing_provider',
       model='mock_failing_model',
       provider_model_identifier='mock_failing_model'
+    ),
+  }),
+
+  # Mock slow provider
+  'mock_slow_provider': MappingProxyType({
+    'mock_slow_model': types.ProviderModelType(
+      provider='mock_slow_provider',
+      model='mock_slow_model',
+      provider_model_identifier='mock_slow_model'
     ),
   }),
 
@@ -482,6 +492,10 @@ GENERATE_TEXT_MODELS: Dict[
   'mock_failing_provider': MappingProxyType({
     'mock_failing_model': ALL_MODELS[
         'mock_failing_provider']['mock_failing_model'],
+  }),
+
+  'mock_slow_provider': MappingProxyType({
+    'mock_slow_model': ALL_MODELS['mock_slow_provider']['mock_slow_model'],
   }),
 
   'openai': MappingProxyType({

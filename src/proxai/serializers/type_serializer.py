@@ -373,6 +373,8 @@ def encode_run_options(
         run_options.proxdash_options)
   if run_options.allow_multiprocessing != None:
     record['allow_multiprocessing'] = run_options.allow_multiprocessing
+  if run_options.model_test_timeout != None:
+    record['model_test_timeout'] = run_options.model_test_timeout
   if run_options.strict_feature_test != None:
     record['strict_feature_test'] = run_options.strict_feature_test
   if run_options.suppress_provider_errors != None:
@@ -446,6 +448,8 @@ def decode_run_options(
         record['proxdash_options'])
   if 'allow_multiprocessing' in record:
     run_options.allow_multiprocessing = record['allow_multiprocessing']
+  if 'model_test_timeout' in record:
+    run_options.model_test_timeout = record['model_test_timeout']
   if 'strict_feature_test' in record:
     run_options.strict_feature_test = record['strict_feature_test']
   if 'suppress_provider_errors' in record:

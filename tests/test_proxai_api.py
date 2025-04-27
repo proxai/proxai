@@ -14,6 +14,7 @@ class TestProxaiApiUseCases:
     for api_key_list in model_configs.PROVIDER_KEY_MAP.values():
       for api_key in api_key_list:
         monkeypatch.setenv(api_key, 'test_api_key')
+    monkeypatch.delenv('MOCK_SLOW_PROVIDER', raising=False)
     self.temp_paths = {}
     px.reset_state()
     px.set_run_type(px.types.RunType.TEST)
@@ -133,13 +134,22 @@ class TestProxaiApiUseCases:
     assert len(models) < 15
     assert time.time() - start < 1
 
-  def test_models_get_all_models_multiprocessing(self):
+  def test_models_get_all_models_with_multiprocessing_and_model_test_timeout(
+      self, monkeypatch):
+    monkeypatch.setenv('MOCK_SLOW_PROVIDER', 'test_api_key')
     start = time.time()
     px.models.allow_multiprocessing = True
-    models = px.models.list_models()
+    px.models.model_test_timeout = 2
+    models = px.models.list_models(
+        return_all=True,
+        clear_model_cache=True)
     px.models.allow_multiprocessing = None
-    assert len(models) > 10
-    assert time.time() - start > 1
+    px.models.model_test_timeout = 25
+    assert len(models.working_models) > 15
+    assert (
+        model_configs.ALL_MODELS['mock_slow_provider']['mock_slow_model']
+        in models.failed_models)
+    assert time.time() - start < 5
 
   def test_models_apis(self):
     px.connect(cache_options=px.CacheOptions(clear_model_cache_on_connect=True))
@@ -575,6 +585,7 @@ class TestProxaiApiUseCases:
     assert options.proxdash_options.hide_sensitive_content == False
     assert options.proxdash_options.disable_proxdash == False
     assert options.allow_multiprocessing == True
+    assert options.model_test_timeout == 25
     assert options.strict_feature_test == False
 
     logging_path = self._get_path_dir('logging_path')
@@ -595,6 +606,7 @@ class TestProxaiApiUseCases:
             hide_sensitive_content=True,
             disable_proxdash=True),
         allow_multiprocessing=False,
+        model_test_timeout=45,
         strict_feature_test=True)
     options = px.get_current_options()
     assert options.run_type == px.types.RunType.TEST
@@ -610,6 +622,7 @@ class TestProxaiApiUseCases:
     assert options.proxdash_options.hide_sensitive_content == True
     assert options.proxdash_options.disable_proxdash == True
     assert options.allow_multiprocessing == False
+    assert options.model_test_timeout == 45
     assert options.strict_feature_test == True
 
     options = px.get_current_options(json=True)
