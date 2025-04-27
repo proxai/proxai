@@ -12,8 +12,12 @@ import proxai.connectors.model_connector as model_connector
 import proxai.connectors.model_configs as model_configs
 import proxai.logging.utils as logging_utils
 import proxai.state_controllers.state_controller as state_controller
+import concurrent.futures
 
 _AVAILABLE_MODELS_STATE_PROPERTY = '_available_models_state'
+_TEST_MODEL_TIMEOUT = 25
+_GENERATE_TEXT_TEST_PROMPT = 'Hello model!'
+_GENERATE_TEXT_TEST_MAX_TOKENS = 1000
 
 
 class AvailableModels(state_controller.StateControlled):
@@ -274,18 +278,19 @@ class AvailableModels(state_controller.StateControlled):
   @staticmethod
   def _test_generate_text(
       provider_model_state: types.ProviderModelState,
+      verbose: bool = False
   ) -> List[types.LoggingRecord]:
+    if verbose:
+      print(f'Testing {provider_model_state.provider_model}...')
     start_utc_date = datetime.datetime.now(datetime.timezone.utc)
-    prompt = 'Hello model!'
-    max_tokens = 100
     model_connector = model_registry.get_model_connector(
         provider_model_state.provider_model,
         without_additional_args=True)
     model_connector = model_connector(init_state=provider_model_state)
     try:
       logging_record: types.LoggingRecord = model_connector.generate_text(
-          prompt=prompt,
-          max_tokens=max_tokens,
+          prompt=_GENERATE_TEXT_TEST_PROMPT,
+          max_tokens=_GENERATE_TEXT_TEST_MAX_TOKENS,
           use_cache=False)
       return logging_record
     except Exception as e:
@@ -293,8 +298,8 @@ class AvailableModels(state_controller.StateControlled):
           query_record=types.QueryRecord(
               call_type=types.CallType.GENERATE_TEXT,
               provider_model=provider_model_state.provider_model,
-              prompt=prompt,
-              max_tokens=max_tokens),
+              prompt=_GENERATE_TEXT_TEST_PROMPT,
+              max_tokens=_GENERATE_TEXT_TEST_MAX_TOKENS),
           response_record=types.QueryResponseRecord(
               error=str(e),
               error_traceback=traceback.format_exc(),
@@ -305,7 +310,126 @@ class AvailableModels(state_controller.StateControlled):
                   - start_utc_date)),
           response_source=types.ResponseSource.PROVIDER)
 
-  def _test_models(self, models: types.ModelStatus, call_type: str):
+  def _get_timeout_logging_record(
+      self,
+      provider_model: types.ProviderModelType):
+    end_utc_date = datetime.datetime.now(datetime.timezone.utc)
+    start_utc_date = end_utc_date - datetime.timedelta(
+        seconds=_TEST_MODEL_TIMEOUT)
+    return types.LoggingRecord(
+        query_record=types.QueryRecord(
+            call_type=types.CallType.GENERATE_TEXT,
+            provider_model=provider_model,
+            prompt=_GENERATE_TEXT_TEST_PROMPT,
+            max_tokens=_GENERATE_TEXT_TEST_MAX_TOKENS),
+        response_record=types.QueryResponseRecord(
+            error=(
+                f'Model {provider_model} took longer than '
+                f'{_TEST_MODEL_TIMEOUT} seconds to respond'),
+            error_traceback=traceback.format_exc(),
+            start_utc_date=start_utc_date,
+            end_utc_date=end_utc_date,
+            response_time=(end_utc_date - start_utc_date)),
+          response_source=types.ResponseSource.PROVIDER)
+
+  def _get_bootstrap_error(self, e: Exception):
+    error_str = str(e).lower()
+    is_bootstrapping_error = (
+      "an attempt has been made to start a new process before" in error_str and
+      "current process has finished its bootstrapping phase" in error_str
+    )
+    if is_bootstrapping_error:
+      return Exception(
+          f'{e}\n\nMultiprocessing initialization error: Unable to start new '
+          'processes because the proxai library was imported and used '
+          'outside of the "if __name__ == \'__main__\':" block. To fix '
+          'this:\n'
+          '1. Move your proxai code inside a "if __name__ == \'__main__\':"'
+          ' block, or\n'
+          '2. Disable multiprocessing by setting '
+          'allow_multiprocessing=False on px.connect()\n'
+          'For more details, see followings:\n'
+          '- https://www.proxai.co/proxai-docs/advanced/multiprocessing\n'
+          '- https://docs.python.org/3/library/multiprocessing.html#the-'
+          'spawn-and-forkserver-start-methods\n')
+    return None
+
+
+  def _test_models_with_multiprocessing(
+      self,
+      model_connectors: Dict[
+        types.ProviderModelType, model_connector.ProviderModelConnector],
+      call_type: str,
+      verbose: bool = False):
+    process_count = max(1, multiprocessing.cpu_count() - 1)
+    test_func = None
+    if call_type == types.CallType.GENERATE_TEXT:
+      test_func = self._test_generate_text
+    else:
+      raise ValueError(f'Call type not supported: {call_type}')
+
+    test_results = []
+    try:
+      pool = multiprocessing.Pool(processes=process_count)
+      pool_results = []
+      for provider_model, connector in model_connectors.items():
+        pool_result = pool.apply_async(
+            test_func,
+            args=(connector.get_state(), verbose))
+        pool_results.append((provider_model, pool_result))
+      pool.close()
+      for provider_model, pool_result in pool_results:
+        try:
+          test_results.append(pool_result.get(timeout=_TEST_MODEL_TIMEOUT))
+        except multiprocessing.TimeoutError:
+          if verbose:
+            print(
+                f"> {provider_model} query took longer than "
+                f'{_TEST_MODEL_TIMEOUT} seconds to respond')
+          test_results.append(self._get_timeout_logging_record(provider_model))
+      pool.terminate()
+      pool.join()
+    except Exception as e:
+      bootstrap_error = self._get_bootstrap_error(e)
+      if bootstrap_error:
+        raise bootstrap_error
+      else:
+        raise e
+    return test_results
+
+  def _test_models_with_single_processing(
+      self,
+      model_connectors: Dict[
+        types.ProviderModelType, model_connector.ProviderModelConnector],
+      call_type: str,
+      verbose: bool = False):
+    test_func = None
+    if call_type == types.CallType.GENERATE_TEXT:
+      test_func = self._test_generate_text
+    else:
+      raise ValueError(f'Call type not supported: {call_type}')
+
+    test_results = []
+    for provider_model, connector in model_connectors.items():
+      with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(test_func, connector.get_state(), verbose)
+        try:
+          result = future.result(timeout=_TEST_MODEL_TIMEOUT)
+          test_results.append(result)
+        except concurrent.futures.TimeoutError:
+          if verbose:
+            print(
+                f"> {provider_model} query took longer than "
+                f'{_TEST_MODEL_TIMEOUT} seconds to respond')
+          test_results.append(self._get_timeout_logging_record(provider_model))
+
+    return test_results
+
+  def _test_models(
+      self,
+      models: types.ModelStatus,
+      call_type: str,
+      verbose: bool = False):
     if not models.unprocessed_models:
       return
 
@@ -314,56 +438,16 @@ class AvailableModels(state_controller.StateControlled):
       model_connectors[provider_model] = self.get_model_connector(
           provider_model)
 
-    test_provider_models = list(models.unprocessed_models)
-    test_func = None
-    if call_type == types.CallType.GENERATE_TEXT:
-      test_func = self._test_generate_text
-    else:
-      raise ValueError(f'Call type not supported: {call_type}')
-
-    test_results = []
     if self.allow_multiprocessing:
-      process_count = max(1, multiprocessing.cpu_count() - 1)
-      try:
-        pool = multiprocessing.Pool(processes=process_count)
-        for test_provider_model in test_provider_models:
-          result = pool.apply_async(
-              test_func,
-              args=(model_connectors[test_provider_model].get_state(),))
-          test_results.append(result)
-        pool.close()
-        pool.join()
-      except Exception as e:
-        error_str = str(e).lower()
-        is_bootstrapping_error = (
-          "an attempt has been made to start a new process before" in error_str and
-          "current process has finished its bootstrapping phase" in error_str
-        )
-        if is_bootstrapping_error:
-          raise Exception(
-              f'{e}\n\nMultiprocessing initialization error: Unable to start new '
-              'processes because the proxai library was imported and used '
-              'outside of the "if __name__ == \'__main__\':" block. To fix '
-              'this:\n'
-              '1. Move your proxai code inside a "if __name__ == \'__main__\':"'
-              ' block, or\n'
-              '2. Disable multiprocessing by setting '
-              'allow_multiprocessing=False on px.connect()\n'
-              'For more details, see followings:\n'
-              '- https://www.proxai.co/proxai-docs/advanced/multiprocessing\n'
-              '- https://docs.python.org/3/library/multiprocessing.html#the-'
-              'spawn-and-forkserver-start-methods\n')
-        else:
-          raise e
-
-
-      test_results: List[types.LoggingRecord] = [
-          result.get() for result in test_results]
+      test_results = self._test_models_with_multiprocessing(
+          model_connectors=model_connectors,
+          call_type=call_type,
+          verbose=verbose)
     else:
-      for test_provider_model in test_provider_models:
-        test_results.append(
-            test_func(
-                model_connectors[test_provider_model].get_state()))
+      test_results = self._test_models_with_single_processing(
+          model_connectors=model_connectors,
+          call_type=call_type,
+          verbose=verbose)
 
     update_models = types.ModelStatus()
     for logging_record in test_results:
@@ -426,7 +510,10 @@ class AvailableModels(state_controller.StateControlled):
             f'  {len(models.working_models)} models are working.\n'
             f'  {len(models.failed_models)} models are failed.')
       print(f'Running test for {len(models.unprocessed_models)} models.')
-    self._test_models(models, call_type=types.CallType.GENERATE_TEXT)
+    self._test_models(
+        models,
+        call_type=types.CallType.GENERATE_TEXT,
+        verbose=verbose)
     end_utc_date = datetime.datetime.now(datetime.timezone.utc)
     if print_flag:
       print(f'After test;\n'
@@ -464,15 +551,17 @@ class AvailableModels(state_controller.StateControlled):
           message='Model cache is not enabled. Fetching all models from '
           'providers. This is not ideal for performance.',
           type=types.LoggingType.WARNING)
-      models = self._fetch_all_models()
+      models = self._fetch_all_models(
+          call_type=call_type,
+          verbose=verbose)
     elif (
         clear_model_cache or
         not self._check_model_cache_path_same() or
         not self.has_fetched_all_models):
       models = self._fetch_all_models(
-          verbose=verbose,
           clear_model_cache=clear_model_cache,
-          call_type=call_type)
+          call_type=call_type,
+          verbose=verbose)
     else:
       models = self.model_cache_manager.get(call_type=call_type)
 
