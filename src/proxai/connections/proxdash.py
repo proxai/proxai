@@ -406,6 +406,23 @@ class ProxDashConnection(state_controller.StateControlled):
         self._key_info_from_proxdash['permission'] == 'NO_PROMPT'):
       logging_record = self._hide_sensitive_content_logging_record(
         logging_record)
+
+    if logging_record.query_record.messages is not None:
+      messages = json.dumps(
+          logging_record.query_record.messages,
+          indent=2,
+          sort_keys=True)
+    else:
+      messages = None
+
+    if logging_record.query_record.stop is not None:
+      stop = json.dumps(
+          logging_record.query_record.stop,
+          indent=2,
+          sort_keys=True)
+    else:
+      stop = None
+
     data = {
       'apiKey': self.proxdash_options.api_key,
       'hiddenRunKey': self.hidden_run_key,
@@ -417,10 +434,10 @@ class ProxDashConnection(state_controller.StateControlled):
           logging_record.query_record.provider_model.provider_model_identifier),
       'prompt': logging_record.query_record.prompt,
       'system': logging_record.query_record.system,
-      'messages': logging_record.query_record.messages,
+      'messages': messages,
       'maxTokens': logging_record.query_record.max_tokens,
       'temperature': logging_record.query_record.temperature,
-      'stop': logging_record.query_record.stop,
+      'stop': stop,
       'hashValue': logging_record.query_record.hash_value,
       'response': logging_record.response_record.response,
       'error': logging_record.response_record.error,

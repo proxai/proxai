@@ -646,7 +646,7 @@ def proxdash_logging_record_with_all_options(state_data):
           {"role": "user",
           "content": "Can you answer question without any integer?"}
       ],
-      provider_model=('claude', 'opus'),
+      provider_model=('openai', 'gpt-4.1'),
       temperature=0.3,
       max_tokens=2000,
       stop=['STOP'])
@@ -658,7 +658,7 @@ def proxdash_logging_record_with_all_options(state_data):
   print('    * Temperature: 0.3')
   print('    * Max Tokens: 2000')
   print('    * Stop: ["\\n\\n"]')
-  print('    * Provider Model: cohere/opus')
+  print('    * Provider Model: openai/gpt-4.1')
   _manual_user_check(
       test_message='All details are correct?',
       fail_message='Some details are not correct.')
@@ -799,9 +799,9 @@ def main():
   state_data = query_cache_with_use_cache_false(state_data=state_data)
   state_data = query_cache_with_clear_cache_and_override_unique_responses(state_data=state_data)
   state_data = proxdash_logging_record(state_data=state_data)
-  state_data = proxdash_logging_record_with_all_options(state_data=state_data, force_run=True)
-  state_data = proxdash_logging_record_with_hide_sensitive_content_prompt(state_data=state_data, force_run=True)
-  state_data = proxdash_logging_record_with_hide_sensitive_content_message(state_data=state_data, force_run=True)
+  state_data = proxdash_logging_record_with_all_options(state_data=state_data)
+  state_data = proxdash_logging_record_with_hide_sensitive_content_prompt(state_data=state_data)
+  state_data = proxdash_logging_record_with_hide_sensitive_content_message(state_data=state_data)
   state_data = proxdash_experiment_path(state_data=state_data)
 
 
