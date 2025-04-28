@@ -128,6 +128,11 @@ def _verify_proxdash_request(
     if value is None or expected_value is None:
       assert value == expected_value
       return
+    if type(value) == str and type(expected_value) == list:
+      parsed_value = json.loads(value)
+      assert parsed_value == expected_value
+      return
+
     assert type(value) == type(expected_value), (
         f"Type mismatch: {type(value)} != {type(expected_value)}")
 
@@ -1518,7 +1523,7 @@ class TestProxDashConnectionUploadLoggingRecord:
     """Tests that stop parameter is properly converted to string."""
     connection, temp_dir, temp_dir_obj = _create_connection()
     test_cases = [
-        ("stop string", "stop string"),  # String
+        ("stop string", ["stop string"]),  # String
         (["stop1", "stop2"], ["stop1", "stop2"]),  # List of strings
         (None, None),  # None value
     ]

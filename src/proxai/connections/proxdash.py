@@ -416,10 +416,10 @@ class ProxDashConnection(state_controller.StateControlled):
       messages = None
 
     if logging_record.query_record.stop is not None:
-      stop = json.dumps(
-          logging_record.query_record.stop,
-          indent=2,
-          sort_keys=True)
+      stop = logging_record.query_record.stop
+      if type(stop) == str:
+        stop = [stop]
+      stop = json.dumps(stop, indent=2, sort_keys=True)
     else:
       stop = None
 
