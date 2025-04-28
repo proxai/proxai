@@ -432,9 +432,19 @@ class AvailableModels(state_controller.StateControlled):
     else:
       raise ValueError(f'Call type not supported: {call_type}')
 
+    warning_message = (
+      'Testing models sequentially can take a while because it '
+      'is not possible to handle model timeouts without multiprocessing.\n'
+      'Some models may take very long time to respond. '
+      'To speed up the test, set allow_multiprocessing=True.')
+    logging_utils.log_message(
+        logging_options=self.logging_options,
+        message=warning_message,
+        type=types.LoggingType.WARNING)
+    # Todo: After adding more stdout control on px.types.LoggingOptions,
+    #       following can be removed.
     if verbose:
-      print('Warning: Testing models sequentially can take a while because it '
-            'is not possible to handle timeouts.')
+      print(f'WARNING: {warning_message}')
 
     test_results = []
     for connector in model_connectors.values():
