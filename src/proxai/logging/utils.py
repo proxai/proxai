@@ -13,20 +13,21 @@ WARNING_LOGGING_FILE_NAME = 'warnings.log'
 INFO_LOGGING_FILE_NAME = 'info.log'
 MERGED_LOGGING_FILE_NAME = 'merged.log'
 PROXDASH_LOGGING_FILE_NAME = 'proxdash.log'
+_SENSITIVE_CONTENT_HIDDEN_STRING = '<sensitive content hidden>'
 
 
 def _hide_sensitive_content_query_record(
     query_record: types.QueryRecord) -> types.QueryRecord:
   query_record = copy.deepcopy(query_record)
   if query_record.system:
-    query_record.system = '<sensitive content hidden>'
+    query_record.system = _SENSITIVE_CONTENT_HIDDEN_STRING
   if query_record.prompt:
-    query_record.prompt = '<sensitive content hidden>'
+    query_record.prompt = _SENSITIVE_CONTENT_HIDDEN_STRING
   if query_record.messages:
     query_record.messages = [
       {
         'role': 'assistant',
-        'content': '<sensitive content hidden>'
+        'content': _SENSITIVE_CONTENT_HIDDEN_STRING
       }
     ]
   return query_record
@@ -36,7 +37,7 @@ def _hide_sensitive_content_query_response_record(
     query_response_record: types.QueryResponseRecord) -> types.QueryResponseRecord:
   query_response_record = copy.deepcopy(query_response_record)
   if query_response_record.response:
-    query_response_record.response = '<sensitive content hidden>'
+    query_response_record.response = _SENSITIVE_CONTENT_HIDDEN_STRING
   return query_response_record
 
 

@@ -432,6 +432,10 @@ class AvailableModels(state_controller.StateControlled):
     else:
       raise ValueError(f'Call type not supported: {call_type}')
 
+    if verbose:
+      print('Warning: Testing models sequentially can take a while because it '
+            'is not possible to handle timeouts.')
+
     test_results = []
     for connector in model_connectors.values():
       test_results.append(test_func(connector.get_state(), verbose))
