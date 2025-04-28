@@ -32,6 +32,19 @@ _EXPERIMENT_PATH = None
 _PRINT_CODE = False
 
 
+def print_separator(status, message, color):
+  if color == 'green':
+    color_code = '\033[32m'
+  elif color == 'yellow':
+    color_code = '\033[33m'
+  elif color == 'red':
+    color_code = '\033[31m'
+  elif color == 'magenta':
+    color_code = '\033[35m'
+  separator = "-" * (59 - len(message))
+  print(f'{color_code}------------- [{status:8}] {message} {separator}\033[0m')
+
+
 def init_test_path():
   global _TEST_ID
   global _TEST_NAME
@@ -69,6 +82,7 @@ def init_test_path():
   os.makedirs(_TEST_PATH, exist_ok=True)
   os.makedirs(_ROOT_LOGGING_PATH, exist_ok=True)
   os.makedirs(_ROOT_CACHE_PATH, exist_ok=True)
+  print_separator('STARTING', _EXPERIMENT_PATH, 'magenta')
   return
 
 
@@ -78,15 +92,14 @@ def integration_block(func):
       skip=None,
       **kwargs):
     state_path = os.path.join(_TEST_PATH, f'{func.__name__}.state')
-    separator = "-" * (60 - len(func.__name__))
     if skip:
-      print(f'\033[33m------------- [SKIPPED] {func.__name__} {separator}\033[0m')
+      print_separator('SKIPPED', func.__name__, 'yellow')
       return kwargs.get('state_data', {})
     elif os.path.exists(state_path) and not force_run:
-      print(f'\033[33m------------- [SKIPPED] {func.__name__} {separator}\033[0m')
+      print_separator('SKIPPED', func.__name__, 'yellow')
       return json.load(open(state_path))
     else:
-      print(f'\033[32m------------- [RUNNING] {func.__name__} {separator}\033[0m')
+      print_separator('RUNNING', func.__name__, 'green')
       if _PRINT_CODE:
         print(f'\033[32m<Code Block> \033[0m')
         print(inspect.getsource(func).strip())
@@ -117,8 +130,7 @@ def create_user(state_data):
   print('    * Email   : manueltest@proxai.co')
   print('    * Password: test123!')
   print(f'3 - Create API key: {_WEBVIEW_BASE_URL}/dashboard/api-keys')
-  print('> Enter the API key: ', end='')
-  state_data['api_key'] = input()
+  state_data['api_key'] = input('> Enter the API key: ')
   return state_data
 
 
@@ -277,11 +289,7 @@ def generate_text_with_extensive_return(state_data):
 
 @integration_block
 def generate_text_with_suppress_provider_errors(state_data):
-  model_status = px.models.list_models(return_all=True)
-  assert model_status.failed_models, (
-      'There is no failed models to try \'suppress_provider_errors\' option.')
-
-  provider_model = list(model_status.failed_models)[0]
+  provider_model = ('mock_failing_provider', 'mock_failing_model')
   response = px.generate_text(
       f'If {random.randint(1, 1000)} + {random.randint(1, 1000)} would be a '
       'poem, what life be look like?',
@@ -535,6 +543,7 @@ def query_cache_with_use_cache_false(state_data):
   px.connect(
       experiment_path=_EXPERIMENT_PATH,
       cache_options=px.types.CacheOptions(
+          clear_query_cache_on_connect=True,
           cache_path=_ROOT_CACHE_PATH
       ),
       proxdash_options=px.types.ProxDashOptions(
@@ -842,6 +851,171 @@ def proxdash_logging(state_data):
   return state_data
 
 
+@integration_block
+def proxdash_limited_api_key(state_data):
+  print(f'1 - Open API Keys page: {_WEBVIEW_BASE_URL}/dashboard/api-keys')
+  print('2 - Click "+ Generate Key" button.')
+  print('3 - Select "Without "prompt", "messages" and "system instruction""')
+  print('4 - Copy the API key.')
+  state_data['limited_api_key'] = input('> Enter the API key: ')
+  px.connect(
+      experiment_path=_EXPERIMENT_PATH,
+      proxdash_options=px.types.ProxDashOptions(
+          base_url=_PROXDASH_BASE_URL,
+          api_key=state_data['limited_api_key'],
+      ),
+  )
+  prompt = (
+      'This record should appear on ProxDash but the prompt '
+      'content and the response content from AI provider shouldn\'t appear '
+      'on ProxDash.'
+  )
+  px.generate_text(prompt)
+  print(f'5 - Go to ProxDash page: {_WEBVIEW_BASE_URL}/dashboard/logging')
+  print('6 - Check if the latest logging record is:')
+  print('    * Prompt: <sensitive content hidden> ')
+  print('    * Response: <sensitive content hidden> ')
+  _manual_user_check(
+      test_message='Latest logging record prompt and response are hidden?',
+      fail_message='Latest logging record prompt or response is not hidden.')
+  return state_data
+
+
+
+@integration_block
+def connect_strict_feature_test(state_data):
+  px.connect(
+      experiment_path=_EXPERIMENT_PATH,
+      proxdash_options=px.types.ProxDashOptions(
+          base_url=_PROXDASH_BASE_URL,
+          api_key=state_data['api_key'],
+      ),
+      strict_feature_test=True)
+
+  error_message = None
+  try:
+    px.generate_text(
+        'Hello model',
+        provider_model=('openai', 'o4-mini'),
+        temperature=0.5,
+        max_tokens=None)
+  except Exception as e:
+    error_message = str(e)
+    print(f'Error message raised: {error_message}')
+
+  assert error_message is not None, 'Error should be raised.'
+  assert error_message == 'o4-mini does not support temperature.', (
+      'Error message should mention that o4-mini does not support temperature.')
+  return state_data
+
+
+@integration_block
+def connect_allow_multiprocessing(state_data):
+  px.connect(
+      experiment_path=_EXPERIMENT_PATH,
+      proxdash_options=px.types.ProxDashOptions(
+          base_url=_PROXDASH_BASE_URL,
+          api_key=state_data['api_key'],
+      ),
+      allow_multiprocessing=False)
+
+  px.models.list_models(verbose=True)
+  print('1 - Check if warning message is printed about sequential testing.')
+  _manual_user_check(
+      test_message='Warning message is printed about sequential testing?',
+      fail_message='Warning message is not printed about sequential testing.')
+  return state_data
+
+
+@integration_block
+def connect_suppress_provider_errors(state_data):
+  px.connect(
+      experiment_path=_EXPERIMENT_PATH,
+      proxdash_options=px.types.ProxDashOptions(
+          base_url=_PROXDASH_BASE_URL,
+          api_key=state_data['api_key'],
+      ),
+      suppress_provider_errors=True)
+
+  provider_model = ('mock_failing_provider', 'mock_failing_model')
+  response = px.generate_text(
+      f'If {random.randint(1, 1000)} + {random.randint(1, 1000)} would be a '
+      'poem, what life be look like?',
+      provider_model=provider_model,
+      extensive_return=True)
+  assert response.response_record.error, (
+      f'Could not reproduce error for {provider_model}.'
+      f'There is no error message.')
+
+  print(f'Provider Model: {provider_model}')
+  print('Response Source:', response.response_source)
+  print('Error:', response.response_record.error.strip())
+  error_traceback = response.response_record.error_traceback.strip()
+  error_traceback = '\n'.join(error_traceback.split('\n')[:5]) + '\n...'
+  print('Error Traceback:', error_traceback)
+
+  return state_data
+
+
+@integration_block
+def get_current_options_with_empty_connect(state_data):
+  px.connect()
+  options = px.get_current_options()
+  print('Current options:')
+  pprint(asdict(options))
+  assert options.experiment_path is None, (
+      'Experiment path should be None.')
+  assert options.logging_options.logging_path is None, (
+      'Logging path should be None.')
+  assert options.cache_options.cache_path is None, (
+      'Cache path should be None.')
+  assert options.allow_multiprocessing is True, (
+      'Allow multiprocessing should be True.')
+  assert options.strict_feature_test is False, (
+      'Strict feature test should be False.')
+  return state_data
+
+
+@integration_block
+def get_current_options(state_data):
+  px.connect(
+      experiment_path=_EXPERIMENT_PATH,
+      logging_options=px.types.LoggingOptions(
+          logging_path=_ROOT_LOGGING_PATH,
+      ),
+      cache_options=px.types.CacheOptions(
+          clear_model_cache_on_connect=False,
+          clear_query_cache_on_connect=True,
+          cache_path=_ROOT_CACHE_PATH,
+      ),
+      proxdash_options=px.types.ProxDashOptions(
+          stdout=True,
+          base_url=_PROXDASH_BASE_URL,
+          api_key=state_data['api_key'],
+      ),
+      allow_multiprocessing=False,
+      suppress_provider_errors=True,
+      strict_feature_test=True,
+  )
+  options = px.get_current_options()
+  print('Current options:')
+  pprint(asdict(options))
+  assert options.experiment_path == _EXPERIMENT_PATH, (
+      'Experiment path should be None.')
+  assert (
+      options.logging_options.logging_path ==
+      os.path.join(_ROOT_LOGGING_PATH, _EXPERIMENT_PATH)), (
+          'Logging path should be None.')
+  assert options.cache_options.cache_path == _ROOT_CACHE_PATH, (
+      'Cache path should be None.')
+  assert options.allow_multiprocessing is False, (
+      'Allow multiprocessing should be False.')
+  assert options.suppress_provider_errors is True, (
+      'Suppress provider errors should be True.')
+  assert options.strict_feature_test is True, (
+      'Strict feature test should be True.')
+  return state_data
+
 
 def main():
   init_test_path()
@@ -881,6 +1055,12 @@ def main():
   state_data = proxdash_stdout(state_data=state_data)
   state_data = proxdash_disable(state_data=state_data)
   state_data = proxdash_logging(state_data=state_data)
+  state_data = proxdash_limited_api_key(state_data=state_data)
+  state_data = connect_strict_feature_test(state_data=state_data)
+  state_data = connect_allow_multiprocessing(state_data=state_data, skip=True)
+  state_data = connect_suppress_provider_errors(state_data=state_data)
+  state_data = get_current_options_with_empty_connect(state_data=state_data)
+  state_data = get_current_options(state_data=state_data)
 
 
 if __name__ == '__main__':
