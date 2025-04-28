@@ -768,6 +768,81 @@ def proxdash_experiment_path(state_data):
   return state_data
 
 
+@integration_block
+def proxdash_stdout(state_data):
+  # Reset the connection first:
+  px.connect()
+  px.connect(
+      experiment_path=_EXPERIMENT_PATH,
+      proxdash_options=px.types.ProxDashOptions(
+          stdout=True,
+          base_url=_PROXDASH_BASE_URL,
+          api_key=state_data['api_key'],
+      ),
+  )
+  print('1 - Check if the proxdash stdout has:')
+  print(f'    * Connected to ProxDash at {_PROXDASH_BASE_URL}')
+  print(f'    * Connected to ProxDash experiment: {_EXPERIMENT_PATH}')
+  _manual_user_check(
+      test_message='ProxDash stdout is working as expected?',
+      fail_message='ProxDash stdout is not working as expected.')
+  return state_data
+
+
+@integration_block
+def proxdash_disable(state_data):
+  px.connect(
+      experiment_path=_EXPERIMENT_PATH,
+      proxdash_options=px.types.ProxDashOptions(
+          stdout=True,
+          disable_proxdash=True,
+          base_url=_PROXDASH_BASE_URL,
+          api_key=state_data['api_key'],
+      ),
+  )
+  print('1 - Check if the proxdash stdout has:')
+  print(f'    * ProxDash connection disabled.')
+  _manual_user_check(
+      test_message='ProxDash connection is disabled?',
+      fail_message='ProxDash connection is not disabled.')
+  return state_data
+
+
+@integration_block
+def proxdash_logging(state_data):
+  os.remove(os.path.join(_ROOT_LOGGING_PATH, _EXPERIMENT_PATH, 'proxdash.log'))
+  px.connect(
+      experiment_path=_EXPERIMENT_PATH,
+      logging_options=px.types.LoggingOptions(
+          logging_path=_ROOT_LOGGING_PATH,
+      ),
+      proxdash_options=px.types.ProxDashOptions(
+          base_url=_PROXDASH_BASE_URL,
+          api_key=state_data['api_key'],
+      ),
+  )
+  logging_path = os.path.join(_ROOT_LOGGING_PATH, _EXPERIMENT_PATH)
+  pprint(os.listdir(logging_path))
+  logs = []
+  with open(os.path.join(logging_path, 'proxdash.log'), 'r') as f:
+    for line in f:
+      logs.append(json.loads(line))
+
+  assert (
+      logs[0]['message'].startswith(
+          f'Connected to ProxDash at {_PROXDASH_BASE_URL}')
+  ), 'ProxDash logging is not working.'
+  assert (
+      logs[1]['message'].startswith(
+          f'Connected to ProxDash experiment: {_EXPERIMENT_PATH}')
+  ), 'ProxDash logging is not working.'
+  print(logs[0])
+  print(logs[1])
+
+  return state_data
+
+
+
 def main():
   init_test_path()
   state_data = {}
@@ -803,6 +878,9 @@ def main():
   state_data = proxdash_logging_record_with_hide_sensitive_content_prompt(state_data=state_data)
   state_data = proxdash_logging_record_with_hide_sensitive_content_message(state_data=state_data)
   state_data = proxdash_experiment_path(state_data=state_data)
+  state_data = proxdash_stdout(state_data=state_data)
+  state_data = proxdash_disable(state_data=state_data)
+  state_data = proxdash_logging(state_data=state_data)
 
 
 if __name__ == '__main__':

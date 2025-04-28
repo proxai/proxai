@@ -599,13 +599,17 @@ def check_health(
     extensive_return: bool = False,
 ) -> types.ModelStatus:
   if experiment_path is None:
-    now = datetime.datetime.now()
-    experiment_path = (
-        f'connection_health/{now.strftime("%Y-%m-%d_%H-%M-%S")}')
-  experiment_path = _set_experiment_path(experiment_path=experiment_path)
-  logging_options, _ = _set_logging_options(
-      experiment_path=experiment_path,
-      logging_options=types.LoggingOptions())
+    if _get_experiment_path() is None:
+      now = datetime.datetime.now()
+      experiment_path = (
+          f'connection_health/{now.strftime("%Y-%m-%d_%H-%M-%S")}')
+      experiment_path = _set_experiment_path(experiment_path=experiment_path)
+      logging_options, _ = _set_logging_options(
+          experiment_path=experiment_path,
+          logging_options=_get_logging_options())
+    else:
+      experiment_path = _get_experiment_path()
+      logging_options = _get_logging_options()
   if _get_run_type() == types.RunType.TEST:
     proxdash_options = types.ProxDashOptions(
         stdout=False,
