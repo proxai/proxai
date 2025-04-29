@@ -267,6 +267,8 @@ class StateControlled(BaseStateControlled):
     result = self.get_internal_state_type()()
     for field in dataclasses.fields(self.get_internal_state_type()):
       value = getattr(self, field.name, None)
+      if isinstance(value, BaseStateControlled):
+        value = value.get_state()
       if value is not None:
         setattr(result, field.name, value)
     return result

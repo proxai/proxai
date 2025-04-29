@@ -200,6 +200,12 @@ class ProviderModelConnector(state_controller.StateControlled):
   def query_cache_manager(self, value):
     self.set_state_controlled_property_value('query_cache_manager', value)
 
+  def query_cache_manager_deserializer(
+      self,
+      state_value: types.QueryCacheManagerState
+  ) -> query_cache.QueryCacheManager:
+    return query_cache.QueryCacheManager(init_state=state_value)
+
   @property
   def logging_options(self):
     return self.get_property_value('logging_options')

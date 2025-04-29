@@ -615,17 +615,19 @@ def check_health(
         stdout=False,
         disable_proxdash=True)
   else:
-    proxdash_options = types.ProxDashOptions(stdout=verbose)
-  allow_multiprocessing = _set_allow_multiprocessing(
-      allow_multiprocessing=allow_multiprocessing)
-  model_test_timeout = _set_model_test_timeout(
-      model_test_timeout=model_test_timeout)
+    proxdash_options = copy.deepcopy(_get_proxdash_options())
+    proxdash_options.stdout = verbose
 
   proxdash_connection = proxdash.ProxDashConnection(
       hidden_run_key=_get_hidden_run_key(),
       experiment_path=experiment_path,
       logging_options=logging_options,
       proxdash_options=proxdash_options)
+
+  allow_multiprocessing = _set_allow_multiprocessing(
+      allow_multiprocessing=allow_multiprocessing)
+  model_test_timeout = _set_model_test_timeout(
+      model_test_timeout=model_test_timeout)
   if verbose:
     print('> Starting to test each model...')
   models = available_models.AvailableModels(
