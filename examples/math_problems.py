@@ -61,20 +61,20 @@ def connect_to_proxai():
 
 
 def get_models(verbose=True):
-  models = px.models.generate_text(
+  provider_models = px.models.list_models(
       only_largest_models=True,
       verbose=True)
   grouped_models = collections.defaultdict(list)
-  for provider, model in models:
-    grouped_models[provider].append(model)
+  for provider_model in provider_models:
+    grouped_models[provider_model.provider].append(provider_model.model)
   if verbose:
     print('Available models:')
-    for provider, provider_models in grouped_models.items():
+    for provider, models in grouped_models.items():
       print(f'{provider}:')
-      for provider_model in provider_models:
-        print(f'   {provider_model}')
+      for model in models:
+        print(f'   {model}')
     print()
-  return models
+  return provider_models
 
 
 def get_answer(question):
@@ -135,12 +135,12 @@ def eval_math_questions(try_count) -> EvalResult:
   return eval_result
 
 
-def run_test(models, try_count):
+def run_test(provider_models, try_count):
   print(f'{"PROVIDER":15} | {"MODEL":45} | {"DURATION":13} | {"RESPONSE"}')
   print()
   all_results = {}
-  for provider, provider_model in models:
-    px.set_model(generate_text=(provider, provider_model))
+  for provider_model in provider_models:
+    px.set_model(generate_text=provider_model)
     start_time = datetime.datetime.now()
     # print(f'{provider:10} | {provider_model:35}')
     eval_result = eval_math_questions(try_count=try_count)
@@ -150,8 +150,11 @@ def run_test(models, try_count):
       f'Correct: {eval_result.correct:2}, '
       f'Incorrect: {eval_result.incorrect:2}, '
       f'Error: {eval_result.error:2}')
-    print(f'{provider:15} | {provider_model:45} | {duration:10.0f} ms | {response}')
-    all_results[(provider, provider_model)] = eval_result.all_results
+    print(f'{provider_model.provider:15} | {provider_model.model:45} | '
+          f'{duration:10.0f} ms | {response}')
+    all_results[
+        (provider_model.provider, provider_model.model)
+    ] = eval_result.all_results
   print()
   return all_results
 
@@ -176,8 +179,8 @@ def print_all_results(all_results):
 def main():
   _TRY_COUNT = 3
   connect_to_proxai()
-  models = get_models()
-  all_results = run_test(models, _TRY_COUNT)
+  provider_models = get_models()
+  all_results = run_test(provider_models, _TRY_COUNT)
   print_all_results(all_results)
 
 

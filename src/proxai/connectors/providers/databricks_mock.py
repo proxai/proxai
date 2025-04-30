@@ -38,7 +38,7 @@ class _MockChat(object):
     self.completions = _MockCompletions()
 
 
-class OpenAIMock(object):
+class DatabricksMock(object):
   chat: _MockChat
 
   def __init__(self):

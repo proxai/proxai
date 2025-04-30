@@ -2,15 +2,21 @@ import os
 import tempfile
 import time
 import json
-from typing import Dict, Optional
 import pytest
 import proxai as px
+import proxai.connectors.model_configs as model_configs
 
 
 class TestProxaiApiUseCases:
   @pytest.fixture(autouse=True)
-  def setup_test(self):
+  def setup_test(self, monkeypatch):
+    monkeypatch.delenv('PROXDASH_API_KEY', raising=False)
+    for api_key_list in model_configs.PROVIDER_KEY_MAP.values():
+      for api_key in api_key_list:
+        monkeypatch.setenv(api_key, 'test_api_key')
+    monkeypatch.delenv('MOCK_SLOW_PROVIDER', raising=False)
     self.temp_paths = {}
+    px.reset_state()
     px.set_run_type(px.types.RunType.TEST)
     px.models.allow_multiprocessing = False
     yield
@@ -25,159 +31,248 @@ class TestProxaiApiUseCases:
     os.makedirs(path, exist_ok=True)
     return path
 
+  def _test_uncached_get_all_models(self):
+    # Check that model cache is not created yet:
+    assert px.models.model_cache_manager.get(
+        'GENERATE_TEXT').working_models == set()
+    assert not os.path.exists(px.models.model_cache_manager.cache_path)
+
+    # If multiprocessing is disabled, it should be fast:
+    start = time.time()
+    px.models.allow_multiprocessing = False
+    px.models.list_models()
+    px.models.allow_multiprocessing = None
+    total_time = time.time() - start
+    assert total_time < 1
+
+    # Check that model cache is created in the cache path:
+    assert os.path.exists(px.models.model_cache_manager.cache_path)
+    with open(px.models.model_cache_manager.cache_path, 'r') as f:
+      data = json.load(f)
+      assert len(data['GENERATE_TEXT']['failed_models']) == 1
+      assert data['GENERATE_TEXT']['unprocessed_models'] == []
+      assert data['GENERATE_TEXT']['filtered_models'] == []
+      assert len(data['GENERATE_TEXT']['working_models']) >= 30
+      assert len(data['GENERATE_TEXT']['provider_queries']) >= 30
+
+  def _test_cached_get_all_models(self):
+    # Check that model cache is created:
+    assert len(px.models.model_cache_manager.get(
+        'GENERATE_TEXT').working_models) > 30
+    assert os.path.exists(px.models.model_cache_manager.cache_path)
+    with open(px.models.model_cache_manager.cache_path, 'r') as f:
+      data = json.load(f)
+      assert len(data['GENERATE_TEXT']['failed_models']) == 1
+      assert data['GENERATE_TEXT']['unprocessed_models'] == []
+      assert data['GENERATE_TEXT']['filtered_models'] == []
+      assert len(data['GENERATE_TEXT']['working_models']) >= 30
+      assert len(data['GENERATE_TEXT']['provider_queries']) >= 30
+
+    # Even multiprocessing is enabled, if results are cached, it should be
+    # fast:
+    start = time.time()
+    px.models.allow_multiprocessing = True
+    px.models.list_models()
+    px.models.allow_multiprocessing = None
+    total_time = time.time() - start
+    assert total_time < 1
+
+    # Check that model cache in cache path is not changed:
+    assert os.path.exists(px.models.model_cache_manager.cache_path)
+    with open(px.models.model_cache_manager.cache_path, 'r') as f:
+      data = json.load(f)
+      assert len(data['GENERATE_TEXT']['failed_models']) == 1
+      assert data['GENERATE_TEXT']['unprocessed_models'] == []
+      assert data['GENERATE_TEXT']['filtered_models'] == []
+      assert len(data['GENERATE_TEXT']['working_models']) >= 30
+      assert len(data['GENERATE_TEXT']['provider_queries']) >= 30
+
   def test_generate_text(self):
     text = px.generate_text('hello')
     assert text == 'mock response'
 
-  def test_generate_text_with_all_options(self):
-    text = px.generate_text(
+    logging_record = px.generate_text(
+        prompt='hello',
+        provider_model=px.models.get_model(
+            'claude', 'haiku', clear_model_cache=True),
+        extensive_return=True)
+    assert logging_record.response_record.response == 'mock response'
+    assert logging_record.query_record.provider_model.model == 'haiku'
+    assert logging_record.response_source == px.types.ResponseSource.PROVIDER
+
+    logging_record = px.generate_text(
         prompt='hello',
         system='You are a helpful assistant.',
         max_tokens=100,
         temperature=0.5,
         stop=['\n\n'],
-        provider='openai',
-        model='gpt-4',
+        provider_model=('openai', 'gpt-3.5-turbo'),
         use_cache=False,
         unique_response_limit=1,
         extensive_return=True)
-    assert text.response_record.response == 'mock response'
-    assert text.response_source == px.types.ResponseSource.PROVIDER
+    assert logging_record.query_record.prompt == 'hello'
+    assert logging_record.query_record.system == 'You are a helpful assistant.'
+    assert logging_record.query_record.max_tokens == 100
+    assert logging_record.query_record.temperature == 0.5
+    assert logging_record.query_record.stop == ['\n\n']
+    assert logging_record.query_record.provider_model.model == 'gpt-3.5-turbo'
+    assert logging_record.response_record.response == 'mock response'
+    assert logging_record.response_source == px.types.ResponseSource.PROVIDER
 
   def test_generate_text_with_use_cache_before_connect(self):
     with pytest.raises(ValueError):
       px.generate_text(use_cache=True)
 
-  def test_models_generate_text(self):
-    models = px.models.generate_text()
-    assert len(models) > 10
+  def test_models_get_all_models(self):
+    start = time.time()
+    models = px.models.list_models(clear_model_cache=True)
+    assert len(models) > 15
+    assert time.time() - start < 1
 
-  def test_models_generate_text_only_largest_models_multiprocessing(self):
+    start = time.time()
+    models = px.models.list_models(only_largest_models=True)
+    assert len(models) < 15
+    assert time.time() - start < 1
+
+  def test_models_get_all_models_with_multiprocessing_and_model_test_timeout(
+      self, monkeypatch):
+    monkeypatch.setenv('MOCK_SLOW_PROVIDER', 'test_api_key')
+    start = time.time()
     px.models.allow_multiprocessing = True
-    models = px.models.generate_text(only_largest_models=True)
-    assert len(models) < 10
+    px.models.model_test_timeout = 2
+    models = px.models.list_models(
+        return_all=True,
+        clear_model_cache=True)
+    px.models.allow_multiprocessing = None
+    px.models.model_test_timeout = 25
+    assert len(models.working_models) > 15
+    assert (
+        model_configs.ALL_MODELS['mock_slow_provider']['mock_slow_model']
+        in models.failed_models)
+    assert time.time() - start < 5
+
+  def test_models_apis(self):
+    px.connect(cache_options=px.CacheOptions(clear_model_cache_on_connect=True))
+
+    self._test_uncached_get_all_models()
+
+    # --- get_providers ---
+    # This should be fast because of model cache:
+    start = time.time()
+    providers = px.models.list_providers()
+    assert len(providers) > 5
+    assert time.time() - start < 1
+
+    # --- get_provider_models ---
+    # This should be fast because of model cache:
+    start = time.time()
+    models = px.models.list_provider_models('openai')
+    assert len(models) > 2
+    assert time.time() - start < 1
+
+    # --- get_provider_model ---
+    # This should be fast because of model cache:
+    start = time.time()
+    provider_model = px.models.get_model('openai', 'gpt-4')
+    assert provider_model.provider == 'openai'
+    assert provider_model.model == 'gpt-4'
+    assert time.time() - start < 1
+
+    # --- get_all_models with largest models ---
+    start = time.time()
+    models = px.models.list_models(only_largest_models=True)
+    assert len(models) < 15
+    assert time.time() - start < 1
+
+    # --- get_all_models with clear_model_cache ---
+    start = time.time()
+    px.models.allow_multiprocessing = False
+    models = px.models.list_models(clear_model_cache=True)
+    px.models.allow_multiprocessing = None
+    assert len(models) > 15
+    assert time.time() - start < 1
 
   def test_set_model(self):
-    for provider, model in px.models.generate_text(only_largest_models=True):
-      px.set_model(generate_text=(provider, model))
-      assert px.generate_text('hello') == 'mock response'
+    px.models.list_models(clear_model_cache=True)
+
+    # Test default model
+    px.set_model(('claude', 'haiku'))
+    logging_record = px.generate_text('hello', extensive_return=True)
+    assert logging_record.query_record.provider_model.model == 'haiku'
+
+    # Test setting model with generate_text parameter
+    px.set_model(generate_text=('openai', 'gpt-4'))
+    logging_record = px.generate_text('hello', extensive_return=True)
+    assert logging_record.query_record.provider_model.model == 'gpt-4'
+
+    # Test setting model with provider_model parameter
+    px.set_model(provider_model=('openai', 'gpt-3.5-turbo'))
+    logging_record = px.generate_text('hello', extensive_return=True)
+    assert logging_record.query_record.provider_model.model == 'gpt-3.5-turbo'
+
+    # Test setting model with provider_model from get_provider_model
+    px.set_model(px.models.get_model('claude', 'haiku'))
+    logging_record = px.generate_text('hello', extensive_return=True)
+    assert logging_record.query_record.provider_model.model == 'haiku'
+
+    # Test error when both parameters are set
+    with pytest.raises(
+        ValueError,
+        match='provider_model and generate_text cannot be set at the same time'
+    ):
+      px.set_model(
+          provider_model=('openai', 'gpt-4'),
+          generate_text=('openai', 'gpt-3.5-turbo'))
+
+    # Test error when neither parameter is set
+    with pytest.raises(
+        ValueError, match='provider_model or generate_text must be set'):
+      px.set_model()
 
   def test_model_cache_with_different_connect_cache_paths(self):
-    # --- Default model cache directory test ---
+    # --- Default model cache directory test before connect ---
     # First call:
-    px.models.generate_text()
-    # Second call should be faster because of model cache:
-    start = time.time()
-    px.models.allow_multiprocessing = True
-    px.models.generate_text()
-    px.models.allow_multiprocessing = False
-    total_time = time.time() - start
-    assert total_time < 1
+    self._test_uncached_get_all_models()
+    # Second call should be fast because of model cache:
+    self._test_cached_get_all_models()
 
     # --- First connect without cache path ---
-    px.connect(allow_multiprocessing=False)
+    px.connect()
+    # Call should be fast because still using default model cache:
+    self._test_cached_get_all_models()
+
+    # --- Second connect with new cache_path ---
+    cache_path = self._get_path_dir(
+        'test_model_cache_with_different_connect_cache_paths_cache_path')
+    px.connect(cache_path=cache_path)
     # First call:
-    px.models.generate_text()
-    # Second call should be faster because of model cache:
-    start = time.time()
-    px.models.allow_multiprocessing = True
-    px.models.generate_text()
-    px.models.allow_multiprocessing = False
-    total_time = time.time() - start
-    assert total_time < 1
+    self._test_uncached_get_all_models()
+    # Second call should be fast because of model cache:
+    self._test_cached_get_all_models()
 
-    def _check_model_cache_path(
-        cache_path: str,
-        min_expected_records: int):
-      assert os.path.exists(os.path.join(cache_path, 'available_models.json'))
-      with open(os.path.join(cache_path, 'available_models.json'), 'r') as f:
-        data = json.load(f)
-        assert data['GENERATE_TEXT']['failed_models'] == []
-        assert data['GENERATE_TEXT']['unprocessed_models'] == []
-        assert data['GENERATE_TEXT']['filtered_models'] == []
-        assert (
-            len(data['GENERATE_TEXT']['working_models']) >=
-            min_expected_records)
-        assert (
-            len(data['GENERATE_TEXT']['provider_queries']) >=
-            min_expected_records)
+    # --- Third connect with same cache_path ---
+    px.connect(cache_path=cache_path)
+    # Call should be fast because of the same cache path:
+    self._test_cached_get_all_models()
 
-    # --- First connect ---
-    cache_path = self._get_path_dir('cache_path')
-    px.connect(
-        cache_path=cache_path,
-        allow_multiprocessing=False)
-    # Cache file is not created yet because nothing saved to ModelCacheManager.
-    assert not os.path.exists(os.path.join(cache_path, 'available_models.json'))
-    px.models.generate_text(only_largest_models=True)
-    # Cache file is created because some models are saved to ModelCacheManager.
-    _check_model_cache_path(cache_path, min_expected_records=5)
+    # --- Fourth connect with new cache_path_2 ---
+    cache_path_2 = self._get_path_dir(
+        'test_model_cache_with_different_connect_cache_paths_cache_path_2')
+    px.connect(cache_path=cache_path_2)
+    # First call:
+    self._test_uncached_get_all_models()
+    # Second call should be fast because of model cache:
+    self._test_cached_get_all_models()
 
-    # --- Second connect with same cache path ---
-    px.connect(
-        cache_path=cache_path,
-        allow_multiprocessing=True)
-    # Cache file is still there because same cache path.
-    _check_model_cache_path(cache_path, min_expected_records=5)
-    px.models.generate_text(only_largest_models=False)
-    # Cache file is updated and more models are saved to ModelCacheManager
-    # because only_largest_models is False.
-    _check_model_cache_path(cache_path, min_expected_records=30)
+    # --- Fifth connect with same cache path ---
+    px.connect(cache_path=cache_path)
+    # Call should be fast because of the previously used cache path:
+    self._test_cached_get_all_models()
 
-    # --- Third connect with different cache path ---
-    cache_path_2 = self._get_path_dir('cache_path_2')
-    # Cache file is not created yet because nothing saved to ModelCacheManager
-    # and this cache path is not used in previous connect.
-    assert not os.path.exists(
-        os.path.join(cache_path_2, 'available_models.json'))
-    px.connect(
-        cache_path=cache_path_2,
-        allow_multiprocessing=False)
-    px.models.generate_text(only_largest_models=True)
-    # Cache file is created because some models are saved to ModelCacheManager.
-    _check_model_cache_path(cache_path_2, min_expected_records=5)
-
-    # --- Fourth connect with same cache path ---
-    px.connect(
-        cache_path=cache_path,
-        allow_multiprocessing=True)
-    # Cache file is still there because same cache path.
-    _check_model_cache_path(cache_path, min_expected_records=30)
-    px.models.generate_text(only_largest_models=True)
-    # Nothing changed because same cache path and same only_largest_models.
-    _check_model_cache_path(cache_path, min_expected_records=30)
-
-  def test_model_cache_with_different_model_generate_text_options(self):
-    cache_path = self._get_path_dir('cache_path')
-    px.connect(cache_path=cache_path, allow_multiprocessing=False)
-
-    # At the first call, more than 30 models are saved to cache:
-    px.models.generate_text(only_largest_models=False)
-    with open(os.path.join(cache_path, 'available_models.json'), 'r') as f:
-      data = json.load(f)
-      assert len(data['GENERATE_TEXT']['working_models']) > 10
-      assert len(data['GENERATE_TEXT']['provider_queries']) > 10
-
-    # At the second call, only largest models called but because other models
-    # are already cached, so it should have same number of records:
-    px.models.generate_text(only_largest_models=True)
-    with open(os.path.join(cache_path, 'available_models.json'), 'r') as f:
-      data = json.load(f)
-      assert len(data['GENERATE_TEXT']['working_models']) > 10
-      assert len(data['GENERATE_TEXT']['provider_queries']) > 10
-
-    # At the third call, clear_model_cache is True, so it should have less than
-    # 10 records because previous models are deleted and only largest models
-    # are called:
-    px.models.generate_text(
-        only_largest_models=True,
-        clear_model_cache=True)
-    with open(os.path.join(cache_path, 'available_models.json'), 'r') as f:
-      data = json.load(f)
-      assert len(data['GENERATE_TEXT']['working_models']) > 0
-      assert len(data['GENERATE_TEXT']['working_models']) < 10
-      assert len(data['GENERATE_TEXT']['provider_queries']) > 0
-      assert len(data['GENERATE_TEXT']['provider_queries']) < 10
+    # --- Sixth connect with default cache path ---
+    px.connect()
+    # Call should be fast because using default model cache:
+    self._test_cached_get_all_models()
 
   def test_query_cache_with_different_connect_cache_paths(self):
     # --- Before connect ---
@@ -464,17 +559,15 @@ class TestProxaiApiUseCases:
     px.connect(strict_feature_test=False)
     px.generate_text(
         'hello',
-        system='You are a helpful assistant.',
-        provider=px.types.Provider.HUGGING_FACE,
-        model=px.types.HuggingFaceModel.GOOGLE_GEMMA_7B_IT)
+        stop='STOP',
+        provider_model=('mistral', 'mistral-large'))
 
     px.connect(strict_feature_test=True)
     with pytest.raises(Exception):
       px.generate_text(
           'hello',
-          system='You are a helpful assistant.',
-          provider=px.types.Provider.HUGGING_FACE,
-          model=px.types.HuggingFaceModel.GOOGLE_GEMMA_7B_IT)
+          stop='STOP',
+          provider_model=('mistral', 'mistral-large'))
 
   def test_get_current_options(self):
     options = px.get_current_options()
@@ -484,7 +577,7 @@ class TestProxaiApiUseCases:
     assert options.logging_options.hide_sensitive_content == False
     assert options.cache_options.cache_path == None
     assert options.cache_options.unique_response_limit == 1
-    assert options.cache_options.duration == None
+    assert options.cache_options.model_cache_duration == None
     assert options.cache_options.retry_if_error_cached == False
     assert options.cache_options.clear_query_cache_on_connect == False
     assert options.cache_options.clear_model_cache_on_connect == False
@@ -492,6 +585,7 @@ class TestProxaiApiUseCases:
     assert options.proxdash_options.hide_sensitive_content == False
     assert options.proxdash_options.disable_proxdash == False
     assert options.allow_multiprocessing == True
+    assert options.model_test_timeout == 25
     assert options.strict_feature_test == False
 
     logging_path = self._get_path_dir('logging_path')
@@ -512,6 +606,7 @@ class TestProxaiApiUseCases:
             hide_sensitive_content=True,
             disable_proxdash=True),
         allow_multiprocessing=False,
+        model_test_timeout=45,
         strict_feature_test=True)
     options = px.get_current_options()
     assert options.run_type == px.types.RunType.TEST
@@ -527,6 +622,7 @@ class TestProxaiApiUseCases:
     assert options.proxdash_options.hide_sensitive_content == True
     assert options.proxdash_options.disable_proxdash == True
     assert options.allow_multiprocessing == False
+    assert options.model_test_timeout == 45
     assert options.strict_feature_test == True
 
     options = px.get_current_options(json=True)
@@ -564,6 +660,8 @@ class TestProxaiApiUseCases:
     assert summary['providers']['openai']['cache_stats']['total_cache_hit'] == 2
 
   def test_check_health(self):
-    model_status = px.check_health(detailed=True)
+    model_status = px.check_health(
+        extensive_return=True,
+        allow_multiprocessing=False)
     assert len(model_status.working_models) > 10
-    assert len(model_status.failed_models) == 0
+    assert len(model_status.failed_models) == 1

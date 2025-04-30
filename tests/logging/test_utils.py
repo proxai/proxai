@@ -4,6 +4,7 @@ import tempfile
 from datetime import datetime
 import proxai.types as types
 import proxai.logging.utils as logging_utils
+import proxai.connectors.model_configs as model_configs
 import pytest
 
 
@@ -14,7 +15,7 @@ def _get_query_record_examples():
       {'system': 'Test system'},
       {'messages': [{'role': 'user', 'content': 'Test message'}]},
       {'call_type': types.CallType.GENERATE_TEXT,
-       'model': (types.Provider.OPENAI, types.OpenAIModel.GPT_4),
+       'provider_model': model_configs.ALL_MODELS['openai']['gpt-4'],
        'prompt': 'Test prompt',
        'system': 'Test system',
        'messages': [{'role': 'user', 'content': 'Test message'}]},

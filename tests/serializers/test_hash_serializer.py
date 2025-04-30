@@ -1,12 +1,12 @@
 import proxai.types as types
 import proxai.serializers.hash_serializer as hash_serializer
 import pytest
-
+import proxai.connectors.model_configs as model_configs
 
 def _get_query_record_options():
   return [
       {'call_type': types.CallType.GENERATE_TEXT},
-      {'model': (types.Provider.OPENAI, types.OpenAIModel.GPT_4)},
+      {'provider_model': model_configs.ALL_MODELS['openai']['gpt-4']},
       {'prompt': 'Hello, world!'},
       {'system': 'Hello, system!'},
       {'messages': [{'role': 'user', 'content': 'Hello, user!'}]},
@@ -14,7 +14,7 @@ def _get_query_record_options():
       {'temperature': 0.5},
       {'stop': ['.', '?', '!']},
       {'call_type': types.CallType.GENERATE_TEXT,
-       'model': (types.Provider.OPENAI, types.OpenAIModel.GPT_4),
+       'provider_model': model_configs.ALL_MODELS['openai']['gpt-4'],
        'prompt': 'Hello, world!',
        'system': 'Hello, system!',
        'messages': [{'role': 'user', 'content': 'Hello, user!'}],

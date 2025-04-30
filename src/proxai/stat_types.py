@@ -1,7 +1,7 @@
 import copy
 import dataclasses
 import enum
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 import proxai.types as types
 
 
@@ -280,8 +280,8 @@ class BaseStats:
 
 
 @dataclasses.dataclass
-class ModelStats(BaseStats):
-  model: Optional[types.ModelType] = None
+class ProviderModelStats(BaseStats):
+  provider_model: Optional[types.ProviderModelType] = None
 
   def __add__(self, other):
     result = copy.deepcopy(self)
@@ -289,17 +289,17 @@ class ModelStats(BaseStats):
       result._add_base_provider_stats(other)
     elif isinstance(other, BaseCacheStats):
       result._add_base_cache_stats(other)
-    elif isinstance(other, ModelStats):
-      if self.model != other.model:
+    elif isinstance(other, ProviderModelStats):
+      if self.provider_model != other.provider_model:
         raise ValueError(
-            'Cannot add ModelStats with different model types.'
-            f'{self.model} != {other.model}')
+            'Cannot add ProviderModelStats with different provider_model types.'
+            f'{self.provider_model} != {other.provider_model}')
       result._add_base_provider_stats(other.provider_stats)
       result._add_base_cache_stats(other.cache_stats)
     else:
       raise ValueError(
-          'Invalid addition of ModelStats objects.'
-          f'Cannot add ModelStats with {type(other)}')
+          'Invalid addition of ProviderModelStats objects.'
+          f'Cannot add ProviderModelStats with {type(other)}')
     return result
 
   def __sub__(self, other):
@@ -308,56 +308,59 @@ class ModelStats(BaseStats):
       result._sub_base_provider_stats(other)
     elif isinstance(other, BaseCacheStats):
       result._sub_base_cache_stats(other)
-    elif isinstance(other, ModelStats):
-      if self.model != other.model:
+    elif isinstance(other, ProviderModelStats):
+      if self.provider_model != other.provider_model:
         raise ValueError(
-            'Cannot subtract ModelStats with different model types.'
-            f'{self.model} != {other.model}')
+            'Cannot subtract ProviderModelStats with different provider_model '
+            f'types. {self.provider_model} != {other.provider_model}')
       result._sub_base_provider_stats(other.provider_stats)
       result._sub_base_cache_stats(other.cache_stats)
     else:
       raise ValueError(
-          'Invalid subtraction of ModelStats objects.'
-          f'Cannot subtract ModelStats with {type(other)}')
+          'Invalid subtraction of ProviderModelStats objects.'
+          f'Cannot subtract ProviderModelStats with {type(other)}')
     return result
 
 
 @dataclasses.dataclass
 class ProviderStats(BaseStats):
-  provider: Optional[types.Provider] = None
-  models: Optional[Dict[types.ModelType, ModelStats]] = None
+  provider: Optional[str] = None
+  provider_models: Optional[
+      Dict[types.ProviderModelType, ProviderModelStats]] = None
 
-  def _add_model_stats(self, other: ModelStats):
+  def _add_provider_model_stats(self, other: ProviderModelStats):
     self._add_base_provider_stats(other.provider_stats)
     self._add_base_cache_stats(other.cache_stats)
-    if self.models is None:
-      self.models = {}
-    if other.model and other.model not in self.models:
-      self.models[other.model] = ModelStats(model=other.model)
-    self.models[other.model] += other
-    return self.models
+    if self.provider_models is None:
+      self.provider_models = {}
+    if other.provider_model and other.provider_model not in self.provider_models:
+      self.provider_models[other.provider_model] = ProviderModelStats(
+          provider_model=other.provider_model)
+    self.provider_models[other.provider_model] += other
+    return self.provider_models
 
-  def _sub_model_stats(self, other: ModelStats):
+  def _sub_provider_model_stats(self, other: ProviderModelStats):
     self._sub_base_provider_stats(other.provider_stats)
     self._sub_base_cache_stats(other.cache_stats)
-    if self.models is None:
-      self.models = {}
-    if other.model and other.model not in self.models:
-      self.models[other.model] = ModelStats(model=other.model)
-    self.models[other.model] -= other
-    return self.models
+    if self.provider_models is None:
+      self.provider_models = {}
+    if other.provider_model and other.provider_model not in self.provider_models:
+      self.provider_models[other.provider_model] = ProviderModelStats(
+          provider_model=other.provider_model)
+    self.provider_models[other.provider_model] -= other
+    return self.provider_models
 
   def __add__(self, other):
     result = copy.deepcopy(self)
-    if isinstance(other, ModelStats):
-      result._add_model_stats(other)
+    if isinstance(other, ProviderModelStats):
+      result._add_provider_model_stats(other)
     elif isinstance(other, ProviderStats):
       if self.provider != other.provider:
         raise ValueError(
             'Cannot add ProviderStats with different provider types.'
             f'{self.provider} != {other.provider}')
-      for model_stat in other.models.values():
-        result._add_model_stats(model_stat)
+      for model_stat in other.provider_models.values():
+        result._add_provider_model_stats(model_stat)
     else:
       raise ValueError(
           'Invalid addition of ProviderStats objects.'
@@ -366,19 +369,19 @@ class ProviderStats(BaseStats):
 
   def __sub__(self, other):
     result = copy.deepcopy(self)
-    if isinstance(other, ModelStats):
-      result._sub_model_stats(other)
+    if isinstance(other, ProviderModelStats):
+      result._sub_provider_model_stats(other)
     elif isinstance(other, ProviderStats):
       if self.provider != other.provider:
         raise ValueError(
             'Cannot subtract ProviderStats with different provider types.'
             f'{self.provider} != {other.provider}')
-      for model_stat in other.models.values():
-        result._sub_model_stats(model_stat)
-      for model in list(result.models.keys()):
-        if (result.models[model].provider_stats.total_queries == 0 and
-            result.models[model].cache_stats.total_cache_hit == 0):
-          del result.models[model]
+      for model_stat in other.provider_models.values():
+        result._sub_provider_model_stats(model_stat)
+      for model in list(result.provider_models.keys()):
+        if (result.provider_models[model].provider_stats.total_queries == 0 and
+            result.provider_models[model].cache_stats.total_cache_hit == 0):
+          del result.provider_models[model]
     else:
       raise ValueError(
           'Invalid subtraction of ProviderStats objects.'
@@ -393,28 +396,28 @@ class GlobalStatType(str, enum.Enum):
 
 @dataclasses.dataclass
 class RunStats(BaseStats):
-  providers: Dict[types.Provider, ProviderStats] = dataclasses.field(
+  providers: Dict[str, ProviderStats] = dataclasses.field(
       default_factory=dict)
 
-  def _add_models_stats(self, other: ModelStats):
+  def _add_provider_model_stats(self, other: ProviderModelStats):
     self._add_base_provider_stats(other.provider_stats)
     self._add_base_cache_stats(other.cache_stats)
-    provider, _ = other.model
     if self.providers is None:
       self.providers = {}
-    if provider not in self.providers:
-      self.providers[provider] = ProviderStats(provider=provider)
-    self.providers[provider] += other
+    if other.provider_model.provider not in self.providers:
+      self.providers[other.provider_model.provider] = ProviderStats(
+          provider=other.provider_model.provider)
+    self.providers[other.provider_model.provider] += other
 
-  def _sub_models_stats(self, other: ModelStats):
+  def _sub_provider_model_stats(self, other: ProviderModelStats):
     self._sub_base_provider_stats(other.provider_stats)
     self._sub_base_cache_stats(other.cache_stats)
-    provider, _ = other.model
     if self.providers is None:
       self.providers = {}
-    if provider not in self.providers:
-      self.providers[provider] = ProviderStats(provider=provider)
-    self.providers[provider] -= other
+    if other.provider_model.provider not in self.providers:
+      self.providers[other.provider_model.provider] = ProviderStats(
+          provider=other.provider_model.provider)
+    self.providers[other.provider_model.provider] -= other
     for provider in list(self.providers.keys()):
       if (self.providers[provider].provider_stats.total_queries == 0 and
           self.providers[provider].cache_stats.total_cache_hit == 0):
@@ -444,8 +447,8 @@ class RunStats(BaseStats):
 
   def __add__(self, other):
     result = copy.deepcopy(self)
-    if isinstance(other, ModelStats):
-      result._add_models_stats(other)
+    if isinstance(other, ProviderModelStats):
+      result._add_provider_model_stats(other)
     elif isinstance(other, ProviderStats):
       result._add_provider_stats(other)
     elif isinstance(other, RunStats):
@@ -459,8 +462,8 @@ class RunStats(BaseStats):
 
   def __sub__(self, other):
     result = copy.deepcopy(self)
-    if isinstance(other, ModelStats):
-      result._sub_models_stats(other)
+    if isinstance(other, ProviderModelStats):
+      result._sub_provider_model_stats(other)
     elif isinstance(other, ProviderStats):
       result._sub_provider_stats(other)
     elif isinstance(other, RunStats):

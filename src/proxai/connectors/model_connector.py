@@ -1,20 +1,24 @@
+import copy
 import datetime
 import traceback
 import functools
 from typing import Any, Callable, Dict, Optional
 import proxai.types as types
-from proxai.logging.utils import log_logging_record, log_message, log_proxdash_message
+import proxai.logging.utils as logging_utils
 import proxai.caching.query_cache as query_cache
 import proxai.type_utils as type_utils
 import proxai.stat_types as stats_type
 import proxai.serializers.hash_serializer as hash_serializer
 import proxai.connections.proxdash as proxdash
+import proxai.connectors.model_configs as model_configs
+import proxai.connectors.model_pricing_configs as model_pricing_configs
+import proxai.state_controllers.state_controller as state_controller
+
+_PROVIDER_MODEL_STATE_PROPERTY = '_provider_model_state'
 
 
-class ModelConnector(object):
-  model: Optional[types.ModelType]
-  provider: Optional[str]
-  provider_model: Optional[str]
+class ProviderModelConnector(state_controller.StateControlled):
+  _provider_model: Optional[types.ProviderModelType]
   _run_type: Optional[types.RunType]
   _get_run_type: Optional[Callable[[], types.RunType]]
   _strict_feature_test: Optional[bool]
@@ -29,10 +33,11 @@ class ModelConnector(object):
   _proxdash_connection: Optional[proxdash.ProxDashConnection]
   _get_proxdash_connection: Optional[
       Callable[[bool], proxdash.ProxDashConnection]]
+  _provider_model_state: Optional[types.ProviderModelState]
 
   def __init__(
       self,
-      model: Optional[types.ModelType] = None,
+      provider_model: Optional[types.ProviderModelType] = None,
       run_type: Optional[types.RunType] = None,
       get_run_type: Optional[Callable[[], types.RunType]] = None,
       strict_feature_test: Optional[bool] = None,
@@ -40,81 +45,115 @@ class ModelConnector(object):
       query_cache_manager: Optional[query_cache.QueryCacheManager] = None,
       get_query_cache_manager: Optional[
           Callable[[], query_cache.QueryCacheManager]] = None,
-      stats: Optional[Dict[str, stats_type.RunStats]] = None,
       logging_options: Optional[types.LoggingOptions] = None,
       get_logging_options: Optional[Callable[[], types.LoggingOptions]] = None,
       proxdash_connection: Optional[proxdash.ProxDashConnection] = None,
       get_proxdash_connection: Optional[
           Callable[[bool], proxdash.ProxDashConnection]] = None,
-      init_state: Optional[types.ModelInitState] = None):
+      init_state: Optional[types.ProviderModelState] = None,
+      stats: Optional[Dict[str, stats_type.RunStats]] = None):
 
     if init_state and (
+        provider_model is not None or
         run_type is not None or
         get_run_type is not None or
         strict_feature_test is not None or
         get_strict_feature_test is not None or
         query_cache_manager is not None or
         get_query_cache_manager is not None or
-        stats is not None or
         logging_options is not None or
         get_logging_options is not None or
         proxdash_connection is not None or
-        get_proxdash_connection is not None):
+        get_proxdash_connection is not None or
+        stats is not None):
       raise ValueError(
           'init_state and other parameters cannot be set at the same time.')
 
-    if init_state and model and (init_state.model != model):
-      raise ValueError(
-          'init_state.model is not the same as the model parameter.')
+    super().__init__(
+        provider_model=provider_model,
+        run_type=run_type,
+        get_run_type=get_run_type,
+        strict_feature_test=strict_feature_test,
+        get_strict_feature_test=get_strict_feature_test,
+        query_cache_manager=query_cache_manager,
+        get_query_cache_manager=get_query_cache_manager,
+        logging_options=logging_options,
+        get_logging_options=get_logging_options,
+        proxdash_connection=proxdash_connection,
+        get_proxdash_connection=get_proxdash_connection)
 
-    if (not init_state or not init_state.model) and not model:
-      raise ValueError('model parameter is required.')
+    self.init_state()
 
     if init_state:
-      model = init_state.model
-      run_type = init_state.run_type
-      strict_feature_test = init_state.strict_feature_test
-      logging_options = init_state.logging_options
-      proxdash_connection = proxdash.ProxDashConnection(
-          init_state=init_state.proxdash_init_state)
+      if init_state.provider_model is None:
+        raise ValueError('provider_model needs to be set in init_state.')
+      if init_state.provider_model.provider != self.get_provider_name():
+        raise ValueError(
+            'provider_model needs to be same with the class provider name.\n'
+            f'provider_model: {init_state.provider_model}\n'
+            f'class provider name: {self.get_provider_name()}')
+      self.load_state(init_state)
+    else:
+      initial_state = self.get_state()
 
-    if run_type is not None and get_run_type is not None:
+      self._get_run_type = get_run_type
+      self._get_strict_feature_test = get_strict_feature_test
+      self._get_query_cache_manager = get_query_cache_manager
+      self._get_logging_options = get_logging_options
+      self._get_proxdash_connection = get_proxdash_connection
+
+      self.provider_model = provider_model
+      self.run_type = run_type
+      self.strict_feature_test = strict_feature_test
+      self.query_cache_manager = query_cache_manager
+      self.logging_options = logging_options
+      self.proxdash_connection = proxdash_connection
+      self._stats = stats
+
+      self.handle_changes(initial_state, self.get_state())
+
+  def get_internal_state_property_name(self):
+    return _PROVIDER_MODEL_STATE_PROPERTY
+
+  def get_internal_state_type(self):
+    return types.ProviderModelState
+
+  def handle_changes(
+      self,
+      old_state: types.ProviderModelState,
+      current_state: types.ProviderModelState):
+    result_state = copy.deepcopy(old_state)
+    if current_state.provider_model is not None:
+      result_state.provider_model = current_state.provider_model
+    if current_state.run_type is not None:
+      result_state.run_type = current_state.run_type
+    if current_state.strict_feature_test is not None:
+      result_state.strict_feature_test = current_state.strict_feature_test
+    if current_state.logging_options is not None:
+      result_state.logging_options = current_state.logging_options
+    if current_state.proxdash_connection is not None:
+      result_state.proxdash_connection = (
+          current_state.proxdash_connection)
+
+    if result_state.provider_model is None:
       raise ValueError(
-          'run_type and get_run_type cannot be set at the same time.')
+          'Provider model is not set for both old and new states. '
+          'This creates an invalid state change.')
 
-    if strict_feature_test is not None and get_strict_feature_test is not None:
+    if result_state.provider_model.provider != self.get_provider_name():
       raise ValueError(
-          'strict_feature_test and get_strict_feature_test cannot be set at '
-          'the same time.')
+          'Provider needs to be same with the class provider name.\n'
+          f'provider_model: {result_state.provider_model}\n'
+          f'class provider name: {self.get_provider_name()}')
 
-    if query_cache_manager is not None and get_query_cache_manager is not None:
+    if result_state.logging_options is None:
       raise ValueError(
-          'query_cache_manager and get_query_cache_manager cannot be set at '
-          'the same time.')
-
-    if logging_options is not None and get_logging_options is not None:
+          'Logging options are not set for both old and new states. '
+          'This creates an invalid state change.')
+    if result_state.proxdash_connection is None:
       raise ValueError(
-          'logging_options and get_logging_options cannot be set at the same '
-          'time.')
-
-    if proxdash_connection is not None and get_proxdash_connection is not None:
-      raise ValueError(
-          'proxdash_connection and get_proxdash_connection cannot be set at '
-          'the same time.')
-
-    self.model = model
-    self.provider, self.provider_model = model
-    self.run_type = run_type
-    self._get_run_type = get_run_type
-    self.strict_feature_test = strict_feature_test
-    self._get_strict_feature_test = get_strict_feature_test
-    self.query_cache_manager = query_cache_manager
-    self._get_query_cache_manager = get_query_cache_manager
-    self._stats = stats
-    self.logging_options = logging_options
-    self._get_logging_options = get_logging_options
-    self.proxdash_connection = proxdash_connection
-    self._get_proxdash_connection = get_proxdash_connection
+          'ProxDash connection is not set for both old and new states. '
+          'This creates an invalid state change.')
 
   @property
   def api(self):
@@ -125,113 +164,99 @@ class ModelConnector(object):
         self._api = self.init_mock_model()
     return self._api
 
+  @api.setter
+  def api(self, value):
+    raise ValueError('api should not be set directly.')
+
+  @property
+  def provider_model(self):
+    return self.get_property_value('provider_model')
+
+  @provider_model.setter
+  def provider_model(self, value):
+    self.set_property_value('provider_model', value)
+
   @property
   def run_type(self):
-    if self._run_type:
-      return self._run_type
-    if self._get_run_type:
-      return self._get_run_type()
-    return None
+    return self.get_property_value('run_type')
 
   @run_type.setter
   def run_type(self, value):
-    self._run_type = value
+    self.set_property_value('run_type', value)
 
   @property
   def strict_feature_test(self):
-    if self._strict_feature_test:
-      return self._strict_feature_test
-    if self._get_strict_feature_test:
-      return self._get_strict_feature_test()
-    return None
+    return self.get_property_value('strict_feature_test')
 
   @strict_feature_test.setter
   def strict_feature_test(self, value):
-    self._strict_feature_test = value
+    self.set_property_value('strict_feature_test', value)
 
   @property
   def query_cache_manager(self):
-    if self._query_cache_manager:
-      return self._query_cache_manager
-    if self._get_query_cache_manager:
-      return self._get_query_cache_manager()
-    return None
+    return self.get_state_controlled_property_value('query_cache_manager')
 
   @query_cache_manager.setter
   def query_cache_manager(self, value):
-    self._query_cache_manager = value
+    self.set_state_controlled_property_value('query_cache_manager', value)
+
+  def query_cache_manager_deserializer(
+      self,
+      state_value: types.QueryCacheManagerState
+  ) -> query_cache.QueryCacheManager:
+    return query_cache.QueryCacheManager(init_state=state_value)
 
   @property
   def logging_options(self):
-    if self._logging_options:
-      return self._logging_options
-    if self._get_logging_options:
-      return self._get_logging_options()
-    return None
+    return self.get_property_value('logging_options')
 
   @logging_options.setter
   def logging_options(self, value):
-    self._logging_options = value
+    self.set_property_value('logging_options', value)
 
   @property
   def proxdash_connection(self):
-    if self._proxdash_connection:
-      return self._proxdash_connection
-    if self._get_proxdash_connection:
-      return self._get_proxdash_connection()
-    return None
+    return self.get_state_controlled_property_value('proxdash_connection')
 
   @proxdash_connection.setter
   def proxdash_connection(self, value):
-    self._proxdash_connection = value
+    self.set_state_controlled_property_value('proxdash_connection', value)
 
-  def init_model(self):
-    raise NotImplementedError
-
-  def init_mock_model(self):
-    raise NotImplementedError
+  def proxdash_connection_deserializer(
+      self,
+      state_value: types.ProxDashConnectionState
+  ) -> proxdash.ProxDashConnection:
+    return proxdash.ProxDashConnection(init_state=state_value)
 
   def feature_fail(
       self,
       message: str,
       query_record: Optional[types.QueryRecord] = None):
     if self.strict_feature_test:
-      log_message(
+      logging_utils.log_message(
           type=types.LoggingType.ERROR,
           logging_options=self.logging_options,
           query_record=query_record,
           message=message)
       raise Exception(message)
     else:
-      log_message(
+      logging_utils.log_message(
           type=types.LoggingType.WARNING,
           logging_options=self.logging_options,
           query_record=query_record,
           message=message)
 
-  def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
-    raise NotImplementedError
-
-  def _get_token_count(
-      self, logging_record: types.LoggingRecord) -> int:
-    raise NotImplementedError
-
-  def _get_query_token_count(
-      self, logging_record: types.LoggingRecord) -> int:
-    raise NotImplementedError
-
-  def _get_response_token_count(
-      self, logging_record: types.LoggingRecord) -> int:
-    raise NotImplementedError
-
-  def _get_estimated_cost(
-      self, logging_record: types.LoggingRecord) -> float:
-    raise NotImplementedError
+  def get_estimated_cost(self, logging_record: types.LoggingRecord):
+    query_token_count = self.get_query_token_count(logging_record)
+    response_token_count = self.get_response_token_count(logging_record)
+    return model_pricing_configs.get_provider_model_cost(
+        provider_model_identifier=logging_record.query_record.provider_model,
+        query_token_count=query_token_count,
+        response_token_count=response_token_count)
 
   def _update_stats(self, logging_record: types.LoggingRecord):
-    if not self._stats:
+    if getattr(self, '_stats', None) is None:
       return
-    model = logging_record.query_record.model
     provider_stats = stats_type.BaseProviderStats()
     cache_stats = stats_type.BaseCacheStats()
     if logging_record.response_source == types.ResponseSource.PROVIDER:
@@ -240,12 +265,12 @@ class ModelConnector(object):
         provider_stats.total_successes = 1
       else:
         provider_stats.total_fails = 1
-      provider_stats.total_token_count = self._get_token_count(
+      provider_stats.total_token_count = self.get_token_count(
           logging_record=logging_record)
-      provider_stats.total_query_token_count = self._get_query_token_count(
+      provider_stats.total_query_token_count = self.get_query_token_count(
           logging_record=logging_record)
       provider_stats.total_response_token_count = (
-          self._get_response_token_count(
+          self.get_response_token_count(
             logging_record=logging_record))
       provider_stats.total_response_time = (
           logging_record.response_record.response_time.total_seconds())
@@ -259,12 +284,12 @@ class ModelConnector(object):
         cache_stats.total_success_return = 1
       else:
         cache_stats.total_fail_return = 1
-      cache_stats.saved_token_count = self._get_token_count(
+      cache_stats.saved_token_count = self.get_token_count(
           logging_record=logging_record)
-      cache_stats.saved_query_token_count = self._get_query_token_count(
+      cache_stats.saved_query_token_count = self.get_query_token_count(
           logging_record=logging_record)
       cache_stats.saved_response_token_count = (
-          self._get_response_token_count(
+          self.get_response_token_count(
             logging_record=logging_record))
       cache_stats.saved_total_response_time = (
           logging_record.response_record.response_time.total_seconds())
@@ -274,12 +299,12 @@ class ModelConnector(object):
       raise ValueError(
         f'Invalid response source.\n{logging_record.response_source}')
 
-    model_stats = stats_type.ModelStats(
-        model=model,
+    provider_model_stats = stats_type.ProviderModelStats(
+        provider_model=self.provider_model,
         provider_stats=provider_stats,
         cache_stats=cache_stats)
-    self._stats[stats_type.GlobalStatType.RUN_TIME] += model_stats
-    self._stats[stats_type.GlobalStatType.SINCE_CONNECT] += model_stats
+    self._stats[stats_type.GlobalStatType.RUN_TIME] += provider_model_stats
+    self._stats[stats_type.GlobalStatType.SINCE_CONNECT] += provider_model_stats
 
   def _update_proxdash(self, logging_record: types.LoggingRecord):
     if not self.proxdash_connection:
@@ -287,16 +312,13 @@ class ModelConnector(object):
     try:
       self.proxdash_connection.upload_logging_record(logging_record)
     except Exception as e:
-      log_proxdash_message(
+      logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
           message=(
               'ProxDash upload_logging_record failed.\n'
               f'Error message: {e}\n'
               f'Traceback: {traceback.format_exc()}'),
           type=types.LoggingType.ERROR)
-
-  def generate_text_proc(self, query_record: types.QueryRecord) -> dict:
-    raise NotImplementedError
 
   def generate_text(
       self,
@@ -306,7 +328,7 @@ class ModelConnector(object):
       max_tokens: Optional[int] = 100,
       temperature: Optional[float] = None,
       stop: Optional[types.StopType] = None,
-      model: Optional[types.ModelType] = None,
+      provider_model: Optional[types.ProviderModelIdentifierType] = None,
       use_cache: bool = True,
       unique_response_limit: Optional[int] = None) -> types.LoggingRecord:
     if prompt != None and messages != None:
@@ -314,18 +336,19 @@ class ModelConnector(object):
     if messages != None:
       type_utils.check_messages_type(messages)
 
-    query_model = self.model
-    if model != None:
-      provider, _ = model
-      if provider != self.provider:
+    if provider_model is not None:
+      provider_model = model_configs.get_provider_model_config(
+          model_identifier=provider_model)
+      if provider_model != self.provider_model:
         raise ValueError(
-            'Model provider does not match the connector provider.')
-      query_model = model
+            'provider_model does not match the connector provider_model.'
+            f'provider_model: {provider_model}\n'
+            f'connector provider_model: {self.provider_model}')
 
     start_utc_date = datetime.datetime.now(datetime.timezone.utc)
     query_record = types.QueryRecord(
         call_type=types.CallType.GENERATE_TEXT,
-        model=query_model,
+        provider_model=self.provider_model,
         prompt=prompt,
         system=system,
         messages=messages,
@@ -360,8 +383,8 @@ class ModelConnector(object):
             response_record=response_record,
             response_source=types.ResponseSource.CACHE)
         logging_record.response_record.estimated_cost = (
-            self._get_estimated_cost(logging_record=logging_record))
-        log_logging_record(
+            self.get_estimated_cost(logging_record=logging_record))
+        logging_utils.log_logging_record(
             logging_options=self.logging_options,
             logging_record=logging_record)
         self._update_stats(logging_record=logging_record)
@@ -372,7 +395,7 @@ class ModelConnector(object):
           query_record=query_record,
           look_fail_reason=look_fail_reason,
           response_source=types.ResponseSource.CACHE)
-      log_logging_record(
+      logging_utils.log_logging_record(
           logging_options=self.logging_options,
           logging_record=logging_record)
 
@@ -413,22 +436,37 @@ class ModelConnector(object):
         look_fail_reason=look_fail_reason,
         response_source=types.ResponseSource.PROVIDER)
     logging_record.response_record.estimated_cost = (
-        self._get_estimated_cost(logging_record=logging_record))
-    log_logging_record(
+        self.get_estimated_cost(logging_record=logging_record))
+    logging_utils.log_logging_record(
         logging_options=self.logging_options,
         logging_record=logging_record)
     self._update_stats(logging_record=logging_record)
     self._update_proxdash(logging_record=logging_record)
     return logging_record
 
-  def get_init_state(self) -> types.ModelInitState:
-    init_state = types.ModelInitState(
-        model=self.model,
-        run_type=self.run_type,
-        strict_feature_test=self.strict_feature_test,
-        logging_options=self.logging_options)
+  def get_provider_name(self):
+    raise NotImplementedError
 
-    if self.proxdash_connection:
-      init_state.proxdash_init_state = self.proxdash_connection.get_init_state()
+  def init_model(self):
+    raise NotImplementedError
 
-    return init_state
+  def init_mock_model(self):
+    raise NotImplementedError
+
+  def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
+    raise NotImplementedError
+
+  def get_token_count(
+      self, logging_record: types.LoggingRecord) -> int:
+    raise NotImplementedError
+
+  def get_query_token_count(
+      self, logging_record: types.LoggingRecord) -> int:
+    raise NotImplementedError
+
+  def get_response_token_count(
+      self, logging_record: types.LoggingRecord) -> int:
+    raise NotImplementedError
+
+  def generate_text_proc(self, query_record: types.QueryRecord) -> dict:
+    raise NotImplementedError
