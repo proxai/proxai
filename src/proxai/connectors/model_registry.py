@@ -1,33 +1,44 @@
 import functools
 from typing import Callable
-from proxai.connectors.model_connector import ModelConnector
-from proxai.connectors.openai import OpenAIConnector
-from proxai.connectors.claude import ClaudeConnector
-from proxai.connectors.gemini import GeminiConnector
-from proxai.connectors.cohere_api import CohereConnector
-from proxai.connectors.databricks import DatabricksConnector
-from proxai.connectors.mistral import MistralConnector
-from proxai.connectors.hugging_face import HuggingFaceConnector
-import proxai.connectors.mock_model_connector as mock_model_connector
+import proxai.connectors.model_connector as model_connector
+import proxai.connectors.providers.openai as openai_provider
+import proxai.connectors.providers.claude as claude_provider
+import proxai.connectors.providers.gemini as gemini_provider
+import proxai.connectors.providers.cohere_api as cohere_api_provider
+import proxai.connectors.providers.databricks as databricks_provider
+import proxai.connectors.providers.mistral as mistral_provider
+import proxai.connectors.providers.huggingface as huggingface_provider
+import proxai.connectors.providers.mock_provider as mock_provider
+import proxai.connectors.providers.deepseek as deepseek_provider
+import proxai.connectors.providers.grok as grok_provider
 import proxai.types as types
+import proxai.connectors.model_configs as model_configs
 
 _MODEL_CONNECTOR_MAP = {
-  types.Provider.OPENAI: OpenAIConnector,
-  types.Provider.CLAUDE: ClaudeConnector,
-  types.Provider.GEMINI: GeminiConnector,
-  types.Provider.COHERE: CohereConnector,
-  types.Provider.DATABRICKS: DatabricksConnector,
-  types.Provider.MISTRAL: MistralConnector,
-  types.Provider.HUGGING_FACE: HuggingFaceConnector,
-  types.Provider.MOCK_PROVIDER: mock_model_connector.MockModelConnector,
-  types.Provider.MOCK_FAILING_PROVIDER: (
-      mock_model_connector.MockFailingConnector),
+  'openai': openai_provider.OpenAIConnector,
+  'claude': claude_provider.ClaudeConnector,
+  'gemini': gemini_provider.GeminiConnector,
+  'cohere': cohere_api_provider.CohereConnector,
+  'databricks': databricks_provider.DatabricksConnector,
+  'mistral': mistral_provider.MistralConnector,
+  'huggingface': huggingface_provider.HuggingFaceConnector,
+  'deepseek': deepseek_provider.DeepSeekConnector,
+  'grok': grok_provider.GrokConnector,
+  'mock_provider': mock_provider.MockProviderModelConnector,
+  'mock_failing_provider': mock_provider.MockFailingProviderModelConnector,
+  'mock_slow_provider': mock_provider.MockSlowProviderModelConnector,
 }
 
 
-def get_model_connector(model: types.ModelType) -> Callable[[], ModelConnector]:
-  provider, _ = model
-  if provider not in _MODEL_CONNECTOR_MAP:
-    raise ValueError(f'Provider not supported. {provider}')
-  connector = _MODEL_CONNECTOR_MAP[provider]
-  return functools.partial(connector, model=model)
+def get_model_connector(
+    provider_model_identifier: types.ProviderModelIdentifierType,
+    without_additional_args: bool = False
+) -> Callable[[], model_connector.ProviderModelConnector]:
+  provider_model = model_configs.get_provider_model_config(
+      provider_model_identifier)
+  if provider_model.provider not in _MODEL_CONNECTOR_MAP:
+    raise ValueError(f'Provider not supported. {provider_model.provider}')
+  connector = _MODEL_CONNECTOR_MAP[provider_model.provider]
+  if without_additional_args:
+    return connector
+  return functools.partial(connector, provider_model=provider_model)

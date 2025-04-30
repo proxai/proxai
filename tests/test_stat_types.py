@@ -1,6 +1,7 @@
 import copy
 import proxai.types as types
 import proxai.stat_types as stat_types
+import proxai.connectors.model_configs as model_configs
 import pytest
 
 
@@ -53,10 +54,11 @@ def base_cache_stats_examples():
 
 
 def model_stats_examples(model=('openai', 'gpt-4')):
+  model = model_configs.get_provider_model_config(model_identifier=model)
   base_provider_stats, total_base_provider_stats = base_provider_stats_examples()
   base_cache_stats, total_base_cache_stats = base_cache_stats_examples()
-  example = stat_types.ModelStats(model=model)
-  big_example = stat_types.ModelStats(model=model)
+  example = stat_types.ProviderModelStats(provider_model=model)
+  big_example = stat_types.ProviderModelStats(provider_model=model)
   example += base_provider_stats
   example += base_cache_stats
   big_example += total_base_provider_stats
@@ -203,7 +205,7 @@ class TestStatTypes:
         models=[('openai', 'gpt-3.5-turbo'), ('openai', 'gpt-4')])
     example_2, _ = provider_stats_examples(
         provider='claude',
-        models=[('claude', 'claude-3-opus-20240229')])
+        models=[('claude', 'opus')])
     with pytest.raises(ValueError):
       example_1 + example_2
 
@@ -215,7 +217,7 @@ class TestStatTypes:
         provider='openai',
         provider_stats=stat_types.BaseProviderStats(),
         cache_stats=stat_types.BaseCacheStats(),
-        models={})
+        provider_models={})
 
   def test_provider_stats_sub_2(self):
     example_1, _ = provider_stats_examples(
@@ -272,41 +274,41 @@ class TestStatTypes:
         models=[('openai', 'gpt-3.5-turbo')])
     example_2, _ = provider_stats_examples(
         provider='claude',
-        models=[('claude', 'claude-3-opus-20240229')])
+        models=[('claude', 'opus')])
     with pytest.raises(ValueError):
       example_1 - example_2
 
   def test_run_stats_add_1(self):
     example_1, _ = run_stats_examples({
         'openai': [('openai', 'gpt-3.5-turbo'), ('openai', 'gpt-4')],
-        'claude': [('claude', 'claude-3-opus-20240229')]})
+        'claude': [('claude', 'opus')]})
     example_2, _ = run_stats_examples({
         'openai': [('openai', 'gpt-3.5-turbo'), ('openai', 'gpt-4')],
-        'claude': [('claude', 'claude-3-opus-20240229')]})
+        'claude': [('claude', 'opus')]})
     _, big_example = run_stats_examples({
         'openai': [('openai', 'gpt-3.5-turbo'), ('openai', 'gpt-4')],
-        'claude': [('claude', 'claude-3-opus-20240229')]})
+        'claude': [('claude', 'opus')]})
     assert example_1 + example_2 == big_example
 
   def test_run_stats_add_2(self):
     example_1, _ = run_stats_examples({
         'openai': [('openai', 'gpt-3.5-turbo')],
-        'claude': [('claude', 'claude-3-opus-20240229')]})
+        'claude': [('claude', 'opus')]})
     example_2, _ = run_stats_examples({
         'openai': [('openai', 'gpt-4')]})
     total_example, _ = run_stats_examples({
         'openai': [('openai', 'gpt-3.5-turbo'), ('openai', 'gpt-4')],
-        'claude': [('claude', 'claude-3-opus-20240229')]})
+        'claude': [('claude', 'opus')]})
     assert example_1 + example_2 == total_example
 
   def test_run_stats_add_3(self):
     run_stats_example_1, _ = run_stats_examples({
         'openai': [('openai', 'gpt-3.5-turbo'), ('openai', 'gpt-4')]})
     run_stats_example_2, _ = run_stats_examples({
-        'claude': [('claude', 'claude-3-opus-20240229')]})
+        'claude': [('claude', 'opus')]})
     total_example, _ = run_stats_examples({
         'openai': [('openai', 'gpt-3.5-turbo'), ('openai', 'gpt-4')],
-        'claude': [('claude', 'claude-3-opus-20240229')]})
+        'claude': [('claude', 'opus')]})
     assert (
         stat_types.RunStats()
         + run_stats_example_1
@@ -315,14 +317,14 @@ class TestStatTypes:
   def test_run_stats_add_4(self):
     run_stats_example_1, _ = run_stats_examples({
         'openai': [('openai', 'gpt-3.5-turbo'), ('openai', 'gpt-4')],
-        'claude': [('claude', 'claude-3-opus-20240229')]})
+        'claude': [('claude', 'opus')]})
     run_stats_example_2, _ = run_stats_examples({
         'openai': [('openai', 'gpt-3.5-turbo'), ('openai', 'gpt-4')]})
     run_stats_example_3, _ = run_stats_examples({
-        'claude': [('claude', 'claude-3-opus-20240229')]})
+        'claude': [('claude', 'opus')]})
     _, big_example = run_stats_examples({
         'openai': [('openai', 'gpt-3.5-turbo'), ('openai', 'gpt-4')],
-        'claude': [('claude', 'claude-3-opus-20240229')]})
+        'claude': [('claude', 'opus')]})
     assert (run_stats_example_1
             + run_stats_example_2
             + run_stats_example_3) == big_example
@@ -333,10 +335,10 @@ class TestStatTypes:
         models=[('openai', 'gpt-3.5-turbo'), ('openai', 'gpt-4')])
     provider_stats_example_2, _ = provider_stats_examples(
         provider='claude',
-        models=[('claude', 'claude-3-opus-20240229')])
+        models=[('claude', 'opus')])
     total_example, _ = run_stats_examples({
         'openai': [('openai', 'gpt-3.5-turbo'), ('openai', 'gpt-4')],
-        'claude': [('claude', 'claude-3-opus-20240229')]})
+        'claude': [('claude', 'opus')]})
     assert (
         stat_types.RunStats()
         + provider_stats_example_1
@@ -345,13 +347,13 @@ class TestStatTypes:
   def test_run_stats_add_provider_stats_2(self):
     run_stats_example, big_run_stats_example = run_stats_examples(
         {'openai': [('openai', 'gpt-3.5-turbo'), ('openai', 'gpt-4')],
-         'claude': [('claude', 'claude-3-opus-20240229')]})
+         'claude': [('claude', 'opus')]})
     provider_stats_example_1, _ = provider_stats_examples(
         provider='openai',
         models=[('openai', 'gpt-3.5-turbo'), ('openai', 'gpt-4')])
     provider_stats_example_2, _ = provider_stats_examples(
         provider='claude',
-        models=[('claude', 'claude-3-opus-20240229')])
+        models=[('claude', 'opus')])
     assert (
         run_stats_example
         + provider_stats_example_1
@@ -361,10 +363,10 @@ class TestStatTypes:
     model_stats_example_1, _ = model_stats_examples(
         model=('openai', 'gpt-3.5-turbo'))
     model_stats_example_2, _ = model_stats_examples(
-        model=('claude', 'claude-3-opus-20240229'))
+        model=('claude', 'opus'))
     total_example, _ = run_stats_examples({
         'openai': [('openai', 'gpt-3.5-turbo')],
-        'claude': [('claude', 'claude-3-opus-20240229')]})
+        'claude': [('claude', 'opus')]})
     assert (
         stat_types.RunStats()
         + model_stats_example_1
@@ -374,10 +376,10 @@ class TestStatTypes:
     model_stats_example_1, _ = model_stats_examples(
         model=('openai', 'gpt-3.5-turbo'))
     model_stats_example_2, _ = model_stats_examples(
-        model=('claude', 'claude-3-opus-20240229'))
+        model=('claude', 'opus'))
     run_stats_example, big_run_stats_example = run_stats_examples({
         'openai': [('openai', 'gpt-3.5-turbo')],
-        'claude': [('claude', 'claude-3-opus-20240229')]})
+        'claude': [('claude', 'opus')]})
     assert (
         run_stats_example
         + model_stats_example_1
@@ -386,34 +388,34 @@ class TestStatTypes:
   def test_run_stats_sub_1(self):
     example_1, _ = run_stats_examples({
         'openai': [('openai', 'gpt-3.5-turbo'), ('openai', 'gpt-4')],
-        'claude': [('claude', 'claude-3-opus-20240229')]})
+        'claude': [('claude', 'opus')]})
     example_2, _ = run_stats_examples({
         'openai': [('openai', 'gpt-3.5-turbo'), ('openai', 'gpt-4')],
-        'claude': [('claude', 'claude-3-opus-20240229')]})
+        'claude': [('claude', 'opus')]})
     _, big_example = run_stats_examples({
         'openai': [('openai', 'gpt-3.5-turbo'), ('openai', 'gpt-4')],
-        'claude': [('claude', 'claude-3-opus-20240229')]})
+        'claude': [('claude', 'opus')]})
     assert big_example - example_2 == example_1
 
   def test_run_stats_sub_2(self):
     example_1, _ = run_stats_examples({
         'openai': [('openai', 'gpt-3.5-turbo')],
-        'claude': [('claude', 'claude-3-opus-20240229')]})
+        'claude': [('claude', 'opus')]})
     example_2, _ = run_stats_examples({
         'openai': [('openai', 'gpt-4')]})
     total_example, _ = run_stats_examples({
         'openai': [('openai', 'gpt-3.5-turbo'), ('openai', 'gpt-4')],
-        'claude': [('claude', 'claude-3-opus-20240229')]})
+        'claude': [('claude', 'opus')]})
     assert total_example - example_2 == example_1
 
   def test_run_stats_sub_3(self):
     run_stats_example_1, _ = run_stats_examples({
         'openai': [('openai', 'gpt-3.5-turbo'), ('openai', 'gpt-4')]})
     run_stats_example_2, _ = run_stats_examples({
-        'claude': [('claude', 'claude-3-opus-20240229')]})
+        'claude': [('claude', 'opus')]})
     total_example, _ = run_stats_examples({
         'openai': [('openai', 'gpt-3.5-turbo'), ('openai', 'gpt-4')],
-        'claude': [('claude', 'claude-3-opus-20240229')]})
+        'claude': [('claude', 'opus')]})
     assert (total_example
             - run_stats_example_2
             - run_stats_example_1) == stat_types.RunStats(
@@ -423,14 +425,14 @@ class TestStatTypes:
   def test_run_stats_sub_4(self):
     run_stats_example_1, _ = run_stats_examples({
         'openai': [('openai', 'gpt-3.5-turbo'), ('openai', 'gpt-4')],
-        'claude': [('claude', 'claude-3-opus-20240229')]})
+        'claude': [('claude', 'opus')]})
     run_stats_example_2, _ = run_stats_examples({
         'openai': [('openai', 'gpt-3.5-turbo'), ('openai', 'gpt-4')]})
     run_stats_example_3, _ = run_stats_examples({
-        'claude': [('claude', 'claude-3-opus-20240229')]})
+        'claude': [('claude', 'opus')]})
     _, big_example = run_stats_examples({
         'openai': [('openai', 'gpt-3.5-turbo'), ('openai', 'gpt-4')],
-        'claude': [('claude', 'claude-3-opus-20240229')]})
+        'claude': [('claude', 'opus')]})
     assert (big_example
             - run_stats_example_3
             - run_stats_example_2) == run_stats_example_1
@@ -441,10 +443,10 @@ class TestStatTypes:
         models=[('openai', 'gpt-3.5-turbo'), ('openai', 'gpt-4')])
     provider_stats_example_2, _ = provider_stats_examples(
         provider='claude',
-        models=[('claude', 'claude-3-opus-20240229')])
+        models=[('claude', 'opus')])
     total_example, _ = run_stats_examples({
         'openai': [('openai', 'gpt-3.5-turbo'), ('openai', 'gpt-4')],
-        'claude': [('claude', 'claude-3-opus-20240229')]})
+        'claude': [('claude', 'opus')]})
     assert (
         total_example
         - provider_stats_example_2
@@ -455,13 +457,13 @@ class TestStatTypes:
   def test_run_stats_sub_provider_stats_2(self):
     run_stats_example, big_run_stats_example = run_stats_examples(
         {'openai': [('openai', 'gpt-3.5-turbo'), ('openai', 'gpt-4')],
-         'claude': [('claude', 'claude-3-opus-20240229')]})
+         'claude': [('claude', 'opus')]})
     provider_stats_example_1, _ = provider_stats_examples(
         provider='openai',
         models=[('openai', 'gpt-3.5-turbo'), ('openai', 'gpt-4')])
     provider_stats_example_2, _ = provider_stats_examples(
         provider='claude',
-        models=[('claude', 'claude-3-opus-20240229')])
+        models=[('claude', 'opus')])
     assert (
         big_run_stats_example
         - provider_stats_example_2
@@ -471,10 +473,10 @@ class TestStatTypes:
     model_stats_example_1, _ = model_stats_examples(
         model=('openai', 'gpt-3.5-turbo'))
     model_stats_example_2, _ = model_stats_examples(
-        model=('claude', 'claude-3-opus-20240229'))
+        model=('claude', 'opus'))
     total_example, _ = run_stats_examples({
         'openai': [('openai', 'gpt-3.5-turbo')],
-        'claude': [('claude', 'claude-3-opus-20240229')]})
+        'claude': [('claude', 'opus')]})
     assert (
         total_example
         - model_stats_example_2
@@ -486,10 +488,10 @@ class TestStatTypes:
     model_stats_example_1, _ = model_stats_examples(
         model=('openai', 'gpt-3.5-turbo'))
     model_stats_example_2, _ = model_stats_examples(
-        model=('claude', 'claude-3-opus-20240229'))
+        model=('claude', 'opus'))
     run_stats_example, big_run_stats_example = run_stats_examples({
         'openai': [('openai', 'gpt-3.5-turbo')],
-        'claude': [('claude', 'claude-3-opus-20240229')]})
+        'claude': [('claude', 'opus')]})
     assert (
         big_run_stats_example
         - model_stats_example_2

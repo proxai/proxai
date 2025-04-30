@@ -2,30 +2,33 @@ import os
 import copy
 import json
 import requests
+from functools import wraps
 import proxai.types as types
-import proxai.serializers.type_serializer as type_serializer
 import proxai.experiment.experiment as experiment
-from proxai.logging.utils import log_proxdash_message
-from typing import Callable, Dict, List, Optional, Union, Tuple
+import proxai.logging.utils as logging_utils
+import proxai.state_controllers.state_controller as state_controller
+from typing import Any, Callable, Dict, List, Optional, Union, Tuple
 
-_PROXDASH_BACKEND_URL = 'https://proxainest-production.up.railway.app'
+_PROXDASH_STATE_PROPERTY = '_proxdash_connection_state'
+_NOT_SET_EXPERIMENT_PATH_VALUE = '(not set)'
 
 
-class ProxDashConnection(object):
-  _last_connected_experiment_path: Optional[str]
+class ProxDashConnection(state_controller.StateControlled):
+  _status: Optional[types.ProxDashConnectionStatus]
+  _hidden_run_key: Optional[str]
   _experiment_path: Optional[str]
   _get_experiment_path: Optional[Callable[[], str]]
-  _hidden_run_key: Optional[str]
   _logging_options: Optional[types.LoggingOptions]
   _get_logging_options: Optional[Callable[[], types.LoggingOptions]]
-  _status: Optional[types.ProxDashConnectionStatus]
-  _api_key: str
+  _proxdash_options: Optional[types.ProxDashOptions]
+  _get_proxdash_options: Optional[Callable[[], types.ProxDashOptions]]
   _key_info_from_proxdash: Optional[Dict]
+  _connected_experiment_path: Optional[str]
+  _proxdash_connection_state: Optional[types.ProxDashConnectionState]
 
   def __init__(
       self,
       hidden_run_key: Optional[str] = None,
-      api_key: Optional[str] = None,
       experiment_path: Optional[str] = None,
       get_experiment_path: Optional[Callable[[], str]] = None,
       logging_options: Optional[types.LoggingOptions] = None,
@@ -33,135 +36,346 @@ class ProxDashConnection(object):
       proxdash_options: Optional[types.ProxDashOptions] = None,
       get_proxdash_options: Optional[
           Callable[[], types.ProxDashOptions]] = None,
-      init_state: Optional[types.ProxDashInitState] = None):
+      init_state: Optional[types.ProxDashConnectionState] = None):
     if init_state and (
-        hidden_run_key or api_key or experiment_path or
-        get_experiment_path or logging_options or get_logging_options or
-        proxdash_options or get_proxdash_options):
+        hidden_run_key is not None or
+        experiment_path is not None or get_experiment_path is not None or
+        logging_options is not None or get_logging_options is not None or
+        proxdash_options is not None or get_proxdash_options is not None):
       raise ValueError(
           'If init_state is provided, none of the other arguments should be '
           'provided.')
 
-    self._last_connected_experiment_path = None
-    self._experiment_path = None
-    self._get_experiment_path = None
-    self._hidden_run_key = None
-    self._logging_options = None
-    self._get_logging_options = None
-    self._status = None
-    self._api_key = None
-    self._key_info_from_proxdash = None
+    super().__init__(
+        hidden_run_key=hidden_run_key,
+        experiment_path=experiment_path,
+        get_experiment_path=get_experiment_path,
+        logging_options=logging_options,
+        get_logging_options=get_logging_options,
+        proxdash_options=proxdash_options,
+        get_proxdash_options=get_proxdash_options)
 
-    init_status = None
-    init_key_info_from_proxdash = None
+    self.init_state()
+    self.set_property_value(
+        'status', types.ProxDashConnectionStatus.INITIALIZING)
+
     if init_state:
-      init_status = init_state.status
-      hidden_run_key = init_state.hidden_run_key
-      api_key = init_state.api_key
-      experiment_path = init_state.experiment_path
-      logging_options = init_state.logging_options
-      proxdash_options = init_state.proxdash_options
-      init_key_info_from_proxdash = init_state.key_info_from_proxdash
+      self.load_state(init_state)
+    else:
+      initial_state = self.get_state()
+      self._get_experiment_path = get_experiment_path
+      self._get_logging_options = get_logging_options
+      self._get_proxdash_options = get_proxdash_options
 
-    if experiment_path and get_experiment_path:
-      raise ValueError(
-          'Only one of experiment_path or get_experiment_path should be '
-          'provided.')
-    if logging_options and get_logging_options:
-      raise ValueError(
-          'Only one of logging_options or get_logging_options should be '
-          'provided.')
-    if proxdash_options and get_proxdash_options:
-      raise ValueError(
-          'Only one of proxdash_options or get_proxdash_options should be '
-          'provided.')
+      self.hidden_run_key = hidden_run_key
+      self.logging_options = logging_options
+      self.proxdash_options = proxdash_options
+      self.experiment_path = experiment_path
+      self.handle_changes(initial_state, self.get_state())
 
-    self.status = types.ProxDashConnectionStatus.INITIALIZING
-    self._key_info_from_proxdash = None
-    self._hidden_run_key = hidden_run_key
-    self.logging_options = logging_options
-    self._get_logging_options = get_logging_options
-    self.proxdash_options = proxdash_options
-    self._get_proxdash_options = get_proxdash_options
-    self.experiment_path = experiment_path
-    self._get_experiment_path = get_experiment_path
+  def get_internal_state_property_name(self):
+    return _PROXDASH_STATE_PROPERTY
 
-    self.connect_to_proxdash(
-        api_key,
-        init_status=init_status,
-        init_key_info_from_proxdash=init_key_info_from_proxdash)
+  def get_internal_state_type(cls):
+    return types.ProxDashConnectionState
 
-  def connect_to_proxdash(
+  def handle_changes(
       self,
-      api_key: Optional[str] = None,
-      init_status: Optional[types.ProxDashConnectionStatus] = None,
-      init_key_info_from_proxdash: Optional[Dict] = None
-  ):
-    if self.proxdash_options and self.proxdash_options.disable_proxdash:
+      old_state: types.ProxDashConnectionState,
+      current_state: types.ProxDashConnectionState):
+    result_state = copy.deepcopy(old_state)
+    if current_state.logging_options is not None:
+      result_state.logging_options = current_state.logging_options
+    if current_state.proxdash_options is not None:
+      result_state.proxdash_options = current_state.proxdash_options
+    if current_state.key_info_from_proxdash is not None:
+      result_state.key_info_from_proxdash = current_state.key_info_from_proxdash
+    if current_state.experiment_path is not None:
+      result_state.experiment_path = current_state.experiment_path
+    if current_state.connected_experiment_path is not None:
+      result_state.connected_experiment_path = (
+          current_state.connected_experiment_path)
+    if current_state.status is not None:
+      result_state.status = current_state.status
+
+    if result_state.proxdash_options is None:
+      raise ValueError(
+          'ProxDash options are not set for both old and new states. '
+          'This creates an invalid state change.')
+    if result_state.logging_options is None:
+      raise ValueError(
+          'Logging options are not set for both old and new states. '
+          'This creates an invalid state change.')
+
+    proxdash_disabled = result_state.proxdash_options.disable_proxdash
+    if proxdash_disabled:
       self.status = types.ProxDashConnectionStatus.DISABLED
-      log_proxdash_message(
-          logging_options=self.logging_options,
-          proxdash_options=self.proxdash_options,
-          message=(
-              'ProxDash disabled via proxdash_options. '
-              'No data will be sent to ProxDash servers.'),
-          type=types.LoggingType.INFO)
+      self.key_info_from_proxdash = None
+      # Note: There is no longer any connection to ProxDash. This change
+      # shouldn't be logged, so, self.connected_experiment_path setter should
+      # not be used here.
+      self.set_property_value_without_triggering_getters(
+          'connected_experiment_path', None)
       return
 
-    if not api_key:
-      if 'PROXDASH_API_KEY' in os.environ:
-        self.status = types.ProxDashConnectionStatus.API_KEY_FOUND
-        api_key = os.environ['PROXDASH_API_KEY']
-      else:
+    if result_state.proxdash_options.api_key is None:
+      if 'PROXDASH_API_KEY' not in os.environ:
         self.status = types.ProxDashConnectionStatus.API_KEY_NOT_FOUND
-        log_proxdash_message(
-            logging_options=self.logging_options,
-            proxdash_options=self.proxdash_options,
-            message=(
-                'ProxDash API key not found. Please provide an API key '
-                'either as an argument or as an environment variable.'),
-            type=types.LoggingType.ERROR)
+        self.key_info_from_proxdash = None
+        # Note: There is no longer any connection to ProxDash. This change
+        # shouldn't be logged, so, self.connected_experiment_path setter should
+        # not be used here.
+        self.set_property_value_without_triggering_getters(
+            'connected_experiment_path', None)
         return
-    self._api_key = api_key
+      else:
+        # Note: Setting api_key from environment variable.
+        self.proxdash_options.api_key = os.environ['PROXDASH_API_KEY']
+        current_state.proxdash_options.api_key = os.environ['PROXDASH_API_KEY']
+        result_state.proxdash_options.api_key = os.environ['PROXDASH_API_KEY']
 
-    if init_status == types.ProxDashConnectionStatus.CONNECTED:
-      self.status = types.ProxDashConnectionStatus.CONNECTED
-      self._key_info_from_proxdash = init_key_info_from_proxdash
-      return
-    self._check_api_key_validity_and_update_status()
+    api_key_query_required = False
+
+    old_api_key = None
+    if old_state.proxdash_options:
+      old_api_key = old_state.proxdash_options.api_key
+    if old_api_key != result_state.proxdash_options.api_key:
+      api_key_query_required = True
+    if old_api_key == result_state.proxdash_options.api_key and (
+        result_state.status == types.ProxDashConnectionStatus.INITIALIZING or
+        result_state.status == types.ProxDashConnectionStatus.DISABLED or
+        result_state.status == types.ProxDashConnectionStatus.API_KEY_NOT_FOUND
+    ):
+      api_key_query_required = True
+
+    old_base_url = types.ProxDashOptions.base_url
+    if old_state.proxdash_options:
+      old_base_url = old_state.proxdash_options.base_url
+    if old_base_url != result_state.proxdash_options.base_url:
+      api_key_query_required = True
+
+    if api_key_query_required:
+      validation_status, key_info_from_proxdash = self._check_api_key_validity(
+          base_url=result_state.proxdash_options.base_url,
+          api_key=result_state.proxdash_options.api_key)
+      result_state.status = validation_status
+      result_state.key_info_from_proxdash = key_info_from_proxdash
+
+    if result_state.status == types.ProxDashConnectionStatus.API_KEY_NOT_VALID:
+      self.status = types.ProxDashConnectionStatus.API_KEY_NOT_VALID
+      self.key_info_from_proxdash = None
+      raise ValueError(
+          'ProxDash API key not valid. Please provide a valid API key.\n'
+          f'base_url: {result_state.proxdash_options.base_url}\n'
+          f'api_key: {result_state.proxdash_options.api_key[:3]}...\n\n'
+          'To fix this issue:\n'
+          '1. Check that your PROXDASH_API_KEY in your .bashrc or .zshrc file '
+          'is correct if it exists\n'
+          '2. Check that px.ProxDashOptions(api_key="your_api_key") is correct '
+          'if you set it directly\n'
+          '3. Verify that your key matches what appears on '
+          'https://proxai.co/dashboard/api-keys\n'
+          '4. If you don\'t want to use ProxDash, make sure PROXDASH_API_KEY '
+          'is not set in your environment variables\n'
+          'For more information, see: '
+          'https://www.proxai.co/proxai-docs/advanced/proxdash-connection')
+
+    if result_state.status == types.ProxDashConnectionStatus.PROXDASH_INVALID_RETURN:
+      self.status = types.ProxDashConnectionStatus.PROXDASH_INVALID_RETURN
+      self.key_info_from_proxdash = None
+      raise ValueError(
+          'ProxDash returned an invalid response.\nPlease report this '
+          'issue to the https://github.com/proxai/proxai.\n'
+          'Also, please check latest stable version of ProxAI.')
+
+    if result_state.status != types.ProxDashConnectionStatus.CONNECTED:
+      raise ValueError(
+          'Unknown ProxDash connection status.\n'
+          f'result_state.status: {result_state.status}\n'
+          'result_state.key_info_from_proxdash: '
+          f'{result_state.key_info_from_proxdash}')
+
+    if (self.status != result_state.status or
+        old_base_url != result_state.proxdash_options.base_url or
+        old_api_key != result_state.proxdash_options.api_key):
+      # Note: This is good for logging purposes.
+      self.status = result_state.status
+    if self.key_info_from_proxdash != result_state.key_info_from_proxdash:
+      self.key_info_from_proxdash = result_state.key_info_from_proxdash
+    if self.connected_experiment_path != self.experiment_path:
+      self.connected_experiment_path = self.experiment_path
 
   @property
-  def api_key(self) -> str:
-    return self._api_key
+  def hidden_run_key(self) -> Optional[str]:
+    return self.get_property_value('hidden_run_key')
 
-  @api_key.setter
-  def api_key(self, api_key: str):
-    self._api_key = api_key
-    self._check_api_key_validity_and_update_status()
+  @hidden_run_key.setter
+  def hidden_run_key(self, hidden_run_key: Optional[str]):
+    self.set_property_value('hidden_run_key', hidden_run_key)
 
   @property
   def logging_options(self) -> types.LoggingOptions:
-    if self._logging_options:
-      return self._logging_options
-    if self._get_logging_options:
-      return self._get_logging_options()
-    return types.LoggingOptions()
+    return self.get_property_value('logging_options')
 
   @logging_options.setter
   def logging_options(self, logging_options: types.LoggingOptions):
-    self._logging_options = logging_options
+    self.set_property_value('logging_options', logging_options)
 
   @property
   def proxdash_options(self) -> types.ProxDashOptions:
-    if self._proxdash_options:
-      return self._proxdash_options
-    if self._get_proxdash_options:
-      return self._get_proxdash_options()
-    return types.ProxDashOptions()
+    return self.get_property_value('proxdash_options')
 
   @proxdash_options.setter
   def proxdash_options(self, proxdash_options: types.ProxDashOptions):
-    self._proxdash_options = proxdash_options
+    self.set_property_value('proxdash_options', proxdash_options)
+
+  @property
+  def key_info_from_proxdash(self) -> Optional[Dict]:
+    return self.get_property_value('key_info_from_proxdash')
+
+  @key_info_from_proxdash.setter
+  def key_info_from_proxdash(self, key_info_from_proxdash: Optional[Dict]):
+    self.set_property_value('key_info_from_proxdash', key_info_from_proxdash)
+
+  @property
+  def experiment_path(self) -> str:
+    internal_experiment_path = self.get_property_internal_value(
+        'experiment_path')
+    internal_get_experiment_path = self.get_property_func_getter(
+        'experiment_path')
+
+    experiment_path = None
+    if (internal_experiment_path is not None and
+        internal_experiment_path != _NOT_SET_EXPERIMENT_PATH_VALUE):
+      experiment_path = internal_experiment_path
+    elif internal_get_experiment_path is not None:
+      experiment_path = internal_get_experiment_path()
+
+    if experiment_path is None:
+      experiment_path = _NOT_SET_EXPERIMENT_PATH_VALUE
+
+    self.set_property_internal_state_value(
+        'experiment_path', experiment_path)
+    return experiment_path
+
+  @experiment_path.setter
+  def experiment_path(self, experiment_path: Optional[str]):
+    if experiment_path is not None:
+      experiment.validate_experiment_path(experiment_path)
+    else:
+      experiment_path = _NOT_SET_EXPERIMENT_PATH_VALUE
+
+    self.set_property_value('experiment_path', experiment_path)
+
+  @property
+  def connected_experiment_path(self) -> str:
+    return self.get_property_value('connected_experiment_path')
+
+  @connected_experiment_path.setter
+  def connected_experiment_path(self, connected_experiment_path: Optional[str]):
+    if self.status != types.ProxDashConnectionStatus.CONNECTED:
+      if connected_experiment_path is not None:
+        raise ValueError(
+            'Connected experiment path can only be set if the ProxDash '
+            'connection is connected.')
+      self.set_property_value_without_triggering_getters(
+          'connected_experiment_path', None)
+      return
+
+    previous_experiment_path = self.get_property_internal_value(
+        'connected_experiment_path')
+    if previous_experiment_path is None:
+      previous_experiment_path = _NOT_SET_EXPERIMENT_PATH_VALUE
+
+    new_experiment_path = connected_experiment_path
+    if new_experiment_path is None:
+      new_experiment_path = _NOT_SET_EXPERIMENT_PATH_VALUE
+
+    if previous_experiment_path != new_experiment_path:
+      logging_utils.log_proxdash_message(
+          logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
+          message=(
+              'Connected to ProxDash experiment: '
+              f'{new_experiment_path}'),
+          type=types.LoggingType.INFO)
+
+    self.set_property_value(
+        'connected_experiment_path', connected_experiment_path)
+
+  @property
+  def status(self) -> types.ProxDashConnectionStatus:
+    return self.get_property_value('status')
+
+  @status.setter
+  def status(self, status: types.ProxDashConnectionStatus):
+    self.set_property_value('status', status)
+    if status == types.ProxDashConnectionStatus.INITIALIZING:
+      logging_utils.log_proxdash_message(
+          logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
+          message='ProxDash connection initializing.',
+          type=types.LoggingType.INFO)
+    elif status == types.ProxDashConnectionStatus.DISABLED:
+      logging_utils.log_proxdash_message(
+          logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
+          message='ProxDash connection disabled.',
+          type=types.LoggingType.INFO)
+    elif status == types.ProxDashConnectionStatus.API_KEY_NOT_FOUND:
+      logging_utils.log_proxdash_message(
+          logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
+          message=(
+              'ProxDash connection disabled. Please provide a valid API key '
+              'either as an argument or as an environment variable.'),
+          type=types.LoggingType.ERROR)
+    elif status == types.ProxDashConnectionStatus.API_KEY_NOT_VALID:
+      logging_utils.log_proxdash_message(
+          logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
+          message=(
+              'ProxDash API key not valid. Please provide a valid API key.\n'
+              'Check proxai.co/dashboard/api-keys page to get your API '
+              'key.'),
+          type=types.LoggingType.ERROR)
+    elif status == types.ProxDashConnectionStatus.PROXDASH_INVALID_RETURN:
+      logging_utils.log_proxdash_message(
+          logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
+          message=(
+              'ProxDash returned an invalid response.\nPlease report this '
+              'issue to the https://github.com/proxai/proxai.\n'
+              'Also, please check latest stable version of ProxAI.'),
+          type=types.LoggingType.ERROR)
+    elif status == types.ProxDashConnectionStatus.CONNECTED:
+      logging_utils.log_proxdash_message(
+          logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
+          message=(
+              f'Connected to ProxDash at {self.proxdash_options.base_url}'),
+          type=types.LoggingType.INFO)
+
+  def _check_api_key_validity(
+      self,
+      base_url: str,
+      api_key: str) -> Tuple[
+      Union[
+          types.ProxDashConnectionStatus.API_KEY_NOT_VALID,
+          types.ProxDashConnectionStatus.PROXDASH_INVALID_RETURN,
+          types.ProxDashConnectionStatus.CONNECTED,
+      ],
+      Optional[Dict]]:
+    response = requests.post(
+        f'{base_url}/connect',
+        data={'apiKey': api_key})
+    if response.status_code != 201 or response.text == 'false':
+      return types.ProxDashConnectionStatus.API_KEY_NOT_VALID, None
+    try:
+      key_info_from_proxdash = json.loads(response.text)
+      return types.ProxDashConnectionStatus.CONNECTED, key_info_from_proxdash
+    except Exception:
+      return types.ProxDashConnectionStatus.PROXDASH_INVALID_RETURN, None
 
   def _hide_sensitive_content_logging_record(
       self, logging_record: types.LoggingRecord) -> types.LoggingRecord:
@@ -182,161 +396,78 @@ class ProxDashConnection(object):
       logging_record.response_record.response = '<sensitive content hidden>'
     return logging_record
 
-  def _check_api_key_validity(self) -> Tuple[
-      Union[
-          types.ProxDashConnectionStatus.API_KEY_VALID,
-          types.ProxDashConnectionStatus.API_KEY_NOT_VALID,
-          types.ProxDashConnectionStatus.PROXDASH_INVALID_RETURN],
-      Optional[Dict]]:
-    response = requests.post(
-        f'{_PROXDASH_BACKEND_URL}/connect',
-        data={'apiKey': self._api_key})
-    if response.status_code != 201 or response.text == 'false':
-      return types.ProxDashConnectionStatus.API_KEY_NOT_VALID, None
-    try:
-      key_info_from_proxdash = json.loads(response.text)
-      return (
-          types.ProxDashConnectionStatus.API_KEY_VALID,
-          key_info_from_proxdash)
-    except Exception:
-      return (
-          types.ProxDashConnectionStatus.PROXDASH_INVALID_RETURN,
-          None)
-
-  def _check_api_key_validity_and_update_status(self):
-    validation_status, key_info_from_proxdash = self._check_api_key_validity()
-    if validation_status == types.ProxDashConnectionStatus.API_KEY_NOT_VALID:
-      self.status = types.ProxDashConnectionStatus.API_KEY_NOT_VALID
-      log_proxdash_message(
-          logging_options=self.logging_options,
-          proxdash_options=self.proxdash_options,
-          message=(
-              'ProxDash API key not valid. Please provide a valid API key.\n'
-              'Check proxai.co/dashboard/api-keys page to get your API '
-              'key.'),
-          type=types.LoggingType.ERROR)
-    elif (validation_status ==
-          types.ProxDashConnectionStatus.PROXDASH_INVALID_RETURN):
-      self.status = types.ProxDashConnectionStatus.PROXDASH_INVALID_RETURN
-      log_proxdash_message(
-          logging_options=self.logging_options,
-          proxdash_options=self.proxdash_options,
-          message=(
-              'ProxDash returned an invalid response.\nPlease report this '
-              'issue to the https://github.com/proxai/proxai.\n'
-              'Also, please check latest stable version of ProxAI.'),
-          type=types.LoggingType.ERROR)
-    elif validation_status == types.ProxDashConnectionStatus.API_KEY_VALID:
-      self.status = types.ProxDashConnectionStatus.CONNECTED
-      self._key_info_from_proxdash = key_info_from_proxdash
-      log_proxdash_message(
-          logging_options=self.logging_options,
-          proxdash_options=self.proxdash_options,
-          message='Connected to ProxDash.',
-          type=types.LoggingType.INFO)
-      # This will trigger the logging of the connection.
-      _ = self.experiment_path
-
-  @property
-  def status(self) -> types.ProxDashConnectionStatus:
-    return self._status
-
-  @status.setter
-  def status(self, status: types.ProxDashConnectionStatus):
-    self._status = status
-
-  @property
-  def experiment_path(self) -> Optional[str]:
-    if self._experiment_path:
-      experiment_path = self._experiment_path
-    elif self._get_experiment_path:
-      experiment_path = self._get_experiment_path()
-    else:
-      experiment_path = '(not set)'
-
-    if (self._last_connected_experiment_path != experiment_path and
-        self.status == types.ProxDashConnectionStatus.CONNECTED):
-      self._last_connected_experiment_path = experiment_path
-      log_proxdash_message(
-          logging_options=self.logging_options,
-          proxdash_options=self.proxdash_options,
-          message=f'Connected to ProxDash experiment: {experiment_path}',
-          type=types.LoggingType.INFO)
-    return experiment_path
-
-  @experiment_path.setter
-  def experiment_path(self, experiment_path: Optional[str]):
-    if experiment_path is not None:
-      experiment.validate_experiment_path(experiment_path)
-
-    if (self._last_connected_experiment_path != experiment_path and
-        self.status == types.ProxDashConnectionStatus.CONNECTED):
-      self._last_connected_experiment_path = experiment_path
-      log_proxdash_message(
-          logging_options=self.logging_options,
-          proxdash_options=self.proxdash_options,
-          message=f'Connected to ProxDash experiment: {experiment_path}',
-          type=types.LoggingType.INFO)
-
-    self._experiment_path = experiment_path
-
   def upload_logging_record(self, logging_record: types.LoggingRecord):
+    self.apply_external_state_changes()
+
     if self.status != types.ProxDashConnectionStatus.CONNECTED:
       return
-    if self.proxdash_options and self.proxdash_options.hide_sensitive_content:
+    if ((self.proxdash_options and
+         self.proxdash_options.hide_sensitive_content) or
+        self._key_info_from_proxdash['permission'] == 'NO_PROMPT'):
       logging_record = self._hide_sensitive_content_logging_record(
         logging_record)
-    stop = None
-    if logging_record.query_record.stop:
-      stop = str(logging_record.query_record.stop)
+
+    if logging_record.query_record.messages is not None:
+      messages = json.dumps(
+          logging_record.query_record.messages,
+          indent=2,
+          sort_keys=True)
+    else:
+      messages = None
+
+    if logging_record.query_record.stop is not None:
+      stop = logging_record.query_record.stop
+      if type(stop) == str:
+        stop = [stop]
+      stop = json.dumps(stop, indent=2, sort_keys=True)
+    else:
+      stop = None
+
     data = {
-      'apiKey': self._api_key,
-      'hiddenRunKey': self._hidden_run_key,
+      'apiKey': self.proxdash_options.api_key,
+      'hiddenRunKey': self.hidden_run_key,
       'experimentPath': self.experiment_path,
       'callType': logging_record.query_record.call_type,
-      'provider': logging_record.query_record.model[0],
-      'model': logging_record.query_record.model[1],
+      'provider': logging_record.query_record.provider_model.provider,
+      'model': logging_record.query_record.provider_model.model,
+      'providerModelIdentifier': (
+          logging_record.query_record.provider_model.provider_model_identifier),
+      'prompt': logging_record.query_record.prompt,
+      'system': logging_record.query_record.system,
+      'messages': messages,
       'maxTokens': logging_record.query_record.max_tokens,
       'temperature': logging_record.query_record.temperature,
       'stop': stop,
       'hashValue': logging_record.query_record.hash_value,
+      'response': logging_record.response_record.response,
       'error': logging_record.response_record.error,
       'errorTraceback': logging_record.response_record.error_traceback,
       'startUTCDate': logging_record.response_record.start_utc_date.isoformat(),
       'endUTCDate': logging_record.response_record.end_utc_date.isoformat(),
-      'localTimeOffsetMinute': logging_record.response_record.local_time_offset_minute,
+      'localTimeOffsetMinute': (
+          logging_record.response_record.local_time_offset_minute),
       'responseTime': (
           logging_record.response_record.response_time.total_seconds() * 1000),
       'estimatedCost': logging_record.response_record.estimated_cost,
       'responseSource': logging_record.response_source,
       'lookFailReason': logging_record.look_fail_reason,
     }
-    if self._key_info_from_proxdash['permission'] == 'ALL':
-      data['prompt'] = logging_record.query_record.prompt
-      data['system'] = logging_record.query_record.system
-      data['messages'] = logging_record.query_record.messages
-      data['response'] = logging_record.response_record.response
-
-    response = requests.post(
-        f'{_PROXDASH_BACKEND_URL}/logging-record',
-        data=data)
-
-    if response.status_code != 201 or response.text != 'success':
-      log_proxdash_message(
+    try:
+      response = requests.post(
+          f'{self.proxdash_options.base_url}/logging-record', json=data)
+      if response.status_code != 201 or response.text != 'success':
+        logging_utils.log_proxdash_message(
+            logging_options=self.logging_options,
+            proxdash_options=self.proxdash_options,
+            message=(
+                'ProxDash could not log the record. Error message:\n'
+                f'{response.text}'),
+            type=types.LoggingType.ERROR)
+    except Exception as e:
+      logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
           proxdash_options=self.proxdash_options,
           message=(
               'ProxDash could not log the record. Error message:\n'
-              f'{response.text}'),
+              f'{e}'),
           type=types.LoggingType.ERROR)
-
-  def get_init_state(self) -> types.ProxDashInitState:
-    return types.ProxDashInitState(
-      status=self.status,
-      hidden_run_key=self._hidden_run_key,
-      api_key=self._api_key,
-      experiment_path=self.experiment_path,
-      logging_options=self.logging_options,
-      proxdash_options=self.proxdash_options,
-      key_info_from_proxdash=self._key_info_from_proxdash,
-    )
