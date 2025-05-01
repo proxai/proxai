@@ -8,6 +8,7 @@ Examples:
   python3 integrations_tests/proxai_api_test.py
   python3 integrations_tests/proxai_api_test.py --mode new
   python3 integrations_tests/proxai_api_test.py --print-code
+  python3 integrations_tests/proxai_api_test.py --env prod --print-code
 """
 import os
 import inspect
@@ -19,6 +20,7 @@ from pprint import pprint
 import json
 import argparse
 from dataclasses import asdict
+from typing import Literal
 
 _ROOT_INTEGRATION_TEST_PATH = f'{Path.home()}/proxai_integration_test/'
 _WEBVIEW_BASE_URL = 'http://localhost:3000'
@@ -53,13 +55,23 @@ def init_test_path():
   global _ROOT_CACHE_PATH
   global _EXPERIMENT_PATH
   global _PRINT_CODE
+  global _WEBVIEW_BASE_URL
+  global _PROXDASH_BASE_URL
   os.makedirs(_ROOT_INTEGRATION_TEST_PATH, exist_ok=True)
   parser = argparse.ArgumentParser(description='ProxAI Integration Test')
   parser.add_argument('--mode', type=str, default='latest',
                       help='Execution mode for the integration test')
   parser.add_argument('--print-code', action='store_true',
                       help='Print code blocks')
+  parser.add_argument('--env', choices=['dev', 'prod'], default='dev',
+                      help='Environment for the integration test')
   args = parser.parse_args()
+  if args.env == 'prod':
+    _WEBVIEW_BASE_URL = 'https://proxai.co'
+    _PROXDASH_BASE_URL = 'https://proxainest-production.up.railway.app'
+  else:
+    _WEBVIEW_BASE_URL = 'http://localhost:3000'
+    _PROXDASH_BASE_URL = 'http://localhost:3001'
   _PRINT_CODE = args.print_code
   dir_list = os.listdir(_ROOT_INTEGRATION_TEST_PATH)
   test_ids = [
