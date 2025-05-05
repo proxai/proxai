@@ -439,6 +439,7 @@ class ProxDashConnection(state_controller.StateControlled):
       'temperature': logging_record.query_record.temperature,
       'stop': stop,
       'hashValue': logging_record.query_record.hash_value,
+      'queryTokenCount': logging_record.query_record.token_count,
       'response': logging_record.response_record.response,
       'error': logging_record.response_record.error,
       'errorTraceback': logging_record.response_record.error_traceback,
@@ -449,6 +450,7 @@ class ProxDashConnection(state_controller.StateControlled):
       'responseTime': (
           logging_record.response_record.response_time.total_seconds() * 1000),
       'estimatedCost': logging_record.response_record.estimated_cost,
+      'responseTokenCount': logging_record.response_record.token_count,
       'responseSource': logging_record.response_source,
       'lookFailReason': logging_record.look_fail_reason,
     }

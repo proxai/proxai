@@ -3,6 +3,7 @@ import proxai as px
 import random
 import time
 from pprint import pprint
+from dataclasses import asdict
 
 
 def simple_model_test():
@@ -10,9 +11,9 @@ def simple_model_test():
   result = px.generate_text(
       'This is a test message to check if the cache is working or '
       f'not. {random_int}',
-      provider_model=('gemini', 'gemini-1.5-flash'),
+      provider_model=('openai', 'o3-mini'),
       extensive_return=True)
-  pprint(result)
+  pprint(asdict(result))
 
 
 def simple_cache_test():
