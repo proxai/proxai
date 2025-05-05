@@ -2,7 +2,8 @@ import copy
 import datetime
 import traceback
 import functools
-from typing import Any, Callable, Dict, Optional
+import math
+from typing import Any, Callable, Dict, List, Optional
 import proxai.types as types
 import proxai.logging.utils as logging_utils
 import proxai.caching.query_cache as query_cache
@@ -246,9 +247,31 @@ class ProviderModelConnector(state_controller.StateControlled):
           query_record=query_record,
           message=message)
 
+  def get_token_count_estimate(
+      self,
+      prompt: Optional[str] = None,
+      messages: Optional[List[Dict[str, str]]] = None) -> int:
+    total = 0
+    def _get_token_count_estimate_from_prompt(prompt: str) -> int:
+      return math.ceil(max(
+          len(prompt) / 4,
+          len(prompt.strip().split()) * 1.3))
+    if prompt is not None:
+      total += _get_token_count_estimate_from_prompt(prompt)
+    if messages is not None:
+      total += 2
+      for message in messages:
+        total += _get_token_count_estimate_from_prompt(
+            message.get("content", "")) + 4
+    return total
+
   def get_estimated_cost(self, logging_record: types.LoggingRecord):
-    query_token_count = self.get_query_token_count(logging_record)
-    response_token_count = self.get_response_token_count(logging_record)
+    query_token_count = logging_record.query_record.token_count
+    if type(query_token_count) != int:
+      query_token_count = 0
+    response_token_count = logging_record.response_record.token_count
+    if type(response_token_count) != int:
+      response_token_count = 0
     return model_pricing_configs.get_provider_model_cost(
         provider_model_identifier=logging_record.query_record.provider_model,
         query_token_count=query_token_count,
@@ -259,19 +282,22 @@ class ProviderModelConnector(state_controller.StateControlled):
       return
     provider_stats = stats_type.BaseProviderStats()
     cache_stats = stats_type.BaseCacheStats()
+    query_token_count = logging_record.query_record.token_count
+    if type(query_token_count) != int:
+      query_token_count = 0
+    response_token_count = logging_record.response_record.token_count
+    if type(response_token_count) != int:
+      response_token_count = 0
     if logging_record.response_source == types.ResponseSource.PROVIDER:
       provider_stats.total_queries = 1
       if logging_record.response_record.response:
         provider_stats.total_successes = 1
       else:
         provider_stats.total_fails = 1
-      provider_stats.total_token_count = self.get_token_count(
-          logging_record=logging_record)
-      provider_stats.total_query_token_count = self.get_query_token_count(
-          logging_record=logging_record)
-      provider_stats.total_response_token_count = (
-          self.get_response_token_count(
-            logging_record=logging_record))
+      provider_stats.total_token_count = (
+          query_token_count + response_token_count)
+      provider_stats.total_query_token_count = query_token_count
+      provider_stats.total_response_token_count = response_token_count
       provider_stats.total_response_time = (
           logging_record.response_record.response_time.total_seconds())
       provider_stats.estimated_cost = (
@@ -284,13 +310,10 @@ class ProviderModelConnector(state_controller.StateControlled):
         cache_stats.total_success_return = 1
       else:
         cache_stats.total_fail_return = 1
-      cache_stats.saved_token_count = self.get_token_count(
-          logging_record=logging_record)
-      cache_stats.saved_query_token_count = self.get_query_token_count(
-          logging_record=logging_record)
-      cache_stats.saved_response_token_count = (
-          self.get_response_token_count(
-            logging_record=logging_record))
+      cache_stats.saved_token_count = (
+          query_token_count + response_token_count)
+      cache_stats.saved_query_token_count = query_token_count
+      cache_stats.saved_response_token_count = response_token_count
       cache_stats.saved_total_response_time = (
           logging_record.response_record.response_time.total_seconds())
       cache_stats.saved_estimated_cost = (
@@ -325,7 +348,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       prompt: Optional[str] = None,
       system: Optional[str] = None,
       messages: Optional[types.MessagesType] = None,
-      max_tokens: Optional[int] = 100,
+      max_tokens: Optional[int] = None,
       temperature: Optional[float] = None,
       stop: Optional[types.StopType] = None,
       provider_model: Optional[types.ProviderModelIdentifierType] = None,
@@ -354,7 +377,10 @@ class ProviderModelConnector(state_controller.StateControlled):
         messages=messages,
         max_tokens=max_tokens,
         temperature=temperature,
-        stop=stop)
+        stop=stop,
+        token_count=self.get_token_count_estimate(
+            prompt=prompt,
+            messages=messages))
 
     updated_query_record = self.feature_check(query_record=query_record)
 
@@ -409,7 +435,8 @@ class ProviderModelConnector(state_controller.StateControlled):
     if response != None:
       query_response_record = functools.partial(
           types.QueryResponseRecord,
-          response=response)
+          response=response,
+          token_count=self.get_token_count_estimate(prompt=response))
     else:
       query_response_record = functools.partial(
           types.QueryResponseRecord,
@@ -454,18 +481,6 @@ class ProviderModelConnector(state_controller.StateControlled):
     raise NotImplementedError
 
   def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
-    raise NotImplementedError
-
-  def get_token_count(
-      self, logging_record: types.LoggingRecord) -> int:
-    raise NotImplementedError
-
-  def get_query_token_count(
-      self, logging_record: types.LoggingRecord) -> int:
-    raise NotImplementedError
-
-  def get_response_token_count(
-      self, logging_record: types.LoggingRecord) -> int:
     raise NotImplementedError
 
   def generate_text_proc(self, query_record: types.QueryRecord) -> dict:

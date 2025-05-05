@@ -131,6 +131,7 @@ class QueryRecord:
   temperature: Optional[float] = None
   stop: Optional[StopType] = None
   hash_value: Optional[str] = None
+  token_count: Optional[int] = None
 
 
 @dataclasses.dataclass
@@ -143,6 +144,7 @@ class QueryResponseRecord:
   local_time_offset_minute: Optional[int] = None
   response_time: Optional[datetime.timedelta] = None
   estimated_cost: Optional[int] = None
+  token_count: Optional[int] = None
 
 
 @dataclasses.dataclass

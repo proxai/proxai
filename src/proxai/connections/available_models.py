@@ -307,7 +307,6 @@ class AvailableModels(state_controller.StateControlled):
     try:
       logging_record: types.LoggingRecord = model_connector.generate_text(
           prompt=_GENERATE_TEXT_TEST_PROMPT,
-          max_tokens=_GENERATE_TEXT_TEST_MAX_TOKENS,
           use_cache=False)
       return logging_record
     except Exception as e:

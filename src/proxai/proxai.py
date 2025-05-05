@@ -477,7 +477,7 @@ def generate_text(
     prompt: Optional[str] = None,
     system: Optional[str] = None,
     messages: Optional[types.MessagesType] = None,
-    max_tokens: Optional[int] = 1000,
+    max_tokens: Optional[int] = None,
     temperature: Optional[float] = None,
     stop: Optional[types.StopType] = None,
     provider_model: Optional[types.ProviderModelIdentifierType] = None,

@@ -395,4 +395,8 @@ class TestModelConnector:
     run_time_stats = stats[stats_type.GlobalStatType.RUN_TIME]
     assert run_time_stats.provider_stats.total_queries == 1
     assert run_time_stats.provider_stats.total_successes == 1
-    assert run_time_stats.provider_stats.total_token_count == 100
+    assert run_time_stats.provider_stats.total_token_count > 0
+    assert run_time_stats.provider_stats.total_query_token_count > 0
+    assert run_time_stats.provider_stats.total_response_token_count > 0
+    assert run_time_stats.provider_stats.total_response_time > 0
+    assert run_time_stats.provider_stats.estimated_cost > 0
