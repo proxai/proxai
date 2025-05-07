@@ -57,6 +57,15 @@ StopType = Union[str, List[str]]
 MessagesType = List[Dict[str, str]]
 
 
+class ModelSizeType(str, enum.Enum):
+  SMALL = 'small'
+  MEDIUM = 'medium'
+  LARGE = 'large'
+  LARGEST = 'largest'
+
+ModelSizeIdentifierType = Union[ModelSizeType, str]
+
+
 @dataclasses.dataclass
 class ProviderModelPricingType:
   per_response_token_cost: float
