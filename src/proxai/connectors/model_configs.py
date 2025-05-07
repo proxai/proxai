@@ -599,18 +599,123 @@ GENERATE_TEXT_MODELS: Dict[
   }),
 })
 
-
-LARGEST_GENERATE_TEXT_MODELS: Dict[
-    str, types.ProviderModelType] = MappingProxyType({
+SMALL_GENERATE_TEXT_MODELS: Dict[
+    str, Dict[str, types.ProviderModelType]] = MappingProxyType({
+  'mock_provider': MappingProxyType({
+    'mock_model': ALL_MODELS['mock_provider']['mock_model'],
+  }),
+  'mock_failing_provider': MappingProxyType({
+    'mock_failing_model': ALL_MODELS['mock_failing_provider']['mock_failing_model'],
+  }),
+  'mock_slow_provider': MappingProxyType({
+    'mock_slow_model': ALL_MODELS['mock_slow_provider']['mock_slow_model'],
+  }),
   'openai': MappingProxyType({
+    'gpt-4.1-nano': ALL_MODELS['openai']['gpt-4.1-nano'],
+    'gpt-4o-mini': ALL_MODELS['openai']['gpt-4o-mini'],
+    'o1-mini': ALL_MODELS['openai']['o1-mini'],
+    'o3-mini': ALL_MODELS['openai']['o3-mini'],
+    'o4-mini': ALL_MODELS['openai']['o4-mini'],
+    'gpt-4o-mini-search-preview': ALL_MODELS['openai']['gpt-4o-mini-search-preview'],
+    'gpt-3.5-turbo': ALL_MODELS['openai']['gpt-3.5-turbo'],
+  }),
+  'claude': MappingProxyType({
+    '3-haiku': ALL_MODELS['claude']['3-haiku'],
+    'haiku': ALL_MODELS['claude']['haiku'],
+  }),
+  'gemini': MappingProxyType({
+    'gemini-1.5-flash-8b': ALL_MODELS['gemini']['gemini-1.5-flash-8b'],
+    'gemini-1.5-flash': ALL_MODELS['gemini']['gemini-1.5-flash'],
+    'gemini-2.0-flash-lite': ALL_MODELS['gemini']['gemini-2.0-flash-lite'],
+  }),
+  'cohere': MappingProxyType({
+    'command-r7b': ALL_MODELS['cohere']['command-r7b'],
+    'command-light': ALL_MODELS['cohere']['command-light'],
+    'command-light-nightly': ALL_MODELS['cohere']['command-light-nightly'],
+  }),
+  'databricks': MappingProxyType({
+    'meta-llama-3-1-8b-it': ALL_MODELS['databricks']['meta-llama-3-1-8b-it'],
+  }),
+  'mistral': MappingProxyType({
+    'ministral-3b': ALL_MODELS['mistral']['ministral-3b'],
+    'ministral-8b': ALL_MODELS['mistral']['ministral-8b'],
+    'open-mistral-7b': ALL_MODELS['mistral']['open-mistral-7b'],
+    'mistral-small': ALL_MODELS['mistral']['mistral-small'],
+  }),
+  'huggingface': MappingProxyType({
+    'gemma-2-2b-it': ALL_MODELS['huggingface']['gemma-2-2b-it'],
+    'meta-llama-3.1-8b-it': ALL_MODELS['huggingface']['meta-llama-3.1-8b-it'],
+  }),
+  'grok': MappingProxyType({
+    'grok-3-mini-beta': ALL_MODELS['grok']['grok-3-mini-beta'],
+    'grok-3-mini-fast-beta': ALL_MODELS['grok']['grok-3-mini-fast-beta'],
+  }),
+})
+
+MEDIUM_GENERATE_TEXT_MODELS: Dict[
+    str, Dict[str, types.ProviderModelType]] = MappingProxyType({
+  'openai': MappingProxyType({
+    'gpt-4.1-mini': ALL_MODELS['openai']['gpt-4.1-mini'],
+    'gpt-4': ALL_MODELS['openai']['gpt-4'],
+    'gpt-4-turbo': ALL_MODELS['openai']['gpt-4-turbo'],
+    'gpt-4o-search-preview': ALL_MODELS['openai']['gpt-4o-search-preview'],
+    'chatgpt-4o-latest': ALL_MODELS['openai']['chatgpt-4o-latest'],
+  }),
+  'claude': MappingProxyType({
+    '3-sonnet': ALL_MODELS['claude']['3-sonnet'],
+    '3.5-sonnet': ALL_MODELS['claude']['3.5-sonnet'],
+    '3.5-sonnet-v2': ALL_MODELS['claude']['3.5-sonnet-v2'],
+  }),
+  'gemini': MappingProxyType({
+    'gemini-1.5-pro': ALL_MODELS['gemini']['gemini-1.5-pro'],
+    'gemini-2.0-flash': ALL_MODELS['gemini']['gemini-2.0-flash'],
+  }),
+  'cohere': MappingProxyType({
+    'command': ALL_MODELS['cohere']['command'],
+    'command-nightly': ALL_MODELS['cohere']['command-nightly'],
+    'command-r': ALL_MODELS['cohere']['command-r'],
+    'command-r-08-2024': ALL_MODELS['cohere']['command-r-08-2024'],
+    'command-r-plus': ALL_MODELS['cohere']['command-r-plus'],
+  }),
+  'databricks': MappingProxyType({
+    'mixtral-8x7b-it': ALL_MODELS['databricks']['mixtral-8x7b-it'],
+    'claude-3-7-sonnet': ALL_MODELS['databricks']['claude-3-7-sonnet'],
+  }),
+  'mistral': MappingProxyType({
+    'open-mistral-nemo': ALL_MODELS['mistral']['open-mistral-nemo'],
+    'open-mixtral-8x7b': ALL_MODELS['mistral']['open-mixtral-8x7b'],
+    'pixtral-12b': ALL_MODELS['mistral']['pixtral-12b'],
+    'codestral': ALL_MODELS['mistral']['codestral'],
+    'mistral-saba': ALL_MODELS['mistral']['mistral-saba'],
+  }),
+  'huggingface': MappingProxyType({
+    'phi-4': ALL_MODELS['huggingface']['phi-4'],
+    'deepseek-r1': ALL_MODELS['huggingface']['deepseek-r1'],
+  }),
+  'deepseek': MappingProxyType({
+    'deepseek-r1': ALL_MODELS['deepseek']['deepseek-r1'],
+  }),
+  'grok': MappingProxyType({
+    'grok-3-beta': ALL_MODELS['grok']['grok-3-beta'],
+  }),
+})
+
+LARGE_GENERATE_TEXT_MODELS: Dict[
+    str, Dict[str, types.ProviderModelType]] = MappingProxyType({
+  'openai': MappingProxyType({
+    'gpt-4.1': ALL_MODELS['openai']['gpt-4.1'],
+    'gpt-4.5-preview': ALL_MODELS['openai']['gpt-4.5-preview'],
+    'gpt-4o': ALL_MODELS['openai']['gpt-4o'],
+    'o1': ALL_MODELS['openai']['o1'],
     'o1-pro': ALL_MODELS['openai']['o1-pro'],
+    'o3': ALL_MODELS['openai']['o3'],
   }),
   'claude': MappingProxyType({
     'sonnet': ALL_MODELS['claude']['sonnet'],
+    'opus': ALL_MODELS['claude']['opus'],
   }),
   'gemini': MappingProxyType({
-    'gemini-2.5-pro-preview-03-25': ALL_MODELS[
-        'gemini']['gemini-2.5-pro-preview-03-25'],
+    'gemini-2.5-pro-preview-03-25': ALL_MODELS['gemini']['gemini-2.5-pro-preview-03-25'],
   }),
   'cohere': MappingProxyType({
     'command-a': ALL_MODELS['cohere']['command-a'],
@@ -618,16 +723,15 @@ LARGEST_GENERATE_TEXT_MODELS: Dict[
   'databricks': MappingProxyType({
     'llama-4-maverick': ALL_MODELS['databricks']['llama-4-maverick'],
     'dbrx-it': ALL_MODELS['databricks']['dbrx-it'],
-    # TODO: This is extremely slow model. Until better filtering, it is not
-    # included in the list.
+    'meta-llama-3-3-70b-it': ALL_MODELS['databricks']['meta-llama-3-3-70b-it'],
     # 'meta-llama-3-1-405b-it': ALL_MODELS['databricks']['meta-llama-3-1-405b-it'],
   }),
   'mistral': MappingProxyType({
     'mistral-large': ALL_MODELS['mistral']['mistral-large'],
     'pixtral-large': ALL_MODELS['mistral']['pixtral-large'],
+    'open-mixtral-8x22b': ALL_MODELS['mistral']['open-mixtral-8x22b'],
   }),
   'huggingface': MappingProxyType({
-    'phi-4': ALL_MODELS['huggingface']['phi-4'],
     'qwen2.5-coder-32b-it': ALL_MODELS['huggingface']['qwen2.5-coder-32b-it'],
     'deepseek-v3': ALL_MODELS['huggingface']['deepseek-v3'],
   }),
@@ -638,6 +742,44 @@ LARGEST_GENERATE_TEXT_MODELS: Dict[
     'grok-3-fast-beta': ALL_MODELS['grok']['grok-3-fast-beta'],
   }),
 })
+
+LARGEST_GENERATE_TEXT_MODELS: Dict[
+    str, Dict[str, types.ProviderModelType]] = MappingProxyType({
+  'openai': MappingProxyType({
+    'o1-pro': ALL_MODELS['openai']['o1-pro'],
+  }),
+  'claude': MappingProxyType({
+    'opus': ALL_MODELS['claude']['opus'],
+  }),
+  'gemini': MappingProxyType({
+    'gemini-2.5-pro-preview-03-25': ALL_MODELS['gemini']['gemini-2.5-pro-preview-03-25'],
+  }),
+  'cohere': MappingProxyType({
+    'command-a': ALL_MODELS['cohere']['command-a'],
+  }),
+  'databricks': MappingProxyType({
+    'dbrx-it': ALL_MODELS['databricks']['dbrx-it'],
+    'meta-llama-3-3-70b-it': ALL_MODELS['databricks']['meta-llama-3-3-70b-it'],
+    # If 'meta-llama-3-1-405b-it' were active, it would be a candidate here:
+    # 'meta-llama-3-1-405b-it': ALL_MODELS['databricks']['meta-llama-3-1-405b-it'],
+  }),
+  'mistral': MappingProxyType({
+    'mistral-large': ALL_MODELS['mistral']['mistral-large'],
+    # Alternative or additional large Mistral model could be 'open-mixtral-8x22b'
+    # 'open-mixtral-8x22b': ALL_MODELS['mistral']['open-mixtral-8x22b'],
+  }),
+  'huggingface': MappingProxyType({
+    'qwen2.5-coder-32b-it': ALL_MODELS['huggingface']['qwen2.5-coder-32b-it'],
+    'deepseek-v3': ALL_MODELS['huggingface']['deepseek-v3'],
+  }),
+  'deepseek': MappingProxyType({
+    'deepseek-v3': ALL_MODELS['deepseek']['deepseek-v3'],
+  }),
+  'grok': MappingProxyType({
+    'grok-3-fast-beta': ALL_MODELS['grok']['grok-3-fast-beta'],
+  }),
+})
+
 
 def get_provider_model_config(
     model_identifier: types.ProviderModelIdentifierType
