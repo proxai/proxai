@@ -782,5 +782,5 @@ class AvailableModels(state_controller.StateControlled):
 
     raise ValueError(
         f'Provider model not found in working models: ({provider}, {model})\n'
-        + f'Logging Record: {model_status.provider_queries[provider_model]}'
-        if model_status.provider_queries[provider_model] else '')
+        + 'Logging Record: '
+        + f'{model_status.provider_queries.get(provider_model, "")}')

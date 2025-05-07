@@ -1,4 +1,5 @@
 import os
+import copy
 from typing import Dict, Optional, List
 import proxai.types as types
 from proxai import proxai
@@ -114,7 +115,7 @@ class TestAvailableModels:
     models = types.ModelStatus()
     available_models_manager._get_all_models(
         models, call_type=types.CallType.GENERATE_TEXT)
-    available_models_manager._filter_by_provider_key(models)
+    available_models_manager._filter_by_provider_api_key(models)
     assert models.unprocessed_models == get_models_set(['openai', 'claude'])
     assert models.provider_queries == {}  # No queries should be filtered out since no queries exist yet
 
@@ -125,7 +126,7 @@ class TestAvailableModels:
     models = types.ModelStatus()
     available_models_manager._get_all_models(
         models, call_type=types.CallType.GENERATE_TEXT)
-    available_models_manager._filter_by_provider_key(models)
+    available_models_manager._filter_by_provider_api_key(models)
     available_models_manager._filter_by_cache(
         models, call_type=types.CallType.GENERATE_TEXT)
     assert models.unprocessed_models == (
@@ -151,55 +152,68 @@ class TestAvailableModels:
         provider_model in models.working_models.union(models.failed_models)
         for provider_model in models.provider_queries)
 
-  def test_filter_largest_models(self):
+  def test_filter_by_model_size(self):
     available_models_manager = self._get_available_models()
     models = types.ModelStatus()
 
-    # Add some models to working and unprocessed sets
+    # Add models from small, medium, large, largest model sizes
     models.unprocessed_models.add(
-        model_configs.ALL_MODELS['openai']['gpt-3.5-turbo'])
+        model_configs.ALL_MODELS['openai']['gpt-4o-mini'])
     models.unprocessed_models.add(
-        model_configs.ALL_MODELS['openai']['o1-pro'])
-    models.working_models.add(
+        model_configs.ALL_MODELS['openai']['o1-mini'])
+    models.unprocessed_models.add(
+        model_configs.ALL_MODELS['openai']['gpt-4.1'])
+    models.unprocessed_models.add(
+        model_configs.ALL_MODELS['claude']['3-haiku'])
+    models.unprocessed_models.add(
         model_configs.ALL_MODELS['claude']['haiku'])
-    models.working_models.add(
+    models.unprocessed_models.add(
         model_configs.ALL_MODELS['claude']['sonnet'])
 
-    # Add a provider query for a model that will be filtered out
-    models.provider_queries[
-        model_configs.ALL_MODELS['claude']['haiku']
-    ] = types.LoggingRecord(
-      query_record=types.QueryRecord(
-          provider_model=model_configs.ALL_MODELS['claude']['haiku']),
-          response_record=types.QueryResponseRecord(response='response1'))
+    test_models = copy.deepcopy(models)
+    available_models_manager._filter_by_model_size(
+        test_models,
+        model_size=types.ModelSizeType.SMALL)
+    assert test_models.unprocessed_models == set([
+        model_configs.ALL_MODELS['openai']['gpt-4o-mini'],
+        model_configs.ALL_MODELS['claude']['3-haiku'],
+    ])
 
-    # Add a provider query for a model that will remain
-    models.provider_queries[
-        model_configs.ALL_MODELS['claude']['sonnet']
-    ] = types.LoggingRecord(
-        query_record=types.QueryRecord(
-            provider_model=model_configs.ALL_MODELS['claude']['sonnet']),
-        response_record=types.QueryResponseRecord(response='response2'))
+    test_models = copy.deepcopy(models)
+    available_models_manager._filter_by_model_size(
+        test_models,
+        model_size=types.ModelSizeType.MEDIUM)
+    assert test_models.unprocessed_models == set([
+        model_configs.ALL_MODELS['openai']['o1-mini'],
+        model_configs.ALL_MODELS['claude']['haiku'],
+    ])
 
-    available_models_manager._filter_largest_models(models)
+    test_models = copy.deepcopy(models)
+    available_models_manager._filter_by_model_size(
+        test_models,
+        model_size=types.ModelSizeType.LARGE)
+    assert test_models.unprocessed_models == set([
+        model_configs.ALL_MODELS['openai']['gpt-4.1'],
+        model_configs.ALL_MODELS['claude']['sonnet'],
+    ])
 
-    # Check that only largest models remain in unprocessed and working sets
-    assert models.unprocessed_models == set([
-        model_configs.ALL_MODELS['openai']['o1-pro']])
-    assert models.working_models == set([
-        model_configs.ALL_MODELS['claude']['sonnet']])
+    test_models = copy.deepcopy(models)
+    available_models_manager._filter_by_model_size(
+        test_models,
+        model_size=types.ModelSizeType.LARGEST)
+    assert test_models.unprocessed_models == set([
+        model_configs.ALL_MODELS['openai']['gpt-4.1'],
+        model_configs.ALL_MODELS['claude']['sonnet'],
+    ])
 
-    # Check that filtered models were moved to filtered_models set
-    assert models.filtered_models == set([
-        model_configs.ALL_MODELS['openai']['gpt-3.5-turbo'],
-        model_configs.ALL_MODELS['claude']['haiku']])
-
-    # Check that provider queries for filtered models were removed
-    assert len(models.provider_queries) == 1
-    assert models.provider_queries[
-        model_configs.ALL_MODELS['claude']['sonnet']
-    ].query_record.provider_model == (
-        model_configs.ALL_MODELS['claude']['sonnet'])
+    test_models = copy.deepcopy(models)
+    available_models_manager._filter_by_model_size(
+        test_models,
+        model_size='small')
+    assert test_models.unprocessed_models == set([
+        model_configs.ALL_MODELS['openai']['gpt-4o-mini'],
+        model_configs.ALL_MODELS['claude']['3-haiku'],
+    ])
 
   @pytest.mark.parametrize('allow_multiprocessing', [True, False])
   def test_test_models(self, allow_multiprocessing):
@@ -211,7 +225,7 @@ class TestAvailableModels:
     models = types.ModelStatus()
     available_models_manager._get_all_models(
         models, call_type=types.CallType.GENERATE_TEXT)
-    available_models_manager._filter_by_provider_key(models)
+    available_models_manager._filter_by_provider_api_key(models)
 
     available_models_manager._test_models(
         models, call_type=types.CallType.GENERATE_TEXT)
@@ -219,13 +233,6 @@ class TestAvailableModels:
     assert models.unprocessed_models == set()
     assert models.working_models == get_models_set(['openai'])
     assert models.failed_models == set([
-        model_configs.ALL_MODELS['mock_failing_provider']['mock_failing_model']])
-
-    load_cache = model_cache.ModelCacheManager(
-        cache_options=types.CacheOptions(cache_path=self.cache_dir.name))
-    loaded_data = load_cache.get(call_type=types.CallType.GENERATE_TEXT)
-    assert loaded_data.working_models == get_models_set(['openai'])
-    assert loaded_data.failed_models == set([
         model_configs.ALL_MODELS['mock_failing_provider']['mock_failing_model']])
 
   def test_get_all_models(self, monkeypatch):
@@ -278,39 +285,6 @@ class TestAvailableModels:
         model_configs.ALL_MODELS['openai']['gpt-4.1-mini']])
     assert len(models.provider_queries) >= 4  # Should match memory cache queries
 
-  def test_update_provider_queries(self):
-    available_models_manager = self._get_available_models()
-    models = types.ModelStatus()
-
-    # Add some test queries
-    models.provider_queries[
-        model_configs.ALL_MODELS['openai']['gpt-4']
-    ] = types.LoggingRecord(
-        query_record=types.QueryRecord(
-            provider_model=model_configs.ALL_MODELS['openai']['gpt-4']),
-        response_record=types.QueryResponseRecord(response='response1'))
-    models.provider_queries[
-        model_configs.ALL_MODELS['claude']['haiku']
-    ] = types.LoggingRecord(
-        query_record=types.QueryRecord(
-            provider_model=model_configs.ALL_MODELS['claude']['haiku']),
-        response_record=types.QueryResponseRecord(response='response2'))
-
-    # Add models to working set
-    models.working_models.add(
-        model_configs.ALL_MODELS['claude']['haiku'])
-    # Add models to filtered set
-    models.filtered_models.add(
-        model_configs.ALL_MODELS['openai']['gpt-4'])
-
-    # Test that queries for filtered models are removed
-    available_models_manager._update_provider_queries(models)
-    assert len(models.provider_queries) == 1
-    assert models.provider_queries[
-        model_configs.ALL_MODELS['claude']['haiku']
-    ].query_record.provider_model == (
-        model_configs.ALL_MODELS['claude']['haiku'])
-
   def test_get_providers_without_cache(self, monkeypatch):
     monkeypatch.setenv(
         model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key')
@@ -329,20 +303,12 @@ class TestAvailableModels:
         model_configs.PROVIDER_KEY_MAP['claude'][0], 'test_api_key')
     available_models_manager = self._get_available_models()
 
-    # First call should test all models since get_all_models hasn't been called
-    # yet
     providers = available_models_manager.list_providers()
     assert set(providers) == set(['openai', 'claude'])
 
-    # Second call should use existing results since get_all_models was already
-    # called
     monkeypatch.delenv(
         model_configs.PROVIDER_KEY_MAP['claude'][0], raising=False)
     providers = available_models_manager.list_providers()
-    assert set(providers) == set(['openai', 'claude'])
-
-    # Clear cache and verify all providers are tested again
-    providers = available_models_manager.list_providers(clear_model_cache=True)
     assert set(providers) == set(['openai'])
 
   def test_get_providers_invalid_call_type(self):
@@ -385,9 +351,8 @@ class TestAvailableModels:
         model_configs.PROVIDER_KEY_MAP['claude'][0], 'test_api_key')
     available_models_manager = self._get_available_models()
 
-    # First call should test all models since get_all_models hasn't been called yet
     models = available_models_manager.list_provider_models('openai')
-    # 'gpt-4.1-mini' saved as failed model, so it should be included
+    # 'gpt-4.1-mini' saved as failed model, so it should not be included
     assert set(models) == (
         get_models_set(['openai'])
         - set([model_configs.ALL_MODELS['openai']['gpt-4.1-mini']]))
@@ -396,23 +361,13 @@ class TestAvailableModels:
     assert set(models) == set(
         model_configs.GENERATE_TEXT_MODELS['claude'].values())
 
-    # Second call should use existing results since get_all_models was already called
     monkeypatch.delenv(
         model_configs.PROVIDER_KEY_MAP['claude'][0], raising=False)
     models = available_models_manager.list_provider_models('openai')
+    # 'gpt-4.1-mini' saved as failed model, so it should not be included
     assert set(models) == (
         get_models_set(['openai'])
         - set([model_configs.ALL_MODELS['openai']['gpt-4.1-mini']]))
-
-    models = available_models_manager.list_provider_models('claude')
-    assert set(models) == set(
-        model_configs.GENERATE_TEXT_MODELS['claude'].values())
-
-    # Clear cache and verify all models are tested again
-    models = available_models_manager.list_provider_models(
-        'openai', clear_model_cache=True)
-    assert set(models) == set(
-        model_configs.GENERATE_TEXT_MODELS['openai'].values())
     models = available_models_manager.list_provider_models('claude')
     assert set(models) == set()
 
@@ -485,19 +440,12 @@ class TestAvailableModels:
         model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key')
     available_models_manager = self._get_available_models()
 
-    # First call to populate cache
     provider_model = available_models_manager.get_model(
         'openai', 'gpt-4')
     assert provider_model == model_configs.ALL_MODELS['openai']['gpt-4']
 
-    # Second call still works because model is cached
     monkeypatch.delenv(
         model_configs.PROVIDER_KEY_MAP['openai'][0], raising=False)
-    provider_model = available_models_manager.get_model(
-        'openai', 'gpt-4')
-    assert provider_model == model_configs.ALL_MODELS['openai']['gpt-4']
-
-    # Third call should fail since key is not set
     with pytest.raises(
         ValueError,
         match='Provider model not found in working models'):
