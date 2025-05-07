@@ -624,6 +624,14 @@ def check_health(
       logging_options=logging_options,
       proxdash_options=proxdash_options)
 
+  def _get_modified_model_connector(
+      provider_model_identifier: types.ProviderModelIdentifierType
+  ) -> model_connector.ProviderModelConnector:
+    connector =  copy.deepcopy(_get_model_connector(provider_model_identifier))
+    connector.logging_options = logging_options
+    connector.proxdash_connection = proxdash_connection
+    return connector
+
   allow_multiprocessing = _set_allow_multiprocessing(
       allow_multiprocessing=allow_multiprocessing)
   model_test_timeout = _set_model_test_timeout(
@@ -636,7 +644,7 @@ def check_health(
       proxdash_connection=proxdash_connection,
       allow_multiprocessing=allow_multiprocessing,
       model_test_timeout=model_test_timeout,
-      get_model_connector=_get_model_connector)
+      get_model_connector=_get_modified_model_connector)
   model_status = models.list_models(
       verbose=verbose, return_all=True)
   if verbose:
