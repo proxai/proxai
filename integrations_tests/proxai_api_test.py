@@ -177,10 +177,38 @@ def list_models(state_data):
 
 
 @integration_block
-def list_models_with_only_large_models(state_data):
-  provider_models = px.models.list_models(only_largest_models=True)
+def list_models_with_model_size_filter(state_data):
+  start_time = time.time()
+  provider_models = px.models.list_models(model_size='small')
+  print(f'Small models: {len(provider_models)}')
   for provider_model in provider_models:
     print(f'{provider_model.provider:>25} - {provider_model.model}')
+  assert px.models.get_model(
+      provider='claude', model='3-haiku') in provider_models
+  end_time = time.time()
+  assert end_time - start_time < 1
+
+  start_time = time.time()
+  provider_models = px.models.list_models(
+      model_size=px.types.ModelSizeType.MEDIUM)
+  print(f'Medium models: {len(provider_models)}')
+  for provider_model in provider_models:
+    print(f'{provider_model.provider:>25} - {provider_model.model}')
+  assert px.models.get_model(
+      provider='claude', model='haiku') in provider_models
+  end_time = time.time()
+  assert end_time - start_time < 1
+
+  start_time = time.time()
+  provider_models = px.models.list_models(model_size='largest')
+  print(f'Largest models: {len(provider_models)}')
+  for provider_model in provider_models:
+    print(f'{provider_model.provider:>25} - {provider_model.model}')
+  assert px.models.get_model(
+      provider='claude', model='sonnet') in provider_models
+  end_time = time.time()
+  assert end_time - start_time < 1
+
   return state_data
 
 
@@ -208,6 +236,40 @@ def list_models_with_clear_model_cache_and_verbose_output(state_data):
     print(
         f'{provider_model.provider} - {provider_model.model}: ',
         f'{logging_queries.response_record.error[:120]}')
+  return state_data
+
+
+@integration_block
+def list_providers(state_data):
+  providers = px.models.list_providers()
+  print(f'Providers: {len(providers)}')
+  for provider in providers:
+    print(f'{provider}')
+  assert 'openai' in providers
+  assert 'gemini' in providers
+  return state_data
+
+
+@integration_block
+def list_provider_models(state_data):
+  provider_models = px.models.list_provider_models('openai')
+  print(f'Provider Models: {len(provider_models)}')
+  for provider_model in provider_models:
+    print(f'{provider_model.provider:>25} - {provider_model.model}')
+  assert px.models.get_model(
+      provider='openai', model='gpt-4o-mini') in provider_models
+  return state_data
+
+
+@integration_block
+def list_provider_models_with_model_size_filter(state_data):
+  provider_models = px.models.list_provider_models(
+      'openai', model_size='large')
+  print(f'Provider Models: {len(provider_models)}')
+  for provider_model in provider_models:
+    print(f'{provider_model.provider:>25} - {provider_model.model}')
+  assert px.models.get_model(
+      provider='openai', model='o1') in provider_models
   return state_data
 
 
@@ -1035,9 +1097,12 @@ def main():
   state_data = create_user(state_data=state_data)
   state_data = local_proxdash_connection(state_data=state_data, force_run=True)
   state_data = list_models(state_data=state_data)
-  state_data = list_models_with_only_large_models(state_data=state_data)
+  state_data = list_models_with_model_size_filter(state_data=state_data)
   state_data = list_models_with_return_all(state_data=state_data)
   state_data = list_models_with_clear_model_cache_and_verbose_output(state_data=state_data)
+  state_data = list_providers(state_data=state_data)
+  state_data = list_provider_models(state_data=state_data)
+  state_data = list_provider_models_with_model_size_filter(state_data=state_data)
   state_data = generate_text(state_data=state_data)
   state_data = generate_text_with_provider_model(state_data=state_data)
   state_data = generate_text_with_provider_model_type(state_data=state_data)
