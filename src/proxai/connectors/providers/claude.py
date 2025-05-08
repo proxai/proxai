@@ -16,9 +16,6 @@ class ClaudeConnector(model_connector.ProviderModelConnector):
   def init_mock_model(self):
     return claude_mock.ClaudeMock()
 
-  def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
-    return copy.deepcopy(query_record)
-
   def generate_text_proc(self, query_record: types.QueryRecord) -> str:
     # Note: Claude uses 'user' and 'assistant' as roles. 'system' is a
     # different parameter.

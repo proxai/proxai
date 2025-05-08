@@ -17,15 +17,6 @@ class MistralConnector(model_connector.ProviderModelConnector):
   def init_mock_model(self):
     return mistral_mock.MistralMock()
 
-  def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
-    query_record = copy.deepcopy(query_record)
-    if query_record.stop != None:
-      self.feature_fail(
-          query_record=query_record,
-          message='Stop sequences are not supported by Mistral')
-      query_record.stop = None
-    return query_record
-
   def generate_text_proc(self, query_record: types.QueryRecord) -> str:
     # Note: Mistral uses 'system', 'user', and 'assistant' as roles.
     query_messages = []

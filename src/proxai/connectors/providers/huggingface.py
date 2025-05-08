@@ -57,9 +57,6 @@ class HuggingFaceConnector(model_connector.ProviderModelConnector):
   def init_mock_model(self):
     return huggingface_mock.HuggingFaceMock()
 
-  def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
-    return copy.deepcopy(query_record)
-
   def generate_text_proc(self, query_record: types.QueryRecord) -> str:
     provider_model = query_record.provider_model
     query_messages = []

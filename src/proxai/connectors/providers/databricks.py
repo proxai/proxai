@@ -18,9 +18,6 @@ class DatabricksConnector(model_connector.ProviderModelConnector):
   def init_mock_model(self):
     return databricks_mock.DatabricksMock()
 
-  def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
-    return copy.deepcopy(query_record)
-
   def generate_text_proc(self, query_record: types.QueryRecord) -> str:
     # Note: Databricks tries to use same parameters with OpenAI.
     # Some parameters seems not working as expected for some models. For

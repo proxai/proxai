@@ -19,9 +19,6 @@ class GrokConnector(model_connector.ProviderModelConnector):
   def init_mock_model(self):
     return openai_mock.OpenAIMock()
 
-  def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
-    return copy.deepcopy(query_record)
-
   def generate_text_proc(self, query_record: types.QueryRecord) -> str:
     # Note: OpenAI uses 'system', 'user', and 'assistant' as roles.
     query_messages = []

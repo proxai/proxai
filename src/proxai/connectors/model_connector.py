@@ -13,6 +13,7 @@ import proxai.serializers.hash_serializer as hash_serializer
 import proxai.connections.proxdash as proxdash
 import proxai.connectors.model_configs as model_configs
 import proxai.connectors.model_pricing_configs as model_pricing_configs
+import proxai.connectors.model_feature_configs as model_feature_configs
 import proxai.state_controllers.state_controller as state_controller
 
 _PROVIDER_MODEL_STATE_PROPERTY = '_provider_model_state'
@@ -247,6 +248,26 @@ class ProviderModelConnector(state_controller.StateControlled):
           query_record=query_record,
           message=message)
 
+  def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
+    query_record = copy.deepcopy(query_record)
+    if (self.provider_model.provider
+        not in model_feature_configs.GENERATE_TEXT_FEATURES):
+      return query_record
+
+    model_features = model_feature_configs.GENERATE_TEXT_FEATURES[
+        self.provider_model.provider]
+    if self.provider_model.model not in model_features:
+      return query_record
+
+    model_feature_config = model_features[self.provider_model.model]
+    for feature in model_feature_config.not_supported_features:
+      if getattr(query_record, feature) is not None:
+        self.feature_fail(
+            message=f'{self.provider_model.model} does not support {feature}.',
+            query_record=query_record)
+        setattr(query_record, feature, None)
+    return query_record
+
   def get_token_count_estimate(
       self,
       prompt: Optional[str] = None,
@@ -478,9 +499,6 @@ class ProviderModelConnector(state_controller.StateControlled):
     raise NotImplementedError
 
   def init_mock_model(self):
-    raise NotImplementedError
-
-  def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
     raise NotImplementedError
 
   def generate_text_proc(self, query_record: types.QueryRecord) -> dict:
