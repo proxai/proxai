@@ -8,7 +8,7 @@ import proxai.connectors.providers.huggingface_mock as huggingface_mock
 import proxai.connectors.model_connector as model_connector
 
 _MODEL_URL_MAP = {
-    'Qwen/Qwen2.5-Coder-32B-Instruct': 'https://router.huggingface.co/hf-inference/models/Qwen/Qwen2.5-Coder-32B-Instruct/v1/chat/completions',
+    'Qwen/Qwen3-32B': 'https://router.huggingface.co/hf-inference/models/Qwen/Qwen2.5-Coder-32B-Instruct/v1/chat/completions',
     'deepseek-ai/DeepSeek-R1': 'https://router.huggingface.co/together/v1/chat/completions',
     'deepseek-ai/DeepSeek-V3': 'https://router.huggingface.co/together/v1/chat/completions',
     'google/gemma-2-2b-it': 'https://router.huggingface.co/nebius/v1/chat/completions',
