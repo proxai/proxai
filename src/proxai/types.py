@@ -57,10 +57,24 @@ StopType = Union[str, List[str]]
 MessagesType = List[Dict[str, str]]
 
 
+class ModelSizeType(str, enum.Enum):
+  SMALL = 'small'
+  MEDIUM = 'medium'
+  LARGE = 'large'
+  LARGEST = 'largest'
+
+ModelSizeIdentifierType = Union[ModelSizeType, str]
+
+
 @dataclasses.dataclass
 class ProviderModelPricingType:
   per_response_token_cost: float
   per_query_token_cost: float
+
+
+@dataclasses.dataclass
+class ProviderModelFeatureType:
+  not_supported_features: List[str] = dataclasses.field(default_factory=list)
 
 
 @dataclasses.dataclass
@@ -131,6 +145,7 @@ class QueryRecord:
   temperature: Optional[float] = None
   stop: Optional[StopType] = None
   hash_value: Optional[str] = None
+  token_count: Optional[int] = None
 
 
 @dataclasses.dataclass
@@ -143,6 +158,7 @@ class QueryResponseRecord:
   local_time_offset_minute: Optional[int] = None
   response_time: Optional[datetime.timedelta] = None
   estimated_cost: Optional[int] = None
+  token_count: Optional[int] = None
 
 
 @dataclasses.dataclass

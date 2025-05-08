@@ -58,6 +58,8 @@ def encode_query_record(
     record['stop'] = query_record.stop
   if query_record.hash_value != None:
     record['hash_value'] = query_record.hash_value
+  if query_record.token_count != None:
+    record['token_count'] = str(query_record.token_count)
   return record
 
 
@@ -78,6 +80,8 @@ def decode_query_record(
     query_record.temperature = float(record['temperature'])
   query_record.stop = record.get('stop', None)
   query_record.hash_value = record.get('hash_value', None)
+  if 'token_count' in record:
+    query_record.token_count = int(record['token_count'])
   return query_record
 
 
@@ -101,6 +105,8 @@ def encode_query_response_record(
         query_response_record.response_time.total_seconds())
   if query_response_record.estimated_cost != None:
     record['estimated_cost'] = query_response_record.estimated_cost
+  if query_response_record.token_count != None:
+    record['token_count'] = str(query_response_record.token_count)
   return record
 
 
@@ -123,6 +129,8 @@ def decode_query_response_record(
         seconds=record['response_time'])
   if 'estimated_cost' in record:
     query_response_record.estimated_cost = record['estimated_cost']
+  if 'token_count' in record:
+    query_response_record.token_count = int(record['token_count'])
   return query_response_record
 
 

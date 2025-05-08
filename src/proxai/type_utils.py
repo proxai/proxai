@@ -66,3 +66,24 @@ def is_provider_model_tuple(value: Any) -> bool:
             and len(value) == 2
             and type(value[0]) == str
             and type(value[1]) == str)
+
+
+def check_model_size_identifier_type(
+    model_size_identifier: types.ModelSizeIdentifierType
+) -> types.ModelSizeType:
+  """Check if model size identifier is supported."""
+  if isinstance(model_size_identifier, types.ModelSizeType):
+    return model_size_identifier
+  elif type(model_size_identifier) == str:
+    valid_values = [size.value for size in types.ModelSizeType]
+    if model_size_identifier not in valid_values:
+      raise ValueError(
+          'Model size should be proxai.types.ModelSizeType or one of the '
+          'following strings: small, medium, large, largest\n'
+          f'Invalid model size identifier: {model_size_identifier}')
+    return types.ModelSizeType(model_size_identifier)
+  raise ValueError(
+        'Model size should be proxai.types.ModelSizeType or one of the '
+        'following strings: small, medium, large, largest\n'
+        f'Invalid model size identifier: {model_size_identifier}\n'
+        f'Type: {type(model_size_identifier)}')

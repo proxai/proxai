@@ -322,7 +322,7 @@ GENERATE_TEXT_PRICING: Dict[
       per_response_token_cost=33.33,
       per_query_token_cost=37.0,
     ),
-    'qwen2.5-coder-32b-it': types.ProviderModelPricingType(
+    'qwen3-32b': types.ProviderModelPricingType(
       per_response_token_cost=28.57,
       per_query_token_cost=31.74,
     ),

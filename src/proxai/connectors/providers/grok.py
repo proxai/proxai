@@ -19,23 +19,6 @@ class GrokConnector(model_connector.ProviderModelConnector):
   def init_mock_model(self):
     return openai_mock.OpenAIMock()
 
-  def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
-    return copy.deepcopy(query_record)
-
-  def get_token_count(self, logging_record: types.LoggingRecord):
-    # Note: This temporary implementation is not accurate.
-    # Better version should be calculated from the api response or at least
-    # libraries like tiktoker.
-    return logging_record.query_record.max_tokens
-
-  def get_query_token_count(self, logging_record: types.LoggingRecord):
-    # Note: Not implemented yet.
-    return 0
-
-  def get_response_token_count(self, logging_record: types.LoggingRecord):
-    # Note: Not implemented yet.
-    return logging_record.query_record.max_tokens
-
   def generate_text_proc(self, query_record: types.QueryRecord) -> str:
     # Note: OpenAI uses 'system', 'user', and 'assistant' as roles.
     query_messages = []

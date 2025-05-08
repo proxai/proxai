@@ -240,3 +240,10 @@ class ModelCacheManager(state_controller.StateControlled):
         model_status_updates.provider_queries.items()):
       model_status.provider_queries[provider_model] = provider_query
     self._save_to_cache_path()
+
+  def save(
+      self,
+      model_status: types.ModelStatus,
+      call_type: types.CallType):
+    self.model_status_by_call_type[call_type] = copy.deepcopy(model_status)
+    self._save_to_cache_path()

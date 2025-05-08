@@ -8,6 +8,7 @@ Examples:
   python3 integrations_tests/proxai_api_test.py
   python3 integrations_tests/proxai_api_test.py --mode new
   python3 integrations_tests/proxai_api_test.py --print-code
+  python3 integrations_tests/proxai_api_test.py --env prod --print-code
 """
 import os
 import inspect
@@ -19,6 +20,7 @@ from pprint import pprint
 import json
 import argparse
 from dataclasses import asdict
+from typing import Literal
 
 _ROOT_INTEGRATION_TEST_PATH = f'{Path.home()}/proxai_integration_test/'
 _WEBVIEW_BASE_URL = 'http://localhost:3000'
@@ -53,13 +55,23 @@ def init_test_path():
   global _ROOT_CACHE_PATH
   global _EXPERIMENT_PATH
   global _PRINT_CODE
+  global _WEBVIEW_BASE_URL
+  global _PROXDASH_BASE_URL
   os.makedirs(_ROOT_INTEGRATION_TEST_PATH, exist_ok=True)
   parser = argparse.ArgumentParser(description='ProxAI Integration Test')
   parser.add_argument('--mode', type=str, default='latest',
                       help='Execution mode for the integration test')
   parser.add_argument('--print-code', action='store_true',
                       help='Print code blocks')
+  parser.add_argument('--env', choices=['dev', 'prod'], default='dev',
+                      help='Environment for the integration test')
   args = parser.parse_args()
+  if args.env == 'prod':
+    _WEBVIEW_BASE_URL = 'https://proxai.co'
+    _PROXDASH_BASE_URL = 'https://proxainest-production.up.railway.app'
+  else:
+    _WEBVIEW_BASE_URL = 'http://localhost:3000'
+    _PROXDASH_BASE_URL = 'http://localhost:3001'
   _PRINT_CODE = args.print_code
   dir_list = os.listdir(_ROOT_INTEGRATION_TEST_PATH)
   test_ids = [
@@ -165,10 +177,38 @@ def list_models(state_data):
 
 
 @integration_block
-def list_models_with_only_large_models(state_data):
-  provider_models = px.models.list_models(only_largest_models=True)
+def list_models_with_model_size_filter(state_data):
+  start_time = time.time()
+  provider_models = px.models.list_models(model_size='small')
+  print(f'Small models: {len(provider_models)}')
   for provider_model in provider_models:
     print(f'{provider_model.provider:>25} - {provider_model.model}')
+  assert px.models.get_model(
+      provider='claude', model='3-haiku') in provider_models
+  end_time = time.time()
+  assert end_time - start_time < 1
+
+  start_time = time.time()
+  provider_models = px.models.list_models(
+      model_size=px.types.ModelSizeType.MEDIUM)
+  print(f'Medium models: {len(provider_models)}')
+  for provider_model in provider_models:
+    print(f'{provider_model.provider:>25} - {provider_model.model}')
+  assert px.models.get_model(
+      provider='claude', model='haiku') in provider_models
+  end_time = time.time()
+  assert end_time - start_time < 1
+
+  start_time = time.time()
+  provider_models = px.models.list_models(model_size='largest')
+  print(f'Largest models: {len(provider_models)}')
+  for provider_model in provider_models:
+    print(f'{provider_model.provider:>25} - {provider_model.model}')
+  assert px.models.get_model(
+      provider='claude', model='sonnet') in provider_models
+  end_time = time.time()
+  assert end_time - start_time < 1
+
   return state_data
 
 
@@ -196,6 +236,40 @@ def list_models_with_clear_model_cache_and_verbose_output(state_data):
     print(
         f'{provider_model.provider} - {provider_model.model}: ',
         f'{logging_queries.response_record.error[:120]}')
+  return state_data
+
+
+@integration_block
+def list_providers(state_data):
+  providers = px.models.list_providers()
+  print(f'Providers: {len(providers)}')
+  for provider in providers:
+    print(f'{provider}')
+  assert 'openai' in providers
+  assert 'gemini' in providers
+  return state_data
+
+
+@integration_block
+def list_provider_models(state_data):
+  provider_models = px.models.list_provider_models('openai')
+  print(f'Provider Models: {len(provider_models)}')
+  for provider_model in provider_models:
+    print(f'{provider_model.provider:>25} - {provider_model.model}')
+  assert px.models.get_model(
+      provider='openai', model='gpt-4o-mini') in provider_models
+  return state_data
+
+
+@integration_block
+def list_provider_models_with_model_size_filter(state_data):
+  provider_models = px.models.list_provider_models(
+      'openai', model_size='large')
+  print(f'Provider Models: {len(provider_models)}')
+  for provider_model in provider_models:
+    print(f'{provider_model.provider:>25} - {provider_model.model}')
+  assert px.models.get_model(
+      provider='openai', model='o1') in provider_models
   return state_data
 
 
@@ -1023,9 +1097,12 @@ def main():
   state_data = create_user(state_data=state_data)
   state_data = local_proxdash_connection(state_data=state_data, force_run=True)
   state_data = list_models(state_data=state_data)
-  state_data = list_models_with_only_large_models(state_data=state_data)
+  state_data = list_models_with_model_size_filter(state_data=state_data)
   state_data = list_models_with_return_all(state_data=state_data)
   state_data = list_models_with_clear_model_cache_and_verbose_output(state_data=state_data)
+  state_data = list_providers(state_data=state_data)
+  state_data = list_provider_models(state_data=state_data)
+  state_data = list_provider_models_with_model_size_filter(state_data=state_data)
   state_data = generate_text(state_data=state_data)
   state_data = generate_text_with_provider_model(state_data=state_data)
   state_data = generate_text_with_provider_model_type(state_data=state_data)
