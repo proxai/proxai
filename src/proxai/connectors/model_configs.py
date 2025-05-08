@@ -4,15 +4,16 @@ import proxai.types as types
 import proxai.type_utils as type_utils
 
 PROVIDER_KEY_MAP: Dict[str, Tuple[str]] = MappingProxyType({
-    'openai': tuple(['OPENAI_API_KEY']),
     'claude': tuple(['ANTHROPIC_API_KEY']),
-    'gemini': tuple(['GEMINI_API_KEY']),
     'cohere': tuple(['CO_API_KEY']),
     'databricks': tuple(['DATABRICKS_TOKEN', 'DATABRICKS_HOST']),
-    'mistral': tuple(['MISTRAL_API_KEY']),
-    'huggingface': tuple(['HUGGINGFACE_API_KEY']),
     'deepseek': tuple(['DEEPSEEK_API_KEY']),
+    'gemini': tuple(['GEMINI_API_KEY']),
     'grok': tuple(['XAI_API_KEY']),
+    'huggingface': tuple(['HUGGINGFACE_API_KEY']),
+    'mistral': tuple(['MISTRAL_API_KEY']),
+    'openai': tuple(['OPENAI_API_KEY']),
+
     'mock_provider': tuple(['MOCK_PROVIDER_API_KEY']),
     'mock_failing_provider': tuple(['MOCK_FAILING_PROVIDER']),
     'mock_slow_provider': tuple(['MOCK_SLOW_PROVIDER']),
@@ -428,10 +429,10 @@ ALL_MODELS: Dict[str, Dict[str, types.ProviderModelType]] = MappingProxyType({
       model='phi-4',
       provider_model_identifier='microsoft/phi-4'
     ),
-    'qwen2.5-coder-32b-it': types.ProviderModelType(
+    'qwen3-32b': types.ProviderModelType(
       provider='huggingface',
-      model='qwen2.5-coder-32b-it',
-      provider_model_identifier='Qwen/Qwen2.5-Coder-32B-Instruct'
+      model='qwen3-32b',
+      provider_model_identifier='Qwen/Qwen3-32B'
     ),
     'deepseek-r1': types.ProviderModelType(
       provider='huggingface',
@@ -581,7 +582,7 @@ GENERATE_TEXT_MODELS: Dict[
     'gemma-2-2b-it': ALL_MODELS['huggingface']['gemma-2-2b-it'],
     'meta-llama-3.1-8b-it': ALL_MODELS['huggingface']['meta-llama-3.1-8b-it'],
     'phi-4': ALL_MODELS['huggingface']['phi-4'],
-    'qwen2.5-coder-32b-it': ALL_MODELS['huggingface']['qwen2.5-coder-32b-it'],
+    'qwen3-32b': ALL_MODELS['huggingface']['qwen3-32b'],
     'deepseek-r1': ALL_MODELS['huggingface']['deepseek-r1'],
     'deepseek-v3': ALL_MODELS['huggingface']['deepseek-v3'],
   }),
@@ -599,45 +600,165 @@ GENERATE_TEXT_MODELS: Dict[
   }),
 })
 
-
-LARGEST_GENERATE_TEXT_MODELS: Dict[
-    str, types.ProviderModelType] = MappingProxyType({
-  'openai': MappingProxyType({
-    'o1-pro': ALL_MODELS['openai']['o1-pro'],
-  }),
+SMALL_GENERATE_TEXT_MODELS: Dict[
+    str, Dict[str, types.ProviderModelType]] = MappingProxyType({
   'claude': MappingProxyType({
-    'sonnet': ALL_MODELS['claude']['sonnet'],
+    '3-haiku': ALL_MODELS['claude']['3-haiku'],
+  }),
+  'cohere': MappingProxyType({
+    'command-light': ALL_MODELS['cohere']['command-light'],
+    'command-light-nightly': ALL_MODELS['cohere']['command-light-nightly'],
+    'command-r': ALL_MODELS['cohere']['command-r'],
+    'command-r-08-2024': ALL_MODELS['cohere']['command-r-08-2024'],
+    'command-r7b': ALL_MODELS['cohere']['command-r7b'],
+  }),
+  'deepseek': MappingProxyType({
+    'deepseek-v3': ALL_MODELS['deepseek']['deepseek-v3'],
   }),
   'gemini': MappingProxyType({
-    'gemini-2.5-pro-preview-03-25': ALL_MODELS[
-        'gemini']['gemini-2.5-pro-preview-03-25'],
+    'gemini-1.5-flash': ALL_MODELS['gemini']['gemini-1.5-flash'],
+    'gemini-1.5-flash-8b': ALL_MODELS['gemini']['gemini-1.5-flash-8b'],
+    'gemini-2.0-flash': ALL_MODELS['gemini']['gemini-2.0-flash'],
+    'gemini-2.0-flash-lite': ALL_MODELS['gemini']['gemini-2.0-flash-lite'],
+  }),
+  'grok': MappingProxyType({
+    'grok-3-mini-beta': ALL_MODELS['grok']['grok-3-mini-beta'],
+  }),
+  'mistral': MappingProxyType({
+    'codestral': ALL_MODELS['mistral']['codestral'],
+    'ministral-3b': ALL_MODELS['mistral']['ministral-3b'],
+    'ministral-8b': ALL_MODELS['mistral']['ministral-8b'],
+    'mistral-saba': ALL_MODELS['mistral']['mistral-saba'],
+    'mistral-small': ALL_MODELS['mistral']['mistral-small'],
+    'open-mistral-7b': ALL_MODELS['mistral']['open-mistral-7b'],
+    'open-mistral-nemo': ALL_MODELS['mistral']['open-mistral-nemo'],
+    'open-mixtral-8x7b': ALL_MODELS['mistral']['open-mixtral-8x7b'],
+    'pixtral-12b': ALL_MODELS['mistral']['pixtral-12b'],
+  }),
+  'openai': MappingProxyType({
+    'gpt-4.1-nano': ALL_MODELS['openai']['gpt-4.1-nano'],
+    'gpt-4o-mini': ALL_MODELS['openai']['gpt-4o-mini'],
+    'gpt-4o-mini-search-preview': ALL_MODELS['openai']['gpt-4o-mini-search-preview'],
+  }),
+})
+
+MEDIUM_GENERATE_TEXT_MODELS: Dict[
+    str, Dict[str, types.ProviderModelType]] = MappingProxyType({
+  'claude': MappingProxyType({
+    'haiku': ALL_MODELS['claude']['haiku'],
+  }),
+  'cohere': MappingProxyType({
+    'command': ALL_MODELS['cohere']['command'],
+    'command-nightly': ALL_MODELS['cohere']['command-nightly'],
+  }),
+  'deepseek': MappingProxyType({
+    'deepseek-r1': ALL_MODELS['deepseek']['deepseek-r1'],
+  }),
+  'gemini': MappingProxyType({
+    'gemini-1.5-pro': ALL_MODELS['gemini']['gemini-1.5-pro'],
+  }),
+  'grok': MappingProxyType({
+    'grok-3-mini-fast-beta': ALL_MODELS['grok']['grok-3-mini-fast-beta'],
+  }),
+  'huggingface': MappingProxyType({
+    'gemma-2-2b-it': ALL_MODELS['huggingface']['gemma-2-2b-it'],
+    'meta-llama-3.1-8b-it': ALL_MODELS['huggingface']['meta-llama-3.1-8b-it'],
+  }),
+  'mistral': MappingProxyType({
+    'mistral-large': ALL_MODELS['mistral']['mistral-large'],
+    'open-mixtral-8x22b': ALL_MODELS['mistral']['open-mixtral-8x22b'],
+    'pixtral-large': ALL_MODELS['mistral']['pixtral-large'],
+  }),
+  'openai': MappingProxyType({
+    'gpt-3.5-turbo': ALL_MODELS['openai']['gpt-3.5-turbo'],
+    'gpt-4.1-mini': ALL_MODELS['openai']['gpt-4.1-mini'],
+    'o1-mini': ALL_MODELS['openai']['o1-mini'],
+    'o3-mini': ALL_MODELS['openai']['o3-mini'],
+    'o4-mini': ALL_MODELS['openai']['o4-mini'],
+  }),
+})
+
+LARGE_GENERATE_TEXT_MODELS: Dict[
+    str, Dict[str, types.ProviderModelType]] = MappingProxyType({
+  'claude': MappingProxyType({
+    '3-sonnet': ALL_MODELS['claude']['3-sonnet'],
+    '3.5-sonnet': ALL_MODELS['claude']['3.5-sonnet'],
+    '3.5-sonnet-v2': ALL_MODELS['claude']['3.5-sonnet-v2'],
+    'opus': ALL_MODELS['claude']['opus'],
+    'sonnet': ALL_MODELS['claude']['sonnet'],
+  }),
+  'cohere': MappingProxyType({
+    'command-a': ALL_MODELS['cohere']['command-a'],
+    'command-r-plus': ALL_MODELS['cohere']['command-r-plus'],
+  }),
+  'databricks': MappingProxyType({
+    'claude-3-7-sonnet': ALL_MODELS['databricks']['claude-3-7-sonnet'],
+    'dbrx-it': ALL_MODELS['databricks']['dbrx-it'],
+    'llama-4-maverick': ALL_MODELS['databricks']['llama-4-maverick'],
+    'meta-llama-3-1-8b-it': ALL_MODELS['databricks']['meta-llama-3-1-8b-it'],
+    'meta-llama-3-3-70b-it': ALL_MODELS['databricks']['meta-llama-3-3-70b-it'],
+    'mixtral-8x7b-it': ALL_MODELS['databricks']['mixtral-8x7b-it'],
+  }),
+  'gemini': MappingProxyType({
+    'gemini-2.5-pro-preview-03-25': ALL_MODELS['gemini']['gemini-2.5-pro-preview-03-25'],
+  }),
+  'grok': MappingProxyType({
+    'grok-3-beta': ALL_MODELS['grok']['grok-3-beta'],
+    'grok-3-fast-beta': ALL_MODELS['grok']['grok-3-fast-beta'],
+  }),
+  'huggingface': MappingProxyType({
+    'deepseek-r1': ALL_MODELS['huggingface']['deepseek-r1'],
+    'deepseek-v3': ALL_MODELS['huggingface']['deepseek-v3'],
+    'phi-4': ALL_MODELS['huggingface']['phi-4'],
+    'qwen3-32b': ALL_MODELS['huggingface']['qwen3-32b'],
+  }),
+  'openai': MappingProxyType({
+    'chatgpt-4o-latest': ALL_MODELS['openai']['chatgpt-4o-latest'],
+    'gpt-4': ALL_MODELS['openai']['gpt-4'],
+    'gpt-4-turbo': ALL_MODELS['openai']['gpt-4-turbo'],
+    'gpt-4.1': ALL_MODELS['openai']['gpt-4.1'],
+    'gpt-4.5-preview': ALL_MODELS['openai']['gpt-4.5-preview'],
+    'gpt-4o': ALL_MODELS['openai']['gpt-4o'],
+    'gpt-4o-search-preview': ALL_MODELS['openai']['gpt-4o-search-preview'],
+    'o1': ALL_MODELS['openai']['o1'],
+    'o1-pro': ALL_MODELS['openai']['o1-pro'],
+    'o3': ALL_MODELS['openai']['o3'],
+  }),
+})
+
+LARGEST_GENERATE_TEXT_MODELS: Dict[
+    str, Dict[str, types.ProviderModelType]] = MappingProxyType({
+  'claude': MappingProxyType({
+    'sonnet': ALL_MODELS['claude']['sonnet'],
   }),
   'cohere': MappingProxyType({
     'command-a': ALL_MODELS['cohere']['command-a'],
   }),
   'databricks': MappingProxyType({
-    'llama-4-maverick': ALL_MODELS['databricks']['llama-4-maverick'],
     'dbrx-it': ALL_MODELS['databricks']['dbrx-it'],
-    # TODO: This is extremely slow model. Until better filtering, it is not
-    # included in the list.
-    # 'meta-llama-3-1-405b-it': ALL_MODELS['databricks']['meta-llama-3-1-405b-it'],
+    'meta-llama-3-3-70b-it': ALL_MODELS['databricks']['meta-llama-3-3-70b-it'],
   }),
-  'mistral': MappingProxyType({
-    'mistral-large': ALL_MODELS['mistral']['mistral-large'],
-    'pixtral-large': ALL_MODELS['mistral']['pixtral-large'],
+  'deepseek': MappingProxyType({
+    'deepseek-r1': ALL_MODELS['deepseek']['deepseek-r1'],
+  }),
+  'gemini': MappingProxyType({
+    'gemini-2.5-pro-preview-03-25': ALL_MODELS['gemini']['gemini-2.5-pro-preview-03-25'],
+  }),
+  'grok': MappingProxyType({
+    'grok-3-beta': ALL_MODELS['grok']['grok-3-beta'],
   }),
   'huggingface': MappingProxyType({
     'phi-4': ALL_MODELS['huggingface']['phi-4'],
-    'qwen2.5-coder-32b-it': ALL_MODELS['huggingface']['qwen2.5-coder-32b-it'],
-    'deepseek-v3': ALL_MODELS['huggingface']['deepseek-v3'],
+    'qwen3-32b': ALL_MODELS['huggingface']['qwen3-32b'],
   }),
-  'deepseek': MappingProxyType({
-    'deepseek-v3': ALL_MODELS['deepseek']['deepseek-v3'],
+  'mistral': MappingProxyType({
+    'mistral-large': ALL_MODELS['mistral']['mistral-large'],
   }),
-  'grok': MappingProxyType({
-    'grok-3-fast-beta': ALL_MODELS['grok']['grok-3-fast-beta'],
+  'openai': MappingProxyType({
+    'gpt-4.1': ALL_MODELS['openai']['gpt-4.1'],
   }),
 })
+
 
 def get_provider_model_config(
     model_identifier: types.ProviderModelIdentifierType

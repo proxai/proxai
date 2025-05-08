@@ -51,7 +51,8 @@ class TestProxaiApiUseCases:
       data = json.load(f)
       assert len(data['GENERATE_TEXT']['failed_models']) == 1
       assert data['GENERATE_TEXT']['unprocessed_models'] == []
-      assert data['GENERATE_TEXT']['filtered_models'] == []
+      # Mock slow model is filtered out
+      assert len(data['GENERATE_TEXT']['filtered_models']) == 1
       assert len(data['GENERATE_TEXT']['working_models']) >= 30
       assert len(data['GENERATE_TEXT']['provider_queries']) >= 30
 
@@ -64,7 +65,8 @@ class TestProxaiApiUseCases:
       data = json.load(f)
       assert len(data['GENERATE_TEXT']['failed_models']) == 1
       assert data['GENERATE_TEXT']['unprocessed_models'] == []
-      assert data['GENERATE_TEXT']['filtered_models'] == []
+      # Mock slow model is filtered out
+      assert len(data['GENERATE_TEXT']['filtered_models']) == 1
       assert len(data['GENERATE_TEXT']['working_models']) >= 30
       assert len(data['GENERATE_TEXT']['provider_queries']) >= 30
 
@@ -83,7 +85,8 @@ class TestProxaiApiUseCases:
       data = json.load(f)
       assert len(data['GENERATE_TEXT']['failed_models']) == 1
       assert data['GENERATE_TEXT']['unprocessed_models'] == []
-      assert data['GENERATE_TEXT']['filtered_models'] == []
+      # Mock slow model is filtered out
+      assert len(data['GENERATE_TEXT']['filtered_models']) == 1
       assert len(data['GENERATE_TEXT']['working_models']) >= 30
       assert len(data['GENERATE_TEXT']['provider_queries']) >= 30
 
@@ -130,7 +133,7 @@ class TestProxaiApiUseCases:
     assert time.time() - start < 1
 
     start = time.time()
-    models = px.models.list_models(only_largest_models=True)
+    models = px.models.list_models(model_size='largest')
     assert len(models) < 15
     assert time.time() - start < 1
 
@@ -180,7 +183,7 @@ class TestProxaiApiUseCases:
 
     # --- get_all_models with largest models ---
     start = time.time()
-    models = px.models.list_models(only_largest_models=True)
+    models = px.models.list_models(model_size='largest')
     assert len(models) < 15
     assert time.time() - start < 1
 

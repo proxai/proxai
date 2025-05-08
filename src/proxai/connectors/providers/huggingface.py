@@ -8,7 +8,7 @@ import proxai.connectors.providers.huggingface_mock as huggingface_mock
 import proxai.connectors.model_connector as model_connector
 
 _MODEL_URL_MAP = {
-    'Qwen/Qwen2.5-Coder-32B-Instruct': 'https://router.huggingface.co/hf-inference/models/Qwen/Qwen2.5-Coder-32B-Instruct/v1/chat/completions',
+    'Qwen/Qwen3-32B': 'https://router.huggingface.co/hf-inference/models/Qwen/Qwen2.5-Coder-32B-Instruct/v1/chat/completions',
     'deepseek-ai/DeepSeek-R1': 'https://router.huggingface.co/together/v1/chat/completions',
     'deepseek-ai/DeepSeek-V3': 'https://router.huggingface.co/together/v1/chat/completions',
     'google/gemma-2-2b-it': 'https://router.huggingface.co/nebius/v1/chat/completions',
@@ -56,23 +56,6 @@ class HuggingFaceConnector(model_connector.ProviderModelConnector):
 
   def init_mock_model(self):
     return huggingface_mock.HuggingFaceMock()
-
-  def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
-    return copy.deepcopy(query_record)
-
-  def get_token_count(self, logging_record: types.LoggingRecord):
-    # Note: This temporary implementation is not accurate.
-    # Better version should be calculated from the api response or at least
-    # libraries like tiktoker.
-    return logging_record.query_record.max_tokens
-
-  def get_query_token_count(self, logging_record: types.LoggingRecord):
-    # Note: Not implemented yet.
-    return 0
-
-  def get_response_token_count(self, logging_record: types.LoggingRecord):
-    # Note: Not implemented yet.
-    return logging_record.query_record.max_tokens
 
   def generate_text_proc(self, query_record: types.QueryRecord) -> str:
     provider_model = query_record.provider_model

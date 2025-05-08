@@ -24,6 +24,7 @@ def _get_query_record_options():
       {'max_tokens': 100},
       {'temperature': 0.5},
       {'stop': ['stop']},
+      {'token_count': 100},
       {'call_type': types.CallType.GENERATE_TEXT,
        'provider_model': model_configs.ALL_MODELS['openai']['gpt-4'],
        'prompt': 'Hello, world!',
@@ -31,7 +32,8 @@ def _get_query_record_options():
        'messages': [{'role': 'user', 'content': 'Hello, user!'}],
        'max_tokens': 100,
        'temperature': 0.5,
-       'stop': ['stop']},]
+       'stop': ['stop'],
+       'token_count': 100},]
 
 
 def _get_query_response_record_options():
@@ -45,6 +47,7 @@ def _get_query_response_record_options():
           // 60) * -1},
       {'response_time': datetime.timedelta(seconds=1)},
       {'estimated_cost': 1},
+      {'token_count': 100},
       {'response': 'Hello, world!',
        'error': 'Error message',
        'start_utc_date': datetime.datetime.now(datetime.timezone.utc),
@@ -53,7 +56,8 @@ def _get_query_response_record_options():
           datetime.datetime.now().astimezone().utcoffset().total_seconds()
           // 60) * -1,
        'response_time': datetime.timedelta(seconds=1),
-       'estimated_cost': 1},]
+       'estimated_cost': 1,
+       'token_count': 100},]
 
 
 def _get_cache_record_options():

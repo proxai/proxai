@@ -3,6 +3,7 @@ import proxai as px
 import random
 import time
 from pprint import pprint
+from dataclasses import asdict
 
 
 def simple_model_test():
@@ -10,9 +11,9 @@ def simple_model_test():
   result = px.generate_text(
       'This is a test message to check if the cache is working or '
       f'not. {random_int}',
-      provider_model=('gemini', 'gemini-1.5-flash'),
+      provider_model=('openai', 'o3-mini'),
       extensive_return=True)
-  pprint(result)
+  pprint(asdict(result))
 
 
 def simple_cache_test():
@@ -43,9 +44,24 @@ def simple_cache_test():
   print(f'3: {result}')
 
 
+def list_models():
+  px.connect(
+      experiment_path='simple_test/run_1',
+      logging_path=f'{Path.home()}/proxai_log/',
+      cache_path=f'{Path.home()}/proxai_cache/')
+  model_status = px.models.list_models(
+      model_size='small',
+      verbose=True,
+      return_all=True)
+  from pprint import pprint
+  pprint(model_status.working_models)
+  pprint(model_status.failed_models)
+
+
 def main():
-  simple_model_test()
+  # simple_model_test()
   # simple_cache_test()
+  list_models()
 
 
 if __name__ == '__main__':
