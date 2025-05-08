@@ -73,6 +73,11 @@ class ProviderModelPricingType:
 
 
 @dataclasses.dataclass
+class ProviderModelFeatureType:
+  not_supported_features: List[str] = dataclasses.field(default_factory=list)
+
+
+@dataclasses.dataclass
 class LoggingOptions:
   logging_path: Optional[str] = None
   stdout: bool = False
