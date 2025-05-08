@@ -429,10 +429,10 @@ ALL_MODELS: Dict[str, Dict[str, types.ProviderModelType]] = MappingProxyType({
       model='phi-4',
       provider_model_identifier='microsoft/phi-4'
     ),
-    'qwen2.5-coder-32b-it': types.ProviderModelType(
+    'qwen3-32b': types.ProviderModelType(
       provider='huggingface',
-      model='qwen2.5-coder-32b-it',
-      provider_model_identifier='Qwen/Qwen2.5-Coder-32B-Instruct'
+      model='qwen3-32b',
+      provider_model_identifier='Qwen/Qwen3-32B'
     ),
     'deepseek-r1': types.ProviderModelType(
       provider='huggingface',
@@ -582,7 +582,7 @@ GENERATE_TEXT_MODELS: Dict[
     'gemma-2-2b-it': ALL_MODELS['huggingface']['gemma-2-2b-it'],
     'meta-llama-3.1-8b-it': ALL_MODELS['huggingface']['meta-llama-3.1-8b-it'],
     'phi-4': ALL_MODELS['huggingface']['phi-4'],
-    'qwen2.5-coder-32b-it': ALL_MODELS['huggingface']['qwen2.5-coder-32b-it'],
+    'qwen3-32b': ALL_MODELS['huggingface']['qwen3-32b'],
     'deepseek-r1': ALL_MODELS['huggingface']['deepseek-r1'],
     'deepseek-v3': ALL_MODELS['huggingface']['deepseek-v3'],
   }),
@@ -710,7 +710,7 @@ LARGE_GENERATE_TEXT_MODELS: Dict[
     'deepseek-r1': ALL_MODELS['huggingface']['deepseek-r1'],
     'deepseek-v3': ALL_MODELS['huggingface']['deepseek-v3'],
     'phi-4': ALL_MODELS['huggingface']['phi-4'],
-    'qwen2.5-coder-32b-it': ALL_MODELS['huggingface']['qwen2.5-coder-32b-it'],
+    'qwen3-32b': ALL_MODELS['huggingface']['qwen3-32b'],
   }),
   'openai': MappingProxyType({
     'chatgpt-4o-latest': ALL_MODELS['openai']['chatgpt-4o-latest'],
@@ -749,7 +749,7 @@ LARGEST_GENERATE_TEXT_MODELS: Dict[
   }),
   'huggingface': MappingProxyType({
     'phi-4': ALL_MODELS['huggingface']['phi-4'],
-    'qwen2.5-coder-32b-it': ALL_MODELS['huggingface']['qwen2.5-coder-32b-it'],
+    'qwen3-32b': ALL_MODELS['huggingface']['qwen3-32b'],
   }),
   'mistral': MappingProxyType({
     'mistral-large': ALL_MODELS['mistral']['mistral-large'],
