@@ -1,85 +1,115 @@
 # ProxAI
 
-ProxAI is a lightweight abstraction layer for foundational AI model connections.
-It enables easy switching between providers and models for benchmarking or any
-other purposes. ProxAI adheres to the Zen of Python principles and prioritizes
-simplicity.
+<div align="center">
 
-## Installation
+<a href="https://proxai.co">
+<img src="assets/proxai.png" alt="ProxAI Logo" width="200" style="border-radius: 10px;"/>
+</a>
 
-### Package Installation
+[![PyPI version](https://img.shields.io/badge/pip-v0.2.0-blue.svg)](https://pypi.org/project/proxai/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/proxai/proxai/blob/main/LICENSE)
+[![Discord](https://img.shields.io/discord/1371968537446318191?color=7289DA&label=Discord&logo=discord&logoColor=white)](https://discord.gg/Hxg6tPpX)
 
-The simplest way to get ProxAI is via pip:
+⚡️ **One Interface for Every AI Model!** ⚡️
 
-```bash
-$ pip install proxai
+[Official Site](https://proxai.co/) •
+[Overview](https://www.proxai.co/overview) •
+[Docs](https://proxai.co/proxai-docs) •
+[Community](https://www.proxai.co/resources/community)
+
+</div>
+
+## Philosophy
+
+ProxAI simplifies AI integration by providing a unified interface for connecting to multiple AI providers.
+
+```python
+import proxai as px
+
+result = px.generate_text(
+    'Hello model! What is 23 + 45?',
+    provider_model=('claude', 'sonnet'))
+print(result)
+
+result = px.generate_text(
+    'Hello model! What is 23 + 45?',
+    provider_model=('openai', 'gpt-4o'))
+print(result)
 ```
+* ⭐️ **Simple Unified API:** Pythonic, easy, intuitive, and unified API for all AI models connection.
+* 💡 **All Major AI Providers:** Including Gemini, OpenAI, Claude, Grok, DeepSeek, Cohere, Mistral, and more.
+* 🚀 **Always Up-to-Date:** Let ProxAI handle all new released model integrations, you just list and pick.
+* 💻 **Model-agnostic AI development:** Write python code without thinking which AI provider and model you will use.
 
-### Foundation Model API Keys
-Before using ProxAI, set up access to third-party model providers as many as
-you wish. The principle is that more is better. Add your keys to `~/.zshrc`
-and run `source ~/.zshrc` before running ProxAI.
 
-   *  **OpenAI:**
-      * Get API key from: https://platform.openai.com/api-keys
-      * Environment variable: `export OPENAI_API_KEY="your-key"`
+## Features
 
-   *  **Claude:**
-      * Get API key from: https://console.anthropic.com/settings/keys
-      * Environment variable: `export ANTHROPIC_API_KEY="your-key"`
+* ⏰ **Ready to Start:** Takes 2 minutes to connect and get responses from all major models.
+* 🔍 **Pick and Switch:** Experiment with different models to find the best fit.
+* ⛑️ **Robust Error Handling:** Comprehensive error handling for API failures.
+* 💾 **Caching:** Speed up responses and reduce costs with built-in query and model caching.
+* 💰 **Cost Estimation:** Basic tracking of your estimated API call costs breakdown.
+* 🥂 **Integrations Status:** See the status of all your integrations at a glance.
+* 📊 **Analytics:** Total token usage, performance metrics, and more.
 
-   *  **Gemini:**
-      * Get API key from: https://aistudio.google.com/app/apikey
-      * Environment variable: `export GOOGLE_API_KEY="your-key"`
+## Quick Start
 
-   *  **Cohere:**
-      * Get API key from: https://dashboard.cohere.com/api-keys
-      * Environment variable: `export CO_API_KEY="your-key"`
+Check out our [Quick Start Guide](https://www.proxai.co/proxai-docs/) for a step-by-step guide on how to get started with ProxAI.
 
-   *  **Databricks:**
-      * Create workspace from: https://accounts.cloud.databricks.com/workspaces
-      * In your Databricks workspace, click your *Databricks username* in the
-      top bar, and then select *User Settings* from the drop down. Click
-      *Developer*. Next to *Access tokens*, click *Manage*. Click *Generate*
-      new token. [Official Documentation](https://docs.databricks.com/en/dev-tools/auth/pat.html)
-      * Add token to environment variable as: `export DATABRICKS_TOKEN="your-key"`
-      * Add your workspace url address to environment variable as:
-      `export DATABRICKS_HOST='https://<your-workspace-id>.cloud.databricks.com`
-      * Be careful about format. For example, ending workspace url as
-      `.cloud.databricks.com/` gives an error.
+1.  **Install ProxAI:**
+    ```bash
+    pip install proxai
+    ```
 
-   *  **Mistral:**
-      * Get API key from: https://console.mistral.ai/api-keys/
-      * Environment variable: `export MISTRAL_API_KEY="your-key"`
+2.  **Set API Keys:**
 
-   *  **Hugging Face:**
-      * Get API key from: https://huggingface.co/settings/tokens
-      * Environment variable: `export HUGGINGFACE_API_KEY="your-key"`
-      * Sign terms and conditions on: https://huggingface.co/google/gemma-7b-it
-      * **Note:** Registered models are not working well.
+    Export your AI provider API keys as environment variables:
+    ```bash
+    export OPENAI_API_KEY="your-openai-key"
+    export GEMINI_API_KEY="your-openai-key"
+    export ANTHROPIC_API_KEY="your-anthropic-key"
+    # Add other provider keys as needed
+    ```
+    or, one API key rule them all! ProxConnect🚀
+    ```bash
+    export PROXAI_API_KEY="your-proxai-key"
+    ```
+    See [Provider Integrations](https://www.proxai.co/proxai-docs/provider-integrations) page.
 
-## Usage
+3.  **Basic Usage:**
+    ```python
+    import proxai as px
 
-To-Do: "example code", "documents", "examples".
+    # Write model agnostic function
+    def get_meaning_of_universe():
+      response = px.generate_text('What is the meaning of universe?')
+      print(response)
 
-## Contributing to ProxAI
+    # List available models
+    provider_models = px.models.list_models()
 
-We are looking for contributors! We welcome all kinds of contributors, from fixing small typos to implementing bigger features. While we are working on a simple community guideline, don't wait for it. Feel free to jump in and contribute.
+    # Generate response for each model
+    for provider_model in provider_models:
+      px.set_model(provider_model)
+      print(f"Testing {provider_model} model")
+      get_meaning_of_universe()
+    ```
 
-To be able to run on your local machine, follow these commands:
+## 📚 Documentation
 
-```
-$ python3 -m venv .venv
-$ source .venv/bin/activate
-$ git clone https://github.com/proxai/proxai.git
-$ cd proxai
-$ pip install poetry
-$ poetry install
-$ python3 examples/ask_about_model.py
-```
+For full details on installation, all features, and advanced usage, please visit our **[Overview](https://www.proxai.co/overview)** and **[Documentation](https://www.proxai.co/proxai-docs)**.
 
-Please note that this project is released with a Code of Conduct. By contributing to this project, you agree to abide by its terms.
+## 📈 ProxDash (Optional Dashboard)
 
-## License
+Enhance your ProxAI experience with [ProxDash](https://www.proxai.co/pricing), our optional monitoring platform for usage tracking, analytics, and experiment management. The ProxAI library works perfectly standalone.
 
-`proxai` was created by github@proxai.co. github@proxai.co retains all rights to the source and it may not be reproduced, distributed, or used to create derivative works.
+## 🤝 Contribute & Connect
+
+* **Community:** [Learn how to contribute](https://www.proxai.co/resources/community)
+* **Discord:** [Join our server](https://discord.gg/Hxg6tPpX)
+* **Issues:** [Report bugs or request features](https://github.com/proxai/proxai/issues)
+* **GitHub:** <https://github.com/proxai/proxai>
+
+## ⚖️ License
+
+MIT License. See [LICENSE](https://github.com/proxai/proxai/LICENSE) for details.
