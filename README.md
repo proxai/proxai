@@ -46,8 +46,10 @@ print(result)
 
 * ⏰ **Ready to Start:** Takes 2 minutes to connect and get responses from all major models.
 * 🔍 **Pick and Switch:** Experiment with different models to find the best fit.
+* ⛑️ **Robust Error Handling:** Comprehensive error handling for API failures.
 * 💾 **Caching:** Speed up responses and reduce costs with built-in query and model caching.
-* 💰 **Cost Estimation:** Basic tracking of your estimated API call costs.
+* 💰 **Cost Estimation:** Basic tracking of your estimated API call costs and analytics.
+* 🥂 **Integrations Status:** See the status of all your integrations at a glance.
 
 ## Quick Start
 
