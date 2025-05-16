@@ -48,8 +48,9 @@ print(result)
 * 🔍 **Pick and Switch:** Experiment with different models to find the best fit.
 * ⛑️ **Robust Error Handling:** Comprehensive error handling for API failures.
 * 💾 **Caching:** Speed up responses and reduce costs with built-in query and model caching.
-* 💰 **Cost Estimation:** Basic tracking of your estimated API call costs and analytics.
+* 💰 **Cost Estimation:** Basic tracking of your estimated API call costs breakdown.
 * 🥂 **Integrations Status:** See the status of all your integrations at a glance.
+* 📊 **Analytics:** Total token usage, performance metrics, and more.
 
 ## Quick Start
 
@@ -61,12 +62,17 @@ Check out our [Quick Start Guide](https://www.proxai.co/proxai-docs/) for a step
     ```
 
 2.  **Set API Keys:**
+
     Export your AI provider API keys as environment variables:
     ```bash
     export OPENAI_API_KEY="your-openai-key"
     export GEMINI_API_KEY="your-openai-key"
     export ANTHROPIC_API_KEY="your-anthropic-key"
     # Add other provider keys as needed
+    ```
+    or, one API key rule them all! ProxConnect🚀
+    ```bash
+    export PROXAI_API_KEY="your-proxai-key"
     ```
     See [Provider Integrations](https://www.proxai.co/proxai-docs/provider-integrations) page.
 
