@@ -51,7 +51,7 @@ print(result)
 
 ## Quick Start
 
-Check out our [Quick Start Guide](https://www.proxai.co/proxai-docs/quick-start) for a step-by-step guide on how to get started with ProxAI.
+Check out our [Quick Start Guide](https://www.proxai.co/proxai-docs/) for a step-by-step guide on how to get started with ProxAI.
 
 1.  **Install ProxAI:**
     ```bash
@@ -73,7 +73,7 @@ Check out our [Quick Start Guide](https://www.proxai.co/proxai-docs/quick-start)
     import proxai as px
 
     # Write model agnostic function
-    def meaning_of_universe():
+    def get_meaning_of_universe():
       response = px.generate_text('What is the meaning of universe?')
       print(response)
 
@@ -84,12 +84,12 @@ Check out our [Quick Start Guide](https://www.proxai.co/proxai-docs/quick-start)
     for provider_model in provider_models:
       px.set_model(provider_model)
       print(f"Testing {provider_model} model")
-      meaning_of_universe()
+      get_meaning_of_universe()
     ```
 
 ## 📚 Documentation
 
-For full details on installation, all features, and advanced usage, please visit our **[Documentation](https://www.proxai.co/proxai-docs)**.
+For full details on installation, all features, and advanced usage, please visit our **[Overview](https://www.proxai.co/overview)** and **[Documentation](https://www.proxai.co/proxai-docs)**.
 
 ## 📈 ProxDash (Optional Dashboard)
 
