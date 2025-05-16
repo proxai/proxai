@@ -681,9 +681,6 @@ MEDIUM_GENERATE_TEXT_MODELS: Dict[
 LARGE_GENERATE_TEXT_MODELS: Dict[
     str, Dict[str, types.ProviderModelType]] = MappingProxyType({
   'claude': MappingProxyType({
-    '3-sonnet': ALL_MODELS['claude']['3-sonnet'],
-    '3.5-sonnet': ALL_MODELS['claude']['3.5-sonnet'],
-    '3.5-sonnet-v2': ALL_MODELS['claude']['3.5-sonnet-v2'],
     'opus': ALL_MODELS['claude']['opus'],
     'sonnet': ALL_MODELS['claude']['sonnet'],
   }),
