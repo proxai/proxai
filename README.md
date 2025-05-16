@@ -27,12 +27,12 @@ ProxAI simplifies AI integration by providing a unified interface for connecting
 import proxai as px
 
 result = px.generate_text(
-    'Explain what is ProxAI and why it is useful.',
+    'Hello model! What is 23 + 45?',
     provider_model=('claude', 'sonnet'))
 print(result)
 
 result = px.generate_text(
-    'Explain what is ProxAI and why it is useful.',
+    'Hello model! What is 23 + 45?',
     provider_model=('openai', 'gpt-4o'))
 print(result)
 ```
