@@ -1,5 +1,5 @@
 from types import MappingProxyType
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
 import proxai.types as types
 import proxai.type_utils as type_utils
 
@@ -758,6 +758,18 @@ LARGEST_GENERATE_TEXT_MODELS: Dict[
     'gpt-4.1': ALL_MODELS['openai']['gpt-4.1'],
   }),
 })
+
+PREFERRED_DEFAULT_MODELS: List[types.ProviderModelType] = [
+  ALL_MODELS['openai']['gpt-4o-mini'],
+  ALL_MODELS['gemini']['gemini-2.0-flash'],
+  ALL_MODELS['claude']['haiku'],
+  ALL_MODELS['grok']['grok-3-mini-fast-beta'],
+  ALL_MODELS['cohere']['command-r'],
+  ALL_MODELS['mistral']['mistral-small'],
+  ALL_MODELS['deepseek']['deepseek-v3'],
+  ALL_MODELS['huggingface']['gemma-2-2b-it'],
+  ALL_MODELS['databricks']['llama-4-maverick'],
+]
 
 
 def get_provider_model_config(

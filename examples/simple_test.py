@@ -59,9 +59,20 @@ def list_models():
 
 
 def main():
+  px.connect(
+      experiment_path='simple_test/run_1',
+      logging_path=f'{Path.home()}/proxai_log/',
+      cache_path=f'{Path.home()}/proxai_cache/')
+  response = px.generate_text(
+      'What is the meaning of life?',
+      extensive_return=True)
+  response = px.generate_text(
+      'What is the meaning of life?',
+      extensive_return=True)
+  # pprint(asdict(response))
   # simple_model_test()
   # simple_cache_test()
-  list_models()
+  # list_models()
 
 
 if __name__ == '__main__':
