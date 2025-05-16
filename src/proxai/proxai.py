@@ -43,6 +43,7 @@ _ALLOW_MULTIPROCESSING: bool
 _MODEL_TEST_TIMEOUT: Optional[int]
 
 _STATS: Dict[stat_types.GlobalStatType, stat_types.RunStats]
+_AVAILABLE_MODELS: Optional[available_models.AvailableModels]
 
 CacheOptions = types.CacheOptions
 LoggingOptions = types.LoggingOptions
@@ -73,6 +74,7 @@ def _init_globals():
   global _MODEL_TEST_TIMEOUT
 
   global _STATS
+  global _AVAILABLE_MODELS
 
   _RUN_TYPE = types.RunType.PRODUCTION
   _HIDDEN_RUN_KEY = experiment.get_hidden_run_key()
@@ -102,6 +104,7 @@ def _init_globals():
       stat_types.GlobalStatType.RUN_TIME: stat_types.RunStats(),
       stat_types.GlobalStatType.SINCE_CONNECT: stat_types.RunStats()
   }
+  _AVAILABLE_MODELS = None
 
 
 def _set_experiment_path(
@@ -326,9 +329,23 @@ def _get_registered_model_connector(
   global _REGISTERED_MODEL_CONNECTORS
   if call_type not in _REGISTERED_MODEL_CONNECTORS:
     if call_type == types.CallType.GENERATE_TEXT:
-      default_provider_model = _get_model_connector(('openai', 'gpt-4'))
-      _REGISTERED_MODEL_CONNECTORS[call_type] = default_provider_model
-
+      print('Checking available models...')
+      models = get_available_models().list_models(return_all=True)
+      for provider_model in model_configs.PREFERRED_DEFAULT_MODELS:
+        if provider_model in models.working_models:
+          _REGISTERED_MODEL_CONNECTORS[call_type] = _get_model_connector(
+              provider_model)
+          break
+      if call_type not in _REGISTERED_MODEL_CONNECTORS:
+        if models.working_models:
+          _REGISTERED_MODEL_CONNECTORS[call_type] = _get_model_connector(
+              models.working_models.pop())
+        else:
+          raise ValueError(
+              'No working models found in current environment:\n'
+              '* Please check your environment variables and try again.\n'
+              '* You can use px.check_health() method as instructed in '
+              'https://www.proxai.co/proxai-docs/check-health')
   return _REGISTERED_MODEL_CONNECTORS[call_type]
 
 
@@ -557,14 +574,17 @@ def get_summary(
 
 
 def get_available_models() -> available_models.AvailableModels:
-  return available_models.AvailableModels(
-      get_run_type=_get_run_type,
-      get_model_connector=_get_model_connector,
-      get_allow_multiprocessing=_get_allow_multiprocessing,
-      get_model_test_timeout=_get_model_test_timeout,
-      get_logging_options=_get_logging_options,
-      get_model_cache_manager=_get_model_cache_manager,
-      get_proxdash_connection=_get_proxdash_connection)
+  global _AVAILABLE_MODELS
+  if _AVAILABLE_MODELS is None:
+    _AVAILABLE_MODELS = available_models.AvailableModels(
+        get_run_type=_get_run_type,
+        get_model_connector=_get_model_connector,
+        get_allow_multiprocessing=_get_allow_multiprocessing,
+        get_model_test_timeout=_get_model_test_timeout,
+        get_logging_options=_get_logging_options,
+        get_model_cache_manager=_get_model_cache_manager,
+        get_proxdash_connection=_get_proxdash_connection)
+  return _AVAILABLE_MODELS
 
 
 def get_current_options(
