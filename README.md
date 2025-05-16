@@ -24,17 +24,17 @@
 ProxAI simplifies AI integration by providing a unified interface for connecting to multiple AI providers.
 
 ```python
-    import proxai as px
+import proxai as px
 
-    result = px.generate_text(
-        'Explain what is ProxAI and why it is useful.',
-        provider_model=('claude', 'sonnet'))
-    print(result)
+result = px.generate_text(
+    'Explain what is ProxAI and why it is useful.',
+    provider_model=('claude', 'sonnet'))
+print(result)
 
-    result = px.generate_text(
-        'Explain what is ProxAI and why it is useful.',
-        provider_model=('openai', 'gpt-4o'))
-    print(result)
+result = px.generate_text(
+    'Explain what is ProxAI and why it is useful.',
+    provider_model=('openai', 'gpt-4o'))
+print(result)
 ```
 * ⭐️ **Simple Unified API:** Pythonic, easy, intuitive, and unified API for all AI models connection.
 * 💡 **All Major AI Providers:** Including Gemini, OpenAI, Claude, Grok, DeepSeek, Cohere, Mistral, and more.
