@@ -151,10 +151,24 @@ class ModelCacheManager(state_controller.StateControlled):
       return
     data = {}
     with open(self.cache_path, 'r') as f:
-      data = json.load(f)
-    for call_value in data.keys():
-      self.model_status_by_call_type[
-          call_value] = type_serializer.decode_model_status(data[call_value])
+      try:
+        data = json.load(f)
+        for call_value in data.keys():
+          self.model_status_by_call_type[
+              call_value] = type_serializer.decode_model_status(data[call_value])
+      except Exception as e:
+        error_message = (
+            '_load_from_cache_path failed because of the parsing error.\n'
+            '* Please check cache path is correct.\n'
+            f'    > Cache path: {self.cache_path}\n'
+            '* Try to clean the model cache on px.connect:\n'
+            '    > px.connect(\n'
+            '    >    cache_options=px.CacheOptions(\n'
+            '    >        clear_model_cache_on_connect=True))\n'
+            '* If the problem persists, delete the cache file and try again:\n'
+            f'    > rm {self.cache_path};\n'
+            '* Open bug report at https://github.com/proxai/proxai/issues')
+        raise ValueError(error_message)
 
   def _clean_model_from_tested_models(
       self,

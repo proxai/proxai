@@ -13,6 +13,7 @@ from proxai.proxai import (
     get_available_models,
     get_current_options,
     reset_state,
+    reset_platform_cache,
     _init_globals,
 )
 
