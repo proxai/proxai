@@ -11,7 +11,6 @@ def simple_model_test():
   result = px.generate_text(
       'This is a test message to check if the cache is working or '
       f'not. {random_int}',
-      provider_model=('openai', 'o3-mini'),
       extensive_return=True)
   pprint(asdict(result))
 
@@ -59,9 +58,9 @@ def list_models():
 
 
 def main():
-  # simple_model_test()
+  simple_model_test()
   # simple_cache_test()
-  list_models()
+  # list_models()
 
 
 if __name__ == '__main__':

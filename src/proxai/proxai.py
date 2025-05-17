@@ -4,6 +4,7 @@ import functools
 import os
 import tempfile
 from typing import Any, Dict, Optional, Tuple, Union
+import platformdirs
 import proxai.types as types
 import proxai.type_utils as type_utils
 import proxai.connectors.model_connector as model_connector
@@ -23,6 +24,7 @@ _HIDDEN_RUN_KEY: str
 _EXPERIMENT_PATH: Optional[str]
 _ROOT_LOGGING_PATH: Optional[str]
 _DEFAULT_MODEL_CACHE_PATH: Optional[tempfile.TemporaryDirectory]
+_PLATFORM_USED_FOR_DEFAULT_MODEL_CACHE: bool
 
 _LOGGING_OPTIONS: types.LoggingOptions
 _CACHE_OPTIONS: types.CacheOptions
@@ -43,10 +45,34 @@ _ALLOW_MULTIPROCESSING: bool
 _MODEL_TEST_TIMEOUT: Optional[int]
 
 _STATS: Dict[stat_types.GlobalStatType, stat_types.RunStats]
+_AVAILABLE_MODELS: Optional[available_models.AvailableModels]
 
 CacheOptions = types.CacheOptions
 LoggingOptions = types.LoggingOptions
 ProxDashOptions = types.ProxDashOptions
+
+
+def _init_default_model_cache_manager():
+  global _DEFAULT_MODEL_CACHE_PATH
+  global _PLATFORM_USED_FOR_DEFAULT_MODEL_CACHE
+  global _DEFAULT_MODEL_CACHE_MANAGER
+  try:
+    app_dirs = platformdirs.PlatformDirs(appname="proxai", appauthor="proxai")
+    _DEFAULT_MODEL_CACHE_PATH =  app_dirs.user_cache_dir
+    os.makedirs(_DEFAULT_MODEL_CACHE_PATH, exist_ok=True)
+    # 4 hours cache duration makes sense for local development if proxai is
+    # using platform app cache directory
+    _DEFAULT_MODEL_CACHE_MANAGER = model_cache.ModelCacheManager(
+        cache_options=types.CacheOptions(
+            cache_path=_DEFAULT_MODEL_CACHE_PATH,
+            model_cache_duration=60 * 60 * 4))
+    _PLATFORM_USED_FOR_DEFAULT_MODEL_CACHE = True
+  except Exception as e:
+    _DEFAULT_MODEL_CACHE_PATH = tempfile.TemporaryDirectory()
+    _DEFAULT_MODEL_CACHE_MANAGER = model_cache.ModelCacheManager(
+        cache_options=types.CacheOptions(
+            cache_path=_DEFAULT_MODEL_CACHE_PATH.name))
+    _PLATFORM_USED_FOR_DEFAULT_MODEL_CACHE = False
 
 
 def _init_globals():
@@ -54,7 +80,6 @@ def _init_globals():
   global _HIDDEN_RUN_KEY
   global _EXPERIMENT_PATH
   global _ROOT_LOGGING_PATH
-  global _DEFAULT_MODEL_CACHE_PATH
 
   global _LOGGING_OPTIONS
   global _CACHE_OPTIONS
@@ -62,7 +87,6 @@ def _init_globals():
 
   global _REGISTERED_MODEL_CONNECTORS
   global _MODEL_CONNECTORS
-  global _DEFAULT_MODEL_CACHE_MANAGER
   global _MODEL_CACHE_MANAGER
   global _QUERY_CACHE_MANAGER
   global _PROXDASH_CONNECTION
@@ -73,12 +97,12 @@ def _init_globals():
   global _MODEL_TEST_TIMEOUT
 
   global _STATS
+  global _AVAILABLE_MODELS
 
   _RUN_TYPE = types.RunType.PRODUCTION
   _HIDDEN_RUN_KEY = experiment.get_hidden_run_key()
   _EXPERIMENT_PATH = None
   _ROOT_LOGGING_PATH = None
-  _DEFAULT_MODEL_CACHE_PATH = tempfile.TemporaryDirectory()
 
   _LOGGING_OPTIONS = types.LoggingOptions()
   _CACHE_OPTIONS = types.CacheOptions()
@@ -86,12 +110,10 @@ def _init_globals():
 
   _REGISTERED_MODEL_CONNECTORS = {}
   _MODEL_CONNECTORS = {}
-  _DEFAULT_MODEL_CACHE_MANAGER = model_cache.ModelCacheManager(
-        cache_options=types.CacheOptions(
-            cache_path=_DEFAULT_MODEL_CACHE_PATH.name))
   _MODEL_CACHE_MANAGER = None
   _QUERY_CACHE_MANAGER = None
   _PROXDASH_CONNECTION = None
+  _init_default_model_cache_manager()
 
   _STRICT_FEATURE_TEST = False
   _SUPPRESS_PROVIDER_ERRORS = False
@@ -102,6 +124,7 @@ def _init_globals():
       stat_types.GlobalStatType.RUN_TIME: stat_types.RunStats(),
       stat_types.GlobalStatType.SINCE_CONNECT: stat_types.RunStats()
   }
+  _AVAILABLE_MODELS = None
 
 
 def _set_experiment_path(
@@ -326,9 +349,28 @@ def _get_registered_model_connector(
   global _REGISTERED_MODEL_CONNECTORS
   if call_type not in _REGISTERED_MODEL_CONNECTORS:
     if call_type == types.CallType.GENERATE_TEXT:
-      default_provider_model = _get_model_connector(('openai', 'gpt-4'))
-      _REGISTERED_MODEL_CONNECTORS[call_type] = default_provider_model
-
+      available_models = get_available_models()
+      if (
+          not available_models.model_cache_manager or
+          not available_models.model_cache_manager.get(
+              types.CallType.GENERATE_TEXT).working_models):
+        print('Checking available models, this may take a while...')
+      models = get_available_models().list_models(return_all=True)
+      for provider_model in model_configs.PREFERRED_DEFAULT_MODELS:
+        if provider_model in models.working_models:
+          _REGISTERED_MODEL_CONNECTORS[call_type] = _get_model_connector(
+              provider_model)
+          break
+      if call_type not in _REGISTERED_MODEL_CONNECTORS:
+        if models.working_models:
+          _REGISTERED_MODEL_CONNECTORS[call_type] = _get_model_connector(
+              models.working_models.pop())
+        else:
+          raise ValueError(
+              'No working models found in current environment:\n'
+              '* Please check your environment variables and try again.\n'
+              '* You can use px.check_health() method as instructed in '
+              'https://www.proxai.co/proxai-docs/check-health')
   return _REGISTERED_MODEL_CONNECTORS[call_type]
 
 
@@ -557,14 +599,17 @@ def get_summary(
 
 
 def get_available_models() -> available_models.AvailableModels:
-  return available_models.AvailableModels(
-      get_run_type=_get_run_type,
-      get_model_connector=_get_model_connector,
-      get_allow_multiprocessing=_get_allow_multiprocessing,
-      get_model_test_timeout=_get_model_test_timeout,
-      get_logging_options=_get_logging_options,
-      get_model_cache_manager=_get_model_cache_manager,
-      get_proxdash_connection=_get_proxdash_connection)
+  global _AVAILABLE_MODELS
+  if _AVAILABLE_MODELS is None:
+    _AVAILABLE_MODELS = available_models.AvailableModels(
+        get_run_type=_get_run_type,
+        get_model_connector=_get_model_connector,
+        get_allow_multiprocessing=_get_allow_multiprocessing,
+        get_model_test_timeout=_get_model_test_timeout,
+        get_logging_options=_get_logging_options,
+        get_model_cache_manager=_get_model_cache_manager,
+        get_proxdash_connection=_get_proxdash_connection)
+  return _AVAILABLE_MODELS
 
 
 def get_current_options(
@@ -587,7 +632,13 @@ def get_current_options(
   return run_options
 
 
+def reset_platform_cache():
+  if _PLATFORM_USED_FOR_DEFAULT_MODEL_CACHE and _DEFAULT_MODEL_CACHE_MANAGER:
+    _DEFAULT_MODEL_CACHE_MANAGER.clear_cache()
+
+
 def reset_state():
+  reset_platform_cache()
   _init_globals()
 
 
@@ -627,10 +678,16 @@ def check_health(
   def _get_modified_model_connector(
       provider_model_identifier: types.ProviderModelIdentifierType
   ) -> model_connector.ProviderModelConnector:
-    connector =  copy.deepcopy(_get_model_connector(provider_model_identifier))
-    connector.logging_options = logging_options
-    connector.proxdash_connection = proxdash_connection
-    return connector
+    provider_model = model_configs.get_provider_model_config(
+        provider_model_identifier)
+    connector = model_registry.get_model_connector(provider_model)
+    return connector(
+        get_run_type=_get_run_type,
+        get_strict_feature_test=_get_strict_feature_test,
+        get_query_cache_manager=_get_query_cache_manager,
+        logging_options=logging_options,
+        proxdash_connection=proxdash_connection,
+        stats=_get_stats())
 
   allow_multiprocessing = _set_allow_multiprocessing(
       allow_multiprocessing=allow_multiprocessing)

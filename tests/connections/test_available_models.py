@@ -452,6 +452,21 @@ class TestAvailableModels:
       available_models_manager.get_model(
           'openai', 'gpt-4', clear_model_cache=True)
 
+  def test_get_provider_model_with_ignore_model_status(self, monkeypatch):
+    monkeypatch.setenv(
+        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key')
+    self._save_temp_cache_state()
+    available_models_manager = self._get_available_models()
+
+    # Check that the model is returned even if it is in the failed models
+    provider_model = available_models_manager.get_model(
+        'openai', 'gpt-4.1-mini', allow_non_working_model=True)
+    assert provider_model == model_configs.ALL_MODELS['openai']['gpt-4.1-mini']
+
+    assert (
+        model_configs.ALL_MODELS['openai']['gpt-4.1-mini'] in
+        available_models_manager.list_models(return_all=True).failed_models)
+
   def test_get_provider_model_invalid_call_type(self):
     available_models_manager = self._get_available_models()
     with pytest.raises(ValueError, match='Call type not supported:'):

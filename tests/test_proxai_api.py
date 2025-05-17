@@ -476,7 +476,8 @@ class TestProxaiApiUseCases:
     px.generate_text('hello')
     with open(os.path.join(
         logging_path, 'experiment_path_1/provider_queries.log'), 'r') as f:
-      log_record = json.loads(f.readline())
+      lines = f.readlines()
+      log_record = json.loads(lines[-1])
       assert log_record['query_record']['prompt'] == 'hello'
 
     px.connect(
@@ -508,15 +509,16 @@ class TestProxaiApiUseCases:
         cache_path=cache_path)
     px.generate_text('hello')
     with open(os.path.join(logging_path, 'provider_queries.log'), 'r') as f:
+      lines = f.readlines()
       # First logging record:
-      log_record = json.loads(f.readline())
+      log_record = json.loads(lines[-2])
       assert log_record['query_record']['prompt'] == 'hello'
       assert log_record['response_source'] == px.types.ResponseSource.CACHE
       assert (
           log_record['look_fail_reason'] ==
           px.types.CacheLookFailReason.CACHE_NOT_FOUND)
       # Second logging record:
-      log_record = json.loads(f.readline())
+      log_record = json.loads(lines[-1])
       assert log_record['query_record']['prompt'] == 'hello'
       assert log_record['response_record']['response'] == 'mock response'
       assert log_record['response_source'] == px.types.ResponseSource.PROVIDER
@@ -530,13 +532,12 @@ class TestProxaiApiUseCases:
         allow_multiprocessing=False)
     px.generate_text('hello')
     with open(os.path.join(logging_path_2, 'provider_queries.log'), 'r') as f:
+      lines = f.readlines()
       # First logging record:
-      log_record = json.loads(f.readline())
+      log_record = json.loads(lines[-1])
       assert log_record['query_record']['prompt'] == 'hello'
       assert log_record['response_record']['response'] == 'mock response'
       assert log_record['response_source'] == px.types.ResponseSource.CACHE
-      # End of file:
-      assert f.readline() == ''
 
   def test_connect_with_different_logging_options(self):
     logging_path = self._get_path_dir('logging_path')
@@ -546,8 +547,9 @@ class TestProxaiApiUseCases:
             hide_sensitive_content=True))
     px.generate_text('hello')
     with open(os.path.join(logging_path, 'provider_queries.log'), 'r') as f:
+      lines = f.readlines()
       # First logging record:
-      log_record = json.loads(f.readline())
+      log_record = json.loads(lines[-1])
       assert (
           log_record['query_record']['prompt'] ==
           '<sensitive content hidden>')
@@ -555,8 +557,6 @@ class TestProxaiApiUseCases:
           log_record['response_record']['response'] ==
           '<sensitive content hidden>')
       assert log_record['response_source'] == px.types.ResponseSource.PROVIDER
-      # End of file:
-      assert f.readline() == ''
 
   def test_connect_with_strict_feature_test(self):
     px.connect(strict_feature_test=False)

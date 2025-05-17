@@ -734,6 +734,7 @@ class AvailableModels(state_controller.StateControlled):
       model: str,
       verbose: bool = False,
       clear_model_cache: bool = False,
+      allow_non_working_model: bool = False,
       call_type: types.CallType = types.CallType.GENERATE_TEXT
   ) -> types.ProviderModelType:
     if call_type != types.CallType.GENERATE_TEXT:
@@ -779,6 +780,16 @@ class AvailableModels(state_controller.StateControlled):
 
     if provider_model in model_status.working_models:
       return provider_model
+
+    if allow_non_working_model:
+      logging_utils.log_message(
+          logging_options=self.logging_options,
+          message=(
+              'Provider model not found in working models: '
+              f'({provider}, {model})\nLogging Record: '
+              f'{model_status.provider_queries.get(provider_model, "")}'),
+          type=types.LoggingType.WARNING)
+      return model_configs.ALL_MODELS[provider][model]
 
     raise ValueError(
         f'Provider model not found in working models: ({provider}, {model})\n'

@@ -1,5 +1,5 @@
 from types import MappingProxyType
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
 import proxai.types as types
 import proxai.type_utils as type_utils
 
@@ -681,9 +681,6 @@ MEDIUM_GENERATE_TEXT_MODELS: Dict[
 LARGE_GENERATE_TEXT_MODELS: Dict[
     str, Dict[str, types.ProviderModelType]] = MappingProxyType({
   'claude': MappingProxyType({
-    '3-sonnet': ALL_MODELS['claude']['3-sonnet'],
-    '3.5-sonnet': ALL_MODELS['claude']['3.5-sonnet'],
-    '3.5-sonnet-v2': ALL_MODELS['claude']['3.5-sonnet-v2'],
     'opus': ALL_MODELS['claude']['opus'],
     'sonnet': ALL_MODELS['claude']['sonnet'],
   }),
@@ -758,6 +755,18 @@ LARGEST_GENERATE_TEXT_MODELS: Dict[
     'gpt-4.1': ALL_MODELS['openai']['gpt-4.1'],
   }),
 })
+
+PREFERRED_DEFAULT_MODELS: List[types.ProviderModelType] = [
+  ALL_MODELS['openai']['gpt-4o-mini'],
+  ALL_MODELS['gemini']['gemini-2.0-flash'],
+  ALL_MODELS['claude']['haiku'],
+  ALL_MODELS['grok']['grok-3-mini-fast-beta'],
+  ALL_MODELS['cohere']['command-r'],
+  ALL_MODELS['mistral']['mistral-small'],
+  ALL_MODELS['deepseek']['deepseek-v3'],
+  ALL_MODELS['huggingface']['gemma-2-2b-it'],
+  ALL_MODELS['databricks']['llama-4-maverick'],
+]
 
 
 def get_provider_model_config(
