@@ -253,6 +253,17 @@ class TestModelCacheManagerInit:
     assert cache_manager.status == types.ModelCacheManagerStatus.WORKING
     assert cache_manager.model_status_by_call_type == {}
 
+  def test_init_corrupted_cache_file(self):
+    cache_path, _ = _get_path_dir('test_cache')
+    with open(os.path.join(
+        cache_path, model_cache.AVAILABLE_MODELS_PATH), 'w') as f:
+      f.write('invalid_json')
+    with pytest.raises(
+        ValueError,
+        match='_load_from_cache_path failed because of the parsing error.*'):
+      model_cache.ModelCacheManager(
+        cache_options=types.CacheOptions(cache_path=cache_path))
+
 
 class TestModelCacheManager:
   def test_save_and_load(self):

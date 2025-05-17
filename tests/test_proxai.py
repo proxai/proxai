@@ -1,7 +1,9 @@
 import os
+import platformdirs
 import proxai.types as types
 from proxai import proxai
 import proxai.connectors.model_configs as model_configs
+import proxai.caching.model_cache as model_cache
 import pytest
 import tempfile
 import requests
@@ -481,6 +483,49 @@ class TestGenerateText:
 
   def test_huggingface(self):
     self._test_generate_text(('huggingface', 'gemma-2-2b-it'))
+
+
+class TestDefaultModel:
+  def test_default_model_cache_manager_platform(self):
+    assert proxai._PLATFORM_USED_FOR_DEFAULT_MODEL_CACHE == True
+    assert (
+        proxai._DEFAULT_MODEL_CACHE_MANAGER.cache_options
+        .model_cache_duration == 4 * 60 * 60)
+
+  def test_default_model_cache_manager_tempfile(self):
+    assert proxai._PLATFORM_USED_FOR_DEFAULT_MODEL_CACHE == True
+    cache_dir = platformdirs.PlatformDirs(
+        appname="proxai", appauthor="proxai").user_cache_dir
+    platform_cache_path = os.path.join(
+        cache_dir, model_cache.AVAILABLE_MODELS_PATH)
+
+    # First, corrupt platform cache file:
+    with open(platform_cache_path, 'w') as f:
+      f.write('invalid_json')
+
+    # Second, init default model cache manager:
+    proxai._init_default_model_cache_manager()
+
+    # Third, check that the default model cache manager is loaded from tempfile:
+    assert proxai._PLATFORM_USED_FOR_DEFAULT_MODEL_CACHE == False
+    assert (
+        proxai._DEFAULT_MODEL_CACHE_MANAGER.cache_options
+        .model_cache_duration is None)
+
+    # Finally, remove invalid json file:
+    os.remove(platform_cache_path)
+
+  def test_reset_platform_cache(self):
+    cache_dir = platformdirs.PlatformDirs(
+        appname="proxai", appauthor="proxai").user_cache_dir
+    platform_cache_path = os.path.join(
+        cache_dir, model_cache.AVAILABLE_MODELS_PATH)
+    with open(platform_cache_path, 'w') as f:
+      f.write('{}')
+
+    assert os.path.exists(platform_cache_path)
+    proxai.reset_platform_cache()
+    assert not os.path.exists(platform_cache_path)
 
 
 class TestConnectProxdashConnection:
