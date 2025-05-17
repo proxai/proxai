@@ -5,10 +5,10 @@ Flags:
   --print-code: print code blocks
 
 Examples:
-  python3 integrations_tests/proxai_api_test.py
-  python3 integrations_tests/proxai_api_test.py --mode new
-  python3 integrations_tests/proxai_api_test.py --print-code
-  python3 integrations_tests/proxai_api_test.py --env prod --print-code
+  python3 integration_tests/proxai_api_test.py
+  python3 integration_tests/proxai_api_test.py --mode new
+  python3 integration_tests/proxai_api_test.py --print-code
+  python3 integration_tests/proxai_api_test.py --env prod --print-code
 """
 import os
 import inspect

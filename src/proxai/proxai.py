@@ -678,10 +678,16 @@ def check_health(
   def _get_modified_model_connector(
       provider_model_identifier: types.ProviderModelIdentifierType
   ) -> model_connector.ProviderModelConnector:
-    connector =  copy.deepcopy(_get_model_connector(provider_model_identifier))
-    connector.logging_options = logging_options
-    connector.proxdash_connection = proxdash_connection
-    return connector
+    provider_model = model_configs.get_provider_model_config(
+        provider_model_identifier)
+    connector = model_registry.get_model_connector(provider_model)
+    return connector(
+        get_run_type=_get_run_type,
+        get_strict_feature_test=_get_strict_feature_test,
+        get_query_cache_manager=_get_query_cache_manager,
+        logging_options=logging_options,
+        proxdash_connection=proxdash_connection,
+        stats=_get_stats())
 
   allow_multiprocessing = _set_allow_multiprocessing(
       allow_multiprocessing=allow_multiprocessing)
