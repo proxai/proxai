@@ -4,6 +4,7 @@ import functools
 import os
 import tempfile
 from typing import Any, Dict, Optional, Tuple, Union
+import platformdirs
 import proxai.types as types
 import proxai.type_utils as type_utils
 import proxai.connectors.model_connector as model_connector
@@ -23,6 +24,7 @@ _HIDDEN_RUN_KEY: str
 _EXPERIMENT_PATH: Optional[str]
 _ROOT_LOGGING_PATH: Optional[str]
 _DEFAULT_MODEL_CACHE_PATH: Optional[tempfile.TemporaryDirectory]
+_PLATFORM_USED_FOR_DEFAULT_MODEL_CACHE: bool
 
 _LOGGING_OPTIONS: types.LoggingOptions
 _CACHE_OPTIONS: types.CacheOptions
@@ -50,12 +52,34 @@ LoggingOptions = types.LoggingOptions
 ProxDashOptions = types.ProxDashOptions
 
 
+def _init_default_model_cache_manager():
+  global _DEFAULT_MODEL_CACHE_PATH
+  global _PLATFORM_USED_FOR_DEFAULT_MODEL_CACHE
+  global _DEFAULT_MODEL_CACHE_MANAGER
+  try:
+    app_dirs = platformdirs.PlatformDirs(appname="proxai", appauthor="proxai")
+    _DEFAULT_MODEL_CACHE_PATH =  app_dirs.user_cache_dir
+    os.makedirs(_DEFAULT_MODEL_CACHE_PATH, exist_ok=True)
+    # 4 hours cache duration makes sense for local development if proxai is
+    # using platform app cache directory
+    _DEFAULT_MODEL_CACHE_MANAGER = model_cache.ModelCacheManager(
+        cache_options=types.CacheOptions(
+            cache_path=_DEFAULT_MODEL_CACHE_PATH,
+            model_cache_duration=60 * 60 * 4))
+    _PLATFORM_USED_FOR_DEFAULT_MODEL_CACHE = True
+  except Exception as e:
+    _DEFAULT_MODEL_CACHE_PATH = tempfile.TemporaryDirectory()
+    _DEFAULT_MODEL_CACHE_MANAGER = model_cache.ModelCacheManager(
+        cache_options=types.CacheOptions(
+            cache_path=_DEFAULT_MODEL_CACHE_PATH.name))
+    _PLATFORM_USED_FOR_DEFAULT_MODEL_CACHE = False
+
+
 def _init_globals():
   global _RUN_TYPE
   global _HIDDEN_RUN_KEY
   global _EXPERIMENT_PATH
   global _ROOT_LOGGING_PATH
-  global _DEFAULT_MODEL_CACHE_PATH
 
   global _LOGGING_OPTIONS
   global _CACHE_OPTIONS
@@ -63,7 +87,6 @@ def _init_globals():
 
   global _REGISTERED_MODEL_CONNECTORS
   global _MODEL_CONNECTORS
-  global _DEFAULT_MODEL_CACHE_MANAGER
   global _MODEL_CACHE_MANAGER
   global _QUERY_CACHE_MANAGER
   global _PROXDASH_CONNECTION
@@ -80,7 +103,6 @@ def _init_globals():
   _HIDDEN_RUN_KEY = experiment.get_hidden_run_key()
   _EXPERIMENT_PATH = None
   _ROOT_LOGGING_PATH = None
-  _DEFAULT_MODEL_CACHE_PATH = tempfile.TemporaryDirectory()
 
   _LOGGING_OPTIONS = types.LoggingOptions()
   _CACHE_OPTIONS = types.CacheOptions()
@@ -88,12 +110,10 @@ def _init_globals():
 
   _REGISTERED_MODEL_CONNECTORS = {}
   _MODEL_CONNECTORS = {}
-  _DEFAULT_MODEL_CACHE_MANAGER = model_cache.ModelCacheManager(
-        cache_options=types.CacheOptions(
-            cache_path=_DEFAULT_MODEL_CACHE_PATH.name))
   _MODEL_CACHE_MANAGER = None
   _QUERY_CACHE_MANAGER = None
   _PROXDASH_CONNECTION = None
+  _init_default_model_cache_manager()
 
   _STRICT_FEATURE_TEST = False
   _SUPPRESS_PROVIDER_ERRORS = False
@@ -329,7 +349,12 @@ def _get_registered_model_connector(
   global _REGISTERED_MODEL_CONNECTORS
   if call_type not in _REGISTERED_MODEL_CONNECTORS:
     if call_type == types.CallType.GENERATE_TEXT:
-      print('Checking available models...')
+      available_models = get_available_models()
+      if (
+          not available_models.model_cache_manager or
+          not available_models.model_cache_manager.get(
+              types.CallType.GENERATE_TEXT).working_models):
+        print('Checking available models, this may take a while...')
       models = get_available_models().list_models(return_all=True)
       for provider_model in model_configs.PREFERRED_DEFAULT_MODELS:
         if provider_model in models.working_models:
@@ -607,7 +632,13 @@ def get_current_options(
   return run_options
 
 
+def reset_platform_cache():
+  if _PLATFORM_USED_FOR_DEFAULT_MODEL_CACHE and _DEFAULT_MODEL_CACHE_MANAGER:
+    _DEFAULT_MODEL_CACHE_MANAGER.clear_cache()
+
+
 def reset_state():
+  reset_platform_cache()
   _init_globals()
 
 

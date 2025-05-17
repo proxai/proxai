@@ -11,7 +11,6 @@ def simple_model_test():
   result = px.generate_text(
       'This is a test message to check if the cache is working or '
       f'not. {random_int}',
-      provider_model=('openai', 'o3-mini'),
       extensive_return=True)
   pprint(asdict(result))
 
@@ -59,18 +58,7 @@ def list_models():
 
 
 def main():
-  px.connect(
-      experiment_path='simple_test/run_1',
-      logging_path=f'{Path.home()}/proxai_log/',
-      cache_path=f'{Path.home()}/proxai_cache/')
-  response = px.generate_text(
-      'What is the meaning of life?',
-      extensive_return=True)
-  response = px.generate_text(
-      'What is the meaning of life?',
-      extensive_return=True)
-  # pprint(asdict(response))
-  # simple_model_test()
+  simple_model_test()
   # simple_cache_test()
   # list_models()
 
