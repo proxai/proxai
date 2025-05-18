@@ -349,6 +349,11 @@ ALL_MODELS: Dict[str, Dict[str, types.ProviderModelType]] = MappingProxyType({
   # Models provided by Mistral:
   # https://docs.mistral.ai/platform/endpoints/
   'mistral': MappingProxyType({
+    'codestral': types.ProviderModelType(
+      provider='mistral',
+      model='codestral',
+      provider_model_identifier='codestral-2501'
+    ),
     'ministral-3b': types.ProviderModelType(
       provider='mistral',
       model='ministral-3b',
@@ -358,6 +363,26 @@ ALL_MODELS: Dict[str, Dict[str, types.ProviderModelType]] = MappingProxyType({
       provider='mistral',
       model='ministral-8b',
       provider_model_identifier='ministral-8b-2410'
+    ),
+    'mistral-large': types.ProviderModelType(
+      provider='mistral',
+      model='mistral-large',
+      provider_model_identifier='mistral-large-2411'
+    ),
+    'mistral-medium': types.ProviderModelType(
+      provider='mistral',
+      model='mistral-medium',
+      provider_model_identifier='mistral-medium-2505'
+    ),
+    'mistral-saba': types.ProviderModelType(
+      provider='mistral',
+      model='mistral-saba',
+      provider_model_identifier='mistral-saba-2502'
+    ),
+    'mistral-small': types.ProviderModelType(
+      provider='mistral',
+      model='mistral-small',
+      provider_model_identifier='mistral-small-2503'
     ),
     'open-mistral-7b': types.ProviderModelType(
       provider='mistral',
@@ -369,45 +394,25 @@ ALL_MODELS: Dict[str, Dict[str, types.ProviderModelType]] = MappingProxyType({
       model='open-mistral-nemo',
       provider_model_identifier='open-mistral-nemo'
     ),
-    'open-mixtral-8x7b': types.ProviderModelType(
-      provider='mistral',
-      model='open-mixtral-8x7b',
-      provider_model_identifier='open-mixtral-8x7b'
-    ),
     'open-mixtral-8x22b': types.ProviderModelType(
       provider='mistral',
       model='open-mixtral-8x22b',
       provider_model_identifier='open-mixtral-8x22b'
     ),
-    'mistral-small': types.ProviderModelType(
+    'open-mixtral-8x7b': types.ProviderModelType(
       provider='mistral',
-      model='mistral-small',
-      provider_model_identifier='mistral-small-2503'
-    ),
-    'mistral-large': types.ProviderModelType(
-      provider='mistral',
-      model='mistral-large',
-      provider_model_identifier='mistral-large-2411'
-    ),
-    'pixtral-large': types.ProviderModelType(
-      provider='mistral',
-      model='pixtral-large',
-      provider_model_identifier='pixtral-large-2411'
-    ),
-    'codestral': types.ProviderModelType(
-      provider='mistral',
-      model='codestral',
-      provider_model_identifier='codestral-2501'
+      model='open-mixtral-8x7b',
+      provider_model_identifier='open-mixtral-8x7b'
     ),
     'pixtral-12b': types.ProviderModelType(
       provider='mistral',
       model='pixtral-12b',
       provider_model_identifier='pixtral-12b-2409'
     ),
-    'mistral-saba': types.ProviderModelType(
+    'pixtral-large': types.ProviderModelType(
       provider='mistral',
-      model='mistral-saba',
-      provider_model_identifier='mistral-saba-2502'
+      model='pixtral-large',
+      provider_model_identifier='pixtral-large-2411'
     ),
   }),
 
@@ -564,18 +569,19 @@ GENERATE_TEXT_MODELS: Dict[
   }),
 
   'mistral': MappingProxyType({
+    'codestral': ALL_MODELS['mistral']['codestral'],
     'ministral-3b': ALL_MODELS['mistral']['ministral-3b'],
     'ministral-8b': ALL_MODELS['mistral']['ministral-8b'],
+    'mistral-large': ALL_MODELS['mistral']['mistral-large'],
+    'mistral-medium': ALL_MODELS['mistral']['mistral-medium'],
+    'mistral-saba': ALL_MODELS['mistral']['mistral-saba'],
+    'mistral-small': ALL_MODELS['mistral']['mistral-small'],
     'open-mistral-7b': ALL_MODELS['mistral']['open-mistral-7b'],
     'open-mistral-nemo': ALL_MODELS['mistral']['open-mistral-nemo'],
-    'open-mixtral-8x7b': ALL_MODELS['mistral']['open-mixtral-8x7b'],
     'open-mixtral-8x22b': ALL_MODELS['mistral']['open-mixtral-8x22b'],
-    'mistral-small': ALL_MODELS['mistral']['mistral-small'],
-    'mistral-large': ALL_MODELS['mistral']['mistral-large'],
-    'pixtral-large': ALL_MODELS['mistral']['pixtral-large'],
-    'codestral': ALL_MODELS['mistral']['codestral'],
+    'open-mixtral-8x7b': ALL_MODELS['mistral']['open-mixtral-8x7b'],
     'pixtral-12b': ALL_MODELS['mistral']['pixtral-12b'],
-    'mistral-saba': ALL_MODELS['mistral']['mistral-saba'],
+    'pixtral-large': ALL_MODELS['mistral']['pixtral-large'],
   }),
 
   'huggingface': MappingProxyType({
