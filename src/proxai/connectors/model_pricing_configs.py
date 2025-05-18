@@ -258,6 +258,10 @@ GENERATE_TEXT_PRICING: Dict[
 
   # Mistral
   'mistral': MappingProxyType({
+    'codestral': types.ProviderModelPricingType(
+      per_response_token_cost=0.2,
+      per_query_token_cost=0.6,
+    ),
     'ministral-3b': types.ProviderModelPricingType(
       per_response_token_cost=0.04,
       per_query_token_cost=0.04,
@@ -265,6 +269,22 @@ GENERATE_TEXT_PRICING: Dict[
     'ministral-8b': types.ProviderModelPricingType(
       per_response_token_cost=0.1,
       per_query_token_cost=0.1,
+    ),
+    'mistral-large': types.ProviderModelPricingType(
+      per_response_token_cost=2.0,
+      per_query_token_cost=6.0,
+    ),
+    'mistral-medium': types.ProviderModelPricingType(
+      per_response_token_cost=0.4,
+      per_query_token_cost=2.0,
+    ),
+    'mistral-saba': types.ProviderModelPricingType(
+      per_response_token_cost=0.2,
+      per_query_token_cost=0.6,
+    ),
+    'mistral-small': types.ProviderModelPricingType(
+      per_response_token_cost=0.1,
+      per_query_token_cost=0.3,
     ),
     'open-mistral-7b': types.ProviderModelPricingType(
       per_response_token_cost=0.25,
@@ -274,37 +294,21 @@ GENERATE_TEXT_PRICING: Dict[
       per_response_token_cost=0.15,
       per_query_token_cost=0.15,
     ),
+    'open-mixtral-8x22b': types.ProviderModelPricingType(
+      per_response_token_cost=2.0,
+      per_query_token_cost=6.0,
+    ),
     'open-mixtral-8x7b': types.ProviderModelPricingType(
       per_response_token_cost=0.7,
       per_query_token_cost=0.7,
-    ),
-    'open-mixtral-8x22b': types.ProviderModelPricingType(
-      per_response_token_cost=2,
-      per_query_token_cost=6,
-    ),
-    'mistral-small': types.ProviderModelPricingType(
-      per_response_token_cost=0.1,
-      per_query_token_cost=0.3,
-    ),
-    'mistral-large': types.ProviderModelPricingType(
-      per_response_token_cost=2,
-      per_query_token_cost=6,
-    ),
-    'pixtral-large': types.ProviderModelPricingType(
-      per_response_token_cost=2,
-      per_query_token_cost=6,
-    ),
-    'codestral': types.ProviderModelPricingType(
-      per_response_token_cost=0.3,
-      per_query_token_cost=0.9,
     ),
     'pixtral-12b': types.ProviderModelPricingType(
       per_response_token_cost=0.15,
       per_query_token_cost=0.15,
     ),
-    'mistral-saba': types.ProviderModelPricingType(
-      per_response_token_cost=0.2,
-      per_query_token_cost=0.6,
+    'pixtral-large': types.ProviderModelPricingType(
+      per_response_token_cost=2.0,
+      per_query_token_cost=6.0,
     ),
   }),
 
