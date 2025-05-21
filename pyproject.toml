@@ -1,10 +1,17 @@
 [tool.poetry]
 name = "proxai"
-version = "0.2.0"
+version = "0.2.1"
 description = "ProxAI is a lightweight abstraction layer for foundational AI model connections."
 authors = ["proxai"]
 license = "MIT"
 readme = "README.md"
+homepage = "https://proxai.co"
+repository = "https://github.com/proxai/proxai"
+
+[tool.poetry.urls]
+"Homepage" = "https://proxai.co"
+"Repository" = "https://github.com/proxai/proxai"
+"Issues" = "https://github.com/proxai/proxai/issues"
 
 [tool.poetry.dependencies]
 python = "^3.9"

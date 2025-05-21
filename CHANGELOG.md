@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.2.1 (2025/05/21)
+
+- Added official website and GitHub repository links to package metadata
+
 ## v0.2.0 (2025/05/21)
 
 - Version 0.2.0 release
@@ -14,7 +18,7 @@
     - Major Providers: Connectors for Gemini, OpenAI, Claude, Grok, DeepSeek, Mistral, Cohere, Databricks, and HuggingFace
     - List Providers: Automatically detect available providers on your session
     - List Models: Automatically detect available models for each provider
-    - Model Size Control: Get all models of a certain size: “small”, “medium”, “large”, “largest” (of each provider)
+    - Model Size Control: Get all models of a certain size: "small", "medium", "large", "largest" (of each provider)
     - Add More Providers: Add or update providers without code changes simply by adding API keys
   - Check Health
     - Check Health: Easy health summary of all providers and models
