@@ -244,10 +244,15 @@ ALL_MODELS: Dict[str, Dict[str, types.ProviderModelType]] = MappingProxyType({
       model='gemini-2.0-flash',
       provider_model_identifier='gemini-2.0-flash'
     ),
-    'gemini-2.5-pro-preview-03-25': types.ProviderModelType(
+    'gemini-2.5-flash-preview': types.ProviderModelType(
       provider='gemini',
-      model='gemini-2.5-pro-preview-03-25',
-      provider_model_identifier='gemini-2.5-pro-preview-03-25'
+      model='gemini-2.5-flash-preview',
+      provider_model_identifier='gemini-2.5-flash-preview-05-20'
+    ),
+    'gemini-2.5-pro-preview': types.ProviderModelType(
+      provider='gemini',
+      model='gemini-2.5-pro-preview',
+      provider_model_identifier='gemini-2.5-pro-preview-05-06'
     ),
   }),
 
@@ -541,7 +546,8 @@ GENERATE_TEXT_MODELS: Dict[
     'gemini-1.5-flash': ALL_MODELS['gemini']['gemini-1.5-flash'],
     'gemini-2.0-flash-lite': ALL_MODELS['gemini']['gemini-2.0-flash-lite'],
     'gemini-2.0-flash': ALL_MODELS['gemini']['gemini-2.0-flash'],
-    'gemini-2.5-pro-preview-03-25': ALL_MODELS['gemini']['gemini-2.5-pro-preview-03-25'],
+    'gemini-2.5-flash-preview': ALL_MODELS['gemini']['gemini-2.5-flash-preview'],
+    'gemini-2.5-pro-preview': ALL_MODELS['gemini']['gemini-2.5-pro-preview'],
   }),
 
   'cohere': MappingProxyType({
@@ -662,6 +668,7 @@ MEDIUM_GENERATE_TEXT_MODELS: Dict[
   }),
   'gemini': MappingProxyType({
     'gemini-1.5-pro': ALL_MODELS['gemini']['gemini-1.5-pro'],
+    'gemini-2.5-flash-preview': ALL_MODELS['gemini']['gemini-2.5-flash-preview'],
   }),
   'grok': MappingProxyType({
     'grok-3-mini-fast-beta': ALL_MODELS['grok']['grok-3-mini-fast-beta'],
@@ -703,7 +710,7 @@ LARGE_GENERATE_TEXT_MODELS: Dict[
     'mixtral-8x7b-it': ALL_MODELS['databricks']['mixtral-8x7b-it'],
   }),
   'gemini': MappingProxyType({
-    'gemini-2.5-pro-preview-03-25': ALL_MODELS['gemini']['gemini-2.5-pro-preview-03-25'],
+    'gemini-2.5-pro-preview': ALL_MODELS['gemini']['gemini-2.5-pro-preview'],
   }),
   'grok': MappingProxyType({
     'grok-3-beta': ALL_MODELS['grok']['grok-3-beta'],
@@ -745,7 +752,7 @@ LARGEST_GENERATE_TEXT_MODELS: Dict[
     'deepseek-r1': ALL_MODELS['deepseek']['deepseek-r1'],
   }),
   'gemini': MappingProxyType({
-    'gemini-2.5-pro-preview-03-25': ALL_MODELS['gemini']['gemini-2.5-pro-preview-03-25'],
+    'gemini-2.5-pro-preview': ALL_MODELS['gemini']['gemini-2.5-pro-preview'],
   }),
   'grok': MappingProxyType({
     'grok-3-beta': ALL_MODELS['grok']['grok-3-beta'],

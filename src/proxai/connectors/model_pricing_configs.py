@@ -176,7 +176,11 @@ GENERATE_TEXT_PRICING: Dict[
       per_response_token_cost=0.1,
       per_query_token_cost=0.4,
     ),
-    'gemini-2.5-pro-preview-03-25': types.ProviderModelPricingType(
+    'gemini-2.5-flash-preview': types.ProviderModelPricingType(
+      per_response_token_cost=0.15,
+      per_query_token_cost=0.60,
+    ),
+    'gemini-2.5-pro-preview': types.ProviderModelPricingType(
       per_response_token_cost=1.25,
       per_query_token_cost=10.00,
     ),
