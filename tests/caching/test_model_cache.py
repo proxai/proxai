@@ -39,11 +39,11 @@ def _get_example_model_status():
   data = types.ModelStatus()
   models = [
       model_configs.ALL_MODELS['openai']['gpt-3.5-turbo'],
-      model_configs.ALL_MODELS['claude']['haiku'],
+      model_configs.ALL_MODELS['claude']['haiku-3.5'],
       model_configs.ALL_MODELS['openai']['gpt-4'],
-      model_configs.ALL_MODELS['claude']['opus'],
+      model_configs.ALL_MODELS['claude']['opus-4'],
       model_configs.ALL_MODELS['openai']['gpt-4.1-mini'],
-      model_configs.ALL_MODELS['claude']['sonnet'],
+      model_configs.ALL_MODELS['claude']['sonnet-4'],
       model_configs.ALL_MODELS['gemini']['gemini-1.5-pro'],
       model_configs.ALL_MODELS['cohere']['command-r']
   ]

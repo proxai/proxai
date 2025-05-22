@@ -467,7 +467,7 @@ class TestGenerateText:
     self._test_generate_text(('openai', 'gpt-4.1'))
 
   def test_claude(self):
-    self._test_generate_text(('claude', 'opus'))
+    self._test_generate_text(('claude', 'opus-4'))
 
   def test_gemini(self):
     self._test_generate_text(('gemini', 'gemini-1.5-pro'))
