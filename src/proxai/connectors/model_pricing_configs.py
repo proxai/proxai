@@ -124,33 +124,41 @@ GENERATE_TEXT_PRICING: Dict[
 
   # Claude
   'claude': MappingProxyType({
-    'sonnet': types.ProviderModelPricingType(
-      per_response_token_cost=3.0,
+    'opus-4': types.ProviderModelPricingType(
+      per_response_token_cost=75.0,
       per_query_token_cost=15.0,
     ),
-    'haiku': types.ProviderModelPricingType(
-      per_response_token_cost=0.8,
-      per_query_token_cost=4.0,
-    ),
-    '3.5-sonnet-v2': types.ProviderModelPricingType(
-      per_response_token_cost=3.0,
-      per_query_token_cost=15.0,
-    ),
-    '3.5-sonnet': types.ProviderModelPricingType(
-      per_response_token_cost=3.0,
-      per_query_token_cost=15.0,
-    ),
-    'opus': types.ProviderModelPricingType(
+    'sonnet-4': types.ProviderModelPricingType(
       per_response_token_cost=15.0,
-      per_query_token_cost=75.0,
+      per_query_token_cost=3.0,
     ),
-    '3-sonnet': types.ProviderModelPricingType(
-      per_response_token_cost=3.00,
-      per_query_token_cost=15.00,
+    'sonnet-3.7': types.ProviderModelPricingType(
+      per_response_token_cost=15.0,
+      per_query_token_cost=3.0,
     ),
-    '3-haiku': types.ProviderModelPricingType(
-      per_response_token_cost=0.25,
-      per_query_token_cost=1.25,
+    'haiku-3.5': types.ProviderModelPricingType(
+      per_response_token_cost=4.0,
+      per_query_token_cost=0.8,
+    ),
+    'sonnet-3.5': types.ProviderModelPricingType(
+      per_response_token_cost=15.0,
+      per_query_token_cost=3.0,
+    ),
+    'sonnet-3.5-old': types.ProviderModelPricingType(
+      per_response_token_cost=15.0,
+      per_query_token_cost=3.0,
+    ),
+    'opus-3': types.ProviderModelPricingType(
+      per_response_token_cost=75.0,
+      per_query_token_cost=15.0,
+    ),
+    'sonnet-3': types.ProviderModelPricingType(
+      per_response_token_cost=15.00,
+      per_query_token_cost=3.00,
+    ),
+    'haiku-3': types.ProviderModelPricingType(
+      per_response_token_cost=1.25,
+      per_query_token_cost=0.25,
     ),
   }),
 

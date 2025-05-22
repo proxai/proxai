@@ -97,10 +97,10 @@ class TestProxaiApiUseCases:
     logging_record = px.generate_text(
         prompt='hello',
         provider_model=px.models.get_model(
-            'claude', 'haiku', clear_model_cache=True),
+            'claude', 'haiku-3.5', clear_model_cache=True),
         extensive_return=True)
     assert logging_record.response_record.response == 'mock response'
-    assert logging_record.query_record.provider_model.model == 'haiku'
+    assert logging_record.query_record.provider_model.model == 'haiku-3.5'
     assert logging_record.response_source == px.types.ResponseSource.PROVIDER
 
     logging_record = px.generate_text(
@@ -199,9 +199,9 @@ class TestProxaiApiUseCases:
     px.models.list_models(clear_model_cache=True)
 
     # Test default model
-    px.set_model(('claude', 'haiku'))
+    px.set_model(('claude', 'haiku-3.5'))
     logging_record = px.generate_text('hello', extensive_return=True)
-    assert logging_record.query_record.provider_model.model == 'haiku'
+    assert logging_record.query_record.provider_model.model == 'haiku-3.5'
 
     # Test setting model with generate_text parameter
     px.set_model(generate_text=('openai', 'gpt-4'))
@@ -214,9 +214,9 @@ class TestProxaiApiUseCases:
     assert logging_record.query_record.provider_model.model == 'gpt-3.5-turbo'
 
     # Test setting model with provider_model from get_provider_model
-    px.set_model(px.models.get_model('claude', 'haiku'))
+    px.set_model(px.models.get_model('claude', 'haiku-3.5'))
     logging_record = px.generate_text('hello', extensive_return=True)
-    assert logging_record.query_record.provider_model.model == 'haiku'
+    assert logging_record.query_record.provider_model.model == 'haiku-3.5'
 
     # Test error when both parameters are set
     with pytest.raises(

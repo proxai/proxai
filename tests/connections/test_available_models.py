@@ -164,11 +164,11 @@ class TestAvailableModels:
     models.unprocessed_models.add(
         model_configs.ALL_MODELS['openai']['gpt-4.1'])
     models.unprocessed_models.add(
-        model_configs.ALL_MODELS['claude']['3-haiku'])
+        model_configs.ALL_MODELS['claude']['haiku-3'])
     models.unprocessed_models.add(
-        model_configs.ALL_MODELS['claude']['haiku'])
+        model_configs.ALL_MODELS['claude']['haiku-3.5'])
     models.unprocessed_models.add(
-        model_configs.ALL_MODELS['claude']['sonnet'])
+        model_configs.ALL_MODELS['claude']['opus-4'])
 
     test_models = copy.deepcopy(models)
     available_models_manager._filter_by_model_size(
@@ -176,7 +176,7 @@ class TestAvailableModels:
         model_size=types.ModelSizeType.SMALL)
     assert test_models.unprocessed_models == set([
         model_configs.ALL_MODELS['openai']['gpt-4o-mini'],
-        model_configs.ALL_MODELS['claude']['3-haiku'],
+        model_configs.ALL_MODELS['claude']['haiku-3'],
     ])
 
     test_models = copy.deepcopy(models)
@@ -185,7 +185,7 @@ class TestAvailableModels:
         model_size=types.ModelSizeType.MEDIUM)
     assert test_models.unprocessed_models == set([
         model_configs.ALL_MODELS['openai']['o1-mini'],
-        model_configs.ALL_MODELS['claude']['haiku'],
+        model_configs.ALL_MODELS['claude']['haiku-3.5'],
     ])
 
     test_models = copy.deepcopy(models)
@@ -194,7 +194,7 @@ class TestAvailableModels:
         model_size=types.ModelSizeType.LARGE)
     assert test_models.unprocessed_models == set([
         model_configs.ALL_MODELS['openai']['gpt-4.1'],
-        model_configs.ALL_MODELS['claude']['sonnet'],
+        model_configs.ALL_MODELS['claude']['opus-4'],
     ])
 
     test_models = copy.deepcopy(models)
@@ -203,7 +203,7 @@ class TestAvailableModels:
         model_size=types.ModelSizeType.LARGEST)
     assert test_models.unprocessed_models == set([
         model_configs.ALL_MODELS['openai']['gpt-4.1'],
-        model_configs.ALL_MODELS['claude']['sonnet'],
+        model_configs.ALL_MODELS['claude']['opus-4'],
     ])
 
     test_models = copy.deepcopy(models)
@@ -212,7 +212,7 @@ class TestAvailableModels:
         model_size='small')
     assert test_models.unprocessed_models == set([
         model_configs.ALL_MODELS['openai']['gpt-4o-mini'],
-        model_configs.ALL_MODELS['claude']['3-haiku'],
+        model_configs.ALL_MODELS['claude']['haiku-3'],
     ])
 
   @pytest.mark.parametrize('allow_multiprocessing', [True, False])
@@ -403,7 +403,7 @@ class TestAvailableModels:
     with pytest.raises(
         ValueError,
         match='Provider key not found in environment variables for claude.'):
-      available_models_manager.get_model('claude', 'haiku')
+      available_models_manager.get_model('claude', 'haiku-3.5')
 
     # Test invalid provider
     with pytest.raises(
