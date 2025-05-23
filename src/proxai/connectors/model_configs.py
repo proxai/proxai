@@ -178,39 +178,49 @@ ALL_MODELS: Dict[str, Dict[str, types.ProviderModelType]] = MappingProxyType({
   # Models provided by Claude:
   # https://claude.ai/docs/models
   'claude': MappingProxyType({
-    'sonnet':  types.ProviderModelType(
+    'sonnet-4':  types.ProviderModelType(
       provider='claude',
-      model='sonnet',
+      model='sonnet-4',
+      provider_model_identifier='claude-sonnet-4-20250514'
+    ),
+    'opus-4':  types.ProviderModelType(
+      provider='claude',
+      model='opus-4',
+      provider_model_identifier='claude-opus-4-20250514'
+    ),
+    'sonnet-3.7':  types.ProviderModelType(
+      provider='claude',
+      model='sonnet-3.7',
       provider_model_identifier='claude-3-7-sonnet-20250219'
     ),
-    'haiku':  types.ProviderModelType(
+    'haiku-3.5':  types.ProviderModelType(
       provider='claude',
-      model='haiku',
+      model='haiku-3.5',
       provider_model_identifier='claude-3-5-haiku-20241022'
     ),
-    '3.5-sonnet-v2': types.ProviderModelType(
+    'sonnet-3.5': types.ProviderModelType(
       provider='claude',
-      model='3.5-sonnet-v2',
+      model='sonnet-3.5',
       provider_model_identifier='claude-3-5-sonnet-20241022'
     ),
-    '3.5-sonnet': types.ProviderModelType(
+    'sonnet-3.5-old': types.ProviderModelType(
       provider='claude',
-      model='3.5-sonnet',
+      model='sonnet-3.5-old',
       provider_model_identifier='claude-3-5-sonnet-20240620'
     ),
-    'opus':  types.ProviderModelType(
+    'opus-3':  types.ProviderModelType(
       provider='claude',
-      model='opus',
+      model='opus-3',
       provider_model_identifier='claude-3-opus-20240229'
     ),
-    '3-sonnet': types.ProviderModelType(
+    'sonnet-3': types.ProviderModelType(
       provider='claude',
-      model='3-sonnet',
+      model='sonnet-3',
       provider_model_identifier='claude-3-sonnet-20240229'
     ),
-    '3-haiku': types.ProviderModelType(
+    'haiku-3': types.ProviderModelType(
       provider='claude',
-      model='3-haiku',
+      model='haiku-3',
       provider_model_identifier='claude-3-haiku-20240307'
     ),
   }),
@@ -531,13 +541,15 @@ GENERATE_TEXT_MODELS: Dict[
   }),
 
   'claude': MappingProxyType({
-    'sonnet': ALL_MODELS['claude']['sonnet'],
-    'haiku': ALL_MODELS['claude']['haiku'],
-    '3.5-sonnet-v2': ALL_MODELS['claude']['3.5-sonnet-v2'],
-    '3.5-sonnet': ALL_MODELS['claude']['3.5-sonnet'],
-    'opus': ALL_MODELS['claude']['opus'],
-    '3-sonnet': ALL_MODELS['claude']['3-sonnet'],
-    '3-haiku': ALL_MODELS['claude']['3-haiku'],
+    'sonnet-4': ALL_MODELS['claude']['sonnet-4'],
+    'opus-4': ALL_MODELS['claude']['opus-4'],
+    'sonnet-3.7': ALL_MODELS['claude']['sonnet-3.7'],
+    'haiku-3.5': ALL_MODELS['claude']['haiku-3.5'],
+    'sonnet-3.5': ALL_MODELS['claude']['sonnet-3.5'],
+    'sonnet-3.5-old': ALL_MODELS['claude']['sonnet-3.5-old'],
+    'opus-3': ALL_MODELS['claude']['opus-3'],
+    'sonnet-3': ALL_MODELS['claude']['sonnet-3'],
+    'haiku-3': ALL_MODELS['claude']['haiku-3'],
   }),
 
   'gemini': MappingProxyType({
@@ -615,7 +627,7 @@ GENERATE_TEXT_MODELS: Dict[
 SMALL_GENERATE_TEXT_MODELS: Dict[
     str, Dict[str, types.ProviderModelType]] = MappingProxyType({
   'claude': MappingProxyType({
-    '3-haiku': ALL_MODELS['claude']['3-haiku'],
+    'haiku-3': ALL_MODELS['claude']['haiku-3'],
   }),
   'cohere': MappingProxyType({
     'command-light': ALL_MODELS['cohere']['command-light'],
@@ -657,7 +669,7 @@ SMALL_GENERATE_TEXT_MODELS: Dict[
 MEDIUM_GENERATE_TEXT_MODELS: Dict[
     str, Dict[str, types.ProviderModelType]] = MappingProxyType({
   'claude': MappingProxyType({
-    'haiku': ALL_MODELS['claude']['haiku'],
+    'haiku-3.5': ALL_MODELS['claude']['haiku-3.5'],
   }),
   'cohere': MappingProxyType({
     'command': ALL_MODELS['cohere']['command'],
@@ -694,8 +706,8 @@ MEDIUM_GENERATE_TEXT_MODELS: Dict[
 LARGE_GENERATE_TEXT_MODELS: Dict[
     str, Dict[str, types.ProviderModelType]] = MappingProxyType({
   'claude': MappingProxyType({
-    'opus': ALL_MODELS['claude']['opus'],
-    'sonnet': ALL_MODELS['claude']['sonnet'],
+    'opus-4': ALL_MODELS['claude']['opus-4'],
+    'sonnet-4': ALL_MODELS['claude']['sonnet-4'],
   }),
   'cohere': MappingProxyType({
     'command-a': ALL_MODELS['cohere']['command-a'],
@@ -739,7 +751,7 @@ LARGE_GENERATE_TEXT_MODELS: Dict[
 LARGEST_GENERATE_TEXT_MODELS: Dict[
     str, Dict[str, types.ProviderModelType]] = MappingProxyType({
   'claude': MappingProxyType({
-    'sonnet': ALL_MODELS['claude']['sonnet'],
+    'opus-4': ALL_MODELS['claude']['opus-4'],
   }),
   'cohere': MappingProxyType({
     'command-a': ALL_MODELS['cohere']['command-a'],
@@ -772,7 +784,7 @@ LARGEST_GENERATE_TEXT_MODELS: Dict[
 PREFERRED_DEFAULT_MODELS: List[types.ProviderModelType] = [
   ALL_MODELS['openai']['gpt-4o-mini'],
   ALL_MODELS['gemini']['gemini-2.0-flash'],
-  ALL_MODELS['claude']['haiku'],
+  ALL_MODELS['claude']['haiku-3.5'],
   ALL_MODELS['grok']['grok-3-mini-fast-beta'],
   ALL_MODELS['cohere']['command-r'],
   ALL_MODELS['mistral']['mistral-small'],
