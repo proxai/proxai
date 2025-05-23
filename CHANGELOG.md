@@ -2,6 +2,11 @@
 
 <!--next-version-placeholder-->
 
+## v0.2.2 (2025/05/22)
+
+- Added support for Claude Sonnet 4 and Opus 4 models
+- Fixed incorrect pricing configuration
+
 ## v0.2.1 (2025/05/21)
 
 - Added official website and GitHub repository links to package metadata

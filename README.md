@@ -6,7 +6,7 @@
 <img src="assets/proxai.png" alt="ProxAI Logo" width="200" style="border-radius: 10px;"/>
 </a>
 
-[![PyPI version](https://img.shields.io/badge/pip-v0.2.0-blue.svg)](https://pypi.org/project/proxai/)
+[![PyPI version](https://img.shields.io/badge/pip-v0.2.2-blue.svg)](https://pypi.org/project/proxai/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/proxai/proxai/blob/main/LICENSE)
 [![Discord](https://img.shields.io/discord/1371968537446318191?color=7289DA&label=Discord&logo=discord&logoColor=white)](https://discord.gg/Hxg6tPpX)
 
