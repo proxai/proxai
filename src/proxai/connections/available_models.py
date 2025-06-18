@@ -558,6 +558,12 @@ class AvailableModels(state_controller.StateControlled):
     start_utc_date = datetime.datetime.now(datetime.timezone.utc)
     models = types.ModelStatus()
     self._load_provider_keys()
+    if not self.providers_with_key:
+      raise ValueError(
+          'No provider API keys found in environment variables.\n'
+          'Please follow the instructions in '
+          'https://www.proxai.co/proxai-docs/provider-integrations '
+          'to set the environment variables.')
     self._get_all_models(models, call_type=call_type)
     self._filter_by_provider_api_key(models)
     self._filter_by_providers(models, providers=selected_providers)
