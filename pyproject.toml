@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "proxai"
-version = "0.2.3"
+version = "0.2.4"
 description = "ProxAI is a lightweight abstraction layer for foundational AI model connections."
 authors = ["proxai"]
 license = "MIT"
@@ -22,6 +22,7 @@ cohere = "^5.1.7"
 mistralai = "^0.1.8"
 google-genai = "<1.9.0"
 databricks-sdk = {version = "^0.35.0", extras = ["openai"]}
+platformdirs = "^4.0.0"
 
 [tool.poetry.dev-dependencies]
 
