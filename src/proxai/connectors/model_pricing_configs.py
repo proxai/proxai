@@ -164,33 +164,37 @@ GENERATE_TEXT_PRICING: Dict[
 
   # Gemini
   'gemini': MappingProxyType({
-    'gemini-1.5-pro': types.ProviderModelPricingType(
-      per_response_token_cost=5.00,
-      per_query_token_cost=1.25,
+        'gemini-2.5-pro': types.ProviderModelPricingType(
+      per_response_token_cost=1.25,
+      per_query_token_cost=10.00,
     ),
-    'gemini-1.5-flash-8b': types.ProviderModelPricingType(
-      per_response_token_cost=0.15,
-      per_query_token_cost=0.0375,
-    ),
-    'gemini-1.5-flash': types.ProviderModelPricingType(
+    'gemini-2.5-flash': types.ProviderModelPricingType(
       per_response_token_cost=0.30,
-      per_query_token_cost=0.075,
+      per_query_token_cost=2.50,
     ),
-    'gemini-2.0-flash-lite': types.ProviderModelPricingType(
-      per_response_token_cost=0.30,
-      per_query_token_cost=0.075,
+    'gemini-2.5-flash-lite-preview-06-17': types.ProviderModelPricingType(
+      per_response_token_cost=0.10,
+      per_query_token_cost=0.40,
     ),
     'gemini-2.0-flash': types.ProviderModelPricingType(
-      per_response_token_cost=0.4,
-      per_query_token_cost=0.1,
+      per_response_token_cost=0.10,
+      per_query_token_cost=0.40,
     ),
-    'gemini-2.5-flash-preview': types.ProviderModelPricingType(
-      per_response_token_cost=0.60,
+    'gemini-2.0-flash-lite': types.ProviderModelPricingType(
+      per_response_token_cost=0.07,
+      per_query_token_cost=0.30,
+    ),
+    'gemini-1.5-flash': types.ProviderModelPricingType(
+      per_response_token_cost=0.07,
+      per_query_token_cost=0.30,
+    ),
+    'gemini-1.5-flash-8b': types.ProviderModelPricingType(
+      per_response_token_cost=0.04,
       per_query_token_cost=0.15,
     ),
-    'gemini-2.5-pro-preview': types.ProviderModelPricingType(
-      per_response_token_cost=10.00,
-      per_query_token_cost=1.25,
+    'gemini-1.5-pro': types.ProviderModelPricingType(
+      per_response_token_cost=1.25,
+      per_query_token_cost=5.00,
     ),
   }),
 
