@@ -229,40 +229,45 @@ ALL_MODELS: Dict[str, Dict[str, types.ProviderModelType]] = MappingProxyType({
   # Models provided by Gemini:
   # https://ai.google.dev/models/gemini
   'gemini': MappingProxyType({
-    'gemini-1.5-pro': types.ProviderModelType(
+    'gemini-2.5-pro': types.ProviderModelType(
       provider='gemini',
-      model='gemini-1.5-pro',
-      provider_model_identifier='gemini-1.5-pro'
+      model='gemini-2.5-pro',
+      provider_model_identifier='gemini-2.5-pro'
     ),
-    'gemini-1.5-flash-8b': types.ProviderModelType(
+    'gemini-2.5-flash': types.ProviderModelType(
       provider='gemini',
-      model='gemini-1.5-flash-8b',
-      provider_model_identifier='gemini-1.5-flash-8b'
+      model='gemini-2.5-flash',
+      provider_model_identifier='gemini-2.5-flash'
     ),
-    'gemini-1.5-flash': types.ProviderModelType(
+    'gemini-2.5-flash-lite-preview-06-17': types.ProviderModelType(
       provider='gemini',
-      model='gemini-1.5-flash',
-      provider_model_identifier='gemini-1.5-flash'
-    ),
-    'gemini-2.0-flash-lite': types.ProviderModelType(
-      provider='gemini',
-      model='gemini-2.0-flash-lite',
-      provider_model_identifier='gemini-2.0-flash-lite'
+      model='gemini-2.5-flash-lite-preview-06-17',
+      provider_model_identifier='gemini-2.5-flash-lite-preview-06-17'
     ),
     'gemini-2.0-flash': types.ProviderModelType(
       provider='gemini',
       model='gemini-2.0-flash',
       provider_model_identifier='gemini-2.0-flash'
     ),
-    'gemini-2.5-flash-preview': types.ProviderModelType(
+    'gemini-2.0-flash-lite': types.ProviderModelType(
       provider='gemini',
-      model='gemini-2.5-flash-preview',
-      provider_model_identifier='gemini-2.5-flash-preview-05-20'
+      model='gemini-2.0-flash-lite',
+      provider_model_identifier='gemini-2.0-flash-lite'
     ),
-    'gemini-2.5-pro-preview': types.ProviderModelType(
+    'gemini-1.5-flash': types.ProviderModelType(
       provider='gemini',
-      model='gemini-2.5-pro-preview',
-      provider_model_identifier='gemini-2.5-pro-preview-05-06'
+      model='gemini-1.5-flash',
+      provider_model_identifier='gemini-1.5-flash'
+    ),
+    'gemini-1.5-flash-8b': types.ProviderModelType(
+      provider='gemini',
+      model='gemini-1.5-flash-8b',
+      provider_model_identifier='gemini-1.5-flash-8b'
+    ),
+    'gemini-1.5-pro': types.ProviderModelType(
+      provider='gemini',
+      model='gemini-1.5-pro',
+      provider_model_identifier='gemini-1.5-pro'
     ),
   }),
 
@@ -553,13 +558,14 @@ GENERATE_TEXT_MODELS: Dict[
   }),
 
   'gemini': MappingProxyType({
-    'gemini-1.5-pro': ALL_MODELS['gemini']['gemini-1.5-pro'],
-    'gemini-1.5-flash-8b': ALL_MODELS['gemini']['gemini-1.5-flash-8b'],
-    'gemini-1.5-flash': ALL_MODELS['gemini']['gemini-1.5-flash'],
-    'gemini-2.0-flash-lite': ALL_MODELS['gemini']['gemini-2.0-flash-lite'],
+    'gemini-2.5-pro': ALL_MODELS['gemini']['gemini-2.5-pro'],
+    'gemini-2.5-flash': ALL_MODELS['gemini']['gemini-2.5-flash'],
+    'gemini-2.5-flash-lite-preview-06-17': ALL_MODELS['gemini']['gemini-2.5-flash-lite-preview-06-17'],
     'gemini-2.0-flash': ALL_MODELS['gemini']['gemini-2.0-flash'],
-    'gemini-2.5-flash-preview': ALL_MODELS['gemini']['gemini-2.5-flash-preview'],
-    'gemini-2.5-pro-preview': ALL_MODELS['gemini']['gemini-2.5-pro-preview'],
+    'gemini-2.0-flash-lite': ALL_MODELS['gemini']['gemini-2.0-flash-lite'],
+    'gemini-1.5-flash': ALL_MODELS['gemini']['gemini-1.5-flash'],
+    'gemini-1.5-flash-8b': ALL_MODELS['gemini']['gemini-1.5-flash-8b'],
+    'gemini-1.5-pro': ALL_MODELS['gemini']['gemini-1.5-pro'],
   }),
 
   'cohere': MappingProxyType({
@@ -640,10 +646,11 @@ SMALL_GENERATE_TEXT_MODELS: Dict[
     'deepseek-v3': ALL_MODELS['deepseek']['deepseek-v3'],
   }),
   'gemini': MappingProxyType({
-    'gemini-1.5-flash': ALL_MODELS['gemini']['gemini-1.5-flash'],
-    'gemini-1.5-flash-8b': ALL_MODELS['gemini']['gemini-1.5-flash-8b'],
+    'gemini-2.5-flash-lite-preview-06-17': ALL_MODELS['gemini']['gemini-2.5-flash-lite-preview-06-17'],
     'gemini-2.0-flash': ALL_MODELS['gemini']['gemini-2.0-flash'],
     'gemini-2.0-flash-lite': ALL_MODELS['gemini']['gemini-2.0-flash-lite'],
+    'gemini-1.5-flash': ALL_MODELS['gemini']['gemini-1.5-flash'],
+    'gemini-1.5-flash-8b': ALL_MODELS['gemini']['gemini-1.5-flash-8b'],
   }),
   'grok': MappingProxyType({
     'grok-3-mini-beta': ALL_MODELS['grok']['grok-3-mini-beta'],
@@ -680,7 +687,7 @@ MEDIUM_GENERATE_TEXT_MODELS: Dict[
   }),
   'gemini': MappingProxyType({
     'gemini-1.5-pro': ALL_MODELS['gemini']['gemini-1.5-pro'],
-    'gemini-2.5-flash-preview': ALL_MODELS['gemini']['gemini-2.5-flash-preview'],
+    'gemini-2.5-flash': ALL_MODELS['gemini']['gemini-2.5-flash'],
   }),
   'grok': MappingProxyType({
     'grok-3-mini-fast-beta': ALL_MODELS['grok']['grok-3-mini-fast-beta'],
@@ -722,7 +729,7 @@ LARGE_GENERATE_TEXT_MODELS: Dict[
     'mixtral-8x7b-it': ALL_MODELS['databricks']['mixtral-8x7b-it'],
   }),
   'gemini': MappingProxyType({
-    'gemini-2.5-pro-preview': ALL_MODELS['gemini']['gemini-2.5-pro-preview'],
+    'gemini-2.5-pro': ALL_MODELS['gemini']['gemini-2.5-pro'],
   }),
   'grok': MappingProxyType({
     'grok-3-beta': ALL_MODELS['grok']['grok-3-beta'],
@@ -764,7 +771,7 @@ LARGEST_GENERATE_TEXT_MODELS: Dict[
     'deepseek-r1': ALL_MODELS['deepseek']['deepseek-r1'],
   }),
   'gemini': MappingProxyType({
-    'gemini-2.5-pro-preview': ALL_MODELS['gemini']['gemini-2.5-pro-preview'],
+    'gemini-2.5-pro': ALL_MODELS['gemini']['gemini-2.5-pro'],
   }),
   'grok': MappingProxyType({
     'grok-3-beta': ALL_MODELS['grok']['grok-3-beta'],

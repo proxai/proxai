@@ -56,12 +56,19 @@ def list_models():
   pprint(model_status.working_models)
   pprint(model_status.failed_models)
 
+def check_health():
+  px.connect(
+      experiment_path='simple_test/run_1',
+      logging_path=f'{Path.home()}/proxai_log/',
+      cache_path=f'{Path.home()}/proxai_cache/')
+  px.check_health(verbose=True)
+
 
 def main():
-  simple_model_test()
+  # simple_model_test()
   # simple_cache_test()
   # list_models()
-
+  check_health()
 
 if __name__ == '__main__':
   main()
