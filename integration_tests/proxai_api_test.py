@@ -171,6 +171,7 @@ def local_proxdash_connection(state_data):
 @integration_block
 def list_models(state_data):
   provider_models = px.models.list_models()
+  assert len(provider_models) > 0, 'No models found.'
   for provider_model in provider_models:
     print(f'{provider_model.provider:>25} - {provider_model.model}')
   return state_data

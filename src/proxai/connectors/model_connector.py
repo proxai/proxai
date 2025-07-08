@@ -358,6 +358,7 @@ class ProviderModelConnector(state_controller.StateControlled):
     except Exception as e:
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
+          proxdash_options=self.proxdash_connection.proxdash_options,
           message=(
               'ProxDash upload_logging_record failed.\n'
               f'Error message: {e}\n'
