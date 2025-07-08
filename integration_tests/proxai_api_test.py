@@ -185,7 +185,7 @@ def list_models_with_model_size_filter(state_data):
   for provider_model in provider_models:
     print(f'{provider_model.provider:>25} - {provider_model.model}')
   assert px.models.get_model(
-      provider='claude', model='3-haiku') in provider_models
+      provider='claude', model='haiku-3') in provider_models
   end_time = time.time()
   assert end_time - start_time < 1
 
@@ -196,7 +196,7 @@ def list_models_with_model_size_filter(state_data):
   for provider_model in provider_models:
     print(f'{provider_model.provider:>25} - {provider_model.model}')
   assert px.models.get_model(
-      provider='claude', model='haiku') in provider_models
+      provider='claude', model='haiku-3.5') in provider_models
   end_time = time.time()
   assert end_time - start_time < 1
 
@@ -206,7 +206,7 @@ def list_models_with_model_size_filter(state_data):
   for provider_model in provider_models:
     print(f'{provider_model.provider:>25} - {provider_model.model}')
   assert px.models.get_model(
-      provider='claude', model='sonnet') in provider_models
+      provider='claude', model='opus-4') in provider_models
   end_time = time.time()
   assert end_time - start_time < 1
 
@@ -292,7 +292,7 @@ def generate_text_with_provider_model(state_data):
 
 @integration_block
 def generate_text_with_provider_model_type(state_data):
-  provider_model = px.models.get_model('claude', 'opus')
+  provider_model = px.models.get_model('claude', 'opus-4')
   print(type(provider_model))
   print(f'{provider_model.provider=}')
   print(f'{provider_model.model=}')
