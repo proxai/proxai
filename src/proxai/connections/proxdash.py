@@ -372,8 +372,14 @@ class ProxDashConnection(state_controller.StateControlled):
     if response.status_code != 201 or response.text == 'false':
       return types.ProxDashConnectionStatus.API_KEY_NOT_VALID, None
     try:
-      key_info_from_proxdash = json.loads(response.text)
-      return types.ProxDashConnectionStatus.CONNECTED, key_info_from_proxdash
+      api_response = json.loads(response.text)
+      # New backend API response format
+      if api_response.get('success') and api_response.get('data'):
+        return types.ProxDashConnectionStatus.CONNECTED, api_response['data']
+      # Old backend API response format
+      if 'keyName' in api_response:
+        return types.ProxDashConnectionStatus.CONNECTED, api_response
+      return types.ProxDashConnectionStatus.PROXDASH_INVALID_RETURN, None
     except Exception:
       return types.ProxDashConnectionStatus.PROXDASH_INVALID_RETURN, None
 
@@ -447,29 +453,54 @@ class ProxDashConnection(state_controller.StateControlled):
       'endUTCDate': logging_record.response_record.end_utc_date.isoformat(),
       'localTimeOffsetMinute': (
           logging_record.response_record.local_time_offset_minute),
-      'responseTime': (
-          logging_record.response_record.response_time.total_seconds() * 1000),
+      'responseTime': (int(
+          logging_record.response_record.response_time.total_seconds() * 1000)),
       'estimatedCost': logging_record.response_record.estimated_cost,
       'responseTokens': logging_record.response_record.token_count,
       'responseSource': logging_record.response_source,
       'lookFailReason': logging_record.look_fail_reason,
     }
+
     try:
       response = requests.post(
           f'{self.proxdash_options.base_url}/logging-record', json=data)
-      if response.status_code != 201 or response.text != 'success':
-        logging_utils.log_proxdash_message(
-            logging_options=self.logging_options,
-            proxdash_options=self.proxdash_options,
-            message=(
-                'ProxDash could not log the record. Error message:\n'
-                f'{response.text}'),
-            type=types.LoggingType.ERROR)
     except Exception as e:
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
           proxdash_options=self.proxdash_options,
           message=(
-              'ProxDash could not log the record. Error message:\n'
-              f'{e}'),
+              'ProxDash could not log the record. Error: '
+              f'{str(e)}'),
+          type=types.LoggingType.ERROR)
+      return
+
+    if response.status_code != 201:
+      logging_utils.log_proxdash_message(
+          logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
+          message=(
+              'ProxDash could not log the record. Status code: '
+              f'{response.status_code}, Response: {response.text}'),
+          type=types.LoggingType.ERROR)
+      return
+
+    try:
+      api_response = json.loads(response.text)
+    except Exception:
+      logging_utils.log_proxdash_message(
+          logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
+          message=(
+              'ProxDash could not log the record. Invalid JSON response: '
+              f'{response.text}'),
+          type=types.LoggingType.ERROR)
+      return
+
+    if not api_response.get('success'):
+      logging_utils.log_proxdash_message(
+          logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
+          message=(
+              'ProxDash could not log the record. Response: '
+              f'{response.text}'),
           type=types.LoggingType.ERROR)
