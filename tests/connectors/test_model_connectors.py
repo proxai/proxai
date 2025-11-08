@@ -17,10 +17,10 @@ def setup_test(monkeypatch, requests_mock):
   for api_key_list in model_configs.PROVIDER_KEY_MAP.values():
     for api_key in api_key_list:
       monkeypatch.setenv(api_key, 'test_api_key')
-  requests_mock.post(
-      'https://proxainest-production.up.railway.app/connect',
-      text='{"permission": "ALL"}',
-      status_code=201,
+  requests_mock.get(
+      'https://proxainest-production.up.railway.app/ingestion/verify-key',
+      text='{"success": true, "data": {"permission": "ALL"}}',
+      status_code=200,
   )
   yield
 
