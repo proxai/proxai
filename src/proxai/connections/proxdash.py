@@ -366,10 +366,10 @@ class ProxDashConnection(state_controller.StateControlled):
           types.ProxDashConnectionStatus.CONNECTED,
       ],
       Optional[Dict]]:
-    response = requests.post(
-        f'{base_url}/connect',
-        data={'apiKey': api_key})
-    if response.status_code != 201 or response.text == 'false':
+    response = requests.get(
+        f'{base_url}/ingestion/verify-key',
+        headers={'X-API-Key': api_key})
+    if response.status_code != 200 or response.text == 'false':
       return types.ProxDashConnectionStatus.API_KEY_NOT_VALID, None
     try:
       api_response = json.loads(response.text)
@@ -430,7 +430,6 @@ class ProxDashConnection(state_controller.StateControlled):
       stop = None
 
     data = {
-      'apiKey': self.proxdash_options.api_key,
       'hiddenRunKey': self.hidden_run_key,
       'experimentPath': self.experiment_path,
       'callType': logging_record.query_record.call_type,
@@ -463,7 +462,9 @@ class ProxDashConnection(state_controller.StateControlled):
 
     try:
       response = requests.post(
-          f'{self.proxdash_options.base_url}/logging-record', json=data)
+          f'{self.proxdash_options.base_url}/ingestion/logging-records',
+          json=data,
+          headers={'X-API-Key': self.proxdash_options.api_key})
     except Exception as e:
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
