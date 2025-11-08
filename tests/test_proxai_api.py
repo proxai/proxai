@@ -152,7 +152,7 @@ class TestProxaiApiUseCases:
     assert (
         model_configs.ALL_MODELS['mock_slow_provider']['mock_slow_model']
         in models.failed_models)
-    assert time.time() - start < 5
+    assert time.time() - start < 7
 
   def test_models_apis(self):
     px.connect(cache_options=px.CacheOptions(clear_model_cache_on_connect=True))

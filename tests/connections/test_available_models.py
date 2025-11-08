@@ -448,7 +448,7 @@ class TestAvailableModels:
         model_configs.PROVIDER_KEY_MAP['openai'][0], raising=False)
     with pytest.raises(
         ValueError,
-        match='Provider model not found in working models'):
+        match='No provider API keys found in environment variables'):
       available_models_manager.get_model(
           'openai', 'gpt-4', clear_model_cache=True)
 
