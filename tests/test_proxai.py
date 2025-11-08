@@ -532,10 +532,10 @@ class TestConnectProxdashConnection:
   def test_connect_proxdash_connection(self, requests_mock, monkeypatch):
     # Setup
     monkeypatch.setenv('PROXDASH_API_KEY', 'test_proxdash_api_key')
-    requests_mock.post(
-        'https://proxainest-production.up.railway.app/connect',
-        text='true',
-        status_code=201,
+    requests_mock.get(
+        'https://proxainest-production.up.railway.app/ingestion/verify-key',
+        text='{"success": true, "data": {"permission": "ALL"}}',
+        status_code=200,
     )
 
     # First connection
@@ -554,10 +554,10 @@ class TestConnectProxdashConnection:
       self, monkeypatch, requests_mock):
     # Setup
     monkeypatch.setenv('PROXDASH_API_KEY', 'test_proxdash_api_key')
-    requests_mock.post(
-        'https://proxainest-production.up.railway.app/connect',
-        text='true',
-        status_code=201,
+    requests_mock.get(
+        'https://proxainest-production.up.railway.app/ingestion/verify-key',
+        text='{"success": true, "data": {"permission": "ALL"}}',
+        status_code=200,
     )
 
     # First connection with disabled proxdash
