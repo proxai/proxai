@@ -15,10 +15,10 @@ from urllib.parse import unquote
 @pytest.fixture(autouse=True)
 def setup_test(monkeypatch, requests_mock):
   monkeypatch.delenv('PROXDASH_API_KEY', raising=False)
-  requests_mock.post(
-      'https://proxainest-production.up.railway.app/connect',
-      text='{"permission": "ALL"}',
-      status_code=201,
+  requests_mock.get(
+      'https://proxainest-production.up.railway.app/ingestion/verify-key',
+      text='{"success": true, "data": {"permission": "ALL"}}',
+      status_code=200,
   )
   yield
 
@@ -111,7 +111,7 @@ def _verify_proxdash_request(
   logging_record_requests = [
       request for request in requests_mock.request_history
       if request.url ==
-      'https://proxainest-production.up.railway.app/logging-record'
+      'https://proxainest-production.up.railway.app/ingestion/logging-records'
   ]
   if expected_data is None:
       assert len(logging_record_requests) == 0
@@ -133,10 +133,15 @@ def _verify_proxdash_request(
       assert parsed_value == expected_value
       return
 
+    # Allow int/float comparison if values are equal
+    if isinstance(value, (int, float)) and isinstance(expected_value, (int, float)):
+      assert value == expected_value
+      return
+
     assert type(value) == type(expected_value), (
         f"Type mismatch: {type(value)} != {type(expected_value)}")
 
-    if isinstance(value, (str, int, float, bool)):
+    if isinstance(value, (str, bool)):
       assert value == expected_value
       return
     if isinstance(value, List):
@@ -1084,10 +1089,10 @@ class TestProxDashConnectionUpdateState:
     assert connection.key_info_from_proxdash is None
 
   def test_api_key_not_valid(self, requests_mock):
-    requests_mock.post(
-        'https://proxainest-production.up.railway.app/connect',
+    requests_mock.get(
+        'https://proxainest-production.up.railway.app/ingestion/verify-key',
         text='false',
-        status_code=201,
+        status_code=200,
     )
     connection = proxdash.ProxDashConnection(
         logging_options=types.LoggingOptions(),
@@ -1103,10 +1108,10 @@ class TestProxDashConnectionUpdateState:
     assert connection.key_info_from_proxdash is None
 
   def test_api_key_invalid_response(self, requests_mock):
-    requests_mock.post(
-        'https://proxainest-production.up.railway.app/connect',
+    requests_mock.get(
+        'https://proxainest-production.up.railway.app/ingestion/verify-key',
         text='Some invalid response',
-        status_code=201,
+        status_code=200,
     )
     connection = proxdash.ProxDashConnection(
         logging_options=types.LoggingOptions(),
@@ -1366,8 +1371,8 @@ class TestProxDashConnectionHideSensitiveContent:
         response="sensitive response",
         error=None,
         error_traceback=None,
-        start_utc_date=datetime.datetime.utcnow(),
-        end_utc_date=datetime.datetime.utcnow(),
+        start_utc_date=datetime.datetime.now(datetime.timezone.utc),
+        end_utc_date=datetime.datetime.now(datetime.timezone.utc),
         local_time_offset_minute=0,
         response_time=datetime.timedelta(seconds=1),
         estimated_cost=0.0
@@ -1477,8 +1482,8 @@ class TestProxDashConnectionUploadLoggingRecord:
         response="sensitive response"
     )
     requests_mock.post(
-        'https://proxainest-production.up.railway.app/logging-record',
-        text='success',
+        'https://proxainest-production.up.railway.app/ingestion/logging-records',
+        text='{"success": true}',
         status_code=201
     )
     connection.upload_logging_record(logging_record)
@@ -1504,8 +1509,8 @@ class TestProxDashConnectionUploadLoggingRecord:
         response="test response"
     )
     requests_mock.post(
-        'https://proxainest-production.up.railway.app/logging-record',
-        text='success',
+        'https://proxainest-production.up.railway.app/ingestion/logging-records',
+        text='{"success": true}',
         status_code=201
     )
     connection.upload_logging_record(logging_record)
@@ -1530,8 +1535,8 @@ class TestProxDashConnectionUploadLoggingRecord:
     for idx, (stop_input, expected_stop) in enumerate(test_cases):
         logging_record = _create_test_logging_record(stop=stop_input)
         requests_mock.post(
-            'https://proxainest-production.up.railway.app/logging-record',
-            text='success',
+            'https://proxainest-production.up.railway.app/ingestion/logging-records',
+            text='{"success": true}',
             status_code=201
         )
         connection.upload_logging_record(logging_record)
@@ -1554,8 +1559,8 @@ class TestProxDashConnectionUploadLoggingRecord:
         response="test response"
     )
     requests_mock.post(
-        'https://proxainest-production.up.railway.app/logging-record',
-        text='success',
+        'https://proxainest-production.up.railway.app/ingestion/logging-records',
+        text='{"success": true}',
         status_code=201
     )
     connection.upload_logging_record(logging_record)
@@ -1591,8 +1596,8 @@ class TestProxDashConnectionUploadLoggingRecord:
         response="sensitive response"
     )
     requests_mock.post(
-        'https://proxainest-production.up.railway.app/logging-record',
-        text='success',
+        'https://proxainest-production.up.railway.app/ingestion/logging-records',
+        text='{"success": true}',
         status_code=201
     )
     connection.upload_logging_record(logging_record)
@@ -1611,15 +1616,15 @@ class TestProxDashConnectionUploadLoggingRecord:
     logging_record = _create_test_logging_record()
     # Test cases for failed responses
     test_cases = [
-        (400, "Bad Request", "ProxDash could not log the record. Error message:\nBad Request"),
-        (201, "error", "ProxDash could not log the record. Error message:\nerror"),
-        (500, "Internal Server Error", "ProxDash could not log the record. Error message:\nInternal Server Error"),
+        (400, "Bad Request", "ProxDash could not log the record. Status code: 400, Response: Bad Request"),
+        (201, "error", "ProxDash could not log the record. Invalid JSON response: error"),
+        (500, "Internal Server Error", "ProxDash could not log the record. Status code: 500, Response: Internal Server Error"),
     ]
     for status_code, response_text, expected_error in test_cases:
       if os.path.exists(os.path.join(temp_dir, 'merged.log')):
           os.remove(os.path.join(temp_dir, 'merged.log'))
       requests_mock.post(
-          'https://proxainest-production.up.railway.app/logging-record',
+          'https://proxainest-production.up.railway.app/ingestion/logging-records',
           text=response_text,
           status_code=status_code
       )
@@ -1642,8 +1647,8 @@ class TestProxDashConnectionUploadLoggingRecord:
         stop=None
     )
     requests_mock.post(
-        'https://proxainest-production.up.railway.app/logging-record',
-        text='success',
+        'https://proxainest-production.up.railway.app/ingestion/logging-records',
+        text='{"success": true}',
         status_code=201
     )
     connection.upload_logging_record(logging_record)
@@ -1672,8 +1677,8 @@ class TestProxDashConnectionUploadLoggingRecord:
     logging_record.response_record.start_utc_date = test_start_time
     logging_record.response_record.end_utc_date = test_end_time
     requests_mock.post(
-        'https://proxainest-production.up.railway.app/logging-record',
-        text='success',
+        'https://proxainest-production.up.railway.app/ingestion/logging-records',
+        text='{"success": true}',
         status_code=201
     )
     connection.upload_logging_record(logging_record)
@@ -1690,17 +1695,17 @@ class TestProxDashConnectionUploadLoggingRecord:
     """Tests conversion of timedelta to milliseconds for response_time."""
     connection, temp_dir, temp_dir_obj = _create_connection()
     test_cases = [
-        (datetime.timedelta(seconds=1), 1000.0),  # 1 second = 1000ms
-        (datetime.timedelta(milliseconds=500), 500.0),  # 500ms
-        (datetime.timedelta(microseconds=1500), 1.5),  # 1.5ms
-        (datetime.timedelta(minutes=1), 60000.0),  # 1 minute = 60000ms
+        (datetime.timedelta(seconds=1), 1000),  # 1 second = 1000ms
+        (datetime.timedelta(milliseconds=500), 500),  # 500ms
+        (datetime.timedelta(microseconds=1500), 1),  # 1.5ms truncated to 1ms
+        (datetime.timedelta(minutes=1), 60000),  # 1 minute = 60000ms
     ]
     for idx, (delta, expected_ms) in enumerate(test_cases):
       logging_record = _create_test_logging_record()
       logging_record.response_record.response_time = delta
       requests_mock.post(
-          'https://proxainest-production.up.railway.app/logging-record',
-          text='success',
+          'https://proxainest-production.up.railway.app/ingestion/logging-records',
+          text='{"success": true}',
           status_code=201
       )
       connection.upload_logging_record(logging_record)
@@ -1745,8 +1750,8 @@ class TestProxDashConnectionUploadLoggingRecord:
         look_fail_reason=types.CacheLookFailReason.CACHE_NOT_FOUND
     )
     requests_mock.post(
-        'https://proxainest-production.up.railway.app/logging-record',
-        text='success',
+        'https://proxainest-production.up.railway.app/ingestion/logging-records',
+        text='{"success": true}',
         status_code=201
     )
     connection.upload_logging_record(logging_record)
@@ -1793,14 +1798,14 @@ class TestProxDashConnectionUploadLoggingRecord:
       if os.path.exists(os.path.join(temp_dir, 'merged.log')):
           os.remove(os.path.join(temp_dir, 'merged.log'))
       requests_mock.post(
-          'https://proxainest-production.up.railway.app/logging-record',
+          'https://proxainest-production.up.railway.app/ingestion/logging-records',
           exc=exception_class(error_message)
       )
       connection.upload_logging_record(logging_record)
       _verify_log_messages(
           temp_dir,
           [(
-              f'ProxDash could not log the record. Error message:\n{error_message}',
+              f'ProxDash could not log the record. Error: {error_message}',
               types.LoggingType.ERROR
           )]
       )
@@ -1891,8 +1896,8 @@ class TestProxDashConnectionScenarios:
   def test_experiment_path_logging(self, requests_mock):
     base_url = 'https://proxainest-production.up.railway.app'
     requests_mock.post(
-        f'{base_url}/logging-record',
-        text='success',
+        f'{base_url}/ingestion/logging-records',
+        text='{"success": true}',
         status_code=201
     )
     temp_dir, temp_dir_obj = _get_path_dir('test_upload_logging_record')
