@@ -9,30 +9,30 @@ def check_provider_model_identifier_type(
   if isinstance(provider_model_identifier, types.ProviderModelType):
     provider = provider_model_identifier.provider
     model = provider_model_identifier.model
-    if provider not in model_configs.ALL_MODELS:
+    if provider not in model_configs.ALL_MODELS_CONFIG.provider_model_configs:
       raise ValueError(
         f'Provider not supported: {provider}.\n'
-        f'Supported providers: {model_configs.ALL_MODELS.keys()}')
-    if model not in model_configs.ALL_MODELS[provider]:
+        f'Supported providers: {model_configs.ALL_MODELS_CONFIG.provider_model_configs.keys()}')
+    if model not in model_configs.ALL_MODELS_CONFIG.provider_model_configs[provider]:
       raise ValueError(
         f'Model not supported: {model}.\nSupported models: '
-        f'{model_configs.ALL_MODELS[provider].keys()}')
-    if provider_model_identifier != model_configs.ALL_MODELS[provider][model]:
+        f'{model_configs.ALL_MODELS_CONFIG.provider_model_configs[provider].keys()}')
+    if provider_model_identifier != model_configs.ALL_MODELS_CONFIG.provider_model_configs[provider][model].provider_model:
       raise ValueError(
         'Mismatch between provider model identifier and model config.'
         f'Provider model identifier: {provider_model_identifier}'
-        f'Model config: {model_configs.ALL_MODELS[provider][model]}')
+        f'Model config: {model_configs.ALL_MODELS_CONFIG.provider_model_configs[provider][model].provider_model}')
   elif is_provider_model_tuple(provider_model_identifier):
     provider = provider_model_identifier[0]
     model = provider_model_identifier[1]
-    if provider not in model_configs.ALL_MODELS:
+    if provider not in model_configs.ALL_MODELS_CONFIG.provider_model_configs:
       raise ValueError(
         f'Provider not supported: {provider}.\n'
-        f'Supported providers: {model_configs.ALL_MODELS.keys()}')
-    if model not in model_configs.ALL_MODELS[provider]:
+        f'Supported providers: {model_configs.ALL_MODELS_CONFIG.provider_model_configs.keys()}')
+    if model not in model_configs.ALL_MODELS_CONFIG.provider_model_configs[provider]:
       raise ValueError(
         f'Model not supported: {model}.\nSupported models: '
-        f'{model_configs.ALL_MODELS[provider].keys()}')
+        f'{model_configs.ALL_MODELS_CONFIG.provider_model_configs[provider].keys()}')
   else:
     raise ValueError(
         f'Invalid provider model identifier: {provider_model_identifier}')
