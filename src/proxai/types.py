@@ -107,11 +107,12 @@ class AllModelsConfigType:
   config_origin: Optional[ConfigOriginType] = None
   release_notes: Optional[str] = None
 
-  provider_model_configs: Optional[Tuple[ProviderModelConfigType]] = None
+  provider_model_configs: Optional[
+      Dict[str, Dict[str, ProviderModelConfigType]]] = None
 
   featured_models: Optional[Tuple[ProviderModelIdentifierType]] = None
   models_by_call_type: Optional[
-    Dict[CallType, Tuple[ProviderModelIdentifierType]]] = None
+      Dict[CallType, Tuple[ProviderModelIdentifierType]]] = None
   models_by_size: Optional[
       Dict[ModelSizeType, Tuple[ProviderModelIdentifierType]]] = None
   default_model_priority_list: Optional[

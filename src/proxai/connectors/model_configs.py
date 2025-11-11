@@ -5,7 +5,7 @@ import proxai.types as types
 import proxai.type_utils as type_utils
 import proxai.connectors.provider_model_configs as provider_model_configs
 import proxai.connectors.model_pricing_configs as model_pricing_configs
-import proxai.connectors.model_features_configs as model_features_configs
+import proxai.connectors.model_feature_configs as model_feature_configs
 
 PROVIDER_KEY_MAP: Dict[str, Tuple[str]] = MappingProxyType({
     'claude': tuple(['ANTHROPIC_API_KEY']),
@@ -115,7 +115,7 @@ FEATURED_MODELS: Tuple[types.ProviderModelIdentifierType] = (
     ('grok', 'grok-3-mini-fast-beta'),
 )
 
-MODELS_BY_CALL_TYPE: Dict[CallType, Tuple[ProviderModelIdentifierType]] = MappingProxyType({
+MODELS_BY_CALL_TYPE: Dict[types.CallType, Tuple[types.ProviderModelIdentifierType]] = MappingProxyType({
     types.CallType.GENERATE_TEXT: (
         ('mock_provider', 'mock_model'),
 
@@ -210,7 +210,7 @@ MODELS_BY_CALL_TYPE: Dict[CallType, Tuple[ProviderModelIdentifierType]] = Mappin
     ),
 })
 
-MODELS_BY_SIZE: Dict[ModelSizeType, Tuple[ProviderModelIdentifierType]] = MappingProxyType({
+MODELS_BY_SIZE: Dict[types.ModelSizeType, Tuple[types.ProviderModelIdentifierType]] = MappingProxyType({
     'small': (
         ('claude', 'haiku-3'),
         ('cohere', 'command-light'),
@@ -288,7 +288,7 @@ MODELS_BY_SIZE: Dict[ModelSizeType, Tuple[ProviderModelIdentifierType]] = Mappin
     ),
 })
 
-DEFAULT_MODEL_PRIORITY_LIST: Tuple[ProviderModelIdentifierType] = (
+DEFAULT_MODEL_PRIORITY_LIST: Tuple[types.ProviderModelIdentifierType] = (
     ('openai', 'gpt-4o-mini'),
     ('gemini', 'gemini-2.0-flash'),
     ('claude', 'haiku-3.5'),
@@ -301,10 +301,28 @@ DEFAULT_MODEL_PRIORITY_LIST: Tuple[ProviderModelIdentifierType] = (
 )
 
 
-def get_provider_model_configs() -> Tuple[ProviderModelConfigType]:
-  result_config = []
+def get_provider_model_configs() -> Tuple[types.ProviderModelConfigType]:
+  result_config = {}
   for provider in provider_model_configs.PROVIDER_MODELS:
     for model in provider_model_configs.PROVIDER_MODELS[provider]:
+      provider_model = provider_model_configs.PROVIDER_MODELS[provider][model]
+
+      pricing = None
+      if provider in model_pricing_configs.PROVIDER_MODEL_PRICING:
+        if model in model_pricing_configs.PROVIDER_MODEL_PRICING[provider]:
+          pricing = model_pricing_configs.PROVIDER_MODEL_PRICING[provider][model]
+
+      features = None
+      if provider in model_feature_configs.PROVIDER_MODEL_FEATURES:
+        if model in model_feature_configs.PROVIDER_MODEL_FEATURES[provider]:
+          features = model_feature_configs.PROVIDER_MODEL_FEATURES[provider][model]
+
+      call_type = None
+      for call_type in types.CallType:
+        if (provider, model) in MODELS_BY_CALL_TYPE[call_type]:
+          call_type = call_type
+          break
+
       is_featured = (provider, model) in FEATURED_MODELS
 
       model_size = None
@@ -314,24 +332,20 @@ def get_provider_model_configs() -> Tuple[ProviderModelConfigType]:
           break
 
       is_default_candidate = False
+      default_candidate_priority = None
       if (provider, model) in DEFAULT_MODEL_PRIORITY_LIST:
         is_default_candidate = True
         default_candidate_priority = DEFAULT_MODEL_PRIORITY_LIST.index(
             (provider, model))
 
-      call_type = None
-      for call_type in types.CallType:
-        if (provider, model) in MODELS_BY_CALL_TYPE[call_type]:
-          call_type = call_type
-          break
+      if provider not in result_config:
+        result_config[provider] = {}
 
-      result_config.append(types.ProviderModelConfigType(
+      result_config[provider][model] = types.ProviderModelConfigType(
           provider_model=provider_model_configs.PROVIDER_MODELS[
               provider][model],
-          pricing=model_pricing_configs.PROVIDER_MODEL_PRICING[
-              provider][model],
-          features=model_features_configs.PROVIDER_MODEL_FEATURES[
-              provider][model],
+          pricing=pricing,
+          features=features,
           metadata=types.ProviderModelMetadataType(
             call_type=call_type,
             is_featured=is_featured,
@@ -339,8 +353,10 @@ def get_provider_model_configs() -> Tuple[ProviderModelConfigType]:
             is_default_candidate=is_default_candidate,
             default_candidate_priority=default_candidate_priority,
           ),
-      ))
-  return tuple(result_config)
+      )
+  for provider in result_config:
+    result_config[provider] = MappingProxyType(result_config[provider])
+  return MappingProxyType(result_config)
 
 
 ALL_MODELS_CONFIG: types.AllModelsConfigType = types.AllModelsConfigType(

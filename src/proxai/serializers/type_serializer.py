@@ -25,7 +25,8 @@ def decode_provider_model_type(
   if 'provider_model_identifier' not in record:
     raise ValueError(
         f'Provider model identifier not found in record: {record=}')
-  provider_model = model_configs.ALL_MODELS[record['provider']][record['model']]
+  provider_model = model_configs.get_provider_model_config(
+      (record['provider'], record['model']))
   if provider_model.provider_model_identifier != record[
       'provider_model_identifier']:
     raise ValueError(
@@ -34,6 +35,267 @@ def decode_provider_model_type(
         f'{provider_model.provider_model_identifier}'
         '\nThis can happen if the model config has changed in recent versions.')
   return provider_model
+
+
+def encode_provider_model_identifier(
+    provider_model_identifier: types.ProviderModelIdentifierType
+) -> Dict[str, Any]:
+  if isinstance(provider_model_identifier, types.ProviderModelType):
+    return encode_provider_model_type(provider_model_identifier)
+  else:
+    # ProviderModelTupleType
+    return {
+        'provider': provider_model_identifier[0],
+        'model': provider_model_identifier[1]
+    }
+
+
+def decode_provider_model_identifier(
+    record: Dict[str, Any]) -> types.ProviderModelIdentifierType:
+  if 'provider_model_identifier' in record:
+    # Full ProviderModelType
+    return decode_provider_model_type(record)
+  else:
+    # ProviderModelTupleType
+    if 'provider' not in record:
+      raise ValueError(f'Provider not found in record: {record=}')
+    if 'model' not in record:
+      raise ValueError(f'Model not found in record: {record=}')
+    return (record['provider'], record['model'])
+
+
+def encode_provider_model_pricing_type(
+    provider_model_pricing_type: types.ProviderModelPricingType
+) -> Dict[str, Any]:
+  record = {}
+  record['per_response_token_cost'] = (
+      provider_model_pricing_type.per_response_token_cost)
+  record['per_query_token_cost'] = (
+      provider_model_pricing_type.per_query_token_cost)
+  return record
+
+
+def decode_provider_model_pricing_type(
+    record: Dict[str, Any]) -> types.ProviderModelPricingType:
+  if 'per_response_token_cost' not in record:
+    raise ValueError(f'per_response_token_cost not found in record: {record=}')
+  if 'per_query_token_cost' not in record:
+    raise ValueError(f'per_query_token_cost not found in record: {record=}')
+  return types.ProviderModelPricingType(
+      per_response_token_cost=record['per_response_token_cost'],
+      per_query_token_cost=record['per_query_token_cost'])
+
+
+def encode_provider_model_feature_type(
+    provider_model_feature_type: types.ProviderModelFeatureType
+) -> Dict[str, Any]:
+  record = {}
+  if provider_model_feature_type.not_supported_features != None:
+    record['not_supported_features'] = (
+        provider_model_feature_type.not_supported_features)
+  return record
+
+
+def decode_provider_model_feature_type(
+    record: Dict[str, Any]) -> types.ProviderModelFeatureType:
+  provider_model_feature_type = types.ProviderModelFeatureType()
+  if 'not_supported_features' in record:
+    provider_model_feature_type.not_supported_features = (
+        record['not_supported_features'])
+  return provider_model_feature_type
+
+
+def encode_provider_model_metadata_type(
+    provider_model_metadata_type: types.ProviderModelMetadataType
+) -> Dict[str, Any]:
+  record = {}
+  if provider_model_metadata_type.call_type != None:
+    record['call_type'] = provider_model_metadata_type.call_type.value
+  if provider_model_metadata_type.is_featured != None:
+    record['is_featured'] = provider_model_metadata_type.is_featured
+  if provider_model_metadata_type.model_size != None:
+    record['model_size'] = provider_model_metadata_type.model_size.value
+  if provider_model_metadata_type.is_default_candidate != None:
+    record['is_default_candidate'] = (
+        provider_model_metadata_type.is_default_candidate)
+  if provider_model_metadata_type.default_candidate_priority != None:
+    record['default_candidate_priority'] = (
+        provider_model_metadata_type.default_candidate_priority)
+  if provider_model_metadata_type.tags != None:
+    record['tags'] = provider_model_metadata_type.tags
+  return record
+
+
+def decode_provider_model_metadata_type(
+    record: Dict[str, Any]) -> types.ProviderModelMetadataType:
+  provider_model_metadata_type = types.ProviderModelMetadataType()
+  if 'call_type' in record:
+    provider_model_metadata_type.call_type = types.CallType(record['call_type'])
+  if 'is_featured' in record:
+    provider_model_metadata_type.is_featured = record['is_featured']
+  if 'model_size' in record:
+    provider_model_metadata_type.model_size = types.ModelSizeType(
+        record['model_size'])
+  if 'is_default_candidate' in record:
+    provider_model_metadata_type.is_default_candidate = (
+        record['is_default_candidate'])
+  if 'default_candidate_priority' in record:
+    provider_model_metadata_type.default_candidate_priority = (
+        record['default_candidate_priority'])
+  if 'tags' in record:
+    provider_model_metadata_type.tags = record['tags']
+  return provider_model_metadata_type
+
+
+def encode_provider_model_config_type(
+    provider_model_config_type: types.ProviderModelConfigType
+) -> Dict[str, Any]:
+  record = {}
+  if provider_model_config_type.provider_model != None:
+    record['provider_model'] = encode_provider_model_type(
+        provider_model_config_type.provider_model)
+  if provider_model_config_type.pricing != None:
+    record['pricing'] = encode_provider_model_pricing_type(
+        provider_model_config_type.pricing)
+  if provider_model_config_type.features != None:
+    record['features'] = encode_provider_model_feature_type(
+        provider_model_config_type.features)
+  if provider_model_config_type.metadata != None:
+    record['metadata'] = encode_provider_model_metadata_type(
+        provider_model_config_type.metadata)
+  return record
+
+
+def decode_provider_model_config_type(
+    record: Dict[str, Any]) -> types.ProviderModelConfigType:
+  provider_model_config_type = types.ProviderModelConfigType()
+  if 'provider_model' in record:
+    provider_model_config_type.provider_model = decode_provider_model_type(
+        record['provider_model'])
+  if 'pricing' in record:
+    provider_model_config_type.pricing = decode_provider_model_pricing_type(
+        record['pricing'])
+  if 'features' in record:
+    provider_model_config_type.features = decode_provider_model_feature_type(
+        record['features'])
+  if 'metadata' in record:
+    provider_model_config_type.metadata = decode_provider_model_metadata_type(
+        record['metadata'])
+  return provider_model_config_type
+
+
+def encode_all_models_config_type(
+    all_models_config_type: types.AllModelsConfigType
+) -> Dict[str, Any]:
+  record = {}
+  if all_models_config_type.version != None:
+    record['version'] = all_models_config_type.version
+  if all_models_config_type.released_at != None:
+    record['released_at'] = all_models_config_type.released_at.isoformat()
+  if all_models_config_type.config_origin != None:
+    record['config_origin'] = all_models_config_type.config_origin.value
+  if all_models_config_type.release_notes != None:
+    record['release_notes'] = all_models_config_type.release_notes
+  if all_models_config_type.provider_model_configs != None:
+    record['provider_model_configs'] = {}
+    for provider, model_configs_dict in (
+        all_models_config_type.provider_model_configs.items()):
+      record['provider_model_configs'][provider] = {}
+      for model, provider_model_config in model_configs_dict.items():
+        record['provider_model_configs'][provider][model] = (
+            encode_provider_model_config_type(provider_model_config))
+  if all_models_config_type.featured_models != None:
+    record['featured_models'] = []
+    for provider_model_identifier in all_models_config_type.featured_models:
+      record['featured_models'].append(
+          encode_provider_model_identifier(provider_model_identifier))
+  if all_models_config_type.models_by_call_type != None:
+    record['models_by_call_type'] = {}
+    for call_type, provider_model_identifiers in (
+        all_models_config_type.models_by_call_type.items()):
+      record['models_by_call_type'][call_type.value] = []
+      for provider_model_identifier in provider_model_identifiers:
+        record['models_by_call_type'][call_type.value].append(
+            encode_provider_model_identifier(provider_model_identifier))
+  if all_models_config_type.models_by_size != None:
+    record['models_by_size'] = {}
+    for model_size, provider_model_identifiers in (
+        all_models_config_type.models_by_size.items()):
+      record['models_by_size'][model_size.value] = []
+      for provider_model_identifier in provider_model_identifiers:
+        record['models_by_size'][model_size.value].append(
+            encode_provider_model_identifier(provider_model_identifier))
+  if all_models_config_type.default_model_priority_list != None:
+    record['default_model_priority_list'] = []
+    for provider_model_identifier in (
+        all_models_config_type.default_model_priority_list):
+      record['default_model_priority_list'].append(
+          encode_provider_model_identifier(provider_model_identifier))
+  return record
+
+
+def decode_all_models_config_type(
+    record: Dict[str, Any]) -> types.AllModelsConfigType:
+  all_models_config_type = types.AllModelsConfigType()
+  if 'version' in record:
+    all_models_config_type.version = record['version']
+  if 'released_at' in record:
+    all_models_config_type.released_at = datetime.datetime.fromisoformat(
+        record['released_at'])
+  if 'config_origin' in record:
+    all_models_config_type.config_origin = types.ConfigOriginType(
+        record['config_origin'])
+  if 'release_notes' in record:
+    all_models_config_type.release_notes = record['release_notes']
+  if 'provider_model_configs' in record:
+    provider_model_configs = {}
+    for provider, model_configs_dict_record in (
+        record['provider_model_configs'].items()):
+      provider_model_configs[provider] = {}
+      for model, provider_model_config_record in (
+          model_configs_dict_record.items()):
+        provider_model_configs[provider][model] = (
+            decode_provider_model_config_type(provider_model_config_record))
+    all_models_config_type.provider_model_configs = provider_model_configs
+  if 'featured_models' in record:
+    featured_models = []
+    for provider_model_identifier_record in record['featured_models']:
+      featured_models.append(
+          decode_provider_model_identifier(provider_model_identifier_record))
+    all_models_config_type.featured_models = tuple(featured_models)
+  if 'models_by_call_type' in record:
+    models_by_call_type = {}
+    for call_type_str, provider_model_identifier_records in (
+        record['models_by_call_type'].items()):
+      call_type = types.CallType(call_type_str)
+      provider_model_identifiers = []
+      for provider_model_identifier_record in (
+          provider_model_identifier_records):
+        provider_model_identifiers.append(
+            decode_provider_model_identifier(provider_model_identifier_record))
+      models_by_call_type[call_type] = tuple(provider_model_identifiers)
+    all_models_config_type.models_by_call_type = models_by_call_type
+  if 'models_by_size' in record:
+    models_by_size = {}
+    for model_size_str, provider_model_identifier_records in (
+        record['models_by_size'].items()):
+      model_size = types.ModelSizeType(model_size_str)
+      provider_model_identifiers = []
+      for provider_model_identifier_record in (
+          provider_model_identifier_records):
+        provider_model_identifiers.append(
+            decode_provider_model_identifier(provider_model_identifier_record))
+      models_by_size[model_size] = tuple(provider_model_identifiers)
+    all_models_config_type.models_by_size = models_by_size
+  if 'default_model_priority_list' in record:
+    default_model_priority_list = []
+    for provider_model_identifier_record in (
+        record['default_model_priority_list']):
+      default_model_priority_list.append(
+          decode_provider_model_identifier(provider_model_identifier_record))
+    all_models_config_type.default_model_priority_list = tuple(
+        default_model_priority_list)
+  return all_models_config_type
 
 
 def encode_query_record(
