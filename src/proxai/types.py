@@ -57,6 +57,17 @@ StopType = Union[str, List[str]]
 MessagesType = List[Dict[str, str]]
 
 
+@dataclasses.dataclass
+class ProviderModelPricingType:
+  per_response_token_cost: float
+  per_query_token_cost: float
+
+
+@dataclasses.dataclass
+class ProviderModelFeatureType:
+  not_supported_features: List[str] = dataclasses.field(default_factory=list)
+
+
 class ModelSizeType(str, enum.Enum):
   SMALL = 'small'
   MEDIUM = 'medium'
@@ -67,14 +78,44 @@ ModelSizeIdentifierType = Union[ModelSizeType, str]
 
 
 @dataclasses.dataclass
-class ProviderModelPricingType:
-  per_response_token_cost: float
-  per_query_token_cost: float
+class ProviderModelMetadataType:
+  call_type: Optional[CallType] = None
+  is_featured: Optional[bool] = None
+  model_size: Optional[ModelSizeType] = None
+  is_default_candidate: Optional[bool] = None
+  default_candidate_priority: Optional[int] = None
+  tags: Optional[List[str]] = None
 
 
 @dataclasses.dataclass
-class ProviderModelFeatureType:
-  not_supported_features: List[str] = dataclasses.field(default_factory=list)
+class ProviderModelConfigType:
+  provider_model: Optional[ProviderModelType] = None
+  pricing: Optional[ProviderModelPricingType] = None
+  features: Optional[ProviderModelFeatureType] = None
+  metadata: Optional[ProviderModelMetadataType] = None
+
+
+class ConfigOriginType(enum.Enum):
+  BUILT_IN = 'BUILT_IN'
+  PROXDASH = 'PROXDASH'
+
+
+@dataclasses.dataclass
+class AllModelsConfigType:
+  version: Optional[str] = None
+  released_at: Optional[datetime.datetime] = None
+  config_origin: Optional[ConfigOriginType] = None
+  release_notes: Optional[str] = None
+
+  provider_model_configs: Optional[Tuple[ProviderModelConfigType]] = None
+
+  featured_models: Optional[Tuple[ProviderModelIdentifierType]] = None
+  models_by_call_type: Optional[
+    Dict[CallType, Tuple[ProviderModelIdentifierType]]] = None
+  models_by_size: Optional[
+      Dict[ModelSizeType, Tuple[ProviderModelIdentifierType]]] = None
+  default_model_priority_list: Optional[
+      Tuple[ProviderModelIdentifierType]] = None
 
 
 @dataclasses.dataclass
