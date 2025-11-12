@@ -4,6 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Common Commands
 
+**Important:** Always use `poetry run python` instead of `python` directly to ensure commands run in the Poetry-managed virtual environment with all dependencies available.
+
 ### Development Setup
 ```bash
 # Install dependencies
@@ -38,7 +40,7 @@ poetry build
 ```bash
 # Build documentation
 cd docs
-make html
+poetry run make html
 ```
 
 ## Code Architecture

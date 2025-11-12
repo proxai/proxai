@@ -2,7 +2,7 @@ from types import MappingProxyType
 from typing import Dict
 import proxai.types as types
 
-GENERATE_TEXT_FEATURES: Dict[
+PROVIDER_MODEL_FEATURES: Dict[
     str, Dict[str, types.ProviderModelFeatureType]] = MappingProxyType({
   'mistral': MappingProxyType({
     'ministral-3b': types.ProviderModelFeatureType(

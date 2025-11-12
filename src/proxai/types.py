@@ -14,11 +14,16 @@ class CallType(str, enum.Enum):
   GENERATE_TEXT = 'GENERATE_TEXT'
 
 
+ProviderNameType = str
+ModelNameType = str
+RawProviderModelIdentifierType = str
+
+
 @dataclasses.dataclass(frozen=True)
 class ProviderModelType:
-  provider: str
-  model: str
-  provider_model_identifier: str
+  provider: ProviderNameType
+  model: ModelNameType
+  provider_model_identifier: RawProviderModelIdentifierType
 
   def __str__(self):
     return f'({self.provider}, {self.model})'
@@ -51,10 +56,21 @@ class ProviderModelType:
     return str(self) >= str(other)
 
 
-ProviderModelTupleType = Tuple[str, str]  # (provider, model) without model_signature
+ProviderModelTupleType = Tuple[ProviderNameType, ModelNameType]  # (provider, model) without model_signature
 ProviderModelIdentifierType = Union[ProviderModelType, ProviderModelTupleType]
 StopType = Union[str, List[str]]
 MessagesType = List[Dict[str, str]]
+
+
+@dataclasses.dataclass
+class ProviderModelPricingType:
+  per_response_token_cost: float
+  per_query_token_cost: float
+
+
+@dataclasses.dataclass
+class ProviderModelFeatureType:
+  not_supported_features: List[str] = dataclasses.field(default_factory=list)
 
 
 class ModelSizeType(str, enum.Enum):
@@ -67,14 +83,51 @@ ModelSizeIdentifierType = Union[ModelSizeType, str]
 
 
 @dataclasses.dataclass
-class ProviderModelPricingType:
-  per_response_token_cost: float
-  per_query_token_cost: float
+class ProviderModelMetadataType:
+  call_type: Optional[CallType] = None
+  is_featured: Optional[bool] = None
+  model_size: Optional[ModelSizeType] = None
+  is_default_candidate: Optional[bool] = None
+  default_candidate_priority: Optional[int] = None
+  tags: Optional[List[str]] = None
 
 
 @dataclasses.dataclass
-class ProviderModelFeatureType:
-  not_supported_features: List[str] = dataclasses.field(default_factory=list)
+class ProviderModelConfigType:
+  provider_model: Optional[ProviderModelType] = None
+  pricing: Optional[ProviderModelPricingType] = None
+  features: Optional[ProviderModelFeatureType] = None
+  metadata: Optional[ProviderModelMetadataType] = None
+
+
+class ConfigOriginType(enum.Enum):
+  BUILT_IN = 'BUILT_IN'
+  PROXDASH = 'PROXDASH'
+
+ProviderModelConfigsType = Dict[
+    ProviderNameType, Dict[ModelNameType, ProviderModelConfigType]]
+FeaturedModelsType = Dict[
+    ProviderNameType, Tuple[ProviderModelIdentifierType]]
+ModelsByCallTypeType = Dict[
+    CallType, Dict[ProviderNameType, Tuple[ProviderModelIdentifierType]]]
+ModelsBySizeType = Dict[
+    ModelSizeType, Tuple[ProviderModelIdentifierType]]
+DefaultModelPriorityListType = Tuple[ProviderModelIdentifierType]
+
+
+@dataclasses.dataclass
+class AllModelsConfigType:
+  version: Optional[str] = None
+  released_at: Optional[datetime.datetime] = None
+  config_origin: Optional[ConfigOriginType] = None
+  release_notes: Optional[str] = None
+
+  provider_model_configs: Optional[ProviderModelConfigsType] = None
+
+  featured_models: Optional[FeaturedModelsType] = None
+  models_by_call_type: Optional[ModelsByCallTypeType] = None
+  models_by_size: Optional[ModelsBySizeType] = None
+  default_model_priority_list: Optional[DefaultModelPriorityListType] = None
 
 
 @dataclasses.dataclass
