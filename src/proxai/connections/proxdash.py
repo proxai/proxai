@@ -37,16 +37,8 @@ class ProxDashConnection(state_controller.StateControlled):
       get_proxdash_options: Optional[
           Callable[[], types.ProxDashOptions]] = None,
       init_state: Optional[types.ProxDashConnectionState] = None):
-    if init_state and (
-        hidden_run_key is not None or
-        experiment_path is not None or get_experiment_path is not None or
-        logging_options is not None or get_logging_options is not None or
-        proxdash_options is not None or get_proxdash_options is not None):
-      raise ValueError(
-          'If init_state is provided, none of the other arguments should be '
-          'provided.')
-
     super().__init__(
+        init_state=init_state,
         hidden_run_key=hidden_run_key,
         experiment_path=experiment_path,
         get_experiment_path=get_experiment_path,
@@ -55,7 +47,6 @@ class ProxDashConnection(state_controller.StateControlled):
         proxdash_options=proxdash_options,
         get_proxdash_options=get_proxdash_options)
 
-    self.init_state()
     self.set_property_value(
         'status', types.ProxDashConnectionStatus.INITIALIZING)
 

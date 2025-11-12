@@ -438,24 +438,14 @@ class QueryCacheManager(state_controller.StateControlled):
       response_per_file: Optional[int] = None,
       cache_response_size: Optional[int] = None,
       init_state: Optional[types.QueryCacheManagerState] = None):
-
-    if init_state and (
-        cache_options is not None or
-        get_cache_options is not None or
-        shard_count is not None or
-        response_per_file is not None or
-        cache_response_size is not None):
-      raise ValueError(
-          'init_state and other parameters cannot be set at the same time.')
-
     super().__init__(
+        init_state=init_state,
         cache_options=cache_options,
         get_cache_options=get_cache_options,
         shard_count=shard_count,
         response_per_file=response_per_file,
         cache_response_size=cache_response_size)
 
-    self.init_state()
     self.set_property_value(
         'status', types.QueryCacheManagerStatus.INITIALIZING)
 

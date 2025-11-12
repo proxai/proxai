@@ -65,10 +65,10 @@ def check_health():
 
 
 def main():
-  # simple_model_test()
+  simple_model_test()
   # simple_cache_test()
   # list_models()
-  check_health()
+  # check_health()
 
 if __name__ == '__main__':
   main()

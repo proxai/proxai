@@ -43,7 +43,16 @@ class BaseStateControlled(ABC):
 
 
 class StateControlled(BaseStateControlled):
-  def __init__(self, **kwargs):
+  def __init__(self, init_state=None, **kwargs):
+    # Check if init_state is provided with any other parameters.
+    if init_state is not None:
+      for key, value in kwargs.items():
+        if value is not None:
+          raise ValueError(
+              f'init_state and other parameters cannot be set at the same time. '
+              f'Found non-None parameter: {key}={value}')
+
+    # Validate the properties provided in the kwargs.
     available_properties = set([
         field.name
         for field in dataclasses.fields(self.get_internal_state_type())
@@ -76,6 +85,9 @@ class StateControlled(BaseStateControlled):
         raise ValueError(
             f'Only one of {property_name} or {property_getter_name} should be set '
             'while initializing the StateControlled object.')
+
+    # Initialize the internal state structure.
+    self.init_state()
 
   @abstractmethod
   def get_internal_state_property_name(self):

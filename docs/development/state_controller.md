@@ -130,6 +130,19 @@ Each property has up to **three** associated attributes:
 - Updates internal state
 - Most common setter method
 
+#### `get_property_internal_state_value(property_name)`
+- Gets the value directly from internal state container (`_state.property_name`)
+- **Does NOT** call getter functions or property getters
+- Returns what's actually stored in the serializable state
+- Useful for checking what will be serialized via `get_state()`
+
+#### `set_property_internal_state_value(property_name, value)`
+- Sets the value directly in internal state container (`_state.property_name`)
+- **Does NOT** call property getters/setters or update `_<property_name>` storage
+- **Important**: Deep copies non-primitive values to prevent external mutations
+- Used for internal state synchronization
+- Performance note: Deep copying can be expensive for large objects
+
 #### `get_state_controlled_property_value(property_name)`
 - Special getter for nested StateControlled objects
 - Extracts the state from nested object: `nested_obj.get_state()`
@@ -185,6 +198,14 @@ Called whenever state changes. Used for:
 
 ## Creating a New StateControlled Class
 
+### What's Automatic (Handled by Parent Class)
+
+The `StateControlled` base class automatically handles these common initialization tasks:
+
+✅ **Exclusivity Validation**: Ensures `init_state` isn't mixed with other parameters \
+✅ **Property Name Validation**: Verifies all kwargs match fields in your state type \
+✅ **State Initialization**: Calls `init_state()` to set up the state structure
+
 ### Step 1: Define the State Container
 
 **File**: `src/proxai/types.py`
@@ -229,6 +250,13 @@ class MyClass(state_controller.StateControlled):
 
 ### Step 3: Implement __init__
 
+**Note**: The parent `StateControlled.__init__()` automatically handles:
+- ✅ Exclusivity validation (ensures `init_state` isn't mixed with other params)
+- ✅ Property name validation (ensures all kwargs are valid properties)
+- ✅ Calling `self.init_state()` to initialize the state structure
+
+This eliminates boilerplate and ensures consistency across all StateControlled classes.
+
 ```python
 def __init__(
     self,
@@ -239,24 +267,15 @@ def __init__(
     get_cache_manager: Optional[Callable[[], CacheManager]] = None,
     init_state: Optional[MyClassState] = None):
 
-    # Ensure init_state is mutually exclusive with other params
-    if init_state and (
-        name is not None or get_name is not None or
-        count is not None or cache_manager is not None or
-        get_cache_manager is not None):
-        raise ValueError(
-            'init_state and other parameters cannot be set at the same time.')
-
     # Call parent __init__ with all property parameters
+    # Parent automatically validates exclusivity and property names
     super().__init__(
         name=name,
         get_name=get_name,
         count=count,
         cache_manager=cache_manager,
-        get_cache_manager=get_cache_manager)
-
-    # Initialize the internal state structure
-    self.init_state()
+        get_cache_manager=get_cache_manager,
+        init_state=init_state)
 
     # Branch 1: Loading from serialized state
     if init_state:
@@ -277,6 +296,12 @@ def __init__(
         # Call handle_changes to validate initial state
         self.handle_changes(initial_state, self.get_state())
 ```
+
+**What You Need to Implement**:
+1. Call `super().__init__()` with all parameters including `init_state`
+2. Branch on `if init_state:` to handle state loading vs fresh initialization
+3. In the `if` branch: Call `load_state()` (and any extra setup if needed)
+4. In the `else` branch: Set getter functions, set properties, call `handle_changes()`
 
 ### Step 4: Implement Required Abstract Methods
 
@@ -486,15 +511,26 @@ if (property_name in kwargs and
 
 **Why**: State loading should be atomic—either restore complete state OR initialize fresh.
 
-**Pattern in all implementations**:
+**Enforcement**: ✅ **Automatically handled by parent class** (`state_controller.py:47-53`)
+
 ```python
-if init_state and (
-    param1 is not None or param2 is not None or ...):
-    raise ValueError(
-        'init_state and other parameters cannot be set at the same time.')
+class StateControlled:
+    def __init__(self, init_state=None, **kwargs):
+        # Automatic validation - no need to implement in child classes
+        if init_state is not None:
+            for key, value in kwargs.items():
+                if value is not None:
+                    raise ValueError(
+                        f'init_state and other parameters cannot be set at the same time. '
+                        f'Found non-None parameter: {key}={value}')
 ```
 
-**Best Practice**: Never mix `init_state` with other parameters.
+**What This Means**:
+- ✅ You don't need to write this validation in child classes
+- ✅ All StateControlled classes get consistent error messages
+- ✅ Eliminates 5-15 lines of boilerplate per class
+
+**Best Practice**: Simply pass all parameters including `init_state` to `super().__init__()` and the parent handles validation.
 
 ### 5. State Validation in handle_changes
 
@@ -1577,11 +1613,11 @@ def get_state(self, _visited=None) -> Any:
 ### DON'T ❌
 
 1. **Don't validate current_state directly** – It might be partial; validate `result_state`.
-2. **Don't mix init_state with other parameters** – They're mutually exclusive.
+2. **Don't forget to pass init_state to super().__init__()** – Parent needs it for validation.
 3. **Don't forget type hints** – Helps with IDE support and debugging.
 4. **Don't store non-serializable objects in state** – E.g., file handles, API clients, locks.
 5. **Don't have side effects in property getters** – Keep getters pure; side effects go in setters or handle_changes.
-6. **Don't set both property and get_property in __init__** – Raises ValueError.
+6. **Don't set both property and get_property in __init__** – Parent validates and raises ValueError.
 7. **Don't mutate state directly** – Always use property setters.
 8. **Don't forget to deep copy in handle_changes** – `result_state = copy.deepcopy(old_state)`
 9. **Don't block indefinitely in handle_changes** – Avoid long-running operations.
@@ -1604,7 +1640,7 @@ def get_state(self, _visited=None) -> Any:
 ## Quick Reference Card
 
 ```python
-# Creating a StateControlled class:
+# Creating a StateControlled class (Simplified with automatic parent handling):
 class MyClass(StateControlled):
     # 1. Define internal attributes
     _property: Optional[Type]
@@ -1613,15 +1649,11 @@ class MyClass(StateControlled):
 
     # 2. Implement __init__
     def __init__(self, property=None, get_property=None, init_state=None):
-        # Validate exclusivity
-        if init_state and (property is not None or get_property is not None):
-            raise ValueError('...')
-
-        # Call parent
-        super().__init__(property=property, get_property=get_property)
-
-        # Initialize state
-        self.init_state()
+        # Call parent (automatically handles validation and init_state())
+        super().__init__(
+            property=property,
+            get_property=get_property,
+            init_state=init_state)
 
         # Branch on init_state
         if init_state:
@@ -1657,6 +1689,12 @@ class MyClass(StateControlled):
     def property(self, value):
         self.set_property_value('property', value)
 ```
+
+**What Changed**:
+- ❌ Removed manual exclusivity check (~5-10 lines)
+- ❌ Removed manual `init_state()` call (~1 line)
+- ✅ Parent handles everything automatically
+- ✅ ~30% less boilerplate
 
 ---
 
