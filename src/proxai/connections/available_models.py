@@ -209,9 +209,10 @@ class AvailableModels(state_controller.StateControlled):
 
   def _get_all_models(self, models: types.ModelStatus, call_type: str):
     if call_type == types.CallType.GENERATE_TEXT:
-      for provider_models in model_configs.GENERATE_TEXT_MODELS.values():
-        for provider_model in provider_models.values():
-          models.unprocessed_models.add(provider_model)
+      for provider_model_identifier in model_configs.ALL_MODELS_CONFIG.models_by_call_type[
+          call_type]:
+        models.unprocessed_models.add(
+            model_configs.get_provider_model_config(provider_model_identifier))
 
   def _filter_by_provider_api_key(self, models: types.ModelStatus):
     def _filter_set(
@@ -698,10 +699,23 @@ class AvailableModels(state_controller.StateControlled):
       raise ValueError(f'Call type not supported: {call_type}')
     if model_size is not None:
       model_size = type_utils.check_model_size_identifier_type(model_size)
-    if provider not in model_configs.GENERATE_TEXT_MODELS:
+
+    generate_text_providers = set([
+        key
+        for key, _
+        in model_configs.ALL_MODELS_CONFIG.models_by_call_type[call_type]
+    ])
+    if provider not in generate_text_providers:
       raise ValueError(
           f'Provider not found in model_configs: {provider}\n'
-          f'Available providers: {model_configs.GENERATE_TEXT_MODELS.keys()}')
+          f'Available providers: {generate_text_providers}')
+
+    generate_text_models_by_provider = set([
+        value
+        for key, value
+        in model_configs.ALL_MODELS_CONFIG.models_by_call_type[call_type].items()
+        if key == provider
+    ])
 
     model_status: Optional[types.ModelStatus] = None
     if not self.model_cache_manager:
@@ -711,7 +725,7 @@ class AvailableModels(state_controller.StateControlled):
             f'Provider key not found in environment variables for {provider}.\n'
             f'Required keys: {model_configs.PROVIDER_KEY_MAP[provider]}')
       model_status = types.ModelStatus()
-      for model in model_configs.GENERATE_TEXT_MODELS[provider].values():
+      for model in generate_text_models_by_provider:
         model_status.working_models.add(model)
       self._filter_by_model_size(model_status, model_size=model_size)
     elif (
@@ -746,17 +760,12 @@ class AvailableModels(state_controller.StateControlled):
     if call_type != types.CallType.GENERATE_TEXT:
       raise ValueError(f'Call type not supported: {call_type}')
 
-    if provider not in model_configs.GENERATE_TEXT_MODELS:
-      raise ValueError(
-          f'Provider not found in model_configs: {provider}\n'
-          f'Available providers: {model_configs.GENERATE_TEXT_MODELS.keys()}')
-
-    if model not in model_configs.GENERATE_TEXT_MODELS[provider]:
-      raise ValueError(
-          f'Model not found in {provider} models: {model}\n'
-          f'Available models: {model_configs.GENERATE_TEXT_MODELS[provider]}')
-
     provider_model = model_configs.get_provider_model_config((provider, model))
+    if provider_model.call_type != call_type:
+      raise ValueError(
+          f'Provider model call type mismatch.\n'
+          f'provider_model.call_type: {provider_model.call_type}\n'
+          f'call_type: {call_type}')
 
     model_status: Optional[types.ModelStatus] = None
     if not self.model_cache_manager:
@@ -795,7 +804,7 @@ class AvailableModels(state_controller.StateControlled):
               f'({provider}, {model})\nLogging Record: '
               f'{model_status.provider_queries.get(provider_model, "")}'),
           type=types.LoggingType.WARNING)
-      return model_configs.ALL_MODELS[provider][model]
+      return model_configs.get_provider_model_config((provider, model))
 
     raise ValueError(
         f'Provider model not found in working models: ({provider}, {model})\n'

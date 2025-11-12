@@ -14,11 +14,16 @@ class CallType(str, enum.Enum):
   GENERATE_TEXT = 'GENERATE_TEXT'
 
 
+ProviderNameType = str
+ModelNameType = str
+RawProviderModelIdentifierType = str
+
+
 @dataclasses.dataclass(frozen=True)
 class ProviderModelType:
-  provider: str
-  model: str
-  provider_model_identifier: str
+  provider: ProviderNameType
+  model: ModelNameType
+  provider_model_identifier: RawProviderModelIdentifierType
 
   def __str__(self):
     return f'({self.provider}, {self.model})'
@@ -51,7 +56,7 @@ class ProviderModelType:
     return str(self) >= str(other)
 
 
-ProviderModelTupleType = Tuple[str, str]  # (provider, model) without model_signature
+ProviderModelTupleType = Tuple[ProviderNameType, ModelNameType]  # (provider, model) without model_signature
 ProviderModelIdentifierType = Union[ProviderModelType, ProviderModelTupleType]
 StopType = Union[str, List[str]]
 MessagesType = List[Dict[str, str]]
@@ -99,6 +104,16 @@ class ConfigOriginType(enum.Enum):
   BUILT_IN = 'BUILT_IN'
   PROXDASH = 'PROXDASH'
 
+ProviderModelConfigsType = Dict[
+    ProviderNameType, Dict[ModelNameType, ProviderModelConfigType]]
+FeaturedModelsType = Dict[
+    ProviderNameType, Tuple[ProviderModelIdentifierType]]
+ModelsByCallTypeType = Dict[
+    CallType, Dict[ProviderNameType, Tuple[ProviderModelIdentifierType]]]
+ModelsBySizeType = Dict[
+    ModelSizeType, Tuple[ProviderModelIdentifierType]]
+DefaultModelPriorityListType = Tuple[ProviderModelIdentifierType]
+
 
 @dataclasses.dataclass
 class AllModelsConfigType:
@@ -107,16 +122,12 @@ class AllModelsConfigType:
   config_origin: Optional[ConfigOriginType] = None
   release_notes: Optional[str] = None
 
-  provider_model_configs: Optional[
-      Dict[str, Dict[str, ProviderModelConfigType]]] = None
+  provider_model_configs: Optional[ProviderModelConfigsType] = None
 
-  featured_models: Optional[Tuple[ProviderModelIdentifierType]] = None
-  models_by_call_type: Optional[
-      Dict[CallType, Tuple[ProviderModelIdentifierType]]] = None
-  models_by_size: Optional[
-      Dict[ModelSizeType, Tuple[ProviderModelIdentifierType]]] = None
-  default_model_priority_list: Optional[
-      Tuple[ProviderModelIdentifierType]] = None
+  featured_models: Optional[FeaturedModelsType] = None
+  models_by_call_type: Optional[ModelsByCallTypeType] = None
+  models_by_size: Optional[ModelsBySizeType] = None
+  default_model_priority_list: Optional[DefaultModelPriorityListType] = None
 
 
 @dataclasses.dataclass

@@ -23,106 +23,17 @@ PROVIDER_KEY_MAP: Dict[str, Tuple[str]] = MappingProxyType({
     'mock_slow_provider': tuple(['MOCK_SLOW_PROVIDER']),
 })
 
-FEATURED_MODELS: Tuple[types.ProviderModelIdentifierType] = (
-    ('mock_provider', 'mock_model'),
-
-    ('mock_failing_provider', 'mock_failing_model'),
-
-    ('mock_slow_provider', 'mock_slow_model'),
-
-    ('openai', 'gpt-4.1'),
-    ('openai', 'gpt-4.1-mini'),
-    ('openai', 'gpt-4.1-nano'),
-    ('openai', 'gpt-4.5-preview'),
-    ('openai', 'gpt-4o'),
-    ('openai', 'gpt-4o-mini'),
-    ('openai', 'o1'),
-    ('openai', 'o1-pro'),
-    ('openai', 'o3'),
-    ('openai', 'o4-mini'),
-    ('openai', 'o3-mini'),
-    ('openai', 'o1-mini'),
-    ('openai', 'gpt-4o-mini-search-preview'),
-    ('openai', 'gpt-4o-search-preview'),
-    ('openai', 'chatgpt-4o-latest'),
-    ('openai', 'gpt-4-turbo'),
-    ('openai', 'gpt-4'),
-    ('openai', 'gpt-3.5-turbo'),
-
-    ('claude', 'sonnet-4'),
-    ('claude', 'opus-4'),
-    ('claude', 'sonnet-3.7'),
-    ('claude', 'haiku-3.5'),
-    ('claude', 'sonnet-3.5'),
-    ('claude', 'sonnet-3.5-old'),
-    ('claude', 'opus-3'),
-    ('claude', 'sonnet-3'),
-    ('claude', 'haiku-3'),
-
-    ('gemini', 'gemini-2.5-pro'),
-    ('gemini', 'gemini-2.5-flash'),
-    ('gemini', 'gemini-2.5-flash-lite-preview-06-17'),
-    ('gemini', 'gemini-2.0-flash'),
-    ('gemini', 'gemini-2.0-flash-lite'),
-    ('gemini', 'gemini-1.5-flash'),
-    ('gemini', 'gemini-1.5-flash-8b'),
-    ('gemini', 'gemini-1.5-pro'),
-
-    ('cohere', 'command-a'),
-    ('cohere', 'command-r7b'),
-    ('cohere', 'command-r-plus'),
-    ('cohere', 'command-r-08-2024'),
-    ('cohere', 'command-r'),
-    ('cohere', 'command'),
-    ('cohere', 'command-nightly'),
-    ('cohere', 'command-light'),
-    ('cohere', 'command-light-nightly'),
-
-    ('databricks', 'llama-4-maverick'),
-    ('databricks', 'claude-3-7-sonnet'),
-    ('databricks', 'meta-llama-3-1-8b-it'),
-    ('databricks', 'meta-llama-3-3-70b-it'),
-    ('databricks', 'dbrx-it'),
-    ('databricks', 'mixtral-8x7b-it'),
-
-    ('mistral', 'codestral'),
-    ('mistral', 'ministral-3b'),
-    ('mistral', 'ministral-8b'),
-    ('mistral', 'mistral-large'),
-    ('mistral', 'mistral-medium'),
-    ('mistral', 'mistral-saba'),
-    ('mistral', 'mistral-small'),
-    ('mistral', 'open-mistral-7b'),
-    ('mistral', 'open-mistral-nemo'),
-    ('mistral', 'open-mixtral-8x22b'),
-    ('mistral', 'open-mixtral-8x7b'),
-    ('mistral', 'pixtral-12b'),
-    ('mistral', 'pixtral-large'),
-
-    ('huggingface', 'gemma-2-2b-it'),
-    ('huggingface', 'meta-llama-3.1-8b-it'),
-    ('huggingface', 'phi-4'),
-    ('huggingface', 'qwen3-32b'),
-    ('huggingface', 'deepseek-r1'),
-    ('huggingface', 'deepseek-v3'),
-
-    ('deepseek', 'deepseek-v3'),
-    ('deepseek', 'deepseek-r1'),
-
-    ('grok', 'grok-3-beta'),
-    ('grok', 'grok-3-fast-beta'),
-    ('grok', 'grok-3-mini-beta'),
-    ('grok', 'grok-3-mini-fast-beta'),
-)
-
-MODELS_BY_CALL_TYPE: Dict[types.CallType, Tuple[types.ProviderModelIdentifierType]] = MappingProxyType({
-    types.CallType.GENERATE_TEXT: (
+FEATURED_MODELS: types.FeaturedModelsType = MappingProxyType({
+    'mock_provider': (
         ('mock_provider', 'mock_model'),
-
+    ),
+    'mock_failing_provider': (
         ('mock_failing_provider', 'mock_failing_model'),
-
+    ),
+    'mock_slow_provider': (
         ('mock_slow_provider', 'mock_slow_model'),
-
+    ),
+    'openai': (
         ('openai', 'gpt-4.1'),
         ('openai', 'gpt-4.1-mini'),
         ('openai', 'gpt-4.1-nano'),
@@ -141,7 +52,8 @@ MODELS_BY_CALL_TYPE: Dict[types.CallType, Tuple[types.ProviderModelIdentifierTyp
         ('openai', 'gpt-4-turbo'),
         ('openai', 'gpt-4'),
         ('openai', 'gpt-3.5-turbo'),
-
+    ),
+    'claude': (
         ('claude', 'sonnet-4'),
         ('claude', 'opus-4'),
         ('claude', 'sonnet-3.7'),
@@ -151,7 +63,8 @@ MODELS_BY_CALL_TYPE: Dict[types.CallType, Tuple[types.ProviderModelIdentifierTyp
         ('claude', 'opus-3'),
         ('claude', 'sonnet-3'),
         ('claude', 'haiku-3'),
-
+    ),
+    'gemini': (
         ('gemini', 'gemini-2.5-pro'),
         ('gemini', 'gemini-2.5-flash'),
         ('gemini', 'gemini-2.5-flash-lite-preview-06-17'),
@@ -160,7 +73,8 @@ MODELS_BY_CALL_TYPE: Dict[types.CallType, Tuple[types.ProviderModelIdentifierTyp
         ('gemini', 'gemini-1.5-flash'),
         ('gemini', 'gemini-1.5-flash-8b'),
         ('gemini', 'gemini-1.5-pro'),
-
+    ),
+    'cohere': (
         ('cohere', 'command-a'),
         ('cohere', 'command-r7b'),
         ('cohere', 'command-r-plus'),
@@ -170,15 +84,16 @@ MODELS_BY_CALL_TYPE: Dict[types.CallType, Tuple[types.ProviderModelIdentifierTyp
         ('cohere', 'command-nightly'),
         ('cohere', 'command-light'),
         ('cohere', 'command-light-nightly'),
-
+    ),
+    'databricks': (
         ('databricks', 'llama-4-maverick'),
         ('databricks', 'claude-3-7-sonnet'),
         ('databricks', 'meta-llama-3-1-8b-it'),
         ('databricks', 'meta-llama-3-3-70b-it'),
-        ('databricks', 'meta-llama-3-1-405b-it'),
         ('databricks', 'dbrx-it'),
         ('databricks', 'mixtral-8x7b-it'),
-
+    ),
+    'mistral': (
         ('mistral', 'codestral'),
         ('mistral', 'ministral-3b'),
         ('mistral', 'ministral-8b'),
@@ -192,25 +107,136 @@ MODELS_BY_CALL_TYPE: Dict[types.CallType, Tuple[types.ProviderModelIdentifierTyp
         ('mistral', 'open-mixtral-8x7b'),
         ('mistral', 'pixtral-12b'),
         ('mistral', 'pixtral-large'),
-
+    ),
+    'huggingface': (
         ('huggingface', 'gemma-2-2b-it'),
         ('huggingface', 'meta-llama-3.1-8b-it'),
         ('huggingface', 'phi-4'),
         ('huggingface', 'qwen3-32b'),
         ('huggingface', 'deepseek-r1'),
         ('huggingface', 'deepseek-v3'),
-
+    ),
+    'deepseek': (
         ('deepseek', 'deepseek-v3'),
         ('deepseek', 'deepseek-r1'),
-
+    ),
+    'grok': (
         ('grok', 'grok-3-beta'),
         ('grok', 'grok-3-fast-beta'),
         ('grok', 'grok-3-mini-beta'),
         ('grok', 'grok-3-mini-fast-beta'),
-    ),
+    )
 })
 
-MODELS_BY_SIZE: Dict[types.ModelSizeType, Tuple[types.ProviderModelIdentifierType]] = MappingProxyType({
+MODELS_BY_CALL_TYPE: types.ModelsByCallTypeType = MappingProxyType({
+    types.CallType.GENERATE_TEXT: MappingProxyType({
+        'mock_provider': (
+            ('mock_provider', 'mock_model'),
+        ),
+        'mock_failing_provider': (
+            ('mock_failing_provider', 'mock_failing_model'),
+        ),
+        'mock_slow_provider': (
+            ('mock_slow_provider', 'mock_slow_model'),
+        ),
+        'openai': (
+            ('openai', 'gpt-4.1'),
+            ('openai', 'gpt-4.1-mini'),
+            ('openai', 'gpt-4.1-nano'),
+            ('openai', 'gpt-4.5-preview'),
+            ('openai', 'gpt-4o'),
+            ('openai', 'gpt-4o-mini'),
+            ('openai', 'o1'),
+            ('openai', 'o1-pro'),
+            ('openai', 'o3'),
+            ('openai', 'o4-mini'),
+            ('openai', 'o3-mini'),
+            ('openai', 'o1-mini'),
+            ('openai', 'gpt-4o-mini-search-preview'),
+            ('openai', 'gpt-4o-search-preview'),
+            ('openai', 'chatgpt-4o-latest'),
+            ('openai', 'gpt-4-turbo'),
+            ('openai', 'gpt-4'),
+            ('openai', 'gpt-3.5-turbo'),
+        ),
+        'claude': (
+            ('claude', 'sonnet-4'),
+            ('claude', 'opus-4'),
+            ('claude', 'sonnet-3.7'),
+            ('claude', 'haiku-3.5'),
+            ('claude', 'sonnet-3.5'),
+            ('claude', 'sonnet-3.5-old'),
+            ('claude', 'opus-3'),
+            ('claude', 'sonnet-3'),
+            ('claude', 'haiku-3'),
+        ),
+        'gemini': (
+            ('gemini', 'gemini-2.5-pro'),
+            ('gemini', 'gemini-2.5-flash'),
+            ('gemini', 'gemini-2.5-flash-lite-preview-06-17'),
+            ('gemini', 'gemini-2.0-flash'),
+            ('gemini', 'gemini-2.0-flash-lite'),
+            ('gemini', 'gemini-1.5-flash'),
+            ('gemini', 'gemini-1.5-flash-8b'),
+            ('gemini', 'gemini-1.5-pro'),
+        ),
+        'cohere': (
+            ('cohere', 'command-a'),
+            ('cohere', 'command-r7b'),
+            ('cohere', 'command-r-plus'),
+            ('cohere', 'command-r-08-2024'),
+            ('cohere', 'command-r'),
+            ('cohere', 'command'),
+            ('cohere', 'command-nightly'),
+            ('cohere', 'command-light'),
+            ('cohere', 'command-light-nightly'),
+        ),
+        'databricks': (
+            ('databricks', 'llama-4-maverick'),
+            ('databricks', 'claude-3-7-sonnet'),
+            ('databricks', 'meta-llama-3-1-8b-it'),
+            ('databricks', 'meta-llama-3-3-70b-it'),
+            ('databricks', 'meta-llama-3-1-405b-it'),
+            ('databricks', 'dbrx-it'),
+            ('databricks', 'mixtral-8x7b-it'),
+        ),
+        'mistral': (
+            ('mistral', 'codestral'),
+            ('mistral', 'ministral-3b'),
+            ('mistral', 'ministral-8b'),
+            ('mistral', 'mistral-large'),
+            ('mistral', 'mistral-medium'),
+            ('mistral', 'mistral-saba'),
+            ('mistral', 'mistral-small'),
+            ('mistral', 'open-mistral-7b'),
+            ('mistral', 'open-mistral-nemo'),
+            ('mistral', 'open-mixtral-8x22b'),
+            ('mistral', 'open-mixtral-8x7b'),
+            ('mistral', 'pixtral-12b'),
+            ('mistral', 'pixtral-large'),
+        ),
+        'huggingface': (
+            ('huggingface', 'gemma-2-2b-it'),
+            ('huggingface', 'meta-llama-3.1-8b-it'),
+            ('huggingface', 'phi-4'),
+            ('huggingface', 'qwen3-32b'),
+            ('huggingface', 'deepseek-r1'),
+            ('huggingface', 'deepseek-v3'),
+        ),
+        'deepseek': (
+            ('deepseek', 'deepseek-v3'),
+            ('deepseek', 'deepseek-r1'),
+        ),
+        'grok': (
+            ('grok', 'grok-3-beta'),
+            ('grok', 'grok-3-fast-beta'),
+            ('grok', 'grok-3-mini-beta'),
+            ('grok', 'grok-3-mini-fast-beta'),
+        ),
+    }),
+})
+
+MODELS_BY_SIZE: types.ModelsBySizeType = MappingProxyType({
     'small': (
         ('claude', 'haiku-3'),
         ('cohere', 'command-light'),
@@ -319,11 +345,15 @@ def get_provider_model_configs() -> Tuple[types.ProviderModelConfigType]:
 
       call_type = None
       for call_type in types.CallType:
-        if (provider, model) in MODELS_BY_CALL_TYPE[call_type]:
+        if (provider in MODELS_BY_CALL_TYPE[call_type] and
+            (provider, model) in MODELS_BY_CALL_TYPE[call_type][provider]):
           call_type = call_type
           break
 
-      is_featured = (provider, model) in FEATURED_MODELS
+      is_featured = False
+      if (provider in FEATURED_MODELS and
+          (provider, model) in FEATURED_MODELS[provider]):
+          is_featured = True
 
       model_size = None
       for model_size_type in types.ModelSizeType:

@@ -118,15 +118,20 @@ def _get_all_models_config_type_options():
                   provider_model=model_configs.get_provider_model_config(('claude', 'opus-4')),
                   metadata=types.ProviderModelMetadataType(
                       is_featured=True))}}},
-      {'featured_models': (
-          model_configs.get_provider_model_config(('openai', 'gpt-4')),)},
-      {'featured_models': (
-          model_configs.get_provider_model_config(('openai', 'gpt-4')),
-          ('claude', 'opus-4'),)},
+      {'featured_models': {
+          'openai': (
+              model_configs.get_provider_model_config(('openai', 'gpt-4')),)}},
+      {'featured_models': {
+          'openai': (
+              model_configs.get_provider_model_config(('openai', 'gpt-4')),),
+          'claude': (
+              ('claude', 'opus-4'),)}},
       {'models_by_call_type': {
-          types.CallType.GENERATE_TEXT: (
-              model_configs.get_provider_model_config(('openai', 'gpt-4')),
-              ('claude', 'sonnet-4'),)}},
+          types.CallType.GENERATE_TEXT: {
+              'openai': (
+                  model_configs.get_provider_model_config(('openai', 'gpt-4')),),
+              'claude': (
+                  ('claude', 'sonnet-4'),)}}},
       {'models_by_size': {
           types.ModelSizeType.SMALL: (
               ('openai', 'gpt-4o-mini'),),
@@ -165,13 +170,17 @@ def _get_all_models_config_type_options():
                       model_size=types.ModelSizeType.LARGEST)),
               'sonnet-4': types.ProviderModelConfigType(
                   provider_model=model_configs.get_provider_model_config(('claude', 'sonnet-4')))}},
-       'featured_models': (
-          model_configs.get_provider_model_config(('openai', 'gpt-4')),
-          ('claude', 'opus-4'),),
+       'featured_models': {
+          'openai': (
+              model_configs.get_provider_model_config(('openai', 'gpt-4')),),
+          'claude': (
+              ('claude', 'opus-4'),)},
        'models_by_call_type': {
-          types.CallType.GENERATE_TEXT: (
-              model_configs.get_provider_model_config(('openai', 'gpt-4')),
-              ('claude', 'sonnet-4'),)},
+          types.CallType.GENERATE_TEXT: {
+              'openai': (
+                  model_configs.get_provider_model_config(('openai', 'gpt-4')),),
+              'claude': (
+                  ('claude', 'sonnet-4'),)}},
        'models_by_size': {
           types.ModelSizeType.SMALL: (
               ('openai', 'gpt-4o-mini'),),
@@ -470,6 +479,87 @@ def _get_run_stats_options():
      'cache_stats': stat_types.BaseCacheStats(total_cache_hit=1)}]
 
 
+def _get_provider_model_configs_type_options():
+  return [
+    {'openai': {
+        'gpt-4': types.ProviderModelConfigType(
+            provider_model=model_configs.get_provider_model_config(
+                ('openai', 'gpt-4')))}},
+    {'openai': {
+        'gpt-4': types.ProviderModelConfigType(
+            provider_model=model_configs.get_provider_model_config(
+                ('openai', 'gpt-4')),
+            pricing=types.ProviderModelPricingType(
+                per_response_token_cost=0.001,
+                per_query_token_cost=0.002))},
+     'claude': {
+        'opus-4': types.ProviderModelConfigType(
+            provider_model=model_configs.get_provider_model_config(
+                ('claude', 'opus-4')),
+            metadata=types.ProviderModelMetadataType(
+                is_featured=True))}},]
+
+
+def _get_featured_models_type_options():
+  return [
+    {'openai': (
+        model_configs.get_provider_model_config(('openai', 'gpt-4')),)},
+    {'openai': (
+        model_configs.get_provider_model_config(('openai', 'gpt-4')),),
+     'claude': (
+        ('claude', 'opus-4'),)},
+    {'openai': (
+        model_configs.get_provider_model_config(('openai', 'gpt-4')),
+        ('openai', 'o3-mini'),),
+     'claude': (
+        ('claude', 'opus-4'),
+        model_configs.get_provider_model_config(('claude', 'sonnet-4')),)},]
+
+
+def _get_models_by_call_type_type_options():
+  return [
+    {types.CallType.GENERATE_TEXT: {
+        'openai': (
+            model_configs.get_provider_model_config(('openai', 'gpt-4')),)}},
+    {types.CallType.GENERATE_TEXT: {
+        'openai': (
+            model_configs.get_provider_model_config(('openai', 'gpt-4')),),
+        'claude': (
+            ('claude', 'sonnet-4'),)}},
+    {types.CallType.GENERATE_TEXT: {
+        'openai': (
+            model_configs.get_provider_model_config(('openai', 'gpt-4')),
+            ('openai', 'o3-mini'),),
+        'claude': (
+            ('claude', 'sonnet-4'),
+            model_configs.get_provider_model_config(('claude', 'opus-4')),)}},]
+
+
+def _get_models_by_size_type_options():
+  return [
+    {types.ModelSizeType.SMALL: (
+        ('openai', 'gpt-4o-mini'),)},
+    {types.ModelSizeType.SMALL: (
+        ('openai', 'gpt-4o-mini'),),
+     types.ModelSizeType.LARGE: (
+        model_configs.get_provider_model_config(('openai', 'gpt-4')),)},
+    {types.ModelSizeType.SMALL: (
+        ('openai', 'gpt-4o-mini'),),
+     types.ModelSizeType.LARGE: (
+        model_configs.get_provider_model_config(('openai', 'gpt-4')),
+        ('claude', 'opus-4'),)},]
+
+
+def _get_default_model_priority_list_type_options():
+  return [
+    (model_configs.get_provider_model_config(('openai', 'gpt-4')),),
+    (model_configs.get_provider_model_config(('openai', 'gpt-4')),
+     ('claude', 'opus-4'),),
+    (model_configs.get_provider_model_config(('openai', 'gpt-4')),
+     ('claude', 'opus-4'),
+     ('openai', 'o3-mini'),),]
+
+
 class TestTypeSerializer:
   @pytest.mark.parametrize(
       'provider_model_type_options',
@@ -743,3 +833,71 @@ class TestTypeSerializer:
         type_serializer.decode_all_models_config_type(
             record=encoded_all_models_config_type))
     assert all_models_config_type == decoded_all_models_config_type
+
+  @pytest.mark.parametrize(
+      'provider_model_configs_type_options',
+      _get_provider_model_configs_type_options())
+  def test_encode_decode_provider_model_configs_type(
+      self, provider_model_configs_type_options):
+    encoded_provider_model_configs_type = (
+        type_serializer.encode_provider_model_configs_type(
+            provider_model_configs=provider_model_configs_type_options))
+    decoded_provider_model_configs_type = (
+        type_serializer.decode_provider_model_configs_type(
+            record=encoded_provider_model_configs_type))
+    assert provider_model_configs_type_options == (
+        decoded_provider_model_configs_type)
+
+  @pytest.mark.parametrize(
+      'featured_models_type_options',
+      _get_featured_models_type_options())
+  def test_encode_decode_featured_models_type(
+      self, featured_models_type_options):
+    encoded_featured_models_type = (
+        type_serializer.encode_featured_models_type(
+            featured_models=featured_models_type_options))
+    decoded_featured_models_type = (
+        type_serializer.decode_featured_models_type(
+            record=encoded_featured_models_type))
+    assert featured_models_type_options == decoded_featured_models_type
+
+  @pytest.mark.parametrize(
+      'models_by_call_type_type_options',
+      _get_models_by_call_type_type_options())
+  def test_encode_decode_models_by_call_type_type(
+      self, models_by_call_type_type_options):
+    encoded_models_by_call_type_type = (
+        type_serializer.encode_models_by_call_type_type(
+            models_by_call_type=models_by_call_type_type_options))
+    decoded_models_by_call_type_type = (
+        type_serializer.decode_models_by_call_type_type(
+            record=encoded_models_by_call_type_type))
+    assert models_by_call_type_type_options == decoded_models_by_call_type_type
+
+  @pytest.mark.parametrize(
+      'models_by_size_type_options',
+      _get_models_by_size_type_options())
+  def test_encode_decode_models_by_size_type(
+      self, models_by_size_type_options):
+    encoded_models_by_size_type = (
+        type_serializer.encode_models_by_size_type(
+            models_by_size=models_by_size_type_options))
+    decoded_models_by_size_type = (
+        type_serializer.decode_models_by_size_type(
+            record=encoded_models_by_size_type))
+    assert models_by_size_type_options == decoded_models_by_size_type
+
+  @pytest.mark.parametrize(
+      'default_model_priority_list_type_options',
+      _get_default_model_priority_list_type_options())
+  def test_encode_decode_default_model_priority_list_type(
+      self, default_model_priority_list_type_options):
+    encoded_default_model_priority_list_type = (
+        type_serializer.encode_default_model_priority_list_type(
+            default_model_priority_list=(
+                default_model_priority_list_type_options)))
+    decoded_default_model_priority_list_type = (
+        type_serializer.decode_default_model_priority_list_type(
+            record=encoded_default_model_priority_list_type))
+    assert default_model_priority_list_type_options == (
+        decoded_default_model_priority_list_type)

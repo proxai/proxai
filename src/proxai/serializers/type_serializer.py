@@ -184,6 +184,128 @@ def decode_provider_model_config_type(
   return provider_model_config_type
 
 
+def encode_provider_model_configs_type(
+    provider_model_configs: types.ProviderModelConfigsType
+) -> Dict[str, Any]:
+  record = {}
+  for provider, model_configs_dict in provider_model_configs.items():
+    record[provider] = {}
+    for model, provider_model_config in model_configs_dict.items():
+      record[provider][model] = encode_provider_model_config_type(
+          provider_model_config)
+  return record
+
+
+def decode_provider_model_configs_type(
+    record: Dict[str, Any]) -> types.ProviderModelConfigsType:
+  provider_model_configs = {}
+  for provider, model_configs_dict_record in record.items():
+    provider_model_configs[provider] = {}
+    for model, provider_model_config_record in (
+        model_configs_dict_record.items()):
+      provider_model_configs[provider][model] = (
+          decode_provider_model_config_type(provider_model_config_record))
+  return provider_model_configs
+
+
+def encode_featured_models_type(
+    featured_models: types.FeaturedModelsType) -> Dict[str, Any]:
+  record = {}
+  for provider, provider_model_identifiers in featured_models.items():
+    record[provider] = []
+    for provider_model_identifier in provider_model_identifiers:
+      record[provider].append(
+          encode_provider_model_identifier(provider_model_identifier))
+  return record
+
+
+def decode_featured_models_type(
+    record: Dict[str, Any]) -> types.FeaturedModelsType:
+  featured_models = {}
+  for provider, provider_model_identifier_records in record.items():
+    provider_model_identifiers = []
+    for provider_model_identifier_record in (
+        provider_model_identifier_records):
+      provider_model_identifiers.append(
+          decode_provider_model_identifier(provider_model_identifier_record))
+    featured_models[provider] = tuple(provider_model_identifiers)
+  return featured_models
+
+
+def encode_models_by_call_type_type(
+    models_by_call_type: types.ModelsByCallTypeType) -> Dict[str, Any]:
+  record = {}
+  for call_type, provider_dict in models_by_call_type.items():
+    record[call_type.value] = {}
+    for provider, provider_model_identifiers in provider_dict.items():
+      record[call_type.value][provider] = []
+      for provider_model_identifier in provider_model_identifiers:
+        record[call_type.value][provider].append(
+            encode_provider_model_identifier(provider_model_identifier))
+  return record
+
+
+def decode_models_by_call_type_type(
+    record: Dict[str, Any]) -> types.ModelsByCallTypeType:
+  models_by_call_type = {}
+  for call_type_str, provider_dict_record in record.items():
+    call_type = types.CallType(call_type_str)
+    provider_dict = {}
+    for provider, provider_model_identifier_records in (
+        provider_dict_record.items()):
+      provider_model_identifiers = []
+      for provider_model_identifier_record in (
+          provider_model_identifier_records):
+        provider_model_identifiers.append(
+            decode_provider_model_identifier(provider_model_identifier_record))
+      provider_dict[provider] = tuple(provider_model_identifiers)
+    models_by_call_type[call_type] = provider_dict
+  return models_by_call_type
+
+
+def encode_models_by_size_type(
+    models_by_size: types.ModelsBySizeType) -> Dict[str, Any]:
+  record = {}
+  for model_size, provider_model_identifiers in models_by_size.items():
+    record[model_size.value] = []
+    for provider_model_identifier in provider_model_identifiers:
+      record[model_size.value].append(
+          encode_provider_model_identifier(provider_model_identifier))
+  return record
+
+
+def decode_models_by_size_type(
+    record: Dict[str, Any]) -> types.ModelsBySizeType:
+  models_by_size = {}
+  for model_size_str, provider_model_identifier_records in record.items():
+    model_size = types.ModelSizeType(model_size_str)
+    provider_model_identifiers = []
+    for provider_model_identifier_record in (
+        provider_model_identifier_records):
+      provider_model_identifiers.append(
+          decode_provider_model_identifier(provider_model_identifier_record))
+    models_by_size[model_size] = tuple(provider_model_identifiers)
+  return models_by_size
+
+
+def encode_default_model_priority_list_type(
+    default_model_priority_list: types.DefaultModelPriorityListType
+) -> Dict[str, Any]:
+  record = []
+  for provider_model_identifier in default_model_priority_list:
+    record.append(encode_provider_model_identifier(provider_model_identifier))
+  return record
+
+
+def decode_default_model_priority_list_type(
+    record: Dict[str, Any]) -> types.DefaultModelPriorityListType:
+  default_model_priority_list = []
+  for provider_model_identifier_record in record:
+    default_model_priority_list.append(
+        decode_provider_model_identifier(provider_model_identifier_record))
+  return tuple(default_model_priority_list)
+
+
 def encode_all_models_config_type(
     all_models_config_type: types.AllModelsConfigType
 ) -> Dict[str, Any]:
@@ -197,40 +319,21 @@ def encode_all_models_config_type(
   if all_models_config_type.release_notes != None:
     record['release_notes'] = all_models_config_type.release_notes
   if all_models_config_type.provider_model_configs != None:
-    record['provider_model_configs'] = {}
-    for provider, model_configs_dict in (
-        all_models_config_type.provider_model_configs.items()):
-      record['provider_model_configs'][provider] = {}
-      for model, provider_model_config in model_configs_dict.items():
-        record['provider_model_configs'][provider][model] = (
-            encode_provider_model_config_type(provider_model_config))
+    record['provider_model_configs'] = encode_provider_model_configs_type(
+        all_models_config_type.provider_model_configs)
   if all_models_config_type.featured_models != None:
-    record['featured_models'] = []
-    for provider_model_identifier in all_models_config_type.featured_models:
-      record['featured_models'].append(
-          encode_provider_model_identifier(provider_model_identifier))
+    record['featured_models'] = encode_featured_models_type(
+        all_models_config_type.featured_models)
   if all_models_config_type.models_by_call_type != None:
-    record['models_by_call_type'] = {}
-    for call_type, provider_model_identifiers in (
-        all_models_config_type.models_by_call_type.items()):
-      record['models_by_call_type'][call_type.value] = []
-      for provider_model_identifier in provider_model_identifiers:
-        record['models_by_call_type'][call_type.value].append(
-            encode_provider_model_identifier(provider_model_identifier))
+    record['models_by_call_type'] = encode_models_by_call_type_type(
+        all_models_config_type.models_by_call_type)
   if all_models_config_type.models_by_size != None:
-    record['models_by_size'] = {}
-    for model_size, provider_model_identifiers in (
-        all_models_config_type.models_by_size.items()):
-      record['models_by_size'][model_size.value] = []
-      for provider_model_identifier in provider_model_identifiers:
-        record['models_by_size'][model_size.value].append(
-            encode_provider_model_identifier(provider_model_identifier))
+    record['models_by_size'] = encode_models_by_size_type(
+        all_models_config_type.models_by_size)
   if all_models_config_type.default_model_priority_list != None:
-    record['default_model_priority_list'] = []
-    for provider_model_identifier in (
-        all_models_config_type.default_model_priority_list):
-      record['default_model_priority_list'].append(
-          encode_provider_model_identifier(provider_model_identifier))
+    record['default_model_priority_list'] = (
+        encode_default_model_priority_list_type(
+            all_models_config_type.default_model_priority_list))
   return record
 
 
@@ -248,53 +351,21 @@ def decode_all_models_config_type(
   if 'release_notes' in record:
     all_models_config_type.release_notes = record['release_notes']
   if 'provider_model_configs' in record:
-    provider_model_configs = {}
-    for provider, model_configs_dict_record in (
-        record['provider_model_configs'].items()):
-      provider_model_configs[provider] = {}
-      for model, provider_model_config_record in (
-          model_configs_dict_record.items()):
-        provider_model_configs[provider][model] = (
-            decode_provider_model_config_type(provider_model_config_record))
-    all_models_config_type.provider_model_configs = provider_model_configs
+    all_models_config_type.provider_model_configs = (
+        decode_provider_model_configs_type(record['provider_model_configs']))
   if 'featured_models' in record:
-    featured_models = []
-    for provider_model_identifier_record in record['featured_models']:
-      featured_models.append(
-          decode_provider_model_identifier(provider_model_identifier_record))
-    all_models_config_type.featured_models = tuple(featured_models)
+    all_models_config_type.featured_models = decode_featured_models_type(
+        record['featured_models'])
   if 'models_by_call_type' in record:
-    models_by_call_type = {}
-    for call_type_str, provider_model_identifier_records in (
-        record['models_by_call_type'].items()):
-      call_type = types.CallType(call_type_str)
-      provider_model_identifiers = []
-      for provider_model_identifier_record in (
-          provider_model_identifier_records):
-        provider_model_identifiers.append(
-            decode_provider_model_identifier(provider_model_identifier_record))
-      models_by_call_type[call_type] = tuple(provider_model_identifiers)
-    all_models_config_type.models_by_call_type = models_by_call_type
+    all_models_config_type.models_by_call_type = (
+        decode_models_by_call_type_type(record['models_by_call_type']))
   if 'models_by_size' in record:
-    models_by_size = {}
-    for model_size_str, provider_model_identifier_records in (
-        record['models_by_size'].items()):
-      model_size = types.ModelSizeType(model_size_str)
-      provider_model_identifiers = []
-      for provider_model_identifier_record in (
-          provider_model_identifier_records):
-        provider_model_identifiers.append(
-            decode_provider_model_identifier(provider_model_identifier_record))
-      models_by_size[model_size] = tuple(provider_model_identifiers)
-    all_models_config_type.models_by_size = models_by_size
+    all_models_config_type.models_by_size = decode_models_by_size_type(
+        record['models_by_size'])
   if 'default_model_priority_list' in record:
-    default_model_priority_list = []
-    for provider_model_identifier_record in (
-        record['default_model_priority_list']):
-      default_model_priority_list.append(
-          decode_provider_model_identifier(provider_model_identifier_record))
-    all_models_config_type.default_model_priority_list = tuple(
-        default_model_priority_list)
+    all_models_config_type.default_model_priority_list = (
+        decode_default_model_priority_list_type(
+            record['default_model_priority_list']))
   return all_models_config_type
 
 
