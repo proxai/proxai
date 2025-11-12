@@ -4,7 +4,7 @@ from typing import Dict
 import proxai.types as types
 import proxai.connectors.model_configs as model_configs
 
-GENERATE_TEXT_PRICING: Dict[
+PROVIDER_MODEL_PRICING: Dict[
     str, Dict[str, types.ProviderModelPricingType]] = MappingProxyType({
   # Mock provider
   'mock_provider': MappingProxyType({
@@ -397,6 +397,6 @@ def get_provider_model_cost(
 ) -> int:
   provider_model = model_configs.get_provider_model_config(
       provider_model_identifier)
-  pricing = GENERATE_TEXT_PRICING[provider_model.provider][provider_model.model]
+  PROVIDER_MODEL_PRICING[provider_model.provider][provider_model.model]
   return math.floor(query_token_count * pricing.per_query_token_cost +
                     response_token_count * pricing.per_response_token_cost)

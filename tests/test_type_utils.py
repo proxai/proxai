@@ -35,7 +35,7 @@ class TestCheckProviderModelType:
 
   def test_supported_provider_model_identifier(self):
     type_utils.check_provider_model_identifier_type(
-        model_configs.ALL_MODELS['claude']['opus-4'])
+        model_configs.get_provider_model_config(('claude', 'opus-4')))
 
   def test_not_supported_provider_tuple(self):
     with pytest.raises(ValueError):
