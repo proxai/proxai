@@ -54,24 +54,8 @@ class ProviderModelConnector(state_controller.StateControlled):
           Callable[[bool], proxdash.ProxDashConnection]] = None,
       init_state: Optional[types.ProviderModelState] = None,
       stats: Optional[Dict[str, stats_type.RunStats]] = None):
-
-    if init_state and (
-        provider_model is not None or
-        run_type is not None or
-        get_run_type is not None or
-        strict_feature_test is not None or
-        get_strict_feature_test is not None or
-        query_cache_manager is not None or
-        get_query_cache_manager is not None or
-        logging_options is not None or
-        get_logging_options is not None or
-        proxdash_connection is not None or
-        get_proxdash_connection is not None or
-        stats is not None):
-      raise ValueError(
-          'init_state and other parameters cannot be set at the same time.')
-
     super().__init__(
+        init_state=init_state,
         provider_model=provider_model,
         run_type=run_type,
         get_run_type=get_run_type,
@@ -83,8 +67,6 @@ class ProviderModelConnector(state_controller.StateControlled):
         get_logging_options=get_logging_options,
         proxdash_connection=proxdash_connection,
         get_proxdash_connection=get_proxdash_connection)
-
-    self.init_state()
 
     if init_state:
       if init_state.provider_model is None:

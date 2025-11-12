@@ -59,24 +59,8 @@ class AvailableModels(state_controller.StateControlled):
       get_model_connector: Optional[
           Callable[[], model_connector.ProviderModelConnector]] = None,
       init_state: Optional[types.AvailableModelsState] = None):
-
-    if init_state and (
-        run_type is not None or
-        get_run_type is not None or
-        model_cache_manager is not None or
-        get_model_cache_manager is not None or
-        logging_options is not None or
-        get_logging_options is not None or
-        proxdash_connection is not None or
-        get_proxdash_connection is not None or
-        allow_multiprocessing is not None or
-        get_allow_multiprocessing is not None or
-        model_test_timeout is not None or
-        get_model_test_timeout is not None):
-      raise ValueError(
-          'init_state and other parameters cannot be set at the same time.')
-
     super().__init__(
+        init_state=init_state,
         run_type=run_type,
         get_run_type=get_run_type,
         model_cache_manager=model_cache_manager,
@@ -89,8 +73,6 @@ class AvailableModels(state_controller.StateControlled):
         get_allow_multiprocessing=get_allow_multiprocessing,
         model_test_timeout=model_test_timeout,
         get_model_test_timeout=get_model_test_timeout)
-
-    self.init_state()
 
     if init_state:
       self.load_state(init_state)

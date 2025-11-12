@@ -21,18 +21,11 @@ class ModelCacheManager(state_controller.StateControlled):
       cache_options: Optional[types.CacheOptions] = None,
       get_cache_options: Optional[Callable[[], types.CacheOptions]] = None,
       init_state: Optional[types.ModelCacheManagerState] = None):
-
-    if init_state and (
-        cache_options is not None or
-        get_cache_options is not None):
-      raise ValueError(
-          'init_state and other parameters cannot be set at the same time.')
-
     super().__init__(
+        init_state=init_state,
         cache_options=cache_options,
         get_cache_options=get_cache_options)
 
-    self.init_state()
     self.set_property_value(
         'status', types.ModelCacheManagerStatus.INITIALIZING)
 

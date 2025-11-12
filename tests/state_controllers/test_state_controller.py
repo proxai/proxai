@@ -312,6 +312,84 @@ class TestStateControlled:
         'Available properties:'):
       ExampleStateControlledClass(non_available_property='test')
 
+  def test_init_state_exclusivity_with_literal_param(self):
+    """Test that init_state cannot be mixed with literal parameters."""
+    @dataclass
+    class TestState(types.StateContainer):
+      prop: Optional[str] = None
+
+    class TestClass(state_controller.StateControlled):
+      def __init__(self, prop=None, init_state=None):
+        super().__init__(prop=prop, init_state=init_state)
+
+      def get_internal_state_property_name(self):
+        return '_state'
+
+      def get_internal_state_type(self):
+        return TestState
+
+      def handle_changes(self, old_state, current_state):
+        pass
+
+    state = TestState(prop='test')
+    with pytest.raises(
+        ValueError,
+        match='init_state and other parameters cannot be set at the same time. '
+        'Found non-None parameter: prop=test'):
+      TestClass(prop='test', init_state=state)
+
+  def test_init_state_exclusivity_with_getter_param(self):
+    """Test that init_state cannot be mixed with getter parameters."""
+    @dataclass
+    class TestState(types.StateContainer):
+      prop: Optional[str] = None
+
+    class TestClass(state_controller.StateControlled):
+      def __init__(self, get_prop=None, init_state=None):
+        super().__init__(get_prop=get_prop, init_state=init_state)
+
+      def get_internal_state_property_name(self):
+        return '_state'
+
+      def get_internal_state_type(self):
+        return TestState
+
+      def handle_changes(self, old_state, current_state):
+        pass
+
+    state = TestState(prop='test')
+    with pytest.raises(
+        ValueError,
+        match='init_state and other parameters cannot be set at the same time. '
+        'Found non-None parameter: get_prop='):
+      TestClass(get_prop=lambda: 'test', init_state=state)
+
+  def test_auto_init_state_called(self):
+    """Test that init_state() is automatically called by parent __init__."""
+    @dataclass
+    class MinimalState(types.StateContainer):
+      value: Optional[str] = None
+
+    class MinimalClass(state_controller.StateControlled):
+      def __init__(self):
+        # Don't call init_state() - rely on parent to call it
+        super().__init__()
+
+      def get_internal_state_property_name(self):
+        return '_minimal_state'
+
+      def get_internal_state_type(self):
+        return MinimalState
+
+      def handle_changes(self, old_state, current_state):
+        pass
+
+    # If parent didn't call init_state(), this would fail
+    obj = MinimalClass()
+    assert hasattr(obj, '_minimal_state')
+    assert obj._minimal_state is not None
+    assert isinstance(obj._minimal_state, MinimalState)
+
   def test_init_state(self):
     @dataclass
     class ExampleState2(ExampleState):
