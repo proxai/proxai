@@ -1,43 +1,4 @@
 import proxai.types as types
-import proxai.connectors.model_configs as model_configs
-from typing import Any
-
-all_models_config = model_configs.ALL_MODELS_CONFIG
-
-
-def check_provider_model_identifier_type(
-    provider_model_identifier: types.ProviderModelIdentifierType):
-  """Check if provider model identifier is supported."""
-  if isinstance(provider_model_identifier, types.ProviderModelType):
-    provider = provider_model_identifier.provider
-    model = provider_model_identifier.model
-    if provider not in all_models_config.provider_model_configs:
-      raise ValueError(
-        f'Provider not supported: {provider}.\n'
-        f'Supported providers: {all_models_config.provider_model_configs.keys()}')
-    if model not in all_models_config.provider_model_configs[provider]:
-      raise ValueError(
-        f'Model not supported: {model}.\nSupported models: '
-        f'{all_models_config.provider_model_configs[provider].keys()}')
-    if provider_model_identifier != all_models_config.provider_model_configs[provider][model].provider_model:
-      raise ValueError(
-        'Mismatch between provider model identifier and model config.'
-        f'Provider model identifier: {provider_model_identifier}'
-        f'Model config: {all_models_config.provider_model_configs[provider][model].provider_model}')
-  elif is_provider_model_tuple(provider_model_identifier):
-    provider = provider_model_identifier[0]
-    model = provider_model_identifier[1]
-    if provider not in all_models_config.provider_model_configs:
-      raise ValueError(
-        f'Provider not supported: {provider}.\n'
-        f'Supported providers: {all_models_config.provider_model_configs.keys()}')
-    if model not in all_models_config.provider_model_configs[provider]:
-      raise ValueError(
-        f'Model not supported: {model}.\nSupported models: '
-        f'{all_models_config.provider_model_configs[provider].keys()}')
-  else:
-    raise ValueError(
-        f'Invalid provider model identifier: {provider_model_identifier}')
 
 
 def check_messages_type(messages: types.MessagesType):
@@ -61,13 +22,6 @@ def check_messages_type(messages: types.MessagesType):
       raise ValueError(
           'Role should be "user" or "assistant".\n'
           f'Invalid role: {message["role"]}')
-
-
-def is_provider_model_tuple(value: Any) -> bool:
-    return (type(value) == tuple
-            and len(value) == 2
-            and type(value[0]) == str
-            and type(value[1]) == str)
 
 
 def check_model_size_identifier_type(

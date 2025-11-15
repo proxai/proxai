@@ -1,0 +1,2054 @@
+{
+  "metadata": {
+    "version": "1.0.0",
+    "released_at": "2025-11-11 00:00:00",
+    "config_origin": "BUILT_IN",
+    "release_notes": "First release of the model configs"
+  },
+  "version_config": {
+    "provider_model_configs": {
+      "mock_provider": {
+        "mock_model": {
+          "provider_model": "(mock_provider, mock_model)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=1.0, per_query_token_cost=2.0)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": null,
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        }
+      },
+      "mock_failing_provider": {
+        "mock_failing_model": {
+          "provider_model": "(mock_failing_provider, mock_failing_model)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=3.0, per_query_token_cost=4.0)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": null,
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        }
+      },
+      "mock_slow_provider": {
+        "mock_slow_model": {
+          "provider_model": "(mock_slow_provider, mock_slow_model)",
+          "pricing": null,
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": null,
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        }
+      },
+      "openai": {
+        "gpt-4.1": {
+          "provider_model": "(openai, gpt-4.1)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=8.0, per_query_token_cost=2.0)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "large",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "gpt-4.1-mini": {
+          "provider_model": "(openai, gpt-4.1-mini)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=1.6, per_query_token_cost=0.4)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "medium",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "gpt-4.1-nano": {
+          "provider_model": "(openai, gpt-4.1-nano)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=0.4, per_query_token_cost=0.1)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "small",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "gpt-4.5-preview": {
+          "provider_model": "(openai, gpt-4.5-preview)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=150.0, per_query_token_cost=75.0)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "large",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "gpt-4o": {
+          "provider_model": "(openai, gpt-4o)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=10.0, per_query_token_cost=2.5)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "large",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "gpt-4o-audio-preview": {
+          "provider_model": "(openai, gpt-4o-audio-preview)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=10.0, per_query_token_cost=2.5)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": false,
+            "model_size": null,
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "gpt-4o-realtime-preview": {
+          "provider_model": "(openai, gpt-4o-realtime-preview)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=20.0, per_query_token_cost=5.0)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": false,
+            "model_size": null,
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "gpt-4o-mini": {
+          "provider_model": "(openai, gpt-4o-mini)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=0.6, per_query_token_cost=0.15)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "small",
+            "is_default_candidate": true,
+            "default_candidate_priority": 0
+          }
+        },
+        "gpt-4o-mini-audio-preview": {
+          "provider_model": "(openai, gpt-4o-mini-audio-preview)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=0.6, per_query_token_cost=0.15)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": false,
+            "model_size": null,
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "gpt-4o-mini-realtime-preview": {
+          "provider_model": "(openai, gpt-4o-mini-realtime-preview)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=2.4, per_query_token_cost=0.6)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": false,
+            "model_size": null,
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "o1": {
+          "provider_model": "(openai, o1)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=60.0, per_query_token_cost=15.0)",
+          "features": "ProviderModelFeatureType(not_supported_features=['temperature'])",
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "large",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "o1-pro": {
+          "provider_model": "(openai, o1-pro)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=600.0, per_query_token_cost=150.0)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "large",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "o3": {
+          "provider_model": "(openai, o3)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=40.0, per_query_token_cost=10.0)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "large",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "o4-mini": {
+          "provider_model": "(openai, o4-mini)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=4.4, per_query_token_cost=1.1)",
+          "features": "ProviderModelFeatureType(not_supported_features=['max_tokens', 'temperature', 'stop'])",
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "medium",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "o3-mini": {
+          "provider_model": "(openai, o3-mini)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=4.4, per_query_token_cost=1.1)",
+          "features": "ProviderModelFeatureType(not_supported_features=['max_tokens', 'temperature'])",
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "medium",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "o1-mini": {
+          "provider_model": "(openai, o1-mini)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=4.4, per_query_token_cost=1.1)",
+          "features": "ProviderModelFeatureType(not_supported_features=['system', 'max_tokens', 'temperature', 'stop'])",
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "medium",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "gpt-4o-mini-search-preview": {
+          "provider_model": "(openai, gpt-4o-mini-search-preview)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=0.6, per_query_token_cost=0.15)",
+          "features": "ProviderModelFeatureType(not_supported_features=['temperature', 'stop'])",
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "small",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "gpt-4o-search-preview": {
+          "provider_model": "(openai, gpt-4o-search-preview)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=10.0, per_query_token_cost=2.5)",
+          "features": "ProviderModelFeatureType(not_supported_features=['temperature', 'stop'])",
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "large",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "computer-use-preview": {
+          "provider_model": "(openai, computer-use-preview)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=12.0, per_query_token_cost=3.0)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": false,
+            "model_size": null,
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "chatgpt-4o-latest": {
+          "provider_model": "(openai, chatgpt-4o-latest)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=15.0, per_query_token_cost=5.0)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "large",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "gpt-4-turbo": {
+          "provider_model": "(openai, gpt-4-turbo)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=30.0, per_query_token_cost=10.0)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "large",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "gpt-4": {
+          "provider_model": "(openai, gpt-4)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=60.0, per_query_token_cost=30.0)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "large",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "gpt-4-32k": {
+          "provider_model": "(openai, gpt-4-32k)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=120.0, per_query_token_cost=60.0)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": false,
+            "model_size": null,
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "gpt-3.5-turbo": {
+          "provider_model": "(openai, gpt-3.5-turbo)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=1.5, per_query_token_cost=0.5)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "medium",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        }
+      },
+      "claude": {
+        "sonnet-4": {
+          "provider_model": "(claude, sonnet-4)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=15.0, per_query_token_cost=3.0)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "large",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "opus-4": {
+          "provider_model": "(claude, opus-4)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=75.0, per_query_token_cost=15.0)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "large",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "sonnet-3.7": {
+          "provider_model": "(claude, sonnet-3.7)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=15.0, per_query_token_cost=3.0)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": null,
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "haiku-3.5": {
+          "provider_model": "(claude, haiku-3.5)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=4.0, per_query_token_cost=0.8)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "medium",
+            "is_default_candidate": true,
+            "default_candidate_priority": 2
+          }
+        },
+        "sonnet-3.5": {
+          "provider_model": "(claude, sonnet-3.5)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=15.0, per_query_token_cost=3.0)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": null,
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "sonnet-3.5-old": {
+          "provider_model": "(claude, sonnet-3.5-old)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=15.0, per_query_token_cost=3.0)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": null,
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "opus-3": {
+          "provider_model": "(claude, opus-3)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=75.0, per_query_token_cost=15.0)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": null,
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "sonnet-3": {
+          "provider_model": "(claude, sonnet-3)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=15.0, per_query_token_cost=3.0)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": null,
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "haiku-3": {
+          "provider_model": "(claude, haiku-3)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=1.25, per_query_token_cost=0.25)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "small",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        }
+      },
+      "gemini": {
+        "gemini-2.5-pro": {
+          "provider_model": "(gemini, gemini-2.5-pro)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=1.25, per_query_token_cost=10.0)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "large",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "gemini-2.5-flash": {
+          "provider_model": "(gemini, gemini-2.5-flash)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=0.3, per_query_token_cost=2.5)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "medium",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "gemini-2.5-flash-lite-preview-06-17": {
+          "provider_model": "(gemini, gemini-2.5-flash-lite-preview-06-17)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=0.1, per_query_token_cost=0.4)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": null,
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "gemini-2.0-flash": {
+          "provider_model": "(gemini, gemini-2.0-flash)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=0.1, per_query_token_cost=0.4)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "small",
+            "is_default_candidate": true,
+            "default_candidate_priority": 1
+          }
+        },
+        "gemini-2.0-flash-lite": {
+          "provider_model": "(gemini, gemini-2.0-flash-lite)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=0.07, per_query_token_cost=0.3)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": null,
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "gemini-1.5-flash": {
+          "provider_model": "(gemini, gemini-1.5-flash)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=0.07, per_query_token_cost=0.3)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": null,
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "gemini-1.5-flash-8b": {
+          "provider_model": "(gemini, gemini-1.5-flash-8b)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=0.04, per_query_token_cost=0.15)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": null,
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "gemini-1.5-pro": {
+          "provider_model": "(gemini, gemini-1.5-pro)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=1.25, per_query_token_cost=5.0)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "medium",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        }
+      },
+      "cohere": {
+        "command-a": {
+          "provider_model": "(cohere, command-a)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=10.0, per_query_token_cost=2.5)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "large",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "command-r7b": {
+          "provider_model": "(cohere, command-r7b)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=0.15, per_query_token_cost=0.0375)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "small",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "command-r-plus": {
+          "provider_model": "(cohere, command-r-plus)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=10.0, per_query_token_cost=2.5)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "large",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "command-r-08-2024": {
+          "provider_model": "(cohere, command-r-08-2024)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=0.6, per_query_token_cost=0.15)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": null,
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "command-r": {
+          "provider_model": "(cohere, command-r)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=0.6, per_query_token_cost=0.15)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "small",
+            "is_default_candidate": true,
+            "default_candidate_priority": 4
+          }
+        },
+        "command": {
+          "provider_model": "(cohere, command)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=1.5, per_query_token_cost=0.5)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "medium",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "command-nightly": {
+          "provider_model": "(cohere, command-nightly)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=1.5, per_query_token_cost=0.5)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "medium",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "command-light": {
+          "provider_model": "(cohere, command-light)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=0.15, per_query_token_cost=0.0375)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "small",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "command-light-nightly": {
+          "provider_model": "(cohere, command-light-nightly)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=0.15, per_query_token_cost=0.0375)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": null,
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        }
+      },
+      "databricks": {
+        "llama-4-maverick": {
+          "provider_model": "(databricks, llama-4-maverick)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=12.5, per_query_token_cost=2.5)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": null,
+            "is_default_candidate": true,
+            "default_candidate_priority": 8
+          }
+        },
+        "claude-3-7-sonnet": {
+          "provider_model": "(databricks, claude-3-7-sonnet)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=12.5, per_query_token_cost=2.5)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "large",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "meta-llama-3-1-8b-it": {
+          "provider_model": "(databricks, meta-llama-3-1-8b-it)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=12.5, per_query_token_cost=2.5)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "large",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "meta-llama-3-3-70b-it": {
+          "provider_model": "(databricks, meta-llama-3-3-70b-it)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=12.5, per_query_token_cost=2.5)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "large",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "meta-llama-3-1-405b-it": {
+          "provider_model": "(databricks, meta-llama-3-1-405b-it)",
+          "pricing": null,
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": false,
+            "model_size": null,
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "dbrx-it": {
+          "provider_model": "(databricks, dbrx-it)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=12.5, per_query_token_cost=2.5)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "large",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "mixtral-8x7b-it": {
+          "provider_model": "(databricks, mixtral-8x7b-it)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=12.5, per_query_token_cost=2.5)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "large",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        }
+      },
+      "mistral": {
+        "codestral": {
+          "provider_model": "(mistral, codestral)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=0.6, per_query_token_cost=0.2)",
+          "features": "ProviderModelFeatureType(not_supported_features=['stop'])",
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "small",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "ministral-3b": {
+          "provider_model": "(mistral, ministral-3b)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=0.04, per_query_token_cost=0.04)",
+          "features": "ProviderModelFeatureType(not_supported_features=['stop'])",
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": null,
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "ministral-8b": {
+          "provider_model": "(mistral, ministral-8b)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=0.1, per_query_token_cost=0.1)",
+          "features": "ProviderModelFeatureType(not_supported_features=['stop'])",
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": null,
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "mistral-large": {
+          "provider_model": "(mistral, mistral-large)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=6.0, per_query_token_cost=2.0)",
+          "features": "ProviderModelFeatureType(not_supported_features=['stop'])",
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "medium",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "mistral-medium": {
+          "provider_model": "(mistral, mistral-medium)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=2.0, per_query_token_cost=0.4)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": null,
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "mistral-saba": {
+          "provider_model": "(mistral, mistral-saba)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=0.6, per_query_token_cost=0.2)",
+          "features": "ProviderModelFeatureType(not_supported_features=['stop'])",
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": null,
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "mistral-small": {
+          "provider_model": "(mistral, mistral-small)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=0.3, per_query_token_cost=0.1)",
+          "features": "ProviderModelFeatureType(not_supported_features=['stop'])",
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "small",
+            "is_default_candidate": true,
+            "default_candidate_priority": 5
+          }
+        },
+        "open-mistral-7b": {
+          "provider_model": "(mistral, open-mistral-7b)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=0.25, per_query_token_cost=0.25)",
+          "features": "ProviderModelFeatureType(not_supported_features=['stop'])",
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": null,
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "open-mistral-nemo": {
+          "provider_model": "(mistral, open-mistral-nemo)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=0.15, per_query_token_cost=0.15)",
+          "features": "ProviderModelFeatureType(not_supported_features=['stop'])",
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": null,
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "open-mixtral-8x22b": {
+          "provider_model": "(mistral, open-mixtral-8x22b)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=6.0, per_query_token_cost=2.0)",
+          "features": "ProviderModelFeatureType(not_supported_features=['stop'])",
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "medium",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "open-mixtral-8x7b": {
+          "provider_model": "(mistral, open-mixtral-8x7b)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=0.7, per_query_token_cost=0.7)",
+          "features": "ProviderModelFeatureType(not_supported_features=['stop'])",
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": null,
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "pixtral-12b": {
+          "provider_model": "(mistral, pixtral-12b)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=0.15, per_query_token_cost=0.15)",
+          "features": "ProviderModelFeatureType(not_supported_features=['stop'])",
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "small",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "pixtral-large": {
+          "provider_model": "(mistral, pixtral-large)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=6.0, per_query_token_cost=2.0)",
+          "features": "ProviderModelFeatureType(not_supported_features=['stop'])",
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "medium",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        }
+      },
+      "huggingface": {
+        "gemma-2-2b-it": {
+          "provider_model": "(huggingface, gemma-2-2b-it)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=3.7, per_query_token_cost=1.48)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "medium",
+            "is_default_candidate": true,
+            "default_candidate_priority": 7
+          }
+        },
+        "meta-llama-3.1-8b-it": {
+          "provider_model": "(huggingface, meta-llama-3.1-8b-it)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=2.22, per_query_token_cost=1.94)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "medium",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "phi-4": {
+          "provider_model": "(huggingface, phi-4)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=37.0, per_query_token_cost=33.33)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "large",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "qwen3-32b": {
+          "provider_model": "(huggingface, qwen3-32b)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=31.74, per_query_token_cost=28.57)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "large",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "deepseek-r1": {
+          "provider_model": "(huggingface, deepseek-r1)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=55.56, per_query_token_cost=50.0)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "large",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "deepseek-v3": {
+          "provider_model": "(huggingface, deepseek-v3)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=27.78, per_query_token_cost=25.0)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "large",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        }
+      },
+      "deepseek": {
+        "deepseek-v3": {
+          "provider_model": "(deepseek, deepseek-v3)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=1.1, per_query_token_cost=0.27)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "small",
+            "is_default_candidate": true,
+            "default_candidate_priority": 6
+          }
+        },
+        "deepseek-r1": {
+          "provider_model": "(deepseek, deepseek-r1)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=2.19, per_query_token_cost=0.55)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "medium",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        }
+      },
+      "grok": {
+        "grok-3-beta": {
+          "provider_model": "(grok, grok-3-beta)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=15.0, per_query_token_cost=3.0)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "large",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "grok-3-fast-beta": {
+          "provider_model": "(grok, grok-3-fast-beta)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=25.0, per_query_token_cost=5.0)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "large",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "grok-3-mini-beta": {
+          "provider_model": "(grok, grok-3-mini-beta)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=0.5, per_query_token_cost=0.3)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "small",
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        },
+        "grok-3-mini-fast-beta": {
+          "provider_model": "(grok, grok-3-mini-fast-beta)",
+          "pricing": "ProviderModelPricingType(per_response_token_cost=4.0, per_query_token_cost=0.6)",
+          "features": null,
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size": "medium",
+            "is_default_candidate": true,
+            "default_candidate_priority": 3
+          }
+        }
+      }
+    },
+    "featured_models": {
+      "mock_provider": [
+        [
+          "mock_provider",
+          "mock_model"
+        ]
+      ],
+      "mock_failing_provider": [
+        [
+          "mock_failing_provider",
+          "mock_failing_model"
+        ]
+      ],
+      "mock_slow_provider": [
+        [
+          "mock_slow_provider",
+          "mock_slow_model"
+        ]
+      ],
+      "openai": [
+        [
+          "openai",
+          "gpt-4.1"
+        ],
+        [
+          "openai",
+          "gpt-4.1-mini"
+        ],
+        [
+          "openai",
+          "gpt-4.1-nano"
+        ],
+        [
+          "openai",
+          "gpt-4.5-preview"
+        ],
+        [
+          "openai",
+          "gpt-4o"
+        ],
+        [
+          "openai",
+          "gpt-4o-mini"
+        ],
+        [
+          "openai",
+          "o1"
+        ],
+        [
+          "openai",
+          "o1-pro"
+        ],
+        [
+          "openai",
+          "o3"
+        ],
+        [
+          "openai",
+          "o4-mini"
+        ],
+        [
+          "openai",
+          "o3-mini"
+        ],
+        [
+          "openai",
+          "o1-mini"
+        ],
+        [
+          "openai",
+          "gpt-4o-mini-search-preview"
+        ],
+        [
+          "openai",
+          "gpt-4o-search-preview"
+        ],
+        [
+          "openai",
+          "chatgpt-4o-latest"
+        ],
+        [
+          "openai",
+          "gpt-4-turbo"
+        ],
+        [
+          "openai",
+          "gpt-4"
+        ],
+        [
+          "openai",
+          "gpt-3.5-turbo"
+        ]
+      ],
+      "claude": [
+        [
+          "claude",
+          "sonnet-4"
+        ],
+        [
+          "claude",
+          "opus-4"
+        ],
+        [
+          "claude",
+          "sonnet-3.7"
+        ],
+        [
+          "claude",
+          "haiku-3.5"
+        ],
+        [
+          "claude",
+          "sonnet-3.5"
+        ],
+        [
+          "claude",
+          "sonnet-3.5-old"
+        ],
+        [
+          "claude",
+          "opus-3"
+        ],
+        [
+          "claude",
+          "sonnet-3"
+        ],
+        [
+          "claude",
+          "haiku-3"
+        ]
+      ],
+      "gemini": [
+        [
+          "gemini",
+          "gemini-2.5-pro"
+        ],
+        [
+          "gemini",
+          "gemini-2.5-flash"
+        ],
+        [
+          "gemini",
+          "gemini-2.5-flash-lite-preview-06-17"
+        ],
+        [
+          "gemini",
+          "gemini-2.0-flash"
+        ],
+        [
+          "gemini",
+          "gemini-2.0-flash-lite"
+        ],
+        [
+          "gemini",
+          "gemini-1.5-flash"
+        ],
+        [
+          "gemini",
+          "gemini-1.5-flash-8b"
+        ],
+        [
+          "gemini",
+          "gemini-1.5-pro"
+        ]
+      ],
+      "cohere": [
+        [
+          "cohere",
+          "command-a"
+        ],
+        [
+          "cohere",
+          "command-r7b"
+        ],
+        [
+          "cohere",
+          "command-r-plus"
+        ],
+        [
+          "cohere",
+          "command-r-08-2024"
+        ],
+        [
+          "cohere",
+          "command-r"
+        ],
+        [
+          "cohere",
+          "command"
+        ],
+        [
+          "cohere",
+          "command-nightly"
+        ],
+        [
+          "cohere",
+          "command-light"
+        ],
+        [
+          "cohere",
+          "command-light-nightly"
+        ]
+      ],
+      "databricks": [
+        [
+          "databricks",
+          "llama-4-maverick"
+        ],
+        [
+          "databricks",
+          "claude-3-7-sonnet"
+        ],
+        [
+          "databricks",
+          "meta-llama-3-1-8b-it"
+        ],
+        [
+          "databricks",
+          "meta-llama-3-3-70b-it"
+        ],
+        [
+          "databricks",
+          "dbrx-it"
+        ],
+        [
+          "databricks",
+          "mixtral-8x7b-it"
+        ]
+      ],
+      "mistral": [
+        [
+          "mistral",
+          "codestral"
+        ],
+        [
+          "mistral",
+          "ministral-3b"
+        ],
+        [
+          "mistral",
+          "ministral-8b"
+        ],
+        [
+          "mistral",
+          "mistral-large"
+        ],
+        [
+          "mistral",
+          "mistral-medium"
+        ],
+        [
+          "mistral",
+          "mistral-saba"
+        ],
+        [
+          "mistral",
+          "mistral-small"
+        ],
+        [
+          "mistral",
+          "open-mistral-7b"
+        ],
+        [
+          "mistral",
+          "open-mistral-nemo"
+        ],
+        [
+          "mistral",
+          "open-mixtral-8x22b"
+        ],
+        [
+          "mistral",
+          "open-mixtral-8x7b"
+        ],
+        [
+          "mistral",
+          "pixtral-12b"
+        ],
+        [
+          "mistral",
+          "pixtral-large"
+        ]
+      ],
+      "huggingface": [
+        [
+          "huggingface",
+          "gemma-2-2b-it"
+        ],
+        [
+          "huggingface",
+          "meta-llama-3.1-8b-it"
+        ],
+        [
+          "huggingface",
+          "phi-4"
+        ],
+        [
+          "huggingface",
+          "qwen3-32b"
+        ],
+        [
+          "huggingface",
+          "deepseek-r1"
+        ],
+        [
+          "huggingface",
+          "deepseek-v3"
+        ]
+      ],
+      "deepseek": [
+        [
+          "deepseek",
+          "deepseek-v3"
+        ],
+        [
+          "deepseek",
+          "deepseek-r1"
+        ]
+      ],
+      "grok": [
+        [
+          "grok",
+          "grok-3-beta"
+        ],
+        [
+          "grok",
+          "grok-3-fast-beta"
+        ],
+        [
+          "grok",
+          "grok-3-mini-beta"
+        ],
+        [
+          "grok",
+          "grok-3-mini-fast-beta"
+        ]
+      ]
+    },
+    "models_by_call_type": {
+      "GENERATE_TEXT": {
+        "mock_provider": [
+          [
+            "mock_provider",
+            "mock_model"
+          ]
+        ],
+        "mock_failing_provider": [
+          [
+            "mock_failing_provider",
+            "mock_failing_model"
+          ]
+        ],
+        "mock_slow_provider": [
+          [
+            "mock_slow_provider",
+            "mock_slow_model"
+          ]
+        ],
+        "openai": [
+          [
+            "openai",
+            "gpt-4.1"
+          ],
+          [
+            "openai",
+            "gpt-4.1-mini"
+          ],
+          [
+            "openai",
+            "gpt-4.1-nano"
+          ],
+          [
+            "openai",
+            "gpt-4.5-preview"
+          ],
+          [
+            "openai",
+            "gpt-4o"
+          ],
+          [
+            "openai",
+            "gpt-4o-mini"
+          ],
+          [
+            "openai",
+            "o1"
+          ],
+          [
+            "openai",
+            "o1-pro"
+          ],
+          [
+            "openai",
+            "o3"
+          ],
+          [
+            "openai",
+            "o4-mini"
+          ],
+          [
+            "openai",
+            "o3-mini"
+          ],
+          [
+            "openai",
+            "o1-mini"
+          ],
+          [
+            "openai",
+            "gpt-4o-mini-search-preview"
+          ],
+          [
+            "openai",
+            "gpt-4o-search-preview"
+          ],
+          [
+            "openai",
+            "chatgpt-4o-latest"
+          ],
+          [
+            "openai",
+            "gpt-4-turbo"
+          ],
+          [
+            "openai",
+            "gpt-4"
+          ],
+          [
+            "openai",
+            "gpt-3.5-turbo"
+          ]
+        ],
+        "claude": [
+          [
+            "claude",
+            "sonnet-4"
+          ],
+          [
+            "claude",
+            "opus-4"
+          ],
+          [
+            "claude",
+            "sonnet-3.7"
+          ],
+          [
+            "claude",
+            "haiku-3.5"
+          ],
+          [
+            "claude",
+            "sonnet-3.5"
+          ],
+          [
+            "claude",
+            "sonnet-3.5-old"
+          ],
+          [
+            "claude",
+            "opus-3"
+          ],
+          [
+            "claude",
+            "sonnet-3"
+          ],
+          [
+            "claude",
+            "haiku-3"
+          ]
+        ],
+        "gemini": [
+          [
+            "gemini",
+            "gemini-2.5-pro"
+          ],
+          [
+            "gemini",
+            "gemini-2.5-flash"
+          ],
+          [
+            "gemini",
+            "gemini-2.5-flash-lite-preview-06-17"
+          ],
+          [
+            "gemini",
+            "gemini-2.0-flash"
+          ],
+          [
+            "gemini",
+            "gemini-2.0-flash-lite"
+          ],
+          [
+            "gemini",
+            "gemini-1.5-flash"
+          ],
+          [
+            "gemini",
+            "gemini-1.5-flash-8b"
+          ],
+          [
+            "gemini",
+            "gemini-1.5-pro"
+          ]
+        ],
+        "cohere": [
+          [
+            "cohere",
+            "command-a"
+          ],
+          [
+            "cohere",
+            "command-r7b"
+          ],
+          [
+            "cohere",
+            "command-r-plus"
+          ],
+          [
+            "cohere",
+            "command-r-08-2024"
+          ],
+          [
+            "cohere",
+            "command-r"
+          ],
+          [
+            "cohere",
+            "command"
+          ],
+          [
+            "cohere",
+            "command-nightly"
+          ],
+          [
+            "cohere",
+            "command-light"
+          ],
+          [
+            "cohere",
+            "command-light-nightly"
+          ]
+        ],
+        "databricks": [
+          [
+            "databricks",
+            "llama-4-maverick"
+          ],
+          [
+            "databricks",
+            "claude-3-7-sonnet"
+          ],
+          [
+            "databricks",
+            "meta-llama-3-1-8b-it"
+          ],
+          [
+            "databricks",
+            "meta-llama-3-3-70b-it"
+          ],
+          [
+            "databricks",
+            "meta-llama-3-1-405b-it"
+          ],
+          [
+            "databricks",
+            "dbrx-it"
+          ],
+          [
+            "databricks",
+            "mixtral-8x7b-it"
+          ]
+        ],
+        "mistral": [
+          [
+            "mistral",
+            "codestral"
+          ],
+          [
+            "mistral",
+            "ministral-3b"
+          ],
+          [
+            "mistral",
+            "ministral-8b"
+          ],
+          [
+            "mistral",
+            "mistral-large"
+          ],
+          [
+            "mistral",
+            "mistral-medium"
+          ],
+          [
+            "mistral",
+            "mistral-saba"
+          ],
+          [
+            "mistral",
+            "mistral-small"
+          ],
+          [
+            "mistral",
+            "open-mistral-7b"
+          ],
+          [
+            "mistral",
+            "open-mistral-nemo"
+          ],
+          [
+            "mistral",
+            "open-mixtral-8x22b"
+          ],
+          [
+            "mistral",
+            "open-mixtral-8x7b"
+          ],
+          [
+            "mistral",
+            "pixtral-12b"
+          ],
+          [
+            "mistral",
+            "pixtral-large"
+          ]
+        ],
+        "huggingface": [
+          [
+            "huggingface",
+            "gemma-2-2b-it"
+          ],
+          [
+            "huggingface",
+            "meta-llama-3.1-8b-it"
+          ],
+          [
+            "huggingface",
+            "phi-4"
+          ],
+          [
+            "huggingface",
+            "qwen3-32b"
+          ],
+          [
+            "huggingface",
+            "deepseek-r1"
+          ],
+          [
+            "huggingface",
+            "deepseek-v3"
+          ]
+        ],
+        "deepseek": [
+          [
+            "deepseek",
+            "deepseek-v3"
+          ],
+          [
+            "deepseek",
+            "deepseek-r1"
+          ]
+        ],
+        "grok": [
+          [
+            "grok",
+            "grok-3-beta"
+          ],
+          [
+            "grok",
+            "grok-3-fast-beta"
+          ],
+          [
+            "grok",
+            "grok-3-mini-beta"
+          ],
+          [
+            "grok",
+            "grok-3-mini-fast-beta"
+          ]
+        ]
+      }
+    },
+    "models_by_size": {
+      "small": [
+        [
+          "claude",
+          "haiku-3"
+        ],
+        [
+          "cohere",
+          "command-light"
+        ],
+        [
+          "cohere",
+          "command-r"
+        ],
+        [
+          "cohere",
+          "command-r7b"
+        ],
+        [
+          "deepseek",
+          "deepseek-v3"
+        ],
+        [
+          "gemini",
+          "gemini-2.0-flash"
+        ],
+        [
+          "grok",
+          "grok-3-mini-beta"
+        ],
+        [
+          "mistral",
+          "codestral"
+        ],
+        [
+          "mistral",
+          "mistral-small"
+        ],
+        [
+          "mistral",
+          "pixtral-12b"
+        ],
+        [
+          "openai",
+          "gpt-4.1-nano"
+        ],
+        [
+          "openai",
+          "gpt-4o-mini"
+        ],
+        [
+          "openai",
+          "gpt-4o-mini-search-preview"
+        ]
+      ],
+      "medium": [
+        [
+          "claude",
+          "haiku-3.5"
+        ],
+        [
+          "cohere",
+          "command"
+        ],
+        [
+          "cohere",
+          "command-nightly"
+        ],
+        [
+          "deepseek",
+          "deepseek-r1"
+        ],
+        [
+          "gemini",
+          "gemini-1.5-pro"
+        ],
+        [
+          "gemini",
+          "gemini-2.5-flash"
+        ],
+        [
+          "grok",
+          "grok-3-mini-fast-beta"
+        ],
+        [
+          "huggingface",
+          "gemma-2-2b-it"
+        ],
+        [
+          "huggingface",
+          "meta-llama-3.1-8b-it"
+        ],
+        [
+          "mistral",
+          "mistral-large"
+        ],
+        [
+          "mistral",
+          "open-mixtral-8x22b"
+        ],
+        [
+          "mistral",
+          "pixtral-large"
+        ],
+        [
+          "openai",
+          "gpt-3.5-turbo"
+        ],
+        [
+          "openai",
+          "gpt-4.1-mini"
+        ],
+        [
+          "openai",
+          "o1-mini"
+        ],
+        [
+          "openai",
+          "o4-mini"
+        ],
+        [
+          "openai",
+          "o3-mini"
+        ]
+      ],
+      "large": [
+        [
+          "claude",
+          "opus-4"
+        ],
+        [
+          "claude",
+          "sonnet-4"
+        ],
+        [
+          "cohere",
+          "command-a"
+        ],
+        [
+          "cohere",
+          "command-r-plus"
+        ],
+        [
+          "databricks",
+          "claude-3-7-sonnet"
+        ],
+        [
+          "databricks",
+          "meta-llama-3-1-8b-it"
+        ],
+        [
+          "databricks",
+          "meta-llama-3-3-70b-it"
+        ],
+        [
+          "databricks",
+          "dbrx-it"
+        ],
+        [
+          "databricks",
+          "mixtral-8x7b-it"
+        ],
+        [
+          "gemini",
+          "gemini-2.5-pro"
+        ],
+        [
+          "grok",
+          "grok-3-beta"
+        ],
+        [
+          "grok",
+          "grok-3-fast-beta"
+        ],
+        [
+          "huggingface",
+          "deepseek-r1"
+        ],
+        [
+          "huggingface",
+          "deepseek-v3"
+        ],
+        [
+          "huggingface",
+          "phi-4"
+        ],
+        [
+          "huggingface",
+          "qwen3-32b"
+        ],
+        [
+          "openai",
+          "gpt-4.1"
+        ],
+        [
+          "openai",
+          "gpt-4.5-preview"
+        ],
+        [
+          "openai",
+          "gpt-4o"
+        ],
+        [
+          "openai",
+          "o1"
+        ],
+        [
+          "openai",
+          "o1-pro"
+        ],
+        [
+          "openai",
+          "o3"
+        ],
+        [
+          "openai",
+          "gpt-4o-search-preview"
+        ],
+        [
+          "openai",
+          "chatgpt-4o-latest"
+        ],
+        [
+          "openai",
+          "gpt-4-turbo"
+        ],
+        [
+          "openai",
+          "gpt-4"
+        ]
+      ],
+      "largest": [
+        [
+          "claude",
+          "opus-4"
+        ],
+        [
+          "cohere",
+          "command-a"
+        ],
+        [
+          "databricks",
+          "dbrx-it"
+        ],
+        [
+          "databricks",
+          "meta-llama-3-3-70b-it"
+        ],
+        [
+          "deepseek",
+          "deepseek-r1"
+        ],
+        [
+          "gemini",
+          "gemini-2.5-pro"
+        ],
+        [
+          "grok",
+          "grok-3-beta"
+        ],
+        [
+          "huggingface",
+          "phi-4"
+        ],
+        [
+          "huggingface",
+          "qwen3-32b"
+        ],
+        [
+          "mistral",
+          "mistral-large"
+        ],
+        [
+          "openai",
+          "gpt-4.1"
+        ]
+      ]
+    },
+    "default_model_priority_list": [
+      [
+        "openai",
+        "gpt-4o-mini"
+      ],
+      [
+        "gemini",
+        "gemini-2.0-flash"
+      ],
+      [
+        "claude",
+        "haiku-3.5"
+      ],
+      [
+        "grok",
+        "grok-3-mini-fast-beta"
+      ],
+      [
+        "cohere",
+        "command-r"
+      ],
+      [
+        "mistral",
+        "mistral-small"
+      ],
+      [
+        "deepseek",
+        "deepseek-v3"
+      ],
+      [
+        "huggingface",
+        "gemma-2-2b-it"
+      ],
+      [
+        "databricks",
+        "llama-4-maverick"
+      ]
+    ]
+  }
+}

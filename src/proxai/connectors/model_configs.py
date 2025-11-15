@@ -1,11 +1,12 @@
+import json
+from importlib import resources
 from types import MappingProxyType
-import datetime
-from typing import Dict, Tuple, List
+from typing import Any, Dict, Optional, Tuple
 import proxai.types as types
-import proxai.type_utils as type_utils
-import proxai.connectors.provider_model_configs as provider_model_configs
-import proxai.connectors.model_pricing_configs as model_pricing_configs
-import proxai.connectors.model_feature_configs as model_feature_configs
+import proxai.serializers.type_serializer as type_serializer
+import proxai.state_controllers.state_controller as state_controller
+
+_MODEL_CONFIGS_STATE_PROPERTY = '_model_configs_state'
 
 PROVIDER_KEY_MAP: Dict[str, Tuple[str]] = MappingProxyType({
     'claude': tuple(['ANTHROPIC_API_KEY']),
@@ -23,392 +24,174 @@ PROVIDER_KEY_MAP: Dict[str, Tuple[str]] = MappingProxyType({
     'mock_slow_provider': tuple(['MOCK_SLOW_PROVIDER']),
 })
 
-FEATURED_MODELS: types.FeaturedModelsType = MappingProxyType({
-    'mock_provider': (
-        ('mock_provider', 'mock_model'),
-    ),
-    'mock_failing_provider': (
-        ('mock_failing_provider', 'mock_failing_model'),
-    ),
-    'mock_slow_provider': (
-        ('mock_slow_provider', 'mock_slow_model'),
-    ),
-    'openai': (
-        ('openai', 'gpt-4.1'),
-        ('openai', 'gpt-4.1-mini'),
-        ('openai', 'gpt-4.1-nano'),
-        ('openai', 'gpt-4.5-preview'),
-        ('openai', 'gpt-4o'),
-        ('openai', 'gpt-4o-mini'),
-        ('openai', 'o1'),
-        ('openai', 'o1-pro'),
-        ('openai', 'o3'),
-        ('openai', 'o4-mini'),
-        ('openai', 'o3-mini'),
-        ('openai', 'o1-mini'),
-        ('openai', 'gpt-4o-mini-search-preview'),
-        ('openai', 'gpt-4o-search-preview'),
-        ('openai', 'chatgpt-4o-latest'),
-        ('openai', 'gpt-4-turbo'),
-        ('openai', 'gpt-4'),
-        ('openai', 'gpt-3.5-turbo'),
-    ),
-    'claude': (
-        ('claude', 'sonnet-4'),
-        ('claude', 'opus-4'),
-        ('claude', 'sonnet-3.7'),
-        ('claude', 'haiku-3.5'),
-        ('claude', 'sonnet-3.5'),
-        ('claude', 'sonnet-3.5-old'),
-        ('claude', 'opus-3'),
-        ('claude', 'sonnet-3'),
-        ('claude', 'haiku-3'),
-    ),
-    'gemini': (
-        ('gemini', 'gemini-2.5-pro'),
-        ('gemini', 'gemini-2.5-flash'),
-        ('gemini', 'gemini-2.5-flash-lite-preview-06-17'),
-        ('gemini', 'gemini-2.0-flash'),
-        ('gemini', 'gemini-2.0-flash-lite'),
-        ('gemini', 'gemini-1.5-flash'),
-        ('gemini', 'gemini-1.5-flash-8b'),
-        ('gemini', 'gemini-1.5-pro'),
-    ),
-    'cohere': (
-        ('cohere', 'command-a'),
-        ('cohere', 'command-r7b'),
-        ('cohere', 'command-r-plus'),
-        ('cohere', 'command-r-08-2024'),
-        ('cohere', 'command-r'),
-        ('cohere', 'command'),
-        ('cohere', 'command-nightly'),
-        ('cohere', 'command-light'),
-        ('cohere', 'command-light-nightly'),
-    ),
-    'databricks': (
-        ('databricks', 'llama-4-maverick'),
-        ('databricks', 'claude-3-7-sonnet'),
-        ('databricks', 'meta-llama-3-1-8b-it'),
-        ('databricks', 'meta-llama-3-3-70b-it'),
-        ('databricks', 'dbrx-it'),
-        ('databricks', 'mixtral-8x7b-it'),
-    ),
-    'mistral': (
-        ('mistral', 'codestral'),
-        ('mistral', 'ministral-3b'),
-        ('mistral', 'ministral-8b'),
-        ('mistral', 'mistral-large'),
-        ('mistral', 'mistral-medium'),
-        ('mistral', 'mistral-saba'),
-        ('mistral', 'mistral-small'),
-        ('mistral', 'open-mistral-7b'),
-        ('mistral', 'open-mistral-nemo'),
-        ('mistral', 'open-mixtral-8x22b'),
-        ('mistral', 'open-mixtral-8x7b'),
-        ('mistral', 'pixtral-12b'),
-        ('mistral', 'pixtral-large'),
-    ),
-    'huggingface': (
-        ('huggingface', 'gemma-2-2b-it'),
-        ('huggingface', 'meta-llama-3.1-8b-it'),
-        ('huggingface', 'phi-4'),
-        ('huggingface', 'qwen3-32b'),
-        ('huggingface', 'deepseek-r1'),
-        ('huggingface', 'deepseek-v3'),
-    ),
-    'deepseek': (
-        ('deepseek', 'deepseek-v3'),
-        ('deepseek', 'deepseek-r1'),
-    ),
-    'grok': (
-        ('grok', 'grok-3-beta'),
-        ('grok', 'grok-3-fast-beta'),
-        ('grok', 'grok-3-mini-beta'),
-        ('grok', 'grok-3-mini-fast-beta'),
-    )
-})
 
-MODELS_BY_CALL_TYPE: types.ModelsByCallTypeType = MappingProxyType({
-    types.CallType.GENERATE_TEXT: MappingProxyType({
-        'mock_provider': (
-            ('mock_provider', 'mock_model'),
-        ),
-        'mock_failing_provider': (
-            ('mock_failing_provider', 'mock_failing_model'),
-        ),
-        'mock_slow_provider': (
-            ('mock_slow_provider', 'mock_slow_model'),
-        ),
-        'openai': (
-            ('openai', 'gpt-4.1'),
-            ('openai', 'gpt-4.1-mini'),
-            ('openai', 'gpt-4.1-nano'),
-            ('openai', 'gpt-4.5-preview'),
-            ('openai', 'gpt-4o'),
-            ('openai', 'gpt-4o-mini'),
-            ('openai', 'o1'),
-            ('openai', 'o1-pro'),
-            ('openai', 'o3'),
-            ('openai', 'o4-mini'),
-            ('openai', 'o3-mini'),
-            ('openai', 'o1-mini'),
-            ('openai', 'gpt-4o-mini-search-preview'),
-            ('openai', 'gpt-4o-search-preview'),
-            ('openai', 'chatgpt-4o-latest'),
-            ('openai', 'gpt-4-turbo'),
-            ('openai', 'gpt-4'),
-            ('openai', 'gpt-3.5-turbo'),
-        ),
-        'claude': (
-            ('claude', 'sonnet-4'),
-            ('claude', 'opus-4'),
-            ('claude', 'sonnet-3.7'),
-            ('claude', 'haiku-3.5'),
-            ('claude', 'sonnet-3.5'),
-            ('claude', 'sonnet-3.5-old'),
-            ('claude', 'opus-3'),
-            ('claude', 'sonnet-3'),
-            ('claude', 'haiku-3'),
-        ),
-        'gemini': (
-            ('gemini', 'gemini-2.5-pro'),
-            ('gemini', 'gemini-2.5-flash'),
-            ('gemini', 'gemini-2.5-flash-lite-preview-06-17'),
-            ('gemini', 'gemini-2.0-flash'),
-            ('gemini', 'gemini-2.0-flash-lite'),
-            ('gemini', 'gemini-1.5-flash'),
-            ('gemini', 'gemini-1.5-flash-8b'),
-            ('gemini', 'gemini-1.5-pro'),
-        ),
-        'cohere': (
-            ('cohere', 'command-a'),
-            ('cohere', 'command-r7b'),
-            ('cohere', 'command-r-plus'),
-            ('cohere', 'command-r-08-2024'),
-            ('cohere', 'command-r'),
-            ('cohere', 'command'),
-            ('cohere', 'command-nightly'),
-            ('cohere', 'command-light'),
-            ('cohere', 'command-light-nightly'),
-        ),
-        'databricks': (
-            ('databricks', 'llama-4-maverick'),
-            ('databricks', 'claude-3-7-sonnet'),
-            ('databricks', 'meta-llama-3-1-8b-it'),
-            ('databricks', 'meta-llama-3-3-70b-it'),
-            ('databricks', 'meta-llama-3-1-405b-it'),
-            ('databricks', 'dbrx-it'),
-            ('databricks', 'mixtral-8x7b-it'),
-        ),
-        'mistral': (
-            ('mistral', 'codestral'),
-            ('mistral', 'ministral-3b'),
-            ('mistral', 'ministral-8b'),
-            ('mistral', 'mistral-large'),
-            ('mistral', 'mistral-medium'),
-            ('mistral', 'mistral-saba'),
-            ('mistral', 'mistral-small'),
-            ('mistral', 'open-mistral-7b'),
-            ('mistral', 'open-mistral-nemo'),
-            ('mistral', 'open-mixtral-8x22b'),
-            ('mistral', 'open-mixtral-8x7b'),
-            ('mistral', 'pixtral-12b'),
-            ('mistral', 'pixtral-large'),
-        ),
-        'huggingface': (
-            ('huggingface', 'gemma-2-2b-it'),
-            ('huggingface', 'meta-llama-3.1-8b-it'),
-            ('huggingface', 'phi-4'),
-            ('huggingface', 'qwen3-32b'),
-            ('huggingface', 'deepseek-r1'),
-            ('huggingface', 'deepseek-v3'),
-        ),
-        'deepseek': (
-            ('deepseek', 'deepseek-v3'),
-            ('deepseek', 'deepseek-r1'),
-        ),
-        'grok': (
-            ('grok', 'grok-3-beta'),
-            ('grok', 'grok-3-fast-beta'),
-            ('grok', 'grok-3-mini-beta'),
-            ('grok', 'grok-3-mini-fast-beta'),
-        ),
-    }),
-})
+class ModelConfigs(state_controller.StateControlled):
+  _model_configs_schema: Optional[types.ModelConfigsSchemaType]
+  _model_configs_state: Optional[types.ModelConfigsState]
 
-MODELS_BY_SIZE: types.ModelsBySizeType = MappingProxyType({
-    'small': (
-        ('claude', 'haiku-3'),
-        ('cohere', 'command-light'),
-        ('cohere', 'command-r'),
-        ('cohere', 'command-r7b'),
-        ('deepseek', 'deepseek-v3'),
-        ('gemini', 'gemini-2.0-flash'),
-        ('grok', 'grok-3-mini-beta'),
-        ('mistral', 'codestral'),
-        ('mistral', 'mistral-small'),
-        ('mistral', 'pixtral-12b'),
-        ('openai', 'gpt-4.1-nano'),
-        ('openai', 'gpt-4o-mini'),
-        ('openai', 'gpt-4o-mini-search-preview'),
-    ),
-    'medium': (
-        ('claude', 'haiku-3.5'),
-        ('cohere', 'command'),
-        ('cohere', 'command-nightly'),
-        ('deepseek', 'deepseek-r1'),
-        ('gemini', 'gemini-1.5-pro'),
-        ('gemini', 'gemini-2.5-flash'),
-        ('grok', 'grok-3-mini-fast-beta'),
-        ('huggingface', 'gemma-2-2b-it'),
-        ('huggingface', 'meta-llama-3.1-8b-it'),
-        ('mistral', 'mistral-large'),
-        ('mistral', 'open-mixtral-8x22b'),
-        ('mistral', 'pixtral-large'),
-        ('openai', 'gpt-3.5-turbo'),
-        ('openai', 'gpt-4.1-mini'),
-        ('openai', 'o1-mini'),
-        ('openai', 'o4-mini'),
-        ('openai', 'o3-mini'),
-    ),
-    'large': (
-        ('claude', 'opus-4'),
-        ('claude', 'sonnet-4'),
-        ('cohere', 'command-a'),
-        ('cohere', 'command-r-plus'),
-        ('databricks', 'claude-3-7-sonnet'),
-        ('databricks', 'meta-llama-3-1-8b-it'),
-        ('databricks', 'meta-llama-3-3-70b-it'),
-        ('databricks', 'dbrx-it'),
-        ('databricks', 'mixtral-8x7b-it'),
-        ('gemini', 'gemini-2.5-pro'),
-        ('grok', 'grok-3-beta'),
-        ('grok', 'grok-3-fast-beta'),
-        ('huggingface', 'deepseek-r1'),
-        ('huggingface', 'deepseek-v3'),
-        ('huggingface', 'phi-4'),
-        ('huggingface', 'qwen3-32b'),
-        ('openai', 'gpt-4.1'),
-        ('openai', 'gpt-4.5-preview'),
-        ('openai', 'gpt-4o'),
-        ('openai', 'o1'),
-        ('openai', 'o1-pro'),
-        ('openai', 'o3'),
-        ('openai', 'gpt-4o-search-preview'),
-        ('openai', 'chatgpt-4o-latest'),
-        ('openai', 'gpt-4-turbo'),
-        ('openai', 'gpt-4'),
-    ),
-    'largest': (
-        ('claude', 'opus-4'),
-        ('cohere', 'command-a'),
-        ('databricks', 'dbrx-it'),
-        ('databricks', 'meta-llama-3-3-70b-it'),
-        ('deepseek', 'deepseek-r1'),
-        ('gemini', 'gemini-2.5-pro'),
-        ('grok', 'grok-3-beta'),
-        ('huggingface', 'phi-4'),
-        ('huggingface', 'qwen3-32b'),
-        ('mistral', 'mistral-large'),
-        ('openai', 'gpt-4.1'),
-    ),
-})
+  LOCAL_CONFIG_VERSION = "v1.0.0"
 
-DEFAULT_MODEL_PRIORITY_LIST: Tuple[types.ProviderModelIdentifierType] = (
-    ('openai', 'gpt-4o-mini'),
-    ('gemini', 'gemini-2.0-flash'),
-    ('claude', 'haiku-3.5'),
-    ('grok', 'grok-3-mini-fast-beta'),
-    ('cohere', 'command-r'),
-    ('mistral', 'mistral-small'),
-    ('deepseek', 'deepseek-v3'),
-    ('huggingface', 'gemma-2-2b-it'),
-    ('databricks', 'llama-4-maverick'),
-)
+  def __init__(
+      self,
+      model_configs_schema: Optional[types.ModelConfigsSchemaType] = None,
+      config_version: Optional[str] = None,
+      init_state=None):
+    super().__init__(
+        model_configs_schema=model_configs_schema,
+        init_state=init_state)
 
+    if init_state:
+      self.load_state(init_state)
+    else:
+      initial_state = self.get_state()
 
-def get_provider_model_configs() -> Tuple[types.ProviderModelConfigType]:
-  result_config = {}
-  for provider in provider_model_configs.PROVIDER_MODELS:
-    for model in provider_model_configs.PROVIDER_MODELS[provider]:
-      provider_model = provider_model_configs.PROVIDER_MODELS[provider][model]
+      if model_configs_schema is None:
+        model_configs_schema = self._load_config_from_json(config_version)
+      self.model_configs_schema = model_configs_schema
+      self.handle_changes(initial_state, self.get_state())
 
-      pricing = None
-      if provider in model_pricing_configs.PROVIDER_MODEL_PRICING:
-        if model in model_pricing_configs.PROVIDER_MODEL_PRICING[provider]:
-          pricing = model_pricing_configs.PROVIDER_MODEL_PRICING[provider][model]
+  def get_internal_state_property_name(self):
+    return _MODEL_CONFIGS_STATE_PROPERTY
 
-      features = None
-      if provider in model_feature_configs.PROVIDER_MODEL_FEATURES:
-        if model in model_feature_configs.PROVIDER_MODEL_FEATURES[provider]:
-          features = model_feature_configs.PROVIDER_MODEL_FEATURES[provider][model]
+  def get_internal_state_type(self):
+    return types.ModelConfigsState
 
-      call_type = None
-      for call_type in types.CallType:
-        if (provider in MODELS_BY_CALL_TYPE[call_type] and
-            (provider, model) in MODELS_BY_CALL_TYPE[call_type][provider]):
-          call_type = call_type
-          break
+  def handle_changes(
+      self,
+      old_state: types.ModelConfigsState,
+      current_state: types.ModelConfigsState):
+    pass
 
-      is_featured = False
-      if (provider in FEATURED_MODELS and
-          (provider, model) in FEATURED_MODELS[provider]):
-          is_featured = True
+  @property
+  def model_configs_schema(self) -> types.ModelConfigsSchemaType:
+    return self.get_property_value('model_configs_schema')
 
-      model_size = None
-      for model_size_type in types.ModelSizeType:
-        if (provider, model) in MODELS_BY_SIZE[model_size_type]:
-          model_size = model_size_type
-          break
+  @model_configs_schema.setter
+  def model_configs_schema(self, value: types.ModelConfigsSchemaType):
+    internal_value = self.get_property_internal_state_value(
+        'model_configs_schema')
+    if internal_value != value:
+      self._validate_model_configs_schema()
+      self._parse_model_configs_schema()
+    self.set_property_value('model_configs_schema', value)
 
-      is_default_candidate = False
-      default_candidate_priority = None
-      if (provider, model) in DEFAULT_MODEL_PRIORITY_LIST:
-        is_default_candidate = True
-        default_candidate_priority = DEFAULT_MODEL_PRIORITY_LIST.index(
-            (provider, model))
+  def _validate_model_configs_schema(self):
+    # TODO: Partially finished. Need to add more validation and tests.
+    provider_model_configs = self.model_configs_schema.provider_model_configs
+    featured_models = self.model_configs_schema.featured_models
+    models_by_call_type = self.model_configs_schema.models_by_call_type
+    models_by_size = self.model_configs_schema.models_by_size
+    for provider, model_configs in provider_model_configs.items():
+      for provider_model_identifier, model_config in model_configs.items():
+        self.check_provider_model_identifier_type(model_config.provider_model)
 
-      if provider not in result_config:
-        result_config[provider] = {}
+    for provider, provider_models in featured_models.items():
+      for provider_model_identifier in provider_models:
+        self.check_provider_model_identifier_type(provider_model_identifier)
 
-      result_config[provider][model] = types.ProviderModelConfigType(
-          provider_model=provider_model_configs.PROVIDER_MODELS[
-              provider][model],
-          pricing=pricing,
-          features=features,
-          metadata=types.ProviderModelMetadataType(
-            call_type=call_type,
-            is_featured=is_featured,
-            model_size=model_size,
-            is_default_candidate=is_default_candidate,
-            default_candidate_priority=default_candidate_priority,
-          ),
+    for call_type, provider_models in models_by_call_type.items():
+      for provider, provider_models in provider_models.items():
+        for provider_model_identifier in provider_models:
+          self.check_provider_model_identifier_type(provider_model_identifier)
+
+    for model_size, provider_models in models_by_size.items():
+      for provider, provider_models in provider_models.items():
+        for provider_model_identifier in provider_models:
+          self.check_provider_model_identifier_type(provider_model_identifier)
+
+  def _parse_model_configs_schema(self):
+    pass
+
+  def _is_provider_model_tuple(self, value: Any) -> bool:
+    return (
+        type(value) == tuple
+        and len(value) == 2
+        and type(value[0]) == str
+        and type(value[1]) == str)
+
+  @staticmethod
+  def _load_config_from_json(version: Optional[str] = None) -> types.ModelConfigsSchemaType:
+    version = version or ModelConfigs.LOCAL_CONFIG_VERSION
+
+    try:
+      config_data = (
+          resources.files("proxai.connectors.model_configs")
+          .joinpath(f"{version}.json")
+          .read_text(encoding="utf-8")
       )
-  for provider in result_config:
-    result_config[provider] = MappingProxyType(result_config[provider])
-  return MappingProxyType(result_config)
+    except FileNotFoundError:
+      raise FileNotFoundError(
+          f'Model config file '{version}.json' not found in package. '
+          'Please update the proxai package to the latest version. '
+          'If updating does not resolve the issue, please contact support@proxai.co'
+      )
 
+    try:
+      config_dict = json.loads(config_data)
+    except json.JSONDecodeError as e:
+      raise ValueError(
+        f'Invalid JSON in config file '{version}.json'. '
+        'Please update the proxai package to the latest version. '
+        'If updating does not resolve the issue, please contact support@proxai.co\n'
+        f'Error: {e}')
 
-ALL_MODELS_CONFIG: types.AllModelsConfigType = types.AllModelsConfigType(
-    version='1.0.0',
-    released_at=datetime.datetime(2025, 11, 11),
-    config_origin=types.ConfigOriginType.BUILT_IN,
-    release_notes='First release of the model configs',
+    return type_serializer.decode_all_models_config_type(config_dict)
 
-    provider_model_configs=get_provider_model_configs(),
+  def check_provider_model_identifier_type(
+      self,
+      provider_model_identifier: types.ProviderModelIdentifierType):
+    """Check if provider model identifier is supported."""
+    provider_model_configs = self.model_configs_schema.provider_model_configs
+    if isinstance(provider_model_identifier, types.ProviderModelType):
+      provider = provider_model_identifier.provider
+      model = provider_model_identifier.model
+      if provider not in provider_model_configs:
+        raise ValueError(
+          f'Provider not supported: {provider}.\n'
+          f'Supported providers: {list(provider_model_configs.keys())}')
+      if model not in provider_model_configs[provider]:
+        raise ValueError(
+          f'Model not supported: {model}.\nSupported models: '
+          f'{provider_model_configs[provider].keys()}')
+      config_provider_model = (
+          provider_model_configs[provider][model].provider_model)
+      if provider_model_identifier != config_provider_model:
+        raise ValueError(
+          'Mismatch between provider model identifier and model config.'
+          f'Provider model identifier: {provider_model_identifier}'
+          f'Model config: {config_provider_model}')
+    elif self._is_provider_model_tuple(provider_model_identifier):
+      provider = provider_model_identifier[0]
+      model = provider_model_identifier[1]
+      if provider not in provider_model_configs:
+        raise ValueError(
+          f'Provider not supported: {provider}.\n'
+          f'Supported providers: {provider_model_configs.keys()}')
+      if model not in provider_model_configs[provider]:
+        raise ValueError(
+          f'Model not supported: {model}.\nSupported models: '
+          f'{provider_model_configs[provider].keys()}')
+    else:
+      raise ValueError(
+          f'Invalid provider model identifier: {provider_model_identifier}')
 
-    featured_models=FEATURED_MODELS,
-    models_by_call_type=MODELS_BY_CALL_TYPE,
-    models_by_size=MODELS_BY_SIZE,
-    default_model_priority_list=DEFAULT_MODEL_PRIORITY_LIST,
-)
+  def get_provider_model_config(
+      self,
+      model_identifier: types.ProviderModelIdentifierType
+  ) -> types.ProviderModelType:
+    if self._is_provider_model_tuple(model_identifier):
+      return self.model_configs_schema.provider_model_configs[
+          model_identifier[0]][model_identifier[1]].provider_model
+    else:
+      return model_identifier
 
-
-def get_provider_model_config(
-    model_identifier: types.ProviderModelIdentifierType
-) -> types.ProviderModelType:
-  if type_utils.is_provider_model_tuple(model_identifier):
-    return ALL_MODELS_CONFIG.provider_model_configs[
-      model_identifier[0]][model_identifier[1]].provider_model
-  else:
-    return model_identifier
+  # def get_provider_model_cost(
+  #     provider_model_identifier: types.ProviderModelIdentifierType,
+  #     query_token_count: int,
+  #     response_token_count: int,
+  # ) -> int:
+  #   provider_model = model_configs.get_provider_model_config(
+  #       provider_model_identifier)
+  #   PROVIDER_MODEL_PRICING[provider_model.provider][provider_model.model]
+  #   return math.floor(query_token_count * pricing.per_query_token_cost +
+  #                     response_token_count * pricing.per_response_token_cost)
