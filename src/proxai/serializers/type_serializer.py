@@ -306,67 +306,110 @@ def decode_default_model_priority_list_type(
   return tuple(default_model_priority_list)
 
 
-def encode_all_models_config_type(
-    all_models_config_type: types.AllModelsConfigType
+def encode_model_configs_schema_metadata_type(
+    model_configs_schema_metadata_type: types.ModelConfigsSchemaMetadataType
 ) -> Dict[str, Any]:
   record = {}
-  if all_models_config_type.version != None:
-    record['version'] = all_models_config_type.version
-  if all_models_config_type.released_at != None:
-    record['released_at'] = all_models_config_type.released_at.isoformat()
-  if all_models_config_type.config_origin != None:
-    record['config_origin'] = all_models_config_type.config_origin.value
-  if all_models_config_type.release_notes != None:
-    record['release_notes'] = all_models_config_type.release_notes
-  if all_models_config_type.provider_model_configs != None:
-    record['provider_model_configs'] = encode_provider_model_configs_type(
-        all_models_config_type.provider_model_configs)
-  if all_models_config_type.featured_models != None:
-    record['featured_models'] = encode_featured_models_type(
-        all_models_config_type.featured_models)
-  if all_models_config_type.models_by_call_type != None:
-    record['models_by_call_type'] = encode_models_by_call_type_type(
-        all_models_config_type.models_by_call_type)
-  if all_models_config_type.models_by_size != None:
-    record['models_by_size'] = encode_models_by_size_type(
-        all_models_config_type.models_by_size)
-  if all_models_config_type.default_model_priority_list != None:
-    record['default_model_priority_list'] = (
-        encode_default_model_priority_list_type(
-            all_models_config_type.default_model_priority_list))
+  if model_configs_schema_metadata_type.version != None:
+    record['version'] = model_configs_schema_metadata_type.version
+  if model_configs_schema_metadata_type.released_at != None:
+    record['released_at'] = (
+        model_configs_schema_metadata_type.released_at.isoformat())
+  if model_configs_schema_metadata_type.config_origin != None:
+    record['config_origin'] = (
+        model_configs_schema_metadata_type.config_origin.value)
+  if model_configs_schema_metadata_type.release_notes != None:
+    record['release_notes'] = model_configs_schema_metadata_type.release_notes
   return record
 
 
-def decode_all_models_config_type(
-    record: Dict[str, Any]) -> types.AllModelsConfigType:
-  all_models_config_type = types.AllModelsConfigType()
+def decode_model_configs_schema_metadata_type(
+    record: Dict[str, Any]) -> types.ModelConfigsSchemaMetadataType:
+  model_configs_schema_metadata_type = types.ModelConfigsSchemaMetadataType()
   if 'version' in record:
-    all_models_config_type.version = record['version']
+    model_configs_schema_metadata_type.version = record['version']
   if 'released_at' in record:
-    all_models_config_type.released_at = datetime.datetime.fromisoformat(
-        record['released_at'])
+    model_configs_schema_metadata_type.released_at = (
+        datetime.datetime.fromisoformat(record['released_at']))
   if 'config_origin' in record:
-    all_models_config_type.config_origin = types.ConfigOriginType(
-        record['config_origin'])
+    model_configs_schema_metadata_type.config_origin = (
+        types.ConfigOriginType(record['config_origin']))
   if 'release_notes' in record:
-    all_models_config_type.release_notes = record['release_notes']
+    model_configs_schema_metadata_type.release_notes = record['release_notes']
+  return model_configs_schema_metadata_type
+
+
+def encode_model_configs_schema_version_config_type(
+    model_configs_schema_version_config_type: (
+        types.ModelConfigsSchemaVersionConfigType)
+) -> Dict[str, Any]:
+  record = {}
+  if model_configs_schema_version_config_type.provider_model_configs != None:
+    record['provider_model_configs'] = encode_provider_model_configs_type(
+        model_configs_schema_version_config_type.provider_model_configs)
+  if model_configs_schema_version_config_type.featured_models != None:
+    record['featured_models'] = encode_featured_models_type(
+        model_configs_schema_version_config_type.featured_models)
+  if model_configs_schema_version_config_type.models_by_call_type != None:
+    record['models_by_call_type'] = encode_models_by_call_type_type(
+        model_configs_schema_version_config_type.models_by_call_type)
+  if model_configs_schema_version_config_type.models_by_size != None:
+    record['models_by_size'] = encode_models_by_size_type(
+        model_configs_schema_version_config_type.models_by_size)
+  if model_configs_schema_version_config_type.default_model_priority_list != None:
+    record['default_model_priority_list'] = (
+        encode_default_model_priority_list_type(
+            model_configs_schema_version_config_type.default_model_priority_list))
+  return record
+
+
+def decode_model_configs_schema_version_config_type(
+    record: Dict[str, Any]) -> types.ModelConfigsSchemaVersionConfigType:
+  model_configs_schema_version_config_type = (
+      types.ModelConfigsSchemaVersionConfigType())
   if 'provider_model_configs' in record:
-    all_models_config_type.provider_model_configs = (
+    model_configs_schema_version_config_type.provider_model_configs = (
         decode_provider_model_configs_type(record['provider_model_configs']))
   if 'featured_models' in record:
-    all_models_config_type.featured_models = decode_featured_models_type(
-        record['featured_models'])
+    model_configs_schema_version_config_type.featured_models = (
+        decode_featured_models_type(record['featured_models']))
   if 'models_by_call_type' in record:
-    all_models_config_type.models_by_call_type = (
+    model_configs_schema_version_config_type.models_by_call_type = (
         decode_models_by_call_type_type(record['models_by_call_type']))
   if 'models_by_size' in record:
-    all_models_config_type.models_by_size = decode_models_by_size_type(
-        record['models_by_size'])
+    model_configs_schema_version_config_type.models_by_size = (
+        decode_models_by_size_type(record['models_by_size']))
   if 'default_model_priority_list' in record:
-    all_models_config_type.default_model_priority_list = (
+    model_configs_schema_version_config_type.default_model_priority_list = (
         decode_default_model_priority_list_type(
             record['default_model_priority_list']))
-  return all_models_config_type
+  return model_configs_schema_version_config_type
+
+
+def encode_model_configs_schema_type(
+    model_configs_schema_type: types.ModelConfigsSchemaType
+) -> Dict[str, Any]:
+  record = {}
+  if model_configs_schema_type.metadata != None:
+    record['metadata'] = encode_model_configs_schema_metadata_type(
+        model_configs_schema_type.metadata)
+  if model_configs_schema_type.version_config != None:
+    record['version_config'] = encode_model_configs_schema_version_config_type(
+        model_configs_schema_type.version_config)
+  return record
+
+
+def decode_model_configs_schema_type(
+    record: Dict[str, Any]) -> types.ModelConfigsSchemaType:
+  model_configs_schema_type = types.ModelConfigsSchemaType()
+  if 'metadata' in record:
+    model_configs_schema_type.metadata = (
+        decode_model_configs_schema_metadata_type(record['metadata']))
+  if 'version_config' in record:
+    model_configs_schema_type.version_config = (
+        decode_model_configs_schema_version_config_type(
+            record['version_config']))
+  return model_configs_schema_type
 
 
 def encode_query_record(

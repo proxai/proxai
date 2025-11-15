@@ -116,18 +116,27 @@ DefaultModelPriorityListType = Tuple[ProviderModelIdentifierType]
 
 
 @dataclasses.dataclass
-class AllModelsConfigType:
+class ModelConfigsSchemaMetadataType:
   version: Optional[str] = None
   released_at: Optional[datetime.datetime] = None
   config_origin: Optional[ConfigOriginType] = None
   release_notes: Optional[str] = None
 
+
+@dataclasses.dataclass
+class ModelConfigsSchemaVersionConfigType:
   provider_model_configs: Optional[ProviderModelConfigsType] = None
 
   featured_models: Optional[FeaturedModelsType] = None
   models_by_call_type: Optional[ModelsByCallTypeType] = None
   models_by_size: Optional[ModelsBySizeType] = None
   default_model_priority_list: Optional[DefaultModelPriorityListType] = None
+
+
+@dataclasses.dataclass
+class ModelConfigsSchemaType:
+  metadata: Optional[ModelConfigsSchemaMetadataType] = None
+  version_config: Optional[ModelConfigsSchemaVersionConfigType] = None
 
 
 @dataclasses.dataclass
@@ -355,3 +364,8 @@ class AvailableModelsState(StateContainer):
   providers_with_key: Optional[Set[str]] = None
   has_fetched_all_models: Optional[bool] = None
   latest_model_cache_path_used_for_update: Optional[str] = None
+
+
+@dataclasses.dataclass
+class ModelConfigsState(StateContainer):
+  model_config_schema: Optional[ModelConfigsSchemaType] = None
