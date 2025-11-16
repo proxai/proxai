@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import json
+from typing import List
 from importlib import resources
 from types import MappingProxyType
 from typing import Any, Dict, Optional, Tuple
@@ -34,7 +37,6 @@ class ModelConfigs(state_controller.StateControlled):
   def __init__(
       self,
       model_configs_schema: Optional[types.ModelConfigsSchemaType] = None,
-      config_version: Optional[str] = None,
       init_state=None):
     super().__init__(
         model_configs_schema=model_configs_schema,
@@ -46,7 +48,7 @@ class ModelConfigs(state_controller.StateControlled):
       initial_state = self.get_state()
 
       if model_configs_schema is None:
-        model_configs_schema = self._load_config_from_json(config_version)
+        model_configs_schema = self._load_config_from_local_json_file()
       self.model_configs_schema = model_configs_schema
       self.handle_changes(initial_state, self.get_state())
 
@@ -71,36 +73,41 @@ class ModelConfigs(state_controller.StateControlled):
     internal_value = self.get_property_internal_state_value(
         'model_configs_schema')
     if internal_value != value:
-      self._validate_model_configs_schema()
-      self._parse_model_configs_schema()
+      self._validate_model_configs_schema(value)
     self.set_property_value('model_configs_schema', value)
 
-  def _validate_model_configs_schema(self):
+  def _validate_model_configs_schema(
+      self,
+      model_configs_schema: types.ModelConfigsSchemaType):
     # TODO: Partially finished. Need to add more validation and tests.
-    provider_model_configs = self.model_configs_schema.provider_model_configs
-    featured_models = self.model_configs_schema.featured_models
-    models_by_call_type = self.model_configs_schema.models_by_call_type
-    models_by_size = self.model_configs_schema.models_by_size
+    provider_model_configs = model_configs_schema.version_config.provider_model_configs
+    featured_models = model_configs_schema.version_config.featured_models
+    models_by_call_type = model_configs_schema.version_config.models_by_call_type
+    models_by_size = model_configs_schema.version_config.models_by_size
     for provider, model_configs in provider_model_configs.items():
       for provider_model_identifier, model_config in model_configs.items():
-        self.check_provider_model_identifier_type(model_config.provider_model)
+        self.check_provider_model_identifier_type(
+            model_config.provider_model,
+            model_configs_schema)
 
     for provider, provider_models in featured_models.items():
       for provider_model_identifier in provider_models:
-        self.check_provider_model_identifier_type(provider_model_identifier)
+        self.check_provider_model_identifier_type(
+            provider_model_identifier,
+            model_configs_schema)
 
     for call_type, provider_models in models_by_call_type.items():
       for provider, provider_models in provider_models.items():
         for provider_model_identifier in provider_models:
-          self.check_provider_model_identifier_type(provider_model_identifier)
+          self.check_provider_model_identifier_type(
+              provider_model_identifier,
+              model_configs_schema)
 
     for model_size, provider_models in models_by_size.items():
-      for provider, provider_models in provider_models.items():
-        for provider_model_identifier in provider_models:
-          self.check_provider_model_identifier_type(provider_model_identifier)
-
-  def _parse_model_configs_schema(self):
-    pass
+      for provider_model_identifier in provider_models:
+        self.check_provider_model_identifier_type(
+            provider_model_identifier,
+            model_configs_schema)
 
   def _is_provider_model_tuple(self, value: Any) -> bool:
     return (
@@ -110,18 +117,19 @@ class ModelConfigs(state_controller.StateControlled):
         and type(value[1]) == str)
 
   @staticmethod
-  def _load_config_from_json(version: Optional[str] = None) -> types.ModelConfigsSchemaType:
+  def _load_config_from_local_json_file(
+      version: Optional[str] = None) -> types.ModelConfigsSchemaType:
     version = version or ModelConfigs.LOCAL_CONFIG_VERSION
 
     try:
       config_data = (
-          resources.files("proxai.connectors.model_configs")
+          resources.files("proxai.connectors.model_configs_data")
           .joinpath(f"{version}.json")
           .read_text(encoding="utf-8")
       )
     except FileNotFoundError:
       raise FileNotFoundError(
-          f'Model config file '{version}.json' not found in package. '
+          f'Model config file "{version}.json" not found in package. '
           'Please update the proxai package to the latest version. '
           'If updating does not resolve the issue, please contact support@proxai.co'
       )
@@ -130,18 +138,21 @@ class ModelConfigs(state_controller.StateControlled):
       config_dict = json.loads(config_data)
     except json.JSONDecodeError as e:
       raise ValueError(
-        f'Invalid JSON in config file '{version}.json'. '
+        f'Invalid JSON in config file "{version}.json". '
         'Please update the proxai package to the latest version. '
         'If updating does not resolve the issue, please contact support@proxai.co\n'
         f'Error: {e}')
 
-    return type_serializer.decode_all_models_config_type(config_dict)
+    return type_serializer.decode_model_configs_schema_type(config_dict)
 
   def check_provider_model_identifier_type(
       self,
-      provider_model_identifier: types.ProviderModelIdentifierType):
+      provider_model_identifier: types.ProviderModelIdentifierType,
+      model_configs_schema: Optional[types.ModelConfigsSchemaType] = None):
     """Check if provider model identifier is supported."""
-    provider_model_configs = self.model_configs_schema.provider_model_configs
+    if model_configs_schema is None:
+      model_configs_schema = self.model_configs_schema
+    provider_model_configs = model_configs_schema.version_config.provider_model_configs
     if isinstance(provider_model_identifier, types.ProviderModelType):
       provider = provider_model_identifier.provider
       model = provider_model_identifier.model
@@ -175,7 +186,7 @@ class ModelConfigs(state_controller.StateControlled):
       raise ValueError(
           f'Invalid provider model identifier: {provider_model_identifier}')
 
-  def get_provider_model_config(
+  def get_provider_model(
       self,
       model_identifier: types.ProviderModelIdentifierType
   ) -> types.ProviderModelType:
@@ -185,13 +196,80 @@ class ModelConfigs(state_controller.StateControlled):
     else:
       return model_identifier
 
-  # def get_provider_model_cost(
-  #     provider_model_identifier: types.ProviderModelIdentifierType,
-  #     query_token_count: int,
-  #     response_token_count: int,
-  # ) -> int:
-  #   provider_model = model_configs.get_provider_model_config(
-  #       provider_model_identifier)
-  #   PROVIDER_MODEL_PRICING[provider_model.provider][provider_model.model]
-  #   return math.floor(query_token_count * pricing.per_query_token_cost +
-  #                     response_token_count * pricing.per_response_token_cost)
+  def get_provider_model_config(
+      self,
+      model_identifier: types.ProviderModelIdentifierType
+  ) -> types.ProviderModelType:
+    provider_model = self.get_provider_model(model_identifier)
+    return self.model_configs_schema.provider_model_configs[
+        provider_model.provider][provider_model.model]
+
+  def get_provider_model_cost(
+      self,
+      provider_model_identifier: types.ProviderModelIdentifierType,
+      query_token_count: int,
+      response_token_count: int,
+  ) -> int:
+    provider_model = self.get_provider_model_config(
+        provider_model_identifier)
+    model_pricing_config = self.model_configs_schema.provider_model_configs[
+      provider_model.provider][provider_model.model].pricing
+    return math.floor(
+        query_token_count * model_pricing_config.per_query_token_cost +
+        response_token_count * model_pricing_config.per_response_token_cost)
+
+  def is_feature_supported(
+      self,
+      provider_model: types.ProviderModelType,
+      feature: str,
+  ) -> bool:
+    model_features = self.model_configs_schema.provider_model_configs[
+        provider_model.provider][provider_model.model].features
+    if model_features is None:
+      return True
+    return feature in model_features.not_supported_features
+
+  def get_all_models(
+      self,
+      provider: Optional[types.ProviderNameType] = None,
+      model_size: Optional[types.ModelSizeType] = None,
+      call_type: Optional[types.CallType] = types.CallType.GENERATE_TEXT,
+      only_featured: Optional[bool] = True,
+  ) -> List[types.ProviderModelType]:
+    if (call_type is not None and
+        call_type not in self.model_configs_schema.models_by_call_type):
+      raise ValueError(f'Call type not supported: {call_type}')
+
+    if (model_size is not None and
+        model_size not in self.model_configs_schema.models_by_size):
+      raise ValueError(f'Model size not supported: {model_size}')
+
+    if (provider is not None and
+        provider not in self.model_configs_schema.provider_model_configs):
+      supported_providers = list(
+          self.model_configs_schema.provider_model_configs.keys())
+      raise ValueError(
+          f'Provider not supported: {provider}.\n'
+          f'Supported providers: {supported_providers}')
+
+    result_provider_models = []
+    for provider_name, provider_models in (
+        self.model_configs_schema.provider_model_configs.items()):
+      if provider is not None and provider_name != provider:
+          continue
+
+      for provider_model_config in provider_models.values():
+        if (call_type is not None and
+            provider_model_config.metadata.call_type != call_type):
+          continue
+
+        if (model_size is not None and
+            provider_model_config.metadata.model_size != model_size):
+          continue
+
+        if only_featured and not provider_model_config.metadata.is_featured:
+          continue
+
+        result_provider_models.append(provider_model_config.provider_model)
+
+    return result_provider_models
