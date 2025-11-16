@@ -191,7 +191,7 @@ class ModelConfigs(state_controller.StateControlled):
       model_identifier: types.ProviderModelIdentifierType
   ) -> types.ProviderModelType:
     if self._is_provider_model_tuple(model_identifier):
-      return self.model_configs_schema.provider_model_configs[
+      return self.model_configs_schema.version_config.provider_model_configs[
           model_identifier[0]][model_identifier[1]].provider_model
     else:
       return model_identifier
@@ -201,7 +201,7 @@ class ModelConfigs(state_controller.StateControlled):
       model_identifier: types.ProviderModelIdentifierType
   ) -> types.ProviderModelType:
     provider_model = self.get_provider_model(model_identifier)
-    return self.model_configs_schema.provider_model_configs[
+    return self.model_configs_schema.version_config.provider_model_configs[
         provider_model.provider][provider_model.model]
 
   def get_provider_model_cost(

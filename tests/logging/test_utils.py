@@ -9,13 +9,15 @@ import pytest
 
 
 def _get_query_record_examples():
+  model_configs_instance = model_configs.ModelConfigs()
   return [
       {'call_type': types.CallType.GENERATE_TEXT},
       {'prompt': 'Test prompt'},
       {'system': 'Test system'},
       {'messages': [{'role': 'user', 'content': 'Test message'}]},
       {'call_type': types.CallType.GENERATE_TEXT,
-       'provider_model': model_configs.ALL_MODELS['openai']['gpt-4'],
+       'provider_model': model_configs_instance.get_provider_model_config(
+           ('openai', 'gpt-4')),
        'prompt': 'Test prompt',
        'system': 'Test system',
        'messages': [{'role': 'user', 'content': 'Test message'}]},
