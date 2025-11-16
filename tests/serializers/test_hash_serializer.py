@@ -4,9 +4,11 @@ import pytest
 import proxai.connectors.model_configs as model_configs
 
 def _get_query_record_options():
+  model_configs_instance = model_configs.ModelConfigs()
   return [
       {'call_type': types.CallType.GENERATE_TEXT},
-      {'provider_model': model_configs.ALL_MODELS['openai']['gpt-4']},
+      {'provider_model': model_configs_instance.get_provider_model_config(
+          ('openai', 'gpt-4'))},
       {'prompt': 'Hello, world!'},
       {'system': 'Hello, system!'},
       {'messages': [{'role': 'user', 'content': 'Hello, user!'}]},
@@ -14,7 +16,8 @@ def _get_query_record_options():
       {'temperature': 0.5},
       {'stop': ['.', '?', '!']},
       {'call_type': types.CallType.GENERATE_TEXT,
-       'provider_model': model_configs.ALL_MODELS['openai']['gpt-4'],
+       'provider_model': model_configs_instance.get_provider_model_config(
+           ('openai', 'gpt-4')),
        'prompt': 'Hello, world!',
        'system': 'Hello, system!',
        'messages': [{'role': 'user', 'content': 'Hello, user!'}],

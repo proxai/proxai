@@ -15,9 +15,10 @@ def _get_provider_model_type_options():
 
 
 def _get_provider_model_identifier_options():
+  model_configs_instance = model_configs.ModelConfigs()
   return [
-      model_configs.get_provider_model_config(('openai', 'gpt-4')),
-      model_configs.get_provider_model_config(('claude', 'opus-4')),
+      model_configs_instance.get_provider_model(('openai', 'gpt-4')),
+      model_configs_instance.get_provider_model(('claude', 'opus-4')),
       ('openai', 'gpt-4'),
       ('claude', 'sonnet-4'),]
 
@@ -66,9 +67,10 @@ def _get_provider_model_metadata_type_options():
 
 
 def _get_provider_model_config_type_options():
+  model_configs_instance = model_configs.ModelConfigs()
   return [
       {},
-      {'provider_model': model_configs.get_provider_model_config(('openai', 'gpt-4'))},
+      {'provider_model': model_configs_instance.get_provider_model(('openai', 'gpt-4'))},
       {'pricing': types.ProviderModelPricingType(
           per_response_token_cost=0.001,
           per_query_token_cost=0.002)},
@@ -77,7 +79,7 @@ def _get_provider_model_config_type_options():
       {'metadata': types.ProviderModelMetadataType(
           call_type=types.CallType.GENERATE_TEXT,
           is_featured=True)},
-      {'provider_model': model_configs.get_provider_model_config(('claude', 'opus-4')),
+      {'provider_model': model_configs_instance.get_provider_model(('claude', 'opus-4')),
        'pricing': types.ProviderModelPricingType(
           per_response_token_cost=0.003,
           per_query_token_cost=0.001),
@@ -111,55 +113,56 @@ def _get_model_configs_schema_metadata_type_options():
 
 
 def _get_model_configs_schema_version_config_type_options():
+  model_configs_instance = model_configs.ModelConfigs()
   return [
       {},
       {'provider_model_configs': {
           'openai': {
               'gpt-4': types.ProviderModelConfigType(
-                  provider_model=model_configs.get_provider_model_config(
+                  provider_model=model_configs_instance.get_provider_model(
                       ('openai', 'gpt-4')))}}},
       {'provider_model_configs': {
           'openai': {
               'gpt-4': types.ProviderModelConfigType(
-                  provider_model=model_configs.get_provider_model_config(
+                  provider_model=model_configs_instance.get_provider_model(
                       ('openai', 'gpt-4')),
                   pricing=types.ProviderModelPricingType(
                       per_response_token_cost=0.001,
                       per_query_token_cost=0.002))},
           'claude': {
               'opus-4': types.ProviderModelConfigType(
-                  provider_model=model_configs.get_provider_model_config(
+                  provider_model=model_configs_instance.get_provider_model(
                       ('claude', 'opus-4')),
                   metadata=types.ProviderModelMetadataType(
                       is_featured=True))}}},
       {'featured_models': {
           'openai': (
-              model_configs.get_provider_model_config(('openai', 'gpt-4')),)}},
+              model_configs_instance.get_provider_model(('openai', 'gpt-4')),)}},
       {'featured_models': {
           'openai': (
-              model_configs.get_provider_model_config(('openai', 'gpt-4')),),
+              model_configs_instance.get_provider_model(('openai', 'gpt-4')),),
           'claude': (
               ('claude', 'opus-4'),)}},
       {'models_by_call_type': {
           types.CallType.GENERATE_TEXT: {
               'openai': (
-                  model_configs.get_provider_model_config(('openai', 'gpt-4')),),
+                  model_configs_instance.get_provider_model(('openai', 'gpt-4')),),
               'claude': (
                   ('claude', 'sonnet-4'),)}}},
       {'models_by_size': {
           types.ModelSizeType.SMALL: (
               ('openai', 'gpt-4o-mini'),),
           types.ModelSizeType.LARGE: (
-              model_configs.get_provider_model_config(('openai', 'gpt-4')),
+              model_configs_instance.get_provider_model(('openai', 'gpt-4')),
               ('claude', 'opus-4'),)}},
       {'default_model_priority_list': (
-          model_configs.get_provider_model_config(('openai', 'gpt-4')),
+          model_configs_instance.get_provider_model(('openai', 'gpt-4')),
           ('claude', 'opus-4'),
           ('openai', 'o3-mini'),)},
       {'provider_model_configs': {
           'openai': {
               'gpt-4': types.ProviderModelConfigType(
-                  provider_model=model_configs.get_provider_model_config(
+                  provider_model=model_configs_instance.get_provider_model(
                       ('openai', 'gpt-4')),
                   pricing=types.ProviderModelPricingType(
                       per_response_token_cost=0.001,
@@ -171,42 +174,43 @@ def _get_model_configs_schema_version_config_type_options():
                       is_featured=True,
                       model_size=types.ModelSizeType.LARGE)),
               'o3-mini': types.ProviderModelConfigType(
-                  provider_model=model_configs.get_provider_model_config(
+                  provider_model=model_configs_instance.get_provider_model(
                       ('openai', 'o3-mini')))},
           'claude': {
               'opus-4': types.ProviderModelConfigType(
-                  provider_model=model_configs.get_provider_model_config(
+                  provider_model=model_configs_instance.get_provider_model(
                       ('claude', 'opus-4')),
                   metadata=types.ProviderModelMetadataType(
                       is_featured=True,
                       model_size=types.ModelSizeType.LARGEST)),
               'sonnet-4': types.ProviderModelConfigType(
-                  provider_model=model_configs.get_provider_model_config(
+                  provider_model=model_configs_instance.get_provider_model(
                       ('claude', 'sonnet-4')))}},
        'featured_models': {
           'openai': (
-              model_configs.get_provider_model_config(('openai', 'gpt-4')),),
+              model_configs_instance.get_provider_model(('openai', 'gpt-4')),),
           'claude': (
               ('claude', 'opus-4'),)},
        'models_by_call_type': {
           types.CallType.GENERATE_TEXT: {
               'openai': (
-                  model_configs.get_provider_model_config(('openai', 'gpt-4')),),
+                  model_configs_instance.get_provider_model(('openai', 'gpt-4')),),
               'claude': (
                   ('claude', 'sonnet-4'),)}},
        'models_by_size': {
           types.ModelSizeType.SMALL: (
               ('openai', 'gpt-4o-mini'),),
           types.ModelSizeType.LARGE: (
-              model_configs.get_provider_model_config(('openai', 'gpt-4')),
+              model_configs_instance.get_provider_model(('openai', 'gpt-4')),
               ('claude', 'opus-4'),)},
        'default_model_priority_list': (
-          model_configs.get_provider_model_config(('openai', 'gpt-4')),
+          model_configs_instance.get_provider_model(('openai', 'gpt-4')),
           ('claude', 'opus-4'),
           ('openai', 'o3-mini'),)},]
 
 
 def _get_model_configs_schema_type_options():
+  model_configs_instance = model_configs.ModelConfigs()
   return [
       {},
       {'metadata': types.ModelConfigsSchemaMetadataType(
@@ -220,12 +224,12 @@ def _get_model_configs_schema_type_options():
           provider_model_configs={
               'openai': {
                   'gpt-4': types.ProviderModelConfigType(
-                      provider_model=model_configs.get_provider_model_config(
+                      provider_model=model_configs_instance.get_provider_model(
                           ('openai', 'gpt-4')))}})},
       {'version_config': types.ModelConfigsSchemaVersionConfigType(
           featured_models={
               'openai': (
-                  model_configs.get_provider_model_config(('openai', 'gpt-4')),)})},
+                  model_configs_instance.get_provider_model(('openai', 'gpt-4')),)})},
       {'metadata': types.ModelConfigsSchemaMetadataType(
           version='1.0.0',
           released_at=datetime.datetime.now(datetime.timezone.utc)),
@@ -233,7 +237,7 @@ def _get_model_configs_schema_type_options():
           provider_model_configs={
               'openai': {
                   'gpt-4': types.ProviderModelConfigType(
-                      provider_model=model_configs.get_provider_model_config(
+                      provider_model=model_configs_instance.get_provider_model(
                           ('openai', 'gpt-4')))}})},
       {'metadata': types.ModelConfigsSchemaMetadataType(
           version='2.1.0',
@@ -244,7 +248,7 @@ def _get_model_configs_schema_type_options():
           provider_model_configs={
               'openai': {
                   'gpt-4': types.ProviderModelConfigType(
-                      provider_model=model_configs.get_provider_model_config(
+                      provider_model=model_configs_instance.get_provider_model(
                           ('openai', 'gpt-4')),
                       pricing=types.ProviderModelPricingType(
                           per_response_token_cost=0.001,
@@ -256,27 +260,27 @@ def _get_model_configs_schema_type_options():
                           is_featured=True,
                           model_size=types.ModelSizeType.LARGE)),
                   'o3-mini': types.ProviderModelConfigType(
-                      provider_model=model_configs.get_provider_model_config(
+                      provider_model=model_configs_instance.get_provider_model(
                           ('openai', 'o3-mini')))},
               'claude': {
                   'opus-4': types.ProviderModelConfigType(
-                      provider_model=model_configs.get_provider_model_config(
+                      provider_model=model_configs_instance.get_provider_model(
                           ('claude', 'opus-4')),
                       metadata=types.ProviderModelMetadataType(
                           is_featured=True,
                           model_size=types.ModelSizeType.LARGEST)),
                   'sonnet-4': types.ProviderModelConfigType(
-                      provider_model=model_configs.get_provider_model_config(
+                      provider_model=model_configs_instance.get_provider_model(
                           ('claude', 'sonnet-4')))}},
           featured_models={
               'openai': (
-                  model_configs.get_provider_model_config(('openai', 'gpt-4')),),
+                  model_configs_instance.get_provider_model(('openai', 'gpt-4')),),
               'claude': (
                   ('claude', 'opus-4'),)},
           models_by_call_type={
               types.CallType.GENERATE_TEXT: {
                   'openai': (
-                      model_configs.get_provider_model_config(
+                      model_configs_instance.get_provider_model(
                           ('openai', 'gpt-4')),),
                   'claude': (
                       ('claude', 'sonnet-4'),)}},
@@ -284,18 +288,19 @@ def _get_model_configs_schema_type_options():
               types.ModelSizeType.SMALL: (
                   ('openai', 'gpt-4o-mini'),),
               types.ModelSizeType.LARGE: (
-                  model_configs.get_provider_model_config(('openai', 'gpt-4')),
+                  model_configs_instance.get_provider_model(('openai', 'gpt-4')),
                   ('claude', 'opus-4'),)},
           default_model_priority_list=(
-              model_configs.get_provider_model_config(('openai', 'gpt-4')),
+              model_configs_instance.get_provider_model(('openai', 'gpt-4')),
               ('claude', 'opus-4'),
               ('openai', 'o3-mini'),))},]
 
 
 def _get_query_record_options():
+  model_configs_instance = model_configs.ModelConfigs()
   return [
       {'call_type': types.CallType.GENERATE_TEXT},
-      {'provider_model': model_configs.get_provider_model_config(('openai', 'gpt-4'))},
+      {'provider_model': model_configs_instance.get_provider_model(('openai', 'gpt-4'))},
       {'prompt': 'Hello, world!'},
       {'system': 'Hello, system!'},
       {'messages': [{'role': 'user', 'content': 'Hello, user!'}]},
@@ -304,7 +309,7 @@ def _get_query_record_options():
       {'stop': ['stop']},
       {'token_count': 100},
       {'call_type': types.CallType.GENERATE_TEXT,
-       'provider_model': model_configs.get_provider_model_config(('openai', 'gpt-4')),
+       'provider_model': model_configs_instance.get_provider_model(('openai', 'gpt-4')),
        'prompt': 'Hello, world!',
        'system': 'Hello, system!',
        'messages': [{'role': 'user', 'content': 'Hello, user!'}],
@@ -463,10 +468,11 @@ def _get_run_options_options():
 
 
 def _get_model_status_options():
-  model_1 = model_configs.get_provider_model_config(('openai', 'gpt-4'))
-  model_2 = model_configs.get_provider_model_config(('openai', 'o3-mini'))
-  model_3 = model_configs.get_provider_model_config(('claude', 'opus-4'))
-  model_4 = model_configs.get_provider_model_config(('claude', 'sonnet-4'))
+  model_configs_instance = model_configs.ModelConfigs()
+  model_1 = model_configs_instance.get_provider_model(('openai', 'gpt-4'))
+  model_2 = model_configs_instance.get_provider_model(('openai', 'o3-mini'))
+  model_3 = model_configs_instance.get_provider_model(('claude', 'opus-4'))
+  model_4 = model_configs_instance.get_provider_model(('claude', 'sonnet-4'))
   return [
       {},
       {'unprocessed_models': {model_1}},
@@ -545,28 +551,30 @@ def _get_base_cache_stats_options():
 
 
 def _get_provider_model_stats_options():
+  model_configs_instance = model_configs.ModelConfigs()
   return [
-    {'provider_model': model_configs.get_provider_model_config(('openai', 'gpt-4'))},
+    {'provider_model': model_configs_instance.get_provider_model(('openai', 'gpt-4'))},
     {'provider_stats': stat_types.BaseProviderStats(total_queries=1)},
     {'cache_stats': stat_types.BaseCacheStats(total_cache_hit=1)},
-    {'provider_model': model_configs.get_provider_model_config(('openai', 'gpt-4')),
+    {'provider_model': model_configs_instance.get_provider_model(('openai', 'gpt-4')),
      'provider_stats': stat_types.BaseProviderStats(total_queries=1),
      'cache_stats': stat_types.BaseCacheStats(total_cache_hit=1)}]
 
 
 def _get_provider_stats_options():
+  model_configs_instance = model_configs.ModelConfigs()
   return [
     {'provider': 'openai'},
     {'provider_stats': stat_types.BaseProviderStats(total_queries=1)},
     {'cache_stats': stat_types.BaseCacheStats(total_cache_hit=1)},
     {'provider_models': {
-        model_configs.get_provider_model_config(
+        model_configs_instance.get_provider_model(
             ('openai', 'gpt-4')): stat_types.ProviderModelStats()}},
     {'provider': 'openai',
      'provider_stats': stat_types.BaseProviderStats(total_queries=1),
      'cache_stats': stat_types.BaseCacheStats(total_cache_hit=1),
      'provider_models': {
-        model_configs.get_provider_model_config(
+        model_configs_instance.get_provider_model(
             ('openai', 'gpt-4')): stat_types.ProviderModelStats()}}]
 
 
@@ -579,82 +587,87 @@ def _get_run_stats_options():
 
 
 def _get_provider_model_configs_type_options():
+  model_configs_instance = model_configs.ModelConfigs()
   return [
     {'openai': {
         'gpt-4': types.ProviderModelConfigType(
-            provider_model=model_configs.get_provider_model_config(
+            provider_model=model_configs_instance.get_provider_model(
                 ('openai', 'gpt-4')))}},
     {'openai': {
         'gpt-4': types.ProviderModelConfigType(
-            provider_model=model_configs.get_provider_model_config(
+            provider_model=model_configs_instance.get_provider_model(
                 ('openai', 'gpt-4')),
             pricing=types.ProviderModelPricingType(
                 per_response_token_cost=0.001,
                 per_query_token_cost=0.002))},
      'claude': {
         'opus-4': types.ProviderModelConfigType(
-            provider_model=model_configs.get_provider_model_config(
+            provider_model=model_configs_instance.get_provider_model(
                 ('claude', 'opus-4')),
             metadata=types.ProviderModelMetadataType(
                 is_featured=True))}},]
 
 
 def _get_featured_models_type_options():
+  model_configs_instance = model_configs.ModelConfigs()
   return [
     {'openai': (
-        model_configs.get_provider_model_config(('openai', 'gpt-4')),)},
+        model_configs_instance.get_provider_model(('openai', 'gpt-4')),)},
     {'openai': (
-        model_configs.get_provider_model_config(('openai', 'gpt-4')),),
+        model_configs_instance.get_provider_model(('openai', 'gpt-4')),),
      'claude': (
         ('claude', 'opus-4'),)},
     {'openai': (
-        model_configs.get_provider_model_config(('openai', 'gpt-4')),
+        model_configs_instance.get_provider_model(('openai', 'gpt-4')),
         ('openai', 'o3-mini'),),
      'claude': (
         ('claude', 'opus-4'),
-        model_configs.get_provider_model_config(('claude', 'sonnet-4')),)},]
+        model_configs_instance.get_provider_model(('claude', 'sonnet-4')),)},]
 
 
 def _get_models_by_call_type_type_options():
+  model_configs_instance = model_configs.ModelConfigs()
   return [
     {types.CallType.GENERATE_TEXT: {
         'openai': (
-            model_configs.get_provider_model_config(('openai', 'gpt-4')),)}},
+            model_configs_instance.get_provider_model(('openai', 'gpt-4')),)}},
     {types.CallType.GENERATE_TEXT: {
         'openai': (
-            model_configs.get_provider_model_config(('openai', 'gpt-4')),),
+            model_configs_instance.get_provider_model(('openai', 'gpt-4')),),
         'claude': (
             ('claude', 'sonnet-4'),)}},
     {types.CallType.GENERATE_TEXT: {
         'openai': (
-            model_configs.get_provider_model_config(('openai', 'gpt-4')),
+            model_configs_instance.get_provider_model(('openai', 'gpt-4')),
             ('openai', 'o3-mini'),),
         'claude': (
             ('claude', 'sonnet-4'),
-            model_configs.get_provider_model_config(('claude', 'opus-4')),)}},]
+            model_configs_instance.get_provider_model(('claude', 'opus-4')),)}},]
 
 
 def _get_models_by_size_type_options():
+  model_configs_instance = model_configs.ModelConfigs()
   return [
     {types.ModelSizeType.SMALL: (
         ('openai', 'gpt-4o-mini'),)},
     {types.ModelSizeType.SMALL: (
         ('openai', 'gpt-4o-mini'),),
      types.ModelSizeType.LARGE: (
-        model_configs.get_provider_model_config(('openai', 'gpt-4')),)},
+        model_configs_instance.get_provider_model(('openai', 'gpt-4')),)},
     {types.ModelSizeType.SMALL: (
         ('openai', 'gpt-4o-mini'),),
      types.ModelSizeType.LARGE: (
-        model_configs.get_provider_model_config(('openai', 'gpt-4')),
+        model_configs_instance.get_provider_model(('openai', 'gpt-4')),
         ('claude', 'opus-4'),)},]
 
 
 def _get_default_model_priority_list_type_options():
+  model_configs_instance = model_configs.ModelConfigs()
   return [
-    (model_configs.get_provider_model_config(('openai', 'gpt-4')),),
-    (model_configs.get_provider_model_config(('openai', 'gpt-4')),
+    (model_configs_instance.get_provider_model(('openai', 'gpt-4')),),
+    (model_configs_instance.get_provider_model(('openai', 'gpt-4')),
      ('claude', 'opus-4'),),
-    (model_configs.get_provider_model_config(('openai', 'gpt-4')),
+    (model_configs_instance.get_provider_model(('openai', 'gpt-4')),
      ('claude', 'opus-4'),
      ('openai', 'o3-mini'),),]
 
@@ -665,7 +678,7 @@ class TestTypeSerializer:
       _get_provider_model_type_options())
   def test_encode_decode_provider_model_type(self, provider_model_type_options):
     # Test successful encode/decode round-trip
-    provider_model_type = model_configs.get_provider_model_config(
+    provider_model_type = model_configs.get_provider_model(
         (provider_model_type_options['provider'],
          provider_model_type_options['model']))
     encoded_provider_model_type = type_serializer.encode_provider_model_type(
