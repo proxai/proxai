@@ -2,6 +2,7 @@
   "metadata": {
     "version": "1.0.0",
     "released_at": "2025-11-11 00:00:00",
+    "min_proxai_version": ">0.3.0",
     "config_origin": "BUILT_IN",
     "release_notes": "First release of the model configs"
   },

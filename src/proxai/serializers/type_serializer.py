@@ -309,6 +309,9 @@ def encode_model_configs_schema_metadata_type(
   if model_configs_schema_metadata_type.released_at != None:
     record['released_at'] = (
         model_configs_schema_metadata_type.released_at.isoformat())
+  if model_configs_schema_metadata_type.min_proxai_version != None:
+    record['min_proxai_version'] = (
+        model_configs_schema_metadata_type.min_proxai_version)
   if model_configs_schema_metadata_type.config_origin != None:
     record['config_origin'] = (
         model_configs_schema_metadata_type.config_origin.value)
@@ -325,6 +328,9 @@ def decode_model_configs_schema_metadata_type(
   if 'released_at' in record:
     model_configs_schema_metadata_type.released_at = (
         datetime.datetime.fromisoformat(record['released_at']))
+  if 'min_proxai_version' in record:
+    model_configs_schema_metadata_type.min_proxai_version = (
+        record['min_proxai_version'])
   if 'config_origin' in record:
     model_configs_schema_metadata_type.config_origin = (
         types.ConfigOriginType(record['config_origin']))

@@ -120,6 +120,7 @@ DefaultModelPriorityListType = Tuple[ProviderModelIdentifierType]
 class ModelConfigsSchemaMetadataType:
   version: Optional[str] = None
   released_at: Optional[datetime.datetime] = None
+  min_proxai_version: Optional[str] = None
   config_origin: Optional[ConfigOriginType] = None
   release_notes: Optional[str] = None
 
