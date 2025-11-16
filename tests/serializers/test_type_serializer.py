@@ -99,6 +99,7 @@ def _get_model_configs_schema_metadata_type_options():
       {},
       {'version': '1.0.0'},
       {'released_at': datetime.datetime.now(datetime.timezone.utc)},
+      {'min_proxai_version': '>=1.8.12'},
       {'config_origin': types.ConfigOriginType.BUILT_IN},
       {'config_origin': types.ConfigOriginType.PROXDASH},
       {'release_notes': 'Initial release'},
@@ -108,6 +109,7 @@ def _get_model_configs_schema_metadata_type_options():
        'release_notes': 'Initial release'},
       {'version': '2.1.0',
        'released_at': datetime.datetime.now(datetime.timezone.utc),
+       'min_proxai_version': '>=2.0.0',
        'config_origin': types.ConfigOriginType.PROXDASH,
        'release_notes': 'Added new models and updated pricing'},]
 
@@ -242,6 +244,7 @@ def _get_model_configs_schema_type_options():
       {'metadata': types.ModelConfigsSchemaMetadataType(
           version='2.1.0',
           released_at=datetime.datetime.now(datetime.timezone.utc),
+          min_proxai_version='>=2.0.0',
           config_origin=types.ConfigOriginType.PROXDASH,
           release_notes='Added new models and updated pricing'),
        'version_config': types.ModelConfigsSchemaVersionConfigType(
