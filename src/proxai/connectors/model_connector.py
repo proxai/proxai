@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import copy
+import dataclasses
 import datetime
 import traceback
 import functools
@@ -12,8 +15,6 @@ import proxai.stat_types as stats_type
 import proxai.serializers.hash_serializer as hash_serializer
 import proxai.connections.proxdash as proxdash
 import proxai.connectors.model_configs as model_configs
-import proxai.connectors.model_pricing_configs as model_pricing_configs
-import proxai.connectors.model_feature_configs as model_feature_configs
 import proxai.state_controllers.state_controller as state_controller
 
 _PROVIDER_MODEL_STATE_PROPERTY = '_provider_model_state'
@@ -36,6 +37,8 @@ class ProviderModelConnector(state_controller.StateControlled):
   _get_proxdash_connection: Optional[
       Callable[[bool], proxdash.ProxDashConnection]]
   _provider_model_state: Optional[types.ProviderModelState]
+
+  _model_configs: Optional[model_configs.ModelConfigs]
 
   def __init__(
       self,
@@ -67,6 +70,10 @@ class ProviderModelConnector(state_controller.StateControlled):
         get_logging_options=get_logging_options,
         proxdash_connection=proxdash_connection,
         get_proxdash_connection=get_proxdash_connection)
+
+    # TODO: This will be removed after having model config as parameter and
+    # proper state controller functions are implemented.
+    self._model_configs = model_configs.ModelConfigs()
 
     if init_state:
       if init_state.provider_model is None:
@@ -232,18 +239,14 @@ class ProviderModelConnector(state_controller.StateControlled):
 
   def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
     query_record = copy.deepcopy(query_record)
-    if (self.provider_model.provider
-        not in model_feature_configs.GENERATE_TEXT_FEATURES):
-      return query_record
-
-    model_features = model_feature_configs.GENERATE_TEXT_FEATURES[
-        self.provider_model.provider]
-    if self.provider_model.model not in model_features:
-      return query_record
-
-    model_feature_config = model_features[self.provider_model.model]
-    for feature in model_feature_config.not_supported_features:
-      if getattr(query_record, feature) is not None:
+    none_value_properties = [
+        field.name for field in dataclasses.fields(query_record)
+        if getattr(query_record, field.name) is None
+    ]
+    for feature in none_value_properties:
+      if not self._model_configs.is_feature_supported(
+          provider_model=self.provider_model,
+          feature=feature):
         self.feature_fail(
             message=f'{self.provider_model.model} does not support {feature}.',
             query_record=query_record)
@@ -275,7 +278,7 @@ class ProviderModelConnector(state_controller.StateControlled):
     response_token_count = logging_record.response_record.token_count
     if type(response_token_count) != int:
       response_token_count = 0
-    return model_pricing_configs.get_provider_model_cost(
+    return self._model_configs.get_provider_model_cost(
         provider_model_identifier=logging_record.query_record.provider_model,
         query_token_count=query_token_count,
         response_token_count=response_token_count)
@@ -364,7 +367,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       type_utils.check_messages_type(messages)
 
     if provider_model is not None:
-      provider_model = model_configs.get_provider_model_config(
+      provider_model = self._model_configs.get_provider_model_config(
           model_identifier=provider_model)
       if provider_model != self.provider_model:
         raise ValueError(

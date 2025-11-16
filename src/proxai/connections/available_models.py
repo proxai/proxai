@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import copy
 import datetime
 import multiprocessing
@@ -40,6 +42,8 @@ class AvailableModels(state_controller.StateControlled):
   _latest_model_cache_path_used_for_update: Optional[str]
   _available_models_state: types.AvailableModelsState
 
+  _model_configs: Optional[model_configs.ModelConfigs]
+
   def __init__(
       self,
       run_type: Optional[types.RunType] = None,
@@ -73,6 +77,10 @@ class AvailableModels(state_controller.StateControlled):
         get_allow_multiprocessing=get_allow_multiprocessing,
         model_test_timeout=model_test_timeout,
         get_model_test_timeout=get_model_test_timeout)
+
+    # TODO: This will be removed after having model config as parameter and
+    # proper state controller functions are implemented.
+    self._model_configs = model_configs.ModelConfigs()
 
     if init_state:
       self.load_state(init_state)
@@ -189,11 +197,13 @@ class AvailableModels(state_controller.StateControlled):
       self, value: Optional[str]):
     self.set_property_value('latest_model_cache_path_used_for_update', value)
 
-  def _get_all_models(self, models: types.ModelStatus, call_type: str):
-    if call_type == types.CallType.GENERATE_TEXT:
-      for provider_models in model_configs.GENERATE_TEXT_MODELS.values():
-        for provider_model in provider_models.values():
-          models.unprocessed_models.add(provider_model)
+  def _get_all_models(
+      self,
+      models: types.ModelStatus,
+      call_type: types.CallType):
+    provider_models = self._model_configs.get_all_models(call_type=call_type)
+    for provider_model in provider_models:
+      models.unprocessed_models.add(provider_model)
 
   def _filter_by_provider_api_key(self, models: types.ModelStatus):
     def _filter_set(
@@ -253,23 +263,14 @@ class AvailableModels(state_controller.StateControlled):
   def _filter_by_model_size(
       self,
       models: types.ModelStatus,
-      model_size: Optional[types.ModelSizeType] = None):
+      model_size: Optional[types.ModelSizeType] = None,
+      call_type: types.CallType = types.CallType.GENERATE_TEXT):
     if model_size is None:
       return
-    selected_model_config = None
-    if model_size == types.ModelSizeType.SMALL:
-      selected_model_config = model_configs.SMALL_GENERATE_TEXT_MODELS
-    elif model_size == types.ModelSizeType.MEDIUM:
-      selected_model_config = model_configs.MEDIUM_GENERATE_TEXT_MODELS
-    elif model_size == types.ModelSizeType.LARGE:
-      selected_model_config = model_configs.LARGE_GENERATE_TEXT_MODELS
-    elif model_size == types.ModelSizeType.LARGEST:
-      selected_model_config = model_configs.LARGEST_GENERATE_TEXT_MODELS
 
-    allowed_models = set()
-    for provider_models in selected_model_config.values():
-      for provider_model in provider_models.values():
-        allowed_models.add(provider_model)
+    allowed_models = self._model_configs.get_all_models(
+        call_type=call_type,
+        model_size=model_size)
 
     def _filter_set(
         provider_model_set: Set[types.ProviderModelType]
@@ -680,10 +681,11 @@ class AvailableModels(state_controller.StateControlled):
       raise ValueError(f'Call type not supported: {call_type}')
     if model_size is not None:
       model_size = type_utils.check_model_size_identifier_type(model_size)
-    if provider not in model_configs.GENERATE_TEXT_MODELS:
-      raise ValueError(
-          f'Provider not found in model_configs: {provider}\n'
-          f'Available providers: {model_configs.GENERATE_TEXT_MODELS.keys()}')
+
+    provider_models = self._model_configs.get_all_models(
+        provider=provider,
+        call_type=call_type,
+        model_size=model_size)
 
     model_status: Optional[types.ModelStatus] = None
     if not self.model_cache_manager:
@@ -693,8 +695,8 @@ class AvailableModels(state_controller.StateControlled):
             f'Provider key not found in environment variables for {provider}.\n'
             f'Required keys: {model_configs.PROVIDER_KEY_MAP[provider]}')
       model_status = types.ModelStatus()
-      for model in model_configs.GENERATE_TEXT_MODELS[provider].values():
-        model_status.working_models.add(model)
+      for provider_model in provider_models:
+        model_status.working_models.add(provider_model)
       self._filter_by_model_size(model_status, model_size=model_size)
     elif (
         clear_model_cache or
@@ -728,17 +730,16 @@ class AvailableModels(state_controller.StateControlled):
     if call_type != types.CallType.GENERATE_TEXT:
       raise ValueError(f'Call type not supported: {call_type}')
 
-    if provider not in model_configs.GENERATE_TEXT_MODELS:
-      raise ValueError(
-          f'Provider not found in model_configs: {provider}\n'
-          f'Available providers: {model_configs.GENERATE_TEXT_MODELS.keys()}')
+    provider_model_config = self._model_configs.get_provider_model_config(
+        (provider, model))
 
-    if model not in model_configs.GENERATE_TEXT_MODELS[provider]:
+    if provider_model_config.metadata.call_type != call_type:
       raise ValueError(
-          f'Model not found in {provider} models: {model}\n'
-          f'Available models: {model_configs.GENERATE_TEXT_MODELS[provider]}')
+          'Provider model call type mismatch.\n'
+          f'Call type: {call_type}\n'
+          f'Provider model config: {provider_model_config}')
 
-    provider_model = model_configs.get_provider_model_config((provider, model))
+    provider_model = provider_model_config.provider_model
 
     model_status: Optional[types.ModelStatus] = None
     if not self.model_cache_manager:
@@ -777,7 +778,7 @@ class AvailableModels(state_controller.StateControlled):
               f'({provider}, {model})\nLogging Record: '
               f'{model_status.provider_queries.get(provider_model, "")}'),
           type=types.LoggingType.WARNING)
-      return model_configs.ALL_MODELS[provider][model]
+      return self._model_configs.get_provider_model((provider, model))
 
     raise ValueError(
         f'Provider model not found in working models: ({provider}, {model})\n'

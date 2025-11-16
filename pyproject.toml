@@ -7,7 +7,7 @@ license = "MIT"
 readme = "README.md"
 homepage = "https://proxai.co"
 repository = "https://github.com/proxai/proxai"
-include = ["src/proxai/connectors/model_configs/*.json"]
+include = ["src/proxai/connectors/model_configs_data/*.json"]
 
 [tool.poetry.urls]
 "Homepage" = "https://proxai.co"

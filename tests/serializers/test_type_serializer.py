@@ -664,6 +664,7 @@ class TestTypeSerializer:
       'provider_model_type_options',
       _get_provider_model_type_options())
   def test_encode_decode_provider_model_type(self, provider_model_type_options):
+    # Test successful encode/decode round-trip
     provider_model_type = model_configs.get_provider_model_config(
         (provider_model_type_options['provider'],
          provider_model_type_options['model']))
@@ -672,6 +673,24 @@ class TestTypeSerializer:
     decoded_provider_model_type = type_serializer.decode_provider_model_type(
         record=encoded_provider_model_type)
     assert provider_model_type == decoded_provider_model_type
+
+    # Test validation: missing provider
+    invalid_record = encoded_provider_model_type.copy()
+    del invalid_record['provider']
+    with pytest.raises(ValueError, match='Provider not found in record'):
+      type_serializer.decode_provider_model_type(record=invalid_record)
+
+    # Test validation: missing model
+    invalid_record = encoded_provider_model_type.copy()
+    del invalid_record['model']
+    with pytest.raises(ValueError, match='Model not found in record'):
+      type_serializer.decode_provider_model_type(record=invalid_record)
+
+    # Test validation: missing provider_model_identifier
+    invalid_record = encoded_provider_model_type.copy()
+    del invalid_record['provider_model_identifier']
+    with pytest.raises(ValueError, match='Provider model identifier not found in record'):
+      type_serializer.decode_provider_model_type(record=invalid_record)
 
   @pytest.mark.parametrize('query_record_options', _get_query_record_options())
   def test_get_query_record_hash(self, query_record_options):

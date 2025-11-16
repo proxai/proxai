@@ -104,12 +104,13 @@ class ConfigOriginType(enum.Enum):
   BUILT_IN = 'BUILT_IN'
   PROXDASH = 'PROXDASH'
 
+ProviderModelsIdentifierDictType = Dict[
+    ProviderNameType, Tuple[ProviderModelIdentifierType]]
+
 ProviderModelConfigsType = Dict[
     ProviderNameType, Dict[ModelNameType, ProviderModelConfigType]]
-FeaturedModelsType = Dict[
-    ProviderNameType, Tuple[ProviderModelIdentifierType]]
-ModelsByCallTypeType = Dict[
-    CallType, Dict[ProviderNameType, Tuple[ProviderModelIdentifierType]]]
+FeaturedModelsType = ProviderModelsIdentifierDictType
+ModelsByCallTypeType = Dict[CallType, ProviderModelsIdentifierDictType]
 ModelsBySizeType = Dict[
     ModelSizeType, Tuple[ProviderModelIdentifierType]]
 DefaultModelPriorityListType = Tuple[ProviderModelIdentifierType]
@@ -368,4 +369,4 @@ class AvailableModelsState(StateContainer):
 
 @dataclasses.dataclass
 class ModelConfigsState(StateContainer):
-  model_config_schema: Optional[ModelConfigsSchemaType] = None
+  model_configs_schema: Optional[ModelConfigsSchemaType] = None

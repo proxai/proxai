@@ -3,7 +3,6 @@ import json
 from typing import Any, Dict
 import proxai.types as types
 import proxai.stat_types as stat_types
-import proxai.connectors.model_configs as model_configs
 
 
 def encode_provider_model_type(
@@ -25,15 +24,10 @@ def decode_provider_model_type(
   if 'provider_model_identifier' not in record:
     raise ValueError(
         f'Provider model identifier not found in record: {record=}')
-  provider_model = model_configs.get_provider_model_config(
-      (record['provider'], record['model']))
-  if provider_model.provider_model_identifier != record[
-      'provider_model_identifier']:
-    raise ValueError(
-        'Provider model identifier mismatch: '
-        f'{record["provider_model_identifier"]} != '
-        f'{provider_model.provider_model_identifier}'
-        '\nThis can happen if the model config has changed in recent versions.')
+  provider_model = types.ProviderModelType(
+      provider=record['provider'],
+      model=record['model'],
+      provider_model_identifier=record['provider_model_identifier'])
   return provider_model
 
 
@@ -129,11 +123,11 @@ def encode_provider_model_metadata_type(
 def decode_provider_model_metadata_type(
     record: Dict[str, Any]) -> types.ProviderModelMetadataType:
   provider_model_metadata_type = types.ProviderModelMetadataType()
-  if 'call_type' in record:
+  if 'call_type' in record and record['call_type'] is not None:
     provider_model_metadata_type.call_type = types.CallType(record['call_type'])
   if 'is_featured' in record:
     provider_model_metadata_type.is_featured = record['is_featured']
-  if 'model_size' in record:
+  if 'model_size' in record and record['model_size'] is not None:
     provider_model_metadata_type.model_size = types.ModelSizeType(
         record['model_size'])
   if 'is_default_candidate' in record:
