@@ -54,7 +54,8 @@ def base_cache_stats_examples():
 
 
 def model_stats_examples(model=('openai', 'gpt-4')):
-  model = model_configs.get_provider_model_config(model_identifier=model)
+  model_configs_instance = model_configs.ModelConfigs()
+  model = model_configs_instance.get_provider_model(model)
   base_provider_stats, total_base_provider_stats = base_provider_stats_examples()
   base_cache_stats, total_base_cache_stats = base_cache_stats_examples()
   example = stat_types.ProviderModelStats(provider_model=model)

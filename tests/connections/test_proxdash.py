@@ -22,6 +22,11 @@ def setup_test(monkeypatch, requests_mock):
   )
   yield
 
+@pytest.fixture
+def model_configs_instance():
+  """Fixture to provide a ModelConfigs instance for testing."""
+  return model_configs.ModelConfigs()
+
 
 def _get_path_dir(temp_path: str):
   temp_dir = tempfile.TemporaryDirectory()
@@ -47,11 +52,12 @@ def _create_test_logging_record(
           {"role": "assistant", "content": "test assistant message"}
       ]
 
+  model_configs_instance = model_configs.ModelConfigs()
   query_record = types.QueryRecord(
       prompt=prompt,
       system=system,
       messages=messages,
-      provider_model=model_configs.ALL_MODELS['mock_provider']['mock_model'],
+      provider_model=model_configs_instance.get_provider_model(('mock_provider', 'mock_model')),
       call_type=types.CallType.GENERATE_TEXT,
       max_tokens=100,
       temperature=0.7,
@@ -1345,7 +1351,7 @@ class TestProxDashConnectionUpdateState:
 
 
 class TestProxDashConnectionHideSensitiveContent:
-  def test_hide_sensitive_content_logging_record(self):
+  def test_hide_sensitive_content_logging_record(self, model_configs_instance):
     connection = proxdash.ProxDashConnection(
         logging_options=types.LoggingOptions(),
         proxdash_options=types.ProxDashOptions(),
@@ -1359,7 +1365,7 @@ class TestProxDashConnectionHideSensitiveContent:
             {"role": "user", "content": "sensitive user message"},
             {"role": "assistant", "content": "sensitive assistant message"}
         ],
-        provider_model=model_configs.ALL_MODELS['mock_provider']['mock_model'],
+        provider_model=model_configs_instance.get_provider_model(('mock_provider', 'mock_model')),
         call_type="completion",
         max_tokens=100,
         temperature=0.7,
@@ -1716,7 +1722,7 @@ class TestProxDashConnectionUploadLoggingRecord:
       )
     _verify_log_messages(temp_dir, [])
 
-  def test_upload_with_complete_logging_record(self, requests_mock):
+  def test_upload_with_complete_logging_record(self, requests_mock, model_configs_instance):
     """Tests upload with a fully populated logging record containing all possible fields."""
     connection, temp_dir, temp_dir_obj = _create_connection()
     logging_record = types.LoggingRecord(
@@ -1727,7 +1733,7 @@ class TestProxDashConnectionUploadLoggingRecord:
                 {"role": "user", "content": "test user message"},
                 {"role": "assistant", "content": "test assistant message"}
             ],
-            provider_model=model_configs.ALL_MODELS['mock_provider']['mock_model'],
+            provider_model=model_configs_instance.get_provider_model(('mock_provider', 'mock_model')),
             call_type=types.CallType.GENERATE_TEXT,
             max_tokens=100,
             temperature=0.7,
