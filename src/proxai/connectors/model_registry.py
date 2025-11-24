@@ -34,7 +34,8 @@ def get_model_connector(
     provider_model_identifier: types.ProviderModelIdentifierType,
     without_additional_args: bool = False
 ) -> Callable[[], model_connector.ProviderModelConnector]:
-  provider_model = model_configs.get_provider_model_config(
+  model_configs_instance = model_configs.ModelConfigs()
+  provider_model = model_configs_instance.get_provider_model(
       provider_model_identifier)
   if provider_model.provider not in _MODEL_CONNECTOR_MAP:
     raise ValueError(f'Provider not supported. {provider_model.provider}')

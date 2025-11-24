@@ -86,7 +86,7 @@ ModelSizeIdentifierType = Union[ModelSizeType, str]
 class ProviderModelMetadataType:
   call_type: Optional[CallType] = None
   is_featured: Optional[bool] = None
-  model_size: Optional[ModelSizeType] = None
+  model_size_tags: Optional[List[ModelSizeType]] = None
   is_default_candidate: Optional[bool] = None
   default_candidate_priority: Optional[int] = None
   tags: Optional[List[str]] = None

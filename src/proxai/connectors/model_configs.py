@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from typing import List
 from importlib import resources
 from types import MappingProxyType
@@ -210,9 +211,10 @@ class ModelConfigs(state_controller.StateControlled):
       query_token_count: int,
       response_token_count: int,
   ) -> int:
-    provider_model = self.get_provider_model_config(
+    provider_model = self.get_provider_model(
         provider_model_identifier)
-    model_pricing_config = self.model_configs_schema.provider_model_configs[
+    version_config = self.model_configs_schema.version_config
+    model_pricing_config = version_config.provider_model_configs[
       provider_model.provider][provider_model.model].pricing
     return math.floor(
         query_token_count * model_pricing_config.per_query_token_cost +
@@ -223,7 +225,8 @@ class ModelConfigs(state_controller.StateControlled):
       provider_model: types.ProviderModelType,
       feature: str,
   ) -> bool:
-    model_features = self.model_configs_schema.provider_model_configs[
+    version_config = self.model_configs_schema.version_config
+    model_features = version_config.provider_model_configs[
         provider_model.provider][provider_model.model].features
     if model_features is None:
       return True
@@ -236,25 +239,26 @@ class ModelConfigs(state_controller.StateControlled):
       call_type: Optional[types.CallType] = types.CallType.GENERATE_TEXT,
       only_featured: Optional[bool] = True,
   ) -> List[types.ProviderModelType]:
+    version_config = self.model_configs_schema.version_config
     if (call_type is not None and
-        call_type not in self.model_configs_schema.models_by_call_type):
+        call_type not in version_config.models_by_call_type):
       raise ValueError(f'Call type not supported: {call_type}')
 
     if (model_size is not None and
-        model_size not in self.model_configs_schema.models_by_size):
+        model_size not in version_config.models_by_size):
       raise ValueError(f'Model size not supported: {model_size}')
 
     if (provider is not None and
-        provider not in self.model_configs_schema.provider_model_configs):
+        provider not in version_config.provider_model_configs):
       supported_providers = list(
-          self.model_configs_schema.provider_model_configs.keys())
+          version_config.provider_model_configs.keys())
       raise ValueError(
           f'Provider not supported: {provider}.\n'
           f'Supported providers: {supported_providers}')
 
     result_provider_models = []
     for provider_name, provider_models in (
-        self.model_configs_schema.provider_model_configs.items()):
+        version_config.provider_model_configs.items()):
       if provider is not None and provider_name != provider:
           continue
 
@@ -264,7 +268,8 @@ class ModelConfigs(state_controller.StateControlled):
           continue
 
         if (model_size is not None and
-            provider_model_config.metadata.model_size != model_size):
+          provider_model_config.metadata.model_size_tags is not None and
+            model_size not in provider_model_config.metadata.model_size_tags):
           continue
 
         if only_featured and not provider_model_config.metadata.is_featured:

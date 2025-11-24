@@ -107,8 +107,10 @@ def encode_provider_model_metadata_type(
     record['call_type'] = provider_model_metadata_type.call_type.value
   if provider_model_metadata_type.is_featured != None:
     record['is_featured'] = provider_model_metadata_type.is_featured
-  if provider_model_metadata_type.model_size != None:
-    record['model_size'] = provider_model_metadata_type.model_size.value
+  if provider_model_metadata_type.model_size_tags != None:
+    record['model_size_tags'] = [
+        model_size_tag.value
+        for model_size_tag in provider_model_metadata_type.model_size_tags]
   if provider_model_metadata_type.is_default_candidate != None:
     record['is_default_candidate'] = (
         provider_model_metadata_type.is_default_candidate)
@@ -127,9 +129,10 @@ def decode_provider_model_metadata_type(
     provider_model_metadata_type.call_type = types.CallType(record['call_type'])
   if 'is_featured' in record:
     provider_model_metadata_type.is_featured = record['is_featured']
-  if 'model_size' in record and record['model_size'] is not None:
-    provider_model_metadata_type.model_size = types.ModelSizeType(
-        record['model_size'])
+  if 'model_size_tags' in record and record['model_size_tags'] is not None:
+    provider_model_metadata_type.model_size_tags = [
+        types.ModelSizeType(model_size_tag)
+        for model_size_tag in record['model_size_tags']]
   if 'is_default_candidate' in record:
     provider_model_metadata_type.is_default_candidate = (
         record['is_default_candidate'])

@@ -47,10 +47,13 @@ def _get_provider_model_metadata_type_options():
       {'call_type': types.CallType.GENERATE_TEXT},
       {'is_featured': True},
       {'is_featured': False},
-      {'model_size': types.ModelSizeType.SMALL},
-      {'model_size': types.ModelSizeType.MEDIUM},
-      {'model_size': types.ModelSizeType.LARGE},
-      {'model_size': types.ModelSizeType.LARGEST},
+      {'model_size_tags': []},
+      {'model_size_tags': [types.ModelSizeType.SMALL]},
+      {'model_size_tags': [types.ModelSizeType.MEDIUM]},
+      {'model_size_tags': [types.ModelSizeType.LARGE]},
+      {'model_size_tags': [types.ModelSizeType.LARGEST]},
+      {'model_size_tags': [types.ModelSizeType.SMALL, types.ModelSizeType.MEDIUM]},
+      {'model_size_tags': [types.ModelSizeType.LARGE, types.ModelSizeType.LARGEST]},
       {'is_default_candidate': True},
       {'is_default_candidate': False},
       {'default_candidate_priority': 1},
@@ -60,7 +63,7 @@ def _get_provider_model_metadata_type_options():
       {'tags': ['tag1', 'tag2', 'tag3']},
       {'call_type': types.CallType.GENERATE_TEXT,
        'is_featured': True,
-       'model_size': types.ModelSizeType.LARGE,
+       'model_size_tags': [types.ModelSizeType.LARGE],
        'is_default_candidate': True,
        'default_candidate_priority': 5,
        'tags': ['tag1', 'tag2']},]
@@ -88,7 +91,7 @@ def _get_provider_model_config_type_options():
        'metadata': types.ProviderModelMetadataType(
           call_type=types.CallType.GENERATE_TEXT,
           is_featured=True,
-          model_size=types.ModelSizeType.LARGEST,
+          model_size_tags=[types.ModelSizeType.LARGEST],
           is_default_candidate=True,
           default_candidate_priority=10,
           tags=['production', 'recommended'])},]
@@ -174,7 +177,7 @@ def _get_model_configs_schema_version_config_type_options():
                   metadata=types.ProviderModelMetadataType(
                       call_type=types.CallType.GENERATE_TEXT,
                       is_featured=True,
-                      model_size=types.ModelSizeType.LARGE)),
+                      model_size_tags=[types.ModelSizeType.LARGE])),
               'o3-mini': types.ProviderModelConfigType(
                   provider_model=model_configs_instance.get_provider_model(
                       ('openai', 'o3-mini')))},
@@ -184,7 +187,7 @@ def _get_model_configs_schema_version_config_type_options():
                       ('claude', 'opus-4')),
                   metadata=types.ProviderModelMetadataType(
                       is_featured=True,
-                      model_size=types.ModelSizeType.LARGEST)),
+                      model_size_tags=[types.ModelSizeType.LARGEST])),
               'sonnet-4': types.ProviderModelConfigType(
                   provider_model=model_configs_instance.get_provider_model(
                       ('claude', 'sonnet-4')))}},
@@ -261,7 +264,7 @@ def _get_model_configs_schema_type_options():
                       metadata=types.ProviderModelMetadataType(
                           call_type=types.CallType.GENERATE_TEXT,
                           is_featured=True,
-                          model_size=types.ModelSizeType.LARGE)),
+                          model_size_tags=[types.ModelSizeType.LARGE])),
                   'o3-mini': types.ProviderModelConfigType(
                       provider_model=model_configs_instance.get_provider_model(
                           ('openai', 'o3-mini')))},
@@ -271,7 +274,7 @@ def _get_model_configs_schema_type_options():
                           ('claude', 'opus-4')),
                       metadata=types.ProviderModelMetadataType(
                           is_featured=True,
-                          model_size=types.ModelSizeType.LARGEST)),
+                          model_size_tags=[types.ModelSizeType.LARGEST])),
                   'sonnet-4': types.ProviderModelConfigType(
                       provider_model=model_configs_instance.get_provider_model(
                           ('claude', 'sonnet-4')))}},
@@ -681,7 +684,8 @@ class TestTypeSerializer:
       _get_provider_model_type_options())
   def test_encode_decode_provider_model_type(self, provider_model_type_options):
     # Test successful encode/decode round-trip
-    provider_model_type = model_configs.get_provider_model(
+    model_configs_instance = model_configs.ModelConfigs()
+    provider_model_type = model_configs_instance.get_provider_model(
         (provider_model_type_options['provider'],
          provider_model_type_options['model']))
     encoded_provider_model_type = type_serializer.encode_provider_model_type(
