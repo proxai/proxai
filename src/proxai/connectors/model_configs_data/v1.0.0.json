@@ -22,8 +22,8 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": null,
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -43,8 +43,8 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": null,
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -64,8 +64,8 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": null,
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -85,8 +85,11 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "large",
+              "largest"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -104,8 +107,10 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "medium"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -123,8 +128,10 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "small"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -142,8 +149,10 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "large"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -161,8 +170,10 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "large"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -179,9 +190,9 @@
           },
           "features": {},
           "metadata": {
-            "call_type": "GENERATE_TEXT",
+            "call_type": null,
             "is_featured": false,
-            "model_size": null,
+            "model_size_tags": null,
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -198,9 +209,9 @@
           },
           "features": {},
           "metadata": {
-            "call_type": "GENERATE_TEXT",
+            "call_type": null,
             "is_featured": false,
-            "model_size": null,
+            "model_size_tags": null,
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -218,8 +229,10 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "small"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -236,9 +249,9 @@
           },
           "features": {},
           "metadata": {
-            "call_type": "GENERATE_TEXT",
+            "call_type": null,
             "is_featured": false,
-            "model_size": null,
+            "model_size_tags": null,
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -255,9 +268,9 @@
           },
           "features": {},
           "metadata": {
-            "call_type": "GENERATE_TEXT",
+            "call_type": null,
             "is_featured": false,
-            "model_size": null,
+            "model_size_tags": null,
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -279,8 +292,10 @@
           },
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "large"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -298,8 +313,10 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "large"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -317,8 +334,10 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "large"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -342,8 +361,10 @@
           },
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "medium"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -366,8 +387,10 @@
           },
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "medium"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -392,8 +415,10 @@
           },
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "medium"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -416,8 +441,10 @@
           },
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "small"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -440,8 +467,10 @@
           },
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "large"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -458,9 +487,9 @@
           },
           "features": {},
           "metadata": {
-            "call_type": "GENERATE_TEXT",
+            "call_type": null,
             "is_featured": false,
-            "model_size": null,
+            "model_size_tags": null,
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -478,8 +507,10 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "large"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -497,8 +528,10 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "large"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -516,8 +549,10 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "large"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -534,9 +569,9 @@
           },
           "features": {},
           "metadata": {
-            "call_type": "GENERATE_TEXT",
+            "call_type": null,
             "is_featured": false,
-            "model_size": null,
+            "model_size_tags": null,
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -554,8 +589,10 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "medium"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -575,8 +612,10 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "large"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -594,8 +633,11 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "large",
+              "largest"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -613,8 +655,8 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": null,
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -632,8 +674,10 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "medium"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -651,8 +695,8 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": null,
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -670,8 +714,8 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": null,
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -689,8 +733,8 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": null,
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -708,8 +752,8 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": null,
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -727,8 +771,10 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "small"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -748,8 +794,11 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "large",
+              "largest"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -767,8 +816,10 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "medium"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -786,8 +837,8 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": null,
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -805,8 +856,10 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "small"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -824,8 +877,8 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": null,
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -843,8 +896,8 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": null,
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -862,8 +915,8 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": null,
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -881,8 +934,10 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "medium"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -902,8 +957,11 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "large",
+              "largest"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -921,8 +979,10 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "small"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -940,8 +1000,10 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "large"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -959,8 +1021,8 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": null,
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -978,8 +1040,10 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "small"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -997,8 +1061,10 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "medium"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1016,8 +1082,10 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "medium"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1035,8 +1103,10 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "small"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1054,8 +1124,8 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": null,
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1075,8 +1145,8 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": null,
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1094,8 +1164,10 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "large"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1113,8 +1185,10 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "large"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1132,8 +1206,11 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "large",
+              "largest"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1152,7 +1229,7 @@
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_featured": false,
-            "model_size": null,
+            "model_size_tags": null,
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1170,8 +1247,11 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "large",
+              "largest"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1189,8 +1269,10 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "large"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1214,8 +1296,10 @@
           },
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "small"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1237,8 +1321,8 @@
           },
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": null,
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1260,8 +1344,8 @@
           },
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": null,
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1283,8 +1367,11 @@
           },
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "medium",
+              "largest"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1302,8 +1389,8 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": null,
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1325,8 +1412,8 @@
           },
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": null,
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1348,8 +1435,10 @@
           },
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "small"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1371,8 +1460,8 @@
           },
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": null,
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1394,8 +1483,8 @@
           },
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": null,
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1417,8 +1506,10 @@
           },
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "medium"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1440,8 +1531,8 @@
           },
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": null,
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1463,8 +1554,10 @@
           },
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "small"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1486,8 +1579,10 @@
           },
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "medium"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1507,8 +1602,10 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "medium"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1526,8 +1623,10 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "medium"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1545,8 +1644,11 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "large",
+              "largest"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1564,8 +1666,11 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "large",
+              "largest"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1583,8 +1688,10 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "large"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1602,8 +1709,10 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "large"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1623,8 +1732,10 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "small"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1642,8 +1753,11 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "medium",
+              "largest"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1663,8 +1777,11 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "large",
+              "largest"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1682,8 +1799,10 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "large"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1701,8 +1820,10 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "small"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
@@ -1720,8 +1841,10 @@
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_featured": false,
-            "model_size": null,
+            "is_featured": true,
+            "model_size_tags": [
+              "medium"
+            ],
             "is_default_candidate": false,
             "default_candidate_priority": null
           }
