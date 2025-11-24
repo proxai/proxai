@@ -37,15 +37,16 @@ def _get_example_logging_record(
 
 def _get_example_model_status():
   data = types.ModelStatus()
+  model_configs_instance = model_configs.ModelConfigs()
   models = [
-      model_configs.ALL_MODELS['openai']['gpt-3.5-turbo'],
-      model_configs.ALL_MODELS['claude']['haiku-3.5'],
-      model_configs.ALL_MODELS['openai']['gpt-4'],
-      model_configs.ALL_MODELS['claude']['opus-4'],
-      model_configs.ALL_MODELS['openai']['gpt-4.1-mini'],
-      model_configs.ALL_MODELS['claude']['sonnet-4'],
-      model_configs.ALL_MODELS['gemini']['gemini-1.5-pro'],
-      model_configs.ALL_MODELS['cohere']['command-r']
+      model_configs_instance.get_provider_model(('openai', 'gpt-3.5-turbo')),
+      model_configs_instance.get_provider_model(('claude', 'haiku-3.5')),
+      model_configs_instance.get_provider_model(('openai', 'gpt-4')),
+      model_configs_instance.get_provider_model(('claude', 'opus-4')),
+      model_configs_instance.get_provider_model(('openai', 'gpt-4.1-mini')),
+      model_configs_instance.get_provider_model(('claude', 'sonnet-4')),
+      model_configs_instance.get_provider_model(('gemini', 'gemini-1.5-pro')),
+      model_configs_instance.get_provider_model(('cohere', 'command-r'))
   ]
 
   data.unprocessed_models.add(models[0])
@@ -376,6 +377,7 @@ class TestModelCacheManager:
         models[2]].response_record.error == 'model_2 error'
 
   def test_update_invalid_provider_query(self):
+    model_configs_instance = model_configs.ModelConfigs()
     cache_path, temp_dir = _get_path_dir('test_cache')
     cache_manager = model_cache.ModelCacheManager(
         cache_options=types.CacheOptions(cache_path=cache_path))
@@ -392,9 +394,9 @@ class TestModelCacheManager:
       cache_manager.update(
         types.ModelStatus(
             provider_queries={
-                model_configs.ALL_MODELS['mistral']['open-mistral-7b']:
+                model_configs_instance.get_provider_model(('mistral', 'open-mistral-7b')):
                     _get_example_logging_record(
-                        model_configs.ALL_MODELS['mistral']['open-mistral-7b'],
+                        model_configs_instance.get_provider_model(('mistral', 'open-mistral-7b')),
                         response='model_1 response')
             }),
         types.CallType.GENERATE_TEXT)

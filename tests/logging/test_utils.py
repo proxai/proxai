@@ -16,7 +16,7 @@ def _get_query_record_examples():
       {'system': 'Test system'},
       {'messages': [{'role': 'user', 'content': 'Test message'}]},
       {'call_type': types.CallType.GENERATE_TEXT,
-       'provider_model': model_configs_instance.get_provider_model_config(
+       'provider_model': model_configs_instance.get_provider_model(
            ('openai', 'gpt-4')),
        'prompt': 'Test prompt',
        'system': 'Test system',

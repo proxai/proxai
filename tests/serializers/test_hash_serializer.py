@@ -7,7 +7,7 @@ def _get_query_record_options():
   model_configs_instance = model_configs.ModelConfigs()
   return [
       {'call_type': types.CallType.GENERATE_TEXT},
-      {'provider_model': model_configs_instance.get_provider_model_config(
+      {'provider_model': model_configs_instance.get_provider_model(
           ('openai', 'gpt-4'))},
       {'prompt': 'Hello, world!'},
       {'system': 'Hello, system!'},
@@ -16,7 +16,7 @@ def _get_query_record_options():
       {'temperature': 0.5},
       {'stop': ['.', '?', '!']},
       {'call_type': types.CallType.GENERATE_TEXT,
-       'provider_model': model_configs_instance.get_provider_model_config(
+       'provider_model': model_configs_instance.get_provider_model(
            ('openai', 'gpt-4')),
        'prompt': 'Hello, world!',
        'system': 'Hello, system!',
