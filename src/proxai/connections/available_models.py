@@ -336,14 +336,17 @@ class AvailableModels(state_controller.StateControlled):
 
   @staticmethod
   def _test_generate_text(
+      model_configs_state: types.ModelConfigsState,
       provider_model_state: types.ProviderModelState,
       verbose: bool = False
   ) -> List[types.LoggingRecord]:
     if verbose:
       print(f'Testing {provider_model_state.provider_model}...')
     start_utc_date = datetime.datetime.now(datetime.timezone.utc)
+    model_configs_instance = model_configs.ModelConfigs(init_state=model_configs_state)
     model_connector = model_registry.get_model_connector(
         provider_model_state.provider_model,
+        model_configs=model_configs_instance,
         without_additional_args=True)
     model_connector = model_connector(init_state=provider_model_state)
     try:
@@ -433,7 +436,10 @@ class AvailableModels(state_controller.StateControlled):
       for provider_model, connector in model_connectors.items():
         pool_result = pool.apply_async(
             test_func,
-            args=(connector.get_state(), verbose))
+            args=(
+                self.model_configs.get_state(),
+                connector.get_state(),
+                verbose))
         pool_results.append((provider_model, pool_result))
       pool.close()
       for provider_model, pool_result in pool_results:
@@ -489,7 +495,10 @@ class AvailableModels(state_controller.StateControlled):
 
     test_results = []
     for connector in model_connectors.values():
-      test_results.append(test_func(connector.get_state(), verbose))
+      test_results.append(test_func(
+          self.model_configs.get_state(),
+          connector.get_state(),
+          verbose))
 
     return test_results
 
