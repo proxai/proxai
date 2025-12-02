@@ -333,7 +333,8 @@ def _get_model_connector(
     provider_model_identifier: types.ProviderModelIdentifierType
 ) -> model_connector.ProviderModelConnector:
   global _MODEL_CONNECTORS
-  provider_model = model_configs.get_provider_model_config(
+  model_configs_instance = _get_model_configs()
+  provider_model = model_configs_instance.get_provider_model(
       provider_model_identifier)
   if provider_model in _MODEL_CONNECTORS:
     return _MODEL_CONNECTORS[provider_model]
@@ -365,7 +366,8 @@ def _get_registered_model_connector(
               types.CallType.GENERATE_TEXT).working_models):
         print('Checking available models, this may take a while...')
       models = get_available_models().list_models(return_all=True)
-      for provider_model in model_configs.PREFERRED_DEFAULT_MODELS:
+      model_configs_instance = _get_model_configs()
+      for provider_model in model_configs_instance.get_default_model_priority_list():
         if provider_model in models.working_models:
           _REGISTERED_MODEL_CONNECTORS[call_type] = _get_model_connector(
               provider_model)
@@ -458,7 +460,8 @@ def set_model(
   if generate_text:
     provider_model = generate_text
 
-  type_utils.check_provider_model_identifier_type(provider_model)
+  model_configs_instance = _get_model_configs()
+  model_configs_instance.check_provider_model_identifier_type(provider_model)
   _REGISTERED_MODEL_CONNECTORS[
       types.CallType.GENERATE_TEXT] = _get_model_connector(provider_model)
 
@@ -679,6 +682,8 @@ def check_health(
     proxdash_options = copy.deepcopy(_get_proxdash_options())
     proxdash_options.stdout = verbose
 
+  model_configs_instance = _get_model_configs()
+
   proxdash_connection = proxdash.ProxDashConnection(
       hidden_run_key=_get_hidden_run_key(),
       experiment_path=experiment_path,
@@ -688,7 +693,7 @@ def check_health(
   def _get_modified_model_connector(
       provider_model_identifier: types.ProviderModelIdentifierType
   ) -> model_connector.ProviderModelConnector:
-    provider_model = model_configs.get_provider_model_config(
+    provider_model = model_configs_instance.get_provider_model(
         provider_model_identifier)
     connector = model_registry.get_model_connector(
         provider_model,
@@ -735,13 +740,13 @@ def check_health(
     for provider in sorted(providers):
       print(f'> {provider}:')
       for model in sorted(result_table[provider]['working']):
-        provider_model = model_configs.get_provider_model_config(
+        provider_model = model_configs_instance.get_provider_model(
             (provider, model))
         duration = model_status.provider_queries[
             provider_model].response_record.response_time
         print(f'   [ WORKING | {duration.total_seconds():6.2f}s ]: {model}')
       for model in sorted(result_table[provider]['failed']):
-        provider_model = model_configs.get_provider_model_config(
+        provider_model = model_configs_instance.get_provider_model(
             (provider, model))
         duration = model_status.provider_queries[
             provider_model].response_record.response_time
