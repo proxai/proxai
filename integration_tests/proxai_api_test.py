@@ -285,7 +285,7 @@ def generate_text(state_data):
 def generate_text_with_provider_model(state_data):
   response = px.generate_text(
       'Hello! Which model are you?',
-      provider_model=('cohere', 'command'))
+      provider_model=('cohere', 'command-a'))
   print(response)
   return state_data
 
@@ -741,7 +741,7 @@ def proxdash_logging_record_with_all_options(state_data):
   print('    * Messages:')
   print('    * Temperature: 0.3')
   print('    * Max Tokens: 2000')
-  print('    * Stop: ["\\n\\n"]')
+  print('    * Stop: ["STOP"]')
   print('    * Provider Model: openai/gpt-4.1')
   _manual_user_check(
       test_message='All details are correct?',
