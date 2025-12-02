@@ -336,14 +336,17 @@ class AvailableModels(state_controller.StateControlled):
 
   @staticmethod
   def _test_generate_text(
-      model_configs_state: types.ModelConfigsState,
       provider_model_state: types.ProviderModelState,
-      verbose: bool = False
+      verbose: bool = False,
+      model_configs_state: Optional[types.ModelConfigsState] = None,
+      model_configs_instance: Optional[model_configs.ModelConfigs] = None
   ) -> List[types.LoggingRecord]:
     if verbose:
       print(f'Testing {provider_model_state.provider_model}...')
     start_utc_date = datetime.datetime.now(datetime.timezone.utc)
-    model_configs_instance = model_configs.ModelConfigs(init_state=model_configs_state)
+    if model_configs_instance is None:
+      model_configs_instance = model_configs.ModelConfigs(
+          init_state=model_configs_state)
     model_connector = model_registry.get_model_connector(
         provider_model_state.provider_model,
         model_configs=model_configs_instance,
@@ -433,13 +436,16 @@ class AvailableModels(state_controller.StateControlled):
     try:
       pool = multiprocessing.Pool(processes=process_count)
       pool_results = []
+      model_configs_state = self.model_configs.get_state()
       for provider_model, connector in model_connectors.items():
         pool_result = pool.apply_async(
             test_func,
             args=(
-                self.model_configs.get_state(),
                 connector.get_state(),
-                verbose))
+                verbose),
+            kwds={
+                'model_configs_state': model_configs_state,
+            })
         pool_results.append((provider_model, pool_result))
       pool.close()
       for provider_model, pool_result in pool_results:
@@ -496,9 +502,9 @@ class AvailableModels(state_controller.StateControlled):
     test_results = []
     for connector in model_connectors.values():
       test_results.append(test_func(
-          self.model_configs.get_state(),
           connector.get_state(),
-          verbose))
+          verbose,
+          model_configs_instance=self.model_configs))
 
     return test_results
 
