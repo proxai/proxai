@@ -521,12 +521,162 @@ class TestValidateVersionConfig:
     model_configs_instance._validate_version_config(version_config)
 
 
+class TestValidateProviderModelKeyMatchesConfig:
+  def test_valid_config(self, model_configs_instance):
+    config = create_minimal_provider_model_config('openai', 'gpt-4')
+    model_configs_instance._validate_provider_model_key_matches_config(
+        'openai', 'gpt-4', config)
+
+  def test_provider_model_is_none(self, model_configs_instance):
+    config = types.ProviderModelConfigType(provider_model=None)
+    with pytest.raises(ValueError, match='provider_model is None'):
+      model_configs_instance._validate_provider_model_key_matches_config(
+          'openai', 'gpt-4', config)
+
+  def test_provider_mismatch(self, model_configs_instance):
+    config = create_minimal_provider_model_config('claude', 'gpt-4')
+    with pytest.raises(ValueError, match='Provider mismatch'):
+      model_configs_instance._validate_provider_model_key_matches_config(
+          'openai', 'gpt-4', config)
+
+  def test_model_mismatch(self, model_configs_instance):
+    config = create_minimal_provider_model_config('openai', 'gpt-3')
+    with pytest.raises(ValueError, match='Model mismatch'):
+      model_configs_instance._validate_provider_model_key_matches_config(
+          'openai', 'gpt-4', config)
+
+
+class TestValidatePricing:
+  def test_valid_pricing(self, model_configs_instance):
+    pricing = types.ProviderModelPricingType(
+        per_query_token_cost=1.0,
+        per_response_token_cost=2.0)
+    model_configs_instance._validate_pricing('openai', 'gpt-4', pricing)
+
+  def test_zero_pricing_is_valid(self, model_configs_instance):
+    pricing = types.ProviderModelPricingType(
+        per_query_token_cost=0.0,
+        per_response_token_cost=0.0)
+    model_configs_instance._validate_pricing('openai', 'gpt-4', pricing)
+
+  def test_pricing_is_none(self, model_configs_instance):
+    with pytest.raises(ValueError, match='pricing is None'):
+      model_configs_instance._validate_pricing('openai', 'gpt-4', None)
+
+  def test_negative_query_cost(self, model_configs_instance):
+    pricing = types.ProviderModelPricingType(
+        per_query_token_cost=-1.0,
+        per_response_token_cost=2.0)
+    with pytest.raises(ValueError, match='per_query_token_cost is negative'):
+      model_configs_instance._validate_pricing('openai', 'gpt-4', pricing)
+
+  def test_negative_response_cost(self, model_configs_instance):
+    pricing = types.ProviderModelPricingType(
+        per_query_token_cost=1.0,
+        per_response_token_cost=-2.0)
+    with pytest.raises(ValueError, match='per_response_token_cost is negative'):
+      model_configs_instance._validate_pricing('openai', 'gpt-4', pricing)
+
+
+class TestValidateModelSizeTags:
+  def test_valid_size_tags(self, model_configs_instance):
+    model_configs_instance._validate_model_size_tags(
+        'openai', 'gpt-4',
+        [types.ModelSizeType.LARGE, types.ModelSizeType.LARGEST])
+
+  def test_empty_size_tags(self, model_configs_instance):
+    model_configs_instance._validate_model_size_tags('openai', 'gpt-4', [])
+
+  def test_invalid_size_tag_string(self, model_configs_instance):
+    with pytest.raises(ValueError, match='Invalid model_size_tag'):
+      model_configs_instance._validate_model_size_tags(
+          'openai', 'gpt-4', ['invalid_size'])
+
+  def test_invalid_size_tag_mixed(self, model_configs_instance):
+    with pytest.raises(ValueError, match='Invalid model_size_tag'):
+      model_configs_instance._validate_model_size_tags(
+          'openai', 'gpt-4', [types.ModelSizeType.LARGE, 'invalid'])
+
+
+class TestValidateProviderModelConfig:
+  def test_valid_config(self, model_configs_instance):
+    config = create_minimal_provider_model_config(
+        'openai', 'gpt-4',
+        model_size_tags=[types.ModelSizeType.LARGE])
+    model_configs_instance._validate_provider_model_config(
+        'openai', 'gpt-4', config)
+
+  def test_config_without_metadata(self, model_configs_instance):
+    config = types.ProviderModelConfigType(
+        provider_model=types.ProviderModelType(
+            provider='openai', model='gpt-4',
+            provider_model_identifier='gpt-4-id'),
+        pricing=types.ProviderModelPricingType(
+            per_query_token_cost=1.0,
+            per_response_token_cost=1.0),
+        metadata=None)
+    model_configs_instance._validate_provider_model_config(
+        'openai', 'gpt-4', config)
+
+  def test_config_with_none_size_tags(self, model_configs_instance):
+    config = create_minimal_provider_model_config(
+        'openai', 'gpt-4', model_size_tags=None)
+    model_configs_instance._validate_provider_model_config(
+        'openai', 'gpt-4', config)
+
+
+class TestValidateProviderModelConfigs:
+  def test_valid_configs(self, model_configs_instance):
+    configs = {
+        'openai': {
+            'gpt-4': create_minimal_provider_model_config('openai', 'gpt-4'),
+        },
+        'claude': {
+            'opus': create_minimal_provider_model_config('claude', 'opus'),
+        }
+    }
+    model_configs_instance._validate_provider_model_configs(configs)
+
+  def test_empty_configs(self, model_configs_instance):
+    model_configs_instance._validate_provider_model_configs({})
+
+  def test_catches_provider_mismatch(self, model_configs_instance):
+    configs = {
+        'openai': {
+            'gpt-4': create_minimal_provider_model_config('wrong_provider', 'gpt-4'),
+        }
+    }
+    with pytest.raises(ValueError, match='Provider mismatch'):
+      model_configs_instance._validate_provider_model_configs(configs)
+
+  def test_catches_model_mismatch(self, model_configs_instance):
+    configs = {
+        'openai': {
+            'gpt-4': create_minimal_provider_model_config('openai', 'wrong_model'),
+        }
+    }
+    with pytest.raises(ValueError, match='Model mismatch'):
+      model_configs_instance._validate_provider_model_configs(configs)
+
+  def test_catches_negative_pricing(self, model_configs_instance):
+    config = create_minimal_provider_model_config('openai', 'gpt-4')
+    config.pricing.per_query_token_cost = -1.0
+    configs = {'openai': {'gpt-4': config}}
+    with pytest.raises(ValueError, match='per_query_token_cost is negative'):
+      model_configs_instance._validate_provider_model_configs(configs)
+
+
 class TestBuiltInConfigValidation:
   """Test that the built-in v1.0.0.json config passes validation."""
 
   def test_built_in_config_passes_validation(self):
     mc = model_configs.ModelConfigs()
     assert mc.model_configs_schema is not None
+
+  def test_provider_model_configs_validation(self, model_configs_instance):
+    schema = model_configs_instance.model_configs_schema
+    configs = schema.version_config.provider_model_configs
+    model_configs_instance._validate_provider_model_configs(configs)
 
   def test_featured_models_consistency(self, model_configs_instance):
     schema = model_configs_instance.model_configs_schema

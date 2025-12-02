@@ -166,6 +166,85 @@ class ModelConfigs(state_controller.StateControlled):
             by_size[size_tag].add((provider, model_name))
     return by_size
 
+  def _validate_provider_model_key_matches_config(
+      self,
+      provider_key: str,
+      model_key: str,
+      config: types.ProviderModelConfigType):
+    """Validate provider_model fields match the dict keys."""
+    if config.provider_model is None:
+      raise ValueError(
+          f'provider_model is None for config at '
+          f'provider_model_configs[{provider_key}][{model_key}]')
+
+    if config.provider_model.provider != provider_key:
+      raise ValueError(
+          f'Provider mismatch: config key is "{provider_key}" but '
+          f'provider_model.provider is "{config.provider_model.provider}"')
+
+    if config.provider_model.model != model_key:
+      raise ValueError(
+          f'Model mismatch: config key is "{model_key}" but '
+          f'provider_model.model is "{config.provider_model.model}"')
+
+  def _validate_pricing(
+      self,
+      provider_key: str,
+      model_key: str,
+      pricing: types.ProviderModelPricingType):
+    """Validate pricing values are non-negative."""
+    if pricing is None:
+      raise ValueError(
+          f'pricing is None for provider_model_configs[{provider_key}][{model_key}]')
+
+    if pricing.per_query_token_cost < 0:
+      raise ValueError(
+          f'per_query_token_cost is negative ({pricing.per_query_token_cost}) '
+          f'for provider_model_configs[{provider_key}][{model_key}]')
+
+    if pricing.per_response_token_cost < 0:
+      raise ValueError(
+          f'per_response_token_cost is negative ({pricing.per_response_token_cost}) '
+          f'for provider_model_configs[{provider_key}][{model_key}]')
+
+  def _validate_model_size_tags(
+      self,
+      provider_key: str,
+      model_key: str,
+      model_size_tags: List[types.ModelSizeType]):
+    """Validate model_size_tags contains only valid ModelSizeType values."""
+    valid_sizes = {size for size in types.ModelSizeType}
+    for tag in model_size_tags:
+      if tag not in valid_sizes:
+        raise ValueError(
+            f'Invalid model_size_tag "{tag}" for '
+            f'provider_model_configs[{provider_key}][{model_key}]. '
+            f'Valid values: {[s.value for s in types.ModelSizeType]}')
+
+  def _validate_provider_model_config(
+      self,
+      provider_key: str,
+      model_key: str,
+      config: types.ProviderModelConfigType):
+    """Validate a single ProviderModelConfigType."""
+    self._validate_provider_model_key_matches_config(
+        provider_key, model_key, config)
+
+    self._validate_pricing(provider_key, model_key, config.pricing)
+
+    if (config.metadata and
+        config.metadata.model_size_tags is not None):
+      self._validate_model_size_tags(
+          provider_key, model_key, config.metadata.model_size_tags)
+
+  def _validate_provider_model_configs(
+      self,
+      provider_model_configs: types.ProviderModelConfigsType):
+    """Validate all provider model configs."""
+    for provider_key, models in provider_model_configs.items():
+      for model_key, config in models.items():
+        self._validate_provider_model_config(provider_key, model_key, config)
+
   def _validate_featured_models(
       self,
       provider_model_configs: types.ProviderModelConfigsType,
@@ -283,6 +362,8 @@ class ModelConfigs(state_controller.StateControlled):
     provider_model_configs = version_config.provider_model_configs
     if provider_model_configs is None:
       return
+
+    self._validate_provider_model_configs(provider_model_configs)
 
     if version_config.featured_models is not None:
       self._validate_featured_models(
