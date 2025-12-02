@@ -24,6 +24,7 @@ class ProviderModelConnector(state_controller.StateControlled):
   _provider_model: Optional[types.ProviderModelType]
   _run_type: Optional[types.RunType]
   _get_run_type: Optional[Callable[[], types.RunType]]
+  _model_configs: Optional[model_configs.ModelConfigs]
   _strict_feature_test: Optional[bool]
   _get_strict_feature_test: Optional[Callable[[], bool]]
   _query_cache_manager: Optional[query_cache.QueryCacheManager]
@@ -44,6 +45,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       self,
       provider_model: Optional[types.ProviderModelType] = None,
       run_type: Optional[types.RunType] = None,
+      model_configs: Optional[model_configs.ModelConfigs] = None,
       get_run_type: Optional[Callable[[], types.RunType]] = None,
       strict_feature_test: Optional[bool] = None,
       get_strict_feature_test: Optional[Callable[[], bool]] = None,
@@ -61,6 +63,7 @@ class ProviderModelConnector(state_controller.StateControlled):
         init_state=init_state,
         provider_model=provider_model,
         run_type=run_type,
+        model_configs=model_configs,
         get_run_type=get_run_type,
         strict_feature_test=strict_feature_test,
         get_strict_feature_test=get_strict_feature_test,
@@ -70,10 +73,6 @@ class ProviderModelConnector(state_controller.StateControlled):
         get_logging_options=get_logging_options,
         proxdash_connection=proxdash_connection,
         get_proxdash_connection=get_proxdash_connection)
-
-    # TODO: This will be removed after having model config as parameter and
-    # proper state controller functions are implemented.
-    self._model_configs = model_configs.ModelConfigs()
 
     if init_state:
       if init_state.provider_model is None:
@@ -95,6 +94,7 @@ class ProviderModelConnector(state_controller.StateControlled):
 
       self.provider_model = provider_model
       self.run_type = run_type
+      self.model_configs = model_configs
       self.strict_feature_test = strict_feature_test
       self.query_cache_manager = query_cache_manager
       self.logging_options = logging_options
@@ -176,6 +176,20 @@ class ProviderModelConnector(state_controller.StateControlled):
     self.set_property_value('run_type', value)
 
   @property
+  def model_configs(self) -> model_configs.ModelConfigs:
+    return self.get_state_controlled_property_value('model_configs')
+
+  @model_configs.setter
+  def model_configs(self, model_configs: model_configs.ModelConfigs):
+    self.set_state_controlled_property_value('model_configs', model_configs)
+
+  def model_configs_deserializer(
+      self,
+      state_value: types.ModelConfigsState
+  ) -> model_configs.ModelConfigs:
+    return model_configs.ModelConfigs(init_state=state_value)
+
+  @property
   def strict_feature_test(self):
     return self.get_property_value('strict_feature_test')
 
@@ -244,7 +258,7 @@ class ProviderModelConnector(state_controller.StateControlled):
         if getattr(query_record, field.name) is None
     ]
     for feature in none_value_properties:
-      if not self._model_configs.is_feature_supported(
+      if not self.model_configs.is_feature_supported(
           provider_model=self.provider_model,
           feature=feature):
         self.feature_fail(
@@ -278,7 +292,7 @@ class ProviderModelConnector(state_controller.StateControlled):
     response_token_count = logging_record.response_record.token_count
     if type(response_token_count) != int:
       response_token_count = 0
-    return self._model_configs.get_provider_model_cost(
+    return self.model_configs.get_provider_model_cost(
         provider_model_identifier=logging_record.query_record.provider_model,
         query_token_count=query_token_count,
         response_token_count=response_token_count)
@@ -367,7 +381,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       type_utils.check_messages_type(messages)
 
     if provider_model is not None:
-      provider_model = self._model_configs.get_provider_model_config(
+      provider_model = self.model_configs.get_provider_model_config(
           model_identifier=provider_model)
       if provider_model != self.provider_model:
         raise ValueError(

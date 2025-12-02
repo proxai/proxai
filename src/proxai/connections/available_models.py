@@ -67,6 +67,7 @@ class AvailableModels(state_controller.StateControlled):
         init_state=init_state,
         run_type=run_type,
         get_run_type=get_run_type,
+        model_configs=model_configs,
         model_cache_manager=model_cache_manager,
         get_model_cache_manager=get_model_cache_manager,
         logging_options=logging_options,

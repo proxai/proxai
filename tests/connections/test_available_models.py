@@ -59,6 +59,7 @@ class TestAvailableModels:
       return self.initialized_model_connectors[provider_model]
     connector = model_registry.get_model_connector(provider_model)
     self.initialized_model_connectors[provider_model] = connector(
+        model_configs=model_configs.ModelConfigs(),
         logging_options=types.LoggingOptions(),
         proxdash_connection=proxdash.ProxDashConnection(
             logging_options=types.LoggingOptions(),
