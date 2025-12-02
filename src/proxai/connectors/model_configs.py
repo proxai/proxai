@@ -547,9 +547,9 @@ class ModelConfigs(state_controller.StateControlled):
             provider_model_config.metadata.call_type != call_type):
           continue
 
-        if (model_size is not None and
-          provider_model_config.metadata.model_size_tags is not None and
-            model_size not in provider_model_config.metadata.model_size_tags):
+        if (model_size is not None and (
+            provider_model_config.metadata.model_size_tags is None or
+            model_size not in provider_model_config.metadata.model_size_tags)):
           continue
 
         if only_featured and not provider_model_config.metadata.is_featured:

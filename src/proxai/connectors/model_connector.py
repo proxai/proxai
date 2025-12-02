@@ -23,8 +23,8 @@ _PROVIDER_MODEL_STATE_PROPERTY = '_provider_model_state'
 class ProviderModelConnector(state_controller.StateControlled):
   _provider_model: Optional[types.ProviderModelType]
   _run_type: Optional[types.RunType]
+  _provider_model_config: Optional[types.ProviderModelConfigType]
   _get_run_type: Optional[Callable[[], types.RunType]]
-  _model_configs: Optional[model_configs.ModelConfigs]
   _strict_feature_test: Optional[bool]
   _get_strict_feature_test: Optional[Callable[[], bool]]
   _query_cache_manager: Optional[query_cache.QueryCacheManager]
@@ -39,13 +39,11 @@ class ProviderModelConnector(state_controller.StateControlled):
       Callable[[bool], proxdash.ProxDashConnection]]
   _provider_model_state: Optional[types.ProviderModelState]
 
-  _model_configs: Optional[model_configs.ModelConfigs]
-
   def __init__(
       self,
       provider_model: Optional[types.ProviderModelType] = None,
       run_type: Optional[types.RunType] = None,
-      model_configs: Optional[model_configs.ModelConfigs] = None,
+      provider_model_config: Optional[types.ProviderModelConfigType] = None,
       get_run_type: Optional[Callable[[], types.RunType]] = None,
       strict_feature_test: Optional[bool] = None,
       get_strict_feature_test: Optional[Callable[[], bool]] = None,
@@ -63,7 +61,7 @@ class ProviderModelConnector(state_controller.StateControlled):
         init_state=init_state,
         provider_model=provider_model,
         run_type=run_type,
-        model_configs=model_configs,
+        provider_model_config=provider_model_config,
         get_run_type=get_run_type,
         strict_feature_test=strict_feature_test,
         get_strict_feature_test=get_strict_feature_test,
@@ -94,7 +92,7 @@ class ProviderModelConnector(state_controller.StateControlled):
 
       self.provider_model = provider_model
       self.run_type = run_type
-      self.model_configs = model_configs
+      self.provider_model_config = provider_model_config
       self.strict_feature_test = strict_feature_test
       self.query_cache_manager = query_cache_manager
       self.logging_options = logging_options
@@ -176,18 +174,12 @@ class ProviderModelConnector(state_controller.StateControlled):
     self.set_property_value('run_type', value)
 
   @property
-  def model_configs(self) -> model_configs.ModelConfigs:
-    return self.get_state_controlled_property_value('model_configs')
+  def provider_model_config(self):
+    return self.get_property_value('provider_model_config')
 
-  @model_configs.setter
-  def model_configs(self, model_configs: model_configs.ModelConfigs):
-    self.set_state_controlled_property_value('model_configs', model_configs)
-
-  def model_configs_deserializer(
-      self,
-      state_value: types.ModelConfigsState
-  ) -> model_configs.ModelConfigs:
-    return model_configs.ModelConfigs(init_state=state_value)
+  @provider_model_config.setter
+  def provider_model_config(self, value):
+    self.set_property_value('provider_model_config', value)
 
   @property
   def strict_feature_test(self):
@@ -253,14 +245,8 @@ class ProviderModelConnector(state_controller.StateControlled):
 
   def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
     query_record = copy.deepcopy(query_record)
-    none_value_properties = [
-        field.name for field in dataclasses.fields(query_record)
-        if getattr(query_record, field.name) is None
-    ]
-    for feature in none_value_properties:
-      if not self.model_configs.is_feature_supported(
-          provider_model=self.provider_model,
-          feature=feature):
+    for feature in self.provider_model_config.features.not_supported_features:
+      if getattr(query_record, feature) is not None:
         self.feature_fail(
             message=f'{self.provider_model.model} does not support {feature}.',
             query_record=query_record)
@@ -292,10 +278,10 @@ class ProviderModelConnector(state_controller.StateControlled):
     response_token_count = logging_record.response_record.token_count
     if type(response_token_count) != int:
       response_token_count = 0
-    return self.model_configs.get_provider_model_cost(
-        provider_model_identifier=logging_record.query_record.provider_model,
-        query_token_count=query_token_count,
-        response_token_count=response_token_count)
+    model_pricing_config = self.provider_model_config.pricing
+    return math.floor(
+        query_token_count * model_pricing_config.per_query_token_cost +
+        response_token_count * model_pricing_config.per_response_token_cost)
 
   def _update_stats(self, logging_record: types.LoggingRecord):
     if getattr(self, '_stats', None) is None:
@@ -381,8 +367,8 @@ class ProviderModelConnector(state_controller.StateControlled):
       type_utils.check_messages_type(messages)
 
     if provider_model is not None:
-      provider_model = self.model_configs.get_provider_model_config(
-          model_identifier=provider_model)
+      if type(provider_model) == types.ProviderModelTupleType:
+        provider_model = self.provider_model_config.provider_model
       if provider_model != self.provider_model:
         raise ValueError(
             'provider_model does not match the connector provider_model.'

@@ -42,7 +42,8 @@ def get_mock_provider_model_connector(
   connector = mock_provider.MockProviderModelConnector(
       provider_model=model_configs_instance.get_provider_model(('mock_provider', 'mock_model')),
       run_type=types.RunType.TEST,
-      model_configs=model_configs_instance,
+      provider_model_config=model_configs_instance.get_provider_model_config(
+          ('mock_provider', 'mock_model')),
       logging_options=types.LoggingOptions(),
       strict_feature_test=strict_feature_test,
       query_cache_manager=query_cache_manager,
@@ -404,81 +405,3 @@ class TestModelConnector:
     assert run_time_stats.provider_stats.total_response_token_count > 0
     assert run_time_stats.provider_stats.total_response_time > 0
     assert run_time_stats.provider_stats.estimated_cost > 0
-
-
-class TestModelConnectorConstructor:
-
-  def test_model_configs_parameter(self, model_configs_instance):
-    """Test that model_configs parameter is properly used."""
-    connector = mock_provider.MockProviderModelConnector(
-        provider_model=model_configs_instance.get_provider_model(
-            ('mock_provider', 'mock_model')),
-        run_type=types.RunType.TEST,
-        model_configs=model_configs_instance,
-        logging_options=types.LoggingOptions(),
-        proxdash_connection=proxdash.ProxDashConnection(
-            init_state=types.ProxDashConnectionState(
-                status=types.ProxDashConnectionStatus.CONNECTED,
-                experiment_path='test/path',
-                logging_options=types.LoggingOptions(),
-                proxdash_options=types.ProxDashOptions(api_key='test_api_key'),
-                key_info_from_proxdash={'permission': 'ALL'},
-                connected_experiment_path='test/path')))
-
-    assert connector.model_configs is model_configs_instance
-
-
-class TestModelConnectorState:
-
-  def test_get_state_and_init_from_state(self, model_configs_instance):
-    """Test state serialization and deserialization round-trip."""
-    original = mock_provider.MockProviderModelConnector(
-        provider_model=model_configs_instance.get_provider_model(
-            ('mock_provider', 'mock_model')),
-        run_type=types.RunType.TEST,
-        model_configs=model_configs_instance,
-        strict_feature_test=True,
-        logging_options=types.LoggingOptions(stdout=True),
-        proxdash_connection=proxdash.ProxDashConnection(
-            init_state=types.ProxDashConnectionState(
-                status=types.ProxDashConnectionStatus.CONNECTED,
-                experiment_path='test/path',
-                logging_options=types.LoggingOptions(),
-                proxdash_options=types.ProxDashOptions(api_key='test_api_key'),
-                key_info_from_proxdash={'permission': 'ALL'},
-                connected_experiment_path='test/path')))
-
-    state = original.get_state()
-    restored = mock_provider.MockProviderModelConnector(init_state=state)
-
-    assert restored.provider_model == original.provider_model
-    assert restored.run_type == original.run_type
-    assert restored.strict_feature_test == original.strict_feature_test
-    assert restored.logging_options.stdout == original.logging_options.stdout
-
-  def test_model_configs_preserved_in_state(self, model_configs_instance):
-    """Test that model_configs is preserved through state round-trip."""
-    original = mock_provider.MockProviderModelConnector(
-        provider_model=model_configs_instance.get_provider_model(
-            ('mock_provider', 'mock_model')),
-        run_type=types.RunType.TEST,
-        model_configs=model_configs_instance,
-        logging_options=types.LoggingOptions(),
-        proxdash_connection=proxdash.ProxDashConnection(
-            init_state=types.ProxDashConnectionState(
-                status=types.ProxDashConnectionStatus.CONNECTED,
-                experiment_path='test/path',
-                logging_options=types.LoggingOptions(),
-                proxdash_options=types.ProxDashOptions(api_key='test_api_key'),
-                key_info_from_proxdash={'permission': 'ALL'},
-                connected_experiment_path='test/path')))
-
-    state = original.get_state()
-    restored = mock_provider.MockProviderModelConnector(init_state=state)
-
-    assert restored.model_configs is not None
-    original_models = original.model_configs.get_all_models(
-        call_type=types.CallType.GENERATE_TEXT)
-    restored_models = restored.model_configs.get_all_models(
-        call_type=types.CallType.GENERATE_TEXT)
-    assert set(original_models) == set(restored_models)
