@@ -24,6 +24,7 @@ mistralai = "^0.1.8"
 google-genai = "<1.9.0"
 databricks-sdk = {version = "^0.35.0", extras = ["openai"]}
 platformdirs = "^4.0.0"
+packaging = "^24.0"
 
 [tool.poetry.dev-dependencies]
 

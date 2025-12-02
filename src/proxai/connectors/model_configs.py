@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import json
 import math
-from typing import List
+from typing import List, Set
 from importlib import resources
+from importlib.metadata import version
 from types import MappingProxyType
 from typing import Any, Dict, Optional, Tuple
+from packaging.specifiers import SpecifierSet, InvalidSpecifier
+from packaging.version import Version, InvalidVersion
 import proxai.types as types
 import proxai.serializers.type_serializer as type_serializer
 import proxai.state_controllers.state_controller as state_controller
@@ -77,38 +80,234 @@ class ModelConfigs(state_controller.StateControlled):
       self._validate_model_configs_schema(value)
     self.set_property_value('model_configs_schema', value)
 
+  def _validate_min_proxai_version(
+      self,
+      min_proxai_version: Optional[str]):
+    if min_proxai_version is None:
+      return
+
+    current_version = version("proxai")
+
+    try:
+      specifier_set = SpecifierSet(min_proxai_version)
+      current = Version(current_version)
+
+      if not specifier_set.contains(current):
+        raise ValueError(
+            f'Current proxai version ({current_version}) does not satisfy the minimum '
+            f'version requirement: {min_proxai_version}. '
+            f'Please upgrade proxai to a version that satisfies this requirement.')
+    except InvalidSpecifier as e:
+      raise ValueError(
+          f'Model configs schema metadata min_proxai_version is invalid. '
+          f'Min proxai version specifier: {min_proxai_version}. '
+          f'Error: {e}')
+    except InvalidVersion as e:
+      raise ValueError(
+          f'Current proxai version ({current_version}) is invalid. '
+          f'Error: {e}')
+
+  def _validate_model_configs_schema_metadata(
+      self,
+      model_configs_schema_metadata: types.ModelConfigsSchemaMetadataType):
+    self._validate_min_proxai_version(
+        model_configs_schema_metadata.min_proxai_version)
+
+  def _get_provider_model_key(
+      self,
+      provider_model: types.ProviderModelIdentifierType
+  ) -> Tuple[str, str]:
+    """Extract (provider, model) tuple from any provider model identifier."""
+    if isinstance(provider_model, types.ProviderModelType):
+      return (provider_model.provider, provider_model.model)
+    elif self._is_provider_model_tuple(provider_model):
+      return (provider_model[0], provider_model[1])
+    raise ValueError(f'Invalid provider model identifier: {provider_model}')
+
+  def _get_all_featured_models_from_configs(
+      self,
+      provider_model_configs: types.ProviderModelConfigsType
+  ) -> Set[Tuple[str, str]]:
+    """Get set of (provider, model) tuples for all featured models in configs."""
+    featured = set()
+    for provider, models in provider_model_configs.items():
+      for model_name, config in models.items():
+        if config.metadata and config.metadata.is_featured:
+          featured.add((provider, model_name))
+    return featured
+
+  def _get_all_models_by_call_type_from_configs(
+      self,
+      provider_model_configs: types.ProviderModelConfigsType
+  ) -> Dict[types.CallType, Set[Tuple[str, str]]]:
+    """Get models grouped by call_type from configs."""
+    by_call_type: Dict[types.CallType, Set[Tuple[str, str]]] = {}
+    for provider, models in provider_model_configs.items():
+      for model_name, config in models.items():
+        if config.metadata and config.metadata.call_type:
+          call_type = config.metadata.call_type
+          if call_type not in by_call_type:
+            by_call_type[call_type] = set()
+          by_call_type[call_type].add((provider, model_name))
+    return by_call_type
+
+  def _get_all_models_by_size_from_configs(
+      self,
+      provider_model_configs: types.ProviderModelConfigsType
+  ) -> Dict[types.ModelSizeType, Set[Tuple[str, str]]]:
+    """Get models grouped by size from configs."""
+    by_size: Dict[types.ModelSizeType, Set[Tuple[str, str]]] = {}
+    for provider, models in provider_model_configs.items():
+      for model_name, config in models.items():
+        if config.metadata and config.metadata.model_size_tags:
+          for size_tag in config.metadata.model_size_tags:
+            if size_tag not in by_size:
+              by_size[size_tag] = set()
+            by_size[size_tag].add((provider, model_name))
+    return by_size
+
+  def _validate_featured_models(
+      self,
+      provider_model_configs: types.ProviderModelConfigsType,
+      featured_models: types.FeaturedModelsType):
+    """Validate featured_models matches is_featured in provider_model_configs."""
+    featured_from_configs = self._get_all_featured_models_from_configs(
+        provider_model_configs)
+
+    featured_from_list: Set[Tuple[str, str]] = set()
+    for provider, models in featured_models.items():
+      for model in models:
+        key = self._get_provider_model_key(model)
+        featured_from_list.add(key)
+
+    missing_in_list = featured_from_configs - featured_from_list
+    if missing_in_list:
+      raise ValueError(
+          f'Models marked as is_featured=True in provider_model_configs '
+          f'but missing from featured_models: {sorted(missing_in_list)}')
+
+    extra_in_list = featured_from_list - featured_from_configs
+    if extra_in_list:
+      raise ValueError(
+          f'Models in featured_models but not marked as is_featured=True '
+          f'in provider_model_configs: {sorted(extra_in_list)}')
+
+  def _validate_models_by_call_type(
+      self,
+      provider_model_configs: types.ProviderModelConfigsType,
+      models_by_call_type: types.ModelsByCallTypeType):
+    """Validate models_by_call_type matches call_type in provider_model_configs."""
+    from_configs = self._get_all_models_by_call_type_from_configs(
+        provider_model_configs)
+
+    from_list: Dict[types.CallType, Set[Tuple[str, str]]] = {}
+    for call_type, providers in models_by_call_type.items():
+      from_list[call_type] = set()
+      for provider, models in providers.items():
+        for model in models:
+          key = self._get_provider_model_key(model)
+          from_list[call_type].add(key)
+
+    all_call_types = set(from_configs.keys()) | set(from_list.keys())
+    for call_type in all_call_types:
+      config_models = from_configs.get(call_type, set())
+      list_models = from_list.get(call_type, set())
+
+      missing_in_list = config_models - list_models
+      if missing_in_list:
+        raise ValueError(
+            f'Models with call_type={call_type} in provider_model_configs '
+            f'but missing from models_by_call_type: {sorted(missing_in_list)}')
+
+      extra_in_list = list_models - config_models
+      if extra_in_list:
+        raise ValueError(
+            f'Models in models_by_call_type[{call_type}] but not marked with '
+            f'that call_type in provider_model_configs: {sorted(extra_in_list)}')
+
+  def _validate_models_by_size(
+      self,
+      provider_model_configs: types.ProviderModelConfigsType,
+      models_by_size: types.ModelsBySizeType):
+    """Validate models_by_size matches model_size_tags in provider_model_configs."""
+    from_configs = self._get_all_models_by_size_from_configs(
+        provider_model_configs)
+
+    from_list: Dict[types.ModelSizeType, Set[Tuple[str, str]]] = {}
+    for size, models in models_by_size.items():
+      from_list[size] = set()
+      for model in models:
+        key = self._get_provider_model_key(model)
+        from_list[size].add(key)
+
+    all_sizes = set(from_configs.keys()) | set(from_list.keys())
+    for size in all_sizes:
+      config_models = from_configs.get(size, set())
+      list_models = from_list.get(size, set())
+
+      missing_in_list = config_models - list_models
+      if missing_in_list:
+        raise ValueError(
+            f'Models with model_size_tags containing {size} in '
+            f'provider_model_configs but missing from models_by_size: '
+            f'{sorted(missing_in_list)}')
+
+      extra_in_list = list_models - config_models
+      if extra_in_list:
+        raise ValueError(
+            f'Models in models_by_size[{size}] but model_size_tags in '
+            f'provider_model_configs does not contain {size}: '
+            f'{sorted(extra_in_list)}')
+
+  def _validate_default_model_priority_list(
+      self,
+      provider_model_configs: types.ProviderModelConfigsType,
+      default_model_priority_list: types.DefaultModelPriorityListType):
+    """Validate all models in default_model_priority_list exist in configs."""
+    for model in default_model_priority_list:
+      key = self._get_provider_model_key(model)
+      provider, model_name = key
+      if provider not in provider_model_configs:
+        raise ValueError(
+            f'Provider {provider} in default_model_priority_list '
+            f'not found in provider_model_configs')
+      if model_name not in provider_model_configs[provider]:
+        raise ValueError(
+            f'Model {model_name} for provider {provider} in '
+            f'default_model_priority_list not found in provider_model_configs')
+
+  def _validate_version_config(
+      self,
+      version_config: types.ModelConfigsSchemaVersionConfigType):
+    """Validate version_config internal consistency."""
+    provider_model_configs = version_config.provider_model_configs
+    if provider_model_configs is None:
+      return
+
+    if version_config.featured_models is not None:
+      self._validate_featured_models(
+          provider_model_configs, version_config.featured_models)
+
+    if version_config.models_by_call_type is not None:
+      self._validate_models_by_call_type(
+          provider_model_configs, version_config.models_by_call_type)
+
+    if version_config.models_by_size is not None:
+      self._validate_models_by_size(
+          provider_model_configs, version_config.models_by_size)
+
+    if version_config.default_model_priority_list is not None:
+      self._validate_default_model_priority_list(
+          provider_model_configs, version_config.default_model_priority_list)
+
   def _validate_model_configs_schema(
       self,
       model_configs_schema: types.ModelConfigsSchemaType):
-    # TODO: Partially finished. Need to add more validation and tests.
-    provider_model_configs = model_configs_schema.version_config.provider_model_configs
-    featured_models = model_configs_schema.version_config.featured_models
-    models_by_call_type = model_configs_schema.version_config.models_by_call_type
-    models_by_size = model_configs_schema.version_config.models_by_size
-    for provider, model_configs in provider_model_configs.items():
-      for provider_model_identifier, model_config in model_configs.items():
-        self.check_provider_model_identifier_type(
-            model_config.provider_model,
-            model_configs_schema)
+    if model_configs_schema.metadata:
+      self._validate_model_configs_schema_metadata(model_configs_schema.metadata)
 
-    for provider, provider_models in featured_models.items():
-      for provider_model_identifier in provider_models:
-        self.check_provider_model_identifier_type(
-            provider_model_identifier,
-            model_configs_schema)
-
-    for call_type, provider_models in models_by_call_type.items():
-      for provider, provider_models in provider_models.items():
-        for provider_model_identifier in provider_models:
-          self.check_provider_model_identifier_type(
-              provider_model_identifier,
-              model_configs_schema)
-
-    for model_size, provider_models in models_by_size.items():
-      for provider_model_identifier in provider_models:
-        self.check_provider_model_identifier_type(
-            provider_model_identifier,
-            model_configs_schema)
+    if model_configs_schema.version_config:
+      self._validate_version_config(model_configs_schema.version_config)
 
   def _is_provider_model_tuple(self, value: Any) -> bool:
     return (
