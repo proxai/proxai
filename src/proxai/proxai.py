@@ -338,7 +338,9 @@ def _get_model_connector(
   if provider_model in _MODEL_CONNECTORS:
     return _MODEL_CONNECTORS[provider_model]
 
-  connector = model_registry.get_model_connector(provider_model)
+  connector = model_registry.get_model_connector(
+      provider_model,
+      model_configs=_get_model_configs())
   _MODEL_CONNECTORS[provider_model] = connector(
       get_run_type=_get_run_type,
       model_configs=_get_model_configs(),
@@ -688,7 +690,9 @@ def check_health(
   ) -> model_connector.ProviderModelConnector:
     provider_model = model_configs.get_provider_model_config(
         provider_model_identifier)
-    connector = model_registry.get_model_connector(provider_model)
+    connector = model_registry.get_model_connector(
+        provider_model,
+        model_configs=_get_model_configs())
     return connector(
         get_run_type=_get_run_type,
         model_configs=_get_model_configs(),
