@@ -713,96 +713,131 @@ class TestIsFeatureSupported:
 
 
 class TestGetAllModels:
-  """Comprehensive tests for get_all_models with filter combinations."""
+  """Tests for get_all_models filter logic."""
 
-  def test_default_call_returns_featured_generate_text_models(
-      self, model_configs_instance):
-    result = model_configs_instance.get_all_models()
-    assert len(result) > 0
-    assert all(isinstance(m, types.ProviderModelType) for m in result)
+  @pytest.fixture
+  def custom_model_configs(self):
+    """Create ModelConfigs with controlled test data."""
+    # Define test models with known properties
+    configs = {
+        'provider_a': {
+            # Featured, LARGE size, GENERATE_TEXT
+            'model_featured_large': create_minimal_provider_model_config(
+                'provider_a', 'model_featured_large',
+                is_featured=True,
+                call_type=types.CallType.GENERATE_TEXT,
+                model_size_tags=[types.ModelSizeType.LARGE]),
+            # Not featured, SMALL size, GENERATE_TEXT
+            'model_not_featured': create_minimal_provider_model_config(
+                'provider_a', 'model_not_featured',
+                is_featured=False,
+                call_type=types.CallType.GENERATE_TEXT,
+                model_size_tags=[types.ModelSizeType.SMALL]),
+            # Featured, no size tags, GENERATE_TEXT
+            'model_no_size_tags': create_minimal_provider_model_config(
+                'provider_a', 'model_no_size_tags',
+                is_featured=True,
+                call_type=types.CallType.GENERATE_TEXT,
+                model_size_tags=None),
+        },
+        'provider_b': {
+            # Featured, LARGE size, GENERATE_TEXT
+            'model_b': create_minimal_provider_model_config(
+                'provider_b', 'model_b',
+                is_featured=True,
+                call_type=types.CallType.GENERATE_TEXT,
+                model_size_tags=[types.ModelSizeType.LARGE]),
+        }
+    }
 
-  # Single filter tests
-  def test_filter_by_provider(self, model_configs_instance):
-    result = model_configs_instance.get_all_models(provider='openai')
-    assert len(result) > 0
-    assert all(m.provider == 'openai' for m in result)
+    pm_featured_large = configs['provider_a']['model_featured_large'].provider_model
+    pm_not_featured = configs['provider_a']['model_not_featured'].provider_model
+    pm_no_size = configs['provider_a']['model_no_size_tags'].provider_model
+    pm_b = configs['provider_b']['model_b'].provider_model
 
-  def test_filter_by_size(self, model_configs_instance):
-    result = model_configs_instance.get_all_models(
-        model_size=types.ModelSizeType.LARGE)
-    assert len(result) > 0
+    version_config = create_minimal_version_config(
+        provider_model_configs=configs,
+        featured_models={
+            'provider_a': [pm_featured_large, pm_no_size],
+            'provider_b': [pm_b]
+        },
+        models_by_call_type={
+            types.CallType.GENERATE_TEXT: {
+                'provider_a': [pm_featured_large, pm_not_featured, pm_no_size],
+                'provider_b': [pm_b]
+            }
+        },
+        models_by_size={
+            types.ModelSizeType.LARGE: [pm_featured_large, pm_b],
+            types.ModelSizeType.SMALL: [pm_not_featured]
+        },
+        default_model_priority_list=[pm_featured_large])
 
-  def test_filter_by_call_type_none_returns_all_call_types(
-      self, model_configs_instance):
-    with_call_type = model_configs_instance.get_all_models(
-        call_type=types.CallType.GENERATE_TEXT)
-    without_call_type = model_configs_instance.get_all_models(call_type=None)
-    assert len(without_call_type) >= len(with_call_type)
+    schema = create_minimal_schema(version_config)
+    return model_configs.ModelConfigs(model_configs_schema=schema)
 
-  def test_only_featured_false_returns_more_models(self, model_configs_instance):
-    featured = model_configs_instance.get_all_models(only_featured=True)
-    all_models = model_configs_instance.get_all_models(only_featured=False)
-    assert len(all_models) >= len(featured)
-
-  # Two filter combinations
-  def test_provider_and_size_combination(self, model_configs_instance):
-    result = model_configs_instance.get_all_models(
-        provider='openai', model_size=types.ModelSizeType.SMALL)
-    assert all(m.provider == 'openai' for m in result)
-
-  def test_provider_and_only_featured_false(self, model_configs_instance):
-    featured = model_configs_instance.get_all_models(
-        provider='openai', only_featured=True)
-    all_openai = model_configs_instance.get_all_models(
-        provider='openai', only_featured=False)
-    assert len(all_openai) >= len(featured)
-    assert all(m.provider == 'openai' for m in all_openai)
-
-  def test_size_and_only_featured_false(self, model_configs_instance):
-    result = model_configs_instance.get_all_models(
-        model_size=types.ModelSizeType.LARGE, only_featured=False)
-    assert len(result) > 0
-
-  # Three filter combinations
-  def test_provider_size_and_featured_combination(self, model_configs_instance):
-    result = model_configs_instance.get_all_models(
-        provider='openai',
+  # Core filter tests with controlled data
+  def test_model_size_filter_excludes_models_without_size_tags(
+      self, custom_model_configs):
+    """Model with model_size_tags=None should be excluded when filtering by size."""
+    result = custom_model_configs.get_all_models(
         model_size=types.ModelSizeType.LARGE,
+        call_type=None,
+        only_featured=False)
+    model_names = [m.model for m in result]
+    assert 'model_no_size_tags' not in model_names
+    assert 'model_featured_large' in model_names
+
+  def test_model_size_filter_excludes_models_with_different_size(
+      self, custom_model_configs):
+    """Model with different size tag should be excluded."""
+    result = custom_model_configs.get_all_models(
+        model_size=types.ModelSizeType.LARGE,
+        call_type=None,
+        only_featured=False)
+    model_names = [m.model for m in result]
+    assert 'model_not_featured' not in model_names  # Has SMALL, not LARGE
+
+  def test_only_featured_filter(self, custom_model_configs):
+    """only_featured=True should exclude non-featured models."""
+    result = custom_model_configs.get_all_models(
+        call_type=None,
         only_featured=True)
-    assert all(m.provider == 'openai' for m in result)
+    model_names = [m.model for m in result]
+    assert 'model_not_featured' not in model_names
+    assert 'model_featured_large' in model_names
 
-  def test_provider_size_and_call_type_combination(self, model_configs_instance):
-    result = model_configs_instance.get_all_models(
-        provider='claude',
-        model_size=types.ModelSizeType.LARGEST,
-        call_type=types.CallType.GENERATE_TEXT)
-    assert all(m.provider == 'claude' for m in result)
+  def test_provider_filter(self, custom_model_configs):
+    """provider filter should only return models from that provider."""
+    result = custom_model_configs.get_all_models(
+        provider='provider_a',
+        call_type=None,
+        only_featured=False)
+    assert all(m.provider == 'provider_a' for m in result)
+    assert len(result) == 3
 
-  # All filters combination
-  def test_all_filters_combination(self, model_configs_instance):
-    result = model_configs_instance.get_all_models(
-        provider='openai',
+  def test_combined_filters(self, custom_model_configs):
+    """Combined filters should all be applied."""
+    result = custom_model_configs.get_all_models(
+        provider='provider_a',
         model_size=types.ModelSizeType.LARGE,
         call_type=types.CallType.GENERATE_TEXT,
-        only_featured=False)
-    assert all(m.provider == 'openai' for m in result)
+        only_featured=True)
+    assert len(result) == 1
+    assert result[0].model == 'model_featured_large'
 
   # Error cases
-  def test_invalid_provider_raises_error(self, model_configs_instance):
+  def test_invalid_provider_raises_error(self, custom_model_configs):
     with pytest.raises(ValueError, match='Provider not supported'):
-      model_configs_instance.get_all_models(provider='invalid_provider')
+      custom_model_configs.get_all_models(provider='invalid_provider')
 
-  def test_invalid_call_type_raises_error(self, model_configs_instance):
+  def test_invalid_call_type_raises_error(self, custom_model_configs):
     with pytest.raises(ValueError, match='Call type not supported'):
-      model_configs_instance.get_all_models(call_type='invalid_call_type')
+      custom_model_configs.get_all_models(call_type='invalid_call_type')
 
-  # Edge cases
-  def test_empty_result_with_strict_filters(self, model_configs_instance):
-    result = model_configs_instance.get_all_models(
-        provider='cohere',
-        model_size=types.ModelSizeType.LARGEST,
-        only_featured=True)
-    assert isinstance(result, list)  # May be empty, but should not error
+  def test_invalid_model_size_raises_error(self, custom_model_configs):
+    with pytest.raises(ValueError, match='Model size not supported'):
+      custom_model_configs.get_all_models(model_size=types.ModelSizeType.MEDIUM)
 
 
 class TestBuiltInConfigValidation:
