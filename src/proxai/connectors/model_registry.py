@@ -41,4 +41,8 @@ def get_model_connector(
   connector = _MODEL_CONNECTOR_MAP[provider_model.provider]
   if without_additional_args:
     return connector
-  return functools.partial(connector, provider_model=provider_model)
+  return functools.partial(
+      connector,
+      provider_model=provider_model,
+      provider_model_config=model_configs.get_provider_model_config(
+        provider_model_identifier))

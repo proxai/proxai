@@ -344,7 +344,6 @@ def _get_model_connector(
       model_configs=_get_model_configs())
   _MODEL_CONNECTORS[provider_model] = connector(
       get_run_type=_get_run_type,
-      model_configs=_get_model_configs(),
       get_strict_feature_test=_get_strict_feature_test,
       get_query_cache_manager=_get_query_cache_manager,
       get_logging_options=_get_logging_options,
@@ -700,7 +699,6 @@ def check_health(
         model_configs=_get_model_configs())
     return connector(
         get_run_type=_get_run_type,
-        model_configs=_get_model_configs(),
         get_strict_feature_test=_get_strict_feature_test,
         get_query_cache_manager=_get_query_cache_manager,
         logging_options=logging_options,
