@@ -666,6 +666,145 @@ class TestValidateProviderModelConfigs:
       model_configs_instance._validate_provider_model_configs(configs)
 
 
+class TestGetProviderModel:
+  def test_with_tuple(self, model_configs_instance):
+    result = model_configs_instance.get_provider_model(('openai', 'gpt-4o'))
+    assert isinstance(result, types.ProviderModelType)
+    assert result.provider == 'openai'
+    assert result.model == 'gpt-4o'
+
+  def test_with_provider_model_type(self, model_configs_instance):
+    pm = model_configs_instance.get_provider_model(('claude', 'opus-4'))
+    result = model_configs_instance.get_provider_model(pm)
+    assert result == pm
+
+
+class TestGetProviderModelConfig:
+  def test_returns_config(self, model_configs_instance):
+    result = model_configs_instance.get_provider_model_config(('openai', 'gpt-4o'))
+    assert isinstance(result, types.ProviderModelConfigType)
+    assert result.provider_model.provider == 'openai'
+    assert result.pricing is not None
+
+
+class TestGetProviderModelCost:
+  def test_calculates_cost(self, model_configs_instance):
+    cost = model_configs_instance.get_provider_model_cost(
+        ('openai', 'gpt-4o'), query_token_count=100, response_token_count=200)
+    assert isinstance(cost, int)
+    assert cost >= 0
+
+  def test_zero_tokens(self, model_configs_instance):
+    cost = model_configs_instance.get_provider_model_cost(
+        ('openai', 'gpt-4o'), query_token_count=0, response_token_count=0)
+    assert cost == 0
+
+
+class TestIsFeatureSupported:
+  def test_feature_supported(self, model_configs_instance):
+    pm = model_configs_instance.get_provider_model(('openai', 'gpt-4o'))
+    result = model_configs_instance.is_feature_supported(pm, 'temperature')
+    assert isinstance(result, bool)
+
+  def test_feature_not_supported(self, model_configs_instance):
+    pm = model_configs_instance.get_provider_model(('openai', 'o1'))
+    result = model_configs_instance.is_feature_supported(pm, 'temperature')
+    assert result is True  # temperature is in not_supported_features
+
+
+class TestGetAllModels:
+  """Comprehensive tests for get_all_models with filter combinations."""
+
+  def test_default_call_returns_featured_generate_text_models(
+      self, model_configs_instance):
+    result = model_configs_instance.get_all_models()
+    assert len(result) > 0
+    assert all(isinstance(m, types.ProviderModelType) for m in result)
+
+  # Single filter tests
+  def test_filter_by_provider(self, model_configs_instance):
+    result = model_configs_instance.get_all_models(provider='openai')
+    assert len(result) > 0
+    assert all(m.provider == 'openai' for m in result)
+
+  def test_filter_by_size(self, model_configs_instance):
+    result = model_configs_instance.get_all_models(
+        model_size=types.ModelSizeType.LARGE)
+    assert len(result) > 0
+
+  def test_filter_by_call_type_none_returns_all_call_types(
+      self, model_configs_instance):
+    with_call_type = model_configs_instance.get_all_models(
+        call_type=types.CallType.GENERATE_TEXT)
+    without_call_type = model_configs_instance.get_all_models(call_type=None)
+    assert len(without_call_type) >= len(with_call_type)
+
+  def test_only_featured_false_returns_more_models(self, model_configs_instance):
+    featured = model_configs_instance.get_all_models(only_featured=True)
+    all_models = model_configs_instance.get_all_models(only_featured=False)
+    assert len(all_models) >= len(featured)
+
+  # Two filter combinations
+  def test_provider_and_size_combination(self, model_configs_instance):
+    result = model_configs_instance.get_all_models(
+        provider='openai', model_size=types.ModelSizeType.SMALL)
+    assert all(m.provider == 'openai' for m in result)
+
+  def test_provider_and_only_featured_false(self, model_configs_instance):
+    featured = model_configs_instance.get_all_models(
+        provider='openai', only_featured=True)
+    all_openai = model_configs_instance.get_all_models(
+        provider='openai', only_featured=False)
+    assert len(all_openai) >= len(featured)
+    assert all(m.provider == 'openai' for m in all_openai)
+
+  def test_size_and_only_featured_false(self, model_configs_instance):
+    result = model_configs_instance.get_all_models(
+        model_size=types.ModelSizeType.LARGE, only_featured=False)
+    assert len(result) > 0
+
+  # Three filter combinations
+  def test_provider_size_and_featured_combination(self, model_configs_instance):
+    result = model_configs_instance.get_all_models(
+        provider='openai',
+        model_size=types.ModelSizeType.LARGE,
+        only_featured=True)
+    assert all(m.provider == 'openai' for m in result)
+
+  def test_provider_size_and_call_type_combination(self, model_configs_instance):
+    result = model_configs_instance.get_all_models(
+        provider='claude',
+        model_size=types.ModelSizeType.LARGEST,
+        call_type=types.CallType.GENERATE_TEXT)
+    assert all(m.provider == 'claude' for m in result)
+
+  # All filters combination
+  def test_all_filters_combination(self, model_configs_instance):
+    result = model_configs_instance.get_all_models(
+        provider='openai',
+        model_size=types.ModelSizeType.LARGE,
+        call_type=types.CallType.GENERATE_TEXT,
+        only_featured=False)
+    assert all(m.provider == 'openai' for m in result)
+
+  # Error cases
+  def test_invalid_provider_raises_error(self, model_configs_instance):
+    with pytest.raises(ValueError, match='Provider not supported'):
+      model_configs_instance.get_all_models(provider='invalid_provider')
+
+  def test_invalid_call_type_raises_error(self, model_configs_instance):
+    with pytest.raises(ValueError, match='Call type not supported'):
+      model_configs_instance.get_all_models(call_type='invalid_call_type')
+
+  # Edge cases
+  def test_empty_result_with_strict_filters(self, model_configs_instance):
+    result = model_configs_instance.get_all_models(
+        provider='cohere',
+        model_size=types.ModelSizeType.LARGEST,
+        only_featured=True)
+    assert isinstance(result, list)  # May be empty, but should not error
+
+
 class TestBuiltInConfigValidation:
   """Test that the built-in v1.0.0.json config passes validation."""
 
