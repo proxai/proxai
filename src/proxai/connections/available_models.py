@@ -26,6 +26,7 @@ class AvailableModels(state_controller.StateControlled):
   _model_cache_manager: Optional[model_cache.ModelCacheManager]
   _run_type: types.RunType
   _get_run_type: Callable[[], types.RunType]
+  _model_configs: model_configs.ModelConfigs
   _get_model_connector: Callable[
       [types.ProviderModelType], model_connector.ProviderModelConnector]
   _cache_options: types.CacheOptions
@@ -42,12 +43,11 @@ class AvailableModels(state_controller.StateControlled):
   _latest_model_cache_path_used_for_update: Optional[str]
   _available_models_state: types.AvailableModelsState
 
-  _model_configs: Optional[model_configs.ModelConfigs]
-
   def __init__(
       self,
       run_type: Optional[types.RunType] = None,
       get_run_type: Optional[Callable[[], types.RunType]] = None,
+      model_configs: Optional[model_configs.ModelConfigs] = None,
       model_cache_manager: Optional[model_cache.ModelCacheManager] = None,
       get_model_cache_manager: Optional[
           Callable[[], model_cache.ModelCacheManager]] = None,
@@ -78,10 +78,6 @@ class AvailableModels(state_controller.StateControlled):
         model_test_timeout=model_test_timeout,
         get_model_test_timeout=get_model_test_timeout)
 
-    # TODO: This will be removed after having model config as parameter and
-    # proper state controller functions are implemented.
-    self._model_configs = model_configs.ModelConfigs()
-
     if init_state:
       self.load_state(init_state)
     else:
@@ -95,6 +91,7 @@ class AvailableModels(state_controller.StateControlled):
       self._get_model_connector = get_model_connector
 
       self.run_type = run_type
+      self.model_configs = model_configs
       self.model_cache_manager = model_cache_manager
       self.logging_options = logging_options
       self.proxdash_connection = proxdash_connection
@@ -140,6 +137,20 @@ class AvailableModels(state_controller.StateControlled):
     self.set_property_value('run_type', run_type)
 
   @property
+  def model_configs(self) -> model_configs.ModelConfigs:
+    return self.get_state_controlled_property_value('model_configs')
+
+  @model_configs.setter
+  def model_configs(self, model_configs: model_configs.ModelConfigs):
+    self.set_state_controlled_property_value('model_configs', model_configs)
+
+  def model_configs_deserializer(
+      self,
+      state_value: types.ModelConfigsState
+  ) -> model_configs.ModelConfigs:
+    return model_configs.ModelConfigs(init_state=state_value)
+
+  @property
   def logging_options(self) -> types.LoggingOptions:
     return self.get_property_value('logging_options')
 
@@ -156,6 +167,12 @@ class AvailableModels(state_controller.StateControlled):
       self, value: model_cache.ModelCacheManager):
     self.set_state_controlled_property_value('model_cache_manager', value)
 
+  def model_cache_manager_deserializer(
+      self,
+      state_value: types.ModelCacheManagerState
+  ) -> model_cache.ModelCacheManager:
+    return model_cache.ModelCacheManager(init_state=state_value)
+
   @property
   def proxdash_connection(self) -> proxdash.ProxDashConnection:
     return self.get_state_controlled_property_value('proxdash_connection')
@@ -163,6 +180,12 @@ class AvailableModels(state_controller.StateControlled):
   @proxdash_connection.setter
   def proxdash_connection(self, value: proxdash.ProxDashConnection):
     self.set_state_controlled_property_value('proxdash_connection', value)
+
+  def proxdash_connection_deserializer(
+      self,
+      state_value: types.ProxDashConnectionState
+  ) -> proxdash.ProxDashConnection:
+    return proxdash.ProxDashConnection(init_state=state_value)
 
   @property
   def allow_multiprocessing(self) -> bool:
@@ -201,7 +224,7 @@ class AvailableModels(state_controller.StateControlled):
       self,
       models: types.ModelStatus,
       call_type: types.CallType):
-    provider_models = self._model_configs.get_all_models(call_type=call_type)
+    provider_models = self.model_configs.get_all_models(call_type=call_type)
     for provider_model in provider_models:
       models.unprocessed_models.add(provider_model)
 
@@ -268,7 +291,7 @@ class AvailableModels(state_controller.StateControlled):
     if model_size is None:
       return
 
-    allowed_models = self._model_configs.get_all_models(
+    allowed_models = self.model_configs.get_all_models(
         call_type=call_type,
         model_size=model_size)
 
@@ -682,7 +705,7 @@ class AvailableModels(state_controller.StateControlled):
     if model_size is not None:
       model_size = type_utils.check_model_size_identifier_type(model_size)
 
-    provider_models = self._model_configs.get_all_models(
+    provider_models = self.model_configs.get_all_models(
         provider=provider,
         call_type=call_type,
         model_size=model_size)
@@ -730,7 +753,7 @@ class AvailableModels(state_controller.StateControlled):
     if call_type != types.CallType.GENERATE_TEXT:
       raise ValueError(f'Call type not supported: {call_type}')
 
-    provider_model_config = self._model_configs.get_provider_model_config(
+    provider_model_config = self.model_configs.get_provider_model_config(
         (provider, model))
 
     if provider_model_config.metadata.call_type != call_type:
@@ -778,7 +801,7 @@ class AvailableModels(state_controller.StateControlled):
               f'({provider}, {model})\nLogging Record: '
               f'{model_status.provider_queries.get(provider_model, "")}'),
           type=types.LoggingType.WARNING)
-      return self._model_configs.get_provider_model((provider, model))
+      return self.model_configs.get_provider_model((provider, model))
 
     raise ValueError(
         f'Provider model not found in working models: ({provider}, {model})\n'

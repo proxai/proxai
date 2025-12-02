@@ -320,6 +320,11 @@ class StateContainer(ABC):
 
 
 @dataclasses.dataclass
+class ModelConfigsState(StateContainer):
+  model_configs_schema: Optional[ModelConfigsSchemaType] = None
+
+
+@dataclasses.dataclass
 class ModelCacheManagerState(StateContainer):
   status: Optional[ModelCacheManagerStatus] = None
   cache_options: Optional[CacheOptions] = None
@@ -358,6 +363,7 @@ class ProviderModelState(StateContainer):
 @dataclasses.dataclass
 class AvailableModelsState(StateContainer):
   run_type: Optional[RunType] = None
+  model_configs: Optional[ModelConfigsState] = None
   model_cache_manager: Optional[ModelCacheManagerState] = None
   logging_options: Optional[LoggingOptions] = None
   proxdash_connection: Optional[ProxDashConnectionState] = None
@@ -366,8 +372,3 @@ class AvailableModelsState(StateContainer):
   providers_with_key: Optional[Set[str]] = None
   has_fetched_all_models: Optional[bool] = None
   latest_model_cache_path_used_for_update: Optional[str] = None
-
-
-@dataclasses.dataclass
-class ModelConfigsState(StateContainer):
-  model_configs_schema: Optional[ModelConfigsSchemaType] = None
