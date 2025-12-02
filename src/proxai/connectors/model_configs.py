@@ -558,3 +558,13 @@ class ModelConfigs(state_controller.StateControlled):
         result_provider_models.append(provider_model_config.provider_model)
 
     return result_provider_models
+
+  def get_default_model_priority_list(self) -> List[types.ProviderModelType]:
+    # TODO: This operation could be optimized by caching the result and using
+    # StateController to persist the result. If the configs are updated, the
+    # result should be invalidated and recalculated by the StateController's
+    # handle_changes method.
+    result = []
+    for provider_model in self.model_configs_schema.version_config.default_model_priority_list:
+      result.append(self.get_provider_model(provider_model))
+    return result

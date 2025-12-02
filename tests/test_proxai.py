@@ -452,7 +452,8 @@ class TestGenerateText:
   def _test_generate_text(
       self,
       provider_model: types.ProviderModelIdentifierType):
-    provider_model = model_configs.get_provider_model_config(provider_model)
+    model_configs_instance = proxai._get_model_configs()
+    provider_model = model_configs_instance.get_provider_model(provider_model)
     proxai.set_run_type(types.RunType.TEST)
     proxai.set_model(generate_text=provider_model)
     assert proxai._REGISTERED_MODEL_CONNECTORS[
