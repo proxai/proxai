@@ -83,6 +83,7 @@ class TestAvailableModels:
           cache_options=types.CacheOptions(cache_path=self.cache_dir.name))
     available_models_manager = available_models.AvailableModels(
         run_type=types.RunType.TEST,
+        model_configs=model_configs.ModelConfigs(),
         get_model_connector=self._get_model_connector,
         allow_multiprocessing=allow_multiprocessing,
         model_cache_manager=(
@@ -482,6 +483,60 @@ class TestAvailableModels:
           'openai', 'gpt-4', call_type='invalid_type')
 
 
+class TestAvailableModelsConstructor:
+
+  def test_model_configs_parameter(self, model_configs_instance):
+    """Test that model_configs parameter is properly used."""
+    available_models_manager = available_models.AvailableModels(
+        run_type=types.RunType.TEST,
+        model_configs=model_configs_instance)
+
+    assert available_models_manager.model_configs is model_configs_instance
+
+
 class TestAvailableModelsState:
-  # TODO: Add tests for AvailableModels state controlled properties
-  pass
+  cache_dir: Optional[tempfile.TemporaryDirectory] = None
+
+  def _init_test_variables(self):
+    if self.cache_dir is None:
+      self.cache_dir = tempfile.TemporaryDirectory()
+
+  def _create_available_models(
+      self,
+      model_configs_instance: model_configs.ModelConfigs):
+    self._init_test_variables()
+    model_cache_manager = model_cache.ModelCacheManager(
+        cache_options=types.CacheOptions(cache_path=self.cache_dir.name))
+    return available_models.AvailableModels(
+        run_type=types.RunType.TEST,
+        model_configs=model_configs_instance,
+        model_cache_manager=model_cache_manager,
+        allow_multiprocessing=False,
+        model_test_timeout=30)
+
+  def test_get_state_and_init_from_state(self, model_configs_instance):
+    """Test state serialization and deserialization round-trip."""
+    original = self._create_available_models(model_configs_instance)
+    original.providers_with_key = {'openai', 'claude'}
+
+    state = original.get_state()
+    restored = available_models.AvailableModels(init_state=state)
+
+    assert restored.run_type == original.run_type
+    assert restored.allow_multiprocessing == original.allow_multiprocessing
+    assert restored.model_test_timeout == original.model_test_timeout
+    assert restored.providers_with_key == original.providers_with_key
+
+  def test_model_configs_preserved_in_state(self, model_configs_instance):
+    """Test that model_configs is preserved through state round-trip."""
+    original = self._create_available_models(model_configs_instance)
+
+    state = original.get_state()
+    restored = available_models.AvailableModels(init_state=state)
+
+    assert restored.model_configs is not None
+    original_models = original.model_configs.get_all_models(
+        call_type=types.CallType.GENERATE_TEXT)
+    restored_models = restored.model_configs.get_all_models(
+        call_type=types.CallType.GENERATE_TEXT)
+    assert set(original_models) == set(restored_models)

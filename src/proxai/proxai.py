@@ -30,6 +30,7 @@ _LOGGING_OPTIONS: types.LoggingOptions
 _CACHE_OPTIONS: types.CacheOptions
 _PROXDASH_OPTIONS: types.ProxDashOptions
 
+_MODEL_CONFIGS: Optional[model_configs.ModelConfigs]
 _REGISTERED_MODEL_CONNECTORS: Dict[
     types.CallType, model_connector.ProviderModelConnector]
 _MODEL_CONNECTORS: Dict[
@@ -85,6 +86,7 @@ def _init_globals():
   global _CACHE_OPTIONS
   global _PROXDASH_OPTIONS
 
+  global _MODEL_CONFIGS
   global _REGISTERED_MODEL_CONNECTORS
   global _MODEL_CONNECTORS
   global _MODEL_CACHE_MANAGER
@@ -108,6 +110,7 @@ def _init_globals():
   _CACHE_OPTIONS = types.CacheOptions()
   _PROXDASH_OPTIONS = types.ProxDashOptions()
 
+  _MODEL_CONFIGS = model_configs.ModelConfigs()
   _REGISTERED_MODEL_CONNECTORS = {}
   _MODEL_CONNECTORS = {}
   _MODEL_CACHE_MANAGER = None
@@ -302,6 +305,9 @@ def _set_suppress_provider_errors(
 def _get_run_type() -> types.RunType:
   return _RUN_TYPE
 
+
+def _get_model_configs() -> model_configs.ModelConfigs:
+  return _MODEL_CONFIGS
 
 def _get_hidden_run_key() -> str:
   return _HIDDEN_RUN_KEY
@@ -603,6 +609,7 @@ def get_available_models() -> available_models.AvailableModels:
   if _AVAILABLE_MODELS is None:
     _AVAILABLE_MODELS = available_models.AvailableModels(
         get_run_type=_get_run_type,
+        model_configs=_get_model_configs(),
         get_model_connector=_get_model_connector,
         get_allow_multiprocessing=_get_allow_multiprocessing,
         get_model_test_timeout=_get_model_test_timeout,
@@ -697,6 +704,7 @@ def check_health(
     print('> Starting to test each model...')
   models = available_models.AvailableModels(
       run_type=_get_run_type(),
+      model_configs=_get_model_configs(),
       logging_options=logging_options,
       proxdash_connection=proxdash_connection,
       allow_multiprocessing=allow_multiprocessing,
