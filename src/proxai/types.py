@@ -354,6 +354,7 @@ class ProxDashConnectionState(StateContainer):
 class ProviderModelState(StateContainer):
   provider_model: Optional[ProviderModelType] = None
   run_type: Optional[RunType] = None
+  model_configs: Optional[ModelConfigsState] = None
   strict_feature_test: Optional[bool] = None
   query_cache_manager: Optional[QueryCacheManagerState] = None
   logging_options: Optional[LoggingOptions] = None
