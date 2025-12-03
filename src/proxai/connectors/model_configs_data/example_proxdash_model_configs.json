@@ -1,0 +1,198 @@
+{
+  "metadata": {
+    "version": "1.0.0",
+    "released_at": "2025-12-02 00:00:00",
+    "min_proxai_version": ">0.2.6",
+    "config_origin": "PROXDASH",
+    "release_notes": "TEST CONFIG"
+  },
+  "version_config": {
+    "provider_model_configs": {
+      "openai": {
+        "gpt-4o": {
+          "provider_model": {
+            "provider": "openai",
+            "model": "gpt-4o",
+            "provider_model_identifier": "gpt-4o-2024-08-06"
+          },
+          "pricing": {
+            "per_response_token_cost": 10.0,
+            "per_query_token_cost": 2.5
+          },
+          "features": {},
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size_tags": [
+              "large",
+              "largest"
+            ],
+            "is_default_candidate": true,
+            "default_candidate_priority": 1
+          }
+        },
+        "gpt-4o-mini": {
+          "provider_model": {
+            "provider": "openai",
+            "model": "gpt-4o-mini",
+            "provider_model_identifier": "gpt-4o-mini-2024-07-18"
+          },
+          "pricing": {
+            "per_response_token_cost": 0.6,
+            "per_query_token_cost": 0.15
+          },
+          "features": {
+            "not_supported_features": [
+              "stop"
+            ]
+          },
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": false,
+            "model_size_tags": [
+              "small"
+            ],
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        }
+      },
+      "gemini": {
+        "gemini-2.5-pro": {
+          "provider_model": {
+            "provider": "gemini",
+            "model": "gemini-2.5-pro",
+            "provider_model_identifier": "gemini-2.5-pro"
+          },
+          "pricing": {
+            "per_response_token_cost": 1.25,
+            "per_query_token_cost": 10.0
+          },
+          "features": {},
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size_tags": [
+              "large",
+              "largest"
+            ],
+            "is_default_candidate": true,
+            "default_candidate_priority": 2
+          }
+        },
+        "gemini-2.0-flash": {
+          "provider_model": {
+            "provider": "gemini",
+            "model": "gemini-2.0-flash",
+            "provider_model_identifier": "gemini-2.0-flash"
+          },
+          "pricing": {
+            "per_response_token_cost": 0.1,
+            "per_query_token_cost": 0.4
+          },
+          "features": {},
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_featured": true,
+            "model_size_tags": [
+              "small",
+              "medium"
+            ],
+            "is_default_candidate": false,
+            "default_candidate_priority": null
+          }
+        }
+      }
+    },
+    "featured_models": {
+      "openai": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o"
+        }
+      ],
+      "gemini": [
+        {
+          "provider": "gemini",
+          "model": "gemini-2.5-pro"
+        },
+        {
+          "provider": "gemini",
+          "model": "gemini-2.0-flash"
+        }
+      ]
+    },
+    "models_by_call_type": {
+      "GENERATE_TEXT": {
+        "openai": [
+          {
+            "provider": "openai",
+            "model": "gpt-4o"
+          },
+          {
+            "provider": "openai",
+            "model": "gpt-4o-mini"
+          }
+        ],
+        "gemini": [
+          {
+            "provider": "gemini",
+            "model": "gemini-2.5-pro"
+          },
+          {
+            "provider": "gemini",
+            "model": "gemini-2.0-flash"
+          }
+        ]
+      }
+    },
+    "models_by_size": {
+      "small": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini"
+        },
+        {
+          "provider": "gemini",
+          "model": "gemini-2.0-flash"
+        }
+      ],
+      "medium": [
+        {
+          "provider": "gemini",
+          "model": "gemini-2.0-flash"
+        }
+      ],
+      "large": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o"
+        },
+        {
+          "provider": "gemini",
+          "model": "gemini-2.5-pro"
+        }
+      ],
+      "largest": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o"
+        },
+        {
+          "provider": "gemini",
+          "model": "gemini-2.5-pro"
+        }
+      ]
+    },
+    "default_model_priority_list": [
+      {
+        "provider": "openai",
+        "model": "gpt-4o"
+      },
+      {
+        "provider": "gemini",
+        "model": "gemini-2.5-pro"
+      }
+    ]
+  }
+}

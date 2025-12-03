@@ -3,11 +3,14 @@ import copy
 import json
 import requests
 from functools import wraps
+import proxai.serializers.type_serializer as type_serializer
 import proxai.types as types
 import proxai.experiment.experiment as experiment
 import proxai.logging.utils as logging_utils
 import proxai.state_controllers.state_controller as state_controller
+import proxai.connectors.model_configs as model_configs
 from typing import Any, Callable, Dict, List, Optional, Union, Tuple
+from importlib.metadata import version
 
 _PROXDASH_STATE_PROPERTY = '_proxdash_connection_state'
 _NOT_SET_EXPERIMENT_PATH_VALUE = '(not set)'
@@ -496,3 +499,78 @@ class ProxDashConnection(state_controller.StateControlled):
               'ProxDash could not log the record. Response: '
               f'{response.text}'),
           type=types.LoggingType.ERROR)
+
+  def get_model_configs_schema(
+      self,
+  ) -> Optional[types.ModelConfigsSchemaType]:
+    current_version = version("proxai")
+    request_url = (
+        f'{self.proxdash_options.base_url}' +
+        f'/models/configs?proxaiVersion={current_version}')
+    if self.status == types.ProxDashConnectionStatus.CONNECTED:
+      response = requests.get(
+          request_url,
+          headers={'X-API-Key': self.proxdash_options.api_key})
+    else:
+      response = requests.get(request_url)
+
+    if response.status_code != 200:
+      logging_utils.log_proxdash_message(
+          logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
+          message=(
+              'Failed to get model configs from ProxDash API '
+              '(GET /models/configs).\n'
+              f'Request URL: {request_url}\n'
+              f'Status code: {response.status_code}\n'
+              f'Response: {response.text}'),
+          type=types.LoggingType.ERROR)
+      return None
+
+    response_data = json.loads(response.text)
+    if not response_data['success']:
+      logging_utils.log_proxdash_message(
+          logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
+          message=(
+              'Failed to get model configs from ProxDash API '
+              '(GET /models/configs).\n'
+              f'Request URL: {request_url}\n'
+              f'Response: {response.text}'),
+          type=types.LoggingType.ERROR)
+      return None
+
+    try:
+      model_configs_schema = type_serializer.decode_model_configs_schema_type(
+          response_data['data'])
+    except Exception as e:
+      logging_utils.log_proxdash_message(
+          logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
+          message=(
+              'Failed to decode model configs from ProxDash API '
+              '(GET /models/configs). Please report this issue to the '
+              'https://github.com/proxai/proxai.\n'
+              'Also, please check latest stable version of ProxAI.\n'
+              f'Request URL: {request_url}\n'
+              f'Error: {str(e)}'),
+          type=types.LoggingType.ERROR)
+      return None
+
+    if (model_configs_schema.metadata is None or
+        model_configs_schema.version_config is None or
+        model_configs_schema.version_config.provider_model_configs is None or
+        len(model_configs_schema.version_config.provider_model_configs) < 4):
+      logging_utils.log_proxdash_message(
+          logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
+          message=(
+              'Model configs schema is invalid. Please report this issue to the '
+              'https://github.com/proxai/proxai.\n'
+              'Also, please check latest stable version of ProxAI. '
+              f'Request URL: {request_url}'
+              f'Response: {response.text}'),
+          type=types.LoggingType.ERROR)
+      return None
+
+    return model_configs_schema

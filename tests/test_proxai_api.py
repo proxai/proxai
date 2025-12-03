@@ -5,6 +5,7 @@ import json
 import pytest
 import proxai as px
 import proxai.connectors.model_configs as model_configs
+from importlib.metadata import version
 
 
 @pytest.fixture
@@ -674,3 +675,33 @@ class TestProxaiApiUseCases:
         allow_multiprocessing=False)
     assert len(model_status.working_models) > 10
     assert len(model_status.failed_models) == 1
+
+  def test_proxdash_model_configs_schema(self, requests_mock):
+    # Mock proxdash model configs schema response
+    current_version = version("proxai")
+    with open(os.path.join(
+        os.path.dirname(__file__),
+        '../src/proxai/connectors/model_configs_data/' +
+        'example_proxdash_model_configs.json'), 'r') as f:
+      raw_text = f.read().strip()
+    requests_mock.get(
+        'https://proxainest-production.up.railway.app/' +
+        f'models/configs?proxaiVersion={current_version}',
+        text='{"success": true, "data": ' + raw_text + ' }',
+        status_code=200,
+    )
+    # Similar to setup_test fixture, but for proxdash model configs schema test
+    px.reset_state()
+    px.set_run_type(px.types.RunType.TEST)
+    px.models.allow_multiprocessing = False
+
+
+    models = px.models.list_models()
+    assert len(models) > 2
+    assert len(models) < 10
+    assert (
+        px.models.model_configs.model_configs_schema.metadata.config_origin ==
+        px.types.ConfigOriginType.PROXDASH)
+    assert (
+        px.models.model_configs.model_configs_schema.metadata.release_notes ==
+        'TEST CONFIG')

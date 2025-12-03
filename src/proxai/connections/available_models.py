@@ -27,6 +27,7 @@ class AvailableModels(state_controller.StateControlled):
   _run_type: types.RunType
   _get_run_type: Callable[[], types.RunType]
   _model_configs: model_configs.ModelConfigs
+  _get_model_configs: Callable[[], model_configs.ModelConfigs]
   _get_model_connector: Callable[
       [types.ProviderModelType], model_connector.ProviderModelConnector]
   _cache_options: types.CacheOptions
@@ -48,6 +49,7 @@ class AvailableModels(state_controller.StateControlled):
       run_type: Optional[types.RunType] = None,
       get_run_type: Optional[Callable[[], types.RunType]] = None,
       model_configs: Optional[model_configs.ModelConfigs] = None,
+      get_model_configs: Optional[Callable[[], model_configs.ModelConfigs]] = None,
       model_cache_manager: Optional[model_cache.ModelCacheManager] = None,
       get_model_cache_manager: Optional[
           Callable[[], model_cache.ModelCacheManager]] = None,
@@ -68,6 +70,7 @@ class AvailableModels(state_controller.StateControlled):
         run_type=run_type,
         get_run_type=get_run_type,
         model_configs=model_configs,
+        get_model_configs=get_model_configs,
         model_cache_manager=model_cache_manager,
         get_model_cache_manager=get_model_cache_manager,
         logging_options=logging_options,
@@ -84,6 +87,7 @@ class AvailableModels(state_controller.StateControlled):
     else:
       initial_state = self.get_state()
       self._get_run_type = get_run_type
+      self._get_model_configs = get_model_configs
       self._get_model_cache_manager = get_model_cache_manager
       self._get_logging_options = get_logging_options
       self._get_proxdash_connection = get_proxdash_connection

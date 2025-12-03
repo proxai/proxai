@@ -31,6 +31,8 @@ _CACHE_OPTIONS: types.CacheOptions
 _PROXDASH_OPTIONS: types.ProxDashOptions
 
 _MODEL_CONFIGS: Optional[model_configs.ModelConfigs]
+_MODEL_CONFIGS_REQUESTED_FROM_PROXDASH: bool
+
 _REGISTERED_MODEL_CONNECTORS: Dict[
     types.CallType, model_connector.ProviderModelConnector]
 _MODEL_CONNECTORS: Dict[
@@ -87,6 +89,8 @@ def _init_globals():
   global _PROXDASH_OPTIONS
 
   global _MODEL_CONFIGS
+  global _MODEL_CONFIGS_REQUESTED_FROM_PROXDASH
+
   global _REGISTERED_MODEL_CONNECTORS
   global _MODEL_CONNECTORS
   global _MODEL_CACHE_MANAGER
@@ -111,6 +115,8 @@ def _init_globals():
   _PROXDASH_OPTIONS = types.ProxDashOptions()
 
   _MODEL_CONFIGS = model_configs.ModelConfigs()
+  _MODEL_CONFIGS_REQUESTED_FROM_PROXDASH = False
+
   _REGISTERED_MODEL_CONNECTORS = {}
   _MODEL_CONNECTORS = {}
   _MODEL_CACHE_MANAGER = None
@@ -307,6 +313,14 @@ def _get_run_type() -> types.RunType:
 
 
 def _get_model_configs() -> model_configs.ModelConfigs:
+  global _MODEL_CONFIGS
+  global _MODEL_CONFIGS_REQUESTED_FROM_PROXDASH
+
+  if not _MODEL_CONFIGS_REQUESTED_FROM_PROXDASH:
+    model_configs_schema = _get_proxdash_connection().get_model_configs_schema()
+    if model_configs_schema is not None:
+      _MODEL_CONFIGS.model_configs_schema = model_configs_schema
+    _MODEL_CONFIGS_REQUESTED_FROM_PROXDASH = True
   return _MODEL_CONFIGS
 
 def _get_hidden_run_key() -> str:
@@ -614,7 +628,7 @@ def get_available_models() -> available_models.AvailableModels:
   if _AVAILABLE_MODELS is None:
     _AVAILABLE_MODELS = available_models.AvailableModels(
         get_run_type=_get_run_type,
-        model_configs=_get_model_configs(),
+        get_model_configs=_get_model_configs,
         get_model_connector=_get_model_connector,
         get_allow_multiprocessing=_get_allow_multiprocessing,
         get_model_test_timeout=_get_model_test_timeout,

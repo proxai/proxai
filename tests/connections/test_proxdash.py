@@ -10,6 +10,7 @@ import proxai.connectors.model_configs as model_configs
 from dataclasses import dataclass
 from typing import Optional, List, Dict, Tuple, Union
 import requests
+import requests_mock as requests_mock_module
 from urllib.parse import unquote
 
 @pytest.fixture(autouse=True)
@@ -2023,3 +2024,140 @@ class TestProxDashConnectionScenarios:
   # def test_invalid_state_transitions(self):
   #   """Tests invalid state transition attempts and error handling"""
   #   pass
+
+
+class TestProxDashConnectionGetModelConfigsSchema:
+  @pytest.fixture(autouse=True)
+  def setup_get_model_configs_schema(self, monkeypatch):
+    monkeypatch.delenv('PROXDASH_API_KEY', raising=False)
+    self.base_url = 'https://proxainest-production.up.railway.app'
+    # Create a valid config with 4+ providers for validation
+    self.valid_config = json.dumps({
+        "metadata": {
+            "version": "1.0.0",
+            "config_origin": "PROXDASH",
+            "release_notes": "TEST CONFIG"
+        },
+        "version_config": {
+            "provider_model_configs": {
+                "openai": {"gpt-4": {}},
+                "claude": {"claude-3": {}},
+                "gemini": {"gemini-pro": {}},
+                "mistral": {"mistral-large": {}}
+            }
+        }
+    })
+    yield
+
+  def _create_connection(
+      self,
+      connected: bool = True,
+      requests_mock=None
+  ) -> proxdash.ProxDashConnection:
+    if connected and requests_mock:
+      requests_mock.get(
+          f'{self.base_url}/ingestion/verify-key',
+          text='{"success": true, "data": {"permission": "ALL"}}',
+          status_code=200)
+    return proxdash.ProxDashConnection(
+        logging_options=types.LoggingOptions(),
+        proxdash_options=types.ProxDashOptions(
+            api_key='test_api_key' if connected else None,
+            disable_proxdash=not connected))
+
+  def test_successful_fetch_when_connected(self, requests_mock):
+    """Tests successful fetch with API key authentication."""
+    requests_mock.get(
+        f'{self.base_url}/ingestion/verify-key',
+        text='{"success": true, "data": {"permission": "ALL"}}',
+        status_code=200)
+    connection = self._create_connection(connected=True, requests_mock=requests_mock)
+
+    requests_mock.get(
+        requests_mock_module.ANY,
+        text='{"success": true, "data": ' + self.valid_config + '}',
+        status_code=200)
+
+    result = connection.get_model_configs_schema()
+
+    assert result is not None
+    assert result.metadata.config_origin == types.ConfigOriginType.PROXDASH
+    assert result.metadata.release_notes == 'TEST CONFIG'
+
+  def test_successful_fetch_when_not_connected(self, requests_mock):
+    """Tests successful fetch without API key (public endpoint)."""
+    connection = self._create_connection(connected=False)
+
+    requests_mock.get(
+        requests_mock_module.ANY,
+        text='{"success": true, "data": ' + self.valid_config + '}',
+        status_code=200)
+
+    result = connection.get_model_configs_schema()
+
+    assert result is not None
+    assert result.metadata.config_origin == types.ConfigOriginType.PROXDASH
+
+  def test_returns_none_on_non_200_status(self, requests_mock):
+    """Tests that None is returned when API returns non-200 status."""
+    connection = self._create_connection(connected=False)
+
+    requests_mock.get(
+        requests_mock_module.ANY,
+        text='Server Error',
+        status_code=500)
+
+    result = connection.get_model_configs_schema()
+
+    assert result is None
+
+  def test_returns_none_on_unsuccessful_response(self, requests_mock):
+    """Tests that None is returned when success is false."""
+    connection = self._create_connection(connected=False)
+
+    requests_mock.get(
+        requests_mock_module.ANY,
+        text='{"success": false, "error": "Some error"}',
+        status_code=200)
+
+    result = connection.get_model_configs_schema()
+
+    assert result is None
+
+  def test_returns_none_on_decode_error(self, requests_mock):
+    """Tests that None is returned when response data cannot be decoded."""
+    connection = self._create_connection(connected=False)
+
+    # Use invalid enum value for config_origin to trigger decode error
+    invalid_config = '{"metadata": {"config_origin": "INVALID_ORIGIN"}}'
+    requests_mock.get(
+        requests_mock_module.ANY,
+        text='{"success": true, "data": ' + invalid_config + '}',
+        status_code=200)
+
+    result = connection.get_model_configs_schema()
+
+    assert result is None
+
+  def test_returns_none_on_insufficient_providers(self, requests_mock):
+    """Tests that None is returned when schema has fewer than 4 providers."""
+    connection = self._create_connection(connected=False)
+
+    # Config with only 2 providers (less than required 4)
+    insufficient_config = json.dumps({
+        "metadata": {"config_origin": "PROXDASH"},
+        "version_config": {
+            "provider_model_configs": {
+                "openai": {"gpt-4": {}},
+                "claude": {"claude-3": {}}
+            }
+        }
+    })
+    requests_mock.get(
+        requests_mock_module.ANY,
+        text='{"success": true, "data": ' + insufficient_config + '}',
+        status_code=200)
+
+    result = connection.get_model_configs_schema()
+
+    assert result is None
