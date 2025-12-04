@@ -2,14 +2,12 @@ import os
 import copy
 import json
 import requests
-from functools import wraps
 import proxai.serializers.type_serializer as type_serializer
 import proxai.types as types
 import proxai.experiment.experiment as experiment
 import proxai.logging.utils as logging_utils
 import proxai.state_controllers.state_controller as state_controller
-import proxai.connectors.model_configs as model_configs
-from typing import Any, Callable, Dict, List, Optional, Union, Tuple
+from typing import Callable, Dict, Optional, Union, Tuple
 from importlib.metadata import version
 
 _PROXDASH_STATE_PROPERTY = '_proxdash_connection_state'
@@ -560,7 +558,7 @@ class ProxDashConnection(state_controller.StateControlled):
     if (model_configs_schema.metadata is None or
         model_configs_schema.version_config is None or
         model_configs_schema.version_config.provider_model_configs is None or
-        len(model_configs_schema.version_config.provider_model_configs) < 4):
+        len(model_configs_schema.version_config.provider_model_configs) < 2):
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
           proxdash_options=self.proxdash_options,

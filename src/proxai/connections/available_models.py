@@ -5,7 +5,7 @@ import datetime
 import multiprocessing
 import os
 import traceback
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
+from typing import Callable, Dict, List, Optional, Set, Tuple, Union
 import proxai.types as types
 import proxai.caching.model_cache as model_cache
 import proxai.connections.proxdash as proxdash
@@ -15,7 +15,6 @@ import proxai.connectors.model_configs as model_configs
 import proxai.logging.utils as logging_utils
 import proxai.state_controllers.state_controller as state_controller
 import proxai.type_utils as type_utils
-import concurrent.futures
 
 _AVAILABLE_MODELS_STATE_PROPERTY = '_available_models_state'
 _GENERATE_TEXT_TEST_PROMPT = 'Hello model!'
@@ -102,7 +101,6 @@ class AvailableModels(state_controller.StateControlled):
       self.proxdash_connection = proxdash_connection
       self.allow_multiprocessing = allow_multiprocessing
       self.model_test_timeout = model_test_timeout
-      self.get_model_connector = get_model_connector
 
       self.providers_with_key = set()
       self.latest_model_cache_path_used_for_update = None
@@ -522,7 +520,7 @@ class AvailableModels(state_controller.StateControlled):
 
     model_connectors = {}
     for provider_model in models.unprocessed_models:
-      model_connectors[provider_model] = self.get_model_connector(
+      model_connectors[provider_model] = self._get_model_connector(
           provider_model)
 
     if self.allow_multiprocessing:
