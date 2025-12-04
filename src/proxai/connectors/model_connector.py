@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import copy
-import dataclasses
 import datetime
 import traceback
 import functools
@@ -12,9 +11,7 @@ import proxai.logging.utils as logging_utils
 import proxai.caching.query_cache as query_cache
 import proxai.type_utils as type_utils
 import proxai.stat_types as stats_type
-import proxai.serializers.hash_serializer as hash_serializer
 import proxai.connections.proxdash as proxdash
-import proxai.connectors.model_configs as model_configs
 import proxai.state_controllers.state_controller as state_controller
 
 _PROVIDER_MODEL_STATE_PROPERTY = '_provider_model_state'

@@ -2149,7 +2149,6 @@ class TestProxDashConnectionGetModelConfigsSchema:
         "version_config": {
             "provider_model_configs": {
                 "openai": {"gpt-4": {}},
-                "claude": {"claude-3": {}}
             }
         }
     })

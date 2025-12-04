@@ -695,7 +695,6 @@ class TestProxaiApiUseCases:
     px.set_run_type(px.types.RunType.TEST)
     px.models.allow_multiprocessing = False
 
-
     models = px.models.list_models()
     assert len(models) > 2
     assert len(models) < 10
