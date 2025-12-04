@@ -262,6 +262,17 @@ def _set_proxdash_options(
   return result_proxdash_options
 
 
+def _set_model_configs_requested_from_proxdash(
+    model_configs_requested_from_proxdash: Optional[bool] = None,
+    global_set: Optional[bool] = False) -> Optional[bool]:
+  if model_configs_requested_from_proxdash is None:
+    return None
+  if global_set:
+    global _MODEL_CONFIGS_REQUESTED_FROM_PROXDASH
+    _MODEL_CONFIGS_REQUESTED_FROM_PROXDASH = model_configs_requested_from_proxdash
+  return model_configs_requested_from_proxdash
+
+
 def _set_allow_multiprocessing(
     allow_multiprocessing: Optional[bool] = None,
     global_set: Optional[bool] = False) -> Optional[bool]:
@@ -510,6 +521,9 @@ def connect(
       global_set=True)
   _set_model_test_timeout(
       model_test_timeout=model_test_timeout,
+      global_set=True)
+  _set_model_configs_requested_from_proxdash(
+      model_configs_requested_from_proxdash=False,
       global_set=True)
   _set_strict_feature_test(
       strict_feature_test=strict_feature_test,
