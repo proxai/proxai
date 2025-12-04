@@ -517,9 +517,8 @@ class ProxDashConnection(state_controller.StateControlled):
           logging_options=self.logging_options,
           proxdash_options=self.proxdash_options,
           message=(
-              'Failed to get model configs from ProxDash API '
-              '(GET /models/configs).\n'
-              f'Request URL: {request_url}\n'
+              'Failed to get model configs from ProxDash.\n'
+              f'ProxAI version: {current_version}\n'
               f'Status code: {response.status_code}\n'
               f'Response: {response.text}'),
           type=types.LoggingType.ERROR)
@@ -531,9 +530,8 @@ class ProxDashConnection(state_controller.StateControlled):
           logging_options=self.logging_options,
           proxdash_options=self.proxdash_options,
           message=(
-              'Failed to get model configs from ProxDash API '
-              '(GET /models/configs).\n'
-              f'Request URL: {request_url}\n'
+              'Failed to get model configs from ProxDash.\n'
+              f'ProxAI version: {current_version}\n'
               f'Response: {response.text}'),
           type=types.LoggingType.ERROR)
       return None
@@ -546,11 +544,11 @@ class ProxDashConnection(state_controller.StateControlled):
           logging_options=self.logging_options,
           proxdash_options=self.proxdash_options,
           message=(
-              'Failed to decode model configs from ProxDash API '
-              '(GET /models/configs). Please report this issue to the '
+              'Failed to decode model configs from ProxDash response.\n'
+              'Please report this issue to the '
               'https://github.com/proxai/proxai.\n'
               'Also, please check latest stable version of ProxAI.\n'
-              f'Request URL: {request_url}\n'
+              f'ProxAI version: {current_version}\n'
               f'Error: {str(e)}'),
           type=types.LoggingType.ERROR)
       return None
@@ -570,5 +568,13 @@ class ProxDashConnection(state_controller.StateControlled):
               f'Response: {response.text}'),
           type=types.LoggingType.ERROR)
       return None
+
+    logging_utils.log_proxdash_message(
+        logging_options=self.logging_options,
+        proxdash_options=self.proxdash_options,
+        message=(
+            f'Model configs schema (v{model_configs_schema.metadata.version}) '
+            'fetched from ProxDash.'),
+        type=types.LoggingType.INFO)
 
     return model_configs_schema
