@@ -14,10 +14,12 @@ from proxai.proxai import (
     get_current_options,
     reset_state,
     reset_platform_cache,
-    _init_globals,
+    export_client_state,
+    import_client_state,
+    get_client,
 )
+from proxai.client import ProxAIClient
 
 
 __version__ = version("proxai")
-_init_globals()
 models = get_available_models()

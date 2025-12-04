@@ -373,3 +373,36 @@ class AvailableModelsState(StateContainer):
   providers_with_key: Optional[Set[str]] = None
   has_fetched_all_models: Optional[bool] = None
   latest_model_cache_path_used_for_update: Optional[str] = None
+
+
+@dataclasses.dataclass
+class ProxAIClientState(StateContainer):
+  """Complete state for a ProxAI client instance.
+
+  This state container holds all configuration and nested states
+  for a ProxAI client, enabling serialization for multiprocessing.
+  """
+  # Core settings
+  run_type: Optional[RunType] = None
+  hidden_run_key: Optional[str] = None
+  experiment_path: Optional[str] = None
+  root_logging_path: Optional[str] = None
+
+  # Configuration options
+  logging_options: Optional[LoggingOptions] = None
+  cache_options: Optional[CacheOptions] = None
+  proxdash_options: Optional[ProxDashOptions] = None
+
+  # Nested StateControlled states
+  model_configs: Optional[ModelConfigsState] = None
+  model_cache_manager: Optional[ModelCacheManagerState] = None
+  query_cache_manager: Optional[QueryCacheManagerState] = None
+  proxdash_connection: Optional[ProxDashConnectionState] = None
+  available_models: Optional[AvailableModelsState] = None
+
+  # Behavior flags
+  strict_feature_test: Optional[bool] = False
+  suppress_provider_errors: Optional[bool] = False
+  allow_multiprocessing: Optional[bool] = True
+  model_test_timeout: Optional[int] = 25
+  model_configs_requested_from_proxdash: Optional[bool] = False
