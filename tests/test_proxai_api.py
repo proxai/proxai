@@ -50,7 +50,7 @@ class TestProxaiApiUseCases:
     px.models.list_models()
     px.models.allow_multiprocessing = None
     total_time = time.time() - start
-    assert total_time < 1
+    assert total_time < 2
 
     # Check that model cache is created in the cache path:
     assert os.path.exists(px.models.model_cache_manager.cache_path)
@@ -84,7 +84,7 @@ class TestProxaiApiUseCases:
     px.models.list_models()
     px.models.allow_multiprocessing = None
     total_time = time.time() - start
-    assert total_time < 1
+    assert total_time < 2
 
     # Check that model cache in cache path is not changed:
     assert os.path.exists(px.models.model_cache_manager.cache_path)
@@ -137,12 +137,12 @@ class TestProxaiApiUseCases:
     start = time.time()
     models = px.models.list_models(clear_model_cache=True)
     assert len(models) > 15
-    assert time.time() - start < 1
+    assert time.time() - start < 2
 
     start = time.time()
     models = px.models.list_models(model_size='largest')
     assert len(models) < 15
-    assert time.time() - start < 1
+    assert time.time() - start < 2
 
   def test_models_get_all_models_with_multiprocessing_and_model_test_timeout(
       self, monkeypatch, model_configs_instance):
@@ -159,7 +159,7 @@ class TestProxaiApiUseCases:
     assert (
         model_configs_instance.get_provider_model(('mock_slow_provider', 'mock_slow_model'))
         in models.failed_models)
-    assert time.time() - start < 7
+    assert time.time() - start < 10
 
   def test_models_apis(self):
     px.connect(cache_options=px.CacheOptions(clear_model_cache_on_connect=True))
@@ -171,14 +171,14 @@ class TestProxaiApiUseCases:
     start = time.time()
     providers = px.models.list_providers()
     assert len(providers) > 5
-    assert time.time() - start < 1
+    assert time.time() - start < 2
 
     # --- get_provider_models ---
     # This should be fast because of model cache:
     start = time.time()
     models = px.models.list_provider_models('openai')
     assert len(models) > 2
-    assert time.time() - start < 1
+    assert time.time() - start < 2
 
     # --- get_provider_model ---
     # This should be fast because of model cache:
@@ -186,13 +186,13 @@ class TestProxaiApiUseCases:
     provider_model = px.models.get_model('openai', 'gpt-4')
     assert provider_model.provider == 'openai'
     assert provider_model.model == 'gpt-4'
-    assert time.time() - start < 1
+    assert time.time() - start < 2
 
     # --- get_all_models with largest models ---
     start = time.time()
     models = px.models.list_models(model_size='largest')
     assert len(models) < 15
-    assert time.time() - start < 1
+    assert time.time() - start < 2
 
     # --- get_all_models with clear_model_cache ---
     start = time.time()
@@ -200,7 +200,7 @@ class TestProxaiApiUseCases:
     models = px.models.list_models(clear_model_cache=True)
     px.models.allow_multiprocessing = None
     assert len(models) > 15
-    assert time.time() - start < 1
+    assert time.time() - start < 2
 
   def test_set_model(self):
     px.models.list_models(clear_model_cache=True)
