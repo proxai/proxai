@@ -52,7 +52,7 @@ class ModelConfigs(state_controller.StateControlled):
       initial_state = self.get_state()
 
       if model_configs_schema is None:
-        model_configs_schema = self._load_config_from_local_json_file()
+        model_configs_schema = self._load_model_config_schema_from_local_files()
       self.model_configs_schema = model_configs_schema
       self.handle_changes(initial_state, self.get_state())
 
@@ -398,7 +398,7 @@ class ModelConfigs(state_controller.StateControlled):
         and type(value[1]) == str)
 
   @staticmethod
-  def _load_config_from_local_json_file(
+  def _load_model_config_schema_from_local_files(
       version: Optional[str] = None) -> types.ModelConfigsSchemaType:
     version = version or ModelConfigs.LOCAL_CONFIG_VERSION
 
@@ -425,6 +425,13 @@ class ModelConfigs(state_controller.StateControlled):
         f'Error: {e}')
 
     return type_serializer.decode_model_configs_schema_type(config_dict)
+
+  def load_model_config_from_json_string(
+      self,
+      json_string: str):
+    model_configs_schema = type_serializer.decode_model_configs_schema_type(
+        json.loads(json_string))
+    self.model_configs_schema = model_configs_schema
 
   def check_provider_model_identifier_type(
       self,
