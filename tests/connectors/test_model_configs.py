@@ -840,6 +840,29 @@ class TestGetAllModels:
       custom_model_configs.get_all_models(model_size=types.ModelSizeType.MEDIUM)
 
 
+class TestLoadModelConfigFromJsonString:
+  """Test the load_model_config_from_json_string method."""
+
+  def test_load_valid_json_string(self, model_configs_instance):
+    """Test loading a valid JSON config string updates the schema."""
+    from importlib import resources
+    config_data = (
+        resources.files("proxai.connectors.model_configs_data")
+        .joinpath("example_proxdash_model_configs.json")
+        .read_text(encoding="utf-8")
+    )
+
+    model_configs_instance.load_model_config_from_json_string(config_data)
+
+    # Verify the schema was loaded with exactly the models from example config
+    provider_configs = (
+        model_configs_instance.model_configs_schema.version_config
+        .provider_model_configs)
+    assert len(provider_configs) == 2  # openai, gemini
+    assert len(provider_configs['openai']) == 2  # gpt-4o, gpt-4o-mini
+    assert len(provider_configs['gemini']) == 2  # gemini-2.5-pro, gemini-2.0-flash
+
+
 class TestBuiltInConfigValidation:
   """Test that the built-in v1.0.0.json config passes validation."""
 
