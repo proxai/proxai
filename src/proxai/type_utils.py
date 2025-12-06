@@ -1,4 +1,21 @@
+from typing import Optional
 import proxai.types as types
+import pydantic
+
+
+def _raise_invalid_response_format_value_error(
+    response_format: types.UserDefinedResponseFormatValueType) -> None:
+  raise ValueError(
+        'Please provide one of the followings:\n'
+        ' - "json" as string for JSON response format\n'
+        ' - dict for JSON schema response format\n'
+        ' - pydantic.BaseModel for Pydantic response format\n'
+        ' - proxai.types.ResponseFormat for custom more advanced response '
+        'format\n'
+        'Check https://www.proxai.co/proxai-docs/advanced/response-format '
+        'for more information.\n'
+        f'Response format type: {type(response_format)}\n'
+        f'Response format value: {response_format}')
 
 
 def check_messages_type(messages: types.MessagesType):
@@ -43,3 +60,28 @@ def check_model_size_identifier_type(
         'following strings: small, medium, large, largest\n'
         f'Invalid model size identifier: {model_size_identifier}\n'
         f'Type: {type(model_size_identifier)}')
+
+
+def create_response_format(
+    response_format: Optional[types.UserDefinedResponseFormatValueType] = None
+) -> types.ResponseFormat:
+  if response_format is None:
+    return types.ResponseFormat(type=types.ResponseFormatType.TEXT)
+  elif isinstance(response_format, str):
+    if response_format != 'json':
+      _raise_invalid_response_format_value_error(response_format)
+    return types.ResponseFormat(type=types.ResponseFormatType.JSON)
+  elif isinstance(response_format, dict):
+    return types.ResponseFormat(
+        value=response_format,
+        type=types.ResponseFormatType.JSON_SCHEMA)
+  elif (isinstance(response_format, type) and
+        issubclass(response_format, pydantic.BaseModel)):
+    return types.ResponseFormat(
+        value=types.ResponseFormatPydanticValue(
+            class_name=response_format.__name__,
+            class_value=response_format),
+        type=types.ResponseFormatType.PYDANTIC)
+  elif isinstance(response_format, types.ResponseFormat):
+    return response_format
+  _raise_invalid_response_format_value_error(response_format)
