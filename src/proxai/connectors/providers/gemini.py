@@ -21,7 +21,8 @@ class GeminiConnector(model_connector.ProviderModelConnector):
   def init_mock_model(self):
     return gemini_mock.GeminiMock()
 
-  def generate_text_proc(self, query_record: types.QueryRecord) -> str:
+  def generate_text_proc(
+      self, query_record: types.QueryRecord) -> types.Response:
     # Note: Gemini uses 'user' and 'model' as roles.  'system_instruction' is a
     # different parameter.
     contents = []
@@ -56,4 +57,6 @@ class GeminiConnector(model_connector.ProviderModelConnector):
         config=config,
         contents=contents
     )
-    return response.text
+    return types.Response(
+        value=response.text,
+        type=types.ResponseType.TEXT)

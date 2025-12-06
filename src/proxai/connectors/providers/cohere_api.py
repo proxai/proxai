@@ -16,7 +16,8 @@ class CohereConnector(model_connector.ProviderModelConnector):
   def init_mock_model(self):
     return cohere_api_mock.CohereMock()
 
-  def generate_text_proc(self, query_record: types.QueryRecord) -> str:
+  def generate_text_proc(
+      self, query_record: types.QueryRecord) -> types.Response:
     # Note: Cohere uses 'SYSTEM', 'USER', and 'CHATBOT' as roles. Additionally,
     # system instructions can be provided in two ways: preamble parameter and
     # chat_history 'SYSTEM' role. The difference is explained in the
@@ -54,4 +55,6 @@ class CohereConnector(model_connector.ProviderModelConnector):
         create = functools.partial(create, stop_sequences=[query_record.stop])
 
     completion = create()
-    return completion.text
+    return types.Response(
+        value=completion.text,
+        type=types.ResponseType.TEXT)

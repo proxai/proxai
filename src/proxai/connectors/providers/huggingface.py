@@ -57,7 +57,8 @@ class HuggingFaceConnector(model_connector.ProviderModelConnector):
   def init_mock_model(self):
     return huggingface_mock.HuggingFaceMock()
 
-  def generate_text_proc(self, query_record: types.QueryRecord) -> str:
+  def generate_text_proc(
+      self, query_record: types.QueryRecord) -> types.Response:
     provider_model = query_record.provider_model
     query_messages = []
     if query_record.system is not None:
@@ -81,4 +82,6 @@ class HuggingFaceConnector(model_connector.ProviderModelConnector):
       else:
         create = functools.partial(create, stop=query_record.stop)
     completion = create()
-    return completion
+    return types.Response(
+        value=completion,
+        type=types.ResponseType.TEXT)

@@ -618,7 +618,7 @@ def generate_text(
 
   if extensive_return:
     return logging_record
-  return logging_record.response_record.response
+  return logging_record.response_record.response.value
 
 
 def get_summary(

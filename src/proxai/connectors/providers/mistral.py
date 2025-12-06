@@ -17,7 +17,8 @@ class MistralConnector(model_connector.ProviderModelConnector):
   def init_mock_model(self):
     return mistral_mock.MistralMock()
 
-  def generate_text_proc(self, query_record: types.QueryRecord) -> str:
+  def generate_text_proc(
+      self, query_record: types.QueryRecord) -> types.Response:
     # Note: Mistral uses 'system', 'user', and 'assistant' as roles.
     query_messages = []
     if query_record.system != None:
@@ -46,4 +47,6 @@ class MistralConnector(model_connector.ProviderModelConnector):
       create = functools.partial(create, temperature=query_record.temperature)
 
     completion = create()
-    return completion.choices[0].message.content
+    return types.Response(
+        value=completion.choices[0].message.content,
+        type=types.ResponseType.TEXT)

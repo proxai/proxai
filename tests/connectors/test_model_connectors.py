@@ -333,7 +333,7 @@ class TestModelConnector:
         max_tokens=100)
 
     assert isinstance(result, types.LoggingRecord)
-    assert result.response_record.response == "mock response"
+    assert result.response_record.response.value == "mock response"
     assert result.query_record.prompt == "Hello"
     assert result.query_record.max_tokens == 100
     assert result.response_source == types.ResponseSource.PROVIDER
@@ -405,3 +405,48 @@ class TestModelConnector:
     assert run_time_stats.provider_stats.total_response_token_count > 0
     assert run_time_stats.provider_stats.total_response_time > 0
     assert run_time_stats.provider_stats.estimated_cost > 0
+
+
+class TestGetTokenCountEstimate:
+  def test_string_input(self):
+    connector = get_mock_provider_model_connector()
+    result = connector.get_token_count_estimate('Hello world')
+    assert result > 0
+
+  def test_text_response(self):
+    connector = get_mock_provider_model_connector()
+    response = types.Response(
+        type=types.ResponseType.TEXT,
+        value='Hello world')
+    result = connector.get_token_count_estimate(response)
+    assert result > 0
+
+  def test_json_response(self):
+    connector = get_mock_provider_model_connector()
+    response = types.Response(
+        type=types.ResponseType.JSON,
+        value={'key': 'value'})
+    result = connector.get_token_count_estimate(response)
+    assert result > 0
+
+  def test_pydantic_response(self):
+    import pydantic
+
+    class TestModel(pydantic.BaseModel):
+      name: str
+      value: int
+
+    connector = get_mock_provider_model_connector()
+    response = types.Response(
+        type=types.ResponseType.PYDANTIC,
+        value=TestModel(name='test', value=42))
+    result = connector.get_token_count_estimate(response)
+    assert result > 0
+
+  def test_messages_input(self):
+    connector = get_mock_provider_model_connector()
+    messages = [
+        {'role': 'user', 'content': 'Hello'},
+        {'role': 'assistant', 'content': 'Hi there'}]
+    result = connector.get_token_count_estimate(messages)
+    assert result > 0

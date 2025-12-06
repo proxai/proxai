@@ -18,7 +18,8 @@ class DatabricksConnector(model_connector.ProviderModelConnector):
   def init_mock_model(self):
     return databricks_mock.DatabricksMock()
 
-  def generate_text_proc(self, query_record: types.QueryRecord) -> str:
+  def generate_text_proc(
+      self, query_record: types.QueryRecord) -> types.Response:
     # Note: Databricks tries to use same parameters with OpenAI.
     # Some parameters seems not working as expected for some models. For
     # example, the system instruction doesn't have any effect on the completion
@@ -46,4 +47,6 @@ class DatabricksConnector(model_connector.ProviderModelConnector):
       create = functools.partial(create, stop=query_record.stop)
 
     completion = create()
-    return completion.choices[0].message.content
+    return types.Response(
+        value=completion.choices[0].message.content,
+        type=types.ResponseType.TEXT)

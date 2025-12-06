@@ -16,7 +16,8 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
   def init_mock_model(self):
     return openai_mock.OpenAIMock()
 
-  def generate_text_proc(self, query_record: types.QueryRecord) -> str:
+  def generate_text_proc(
+      self, query_record: types.QueryRecord) -> types.Response:
     # Note: OpenAI uses 'system', 'user', and 'assistant' as roles.
     query_messages = []
     if query_record.system is not None:
@@ -68,14 +69,23 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
     completion = create()
 
     if query_record.response_format is None:
-      return completion.choices[0].message.content
+      return types.Response(
+          value=completion.choices[0].message.content,
+          type=types.ResponseType.TEXT)
     elif query_record.response_format.type == types.ResponseFormatType.TEXT:
-      return completion.choices[0].message.content
+      return types.Response(
+          value=completion.choices[0].message.content,
+          type=types.ResponseType.TEXT)
     elif query_record.response_format.type == types.ResponseFormatType.JSON:
-      return completion.choices[0].message.content
+      return types.Response(
+          value=completion.choices[0].message.content,
+          type=types.ResponseType.JSON)
     elif (query_record.response_format.type ==
           types.ResponseFormatType.JSON_SCHEMA):
-      return completion.choices[0].message.content
+      return types.Response(
+          value=completion.choices[0].message.content,
+          type=types.ResponseType.JSON)
     elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
-      print(completion.choices[0].message.parsed)
-      return completion.choices[0].message.parsed
+      return types.Response(
+          value=completion.choices[0].message.parsed,
+          type=types.ResponseType.PYDANTIC)

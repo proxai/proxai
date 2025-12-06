@@ -16,7 +16,8 @@ class ClaudeConnector(model_connector.ProviderModelConnector):
   def init_mock_model(self):
     return claude_mock.ClaudeMock()
 
-  def generate_text_proc(self, query_record: types.QueryRecord) -> str:
+  def generate_text_proc(
+      self, query_record: types.QueryRecord) -> types.Response:
     # Note: Claude uses 'user' and 'assistant' as roles. 'system' is a
     # different parameter.
     query_messages = []
@@ -46,4 +47,6 @@ class ClaudeConnector(model_connector.ProviderModelConnector):
         create = functools.partial(create, stop_sequences=query_record.stop)
 
     completion = create()
-    return completion.content[0].text
+    return types.Response(
+        value=completion.content[0].text,
+        type=types.ResponseType.TEXT)
