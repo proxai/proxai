@@ -207,9 +207,9 @@ class ResponseFormatPydanticValue:
 
 
 ResponseFormatValueType = Union[
-  str,
-  Dict[str, Any],
-  ResponseFormatPydanticValue
+    str,
+    Dict[str, Any],
+    ResponseFormatPydanticValue
 ]
 
 
@@ -227,10 +227,11 @@ class ResponseFormat:
 
 
 UserDefinedResponseFormatValueType = Union[
-  str,
-  Dict[str, Any],
-  Type[pydantic.BaseModel],
-  ResponseFormat]
+    str,
+    Dict[str, Any],
+    Type[pydantic.BaseModel],
+    ResponseFormat
+]
 
 
 @dataclasses.dataclass
@@ -249,8 +250,34 @@ class QueryRecord:
 
 
 @dataclasses.dataclass
+class ResponsePydanticValue:
+  class_name: Optional[str] = None
+  instance_value: Optional[Type[pydantic.BaseModel]] = None
+  instance_json_value: Optional[Dict[str, Any]] = None
+
+
+ResponseValue = Union[
+    str,
+    Dict[str, Any],
+    ResponsePydanticValue
+]
+
+
+class ResponseType(str, enum.Enum):
+  TEXT = 'TEXT'
+  JSON = 'JSON'
+  PYDANTIC = 'PYDANTIC'
+
+
+@dataclasses.dataclass
+class Response:
+  value: Optional[ResponseValue] = None
+  type: Optional[ResponseType] = None
+
+
+@dataclasses.dataclass
 class QueryResponseRecord:
-  response: Optional[str] = None
+  response: Optional[Response] = None
   error: Optional[str] = None
   error_traceback: Optional[str] = None
   start_utc_date: Optional[datetime.datetime] = None
