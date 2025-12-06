@@ -199,10 +199,17 @@ class RunOptions:
   suppress_provider_errors: Optional[bool] = None
 
 
+@dataclasses.dataclass
+class ResponseFormatPydanticValue:
+  class_name: Optional[str] = None
+  class_value: Optional[Type[pydantic.BaseModel]] = None
+  class_json_schema_value: Optional[Dict[str, Any]] = None
+
+
 ResponseFormatValueType = Union[
   str,
   Dict[str, Any],
-  Type[pydantic.BaseModel]
+  ResponseFormatPydanticValue
 ]
 
 

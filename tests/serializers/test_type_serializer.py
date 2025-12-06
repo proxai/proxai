@@ -5,6 +5,8 @@ import proxai.serializers.type_serializer as type_serializer
 import proxai.serializers.hash_serializer as hash_serializer
 import proxai.connectors.model_configs as model_configs
 import pytest
+import pydantic
+from typing import List, Optional
 
 
 def _get_provider_model_type_options():
@@ -678,6 +680,67 @@ def _get_default_model_priority_list_type_options():
      ('openai', 'o3-mini'),),]
 
 
+class _UserModel(pydantic.BaseModel):
+  name: str
+  age: int
+
+
+class _AddressModel(pydantic.BaseModel):
+  street: str
+  city: str
+  country: str
+
+
+class _UserWithAddressModel(pydantic.BaseModel):
+  name: str
+  email: Optional[str] = None
+  address: _AddressModel
+  tags: List[str] = []
+
+
+def _get_response_format_pydantic_value_options():
+  return [
+      {'class_name': 'UserModel',
+       'class_value': _UserModel},
+      {'class_name': 'AddressModel',
+       'class_value': _AddressModel},
+      {'class_name': 'UserWithAddressModel',
+       'class_value': _UserWithAddressModel},
+      {'class_value': _UserModel},
+      {'class_name': 'UserModel'},
+      {'class_json_schema_value': {
+          'type': 'object',
+          'properties': {'name': {'type': 'string'}}}},
+      {'class_name': 'CustomModel',
+       'class_json_schema_value': {
+          'type': 'object',
+          'properties': {'id': {'type': 'integer'}}}},]
+
+
+def _get_response_format_options():
+  return [
+      {'type': types.ResponseFormatType.TEXT},
+      {'type': types.ResponseFormatType.JSON},
+      {'type': types.ResponseFormatType.JSON_SCHEMA,
+       'value': {'type': 'object', 'properties': {'name': {'type': 'string'}}}},
+      {'type': types.ResponseFormatType.JSON_SCHEMA,
+       'value': {
+          'type': 'object',
+          'properties': {
+              'name': {'type': 'string'},
+              'age': {'type': 'integer'},
+              'tags': {'type': 'array', 'items': {'type': 'string'}}},
+          'required': ['name', 'age']}},
+      {'type': types.ResponseFormatType.PYDANTIC,
+       'value': types.ResponseFormatPydanticValue(
+          class_name='UserModel',
+          class_value=_UserModel)},
+      {'type': types.ResponseFormatType.PYDANTIC,
+       'value': types.ResponseFormatPydanticValue(
+          class_name='UserWithAddressModel',
+          class_value=_UserWithAddressModel)},]
+
+
 class TestTypeSerializer:
   @pytest.mark.parametrize(
       'provider_model_type_options',
@@ -1074,3 +1137,61 @@ class TestTypeSerializer:
             record=encoded_default_model_priority_list_type))
     assert default_model_priority_list_type_options == (
         decoded_default_model_priority_list_type)
+
+  @pytest.mark.parametrize(
+      'response_format_pydantic_value_options',
+      _get_response_format_pydantic_value_options())
+  def test_encode_decode_response_format_pydantic_value(
+      self, response_format_pydantic_value_options):
+    pydantic_value = types.ResponseFormatPydanticValue(
+        **response_format_pydantic_value_options)
+    encoded = type_serializer.encode_response_format_pydantic_value(
+        pydantic_value=pydantic_value)
+    decoded = type_serializer.decode_response_format_pydantic_value(
+        record=encoded)
+    assert decoded.class_name == pydantic_value.class_name
+    if pydantic_value.class_value != None:
+      assert decoded.class_json_schema_value == (
+          pydantic_value.class_value.model_json_schema())
+    elif pydantic_value.class_json_schema_value != None:
+      assert decoded.class_json_schema_value == (
+          pydantic_value.class_json_schema_value)
+
+  def test_encode_response_format_pydantic_value_both_set_raises_error(self):
+    pydantic_value = types.ResponseFormatPydanticValue(
+        class_value=_UserModel,
+        class_json_schema_value={'type': 'object'})
+    with pytest.raises(ValueError, match='cannot have both'):
+      type_serializer.encode_response_format_pydantic_value(
+          pydantic_value=pydantic_value)
+
+  @pytest.mark.parametrize(
+      'response_format_options',
+      _get_response_format_options())
+  def test_encode_decode_response_format(self, response_format_options):
+    response_format = types.ResponseFormat(**response_format_options)
+    encoded = type_serializer.encode_response_format(
+        response_format=response_format)
+    decoded = type_serializer.decode_response_format(record=encoded)
+    assert decoded.type == response_format.type
+    if response_format.type == types.ResponseFormatType.JSON_SCHEMA:
+      assert decoded.value == response_format.value
+    elif response_format.type == types.ResponseFormatType.PYDANTIC:
+      assert decoded.value.class_name == response_format.value.class_name
+      assert decoded.value.class_json_schema_value == (
+          response_format.value.class_value.model_json_schema())
+
+  def test_encode_decode_response_format_hash_consistency(self):
+    response_format = types.ResponseFormat(
+        type=types.ResponseFormatType.PYDANTIC,
+        value=types.ResponseFormatPydanticValue(
+            class_name='UserModel',
+            class_value=_UserModel))
+    query_record = types.QueryRecord(
+        prompt='test',
+        response_format=response_format)
+    hash_before = hash_serializer.get_query_record_hash(query_record)
+    encoded = type_serializer.encode_query_record(query_record=query_record)
+    decoded = type_serializer.decode_query_record(record=encoded)
+    hash_after = hash_serializer.get_query_record_hash(decoded)
+    assert hash_before == hash_after

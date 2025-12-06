@@ -19,10 +19,19 @@ def _get_response_format_signature(
       signature_str += json.dumps(
           response_format.value,
           sort_keys=True) + _SEPARATOR_CHAR
-    elif isinstance(response_format.value, type) and issubclass(response_format.value, pydantic.BaseModel):
-      signature_str += json.dumps(
-          response_format.value.model_json_schema(),
-          sort_keys=True) + _SEPARATOR_CHAR
+    elif isinstance(response_format.value, types.ResponseFormatPydanticValue):
+      pydantic_value = response_format.value
+      if pydantic_value.class_name != None:
+        signature_str += pydantic_value.class_name + _SEPARATOR_CHAR
+      json_schema = None
+      if pydantic_value.class_json_schema_value != None:
+        json_schema = pydantic_value.class_json_schema_value
+      elif pydantic_value.class_value != None:
+        json_schema = pydantic_value.class_value.model_json_schema()
+      if json_schema != None:
+        signature_str += json.dumps(
+            json_schema,
+            sort_keys=True) + _SEPARATOR_CHAR
     else:
       raise ValueError(
         'Unsupported response format value type: '
