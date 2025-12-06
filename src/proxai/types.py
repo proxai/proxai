@@ -1,8 +1,9 @@
 import dataclasses
 import datetime
 import enum
-from typing import Dict, List, Optional, Tuple, Set, Union
+from typing import Dict, List, Optional, Tuple, Set, Union, Any, Type
 from abc import ABC
+import pydantic
 
 
 class RunType(enum.Enum):
@@ -198,6 +199,26 @@ class RunOptions:
   suppress_provider_errors: Optional[bool] = None
 
 
+ResponseFormatValueType = Union[
+  str,
+  Dict[str, Any],
+  Type[pydantic.BaseModel]
+]
+
+
+class ResponseFormatType(str, enum.Enum):
+  TEXT = 'TEXT'
+  JSON = 'JSON'
+  JSON_SCHEMA = 'JSON_SCHEMA'
+  PYDANTIC = 'PYDANTIC'
+
+
+@dataclasses.dataclass
+class ResponseFormat:
+  value: Optional[ResponseFormatValueType] = None
+  type: Optional[ResponseFormatType] = None
+
+
 @dataclasses.dataclass
 class QueryRecord:
   call_type: Optional[CallType] = None
@@ -208,8 +229,9 @@ class QueryRecord:
   max_tokens: Optional[int] = None
   temperature: Optional[float] = None
   stop: Optional[StopType] = None
-  hash_value: Optional[str] = None
   token_count: Optional[int] = None
+  response_format: Optional[ResponseFormat] = None
+  hash_value: Optional[str] = None
 
 
 @dataclasses.dataclass
