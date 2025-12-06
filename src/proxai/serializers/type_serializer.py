@@ -415,6 +415,74 @@ def decode_model_configs_schema_type(
   return model_configs_schema_type
 
 
+def encode_response_format_pydantic_value(
+    pydantic_value: types.ResponseFormatPydanticValue) -> Dict[str, Any]:
+  record = {}
+  if (pydantic_value.class_json_schema_value != None and
+      pydantic_value.class_value != None):
+    raise ValueError(
+        'ResponseFormatPydanticValue cannot have both '
+        'class_json_schema_value and class_value set.')
+  json_schema = None
+  if pydantic_value.class_value != None:
+    json_schema = pydantic_value.class_value.model_json_schema()
+  elif pydantic_value.class_json_schema_value != None:
+    json_schema = pydantic_value.class_json_schema_value
+  if json_schema != None:
+    record['class_json_schema_value'] = json.dumps(
+        json_schema,
+        sort_keys=True)
+  if pydantic_value.class_name != None:
+    record['class_name'] = pydantic_value.class_name
+  return record
+
+
+def decode_response_format_pydantic_value(
+    record: Dict[str, Any]) -> types.ResponseFormatPydanticValue:
+  pydantic_value = types.ResponseFormatPydanticValue()
+  pydantic_value.class_name = record.get('class_name', None)
+  if 'class_json_schema_value' in record:
+    pydantic_value.class_json_schema_value = json.loads(
+        record['class_json_schema_value'])
+  return pydantic_value
+
+
+def encode_response_format(
+    response_format: types.ResponseFormat) -> Dict[str, Any]:
+  record = {}
+  if response_format.type != None:
+    record['type'] = response_format.type.value
+  if response_format.value != None:
+    if response_format.type == types.ResponseFormatType.TEXT:
+      pass
+    elif response_format.type == types.ResponseFormatType.JSON:
+      pass
+    elif response_format.type == types.ResponseFormatType.JSON_SCHEMA:
+      record['value'] = json.dumps(
+          response_format.value,
+          sort_keys=True)
+    elif response_format.type == types.ResponseFormatType.PYDANTIC:
+      record.update(encode_response_format_pydantic_value(response_format.value))
+  return record
+
+
+def decode_response_format(
+    record: Dict[str, Any]) -> types.ResponseFormat:
+  response_format = types.ResponseFormat()
+  if 'type' in record:
+    response_format.type = types.ResponseFormatType(record['type'])
+  if response_format.type == types.ResponseFormatType.TEXT:
+    pass
+  elif response_format.type == types.ResponseFormatType.JSON:
+    pass
+  elif response_format.type == types.ResponseFormatType.JSON_SCHEMA:
+    if 'value' in record:
+      response_format.value = json.loads(record['value'])
+  elif response_format.type == types.ResponseFormatType.PYDANTIC:
+    response_format.value = decode_response_format_pydantic_value(record)
+  return response_format
+
+
 def encode_query_record(
     query_record: types.QueryRecord) -> Dict[str, Any]:
   record = {}
@@ -435,10 +503,13 @@ def encode_query_record(
     record['temperature'] = str(query_record.temperature)
   if query_record.stop != None:
     record['stop'] = query_record.stop
-  if query_record.hash_value != None:
-    record['hash_value'] = query_record.hash_value
   if query_record.token_count != None:
     record['token_count'] = str(query_record.token_count)
+  if query_record.response_format != None:
+    record['response_format'] = encode_response_format(
+        query_record.response_format)
+  if query_record.hash_value != None:
+    record['hash_value'] = query_record.hash_value
   return record
 
 
@@ -458,9 +529,12 @@ def decode_query_record(
   if 'temperature' in record:
     query_record.temperature = float(record['temperature'])
   query_record.stop = record.get('stop', None)
-  query_record.hash_value = record.get('hash_value', None)
   if 'token_count' in record:
     query_record.token_count = int(record['token_count'])
+  if 'response_format' in record:
+    query_record.response_format = decode_response_format(
+        record['response_format'])
+  query_record.hash_value = record.get('hash_value', None)
   return query_record
 
 
