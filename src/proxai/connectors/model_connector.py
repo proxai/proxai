@@ -355,6 +355,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       max_tokens: Optional[int] = None,
       temperature: Optional[float] = None,
       stop: Optional[types.StopType] = None,
+      response_format: Optional[types.ResponseFormat] = None,
       provider_model: Optional[types.ProviderModelIdentifierType] = None,
       use_cache: bool = True,
       unique_response_limit: Optional[int] = None) -> types.LoggingRecord:
@@ -382,6 +383,7 @@ class ProviderModelConnector(state_controller.StateControlled):
         max_tokens=max_tokens,
         temperature=temperature,
         stop=stop,
+        response_format=response_format,
         token_count=self.get_token_count_estimate(
             prompt=prompt,
             messages=messages))

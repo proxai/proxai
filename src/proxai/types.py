@@ -226,6 +226,13 @@ class ResponseFormat:
   type: Optional[ResponseFormatType] = None
 
 
+UserDefinedResponseFormatValueType = Union[
+  str,
+  Dict[str, Any],
+  Type[pydantic.BaseModel],
+  ResponseFormat]
+
+
 @dataclasses.dataclass
 class QueryRecord:
   call_type: Optional[CallType] = None

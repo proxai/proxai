@@ -53,6 +53,7 @@ _AVAILABLE_MODELS: Optional[available_models.AvailableModels]
 CacheOptions = types.CacheOptions
 LoggingOptions = types.LoggingOptions
 ProxDashOptions = types.ProxDashOptions
+ResponseFormat = types.ResponseFormat
 
 
 def _init_default_model_cache_manager():
@@ -561,6 +562,7 @@ def generate_text(
     max_tokens: Optional[int] = None,
     temperature: Optional[float] = None,
     stop: Optional[types.StopType] = None,
+    response_format: Optional[types.UserDefinedResponseFormatValueType] = None,
     provider_model: Optional[types.ProviderModelIdentifierType] = None,
     use_cache: Optional[bool] = None,
     unique_response_limit: Optional[int] = None,
@@ -589,6 +591,9 @@ def generate_text(
     model_connector = _get_registered_model_connector(
         call_type=types.CallType.GENERATE_TEXT)
 
+  response_format: types.ResponseFormat = type_utils.create_response_format(
+      response_format)
+
   logging_record: types.LoggingRecord = model_connector.generate_text(
       prompt=prompt,
       system=system,
@@ -596,6 +601,7 @@ def generate_text(
       max_tokens=max_tokens,
       temperature=temperature,
       stop=stop,
+      response_format=response_format,
       use_cache=use_cache,
       unique_response_limit=unique_response_limit)
   if logging_record.response_record.error:
