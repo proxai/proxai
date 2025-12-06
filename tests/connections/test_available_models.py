@@ -107,7 +107,10 @@ class TestAvailableModels:
     ] = types.LoggingRecord(
         query_record=types.QueryRecord(
             provider_model=model_configs_instance.get_provider_model(('openai', 'gpt-4'))),
-        response_record=types.QueryResponseRecord(response='response1'))
+        response_record=types.QueryResponseRecord(
+            response=types.Response(
+                type=types.ResponseType.TEXT,
+                value='response1')))
     data.provider_queries[
         model_configs_instance.get_provider_model(('openai', 'gpt-4.1-mini'))
     ] = types.LoggingRecord(
@@ -152,7 +155,7 @@ class TestAvailableModels:
     assert len(models.provider_queries) == 2  # Should contain both the success and error queries from cache
     assert models.provider_queries[
         model_configs_instance.get_provider_model(('openai', 'gpt-4'))
-    ].response_record.response == 'response1'
+    ].response_record.response.value == 'response1'
     assert models.provider_queries[
         model_configs_instance.get_provider_model(('openai', 'gpt-4.1-mini'))
     ].response_record.error == 'error1'

@@ -24,13 +24,18 @@ def _get_example_logging_record(
   end_utc_date = datetime.datetime.now(datetime.timezone.utc)
   if long:
     end_utc_date = end_utc_date - datetime.timedelta(days=1)
+  response_obj = None
+  if response is not None:
+    response_obj = types.Response(
+        type=types.ResponseType.TEXT,
+        value=response)
   return types.LoggingRecord(
       query_record=types.QueryRecord(
           call_type=types.CallType.GENERATE_TEXT,
           prompt='hello',
           provider_model=model),
       response_record=types.QueryResponseRecord(
-          response=response,
+          response=response_obj,
           error=error,
           end_utc_date=end_utc_date))
 

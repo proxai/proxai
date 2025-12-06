@@ -106,7 +106,7 @@ class TestProxaiApiUseCases:
         provider_model=px.models.get_model(
             'claude', 'haiku-3.5', clear_model_cache=True),
         extensive_return=True)
-    assert logging_record.response_record.response == 'mock response'
+    assert logging_record.response_record.response.value == 'mock response'
     assert logging_record.query_record.provider_model.model == 'haiku-3.5'
     assert logging_record.response_source == px.types.ResponseSource.PROVIDER
 
@@ -126,7 +126,7 @@ class TestProxaiApiUseCases:
     assert logging_record.query_record.temperature == 0.5
     assert logging_record.query_record.stop == ['\n\n']
     assert logging_record.query_record.provider_model.model == 'gpt-3.5-turbo'
-    assert logging_record.response_record.response == 'mock response'
+    assert logging_record.response_record.response.value == 'mock response'
     assert logging_record.response_source == px.types.ResponseSource.PROVIDER
 
   def test_generate_text_with_use_cache_before_connect(self):
@@ -527,7 +527,7 @@ class TestProxaiApiUseCases:
       # Second logging record:
       log_record = json.loads(lines[-1])
       assert log_record['query_record']['prompt'] == 'hello'
-      assert log_record['response_record']['response'] == 'mock response'
+      assert log_record['response_record']['response']['value'] == 'mock response'
       assert log_record['response_source'] == px.types.ResponseSource.PROVIDER
       # End of file:
       assert f.readline() == ''
@@ -543,7 +543,7 @@ class TestProxaiApiUseCases:
       # First logging record:
       log_record = json.loads(lines[-1])
       assert log_record['query_record']['prompt'] == 'hello'
-      assert log_record['response_record']['response'] == 'mock response'
+      assert log_record['response_record']['response']['value'] == 'mock response'
       assert log_record['response_source'] == px.types.ResponseSource.CACHE
 
   def test_connect_with_different_logging_options(self):
@@ -561,7 +561,7 @@ class TestProxaiApiUseCases:
           log_record['query_record']['prompt'] ==
           '<sensitive content hidden>')
       assert (
-          log_record['response_record']['response'] ==
+          log_record['response_record']['response']['value'] ==
           '<sensitive content hidden>')
       assert log_record['response_source'] == px.types.ResponseSource.PROVIDER
 

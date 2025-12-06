@@ -19,7 +19,8 @@ class GrokConnector(model_connector.ProviderModelConnector):
   def init_mock_model(self):
     return openai_mock.OpenAIMock()
 
-  def generate_text_proc(self, query_record: types.QueryRecord) -> str:
+  def generate_text_proc(
+      self, query_record: types.QueryRecord) -> types.Response:
     # Note: OpenAI uses 'system', 'user', and 'assistant' as roles.
     query_messages = []
     if query_record.system is not None:
@@ -51,4 +52,6 @@ class GrokConnector(model_connector.ProviderModelConnector):
         create = functools.partial(create, stop=query_record.stop)
 
     completion = create()
-    return completion.choices[0].message.content
+    return types.Response(
+        value=completion.choices[0].message.content,
+        type=types.ResponseType.TEXT)
