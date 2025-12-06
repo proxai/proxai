@@ -329,7 +329,9 @@ def _get_query_record_options():
 
 def _get_query_response_record_options():
   return [
-      {'response': 'Hello, world!'},
+      {'response': types.Response(
+          type=types.ResponseType.TEXT,
+          value='Hello, world!')},
       {'error': 'Error message'},
       {'start_utc_date': datetime.datetime.now(datetime.timezone.utc)},
       {'end_utc_date': datetime.datetime.now(datetime.timezone.utc)},
@@ -339,7 +341,9 @@ def _get_query_response_record_options():
       {'response_time': datetime.timedelta(seconds=1)},
       {'estimated_cost': 1},
       {'token_count': 100},
-      {'response': 'Hello, world!',
+      {'response': types.Response(
+          type=types.ResponseType.TEXT,
+          value='Hello, world!'),
        'error': 'Error message',
        'start_utc_date': datetime.datetime.now(datetime.timezone.utc),
        'end_utc_date': datetime.datetime.now(datetime.timezone.utc),
@@ -356,7 +360,9 @@ def _get_cache_record_options():
       {'query_record': types.QueryRecord(
           call_type=types.CallType.GENERATE_TEXT)},
       {'query_responses': [types.QueryResponseRecord(
-          response='Hello, world!')]},
+          response=types.Response(
+              type=types.ResponseType.TEXT,
+              value='Hello, world!'))]},
       {'shard_id': 0},
       {'shard_id': 'backlog'},
       {'last_access_time': datetime.datetime.now()},
@@ -364,7 +370,9 @@ def _get_cache_record_options():
       {'query_record': types.QueryRecord(
           call_type=types.CallType.GENERATE_TEXT),
        'query_responses': [types.QueryResponseRecord(
-          response='Hello, world!')],
+          response=types.Response(
+              type=types.ResponseType.TEXT,
+              value='Hello, world!'))],
        'shard_id': 0,
        'last_access_time': datetime.datetime.now(),
        'call_count': 1},]
@@ -389,13 +397,17 @@ def _get_logging_record_options():
       {'query_record': types.QueryRecord(
           call_type=types.CallType.GENERATE_TEXT)},
       {'response_record': types.QueryResponseRecord(
-          response='Hello, world!')},
+          response=types.Response(
+              type=types.ResponseType.TEXT,
+              value='Hello, world!'))},
       {'response_source': types.ResponseSource.CACHE},
       {'look_fail_reason': types.CacheLookFailReason.CACHE_NOT_FOUND},
       {'query_record': types.QueryRecord(
           call_type=types.CallType.GENERATE_TEXT),
        'response_record': types.QueryResponseRecord(
-          response='Hello, world!'),
+          response=types.Response(
+              type=types.ResponseType.TEXT,
+              value='Hello, world!')),
        'response_source': types.ResponseSource.CACHE,
        'look_fail_reason': types.CacheLookFailReason.CACHE_NOT_FOUND},]
 
@@ -493,7 +505,9 @@ def _get_model_status_options():
                   call_type=types.CallType.GENERATE_TEXT,
                   provider_model=model_1),
               response_record=types.QueryResponseRecord(
-                  response='Hello, world!'))}},
+                  response=types.Response(
+                      type=types.ResponseType.TEXT,
+                      value='Hello, world!')))}},
       {'unprocessed_models': {model_1},
        'working_models': {model_2},
        'failed_models': {model_3},
@@ -508,7 +522,9 @@ def _get_model_status_options():
                   call_type=types.CallType.GENERATE_TEXT,
                   provider_model=model_1),
               response_record=types.QueryResponseRecord(
-                  response='Hello, world!'))}}]
+                  response=types.Response(
+                      type=types.ResponseType.TEXT,
+                      value='Hello, world!')))}}]
 
 
 def _get_base_provider_stats_options():
@@ -739,6 +755,40 @@ def _get_response_format_options():
        'value': types.ResponseFormatPydanticValue(
           class_name='UserWithAddressModel',
           class_value=_UserWithAddressModel)},]
+
+
+def _get_response_pydantic_value_options():
+  return [
+      {'class_name': 'UserModel',
+       'instance_value': _UserModel(name='John', age=30)},
+      {'class_name': 'AddressModel',
+       'instance_value': _AddressModel(
+          street='123 Main St',
+          city='New York',
+          country='USA')},
+      {'instance_value': _UserModel(name='Jane', age=25)},
+      {'class_name': 'UserModel'},
+      {'instance_json_value': {'name': 'Bob', 'age': 40}},
+      {'class_name': 'CustomModel',
+       'instance_json_value': {'id': 123, 'data': 'test'}},]
+
+
+def _get_response_options():
+  return [
+      {'type': types.ResponseType.TEXT,
+       'value': 'Hello, world!'},
+      {'type': types.ResponseType.JSON,
+       'value': {'key': 'value', 'number': 42}},
+      {'type': types.ResponseType.JSON,
+       'value': {'nested': {'data': [1, 2, 3]}}},
+      {'type': types.ResponseType.PYDANTIC,
+       'value': types.ResponsePydanticValue(
+          class_name='UserModel',
+          instance_value=_UserModel(name='John', age=30))},
+      {'type': types.ResponseType.PYDANTIC,
+       'value': types.ResponsePydanticValue(
+          class_name='UserModel',
+          instance_json_value={'name': 'Jane', 'age': 25})},]
 
 
 class TestTypeSerializer:
@@ -1195,3 +1245,51 @@ class TestTypeSerializer:
     decoded = type_serializer.decode_query_record(record=encoded)
     hash_after = hash_serializer.get_query_record_hash(decoded)
     assert hash_before == hash_after
+
+  @pytest.mark.parametrize(
+      'response_pydantic_value_options',
+      _get_response_pydantic_value_options())
+  def test_encode_decode_response_pydantic_value(
+      self, response_pydantic_value_options):
+    pydantic_value = types.ResponsePydanticValue(
+        **response_pydantic_value_options)
+    encoded = type_serializer.encode_response_pydantic_value(
+        pydantic_value=pydantic_value)
+    decoded = type_serializer.decode_response_pydantic_value(
+        record=encoded)
+    assert decoded.class_name == pydantic_value.class_name
+    if pydantic_value.instance_value != None:
+      assert decoded.instance_json_value == (
+          pydantic_value.instance_value.model_dump())
+    elif pydantic_value.instance_json_value != None:
+      assert decoded.instance_json_value == (
+          pydantic_value.instance_json_value)
+
+  def test_encode_response_pydantic_value_both_set_raises_error(self):
+    pydantic_value = types.ResponsePydanticValue(
+        instance_value=_UserModel(name='John', age=30),
+        instance_json_value={'name': 'Jane', 'age': 25})
+    with pytest.raises(ValueError, match='cannot have both'):
+      type_serializer.encode_response_pydantic_value(
+          pydantic_value=pydantic_value)
+
+  @pytest.mark.parametrize(
+      'response_options',
+      _get_response_options())
+  def test_encode_decode_response(self, response_options):
+    response = types.Response(**response_options)
+    encoded = type_serializer.encode_response(response=response)
+    decoded = type_serializer.decode_response(record=encoded)
+    assert decoded.type == response.type
+    if response.type == types.ResponseType.TEXT:
+      assert decoded.value == response.value
+    elif response.type == types.ResponseType.JSON:
+      assert decoded.value == response.value
+    elif response.type == types.ResponseType.PYDANTIC:
+      assert decoded.value.class_name == response.value.class_name
+      if response.value.instance_value != None:
+        assert decoded.value.instance_json_value == (
+            response.value.instance_value.model_dump())
+      elif response.value.instance_json_value != None:
+        assert decoded.value.instance_json_value == (
+            response.value.instance_json_value)
