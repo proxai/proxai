@@ -5,6 +5,8 @@ import proxai as px
 from pprint import pprint
 from pydantic import BaseModel, Field
 
+PROVIDER_MODEL = ('claude', 'sonnet-4.5')
+
 TEST_PROMPT = """
 I need you to calculate the payroll costs for a small team.
 Here is the scenario:
@@ -94,7 +96,7 @@ class PayrollCalculation(BaseModel):
 
 
 def test_response_format_options():
-  px.set_model(generate_text=('openai', 'gpt-5.1'))
+  px.set_model(generate_text=PROVIDER_MODEL)
 
   print('\n============== NO RESPONSE FORMAT ==============')
   result = px.generate_text(TEST_PROMPT)
@@ -172,7 +174,7 @@ def test_cached_response():
       cache_path=f'{Path.home()}/proxai_cache/',
       cache_options=px.CacheOptions(
           clear_query_cache_on_connect=True))
-  px.set_model(generate_text=('openai', 'gpt-5.1'))
+  px.set_model(generate_text=PROVIDER_MODEL)
 
   print('\n============== CACHED RESPONSE TEST FOR TEXT ==============')
   for i in range(3):
@@ -272,7 +274,7 @@ def test_cached_response_with_modified_schemas():
       cache_path=f'{Path.home()}/proxai_cache/',
       cache_options=px.CacheOptions(
           clear_query_cache_on_connect=True))
-  px.set_model(generate_text=('openai', 'gpt-5.1'))
+  px.set_model(generate_text=PROVIDER_MODEL)
 
   print('\n============== CHECK JSON SCHEMA MODIFICATION ==============')
   result = px.generate_text(
@@ -339,8 +341,8 @@ def test_cached_response_with_modified_schemas():
 
 def main():
   test_response_format_options()
-  test_cached_response()
-  test_cached_response_with_modified_schemas()
+  # test_cached_response()
+  # test_cached_response_with_modified_schemas()
 
 
 if __name__ == '__main__':
