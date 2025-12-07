@@ -10,6 +10,7 @@ import proxai.types as types
 import proxai.serializers.type_serializer as type_serializer
 import proxai.serializers.hash_serializer as hash_serializer
 import proxai.state_controllers.state_controller as state_controller
+import proxai.type_utils as type_utils
 
 CACHE_DIR = 'query_cache'
 LIGHT_CACHE_RECORDS_PATH = 'light_cache_records.json'
@@ -603,7 +604,7 @@ class QueryCacheManager(state_controller.StateControlled):
     if cache_record is None:
       return types.CacheLookResult(
           look_fail_reason=types.CacheLookFailReason.CACHE_NOT_FOUND)
-    if cache_record.query_record != query_record:
+    if not type_utils.is_query_record_equal(cache_record.query_record, query_record):
       return types.CacheLookResult(
           look_fail_reason=types.CacheLookFailReason.CACHE_NOT_MATCHED)
     if unique_response_limit == None:

@@ -1,5 +1,6 @@
 import copy
 import functools
+import json
 import cohere
 import proxai.types as types
 import proxai.connectors.providers.cohere_api_mock as cohere_api_mock
@@ -16,7 +17,8 @@ class CohereConnector(model_connector.ProviderModelConnector):
   def init_mock_model(self):
     return cohere_api_mock.CohereMock()
 
-  def generate_text_proc(self, query_record: types.QueryRecord) -> str:
+  def generate_text_proc(
+      self, query_record: types.QueryRecord) -> types.Response:
     # Note: Cohere uses 'SYSTEM', 'USER', and 'CHATBOT' as roles. Additionally,
     # system instructions can be provided in two ways: preamble parameter and
     # chat_history 'SYSTEM' role. The difference is explained in the
@@ -53,5 +55,60 @@ class CohereConnector(model_connector.ProviderModelConnector):
       else:
         create = functools.partial(create, stop_sequences=[query_record.stop])
 
+    # Handle response format configuration
+    if query_record.response_format is not None:
+      if query_record.response_format.type == types.ResponseFormatType.TEXT:
+        pass
+      elif query_record.response_format.type == types.ResponseFormatType.JSON:
+        # Simple JSON mode
+        create = functools.partial(
+            create,
+            response_format={'type': 'json_object'})
+      elif query_record.response_format.type == types.ResponseFormatType.JSON_SCHEMA:
+        # JSON Schema mode - Cohere uses 'json_object' type with 'schema' field
+        schema_value = query_record.response_format.value
+        if 'json_schema' in schema_value:
+          json_schema_obj = schema_value['json_schema']
+          raw_schema = json_schema_obj.get('schema', json_schema_obj)
+        else:
+          raw_schema = schema_value
+        create = functools.partial(
+            create,
+            response_format={'type': 'json_object', 'schema': raw_schema})
+      elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
+        # Pydantic mode - extract schema from Pydantic class
+        pydantic_class = query_record.response_format.value.class_value
+        schema = pydantic_class.model_json_schema()
+        create = functools.partial(
+            create,
+            response_format={'type': 'json_object', 'schema': schema})
+
     completion = create()
-    return completion.text
+
+    # Handle response based on format type
+    if query_record.response_format is None:
+      return types.Response(
+          value=completion.text,
+          type=types.ResponseType.TEXT)
+    elif query_record.response_format.type == types.ResponseFormatType.TEXT:
+      return types.Response(
+          value=completion.text,
+          type=types.ResponseType.TEXT)
+    elif query_record.response_format.type == types.ResponseFormatType.JSON:
+      return types.Response(
+          value=json.loads(completion.text),
+          type=types.ResponseType.JSON)
+    elif (query_record.response_format.type ==
+          types.ResponseFormatType.JSON_SCHEMA):
+      return types.Response(
+          value=json.loads(completion.text),
+          type=types.ResponseType.JSON)
+    elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
+      # For Pydantic, parse JSON and validate with the Pydantic model
+      pydantic_class = query_record.response_format.value.class_value
+      instance = pydantic_class.model_validate_json(completion.text)
+      return types.Response(
+          value=types.ResponsePydanticValue(
+              class_name=query_record.response_format.value.class_name,
+              instance_value=instance),
+          type=types.ResponseType.PYDANTIC)

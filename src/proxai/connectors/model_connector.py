@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import copy
 import datetime
+import json
 import traceback
 import functools
 import math
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Union
 import proxai.types as types
 import proxai.logging.utils as logging_utils
 import proxai.caching.query_cache as query_cache
@@ -252,20 +253,42 @@ class ProviderModelConnector(state_controller.StateControlled):
 
   def get_token_count_estimate(
       self,
-      prompt: Optional[str] = None,
-      messages: Optional[List[Dict[str, str]]] = None) -> int:
+      value: Optional[Union[
+          str,
+          types.Response,
+          types.MessagesType]] = None) -> int:
     total = 0
     def _get_token_count_estimate_from_prompt(prompt: str) -> int:
       return math.ceil(max(
           len(prompt) / 4,
           len(prompt.strip().split()) * 1.3))
-    if prompt is not None:
-      total += _get_token_count_estimate_from_prompt(prompt)
-    if messages is not None:
+    if isinstance(value, str):
+      total += _get_token_count_estimate_from_prompt(value)
+    elif isinstance(value, types.Response):
+      if value.type == types.ResponseType.TEXT:
+        total += _get_token_count_estimate_from_prompt(value.value)
+      elif value.type == types.ResponseType.JSON:
+        total += _get_token_count_estimate_from_prompt(json.dumps(value.value))
+      elif value.type == types.ResponseType.PYDANTIC:
+        if value.value.instance_json_value is not None:
+          total += _get_token_count_estimate_from_prompt(
+              json.dumps(value.value.instance_json_value))
+        else:
+          total += _get_token_count_estimate_from_prompt(
+              json.dumps(value.value.instance_value.model_dump()))
+      else:
+        raise ValueError(f'Invalid response type: {value.type}')
+    elif isinstance(value, list):
       total += 2
-      for message in messages:
+      for message in value:
         total += _get_token_count_estimate_from_prompt(
-            message.get("content", "")) + 4
+            json.dumps(message)) + 4
+    else:
+      raise ValueError(
+        'Invalid value type. Please provide a string, a response value, or a '
+        'messages type.\n'
+        f'Value type: {type(value)}\n'
+        f'Value: {value}')
     return total
 
   def get_estimated_cost(self, logging_record: types.LoggingRecord):
@@ -355,6 +378,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       max_tokens: Optional[int] = None,
       temperature: Optional[float] = None,
       stop: Optional[types.StopType] = None,
+      response_format: Optional[types.ResponseFormat] = None,
       provider_model: Optional[types.ProviderModelIdentifierType] = None,
       use_cache: bool = True,
       unique_response_limit: Optional[int] = None) -> types.LoggingRecord:
@@ -382,9 +406,9 @@ class ProviderModelConnector(state_controller.StateControlled):
         max_tokens=max_tokens,
         temperature=temperature,
         stop=stop,
+        response_format=response_format,
         token_count=self.get_token_count_estimate(
-            prompt=prompt,
-            messages=messages))
+            value = prompt if prompt is not None else messages))
 
     updated_query_record = self.feature_check(query_record=query_record)
 
@@ -440,7 +464,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       query_response_record = functools.partial(
           types.QueryResponseRecord,
           response=response,
-          token_count=self.get_token_count_estimate(prompt=response))
+          token_count=self.get_token_count_estimate(value=response))
     else:
       query_response_record = functools.partial(
           types.QueryResponseRecord,
@@ -484,5 +508,6 @@ class ProviderModelConnector(state_controller.StateControlled):
   def init_mock_model(self):
     raise NotImplementedError
 
-  def generate_text_proc(self, query_record: types.QueryRecord) -> dict:
+  def generate_text_proc(
+      self, query_record: types.QueryRecord) -> types.Response:
     raise NotImplementedError

@@ -1,8 +1,9 @@
 import dataclasses
 import datetime
 import enum
-from typing import Dict, List, Optional, Tuple, Set, Union
+from typing import Dict, List, Optional, Tuple, Set, Union, Any, Type
 from abc import ABC
+import pydantic
 
 
 class RunType(enum.Enum):
@@ -199,6 +200,41 @@ class RunOptions:
 
 
 @dataclasses.dataclass
+class ResponseFormatPydanticValue:
+  class_name: Optional[str] = None
+  class_value: Optional[Type[pydantic.BaseModel]] = None
+  class_json_schema_value: Optional[Dict[str, Any]] = None
+
+
+ResponseFormatValueType = Union[
+    str,
+    Dict[str, Any],
+    ResponseFormatPydanticValue
+]
+
+
+class ResponseFormatType(str, enum.Enum):
+  TEXT = 'TEXT'
+  JSON = 'JSON'
+  JSON_SCHEMA = 'JSON_SCHEMA'
+  PYDANTIC = 'PYDANTIC'
+
+
+@dataclasses.dataclass
+class ResponseFormat:
+  value: Optional[ResponseFormatValueType] = None
+  type: Optional[ResponseFormatType] = None
+
+
+UserDefinedResponseFormatValueType = Union[
+    str,
+    Dict[str, Any],
+    Type[pydantic.BaseModel],
+    ResponseFormat
+]
+
+
+@dataclasses.dataclass
 class QueryRecord:
   call_type: Optional[CallType] = None
   provider_model: Optional[ProviderModelType] = None
@@ -208,13 +244,40 @@ class QueryRecord:
   max_tokens: Optional[int] = None
   temperature: Optional[float] = None
   stop: Optional[StopType] = None
-  hash_value: Optional[str] = None
   token_count: Optional[int] = None
+  response_format: Optional[ResponseFormat] = None
+  hash_value: Optional[str] = None
+
+
+@dataclasses.dataclass
+class ResponsePydanticValue:
+  class_name: Optional[str] = None
+  instance_value: Optional[Type[pydantic.BaseModel]] = None
+  instance_json_value: Optional[Dict[str, Any]] = None
+
+
+ResponseValue = Union[
+    str,
+    Dict[str, Any],
+    ResponsePydanticValue
+]
+
+
+class ResponseType(str, enum.Enum):
+  TEXT = 'TEXT'
+  JSON = 'JSON'
+  PYDANTIC = 'PYDANTIC'
+
+
+@dataclasses.dataclass
+class Response:
+  value: Optional[ResponseValue] = None
+  type: Optional[ResponseType] = None
 
 
 @dataclasses.dataclass
 class QueryResponseRecord:
-  response: Optional[str] = None
+  response: Optional[Response] = None
   error: Optional[str] = None
   error_traceback: Optional[str] = None
   start_utc_date: Optional[datetime.datetime] = None
