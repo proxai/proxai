@@ -5,7 +5,7 @@ import proxai as px
 from pprint import pprint
 from pydantic import BaseModel, Field
 
-PROVIDER_MODEL = ('claude', 'sonnet-4.5')
+PROVIDER_MODEL = ('gemini', 'gemini-2.5-flash')
 
 TEST_PROMPT = """
 I need you to calculate the payroll costs for a small team.
