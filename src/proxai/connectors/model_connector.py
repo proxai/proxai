@@ -241,6 +241,45 @@ class ProviderModelConnector(state_controller.StateControlled):
           query_record=query_record,
           message=message)
 
+  def _extract_json_from_text(text: str) -> dict:
+    """Helper function for extracting JSON from text.
+
+    This is useful for some providers that return text with JSON.
+
+    Tries multiple strategies:
+    1. Direct JSON parse
+    2. Extract from markdown code blocks (```json ... ``` or ``` ... ```)
+    3. Find JSON object pattern in text
+    """
+    # Strategy 1: Try direct parse
+    try:
+      return json.loads(text)
+    except json.JSONDecodeError:
+      pass
+
+    # Strategy 2: Extract from markdown code blocks
+    code_block_pattern = r'```(?:json)?\s*\n?([\s\S]*?)\n?```'
+    matches = re.findall(code_block_pattern, text)
+    for match in matches:
+      try:
+        return json.loads(match.strip())
+      except json.JSONDecodeError:
+        continue
+
+    # Strategy 3: Find JSON object pattern
+    first_brace = text.find('{')
+    last_brace = text.rfind('}')
+    if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
+      try:
+        return json.loads(text[first_brace:last_brace + 1])
+      except json.JSONDecodeError:
+        pass
+
+    raise json.JSONDecodeError(
+        f"Could not extract valid JSON from response",
+        text,
+        0)
+
   def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
     query_record = copy.deepcopy(query_record)
     for feature in self.provider_model_config.features.not_supported_features:

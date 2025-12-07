@@ -9,7 +9,7 @@ from dataclasses import asdict
 def simple_model_test():
   response = px.generate_text(
       'When is the Galatasary and Besiktas game for this season?',
-      provider_model=('mistral', 'mistral-large'),
+      provider_model=('openai', 'gpt-5.1'),
       web_search=True)
   print(response)
   # random_int = random.randint(1, 1000000)

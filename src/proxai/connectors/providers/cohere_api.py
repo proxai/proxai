@@ -1,4 +1,4 @@
-import copy
+from typing import Any, Callable
 import functools
 import json
 import cohere
@@ -17,8 +17,15 @@ class CohereConnector(model_connector.ProviderModelConnector):
   def init_mock_model(self):
     return cohere_api_mock.CohereMock()
 
-  def generate_text_proc(
-      self, query_record: types.QueryRecord) -> types.Response:
+  def _get_api_call_function(
+      self,
+      query_record: types.QueryRecord) -> Callable:
+    return functools.partial(self.api.chat)
+
+  def _feature_mapping(
+      self,
+      create: Callable,
+      query_record: types.QueryRecord) -> Callable:
     # Note: Cohere uses 'SYSTEM', 'USER', and 'CHATBOT' as roles. Additionally,
     # system instructions can be provided in two ways: preamble parameter and
     # chat_history 'SYSTEM' role. The difference is explained in the
@@ -35,16 +42,12 @@ class CohereConnector(model_connector.ProviderModelConnector):
               {'role': 'CHATBOT', 'message': message['content']})
       prompt = query_messages[-1]['message']
       del query_messages[-1]
-    provider_model = query_record.provider_model
-
-    create = functools.partial(
-        self.api.chat,
-        model=provider_model.provider_model_identifier,
-        message=prompt)
-    if query_record.system is not None:
-      create = functools.partial(create, preamble=query_record.system)
+    create = functools.partial(create, message=prompt)
     if query_messages:
       create = functools.partial(create, chat_history=query_messages)
+
+    if query_record.system is not None:
+      create = functools.partial(create, preamble=query_record.system)
     if query_record.max_tokens is not None:
       create = functools.partial(create, max_tokens=query_record.max_tokens)
     if query_record.temperature is not None:
@@ -67,11 +70,8 @@ class CohereConnector(model_connector.ProviderModelConnector):
       elif query_record.response_format.type == types.ResponseFormatType.JSON_SCHEMA:
         # JSON Schema mode - Cohere uses 'json_object' type with 'schema' field
         schema_value = query_record.response_format.value
-        if 'json_schema' in schema_value:
-          json_schema_obj = schema_value['json_schema']
-          raw_schema = json_schema_obj.get('schema', json_schema_obj)
-        else:
-          raw_schema = schema_value
+        json_schema_obj = schema_value['json_schema']
+        raw_schema = json_schema_obj.get('schema', json_schema_obj)
         create = functools.partial(
             create,
             response_format={'type': 'json_object', 'schema': raw_schema})
@@ -83,32 +83,50 @@ class CohereConnector(model_connector.ProviderModelConnector):
             create,
             response_format={'type': 'json_object', 'schema': schema})
 
-    completion = create()
+    return create
 
+  def _response_mapping(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> types.Response:
     # Handle response based on format type
     if query_record.response_format is None:
       return types.Response(
-          value=completion.text,
+          value=response.text,
           type=types.ResponseType.TEXT)
     elif query_record.response_format.type == types.ResponseFormatType.TEXT:
       return types.Response(
-          value=completion.text,
+          value=response.text,
           type=types.ResponseType.TEXT)
     elif query_record.response_format.type == types.ResponseFormatType.JSON:
       return types.Response(
-          value=json.loads(completion.text),
+          value=json.loads(response.text),
           type=types.ResponseType.JSON)
     elif (query_record.response_format.type ==
           types.ResponseFormatType.JSON_SCHEMA):
       return types.Response(
-          value=json.loads(completion.text),
+          value=json.loads(response.text),
           type=types.ResponseType.JSON)
     elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
       # For Pydantic, parse JSON and validate with the Pydantic model
       pydantic_class = query_record.response_format.value.class_value
-      instance = pydantic_class.model_validate_json(completion.text)
+      instance = pydantic_class.model_validate_json(response.text)
       return types.Response(
           value=types.ResponsePydanticValue(
               class_name=query_record.response_format.value.class_name,
               instance_value=instance),
           type=types.ResponseType.PYDANTIC)
+
+  def generate_text_proc(
+      self, query_record: types.QueryRecord) -> types.Response:
+    create = self._get_api_call_function(query_record)
+
+    provider_model = query_record.provider_model
+    create = functools.partial(
+        create, model=provider_model.provider_model_identifier)
+
+    create = self._feature_mapping(create, query_record)
+
+    response = create()
+
+    return self._response_mapping(response, query_record)
