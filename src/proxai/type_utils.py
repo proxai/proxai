@@ -1,3 +1,4 @@
+import copy
 from typing import Optional
 import proxai.types as types
 import pydantic
@@ -85,3 +86,31 @@ def create_response_format(
   elif isinstance(response_format, types.ResponseFormat):
     return response_format
   _raise_invalid_response_format_value_error(response_format)
+
+
+def is_query_record_equal(
+    query_record_1: types.QueryRecord,
+    query_record_2: types.QueryRecord) -> bool:
+  if (query_record_1.response_format is not None and
+      query_record_1.response_format.type == types.ResponseFormatType.PYDANTIC):
+    pydantic_value_1 = query_record_1.response_format.value
+    if pydantic_value_1.class_value is not None:
+      query_record_1 = copy.deepcopy(query_record_1)
+      query_record_1.response_format.value = types.ResponseFormatPydanticValue(
+          class_name=pydantic_value_1.class_name,
+          class_json_schema_value=(
+              pydantic_value_1.class_value.model_json_schema()))
+      del query_record_1.response_format.value.class_value
+
+  if (query_record_2.response_format is not None and
+      query_record_2.response_format.type == types.ResponseFormatType.PYDANTIC):
+    pydantic_value_2 = query_record_2.response_format.value
+    if pydantic_value_2.class_value is not None:
+      query_record_2 = copy.deepcopy(query_record_2)
+      query_record_2.response_format.value = types.ResponseFormatPydanticValue(
+          class_name=pydantic_value_2.class_name,
+          class_json_schema_value=(
+              pydantic_value_2.class_value.model_json_schema()))
+      del query_record_2.response_format.value.class_value
+
+  return query_record_1 == query_record_2

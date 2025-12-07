@@ -78,14 +78,16 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
           type=types.ResponseType.TEXT)
     elif query_record.response_format.type == types.ResponseFormatType.JSON:
       return types.Response(
-          value=completion.choices[0].message.content,
+          value=json.loads(completion.choices[0].message.content),
           type=types.ResponseType.JSON)
     elif (query_record.response_format.type ==
           types.ResponseFormatType.JSON_SCHEMA):
       return types.Response(
-          value=completion.choices[0].message.content,
+          value=json.loads(completion.choices[0].message.content),
           type=types.ResponseType.JSON)
     elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
       return types.Response(
-          value=completion.choices[0].message.parsed,
+          value=types.ResponsePydanticValue(
+              class_name=query_record.response_format.value.class_name,
+              instance_value=completion.choices[0].message.parsed),
           type=types.ResponseType.PYDANTIC)
