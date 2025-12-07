@@ -20,12 +20,18 @@ class _MockResponse(object):
     self.choices = [_MockChoice()]
 
 
+class MockChat(object):
+  def complete(
+        self,
+        model: str,
+        messages: List[Any],
+        max_tokens: Optional[int]=None,
+        temperature: Optional[float]=None,
+        stop: Optional[List[str]]=None) -> _MockResponse:
+      return _MockResponse()
+
 class MistralMock(object):
-  def chat(
-      self,
-      model: str,
-      messages: List[Any],
-      max_tokens: Optional[int]=None,
-      temperature: Optional[float]=None,
-      stop: Optional[List[str]]=None) -> _MockResponse:
-    return _MockResponse()
+  chat: MockChat
+
+  def __init__(self):
+    self.chat = MockChat()
