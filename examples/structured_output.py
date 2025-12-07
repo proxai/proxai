@@ -5,7 +5,7 @@ import proxai as px
 from pprint import pprint
 from pydantic import BaseModel, Field
 
-PROVIDER_MODEL = ('grok', 'grok-3-fast-beta')
+PROVIDER_MODEL = ('cohere', 'command-a')
 
 TEST_PROMPT = """
 I need you to calculate the payroll costs for a small team.
