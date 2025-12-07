@@ -114,3 +114,19 @@ def is_query_record_equal(
       del query_record_2.response_format.value.class_value
 
   return query_record_1 == query_record_2
+
+
+def create_pydantic_instance_from_response_pydantic_value(
+    response_format: types.ResponseFormat,
+    response_pydantic_value: types.ResponsePydanticValue) -> pydantic.BaseModel:
+  if response_pydantic_value.instance_value is not None:
+    return response_pydantic_value.instance_value
+  elif response_pydantic_value.instance_json_value is not None:
+    return response_format.value.class_value.model_validate(
+        response_pydantic_value.instance_json_value)
+  else:
+    raise ValueError(
+        'ResponsePydanticValue has no instance_value or '
+        'instance_json_value. Please create an issue at '
+        'https://github.com/proxai/proxai/issues.\n'
+        f'Response Pydantic value: {response_pydantic_value}')

@@ -623,20 +623,11 @@ def generate_text(
     return logging_record
 
   response = logging_record.response_record.response
-  if response.type == types.ResponseType.PYDANTIC:
-    if response.value.instance_value is not None:
-      return response.value.instance_value
 
-    elif response.value.instance_json_value is not None:
-      return response.value.class_value.model_validate(
-          json.loads(response.value.instance_json_value))
-    else:
-      raise ValueError(
-          'ResponsePydanticValue has no instance_value or '
-          'instance_json_value. Please create an issue at '
-          'https://github.com/proxai/proxai/issues.\n'
-          f'Response: {response}\n'
-          f'Response Value: {response.value}')
+  if response.type == types.ResponseType.PYDANTIC:
+    return type_utils.create_pydantic_instance_from_response_pydantic_value(
+        response_format=response_format,
+        response_pydantic_value=response.value)
 
   return response.value
 
