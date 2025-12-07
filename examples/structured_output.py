@@ -5,7 +5,7 @@ import proxai as px
 from pprint import pprint
 from pydantic import BaseModel, Field
 
-PROVIDER_MODEL = ('cohere', 'command-a')
+PROVIDER_MODEL = ('deepseek', 'deepseek-v3')
 
 TEST_PROMPT = """
 I need you to calculate the payroll costs for a small team.
