@@ -1,6 +1,12 @@
 import time
+import pydantic
 import proxai.types as types
 import proxai.connectors.model_connector as model_connector
+
+
+class SamplePydanticModel(pydantic.BaseModel):
+  name: str
+  age: int
 
 
 class MockProviderModelConnector(model_connector.ProviderModelConnector):
@@ -15,9 +21,30 @@ class MockProviderModelConnector(model_connector.ProviderModelConnector):
 
   def generate_text_proc(
       self, query_record: types.QueryRecord) -> types.Response:
-    return types.Response(
-        value="mock response",
-        type=types.ResponseType.TEXT)
+    if query_record.response_format is None:
+      return types.Response(
+          value="mock response",
+          type=types.ResponseType.TEXT)
+    elif query_record.response_format.type == types.ResponseFormatType.TEXT:
+      return types.Response(
+          value="mock response",
+          type=types.ResponseType.TEXT)
+    elif query_record.response_format.type == types.ResponseFormatType.JSON:
+      return types.Response(
+          value={"name": "John Doe", "age": 30},
+          type=types.ResponseType.JSON)
+    elif query_record.response_format.type == types.ResponseFormatType.JSON_SCHEMA:
+      return types.Response(
+          value={"name": "John Doe", "age": 30},
+          type=types.ResponseType.JSON)
+    elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
+      return types.Response(
+          value=types.ResponsePydanticValue(
+              class_name='SamplePydanticModel',
+              instance_value=SamplePydanticModel(
+                name='John Doe',
+                age=30)),
+          type=types.ResponseType.PYDANTIC)
 
 
 class MockFailingProviderModelConnector(model_connector.ProviderModelConnector):
@@ -47,6 +74,28 @@ class MockSlowProviderModelConnector(model_connector.ProviderModelConnector):
   def generate_text_proc(
       self, query_record: types.QueryRecord) -> types.Response:
     time.sleep(120)
-    return types.Response(
-        value="mock response",
-        type=types.ResponseType.TEXT)
+
+    if query_record.response_format is None:
+      return types.Response(
+          value="mock response",
+          type=types.ResponseType.TEXT)
+    elif query_record.response_format.type == types.ResponseFormatType.TEXT:
+      return types.Response(
+          value="mock response",
+          type=types.ResponseType.TEXT)
+    elif query_record.response_format.type == types.ResponseFormatType.JSON:
+      return types.Response(
+          value={"name": "John Doe", "age": 30},
+          type=types.ResponseType.JSON)
+    elif query_record.response_format.type == types.ResponseFormatType.JSON_SCHEMA:
+      return types.Response(
+          value={"name": "John Doe", "age": 30},
+          type=types.ResponseType.JSON)
+    elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
+      return types.Response(
+          value=types.ResponsePydanticValue(
+              class_name='SamplePydanticModel',
+              instance_value=SamplePydanticModel(
+                name='John Doe',
+                age=30)),
+          type=types.ResponseType.PYDANTIC)
