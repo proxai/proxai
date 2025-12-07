@@ -35,6 +35,11 @@ class MistralConnector(model_connector.ProviderModelConnector):
       self,
       create: Callable,
       query_record: types.QueryRecord) -> Callable:
+    provider_model = query_record.provider_model
+    create = functools.partial(
+        create, model=provider_model.provider_model_identifier)
+
+
     # Note: Mistral uses 'system', 'user', and 'assistant' as roles.
     query_messages = []
     if query_record.system is not None:
@@ -117,10 +122,6 @@ class MistralConnector(model_connector.ProviderModelConnector):
   def generate_text_proc(
       self, query_record: types.QueryRecord) -> types.Response:
     create = self._get_api_call_function(query_record)
-
-    provider_model = query_record.provider_model
-    create = functools.partial(
-        create, model=provider_model.provider_model_identifier)
 
     create = self._feature_mapping(create, query_record)
 
