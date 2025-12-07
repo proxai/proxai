@@ -316,6 +316,8 @@ def _get_query_record_options():
       {'temperature': 0.5},
       {'stop': ['stop']},
       {'token_count': 100},
+      {'web_search': True},
+      {'web_search': False},
       {'call_type': types.CallType.GENERATE_TEXT,
        'provider_model': model_configs_instance.get_provider_model(('openai', 'gpt-4')),
        'prompt': 'Hello, world!',
