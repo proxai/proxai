@@ -26,9 +26,13 @@ def _get_query_record_examples():
 
 def _get_query_response_record_examples():
   return [
-      {'response': 'Test response'},
+      {'response': types.Response(
+          type=types.ResponseType.TEXT,
+          value='Test response')},
       {'error': 'Test error'},
-      {'response': 'Test response', 'error': None},
+      {'response': types.Response(
+          type=types.ResponseType.TEXT,
+          value='Test response'), 'error': None},
   ]
 
 
@@ -78,7 +82,7 @@ class TestHideSensitiveContent:
 
     # Check response is hidden if present
     if hidden_record.response:
-      assert hidden_record.response == '<sensitive content hidden>'
+      assert hidden_record.response.value == '<sensitive content hidden>'
     # Error should remain unchanged
     assert hidden_record.error == response_record.error
 
@@ -103,7 +107,7 @@ class TestHideSensitiveContent:
             '<sensitive content hidden>')
 
     if hidden_record.response_record and hidden_record.response_record.response:
-      assert hidden_record.response_record.response == (
+      assert hidden_record.response_record.response.value == (
           '<sensitive content hidden>')
 
 

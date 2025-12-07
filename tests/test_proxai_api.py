@@ -5,6 +5,7 @@ import json
 import pytest
 import proxai as px
 import proxai.connectors.model_configs as model_configs
+import proxai.connectors.providers.mock_provider as mock_provider
 from importlib.metadata import version
 
 
@@ -106,7 +107,7 @@ class TestProxaiApiUseCases:
         provider_model=px.models.get_model(
             'claude', 'haiku-3.5', clear_model_cache=True),
         extensive_return=True)
-    assert logging_record.response_record.response == 'mock response'
+    assert logging_record.response_record.response.value == 'mock response'
     assert logging_record.query_record.provider_model.model == 'haiku-3.5'
     assert logging_record.response_source == px.types.ResponseSource.PROVIDER
 
@@ -126,7 +127,7 @@ class TestProxaiApiUseCases:
     assert logging_record.query_record.temperature == 0.5
     assert logging_record.query_record.stop == ['\n\n']
     assert logging_record.query_record.provider_model.model == 'gpt-3.5-turbo'
-    assert logging_record.response_record.response == 'mock response'
+    assert logging_record.response_record.response.value == 'mock response'
     assert logging_record.response_source == px.types.ResponseSource.PROVIDER
 
   def test_generate_text_with_use_cache_before_connect(self):
@@ -527,7 +528,7 @@ class TestProxaiApiUseCases:
       # Second logging record:
       log_record = json.loads(lines[-1])
       assert log_record['query_record']['prompt'] == 'hello'
-      assert log_record['response_record']['response'] == 'mock response'
+      assert log_record['response_record']['response']['value'] == 'mock response'
       assert log_record['response_source'] == px.types.ResponseSource.PROVIDER
       # End of file:
       assert f.readline() == ''
@@ -543,7 +544,7 @@ class TestProxaiApiUseCases:
       # First logging record:
       log_record = json.loads(lines[-1])
       assert log_record['query_record']['prompt'] == 'hello'
-      assert log_record['response_record']['response'] == 'mock response'
+      assert log_record['response_record']['response']['value'] == 'mock response'
       assert log_record['response_source'] == px.types.ResponseSource.CACHE
 
   def test_connect_with_different_logging_options(self):
@@ -561,7 +562,7 @@ class TestProxaiApiUseCases:
           log_record['query_record']['prompt'] ==
           '<sensitive content hidden>')
       assert (
-          log_record['response_record']['response'] ==
+          log_record['response_record']['response']['value'] ==
           '<sensitive content hidden>')
       assert log_record['response_source'] == px.types.ResponseSource.PROVIDER
 
@@ -704,3 +705,64 @@ class TestProxaiApiUseCases:
     assert (
         px.models.model_configs.model_configs_schema.metadata.release_notes ==
         'TEST CONFIG')
+
+
+class TestStructuredOutput:
+  @pytest.fixture(autouse=True)
+  def setup_test(self, monkeypatch):
+    monkeypatch.delenv('PROXDASH_API_KEY', raising=False)
+    for api_key_list in model_configs.PROVIDER_KEY_MAP.values():
+      for api_key in api_key_list:
+        monkeypatch.setenv(api_key, 'test_api_key')
+    monkeypatch.delenv('MOCK_SLOW_PROVIDER', raising=False)
+    self.temp_paths = {}
+    px.reset_state()
+    px.set_run_type(px.types.RunType.TEST)
+    px.models.allow_multiprocessing = False
+    yield
+
+  def test_text_response_format(self):
+    result = px.generate_text(
+        'hello',
+        provider_model=('mock_provider', 'mock_model'))
+    assert isinstance(result, str)
+    assert result == 'mock response'
+
+    result = px.generate_text(
+        'hello',
+        provider_model=('mock_provider', 'mock_model'),
+        extensive_return=True)
+    assert isinstance(result, px.types.LoggingRecord)
+    assert result.response_record.response.type == px.types.ResponseType.TEXT
+    assert result.response_record.response.value == 'mock response'
+
+    result = px.generate_text(
+        'hello',
+        provider_model=('mock_provider', 'mock_model'),
+        response_format='json')
+    assert isinstance(result, dict)
+
+    result = px.generate_text(
+        'hello',
+        provider_model=('mock_provider', 'mock_model'),
+        response_format='json',
+        extensive_return=True)
+    assert isinstance(result, px.types.LoggingRecord)
+    assert result.response_record.response.type == px.types.ResponseType.JSON
+
+    result = px.generate_text(
+        'hello',
+        provider_model=('mock_provider', 'mock_model'),
+        response_format=mock_provider.SamplePydanticModel)
+    assert isinstance(result, mock_provider.SamplePydanticModel)
+
+    result = px.generate_text(
+        'hello',
+        provider_model=('mock_provider', 'mock_model'),
+        response_format=mock_provider.SamplePydanticModel,
+        extensive_return=True)
+    assert isinstance(result, px.types.LoggingRecord)
+    assert result.response_record.response.type == px.types.ResponseType.PYDANTIC
+    assert isinstance(
+        result.response_record.response.value,
+        px.types.ResponsePydanticValue)

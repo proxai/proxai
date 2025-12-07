@@ -107,7 +107,10 @@ class TestAvailableModels:
     ] = types.LoggingRecord(
         query_record=types.QueryRecord(
             provider_model=model_configs_instance.get_provider_model(('openai', 'gpt-4'))),
-        response_record=types.QueryResponseRecord(response='response1'))
+        response_record=types.QueryResponseRecord(
+            response=types.Response(
+                type=types.ResponseType.TEXT,
+                value='response1')))
     data.provider_queries[
         model_configs_instance.get_provider_model(('openai', 'gpt-4.1-mini'))
     ] = types.LoggingRecord(
@@ -152,7 +155,7 @@ class TestAvailableModels:
     assert len(models.provider_queries) == 2  # Should contain both the success and error queries from cache
     assert models.provider_queries[
         model_configs_instance.get_provider_model(('openai', 'gpt-4'))
-    ].response_record.response == 'response1'
+    ].response_record.response.value == 'response1'
     assert models.provider_queries[
         model_configs_instance.get_provider_model(('openai', 'gpt-4.1-mini'))
     ].response_record.error == 'error1'
@@ -173,13 +176,13 @@ class TestAvailableModels:
     models.unprocessed_models.add(
         model_configs_instance.get_provider_model(('openai', 'o1-mini')))
     models.unprocessed_models.add(
-        model_configs_instance.get_provider_model(('openai', 'gpt-4.1')))
+        model_configs_instance.get_provider_model(('openai', 'gpt-5.1')))
     models.unprocessed_models.add(
         model_configs_instance.get_provider_model(('claude', 'haiku-3')))
     models.unprocessed_models.add(
         model_configs_instance.get_provider_model(('claude', 'haiku-3.5')))
     models.unprocessed_models.add(
-        model_configs_instance.get_provider_model(('claude', 'opus-4')))
+        model_configs_instance.get_provider_model(('claude', 'opus-4.5')))
 
     test_models = copy.deepcopy(models)
     available_models_manager._filter_by_model_size(
@@ -204,8 +207,8 @@ class TestAvailableModels:
         test_models,
         model_size=types.ModelSizeType.LARGE)
     assert test_models.unprocessed_models == set([
-        model_configs_instance.get_provider_model(('openai', 'gpt-4.1')),
-        model_configs_instance.get_provider_model(('claude', 'opus-4')),
+        model_configs_instance.get_provider_model(('openai', 'gpt-5.1')),
+        model_configs_instance.get_provider_model(('claude', 'opus-4.5')),
     ])
 
     test_models = copy.deepcopy(models)
@@ -213,8 +216,8 @@ class TestAvailableModels:
         test_models,
         model_size=types.ModelSizeType.LARGEST)
     assert test_models.unprocessed_models == set([
-        model_configs_instance.get_provider_model(('openai', 'gpt-4.1')),
-        model_configs_instance.get_provider_model(('claude', 'opus-4')),
+        model_configs_instance.get_provider_model(('openai', 'gpt-5.1')),
+        model_configs_instance.get_provider_model(('claude', 'opus-4.5')),
     ])
 
     test_models = copy.deepcopy(models)
