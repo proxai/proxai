@@ -20,7 +20,7 @@ urllib3 = "<2.0.0"
 openai = "^1.14.3"
 anthropic = "^0.75.0"
 cohere = "^5.1.7"
-mistralai = "^0.1.8"
+mistralai = "^1.9.11"
 google-genai = "<1.9.0"
 databricks-sdk = {version = "^0.35.0", extras = ["openai"]}
 platformdirs = "^4.0.0"
