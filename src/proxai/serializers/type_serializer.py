@@ -572,6 +572,8 @@ def encode_query_record(
   if query_record.response_format != None:
     record['response_format'] = encode_response_format(
         query_record.response_format)
+  if query_record.web_search != None:
+    record['web_search'] = query_record.web_search
   if query_record.hash_value != None:
     record['hash_value'] = query_record.hash_value
   return record
@@ -598,6 +600,8 @@ def decode_query_record(
   if 'response_format' in record:
     query_record.response_format = decode_response_format(
         record['response_format'])
+  if 'web_search' in record:
+    query_record.web_search = bool(record['web_search'])
   query_record.hash_value = record.get('hash_value', None)
   return query_record
 
