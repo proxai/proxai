@@ -566,6 +566,7 @@ def generate_text(
     temperature: Optional[float] = None,
     stop: Optional[types.StopType] = None,
     response_format: Optional[types.UserDefinedResponseFormatValueType] = None,
+    web_search: Optional[bool] = None,
     provider_model: Optional[types.ProviderModelIdentifierType] = None,
     use_cache: Optional[bool] = None,
     unique_response_limit: Optional[int] = None,
@@ -605,6 +606,7 @@ def generate_text(
       temperature=temperature,
       stop=stop,
       response_format=response_format,
+      web_search=web_search,
       use_cache=use_cache,
       unique_response_limit=unique_response_limit)
   if logging_record.response_record.error:

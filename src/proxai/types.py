@@ -246,6 +246,7 @@ class QueryRecord:
   stop: Optional[StopType] = None
   token_count: Optional[int] = None
   response_format: Optional[ResponseFormat] = None
+  web_search: Optional[bool] = None
   hash_value: Optional[str] = None
 
 
