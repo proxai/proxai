@@ -22,7 +22,7 @@ anthropic = "^0.75.0"
 cohere = "^5.20.0"
 mistralai = "^1.9.11"
 google-genai = "<1.9.0"
-databricks-sdk = {version = "^0.35.0", extras = ["openai"]}
+databricks-sdk = {extras = ["openai"], version = "^0.73.0"}
 platformdirs = "^4.0.0"
 packaging = "^24.0"
 
