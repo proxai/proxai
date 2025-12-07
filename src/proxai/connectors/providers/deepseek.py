@@ -1,4 +1,4 @@
-import copy
+from typing import Any, Callable
 import functools
 import json
 import os
@@ -20,8 +20,15 @@ class DeepSeekConnector(model_connector.ProviderModelConnector):
   def init_mock_model(self):
     return openai_mock.OpenAIMock()
 
-  def generate_text_proc(
-      self, query_record: types.QueryRecord) -> types.Response:
+  def _get_api_call_function(
+      self,
+      query_record: types.QueryRecord) -> Callable:
+    return functools.partial(self.api.chat.completions.create)
+
+  def _feature_mapping(
+      self,
+      create: Callable,
+      query_record: types.QueryRecord) -> Callable:
     # Note: DeepSeek uses OpenAI-compatible API with 'system', 'user', and
     # 'assistant' as roles.
     query_messages = []
@@ -58,12 +65,8 @@ class DeepSeekConnector(model_connector.ProviderModelConnector):
       query_messages.append({'role': 'user', 'content': query_record.prompt})
     if query_record.messages is not None:
       query_messages.extend(query_record.messages)
-    provider_model = query_record.provider_model
+    create = functools.partial(create, messages=query_messages)
 
-    create = functools.partial(
-        self.api.chat.completions.create,
-        model=provider_model.provider_model_identifier,
-        messages=query_messages)
     if query_record.max_tokens is not None:
       create = functools.partial(
           create, max_completion_tokens=query_record.max_tokens)
@@ -86,33 +89,53 @@ class DeepSeekConnector(model_connector.ProviderModelConnector):
             create,
             response_format={'type': 'json_object'})
 
-    completion = create()
+    return create
+
+  def _response_mapping(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> types.Response:
 
     # Handle response based on format type
     if query_record.response_format is None:
       return types.Response(
-          value=completion.choices[0].message.content,
+          value=response.choices[0].message.content,
           type=types.ResponseType.TEXT)
     elif query_record.response_format.type == types.ResponseFormatType.TEXT:
       return types.Response(
-          value=completion.choices[0].message.content,
+          value=response.choices[0].message.content,
           type=types.ResponseType.TEXT)
     elif query_record.response_format.type == types.ResponseFormatType.JSON:
       return types.Response(
-          value=json.loads(completion.choices[0].message.content),
+          value=json.loads(response.choices[0].message.content),
           type=types.ResponseType.JSON)
     elif (query_record.response_format.type ==
           types.ResponseFormatType.JSON_SCHEMA):
       return types.Response(
-          value=json.loads(completion.choices[0].message.content),
+          value=json.loads(response.choices[0].message.content),
           type=types.ResponseType.JSON)
     elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
       # For Pydantic, parse JSON and validate with the Pydantic model
       pydantic_class = query_record.response_format.value.class_value
       instance = pydantic_class.model_validate_json(
-          completion.choices[0].message.content)
+          response.choices[0].message.content)
       return types.Response(
           value=types.ResponsePydanticValue(
               class_name=query_record.response_format.value.class_name,
               instance_value=instance),
           type=types.ResponseType.PYDANTIC)
+
+
+  def generate_text_proc(
+      self, query_record: types.QueryRecord) -> types.Response:
+    create = self._get_api_call_function(query_record)
+
+    provider_model = query_record.provider_model
+    create = functools.partial(
+        create, model=provider_model.provider_model_identifier)
+
+    create = self._feature_mapping(create, query_record)
+
+    response = create()
+
+    return self._response_mapping(response, query_record)
