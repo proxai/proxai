@@ -1,6 +1,7 @@
 import copy
 import datetime
 import functools
+import json
 import os
 import tempfile
 from typing import Any, Dict, Optional, Tuple, Union
@@ -54,6 +55,8 @@ CacheOptions = types.CacheOptions
 LoggingOptions = types.LoggingOptions
 ProxDashOptions = types.ProxDashOptions
 ResponseFormat = types.ResponseFormat
+ResponseFormatType = types.ResponseFormatType
+ResponseFormatPydanticValue = types.ResponseFormatPydanticValue
 
 
 def _init_default_model_cache_manager():
@@ -618,7 +621,24 @@ def generate_text(
 
   if extensive_return:
     return logging_record
-  return logging_record.response_record.response.value
+
+  response = logging_record.response_record.response
+  if response.type == types.ResponseType.PYDANTIC:
+    if response.value.instance_value is not None:
+      return response.value.instance_value
+
+    elif response.value.instance_json_value is not None:
+      return response.value.class_value.model_validate(
+          json.loads(response.value.instance_json_value))
+    else:
+      raise ValueError(
+          'ResponsePydanticValue has no instance_value or '
+          'instance_json_value. Please create an issue at '
+          'https://github.com/proxai/proxai/issues.\n'
+          f'Response: {response}\n'
+          f'Response Value: {response.value}')
+
+  return response.value
 
 
 def get_summary(

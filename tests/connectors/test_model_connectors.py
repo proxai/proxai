@@ -429,7 +429,7 @@ class TestGetTokenCountEstimate:
     result = connector.get_token_count_estimate(response)
     assert result > 0
 
-  def test_pydantic_response(self):
+  def test_pydantic_response_with_instance_value(self):
     import pydantic
 
     class TestModel(pydantic.BaseModel):
@@ -439,7 +439,17 @@ class TestGetTokenCountEstimate:
     connector = get_mock_provider_model_connector()
     response = types.Response(
         type=types.ResponseType.PYDANTIC,
-        value=TestModel(name='test', value=42))
+        value=types.ResponsePydanticValue(
+            instance_value=TestModel(name='test', value=42)))
+    result = connector.get_token_count_estimate(response)
+    assert result > 0
+
+  def test_pydantic_response_with_instance_json_value(self):
+    connector = get_mock_provider_model_connector()
+    response = types.Response(
+        type=types.ResponseType.PYDANTIC,
+        value=types.ResponsePydanticValue(
+            instance_json_value={'name': 'test', 'value': 42}))
     result = connector.get_token_count_estimate(response)
     assert result > 0
 

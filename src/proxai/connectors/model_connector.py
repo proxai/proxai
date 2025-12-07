@@ -270,8 +270,12 @@ class ProviderModelConnector(state_controller.StateControlled):
       elif value.type == types.ResponseType.JSON:
         total += _get_token_count_estimate_from_prompt(json.dumps(value.value))
       elif value.type == types.ResponseType.PYDANTIC:
-        total += _get_token_count_estimate_from_prompt(
-            json.dumps(value.value.model_dump()))
+        if value.value.instance_json_value is not None:
+          total += _get_token_count_estimate_from_prompt(
+              json.dumps(value.value.instance_json_value))
+        else:
+          total += _get_token_count_estimate_from_prompt(
+              json.dumps(value.value.instance_value.model_dump()))
       else:
         raise ValueError(f'Invalid response type: {value.type}')
     elif isinstance(value, list):
