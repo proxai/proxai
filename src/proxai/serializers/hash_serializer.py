@@ -65,4 +65,6 @@ def get_query_record_hash(query_record: types.QueryRecord) -> str:
   if query_record.response_format != None:
     signature_str += _get_response_format_signature(
         query_record.response_format) + _SEPARATOR_CHAR
+  if query_record.web_search != None:
+    signature_str += str(query_record.web_search) + _SEPARATOR_CHAR
   return hashlib.sha256(signature_str.encode()).hexdigest()[:_HASH_LENGTH]
