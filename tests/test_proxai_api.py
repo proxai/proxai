@@ -117,6 +117,7 @@ class TestProxaiApiUseCases:
         max_tokens=100,
         temperature=0.5,
         stop=['\n\n'],
+        web_search=True,
         provider_model=('openai', 'gpt-3.5-turbo'),
         use_cache=False,
         unique_response_limit=1,
@@ -126,6 +127,7 @@ class TestProxaiApiUseCases:
     assert logging_record.query_record.max_tokens == 100
     assert logging_record.query_record.temperature == 0.5
     assert logging_record.query_record.stop == ['\n\n']
+    assert logging_record.query_record.web_search == True
     assert logging_record.query_record.provider_model.model == 'gpt-3.5-turbo'
     assert logging_record.response_record.response.value == 'mock response'
     assert logging_record.response_source == px.types.ResponseSource.PROVIDER

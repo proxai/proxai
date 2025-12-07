@@ -379,6 +379,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       temperature: Optional[float] = None,
       stop: Optional[types.StopType] = None,
       response_format: Optional[types.ResponseFormat] = None,
+      web_search: Optional[bool] = None,
       provider_model: Optional[types.ProviderModelIdentifierType] = None,
       use_cache: bool = True,
       unique_response_limit: Optional[int] = None) -> types.LoggingRecord:
@@ -407,6 +408,7 @@ class ProviderModelConnector(state_controller.StateControlled):
         temperature=temperature,
         stop=stop,
         response_format=response_format,
+        web_search=web_search,
         token_count=self.get_token_count_estimate(
             value = prompt if prompt is not None else messages))
 

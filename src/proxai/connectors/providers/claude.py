@@ -53,6 +53,17 @@ def _extract_json_from_text(text: str) -> dict:
       0)
 
 
+def _extract_text_from_content(content_blocks) -> str:
+  # Extract text from content blocks
+  # When web_search or other tools are used, response may contain multiple
+  # block types (ServerToolUseBlock, TextBlock, etc). We need to find TextBlocks.
+  text_parts = []
+  for block in content_blocks:
+    if hasattr(block, 'text'):
+      text_parts.append(block.text)
+  return '\n'.join(text_parts) if text_parts else ''
+
+
 class ClaudeConnector(model_connector.ProviderModelConnector):
   def get_provider_name(self):
     return 'claude'
@@ -113,6 +124,12 @@ class ClaudeConnector(model_connector.ProviderModelConnector):
         create = functools.partial(create, stop_sequences=[query_record.stop])
       else:
         create = functools.partial(create, stop_sequences=query_record.stop)
+    if query_record.web_search is not None:
+      create = functools.partial(create, tools=[{
+          "type": "web_search_20250305",
+          "name": "web_search",
+          "max_uses": 5
+      }])
 
     # Handle response format configuration
     if query_record.response_format is not None:
@@ -137,20 +154,20 @@ class ClaudeConnector(model_connector.ProviderModelConnector):
 
     if query_record.response_format is None:
       return types.Response(
-          value=completion.content[0].text,
+          value=_extract_text_from_content(completion.content),
           type=types.ResponseType.TEXT)
     elif query_record.response_format.type == types.ResponseFormatType.TEXT:
       return types.Response(
-          value=completion.content[0].text,
+          value=_extract_text_from_content(completion.content),
           type=types.ResponseType.TEXT)
     elif query_record.response_format.type == types.ResponseFormatType.JSON:
       return types.Response(
-          value=_extract_json_from_text(completion.content[0].text),
+          value=_extract_json_from_text(_extract_text_from_content(completion.content)),
           type=types.ResponseType.JSON)
     elif (query_record.response_format.type ==
           types.ResponseFormatType.JSON_SCHEMA):
       return types.Response(
-          value=json.loads(completion.content[0].text),
+          value=json.loads(_extract_text_from_content(completion.content)),
           type=types.ResponseType.JSON)
     elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
       return types.Response(

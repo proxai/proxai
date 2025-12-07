@@ -126,6 +126,9 @@ class GeminiConnector(model_connector.ProviderModelConnector):
         config.stop_sequences = [query_record.stop]
       else:
         config.stop_sequences = query_record.stop
+    if query_record.web_search is not None:
+      config.tools = [genai_types.Tool(
+          google_search=genai_types.GoogleSearch())]
 
     # Handle response format configuration
     if query_record.response_format is not None:

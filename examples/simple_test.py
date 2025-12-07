@@ -7,12 +7,17 @@ from dataclasses import asdict
 
 
 def simple_model_test():
-  random_int = random.randint(1, 1000000)
-  result = px.generate_text(
-      'This is a test message to check if the cache is working or '
-      f'not. {random_int}',
-      extensive_return=True)
-  pprint(asdict(result))
+  response = px.generate_text(
+      'When is the Galatasary and Besiktas game for this season?',
+      provider_model=('mistral', 'mistral-large'),
+      web_search=True)
+  print(response)
+  # random_int = random.randint(1, 1000000)
+  # result = px.generate_text(
+  #     'This is a test message to check if the cache is working or '
+  #     f'not. {random_int}',
+  #     extensive_return=True)
+  # pprint(asdict(result))
 
 
 def simple_cache_test():
