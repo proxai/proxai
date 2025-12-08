@@ -568,14 +568,16 @@ class TestProxaiApiUseCases:
           '<sensitive content hidden>')
       assert log_record['response_source'] == px.types.ResponseSource.PROVIDER
 
-  def test_connect_with_strict_feature_test(self):
-    px.connect(strict_feature_test=False)
+  def test_connect_with_feature_mapping_strategy(self):
+    px.connect(
+        feature_mapping_strategy=px.types.FeatureMappingStrategy.BEST_EFFORT)
     px.generate_text(
         'hello',
         stop='STOP',
         provider_model=('mistral', 'mistral-large'))
 
-    px.connect(strict_feature_test=True)
+    px.connect(
+        feature_mapping_strategy=px.types.FeatureMappingStrategy.STRICT)
     with pytest.raises(Exception):
       px.generate_text(
           'hello',
@@ -599,7 +601,8 @@ class TestProxaiApiUseCases:
     assert options.proxdash_options.disable_proxdash == False
     assert options.allow_multiprocessing == True
     assert options.model_test_timeout == 25
-    assert options.strict_feature_test == False
+    assert (options.feature_mapping_strategy ==
+        px.types.FeatureMappingStrategy.BEST_EFFORT)
 
     logging_path = self._get_path_dir('logging_path')
     cache_path = self._get_path_dir('cache_path')
@@ -620,7 +623,7 @@ class TestProxaiApiUseCases:
             disable_proxdash=True),
         allow_multiprocessing=False,
         model_test_timeout=45,
-        strict_feature_test=True)
+        feature_mapping_strategy=px.types.FeatureMappingStrategy.STRICT)
     options = px.get_current_options()
     assert options.run_type == px.types.RunType.TEST
     assert options.logging_options.logging_path == logging_path
@@ -636,7 +639,8 @@ class TestProxaiApiUseCases:
     assert options.proxdash_options.disable_proxdash == True
     assert options.allow_multiprocessing == False
     assert options.model_test_timeout == 45
-    assert options.strict_feature_test == True
+    assert (options.feature_mapping_strategy ==
+        px.types.FeatureMappingStrategy.STRICT)
 
     options = px.get_current_options(json=True)
     assert options['run_type'] == px.types.RunType.TEST.value

@@ -23,8 +23,8 @@ class ProviderModelConnector(state_controller.StateControlled):
   _run_type: Optional[types.RunType]
   _provider_model_config: Optional[types.ProviderModelConfigType]
   _get_run_type: Optional[Callable[[], types.RunType]]
-  _strict_feature_test: Optional[bool]
-  _get_strict_feature_test: Optional[Callable[[], bool]]
+  _feature_mapping_strategy: Optional[types.FeatureMappingStrategy]
+  _get_feature_mapping_strategy: Optional[Callable[[], types.FeatureMappingStrategy]]
   _query_cache_manager: Optional[query_cache.QueryCacheManager]
   _get_query_cache_manager: Optional[
       Callable[[], query_cache.QueryCacheManager]]
@@ -43,8 +43,8 @@ class ProviderModelConnector(state_controller.StateControlled):
       run_type: Optional[types.RunType] = None,
       provider_model_config: Optional[types.ProviderModelConfigType] = None,
       get_run_type: Optional[Callable[[], types.RunType]] = None,
-      strict_feature_test: Optional[bool] = None,
-      get_strict_feature_test: Optional[Callable[[], bool]] = None,
+      feature_mapping_strategy: Optional[types.FeatureMappingStrategy] = None,
+      get_feature_mapping_strategy: Optional[Callable[[], types.FeatureMappingStrategy]] = None,
       query_cache_manager: Optional[query_cache.QueryCacheManager] = None,
       get_query_cache_manager: Optional[
           Callable[[], query_cache.QueryCacheManager]] = None,
@@ -61,8 +61,8 @@ class ProviderModelConnector(state_controller.StateControlled):
         run_type=run_type,
         provider_model_config=provider_model_config,
         get_run_type=get_run_type,
-        strict_feature_test=strict_feature_test,
-        get_strict_feature_test=get_strict_feature_test,
+        feature_mapping_strategy=feature_mapping_strategy,
+        get_feature_mapping_strategy=get_feature_mapping_strategy,
         query_cache_manager=query_cache_manager,
         get_query_cache_manager=get_query_cache_manager,
         logging_options=logging_options,
@@ -83,7 +83,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       initial_state = self.get_state()
 
       self._get_run_type = get_run_type
-      self._get_strict_feature_test = get_strict_feature_test
+      self._get_feature_mapping_strategy = get_feature_mapping_strategy
       self._get_query_cache_manager = get_query_cache_manager
       self._get_logging_options = get_logging_options
       self._get_proxdash_connection = get_proxdash_connection
@@ -91,7 +91,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       self.provider_model = provider_model
       self.run_type = run_type
       self.provider_model_config = provider_model_config
-      self.strict_feature_test = strict_feature_test
+      self.feature_mapping_strategy = feature_mapping_strategy
       self.query_cache_manager = query_cache_manager
       self.logging_options = logging_options
       self.proxdash_connection = proxdash_connection
@@ -114,8 +114,8 @@ class ProviderModelConnector(state_controller.StateControlled):
       result_state.provider_model = current_state.provider_model
     if current_state.run_type is not None:
       result_state.run_type = current_state.run_type
-    if current_state.strict_feature_test is not None:
-      result_state.strict_feature_test = current_state.strict_feature_test
+    if current_state.feature_mapping_strategy is not None:
+      result_state.feature_mapping_strategy = current_state.feature_mapping_strategy
     if current_state.logging_options is not None:
       result_state.logging_options = current_state.logging_options
     if current_state.proxdash_connection is not None:
@@ -180,12 +180,12 @@ class ProviderModelConnector(state_controller.StateControlled):
     self.set_property_value('provider_model_config', value)
 
   @property
-  def strict_feature_test(self):
-    return self.get_property_value('strict_feature_test')
+  def feature_mapping_strategy(self):
+    return self.get_property_value('feature_mapping_strategy')
 
-  @strict_feature_test.setter
-  def strict_feature_test(self, value):
-    self.set_property_value('strict_feature_test', value)
+  @feature_mapping_strategy.setter
+  def feature_mapping_strategy(self, value):
+    self.set_property_value('feature_mapping_strategy', value)
 
   @property
   def query_cache_manager(self):
@@ -222,24 +222,6 @@ class ProviderModelConnector(state_controller.StateControlled):
       state_value: types.ProxDashConnectionState
   ) -> proxdash.ProxDashConnection:
     return proxdash.ProxDashConnection(init_state=state_value)
-
-  def feature_fail(
-      self,
-      message: str,
-      query_record: Optional[types.QueryRecord] = None):
-    if self.strict_feature_test:
-      logging_utils.log_message(
-          type=types.LoggingType.ERROR,
-          logging_options=self.logging_options,
-          query_record=query_record,
-          message=message)
-      raise Exception(message)
-    else:
-      logging_utils.log_message(
-          type=types.LoggingType.WARNING,
-          logging_options=self.logging_options,
-          query_record=query_record,
-          message=message)
 
   def _extract_json_from_text(text: str) -> dict:
     """Helper function for extracting JSON from text.
@@ -280,14 +262,71 @@ class ProviderModelConnector(state_controller.StateControlled):
         text,
         0)
 
+  def handle_feature_not_supported(self, query_record: types.QueryRecord):
+    if not self.provider_model_config.features.not_supported_features:
+      return
+
+    for feature in self.provider_model_config.features.not_supported_features:
+      if getattr(query_record, feature) is None:
+        continue
+
+      if self.feature_mapping_strategy == types.FeatureMappingStrategy.STRICT:
+        message=f'{self.provider_model.model} does not support {feature}.'
+        logging_utils.log_message(
+            type=types.LoggingType.ERROR,
+            logging_options=self.logging_options,
+            query_record=query_record,
+            message=message)
+        raise Exception(message)
+
+      elif (self.feature_mapping_strategy ==
+          types.FeatureMappingStrategy.BEST_EFFORT):
+        message = (
+            f'{self.provider_model.model} does not support {feature}.\n'
+            'Omitting this feature.')
+        logging_utils.log_message(
+            type=types.LoggingType.WARNING,
+            logging_options=self.logging_options,
+            query_record=query_record,
+            message=message)
+
+      if (self.feature_mapping_strategy !=
+          types.FeatureMappingStrategy.PASSTHROUGH):
+        setattr(query_record, feature, None)
+
+  def handle_feature_best_effort(self, query_record: types.QueryRecord):
+    if not self.provider_model_config.features.best_effort_features:
+      return
+
+    for feature in self.provider_model_config.features.best_effort_features:
+      if getattr(query_record, feature) is None:
+        continue
+
+      if self.feature_mapping_strategy == types.FeatureMappingStrategy.STRICT:
+        message=f'{self.provider_model.model} does not support {feature}.'
+        logging_utils.log_message(
+            type=types.LoggingType.ERROR,
+            logging_options=self.logging_options,
+            query_record=query_record,
+            message=message)
+        raise Exception(message)
+
+      if (self.feature_mapping_strategy ==
+          types.FeatureMappingStrategy.OMIT):
+        message = (
+            f'{self.provider_model.model} does not support {feature}.\n'
+            'Omitting this feature.')
+        logging_utils.log_message(
+            type=types.LoggingType.WARNING,
+            logging_options=self.logging_options,
+            query_record=query_record,
+            message=message)
+        setattr(query_record, feature, None)
+
   def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
     query_record = copy.deepcopy(query_record)
-    for feature in self.provider_model_config.features.not_supported_features:
-      if getattr(query_record, feature) is not None:
-        self.feature_fail(
-            message=f'{self.provider_model.model} does not support {feature}.',
-            query_record=query_record)
-        setattr(query_record, feature, None)
+    self.handle_feature_not_supported(query_record=query_record)
+    self.handle_feature_best_effort(query_record=query_record)
     return query_record
 
   def get_token_count_estimate(

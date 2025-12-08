@@ -43,7 +43,7 @@ _MODEL_CACHE_MANAGER: Optional[model_cache.ModelCacheManager]
 _QUERY_CACHE_MANAGER: Optional[query_cache.QueryCacheManager]
 _PROXDASH_CONNECTION: Optional[proxdash.ProxDashConnection]
 
-_STRICT_FEATURE_TEST: bool
+_FEATURE_MAPPING_STRATEGY: types.FeatureMappingStrategy
 _SUPPRESS_PROVIDER_ERRORS: bool
 _ALLOW_MULTIPROCESSING: bool
 _MODEL_TEST_TIMEOUT: Optional[int]
@@ -101,7 +101,7 @@ def _init_globals():
   global _QUERY_CACHE_MANAGER
   global _PROXDASH_CONNECTION
 
-  global _STRICT_FEATURE_TEST
+  global _FEATURE_MAPPING_STRATEGY
   global _SUPPRESS_PROVIDER_ERRORS
   global _ALLOW_MULTIPROCESSING
   global _MODEL_TEST_TIMEOUT
@@ -128,7 +128,7 @@ def _init_globals():
   _PROXDASH_CONNECTION = None
   _init_default_model_cache_manager()
 
-  _STRICT_FEATURE_TEST = False
+  _FEATURE_MAPPING_STRATEGY = types.FeatureMappingStrategy.BEST_EFFORT
   _SUPPRESS_PROVIDER_ERRORS = False
   _ALLOW_MULTIPROCESSING = True
   _MODEL_TEST_TIMEOUT = 25
@@ -301,15 +301,15 @@ def _set_model_test_timeout(
   return model_test_timeout
 
 
-def _set_strict_feature_test(
-    strict_feature_test: Optional[bool] = None,
+def _set_feature_mapping_strategy(
+    feature_mapping_strategy: Optional[types.FeatureMappingStrategy] = None,
     global_set: Optional[bool] = False) -> Optional[bool]:
-  if strict_feature_test is None:
+  if feature_mapping_strategy is None:
     return None
   if global_set:
-    global _STRICT_FEATURE_TEST
-    _STRICT_FEATURE_TEST = strict_feature_test
-  return strict_feature_test
+    global _FEATURE_MAPPING_STRATEGY
+    _FEATURE_MAPPING_STRATEGY = feature_mapping_strategy
+  return feature_mapping_strategy
 
 
 def _set_suppress_provider_errors(
@@ -373,7 +373,7 @@ def _get_model_connector(
       model_configs=_get_model_configs())
   _MODEL_CONNECTORS[provider_model] = connector(
       get_run_type=_get_run_type,
-      get_strict_feature_test=_get_strict_feature_test,
+      get_feature_mapping_strategy=_get_feature_mapping_strategy,
       get_query_cache_manager=_get_query_cache_manager,
       get_logging_options=_get_logging_options,
       get_proxdash_connection=_get_proxdash_connection,
@@ -457,8 +457,8 @@ def _get_model_test_timeout() -> int:
   return _MODEL_TEST_TIMEOUT
 
 
-def _get_strict_feature_test() -> bool:
-  return _STRICT_FEATURE_TEST
+def _get_feature_mapping_strategy() -> types.FeatureMappingStrategy:
+  return _FEATURE_MAPPING_STRATEGY
 
 
 def _get_suppress_provider_errors() -> bool:
@@ -503,7 +503,7 @@ def connect(
     proxdash_options: Optional[ProxDashOptions]=None,
     allow_multiprocessing: Optional[bool]=True,
     model_test_timeout: Optional[int]=25,
-    strict_feature_test: Optional[bool]=False,
+    feature_mapping_strategy: Optional[types.FeatureMappingStrategy]=types.FeatureMappingStrategy.BEST_EFFORT,
     suppress_provider_errors: Optional[bool]=False):
   _set_experiment_path(
       experiment_path=experiment_path,
@@ -529,8 +529,8 @@ def connect(
   _set_model_configs_requested_from_proxdash(
       model_configs_requested_from_proxdash=False,
       global_set=True)
-  _set_strict_feature_test(
-      strict_feature_test=strict_feature_test,
+  _set_feature_mapping_strategy(
+      feature_mapping_strategy=feature_mapping_strategy,
       global_set=True)
   _set_suppress_provider_errors(
       suppress_provider_errors=suppress_provider_errors,
@@ -682,7 +682,7 @@ def get_current_options(
       logging_options=_get_logging_options(),
       cache_options=_get_cache_options(),
       proxdash_options=_get_proxdash_options(),
-      strict_feature_test=_get_strict_feature_test(),
+      feature_mapping_strategy=_get_feature_mapping_strategy(),
       suppress_provider_errors=_get_suppress_provider_errors(),
       allow_multiprocessing=_get_allow_multiprocessing(),
       model_test_timeout=_get_model_test_timeout())
@@ -746,7 +746,7 @@ def check_health(
         model_configs=_get_model_configs())
     return connector(
         get_run_type=_get_run_type,
-        get_strict_feature_test=_get_strict_feature_test,
+        get_feature_mapping_strategy=_get_feature_mapping_strategy,
         get_query_cache_manager=_get_query_cache_manager,
         logging_options=logging_options,
         proxdash_connection=proxdash_connection,

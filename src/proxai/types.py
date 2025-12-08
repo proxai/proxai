@@ -71,6 +71,7 @@ class ProviderModelPricingType:
 
 @dataclasses.dataclass
 class ProviderModelFeatureType:
+  best_effort_features: List[str] = dataclasses.field(default_factory=list)
   not_supported_features: List[str] = dataclasses.field(default_factory=list)
 
 
@@ -183,6 +184,13 @@ class SummaryOptions:
   json: bool = True
 
 
+class FeatureMappingStrategy(str, enum.Enum):
+  BEST_EFFORT = 'BEST_EFFORT'
+  OMIT = 'OMIT'
+  STRICT = 'STRICT'
+  PASSTHROUGH = 'PASSTHROUGH'
+
+
 @dataclasses.dataclass
 class RunOptions:
   run_type: Optional[RunType] = None
@@ -195,7 +203,7 @@ class RunOptions:
   proxdash_options: Optional[ProxDashOptions] = None
   allow_multiprocessing: Optional[bool] = None
   model_test_timeout: Optional[int] = None
-  strict_feature_test: Optional[bool] = None
+  feature_mapping_strategy: Optional[FeatureMappingStrategy] = None
   suppress_provider_errors: Optional[bool] = None
 
 
@@ -419,7 +427,7 @@ class ProviderModelState(StateContainer):
   provider_model: Optional[ProviderModelType] = None
   run_type: Optional[RunType] = None
   provider_model_config: Optional[ProviderModelConfigType] = None
-  strict_feature_test: Optional[bool] = None
+  feature_mapping_strategy: Optional[FeatureMappingStrategy] = None
   query_cache_manager: Optional[QueryCacheManagerState] = None
   logging_options: Optional[LoggingOptions] = None
   proxdash_connection: Optional[ProxDashConnectionState] = None

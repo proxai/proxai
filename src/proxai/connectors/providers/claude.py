@@ -29,19 +29,19 @@ class ClaudeConnector(model_connector.ProviderModelConnector):
     if (query_record.response_format is not None and
         query_record.response_format.type == types.ResponseFormatType.PYDANTIC):
       # Use beta.messages.parse for Pydantic models
-      create = functools.partial(
+      return functools.partial(
           self.api.beta.messages.parse,
           betas=[STRUCTURED_OUTPUTS_BETA])
     elif (query_record.response_format is not None and
           query_record.response_format.type ==
           types.ResponseFormatType.JSON_SCHEMA):
       # Use beta.messages.create for JSON schema
-      create = functools.partial(
+      return functools.partial(
           self.api.beta.messages.create,
           betas=[STRUCTURED_OUTPUTS_BETA])
     else:
       # Use standard messages.create for text and simple JSON
-      create = functools.partial(self.api.messages.create)
+      return functools.partial(self.api.messages.create)
 
   def _feature_mapping(
       self,
