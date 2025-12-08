@@ -257,33 +257,49 @@ class TestInitAllowMultiprocessing:
     assert proxai._ALLOW_MULTIPROCESSING == original_value
 
 
-class TestInitStrictFeatureTest:
+class TestInitFeatureMappingStrategy:
   def test_default_value(self):
-    assert proxai._set_strict_feature_test() is None
+    assert proxai._set_feature_mapping_strategy() is None
 
   def test_valid_value(self):
-    assert proxai._set_strict_feature_test(True) == True
-    assert proxai._set_strict_feature_test(False) == False
+    assert (proxai._set_feature_mapping_strategy(
+        types.FeatureMappingStrategy.STRICT) ==
+        types.FeatureMappingStrategy.STRICT)
+    assert (proxai._set_feature_mapping_strategy(
+        types.FeatureMappingStrategy.BEST_EFFORT) ==
+        types.FeatureMappingStrategy.BEST_EFFORT)
+    assert (proxai._set_feature_mapping_strategy(
+        types.FeatureMappingStrategy.OMIT) ==
+        types.FeatureMappingStrategy.OMIT)
+    assert (proxai._set_feature_mapping_strategy(
+        types.FeatureMappingStrategy.PASSTHROUGH) ==
+        types.FeatureMappingStrategy.PASSTHROUGH)
 
   def test_global_init(self):
     proxai.set_run_type(types.RunType.TEST)
     proxai.connect()
-    proxai._set_strict_feature_test(True, global_set=True)
-    assert proxai._STRICT_FEATURE_TEST == True
+    proxai._set_feature_mapping_strategy(
+        types.FeatureMappingStrategy.STRICT, global_set=True)
+    assert (proxai._FEATURE_MAPPING_STRATEGY ==
+        types.FeatureMappingStrategy.STRICT)
 
   def test_global_init_multiple(self):
     proxai.set_run_type(types.RunType.TEST)
     proxai.connect()
-    proxai._set_strict_feature_test(True, global_set=True)
-    proxai._set_strict_feature_test(False, global_set=True)
-    assert proxai._STRICT_FEATURE_TEST == False
+    proxai._set_feature_mapping_strategy(
+        types.FeatureMappingStrategy.STRICT, global_set=True)
+    proxai._set_feature_mapping_strategy(
+        types.FeatureMappingStrategy.OMIT, global_set=True)
+    assert (proxai._FEATURE_MAPPING_STRATEGY ==
+        types.FeatureMappingStrategy.OMIT)
 
   def test_no_global_init(self):
     proxai.set_run_type(types.RunType.TEST)
     proxai.connect()
-    original_value = proxai._STRICT_FEATURE_TEST
-    proxai._set_strict_feature_test(True, global_set=False)
-    assert proxai._STRICT_FEATURE_TEST == original_value
+    original_value = proxai._FEATURE_MAPPING_STRATEGY
+    proxai._set_feature_mapping_strategy(
+        types.FeatureMappingStrategy.STRICT, global_set=False)
+    assert proxai._FEATURE_MAPPING_STRATEGY == original_value
 
 
 class TestRetryIfErrorCached:

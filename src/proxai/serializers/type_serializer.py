@@ -84,6 +84,9 @@ def encode_provider_model_feature_type(
     provider_model_feature_type: types.ProviderModelFeatureType
 ) -> Dict[str, Any]:
   record = {}
+  if provider_model_feature_type.best_effort_features != None:
+    record['best_effort_features'] = (
+        provider_model_feature_type.best_effort_features)
   if provider_model_feature_type.not_supported_features != None:
     record['not_supported_features'] = (
         provider_model_feature_type.not_supported_features)
@@ -93,6 +96,9 @@ def encode_provider_model_feature_type(
 def decode_provider_model_feature_type(
     record: Dict[str, Any]) -> types.ProviderModelFeatureType:
   provider_model_feature_type = types.ProviderModelFeatureType()
+  if 'best_effort_features' in record:
+    provider_model_feature_type.best_effort_features = (
+        record['best_effort_features'])
   if 'not_supported_features' in record:
     provider_model_feature_type.not_supported_features = (
         record['not_supported_features'])
@@ -905,8 +911,8 @@ def encode_run_options(
     record['allow_multiprocessing'] = run_options.allow_multiprocessing
   if run_options.model_test_timeout != None:
     record['model_test_timeout'] = run_options.model_test_timeout
-  if run_options.strict_feature_test != None:
-    record['strict_feature_test'] = run_options.strict_feature_test
+  if run_options.feature_mapping_strategy != None:
+    record['feature_mapping_strategy'] = run_options.feature_mapping_strategy
   if run_options.suppress_provider_errors != None:
     record['suppress_provider_errors'] = run_options.suppress_provider_errors
   return record
@@ -980,8 +986,9 @@ def decode_run_options(
     run_options.allow_multiprocessing = record['allow_multiprocessing']
   if 'model_test_timeout' in record:
     run_options.model_test_timeout = record['model_test_timeout']
-  if 'strict_feature_test' in record:
-    run_options.strict_feature_test = record['strict_feature_test']
+  if 'feature_mapping_strategy' in record:
+    run_options.feature_mapping_strategy = types.FeatureMappingStrategy(
+        record['feature_mapping_strategy'])
   if 'suppress_provider_errors' in record:
     run_options.suppress_provider_errors = record['suppress_provider_errors']
   return run_options

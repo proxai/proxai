@@ -464,7 +464,8 @@ def _get_run_options_options():
           disable_proxdash=True)},
       {'allow_multiprocessing': True},
       {'model_test_timeout': 25},
-      {'strict_feature_test': True},
+      {'feature_mapping_strategy': types.FeatureMappingStrategy.BEST_EFFORT},
+      {'feature_mapping_strategy': types.FeatureMappingStrategy.OMIT},
       {'suppress_provider_errors': True},
       {'run_type': types.RunType.TEST,
        'hidden_run_key': 'hidden_run_key',
@@ -486,7 +487,8 @@ def _get_run_options_options():
           hide_sensitive_content=True,
           disable_proxdash=True),
        'allow_multiprocessing': True,
-       'model_test_timeout': 25},]
+       'model_test_timeout': 25,
+       'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT},]
 
 
 def _get_model_status_options():

@@ -32,20 +32,23 @@ def model_configs_instance():
 
 
 def get_mock_provider_model_connector(
-    strict_feature_test: Optional[bool] = None,
+    feature_mapping_strategy: Optional[types.FeatureMappingStrategy] = None,
+    provider_model_config: Optional[types.ProviderModelConfigType] = None,
     query_cache_manager: Optional[query_cache.QueryCacheManager] = None,
     get_query_cache_manager: Optional[
         Callable[[], query_cache.QueryCacheManager]] = None,
     stats: Optional[Dict[str, stats_type.ProviderModelStats]] = None,
 ):
   model_configs_instance = model_configs.ModelConfigs()
+  if provider_model_config is None:
+    provider_model_config = model_configs_instance.get_provider_model_config(
+        ('mock_provider', 'mock_model'))
   connector = mock_provider.MockProviderModelConnector(
       provider_model=model_configs_instance.get_provider_model(('mock_provider', 'mock_model')),
       run_type=types.RunType.TEST,
-      provider_model_config=model_configs_instance.get_provider_model_config(
-          ('mock_provider', 'mock_model')),
+      provider_model_config=provider_model_config,
       logging_options=types.LoggingOptions(),
-      strict_feature_test=strict_feature_test,
+      feature_mapping_strategy=feature_mapping_strategy,
       query_cache_manager=query_cache_manager,
       get_query_cache_manager=get_query_cache_manager,
       stats=stats,
@@ -158,7 +161,7 @@ class TestModelConnectorInit:
     init_state = types.ProviderModelState(
         provider_model=model_configs_instance.get_provider_model(('mock_provider', 'mock_model')),
         run_type=types.RunType.TEST,
-        strict_feature_test=True,
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
         logging_options=types.LoggingOptions(stdout=True),
         proxdash_connection=types.ProxDashConnectionState(
             status=types.ProxDashConnectionStatus.CONNECTED,
@@ -175,7 +178,7 @@ class TestModelConnectorInit:
 
     assert connector.provider_model == model_configs_instance.get_provider_model(('mock_provider', 'mock_model'))
     assert connector.run_type == types.RunType.TEST
-    assert connector.strict_feature_test == True
+    assert connector.feature_mapping_strategy == types.FeatureMappingStrategy.STRICT
     assert connector.logging_options.stdout == True
     assert (
         connector.proxdash_connection.status ==
@@ -201,7 +204,7 @@ class TestModelConnectorInit:
       init_state = types.ProviderModelState(
           provider_model=model_configs_instance.get_provider_model(('mock_provider', 'mock_model')),
           run_type=types.RunType.TEST,
-          strict_feature_test=True,
+          feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
           logging_options=types.LoggingOptions(
               logging_path=temp_dir,
               hide_sensitive_content=True,
@@ -223,7 +226,7 @@ class TestModelConnectorInit:
 
       assert connector.provider_model == model_configs_instance.get_provider_model(('mock_provider', 'mock_model'))
       assert connector.run_type == types.RunType.TEST
-      assert connector.strict_feature_test == True
+      assert connector.feature_mapping_strategy == types.FeatureMappingStrategy.STRICT
       assert connector.logging_options.stdout == True
       assert connector.logging_options.hide_sensitive_content == True
       assert connector.logging_options.logging_path == temp_dir
@@ -254,14 +257,14 @@ class TestModelConnectorInit:
       connector = mock_provider.MockProviderModelConnector(
           provider_model=model_configs_instance.get_provider_model(('mock_provider', 'mock_model')),
           run_type=types.RunType.TEST,
-          strict_feature_test=True,
+          feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
           logging_options=base_logging_options,
           proxdash_connection=proxdash_connection)
 
       init_state = connector.get_state()
       assert init_state.provider_model == model_configs_instance.get_provider_model(('mock_provider', 'mock_model'))
       assert init_state.run_type == types.RunType.TEST
-      assert init_state.strict_feature_test == True
+      assert init_state.feature_mapping_strategy == types.FeatureMappingStrategy.STRICT
       assert init_state.logging_options.stdout == True
       assert init_state.logging_options.hide_sensitive_content == True
       assert init_state.logging_options.logging_path == temp_dir
@@ -306,6 +309,90 @@ class TestModelConnectorInit:
           provider_model=model_configs_instance.get_provider_model(('claude', 'opus-4')))
 
 
+def _get_config_with_not_supported_feature(feature_name: str):
+  """Helper to create a config with a not_supported feature."""
+  model_configs_instance = model_configs.ModelConfigs()
+  base_config = model_configs_instance.get_provider_model_config(
+      ('mock_provider', 'mock_model'))
+  return types.ProviderModelConfigType(
+      provider_model=base_config.provider_model,
+      pricing=base_config.pricing,
+      features=types.ProviderModelFeatureType(
+          not_supported_features=[feature_name]),
+      metadata=base_config.metadata)
+
+
+def _get_config_with_best_effort_feature(feature_name: str):
+  """Helper to create a config with a best_effort feature."""
+  model_configs_instance = model_configs.ModelConfigs()
+  base_config = model_configs_instance.get_provider_model_config(
+      ('mock_provider', 'mock_model'))
+  return types.ProviderModelConfigType(
+      provider_model=base_config.provider_model,
+      pricing=base_config.pricing,
+      features=types.ProviderModelFeatureType(
+          best_effort_features=[feature_name]),
+      metadata=base_config.metadata)
+
+
+class TestFeatureMappingStrategy:
+  def test_not_supported_strict_raises(self):
+    config = _get_config_with_not_supported_feature('system')
+    connector = get_mock_provider_model_connector(
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
+        provider_model_config=config)
+    with pytest.raises(Exception, match="does not support system"):
+      connector.generate_text(prompt="Hello", system="Be helpful")
+
+  def test_not_supported_best_effort_omits(self):
+    config = _get_config_with_not_supported_feature('system')
+    connector = get_mock_provider_model_connector(
+        feature_mapping_strategy=types.FeatureMappingStrategy.BEST_EFFORT,
+        provider_model_config=config)
+    result = connector.generate_text(prompt="Hello", system="Be helpful")
+    assert result.response_record.response is not None
+
+  def test_not_supported_omit_omits(self):
+    config = _get_config_with_not_supported_feature('system')
+    connector = get_mock_provider_model_connector(
+        feature_mapping_strategy=types.FeatureMappingStrategy.OMIT,
+        provider_model_config=config)
+    result = connector.generate_text(prompt="Hello", system="Be helpful")
+    assert result.response_record.response is not None
+
+  def test_not_supported_passthrough_keeps(self):
+    config = _get_config_with_not_supported_feature('system')
+    connector = get_mock_provider_model_connector(
+        feature_mapping_strategy=types.FeatureMappingStrategy.PASSTHROUGH,
+        provider_model_config=config)
+    result = connector.generate_text(prompt="Hello", system="Be helpful")
+    assert result.response_record.response is not None
+
+  def test_best_effort_strict_raises(self):
+    config = _get_config_with_best_effort_feature('system')
+    connector = get_mock_provider_model_connector(
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
+        provider_model_config=config)
+    with pytest.raises(Exception, match="does not support system"):
+      connector.generate_text(prompt="Hello", system="Be helpful")
+
+  def test_best_effort_omit_omits(self):
+    config = _get_config_with_best_effort_feature('system')
+    connector = get_mock_provider_model_connector(
+        feature_mapping_strategy=types.FeatureMappingStrategy.OMIT,
+        provider_model_config=config)
+    result = connector.generate_text(prompt="Hello", system="Be helpful")
+    assert result.response_record.response is not None
+
+  def test_best_effort_best_effort_keeps(self):
+    config = _get_config_with_best_effort_feature('system')
+    connector = get_mock_provider_model_connector(
+        feature_mapping_strategy=types.FeatureMappingStrategy.BEST_EFFORT,
+        provider_model_config=config)
+    result = connector.generate_text(prompt="Hello", system="Be helpful")
+    assert result.response_record.response is not None
+
+
 class TestModelConnector:
   def test_mutually_exclusive_params(self):
     connector = get_mock_provider_model_connector()
@@ -315,16 +402,6 @@ class TestModelConnector:
       connector.generate_text(
           prompt="Hello",
           messages=[{"role": "user", "content": "Hello"}])
-
-  def test_strict_feature_test_true(self):
-    connector = get_mock_provider_model_connector(strict_feature_test=True)
-    with pytest.raises(Exception, match="Test error"):
-      connector.feature_fail("Test error")
-
-  def test_strict_feature_test_false(self):
-    connector = get_mock_provider_model_connector(strict_feature_test=False)
-    # Should not raise an exception in non-strict mode
-    connector.feature_fail("Test error")
 
   def test_generate_text(self):
     connector = get_mock_provider_model_connector()
