@@ -71,8 +71,9 @@ class ProviderModelPricingType:
 
 @dataclasses.dataclass
 class ProviderModelFeatureType:
-  best_effort_features: List[str] = dataclasses.field(default_factory=list)
-  not_supported_features: List[str] = dataclasses.field(default_factory=list)
+  supported: List[str] = dataclasses.field(default_factory=list)
+  best_effort: List[str] = dataclasses.field(default_factory=list)
+  not_supported: List[str] = dataclasses.field(default_factory=list)
 
 
 class ModelSizeType(str, enum.Enum):
@@ -186,7 +187,6 @@ class SummaryOptions:
 
 class FeatureMappingStrategy(str, enum.Enum):
   BEST_EFFORT = 'BEST_EFFORT'
-  OMIT = 'OMIT'
   STRICT = 'STRICT'
   PASSTHROUGH = 'PASSTHROUGH'
 

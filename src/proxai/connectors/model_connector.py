@@ -263,14 +263,19 @@ class ProviderModelConnector(state_controller.StateControlled):
         0)
 
   def handle_feature_not_supported(self, query_record: types.QueryRecord):
-    if not self.provider_model_config.features.not_supported_features:
+    if not self.provider_model_config.features.not_supported:
       return
 
-    for feature in self.provider_model_config.features.not_supported_features:
-      if getattr(query_record, feature) is None:
-        continue
+    for feature in self.provider_model_config.features.not_supported:
+      if feature.startswith('response_format::'):
+        if query_record.response_format is None:
+          continue
 
-      if self.feature_mapping_strategy == types.FeatureMappingStrategy.STRICT:
+        response_format_type = feature.split('::')[1]
+        if query_record.response_format.type != types.ResponseFormatType(
+            response_format_type.upper()):
+          continue
+
         message=f'{self.provider_model.model} does not support {feature}.'
         logging_utils.log_message(
             type=types.LoggingType.ERROR,
@@ -279,51 +284,75 @@ class ProviderModelConnector(state_controller.StateControlled):
             message=message)
         raise Exception(message)
 
-      elif (self.feature_mapping_strategy ==
-          types.FeatureMappingStrategy.BEST_EFFORT):
-        message = (
-            f'{self.provider_model.model} does not support {feature}.\n'
-            'Omitting this feature.')
+      elif getattr(query_record, feature) is not None:
+        message=f'{self.provider_model.model} does not support {feature}.'
         logging_utils.log_message(
-            type=types.LoggingType.WARNING,
+            type=types.LoggingType.ERROR,
             logging_options=self.logging_options,
             query_record=query_record,
             message=message)
-
-      if (self.feature_mapping_strategy !=
-          types.FeatureMappingStrategy.PASSTHROUGH):
-        setattr(query_record, feature, None)
+        raise Exception(message)
 
   def handle_feature_best_effort(self, query_record: types.QueryRecord):
-    if not self.provider_model_config.features.best_effort_features:
+    if not self.provider_model_config.features.best_effort:
       return
 
-    for feature in self.provider_model_config.features.best_effort_features:
-      if getattr(query_record, feature) is None:
-        continue
+    for feature in self.provider_model_config.features.best_effort:
+      if feature.startswith('response_format::'):
+        if query_record.response_format is None:
+          continue
 
-      if self.feature_mapping_strategy == types.FeatureMappingStrategy.STRICT:
-        message=f'{self.provider_model.model} does not support {feature}.'
-        logging_utils.log_message(
-            type=types.LoggingType.ERROR,
-            logging_options=self.logging_options,
-            query_record=query_record,
-            message=message)
-        raise Exception(message)
+        response_format_type = feature.split('::')[1]
+        if query_record.response_format.type != types.ResponseFormatType(
+            response_format_type.upper()):
+          continue
 
-      if (self.feature_mapping_strategy ==
-          types.FeatureMappingStrategy.OMIT):
-        message = (
-            f'{self.provider_model.model} does not support {feature}.\n'
-            'Omitting this feature.')
-        logging_utils.log_message(
-            type=types.LoggingType.WARNING,
-            logging_options=self.logging_options,
-            query_record=query_record,
-            message=message)
-        setattr(query_record, feature, None)
+        if self.feature_mapping_strategy == types.FeatureMappingStrategy.STRICT:
+          message=f'{self.provider_model.model} does not support {feature}.'
+          logging_utils.log_message(
+              type=types.LoggingType.ERROR,
+              logging_options=self.logging_options,
+              query_record=query_record,
+              message=message)
+          raise Exception(message)
+
+      elif getattr(query_record, feature) is not None:
+        if self.feature_mapping_strategy == types.FeatureMappingStrategy.STRICT:
+          message=f'{self.provider_model.model} does not support {feature}.'
+          logging_utils.log_message(
+              type=types.LoggingType.ERROR,
+              logging_options=self.logging_options,
+              query_record=query_record,
+              message=message)
+          raise Exception(message)
+
+        if (self.feature_mapping_strategy ==
+            types.FeatureMappingStrategy.BEST_EFFORT):
+          message = (
+              f'{self.provider_model.model} does not support {feature}.\n'
+              'Omitting this feature.')
+          logging_utils.log_message(
+              type=types.LoggingType.WARNING,
+              logging_options=self.logging_options,
+              query_record=query_record,
+              message=message)
+          setattr(query_record, feature, None)
 
   def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
+    """Checks and handles feature support based on feature_mapping_strategy.
+
+    Regular features (e.g., system):
+    | Feature Type  | STRICT | BEST_EFFORT | PASSTHROUGH |
+    |---------------|--------|-------------|-------------|
+    | not_supported | raises | raises      | raises      |
+    | best_effort   | raises | omits       | keeps       |
+
+    response_format:: special syntax:
+    | Feature Type  | STRICT | BEST_EFFORT | PASSTHROUGH |
+    |---------------|--------|-------------|-------------|
+    | not_supported | raises | raises      | raises      |
+    | best_effort   | raises | keeps       | keeps       |
+    """
     query_record = copy.deepcopy(query_record)
     self.handle_feature_not_supported(query_record=query_record)
     self.handle_feature_best_effort(query_record=query_record)

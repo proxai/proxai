@@ -84,24 +84,24 @@ def encode_provider_model_feature_type(
     provider_model_feature_type: types.ProviderModelFeatureType
 ) -> Dict[str, Any]:
   record = {}
-  if provider_model_feature_type.best_effort_features != None:
-    record['best_effort_features'] = (
-        provider_model_feature_type.best_effort_features)
-  if provider_model_feature_type.not_supported_features != None:
-    record['not_supported_features'] = (
-        provider_model_feature_type.not_supported_features)
+  if provider_model_feature_type.supported != None:
+    record['supported'] = provider_model_feature_type.supported
+  if provider_model_feature_type.best_effort != None:
+    record['best_effort'] = provider_model_feature_type.best_effort
+  if provider_model_feature_type.not_supported != None:
+    record['not_supported'] = provider_model_feature_type.not_supported
   return record
 
 
 def decode_provider_model_feature_type(
     record: Dict[str, Any]) -> types.ProviderModelFeatureType:
   provider_model_feature_type = types.ProviderModelFeatureType()
-  if 'best_effort_features' in record:
-    provider_model_feature_type.best_effort_features = (
-        record['best_effort_features'])
-  if 'not_supported_features' in record:
-    provider_model_feature_type.not_supported_features = (
-        record['not_supported_features'])
+  if 'supported' in record:
+    provider_model_feature_type.supported = record['supported']
+  if 'best_effort' in record:
+    provider_model_feature_type.best_effort = record['best_effort']
+  if 'not_supported' in record:
+    provider_model_feature_type.not_supported = record['not_supported']
   return provider_model_feature_type
 
 

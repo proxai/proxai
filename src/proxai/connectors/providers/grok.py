@@ -53,10 +53,12 @@ class GrokConnector(model_connector.ProviderModelConnector):
           create, max_completion_tokens=query_record.max_tokens)
     elif self.provider_model.model in [
         'grok-3-mini-beta', 'grok-3-mini-fast-beta']:
-      # Note: There is a bug in the grok api that if max_completion_tokens is
-      # not set, the response is empty string.
-      # TODO: Remove this once the bug is fixed.
-      create = functools.partial(create, max_completion_tokens=1000000)
+      if (self.feature_mapping_strategy ==
+          types.FeatureMappingStrategy.BEST_EFFORT):
+        # Note: There is a bug in the grok api that if max_completion_tokens is
+        # not set, the response is empty string.
+        # TODO: Remove this once the bug is fixed.
+        create = functools.partial(create, max_completion_tokens=1000000)
     if query_record.temperature is not None:
       create = functools.partial(create, temperature=query_record.temperature)
     if query_record.stop is not None:
