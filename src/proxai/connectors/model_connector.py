@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import datetime
+import re
 import json
 import traceback
 import functools
@@ -223,7 +224,7 @@ class ProviderModelConnector(state_controller.StateControlled):
   ) -> proxdash.ProxDashConnection:
     return proxdash.ProxDashConnection(init_state=state_value)
 
-  def _extract_json_from_text(text: str) -> dict:
+  def _extract_json_from_text(self, text: str) -> dict:
     """Helper function for extracting JSON from text.
 
     This is useful for some providers that return text with JSON.
@@ -232,7 +233,10 @@ class ProviderModelConnector(state_controller.StateControlled):
     1. Direct JSON parse
     2. Extract from markdown code blocks (```json ... ``` or ``` ... ```)
     3. Find JSON object pattern in text
+    4. Replace single quotes with double quotes (handles Python dict repr)
     """
+    text = text.strip()
+
     # Strategy 1: Try direct parse
     try:
       return json.loads(text)
@@ -252,10 +256,18 @@ class ProviderModelConnector(state_controller.StateControlled):
     first_brace = text.find('{')
     last_brace = text.rfind('}')
     if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
+      candidate = text[first_brace:last_brace + 1]
       try:
-        return json.loads(text[first_brace:last_brace + 1])
+        return json.loads(candidate)
       except json.JSONDecodeError:
         pass
+      # Strategy 4: Replace single quotes with double quotes
+      # Only try this if the candidate has no double quotes (pure Python dict style)
+      if '"' not in candidate:
+        try:
+          return json.loads(candidate.replace("'", '"'))
+        except json.JSONDecodeError:
+          pass
 
     raise json.JSONDecodeError(
         f"Could not extract valid JSON from response",
