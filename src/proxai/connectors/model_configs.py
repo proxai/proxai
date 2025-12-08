@@ -221,6 +221,37 @@ class ModelConfigs(state_controller.StateControlled):
             f'provider_model_configs[{provider_key}][{model_key}]. '
             f'Valid values: {[s.value for s in types.ModelSizeType]}')
 
+  def _validate_features(
+      self,
+      provider_key: str,
+      model_key: str,
+      features: types.ProviderModelFeatureType):
+    """Validate supported, best_effort, and not_supported are disjoint."""
+    if features is None:
+      return
+
+    supported = set(features.supported or [])
+    best_effort = set(features.best_effort or [])
+    not_supported = set(features.not_supported or [])
+
+    supported_best_effort = supported & best_effort
+    if supported_best_effort:
+      raise ValueError(
+          f'Features {supported_best_effort} appear in both supported and '
+          f'best_effort for provider_model_configs[{provider_key}][{model_key}]')
+
+    supported_not_supported = supported & not_supported
+    if supported_not_supported:
+      raise ValueError(
+          f'Features {supported_not_supported} appear in both supported and '
+          f'not_supported for provider_model_configs[{provider_key}][{model_key}]')
+
+    best_effort_not_supported = best_effort & not_supported
+    if best_effort_not_supported:
+      raise ValueError(
+          f'Features {best_effort_not_supported} appear in both best_effort and '
+          f'not_supported for provider_model_configs[{provider_key}][{model_key}]')
+
   def _validate_provider_model_config(
       self,
       provider_key: str,
@@ -231,6 +262,8 @@ class ModelConfigs(state_controller.StateControlled):
         provider_key, model_key, config)
 
     self._validate_pricing(provider_key, model_key, config.pricing)
+
+    self._validate_features(provider_key, model_key, config.features)
 
     if (config.metadata and
         config.metadata.model_size_tags is not None):
@@ -506,18 +539,6 @@ class ModelConfigs(state_controller.StateControlled):
     return math.floor(
         query_token_count * model_pricing_config.per_query_token_cost +
         response_token_count * model_pricing_config.per_response_token_cost)
-
-  def is_feature_supported(
-      self,
-      provider_model: types.ProviderModelType,
-      feature: str,
-  ) -> bool:
-    version_config = self.model_configs_schema.version_config
-    model_features = version_config.provider_model_configs[
-        provider_model.provider][provider_model.model].features
-    if model_features is None:
-      return True
-    return feature in model_features.not_supported_features
 
   def get_all_models(
       self,

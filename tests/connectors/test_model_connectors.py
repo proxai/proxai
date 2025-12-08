@@ -309,8 +309,11 @@ class TestModelConnectorInit:
           provider_model=model_configs_instance.get_provider_model(('claude', 'opus-4')))
 
 
-def _get_config_with_not_supported_feature(feature_name: str):
-  """Helper to create a config with a not_supported feature."""
+def _get_config_with_features(
+    not_supported: list = None,
+    best_effort: list = None,
+    supported: list = None):
+  """Helper to create a config with specific feature settings."""
   model_configs_instance = model_configs.ModelConfigs()
   base_config = model_configs_instance.get_provider_model_config(
       ('mock_provider', 'mock_model'))
@@ -318,79 +321,156 @@ def _get_config_with_not_supported_feature(feature_name: str):
       provider_model=base_config.provider_model,
       pricing=base_config.pricing,
       features=types.ProviderModelFeatureType(
-          not_supported_features=[feature_name]),
+          not_supported=not_supported or [],
+          best_effort=best_effort or [],
+          supported=supported or []),
       metadata=base_config.metadata)
 
 
-def _get_config_with_best_effort_feature(feature_name: str):
-  """Helper to create a config with a best_effort feature."""
-  model_configs_instance = model_configs.ModelConfigs()
-  base_config = model_configs_instance.get_provider_model_config(
-      ('mock_provider', 'mock_model'))
-  return types.ProviderModelConfigType(
-      provider_model=base_config.provider_model,
-      pricing=base_config.pricing,
-      features=types.ProviderModelFeatureType(
-          best_effort_features=[feature_name]),
-      metadata=base_config.metadata)
+class TestFeatureCheck:
+  """Tests for feature_check business logic.
 
+  Regular features (e.g., system):
+  | Feature Type  | STRICT | BEST_EFFORT | PASSTHROUGH |
+  |---------------|--------|-------------|-------------|
+  | not_supported | raises | raises      | raises      |
+  | best_effort   | raises | omits       | keeps       |
 
-class TestFeatureMappingStrategy:
-  def test_not_supported_strict_raises(self):
-    config = _get_config_with_not_supported_feature('system')
+  response_format:: special syntax:
+  | Feature Type  | STRICT | BEST_EFFORT | PASSTHROUGH |
+  |---------------|--------|-------------|-------------|
+  | not_supported | raises | raises      | raises      |
+  | best_effort   | raises | keeps       | keeps       |
+  """
+
+  # not_supported: Always raises, regardless of strategy
+  def test_not_supported_always_raises_with_strict(self):
+    config = _get_config_with_features(not_supported=['system'])
     connector = get_mock_provider_model_connector(
         feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
         provider_model_config=config)
-    with pytest.raises(Exception, match="does not support system"):
-      connector.generate_text(prompt="Hello", system="Be helpful")
+    with pytest.raises(Exception, match='does not support system'):
+      connector.generate_text(prompt='Hello', system='Be helpful')
 
-  def test_not_supported_best_effort_omits(self):
-    config = _get_config_with_not_supported_feature('system')
+  def test_not_supported_always_raises_with_best_effort(self):
+    config = _get_config_with_features(not_supported=['system'])
     connector = get_mock_provider_model_connector(
         feature_mapping_strategy=types.FeatureMappingStrategy.BEST_EFFORT,
         provider_model_config=config)
-    result = connector.generate_text(prompt="Hello", system="Be helpful")
-    assert result.response_record.response is not None
+    with pytest.raises(Exception, match='does not support system'):
+      connector.generate_text(prompt='Hello', system='Be helpful')
 
-  def test_not_supported_omit_omits(self):
-    config = _get_config_with_not_supported_feature('system')
-    connector = get_mock_provider_model_connector(
-        feature_mapping_strategy=types.FeatureMappingStrategy.OMIT,
-        provider_model_config=config)
-    result = connector.generate_text(prompt="Hello", system="Be helpful")
-    assert result.response_record.response is not None
-
-  def test_not_supported_passthrough_keeps(self):
-    config = _get_config_with_not_supported_feature('system')
+  def test_not_supported_always_raises_with_passthrough(self):
+    config = _get_config_with_features(not_supported=['system'])
     connector = get_mock_provider_model_connector(
         feature_mapping_strategy=types.FeatureMappingStrategy.PASSTHROUGH,
         provider_model_config=config)
-    result = connector.generate_text(prompt="Hello", system="Be helpful")
-    assert result.response_record.response is not None
+    with pytest.raises(Exception, match='does not support system'):
+      connector.generate_text(prompt='Hello', system='Be helpful')
 
-  def test_best_effort_strict_raises(self):
-    config = _get_config_with_best_effort_feature('system')
+  # best_effort + STRICT: Raises
+  def test_best_effort_with_strict_raises(self):
+    config = _get_config_with_features(best_effort=['system'])
     connector = get_mock_provider_model_connector(
         feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
         provider_model_config=config)
-    with pytest.raises(Exception, match="does not support system"):
-      connector.generate_text(prompt="Hello", system="Be helpful")
+    with pytest.raises(Exception, match='does not support system'):
+      connector.generate_text(prompt='Hello', system='Be helpful')
 
-  def test_best_effort_omit_omits(self):
-    config = _get_config_with_best_effort_feature('system')
-    connector = get_mock_provider_model_connector(
-        feature_mapping_strategy=types.FeatureMappingStrategy.OMIT,
-        provider_model_config=config)
-    result = connector.generate_text(prompt="Hello", system="Be helpful")
-    assert result.response_record.response is not None
-
-  def test_best_effort_best_effort_keeps(self):
-    config = _get_config_with_best_effort_feature('system')
+  # best_effort + BEST_EFFORT: Omits feature
+  def test_best_effort_with_best_effort_omits_feature(self):
+    config = _get_config_with_features(best_effort=['system'])
     connector = get_mock_provider_model_connector(
         feature_mapping_strategy=types.FeatureMappingStrategy.BEST_EFFORT,
         provider_model_config=config)
-    result = connector.generate_text(prompt="Hello", system="Be helpful")
+    result = connector.generate_text(prompt='Hello', system='Be helpful')
     assert result.response_record.response is not None
+
+  # best_effort + PASSTHROUGH: Keeps feature
+  def test_best_effort_with_passthrough_keeps_feature(self):
+    config = _get_config_with_features(best_effort=['system'])
+    connector = get_mock_provider_model_connector(
+        feature_mapping_strategy=types.FeatureMappingStrategy.PASSTHROUGH,
+        provider_model_config=config)
+    result = connector.generate_text(prompt='Hello', system='Be helpful')
+    assert result.response_record.response is not None
+
+  # No feature restriction: Always succeeds
+  def test_no_restriction_succeeds(self):
+    config = _get_config_with_features()
+    connector = get_mock_provider_model_connector(
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
+        provider_model_config=config)
+    result = connector.generate_text(prompt='Hello', system='Be helpful')
+    assert result.response_record.response is not None
+
+  # Feature not used: No error even if marked not_supported
+  def test_not_supported_feature_not_used_succeeds(self):
+    config = _get_config_with_features(not_supported=['system'])
+    connector = get_mock_provider_model_connector(
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
+        provider_model_config=config)
+    result = connector.generate_text(prompt='Hello')
+    assert result.response_record.response is not None
+
+  # response_format:: special syntax - not_supported
+  def test_not_supported_response_format_json_raises(self):
+    config = _get_config_with_features(not_supported=['response_format::json'])
+    connector = get_mock_provider_model_connector(
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
+        provider_model_config=config)
+    with pytest.raises(Exception, match='does not support response_format::json'):
+      connector.generate_text(
+          prompt='Hello',
+          response_format=types.ResponseFormat(
+              type=types.ResponseFormatType.JSON))
+
+  def test_not_supported_response_format_other_type_succeeds(self):
+    config = _get_config_with_features(not_supported=['response_format::json'])
+    connector = get_mock_provider_model_connector(
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
+        provider_model_config=config)
+    result = connector.generate_text(
+        prompt='Hello',
+        response_format=types.ResponseFormat(
+            type=types.ResponseFormatType.TEXT))
+    assert result.response_record.response is not None
+
+  # response_format:: special syntax - best_effort
+  def test_best_effort_response_format_with_strict_raises(self):
+    config = _get_config_with_features(best_effort=['response_format::json'])
+    connector = get_mock_provider_model_connector(
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
+        provider_model_config=config)
+    with pytest.raises(Exception, match='does not support response_format::json'):
+      connector.generate_text(
+          prompt='Hello',
+          response_format=types.ResponseFormat(
+              type=types.ResponseFormatType.JSON))
+
+  def test_best_effort_response_format_with_best_effort_keeps(self):
+    config = _get_config_with_features(best_effort=['response_format::json'])
+    connector = get_mock_provider_model_connector(
+        feature_mapping_strategy=types.FeatureMappingStrategy.BEST_EFFORT,
+        provider_model_config=config)
+    result = connector.generate_text(
+        prompt='Hello',
+        response_format=types.ResponseFormat(
+            type=types.ResponseFormatType.JSON))
+    # Verify response_format was kept (not omitted) - mock returns JSON response
+    assert result.response_record.response.type == types.ResponseType.JSON
+
+  def test_best_effort_response_format_with_passthrough_keeps(self):
+    config = _get_config_with_features(best_effort=['response_format::json'])
+    connector = get_mock_provider_model_connector(
+        feature_mapping_strategy=types.FeatureMappingStrategy.PASSTHROUGH,
+        provider_model_config=config)
+    result = connector.generate_text(
+        prompt='Hello',
+        response_format=types.ResponseFormat(
+            type=types.ResponseFormatType.JSON))
+    # Verify response_format was kept - mock returns JSON response
+    assert result.response_record.response.type == types.ResponseType.JSON
 
 
 class TestModelConnector:

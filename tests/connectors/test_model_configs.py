@@ -625,6 +625,43 @@ class TestValidateProviderModelConfig:
         'openai', 'gpt-4', config)
 
 
+class TestValidateFeatures:
+  def test_disjoint_features_valid(self, model_configs_instance):
+    features = types.ProviderModelFeatureType(
+        supported=['a', 'b'],
+        best_effort=['c', 'd'],
+        not_supported=['e', 'f'])
+    model_configs_instance._validate_features('openai', 'gpt-4', features)
+
+  def test_none_features_valid(self, model_configs_instance):
+    model_configs_instance._validate_features('openai', 'gpt-4', None)
+
+  def test_empty_features_valid(self, model_configs_instance):
+    features = types.ProviderModelFeatureType()
+    model_configs_instance._validate_features('openai', 'gpt-4', features)
+
+  def test_supported_best_effort_overlap_raises(self, model_configs_instance):
+    features = types.ProviderModelFeatureType(
+        supported=['a', 'b'],
+        best_effort=['b', 'c'])
+    with pytest.raises(ValueError, match='supported and best_effort'):
+      model_configs_instance._validate_features('openai', 'gpt-4', features)
+
+  def test_supported_not_supported_overlap_raises(self, model_configs_instance):
+    features = types.ProviderModelFeatureType(
+        supported=['a', 'b'],
+        not_supported=['b', 'c'])
+    with pytest.raises(ValueError, match='supported and not_supported'):
+      model_configs_instance._validate_features('openai', 'gpt-4', features)
+
+  def test_best_effort_not_supported_overlap_raises(self, model_configs_instance):
+    features = types.ProviderModelFeatureType(
+        best_effort=['a', 'b'],
+        not_supported=['b', 'c'])
+    with pytest.raises(ValueError, match='best_effort and not_supported'):
+      model_configs_instance._validate_features('openai', 'gpt-4', features)
+
+
 class TestValidateProviderModelConfigs:
   def test_valid_configs(self, model_configs_instance):
     configs = {
@@ -698,18 +735,6 @@ class TestGetProviderModelCost:
     cost = model_configs_instance.get_provider_model_cost(
         ('openai', 'gpt-4o'), query_token_count=0, response_token_count=0)
     assert cost == 0
-
-
-class TestIsFeatureSupported:
-  def test_feature_supported(self, model_configs_instance):
-    pm = model_configs_instance.get_provider_model(('openai', 'gpt-4o'))
-    result = model_configs_instance.is_feature_supported(pm, 'temperature')
-    assert isinstance(result, bool)
-
-  def test_feature_not_supported(self, model_configs_instance):
-    pm = model_configs_instance.get_provider_model(('openai', 'o1'))
-    result = model_configs_instance.is_feature_supported(pm, 'temperature')
-    assert result is True  # temperature is in not_supported_features
 
 
 class TestGetAllModels:

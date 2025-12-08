@@ -38,9 +38,18 @@ def _get_provider_model_pricing_type_options():
 def _get_provider_model_feature_type_options():
   return [
       {},
-      {'not_supported_features': []},
-      {'not_supported_features': ['feature1']},
-      {'not_supported_features': ['feature1', 'feature2', 'feature3']},]
+      {'supported': []},
+      {'supported': ['feature1']},
+      {'supported': ['feature1', 'feature2', 'feature3']},
+      {'best_effort': []},
+      {'best_effort': ['feature1']},
+      {'best_effort': ['feature1', 'feature2']},
+      {'not_supported': []},
+      {'not_supported': ['feature1']},
+      {'not_supported': ['feature1', 'feature2', 'feature3']},
+      {'supported': ['feature1'],
+       'best_effort': ['feature2'],
+       'not_supported': ['feature3']},]
 
 
 def _get_provider_model_metadata_type_options():
@@ -80,7 +89,7 @@ def _get_provider_model_config_type_options():
           per_response_token_cost=0.001,
           per_query_token_cost=0.002)},
       {'features': types.ProviderModelFeatureType(
-          not_supported_features=['feature1'])},
+          not_supported=['feature1'])},
       {'metadata': types.ProviderModelMetadataType(
           call_type=types.CallType.GENERATE_TEXT,
           is_featured=True)},
@@ -89,7 +98,7 @@ def _get_provider_model_config_type_options():
           per_response_token_cost=0.003,
           per_query_token_cost=0.001),
        'features': types.ProviderModelFeatureType(
-          not_supported_features=['feature1', 'feature2']),
+          not_supported=['feature1', 'feature2']),
        'metadata': types.ProviderModelMetadataType(
           call_type=types.CallType.GENERATE_TEXT,
           is_featured=True,
@@ -175,7 +184,7 @@ def _get_model_configs_schema_version_config_type_options():
                       per_response_token_cost=0.001,
                       per_query_token_cost=0.002),
                   features=types.ProviderModelFeatureType(
-                      not_supported_features=['feature1']),
+                      not_supported=['feature1']),
                   metadata=types.ProviderModelMetadataType(
                       call_type=types.CallType.GENERATE_TEXT,
                       is_featured=True,
@@ -262,7 +271,7 @@ def _get_model_configs_schema_type_options():
                           per_response_token_cost=0.001,
                           per_query_token_cost=0.002),
                       features=types.ProviderModelFeatureType(
-                          not_supported_features=['feature1']),
+                          not_supported=['feature1']),
                       metadata=types.ProviderModelMetadataType(
                           call_type=types.CallType.GENERATE_TEXT,
                           is_featured=True,
@@ -465,7 +474,7 @@ def _get_run_options_options():
       {'allow_multiprocessing': True},
       {'model_test_timeout': 25},
       {'feature_mapping_strategy': types.FeatureMappingStrategy.BEST_EFFORT},
-      {'feature_mapping_strategy': types.FeatureMappingStrategy.OMIT},
+      {'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT},
       {'suppress_provider_errors': True},
       {'run_type': types.RunType.TEST,
        'hidden_run_key': 'hidden_run_key',

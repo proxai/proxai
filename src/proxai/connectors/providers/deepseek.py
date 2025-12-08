@@ -25,7 +25,7 @@ class DeepSeekConnector(model_connector.ProviderModelConnector):
       query_record: types.QueryRecord) -> Callable:
     return functools.partial(self.api.chat.completions.create)
 
-  def _strict_feature_mapping(
+  def _feature_mapping(
       self,
       create: Callable,
       query_record: types.QueryRecord) -> Callable:
@@ -95,12 +95,6 @@ class DeepSeekConnector(model_connector.ProviderModelConnector):
 
     return create
 
-  def _best_effort_mapping(
-      self,
-      create: Callable,
-      query_record: types.QueryRecord) -> Callable:
-    return create
-
   def _response_mapping(
       self,
       response: Any,
@@ -142,8 +136,7 @@ class DeepSeekConnector(model_connector.ProviderModelConnector):
       best_effort_feature_mapping: bool = True) -> types.Response:
     create = self._get_api_call_function(query_record)
 
-    create = self._strict_feature_mapping(create, query_record)
-    # create = self._best_effort_feature_mapping(create, query_record)
+    create = self._feature_mapping(create, query_record)
 
     response = create()
 
