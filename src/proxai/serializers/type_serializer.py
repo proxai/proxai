@@ -580,6 +580,9 @@ def encode_query_record(
         query_record.response_format)
   if query_record.web_search != None:
     record['web_search'] = query_record.web_search
+  if query_record.feature_mapping_strategy != None:
+    record['feature_mapping_strategy'] = (
+        query_record.feature_mapping_strategy.value)
   if query_record.hash_value != None:
     record['hash_value'] = query_record.hash_value
   return record
@@ -608,6 +611,9 @@ def decode_query_record(
         record['response_format'])
   if 'web_search' in record:
     query_record.web_search = bool(record['web_search'])
+  if 'feature_mapping_strategy' in record:
+    query_record.feature_mapping_strategy = (
+        types.FeatureMappingStrategy(record['feature_mapping_strategy']))
   query_record.hash_value = record.get('hash_value', None)
   return query_record
 
