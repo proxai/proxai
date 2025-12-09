@@ -644,21 +644,21 @@ class TestValidateFeatures:
     features = types.ProviderModelFeatureType(
         supported=['a', 'b'],
         best_effort=['b', 'c'])
-    with pytest.raises(ValueError, match='supported and best_effort'):
+    with pytest.raises(ValueError, match='SUPPORTED and BEST_EFFORT'):
       model_configs_instance._validate_features('openai', 'gpt-4', features)
 
   def test_supported_not_supported_overlap_raises(self, model_configs_instance):
     features = types.ProviderModelFeatureType(
         supported=['a', 'b'],
         not_supported=['b', 'c'])
-    with pytest.raises(ValueError, match='supported and not_supported'):
+    with pytest.raises(ValueError, match='SUPPORTED and NOT_SUPPORTED'):
       model_configs_instance._validate_features('openai', 'gpt-4', features)
 
   def test_best_effort_not_supported_overlap_raises(self, model_configs_instance):
     features = types.ProviderModelFeatureType(
         best_effort=['a', 'b'],
         not_supported=['b', 'c'])
-    with pytest.raises(ValueError, match='best_effort and not_supported'):
+    with pytest.raises(ValueError, match='BEST_EFFORT and NOT_SUPPORTED'):
       model_configs_instance._validate_features('openai', 'gpt-4', features)
 
 
