@@ -319,7 +319,8 @@ class ProviderModelConnector(state_controller.StateControlled):
             response_format_type.upper()):
           continue
 
-        if self.feature_mapping_strategy == types.FeatureMappingStrategy.STRICT:
+        if (query_record.feature_mapping_strategy ==
+            types.FeatureMappingStrategy.STRICT):
           message=(
               f'{self.provider_model.model} does not support {feature} '
               'in STRICT mode.')
@@ -331,7 +332,8 @@ class ProviderModelConnector(state_controller.StateControlled):
           raise Exception(message)
 
       elif getattr(query_record, feature) is not None:
-        if self.feature_mapping_strategy == types.FeatureMappingStrategy.STRICT:
+        if (query_record.feature_mapping_strategy ==
+            types.FeatureMappingStrategy.STRICT):
           message=(
               f'{self.provider_model.model} does not support {feature} '
               'in STRICT mode.')
@@ -342,7 +344,7 @@ class ProviderModelConnector(state_controller.StateControlled):
               message=message)
           raise Exception(message)
 
-        if (self.feature_mapping_strategy ==
+        if (query_record.feature_mapping_strategy ==
             types.FeatureMappingStrategy.BEST_EFFORT):
           message = (
               f'{self.provider_model.model} does not support {feature} '
@@ -477,13 +479,13 @@ class ProviderModelConnector(state_controller.StateControlled):
           query_function,
           query_record=query_record)
     elif feature_id in self.provider_model_config.features.best_effort:
-      if (self.feature_mapping_strategy ==
+      if (query_record.feature_mapping_strategy ==
           types.FeatureMappingStrategy.STRICT):
         raise Exception(
             f'{query_record.provider_model.model} does not support '
             f'{feature_id} in STRICT mode.')
 
-      elif (self.feature_mapping_strategy ==
+      elif (query_record.feature_mapping_strategy ==
             types.FeatureMappingStrategy.BEST_EFFORT):
         return self._add_best_effort_system_and_response_format_params(
             query_function,
@@ -522,7 +524,7 @@ class ProviderModelConnector(state_controller.StateControlled):
               query_record=query_record),
           type=types.ResponseType.JSON)
     elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
-      if (self.feature_mapping_strategy ==
+      if (query_record.feature_mapping_strategy ==
           types.FeatureMappingStrategy.STRICT):
         return types.Response(
             value=types.ResponsePydanticValue(
@@ -531,7 +533,7 @@ class ProviderModelConnector(state_controller.StateControlled):
                     response=response,
                     query_record=query_record)),
             type=types.ResponseType.PYDANTIC)
-      elif (self.feature_mapping_strategy ==
+      elif (query_record.feature_mapping_strategy ==
             types.FeatureMappingStrategy.BEST_EFFORT):
         json_value = self.format_json_response_from_provider(
             response=response,
@@ -674,6 +676,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       response_format: Optional[types.ResponseFormat] = None,
       web_search: Optional[bool] = None,
       provider_model: Optional[types.ProviderModelIdentifierType] = None,
+      feature_mapping_strategy: Optional[types.FeatureMappingStrategy] = None,
       use_cache: bool = True,
       unique_response_limit: Optional[int] = None) -> types.LoggingRecord:
     if prompt != None and messages != None:
@@ -690,6 +693,9 @@ class ProviderModelConnector(state_controller.StateControlled):
             f'provider_model: {provider_model}\n'
             f'connector provider_model: {self.provider_model}')
 
+    if feature_mapping_strategy is None:
+      feature_mapping_strategy = self.feature_mapping_strategy
+
     start_utc_date = datetime.datetime.now(datetime.timezone.utc)
     query_record = types.QueryRecord(
         call_type=types.CallType.GENERATE_TEXT,
@@ -702,6 +708,7 @@ class ProviderModelConnector(state_controller.StateControlled):
         stop=stop,
         response_format=response_format,
         web_search=web_search,
+        feature_mapping_strategy=feature_mapping_strategy,
         token_count=self.get_token_count_estimate(
             value = prompt if prompt is not None else messages))
 

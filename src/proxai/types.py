@@ -263,6 +263,7 @@ class QueryRecord:
   token_count: Optional[int] = None
   response_format: Optional[ResponseFormat] = None
   web_search: Optional[bool] = None
+  feature_mapping_strategy: Optional[FeatureMappingStrategy] = None
   hash_value: Optional[str] = None
 
 

@@ -567,6 +567,7 @@ def generate_text(
     response_format: Optional[types.ResponseFormatParam] = None,
     web_search: Optional[bool] = None,
     provider_model: Optional[types.ProviderModelIdentifierType] = None,
+    feature_mapping_strategy: Optional[types.FeatureMappingStrategy] = None,
     use_cache: Optional[bool] = None,
     unique_response_limit: Optional[int] = None,
     extensive_return: bool = False,
@@ -606,6 +607,7 @@ def generate_text(
       stop=stop,
       response_format=response_format,
       web_search=web_search,
+      feature_mapping_strategy=feature_mapping_strategy,
       use_cache=use_cache,
       unique_response_limit=unique_response_limit)
   if logging_record.response_record.error:
