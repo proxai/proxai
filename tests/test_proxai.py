@@ -268,9 +268,6 @@ class TestInitFeatureMappingStrategy:
     assert (proxai._set_feature_mapping_strategy(
         types.FeatureMappingStrategy.BEST_EFFORT) ==
         types.FeatureMappingStrategy.BEST_EFFORT)
-    assert (proxai._set_feature_mapping_strategy(
-        types.FeatureMappingStrategy.PASSTHROUGH) ==
-        types.FeatureMappingStrategy.PASSTHROUGH)
 
   def test_global_init(self):
     proxai.set_run_type(types.RunType.TEST)
@@ -286,9 +283,9 @@ class TestInitFeatureMappingStrategy:
     proxai._set_feature_mapping_strategy(
         types.FeatureMappingStrategy.STRICT, global_set=True)
     proxai._set_feature_mapping_strategy(
-        types.FeatureMappingStrategy.PASSTHROUGH, global_set=True)
+        types.FeatureMappingStrategy.BEST_EFFORT, global_set=True)
     assert (proxai._FEATURE_MAPPING_STRATEGY ==
-        types.FeatureMappingStrategy.PASSTHROUGH)
+        types.FeatureMappingStrategy.BEST_EFFORT)
 
   def test_no_global_init(self):
     proxai.set_run_type(types.RunType.TEST)

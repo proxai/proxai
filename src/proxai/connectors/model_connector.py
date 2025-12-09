@@ -359,16 +359,16 @@ class ProviderModelConnector(state_controller.StateControlled):
     """Checks and handles feature support based on feature_mapping_strategy.
 
     Regular features (e.g., system):
-    | Feature Type  | STRICT | BEST_EFFORT | PASSTHROUGH |
-    |---------------|--------|-------------|-------------|
-    | not_supported | raises | raises      | raises      |
-    | best_effort   | raises | omits       | keeps       |
+    | Feature Type  | STRICT | BEST_EFFORT |
+    |---------------|--------|-------------|
+    | not_supported | raises | raises      |
+    | best_effort   | raises | omits       |
 
     response_format:: special syntax:
-    | Feature Type  | STRICT | BEST_EFFORT | PASSTHROUGH |
-    |---------------|--------|-------------|-------------|
-    | not_supported | raises | raises      | raises      |
-    | best_effort   | raises | keeps       | keeps       |
+    | Feature Type  | STRICT | BEST_EFFORT |
+    |---------------|--------|-------------|
+    | not_supported | raises | raises      |
+    | best_effort   | raises | keeps       |
     """
     query_record = copy.deepcopy(query_record)
     self.handle_feature_not_supported(query_record=query_record)
@@ -489,12 +489,6 @@ class ProviderModelConnector(state_controller.StateControlled):
             query_function,
             query_record=query_record)
 
-      elif (self.feature_mapping_strategy ==
-            types.FeatureMappingStrategy.PASSTHROUGH):
-        return self._add_supported_system_and_response_format_params(
-            query_function,
-            query_record=query_record)
-
     elif feature_id in self.provider_model_config.features.not_supported:
       raise Exception(
           f'{query_record.provider_model.model} does not support {feature_id}.')
@@ -529,9 +523,7 @@ class ProviderModelConnector(state_controller.StateControlled):
           type=types.ResponseType.JSON)
     elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
       if (self.feature_mapping_strategy ==
-          types.FeatureMappingStrategy.STRICT or
-          self.feature_mapping_strategy ==
-          types.FeatureMappingStrategy.PASSTHROUGH):
+          types.FeatureMappingStrategy.STRICT):
         return types.Response(
             value=types.ResponsePydanticValue(
                 class_name=query_record.response_format.value.class_name,

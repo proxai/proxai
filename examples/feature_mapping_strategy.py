@@ -159,6 +159,7 @@ def main():
   # provider_model = ('claude', 'haiku-3')
   # provider_model = ('gemini', 'gemini-2.5-flash')
   provider_model = ('grok', 'grok-3-fast-beta')
+  # provider_model = ('mistral', 'mistral-small')
 
   test_feature_compatibility(
       provider_model=provider_model,
