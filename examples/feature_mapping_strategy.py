@@ -1,3 +1,4 @@
+import copy
 import proxai as px
 import proxai.types as px_types
 from pydantic import BaseModel
@@ -55,12 +56,35 @@ TEST_FEATURES = {
 
 
 def simple_test():
+  provider_model = ('claude', 'haiku-4.5')
+
   px.connect(
-    feature_mapping_strategy=px_types.FeatureMappingStrategy.PASSTHROUGH)
+    feature_mapping_strategy=px_types.FeatureMappingStrategy.BEST_EFFORT)
+
+  model_configs = px._get_model_configs()
+  config = copy.deepcopy(model_configs.model_configs_schema)
+  config.version_config.provider_model_configs[
+      provider_model[0]][provider_model[1]].features.supported = [
+          'messages',
+          'system',
+          'max_tokens',
+          'temperature',
+          'stop',
+          'response_format::text',
+          'response_format::json_schema',
+          'response_format::pydantic',
+      ]
+  config.version_config.provider_model_configs[
+      provider_model[0]][provider_model[1]].features.best_effort = [
+          'response_format::json',
+      ]
+  model_configs.model_configs_schema = config
+
   response = px.generate_text(
       PROMPT,
-      provider_model=('claude', 'haiku-3'),
-      response_format=TEST_FEATURES['response_format::json_schema'])
+      provider_model=provider_model,
+      response_format=TEST_FEATURES['response_format::pydantic'])
+
   print(response)
 
 

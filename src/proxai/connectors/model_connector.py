@@ -320,7 +320,9 @@ class ProviderModelConnector(state_controller.StateControlled):
           continue
 
         if self.feature_mapping_strategy == types.FeatureMappingStrategy.STRICT:
-          message=f'{self.provider_model.model} does not support {feature}.'
+          message=(
+              f'{self.provider_model.model} does not support {feature} '
+              'in STRICT mode.')
           logging_utils.log_message(
               type=types.LoggingType.ERROR,
               logging_options=self.logging_options,
@@ -330,7 +332,9 @@ class ProviderModelConnector(state_controller.StateControlled):
 
       elif getattr(query_record, feature) is not None:
         if self.feature_mapping_strategy == types.FeatureMappingStrategy.STRICT:
-          message=f'{self.provider_model.model} does not support {feature}.'
+          message=(
+              f'{self.provider_model.model} does not support {feature} '
+              'in STRICT mode.')
           logging_utils.log_message(
               type=types.LoggingType.ERROR,
               logging_options=self.logging_options,
@@ -341,7 +345,8 @@ class ProviderModelConnector(state_controller.StateControlled):
         if (self.feature_mapping_strategy ==
             types.FeatureMappingStrategy.BEST_EFFORT):
           message = (
-              f'{self.provider_model.model} does not support {feature}.\n'
+              f'{self.provider_model.model} does not support {feature} '
+              'in BEST_EFFORT mode.\n'
               'Omitting this feature.')
           logging_utils.log_message(
               type=types.LoggingType.WARNING,
@@ -369,6 +374,181 @@ class ProviderModelConnector(state_controller.StateControlled):
     self.handle_feature_not_supported(query_record=query_record)
     self.handle_feature_best_effort(query_record=query_record)
     return query_record
+
+  def _get_system_content_with_schema_guidance(
+      self,
+      query_record: types.QueryRecord) -> str:
+    if (query_record.response_format.type ==
+        types.ResponseFormatType.JSON):
+      schema_guidance = 'You must respond with valid JSON.'
+    elif (query_record.response_format.type ==
+        types.ResponseFormatType.JSON_SCHEMA):
+      schema_value = query_record.response_format.value
+      json_schema_obj = schema_value['json_schema']
+      raw_schema = json_schema_obj.get('schema', json_schema_obj)
+      schema_guidance = (
+          'You must respond with valid JSON that follows this schema:\n'
+          f'{json.dumps(raw_schema, indent=2)}')
+    elif (query_record.response_format.type ==
+          types.ResponseFormatType.PYDANTIC):
+      pydantic_class = query_record.response_format.value.class_value
+      schema = pydantic_class.model_json_schema()
+      schema_guidance = (
+          'You must respond with valid JSON that follows this schema:\n'
+          f'{json.dumps(schema, indent=2)}')
+
+    if query_record.system is not None:
+      return f"{query_record.system}\n\n{schema_guidance}"
+    else:
+      return schema_guidance
+
+  def _add_response_format_param(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    if (query_record.response_format.type ==
+        types.ResponseFormatType.JSON):
+      return self.json_feature_mapping(
+          query_function,
+          query_record=query_record)
+    elif (query_record.response_format.type ==
+          types.ResponseFormatType.JSON_SCHEMA):
+      return self.json_schema_feature_mapping(
+          query_function,
+          query_record=query_record)
+    elif (query_record.response_format.type ==
+          types.ResponseFormatType.PYDANTIC):
+      return self.pydantic_feature_mapping(
+          query_function,
+          query_record=query_record)
+
+  def _add_supported_system_and_response_format_params(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    """Supported system and response format parameter addition.
+
+    - Adds system message as is.
+    - Adds structured output parameters.
+    """
+    query_function = self.system_feature_mapping(
+        query_function,
+        system_message=query_record.system)
+    query_function = self._add_response_format_param(
+        query_function,
+        query_record=query_record)
+    return query_function
+
+  def _add_best_effort_system_and_response_format_params(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    """Best effort system and response format parameter addition.
+
+    - Adds system message with schema guidance
+    - Ignores structured output parameters.
+    """
+    system_message = self._get_system_content_with_schema_guidance(
+        query_record=query_record)
+    query_function = self.system_feature_mapping(
+        query_function,
+        system_message=system_message)
+    return query_function
+
+  def add_system_and_response_format_params(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    if query_record.response_format is None:
+      return self.system_feature_mapping(
+          query_function,
+          system_message=query_record.system)
+
+    if query_record.response_format.type == types.ResponseFormatType.TEXT:
+      return self.system_feature_mapping(
+          query_function,
+          system_message=query_record.system)
+
+    feature_id = (
+        f'response_format::{query_record.response_format.type.value.lower()}')
+
+    if feature_id in self.provider_model_config.features.supported:
+      return self._add_supported_system_and_response_format_params(
+          query_function,
+          query_record=query_record)
+    elif feature_id in self.provider_model_config.features.best_effort:
+      if (self.feature_mapping_strategy ==
+          types.FeatureMappingStrategy.STRICT):
+        raise Exception(
+            f'{query_record.provider_model.model} does not support '
+            f'{feature_id} in STRICT mode.')
+
+      elif (self.feature_mapping_strategy ==
+            types.FeatureMappingStrategy.BEST_EFFORT):
+        return self._add_best_effort_system_and_response_format_params(
+            query_function,
+            query_record=query_record)
+
+      elif (self.feature_mapping_strategy ==
+            types.FeatureMappingStrategy.PASSTHROUGH):
+        return self._add_supported_system_and_response_format_params(
+            query_function,
+            query_record=query_record)
+
+    elif feature_id in self.provider_model_config.features.not_supported:
+      raise Exception(
+          f'{query_record.provider_model.model} does not support {feature_id}.')
+    else:
+      raise Exception(
+          f'{feature_id} not found in provider model config features.\n'
+          f'provider model config: {self.provider_model_config}')
+
+  def format_response_from_providers(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> types.Response:
+    if (query_record.response_format is None or
+        query_record.response_format.type == types.ResponseFormatType.TEXT):
+      return types.Response(
+          value=self.format_text_response_from_provider(
+              response=response,
+              query_record=query_record),
+          type=types.ResponseType.TEXT)
+    elif query_record.response_format.type == types.ResponseFormatType.JSON:
+      return types.Response(
+          value=self.format_json_response_from_provider(
+              response=response,
+              query_record=query_record),
+          type=types.ResponseType.JSON)
+    elif (query_record.response_format.type ==
+          types.ResponseFormatType.JSON_SCHEMA):
+      return types.Response(
+          value=self.format_json_schema_response_from_provider(
+              response=response,
+              query_record=query_record),
+          type=types.ResponseType.JSON)
+    elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
+      if (self.feature_mapping_strategy ==
+          types.FeatureMappingStrategy.STRICT or
+          self.feature_mapping_strategy ==
+          types.FeatureMappingStrategy.PASSTHROUGH):
+        return types.Response(
+            value=self.format_pydantic_response_from_provider(
+                response=response,
+                query_record=query_record),
+            type=types.ResponseType.PYDANTIC)
+      elif (self.feature_mapping_strategy ==
+            types.FeatureMappingStrategy.BEST_EFFORT):
+        json_value = self.format_json_response_from_provider(
+            response=response,
+            query_record=query_record)
+        pydantic_class = query_record.response_format.value.class_value
+        instance = pydantic_class.model_validate(json_value)
+        return types.Response(
+            value=types.ResponsePydanticValue(
+                class_name=query_record.response_format.value.class_name,
+                instance_value=instance),
+            type=types.ResponseType.PYDANTIC)
 
   def get_token_count_estimate(
       self,
@@ -627,6 +807,54 @@ class ProviderModelConnector(state_controller.StateControlled):
     raise NotImplementedError
 
   def init_mock_model(self):
+    raise NotImplementedError
+
+  def system_feature_mapping(
+      self,
+      query_function: Callable,
+      system_message: Optional[str] = None) -> Callable:
+    raise NotImplementedError
+
+  def json_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    raise NotImplementedError
+
+  def json_schema_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    raise NotImplementedError
+
+  def pydantic_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    raise NotImplementedError
+
+  def format_text_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> types.Response:
+    raise NotImplementedError
+
+  def format_json_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> types.Response:
+    raise NotImplementedError
+
+  def format_json_schema_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> types.Response:
+    raise NotImplementedError
+
+  def format_pydantic_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> types.Response:
     raise NotImplementedError
 
   def generate_text_proc(
