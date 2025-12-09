@@ -584,6 +584,29 @@ class TestProxaiApiUseCases:
           stop='STOP',
           provider_model=('mistral', 'mistral-large'))
 
+  def test_feature_mapping_strategy_override(self):
+    # Set connect value to STRICT
+    px.connect(
+        feature_mapping_strategy=px.types.FeatureMappingStrategy.STRICT)
+
+    # Call with connect value (STRICT)
+    response = px.generate_text('hello', extensive_return=True)
+    assert (response.query_record.feature_mapping_strategy ==
+        px.types.FeatureMappingStrategy.STRICT)
+
+    # Override with BEST_EFFORT
+    response = px.generate_text(
+        'hello',
+        feature_mapping_strategy=px.types.FeatureMappingStrategy.BEST_EFFORT,
+        extensive_return=True)
+    assert (response.query_record.feature_mapping_strategy ==
+        px.types.FeatureMappingStrategy.BEST_EFFORT)
+
+    # Call again without override, should use connect value (STRICT)
+    response = px.generate_text('hello', extensive_return=True)
+    assert (response.query_record.feature_mapping_strategy ==
+        px.types.FeatureMappingStrategy.STRICT)
+
   def test_get_current_options(self):
     options = px.get_current_options()
     assert options.run_type == px.types.RunType.TEST
