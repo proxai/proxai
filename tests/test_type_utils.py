@@ -62,10 +62,35 @@ class TestCreateResponseFormat:
     assert result.value.class_name == 'SampleModel'
     assert result.value.class_value == SampleModel
 
-  def test_response_format_returns_same(self):
-    response_format = types.ResponseFormat(type=types.ResponseFormatType.JSON)
+  def test_structured_response_format_text(self):
+    response_format = types.StructuredResponseFormat(
+        type=types.ResponseFormatType.TEXT)
     result = type_utils.create_response_format(response_format)
-    assert result is response_format
+    assert result.type == types.ResponseFormatType.TEXT
+
+  def test_structured_response_format_json(self):
+    response_format = types.StructuredResponseFormat(
+        type=types.ResponseFormatType.JSON)
+    result = type_utils.create_response_format(response_format)
+    assert result.type == types.ResponseFormatType.JSON
+
+  def test_structured_response_format_json_schema(self):
+    schema = {'type': 'object', 'properties': {'name': {'type': 'string'}}}
+    response_format = types.StructuredResponseFormat(
+        schema=schema,
+        type=types.ResponseFormatType.JSON_SCHEMA)
+    result = type_utils.create_response_format(response_format)
+    assert result.type == types.ResponseFormatType.JSON_SCHEMA
+    assert result.value == schema
+
+  def test_structured_response_format_pydantic(self):
+    response_format = types.StructuredResponseFormat(
+        schema=SampleModel,
+        type=types.ResponseFormatType.PYDANTIC)
+    result = type_utils.create_response_format(response_format)
+    assert result.type == types.ResponseFormatType.PYDANTIC
+    assert result.value.class_name == 'SampleModel'
+    assert result.value.class_value == SampleModel
 
   def test_invalid_string_raises_error(self):
     with pytest.raises(ValueError):
