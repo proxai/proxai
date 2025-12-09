@@ -1,4 +1,4 @@
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 import functools
 import json
 import os
@@ -29,6 +29,42 @@ class GrokConnector(model_connector.ProviderModelConnector):
     else:
       return functools.partial(self.api.chat.completions.create)
 
+  def system_feature_mapping(
+      self,
+      query_function: Callable,
+      system_message: Optional[str] = None) -> Callable:
+    if system_message is None:
+      return query_function
+    messages = query_function.keywords.get('messages')
+    if messages is None:
+      raise Exception('Set messages parameter before adding system message.')
+    messages.insert(0, {'role': 'system', 'content': system_message})
+    return functools.partial(query_function, messages=messages)
+
+  def json_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    return functools.partial(
+        query_function,
+        response_format={'type': 'json_object'})
+
+  def json_schema_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    return functools.partial(
+        query_function,
+        response_format=query_record.response_format.value)
+
+  def pydantic_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    return functools.partial(
+        query_function,
+        response_format=query_record.response_format.value.class_value)
+
   def _feature_mapping(
       self,
       create: Callable,
@@ -40,8 +76,6 @@ class GrokConnector(model_connector.ProviderModelConnector):
     # Note: Grok uses OpenAI-compatible API with 'system', 'user', and
     # 'assistant' as roles.
     query_messages = []
-    if query_record.system is not None:
-      query_messages.append({'role': 'system', 'content': query_record.system})
     if query_record.prompt is not None:
       query_messages.append({'role': 'user', 'content': query_record.prompt})
     if query_record.messages is not None:
@@ -67,53 +101,33 @@ class GrokConnector(model_connector.ProviderModelConnector):
       else:
         create = functools.partial(create, stop=query_record.stop)
 
-    # Handle response format configuration
-    if query_record.response_format is not None:
-      if query_record.response_format.type == types.ResponseFormatType.TEXT:
-        pass
-      elif query_record.response_format.type == types.ResponseFormatType.JSON:
-        create = functools.partial(
-            create,
-            response_format={'type': 'json_object'})
-      elif query_record.response_format.type == types.ResponseFormatType.JSON_SCHEMA:
-        create = functools.partial(
-            create,
-            response_format=query_record.response_format.value)
-      elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
-        create = functools.partial(
-            create,
-            response_format=query_record.response_format.value.class_value)
+    create = self.add_system_and_response_format_params(create, query_record)
 
     return create
 
-  def _response_mapping(
+  def format_text_response_from_provider(
       self,
       response: Any,
-      query_record: types.QueryRecord) -> types.Response:
-    # Handle response based on format type
-    if query_record.response_format is None:
-      return types.Response(
-          value=response.choices[0].message.content,
-          type=types.ResponseType.TEXT)
-    elif query_record.response_format.type == types.ResponseFormatType.TEXT:
-      return types.Response(
-          value=response.choices[0].message.content,
-          type=types.ResponseType.TEXT)
-    elif query_record.response_format.type == types.ResponseFormatType.JSON:
-      return types.Response(
-          value=json.loads(response.choices[0].message.content),
-          type=types.ResponseType.JSON)
-    elif (query_record.response_format.type ==
-          types.ResponseFormatType.JSON_SCHEMA):
-      return types.Response(
-          value=json.loads(response.choices[0].message.content),
-          type=types.ResponseType.JSON)
-    elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
-      return types.Response(
-          value=types.ResponsePydanticValue(
-              class_name=query_record.response_format.value.class_name,
-              instance_value=response.choices[0].message.parsed),
-          type=types.ResponseType.PYDANTIC)
+      query_record: types.QueryRecord) -> str:
+    return response.choices[0].message.content
+
+  def format_json_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> dict:
+    return self._extract_json_from_text(response.choices[0].message.content)
+
+  def format_json_schema_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> dict:
+    return self._extract_json_from_text(response.choices[0].message.content)
+
+  def format_pydantic_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> Any:
+    return response.choices[0].message.parsed
 
   def generate_text_proc(
       self, query_record: types.QueryRecord) -> types.Response:
@@ -123,4 +137,4 @@ class GrokConnector(model_connector.ProviderModelConnector):
 
     response = create()
 
-    return self._response_mapping(response, query_record)
+    return self.format_response_from_providers(response, query_record)
