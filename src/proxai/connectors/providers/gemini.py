@@ -1,5 +1,5 @@
 import copy
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 import functools
 import json
 import os
@@ -62,6 +62,48 @@ class GeminiConnector(model_connector.ProviderModelConnector):
 
     return cleaned
 
+  def system_feature_mapping(
+      self,
+      query_function: Callable,
+      system_message: Optional[str] = None) -> Callable:
+    if system_message is not None:
+      return functools.partial(query_function, system_instruction=system_message)
+    else:
+      return query_function
+
+  def json_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    return functools.partial(
+        query_function,
+        response_mime_type='application/json')
+
+  def json_schema_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    query_function = functools.partial(
+        query_function, response_mime_type='application/json')
+    schema_value = query_record.response_format.value
+    json_schema_obj = schema_value['json_schema']
+    raw_schema = json_schema_obj.get('schema', json_schema_obj)
+    query_function = functools.partial(
+        query_function,
+        response_schema=self._clean_schema_for_gemini(raw_schema))
+    return query_function
+
+  def pydantic_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    query_function = functools.partial(
+        query_function, response_mime_type='application/json')
+    query_function = functools.partial(
+        query_function,
+        response_schema=query_record.response_format.value.class_value)
+    return query_function
+
   def _feature_mapping(
       self,
       create: Callable,
@@ -87,70 +129,55 @@ class GeminiConnector(model_connector.ProviderModelConnector):
               parts=[genai_types.Part(text=message['content'])],
               role='user'))
 
-    config = genai_types.GenerateContentConfig()
-    if query_record.system is not None:
-      config.system_instruction = query_record.system
+    def _collect_params(**kwargs) -> genai_types.GenerateContentConfig:
+      config = genai_types.GenerateContentConfig()
+      for key, value in kwargs.items():
+        if value is not None:
+          setattr(config, key, value)
+      return config
+
+    config = functools.partial(_collect_params)
     if query_record.max_tokens is not None:
-      config.max_output_tokens = query_record.max_tokens
+      config = functools.partial(config, max_output_tokens=query_record.max_tokens)
     if query_record.temperature is not None:
-      config.temperature = query_record.temperature
+      config = functools.partial(config, temperature=query_record.temperature)
     if query_record.stop is not None:
       if isinstance(query_record.stop, str):
-        config.stop_sequences = [query_record.stop]
+        config = functools.partial(config, stop_sequences=[query_record.stop])
       else:
-        config.stop_sequences = query_record.stop
+        config = functools.partial(config, stop_sequences=query_record.stop)
     if query_record.web_search is not None:
-      config.tools = [genai_types.Tool(
-          google_search=genai_types.GoogleSearch())]
+      config = functools.partial(config, tools=[genai_types.Tool(
+          google_search=genai_types.GoogleSearch())])
 
-    if query_record.response_format is not None:
-      if query_record.response_format.type == types.ResponseFormatType.TEXT:
-        pass
-      elif query_record.response_format.type == types.ResponseFormatType.JSON:
-        config.response_mime_type = 'application/json'
-      elif query_record.response_format.type == types.ResponseFormatType.JSON_SCHEMA:
-        config.response_mime_type = 'application/json'
-        schema_value = query_record.response_format.value
-        json_schema_obj = schema_value['json_schema']
-        raw_schema = json_schema_obj.get('schema', json_schema_obj)
-        config.response_schema = self._clean_schema_for_gemini(raw_schema)
-      elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
-        config.response_mime_type = 'application/json'
-        config.response_schema = query_record.response_format.value.class_value
+    config = self.add_system_and_response_format_params(config, query_record)
 
-    return functools.partial(create, config=config, contents=contents)
+    return functools.partial(create, config=config(), contents=contents)
 
-  def _response_mapping(
+  def format_text_response_from_provider(
       self,
       response: Any,
-      query_record: types.QueryRecord) -> types.Response:
+      query_record: types.QueryRecord) -> str:
+    return response.text
 
-    # Handle response based on format type
-    if query_record.response_format is None:
-      return types.Response(
-          value=response.text,
-          type=types.ResponseType.TEXT)
-    elif query_record.response_format.type == types.ResponseFormatType.TEXT:
-      return types.Response(
-          value=response.text,
-          type=types.ResponseType.TEXT)
-    elif query_record.response_format.type == types.ResponseFormatType.JSON:
-      return types.Response(
-          value=self._extract_json_from_text(response.text),
-          type=types.ResponseType.JSON)
-    elif (query_record.response_format.type ==
-          types.ResponseFormatType.JSON_SCHEMA):
-      return types.Response(
-          value=self._extract_json_from_text(response.text),
-          type=types.ResponseType.JSON)
-    elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
-      pydantic_class = query_record.response_format.value.class_value
-      instance = pydantic_class.model_validate_json(response.text)
-      return types.Response(
-          value=types.ResponsePydanticValue(
-              class_name=query_record.response_format.value.class_name,
-              instance_value=instance),
-          type=types.ResponseType.PYDANTIC)
+  def format_json_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> dict:
+    return self._extract_json_from_text(response.text)
+
+  def format_json_schema_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> dict:
+    return self._extract_json_from_text(response.text)
+
+  def format_pydantic_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> Any:
+    pydantic_class = query_record.response_format.value.class_value
+    return pydantic_class.model_validate_json(response.text)
 
   def generate_text_proc(
       self, query_record: types.QueryRecord) -> types.Response:
@@ -160,4 +187,4 @@ class GeminiConnector(model_connector.ProviderModelConnector):
 
     response = create()
 
-    return self._response_mapping(response, query_record)
+    return self.format_response_from_providers(response, query_record)
