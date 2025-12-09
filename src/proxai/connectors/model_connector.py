@@ -533,9 +533,11 @@ class ProviderModelConnector(state_controller.StateControlled):
           self.feature_mapping_strategy ==
           types.FeatureMappingStrategy.PASSTHROUGH):
         return types.Response(
-            value=self.format_pydantic_response_from_provider(
-                response=response,
-                query_record=query_record),
+            value=types.ResponsePydanticValue(
+                class_name=query_record.response_format.value.class_name,
+                instance_value=self.format_pydantic_response_from_provider(
+                    response=response,
+                    query_record=query_record)),
             type=types.ResponseType.PYDANTIC)
       elif (self.feature_mapping_strategy ==
             types.FeatureMappingStrategy.BEST_EFFORT):
