@@ -1,4 +1,4 @@
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 import functools
 import json
 import os
@@ -25,6 +25,62 @@ class DeepSeekConnector(model_connector.ProviderModelConnector):
       query_record: types.QueryRecord) -> Callable:
     return functools.partial(self.api.chat.completions.create)
 
+  def system_feature_mapping(
+      self,
+      query_function: Callable,
+      system_message: Optional[str] = None) -> Callable:
+    if system_message is None:
+      return query_function
+    messages = query_function.keywords.get('messages')
+    if messages is None:
+      raise Exception('Set messages parameter before adding system message.')
+    messages.insert(0, {'role': 'system', 'content': system_message})
+    return functools.partial(query_function, messages=messages)
+
+  def _add_json_guidance_to_user_message(
+      self,
+      query_function: Callable):
+    # NOTE: Some API's expects the JSON to be in the user message.
+    # This is weird and proxai's workaround to add JSON guidance to the user
+    # message.
+    messages = query_function.keywords.get('messages')
+    if messages is None:
+      raise Exception('Set messages parameter before adding system message.')
+    for message in messages:
+      if message['role'] == 'user':
+        if 'json' not in message['content']:
+          message['content'] = (
+              f'{message["content"]}\n\nYou must respond with valid JSON.')
+        break
+    return functools.partial(query_function, messages=messages)
+
+  def json_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    query_function = self._add_json_guidance_to_user_message(query_function)
+    return functools.partial(
+        query_function,
+        response_format={'type': 'json_object'})
+
+  def json_schema_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    query_function = self._add_json_guidance_to_user_message(query_function)
+    return functools.partial(
+        query_function,
+        response_format={'type': 'json_object'})
+
+  def pydantic_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    query_function = self._add_json_guidance_to_user_message(query_function)
+    return functools.partial(
+        query_function,
+        response_format={'type': 'json_object'})
+
   def _feature_mapping(
       self,
       create: Callable,
@@ -36,35 +92,6 @@ class DeepSeekConnector(model_connector.ProviderModelConnector):
     # Note: DeepSeek uses OpenAI-compatible API with 'system', 'user', and
     # 'assistant' as roles.
     query_messages = []
-
-    # Build system message, potentially with JSON schema guidance
-    system_content = query_record.system
-    schema_guidance = None
-
-    # DeepSeek doesn't support json_schema type, so we add schema to prompt
-    if query_record.response_format is not None:
-      if query_record.response_format.type == types.ResponseFormatType.JSON_SCHEMA:
-        schema_value = query_record.response_format.value
-        json_schema_obj = schema_value['json_schema']
-        raw_schema = json_schema_obj.get('schema', json_schema_obj)
-        schema_guidance = (
-            f"You must respond with valid JSON that follows this schema:\n"
-            f"{json.dumps(raw_schema, indent=2)}")
-      elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
-        pydantic_class = query_record.response_format.value.class_value
-        schema = pydantic_class.model_json_schema()
-        schema_guidance = (
-            f"You must respond with valid JSON that follows this schema:\n"
-            f"{json.dumps(schema, indent=2)}")
-
-    if schema_guidance:
-      if system_content:
-        system_content = f"{system_content}\n\n{schema_guidance}"
-      else:
-        system_content = schema_guidance
-
-    if system_content is not None:
-      query_messages.append({'role': 'system', 'content': system_content})
     if query_record.prompt is not None:
       query_messages.append({'role': 'user', 'content': query_record.prompt})
     if query_record.messages is not None:
@@ -79,56 +106,35 @@ class DeepSeekConnector(model_connector.ProviderModelConnector):
     if query_record.stop is not None:
       create = functools.partial(create, stop=query_record.stop)
 
-    # Handle response format configuration
-    # Note: DeepSeek only supports 'json_object' type, not 'json_schema'
-    if query_record.response_format is not None:
-      if query_record.response_format.type == types.ResponseFormatType.TEXT:
-        pass
-      elif query_record.response_format.type in (
-          types.ResponseFormatType.JSON,
-          types.ResponseFormatType.JSON_SCHEMA,
-          types.ResponseFormatType.PYDANTIC):
-        # All JSON modes use json_object (DeepSeek doesn't support json_schema)
-        create = functools.partial(
-            create,
-            response_format={'type': 'json_object'})
+    create = self.add_system_and_response_format_params(create, query_record)
 
     return create
 
-  def _response_mapping(
+  def format_text_response_from_provider(
       self,
       response: Any,
-      query_record: types.QueryRecord) -> types.Response:
+      query_record: types.QueryRecord) -> str:
+    return response.choices[0].message.content
 
-    # Handle response based on format type
-    if query_record.response_format is None:
-      return types.Response(
-          value=response.choices[0].message.content,
-          type=types.ResponseType.TEXT)
-    elif query_record.response_format.type == types.ResponseFormatType.TEXT:
-      return types.Response(
-          value=response.choices[0].message.content,
-          type=types.ResponseType.TEXT)
-    elif query_record.response_format.type == types.ResponseFormatType.JSON:
-      return types.Response(
-          value=json.loads(response.choices[0].message.content),
-          type=types.ResponseType.JSON)
-    elif (query_record.response_format.type ==
-          types.ResponseFormatType.JSON_SCHEMA):
-      return types.Response(
-          value=json.loads(response.choices[0].message.content),
-          type=types.ResponseType.JSON)
-    elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
-      # For Pydantic, parse JSON and validate with the Pydantic model
-      pydantic_class = query_record.response_format.value.class_value
-      instance = pydantic_class.model_validate_json(
-          response.choices[0].message.content)
-      return types.Response(
-          value=types.ResponsePydanticValue(
-              class_name=query_record.response_format.value.class_name,
-              instance_value=instance),
-          type=types.ResponseType.PYDANTIC)
+  def format_json_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> dict:
+    return self._extract_json_from_text(response.choices[0].message.content)
 
+  def format_json_schema_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> dict:
+    return self._extract_json_from_text(response.choices[0].message.content)
+
+  def format_pydantic_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> Any:
+    pydantic_class = query_record.response_format.value.class_value
+    return pydantic_class.model_validate_json(
+        response.choices[0].message.content)
 
   def generate_text_proc(
       self,
@@ -140,4 +146,4 @@ class DeepSeekConnector(model_connector.ProviderModelConnector):
 
     response = create()
 
-    return self._response_mapping(response, query_record)
+    return self.format_response_from_providers(response, query_record)
