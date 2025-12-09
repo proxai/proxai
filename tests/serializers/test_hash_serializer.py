@@ -38,6 +38,8 @@ def _get_query_record_options():
       {'stop': ['.', '?', '!']},
       {'web_search': True},
       {'web_search': False},
+      {'feature_mapping_strategy': types.FeatureMappingStrategy.BEST_EFFORT},
+      {'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT},
       {'call_type': types.CallType.GENERATE_TEXT,
        'provider_model': model_configs_instance.get_provider_model(
            ('openai', 'gpt-4')),

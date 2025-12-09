@@ -387,7 +387,9 @@ class TestFeatureCheck:
     connector = get_mock_provider_model_connector(
         feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
         provider_model_config=config)
-    query_record = types.QueryRecord(system='Be helpful')
+    query_record = types.QueryRecord(
+        system='Be helpful',
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT)
     with pytest.raises(Exception, match='does not support system.*STRICT'):
       connector.handle_feature_best_effort(query_record)
 
@@ -396,7 +398,9 @@ class TestFeatureCheck:
     connector = get_mock_provider_model_connector(
         feature_mapping_strategy=types.FeatureMappingStrategy.BEST_EFFORT,
         provider_model_config=config)
-    query_record = types.QueryRecord(system='Be helpful')
+    query_record = types.QueryRecord(
+        system='Be helpful',
+        feature_mapping_strategy=types.FeatureMappingStrategy.BEST_EFFORT)
     connector.handle_feature_best_effort(query_record)
     assert query_record.system is None  # Feature was omitted
 
@@ -406,7 +410,8 @@ class TestFeatureCheck:
         feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
         provider_model_config=config)
     query_record = types.QueryRecord(
-        response_format=types.ResponseFormat(type=types.ResponseFormatType.JSON))
+        response_format=types.ResponseFormat(type=types.ResponseFormatType.JSON),
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT)
     with pytest.raises(Exception, match='does not support response_format::json.*STRICT'):
       connector.handle_feature_best_effort(query_record)
 
@@ -448,7 +453,9 @@ class TestFeatureCheck:
     connector = get_mock_provider_model_connector(
         feature_mapping_strategy=types.FeatureMappingStrategy.BEST_EFFORT,
         provider_model_config=config)
-    query_record = types.QueryRecord(system='Be helpful')
+    query_record = types.QueryRecord(
+        system='Be helpful',
+        feature_mapping_strategy=types.FeatureMappingStrategy.BEST_EFFORT)
     result = connector.feature_check(query_record)
     assert result.system is None
     assert query_record.system == 'Be helpful'  # Original unchanged
@@ -728,7 +735,8 @@ class TestSystemAndResponseFormatParams:
         provider_model_config=config)
     query_record = types.QueryRecord(
         provider_model=connector.provider_model,
-        response_format=types.ResponseFormat(type=types.ResponseFormatType.JSON))
+        response_format=types.ResponseFormat(type=types.ResponseFormatType.JSON),
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT)
     base_func = lambda: None
     with pytest.raises(Exception, match='does not support.*STRICT'):
       connector.add_system_and_response_format_params(base_func, query_record)
@@ -739,7 +747,8 @@ class TestSystemAndResponseFormatParams:
         feature_mapping_strategy=types.FeatureMappingStrategy.BEST_EFFORT,
         provider_model_config=config)
     query_record = types.QueryRecord(
-        response_format=types.ResponseFormat(type=types.ResponseFormatType.JSON))
+        response_format=types.ResponseFormat(type=types.ResponseFormatType.JSON),
+        feature_mapping_strategy=types.FeatureMappingStrategy.BEST_EFFORT)
     base_func = lambda: None
     result = connector.add_system_and_response_format_params(base_func, query_record)
     assert result is not None
@@ -790,7 +799,8 @@ class TestSystemAndResponseFormatParams:
     query_record = types.QueryRecord(
         response_format=types.ResponseFormat(
             type=types.ResponseFormatType.PYDANTIC,
-            value=types.ResponseFormatPydanticValue(class_name='SamplePydanticModel')))
+            value=types.ResponseFormatPydanticValue(class_name='SamplePydanticModel')),
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT)
     mock_instance = SamplePydanticModel(name='John', age=30)
     response = connector.format_response_from_providers(mock_instance, query_record)
     assert response.type == types.ResponseType.PYDANTIC
@@ -804,7 +814,8 @@ class TestSystemAndResponseFormatParams:
             type=types.ResponseFormatType.PYDANTIC,
             value=types.ResponseFormatPydanticValue(
                 class_name='SamplePydanticModel',
-                class_value=SamplePydanticModel)))
+                class_value=SamplePydanticModel)),
+        feature_mapping_strategy=types.FeatureMappingStrategy.BEST_EFFORT)
     response = connector.format_response_from_providers(
         {'name': 'John', 'age': 30}, query_record)
     assert response.type == types.ResponseType.PYDANTIC
