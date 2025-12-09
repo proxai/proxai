@@ -132,36 +132,6 @@ class ClaudeConnector(model_connector.ProviderModelConnector):
         text_parts.append(block.text)
     return '\n'.join(text_parts) if text_parts else ''
 
-  # def _response_mapping(
-  #     self,
-  #     response: Any,
-  #     query_record: types.QueryRecord) -> types.Response:
-  #   if query_record.response_format is None:
-  #     return types.Response(
-  #         value=self._extract_text_from_content(response.content),
-  #         type=types.ResponseType.TEXT)
-  #   elif query_record.response_format.type == types.ResponseFormatType.TEXT:
-  #     return types.Response(
-  #         value=self._extract_text_from_content(response.content),
-  #         type=types.ResponseType.TEXT)
-  #   elif query_record.response_format.type == types.ResponseFormatType.JSON:
-  #     return types.Response(
-  #         value=self._extract_json_from_text(
-  #             self._extract_text_from_content(response.content)),
-  #         type=types.ResponseType.JSON)
-  #   elif (query_record.response_format.type ==
-  #         types.ResponseFormatType.JSON_SCHEMA):
-  #     return types.Response(
-  #         value=self._extract_json_from_text(
-  #             self._extract_text_from_content(response.content)),
-  #         type=types.ResponseType.JSON)
-  #   elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
-  #     return types.Response(
-  #         value=types.ResponsePydanticValue(
-  #             class_name=query_record.response_format.value.class_name,
-  #             instance_value=response.parsed_output),
-  #         type=types.ResponseType.PYDANTIC)
-
   def format_text_response_from_provider(
       self,
       response: Any,

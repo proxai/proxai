@@ -56,10 +56,13 @@ TEST_FEATURES = {
 
 
 def simple_test():
-  provider_model = ('claude', 'haiku-4.5')
+  # provider_model = ('openai', 'gpt-4o-mini')
+  # provider_model = ('openai', 'gpt-5.1')
+  # provider_model = ('claude', 'haiku-4.5')
+  provider_model = ('claude', 'haiku-3')
 
   px.connect(
-    feature_mapping_strategy=px_types.FeatureMappingStrategy.BEST_EFFORT)
+    feature_mapping_strategy=px_types.FeatureMappingStrategy.STRICT)
 
   model_configs = px._get_model_configs()
   config = copy.deepcopy(model_configs.model_configs_schema)
@@ -71,14 +74,23 @@ def simple_test():
           'temperature',
           'stop',
           'response_format::text',
+          'response_format::json',
           'response_format::json_schema',
-          'response_format::pydantic',
       ]
   config.version_config.provider_model_configs[
       provider_model[0]][provider_model[1]].features.best_effort = [
-          'response_format::json',
+          'response_format::pydantic',
       ]
   model_configs.model_configs_schema = config
+
+  # response = px.generate_text(
+  #     PROMPT,
+  #     provider_model=provider_model)
+
+  # response = px.generate_text(
+  #     PROMPT,
+  #     provider_model=provider_model,
+  #     system=TEST_FEATURES['system'])
 
   response = px.generate_text(
       PROMPT,
