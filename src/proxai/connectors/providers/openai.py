@@ -21,7 +21,10 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
       self,
       query_record: types.QueryRecord) -> Callable:
     if (query_record.response_format is not None and
-        query_record.response_format.type == types.ResponseFormatType.PYDANTIC):
+        query_record.response_format.type ==
+        types.ResponseFormatType.PYDANTIC and
+        'response_format::pydantic' in
+        self.provider_model_config.features.supported):
       return functools.partial(self.api.beta.chat.completions.parse)
     else:
       return functools.partial(self.api.chat.completions.create)

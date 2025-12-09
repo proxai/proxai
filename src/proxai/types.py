@@ -188,7 +188,6 @@ class SummaryOptions:
 class FeatureMappingStrategy(str, enum.Enum):
   BEST_EFFORT = 'BEST_EFFORT'
   STRICT = 'STRICT'
-  PASSTHROUGH = 'PASSTHROUGH'
 
 
 @dataclasses.dataclass

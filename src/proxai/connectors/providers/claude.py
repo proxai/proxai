@@ -27,14 +27,19 @@ class ClaudeConnector(model_connector.ProviderModelConnector):
     provider_model = query_record.provider_model
     # Choose the appropriate API method based on response format
     if (query_record.response_format is not None and
-        query_record.response_format.type == types.ResponseFormatType.PYDANTIC):
+        query_record.response_format.type ==
+        types.ResponseFormatType.PYDANTIC and
+        'response_format::pydantic' in
+        self.provider_model_config.features.supported):
       # Use beta.messages.parse for Pydantic models
       return functools.partial(
           self.api.beta.messages.parse,
           betas=[STRUCTURED_OUTPUTS_BETA])
     elif (query_record.response_format is not None and
           query_record.response_format.type ==
-          types.ResponseFormatType.JSON_SCHEMA):
+          types.ResponseFormatType.JSON_SCHEMA and
+          'response_format::json_schema' in
+          self.provider_model_config.features.supported):
       # Use beta.messages.create for JSON schema
       return functools.partial(
           self.api.beta.messages.create,

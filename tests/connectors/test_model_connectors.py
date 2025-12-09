@@ -331,16 +331,16 @@ class TestFeatureCheck:
   """Tests for feature_check business logic.
 
   Regular features (e.g., system):
-  | Feature Type  | STRICT | BEST_EFFORT | PASSTHROUGH |
-  |---------------|--------|-------------|-------------|
-  | not_supported | raises | raises      | raises      |
-  | best_effort   | raises | omits       | keeps       |
+  | Feature Type  | STRICT | BEST_EFFORT |
+  |---------------|--------|-------------|
+  | not_supported | raises | raises      |
+  | best_effort   | raises | omits       |
 
   response_format:: special syntax:
-  | Feature Type  | STRICT | BEST_EFFORT | PASSTHROUGH |
-  |---------------|--------|-------------|-------------|
-  | not_supported | raises | raises      | raises      |
-  | best_effort   | raises | keeps       | keeps       |
+  | Feature Type  | STRICT | BEST_EFFORT |
+  |---------------|--------|-------------|
+  | not_supported | raises | raises      |
+  | best_effort   | raises | keeps       |
   """
 
   # not_supported: Always raises, regardless of strategy
@@ -360,14 +360,6 @@ class TestFeatureCheck:
     with pytest.raises(Exception, match='does not support system'):
       connector.generate_text(prompt='Hello', system='Be helpful')
 
-  def test_not_supported_always_raises_with_passthrough(self):
-    config = _get_config_with_features(not_supported=['system'])
-    connector = get_mock_provider_model_connector(
-        feature_mapping_strategy=types.FeatureMappingStrategy.PASSTHROUGH,
-        provider_model_config=config)
-    with pytest.raises(Exception, match='does not support system'):
-      connector.generate_text(prompt='Hello', system='Be helpful')
-
   # best_effort + STRICT: Raises
   def test_best_effort_with_strict_raises(self):
     config = _get_config_with_features(best_effort=['system'])
@@ -382,15 +374,6 @@ class TestFeatureCheck:
     config = _get_config_with_features(best_effort=['system'])
     connector = get_mock_provider_model_connector(
         feature_mapping_strategy=types.FeatureMappingStrategy.BEST_EFFORT,
-        provider_model_config=config)
-    result = connector.generate_text(prompt='Hello', system='Be helpful')
-    assert result.response_record.response is not None
-
-  # best_effort + PASSTHROUGH: Keeps feature
-  def test_best_effort_with_passthrough_keeps_feature(self):
-    config = _get_config_with_features(best_effort=['system'])
-    connector = get_mock_provider_model_connector(
-        feature_mapping_strategy=types.FeatureMappingStrategy.PASSTHROUGH,
         provider_model_config=config)
     result = connector.generate_text(prompt='Hello', system='Be helpful')
     assert result.response_record.response is not None
@@ -459,19 +442,6 @@ class TestFeatureCheck:
             type=types.ResponseFormatType.JSON))
     # Verify response_format was kept (not omitted) - mock returns JSON response
     assert result.response_record.response.type == types.ResponseType.JSON
-
-  def test_best_effort_response_format_with_passthrough_keeps(self):
-    config = _get_config_with_features(best_effort=['response_format::json'])
-    connector = get_mock_provider_model_connector(
-        feature_mapping_strategy=types.FeatureMappingStrategy.PASSTHROUGH,
-        provider_model_config=config)
-    result = connector.generate_text(
-        prompt='Hello',
-        response_format=types.ResponseFormat(
-            type=types.ResponseFormatType.JSON))
-    # Verify response_format was kept - mock returns JSON response
-    assert result.response_record.response.type == types.ResponseType.JSON
-
 
 class TestModelConnector:
   def test_mutually_exclusive_params(self):
