@@ -1,5 +1,5 @@
 import anthropic
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 import functools
 import json
 import re
@@ -43,6 +43,45 @@ class ClaudeConnector(model_connector.ProviderModelConnector):
       # Use standard messages.create for text and simple JSON
       return functools.partial(self.api.messages.create)
 
+  def system_feature_mapping(
+      self,
+      query_function: Callable,
+      system_message: Optional[str] = None) -> Callable:
+    if system_message is not None:
+      return functools.partial(query_function, system=system_message)
+    else:
+      return query_function
+
+  def json_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    raise Exception(
+          f'{query_record.provider_model.model} does not support JSON '
+          'response format.')
+
+  def json_schema_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    schema_value = query_record.response_format.value
+    json_schema_obj = schema_value['json_schema']
+    output_format = {
+        'type': 'json_schema',
+        'schema': json_schema_obj.get('schema', json_schema_obj)
+    }
+    return functools.partial(
+        query_function,
+        output_format=output_format)
+
+  def pydantic_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    return functools.partial(
+        query_function,
+        output_format=query_record.response_format.value.class_value)
+
   def _feature_mapping(
       self,
       create: Callable,
@@ -60,8 +99,6 @@ class ClaudeConnector(model_connector.ProviderModelConnector):
       query_messages.extend(query_record.messages)
     create = functools.partial(create, messages=query_messages)
 
-    if query_record.system is not None:
-      create = functools.partial(create, system=query_record.system)
     if query_record.max_tokens is not None:
       create = functools.partial(create, max_tokens=query_record.max_tokens)
     else:
@@ -81,24 +118,7 @@ class ClaudeConnector(model_connector.ProviderModelConnector):
           "max_uses": 5
       }])
 
-    # Handle response format configuration
-    if query_record.response_format is not None:
-      if query_record.response_format.type == types.ResponseFormatType.TEXT:
-        pass
-      elif query_record.response_format.type == types.ResponseFormatType.JSON:
-        pass
-      elif query_record.response_format.type == types.ResponseFormatType.JSON_SCHEMA:
-        schema_value = query_record.response_format.value
-        json_schema_obj = schema_value['json_schema']
-        output_format = {
-            'type': 'json_schema',
-            'schema': json_schema_obj.get('schema', json_schema_obj)
-        }
-        create = functools.partial(create, output_format=output_format)
-      elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
-        create = functools.partial(
-            create,
-            output_format=query_record.response_format.value.class_value)
+    create = self.add_system_and_response_format_params(create, query_record)
 
     return create
 
@@ -112,35 +132,61 @@ class ClaudeConnector(model_connector.ProviderModelConnector):
         text_parts.append(block.text)
     return '\n'.join(text_parts) if text_parts else ''
 
-  def _response_mapping(
+  # def _response_mapping(
+  #     self,
+  #     response: Any,
+  #     query_record: types.QueryRecord) -> types.Response:
+  #   if query_record.response_format is None:
+  #     return types.Response(
+  #         value=self._extract_text_from_content(response.content),
+  #         type=types.ResponseType.TEXT)
+  #   elif query_record.response_format.type == types.ResponseFormatType.TEXT:
+  #     return types.Response(
+  #         value=self._extract_text_from_content(response.content),
+  #         type=types.ResponseType.TEXT)
+  #   elif query_record.response_format.type == types.ResponseFormatType.JSON:
+  #     return types.Response(
+  #         value=self._extract_json_from_text(
+  #             self._extract_text_from_content(response.content)),
+  #         type=types.ResponseType.JSON)
+  #   elif (query_record.response_format.type ==
+  #         types.ResponseFormatType.JSON_SCHEMA):
+  #     return types.Response(
+  #         value=self._extract_json_from_text(
+  #             self._extract_text_from_content(response.content)),
+  #         type=types.ResponseType.JSON)
+  #   elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
+  #     return types.Response(
+  #         value=types.ResponsePydanticValue(
+  #             class_name=query_record.response_format.value.class_name,
+  #             instance_value=response.parsed_output),
+  #         type=types.ResponseType.PYDANTIC)
+
+  def format_text_response_from_provider(
       self,
       response: Any,
-      query_record: types.QueryRecord) -> types.Response:
-    if query_record.response_format is None:
-      return types.Response(
-          value=self._extract_text_from_content(response.content),
-          type=types.ResponseType.TEXT)
-    elif query_record.response_format.type == types.ResponseFormatType.TEXT:
-      return types.Response(
-          value=self._extract_text_from_content(response.content),
-          type=types.ResponseType.TEXT)
-    elif query_record.response_format.type == types.ResponseFormatType.JSON:
-      return types.Response(
-          value=self._extract_json_from_text(
-              self._extract_text_from_content(response.content)),
-          type=types.ResponseType.JSON)
-    elif (query_record.response_format.type ==
-          types.ResponseFormatType.JSON_SCHEMA):
-      return types.Response(
-          value=self._extract_json_from_text(
-              self._extract_text_from_content(response.content)),
-          type=types.ResponseType.JSON)
-    elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
-      return types.Response(
-          value=types.ResponsePydanticValue(
-              class_name=query_record.response_format.value.class_name,
-              instance_value=response.parsed_output),
-          type=types.ResponseType.PYDANTIC)
+      query_record: types.QueryRecord) -> str:
+    return self._extract_text_from_content(response.content)
+
+  def format_json_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> dict:
+    return self._extract_json_from_text(
+        self._extract_text_from_content(response.content))
+
+  def format_json_schema_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> dict:
+    return self._extract_json_from_text(
+        self._extract_text_from_content(response.content))
+
+  def format_pydantic_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> Any:
+    return response.parsed_output
 
   def generate_text_proc(
       self, query_record: types.QueryRecord) -> types.Response:
@@ -150,4 +196,4 @@ class ClaudeConnector(model_connector.ProviderModelConnector):
 
     response = create()
 
-    return self._response_mapping(response, query_record)
+    return self.format_response_from_providers(response, query_record)

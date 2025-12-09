@@ -237,20 +237,26 @@ class ModelConfigs(state_controller.StateControlled):
     supported_best_effort = supported & best_effort
     if supported_best_effort:
       raise ValueError(
-          f'Features {supported_best_effort} appear in both supported and '
-          f'best_effort for provider_model_configs[{provider_key}][{model_key}]')
+          f'Features {supported_best_effort} appear in both SUPPORTED and '
+          'BEST_EFFORT for provider_model_configs for '
+          f'({provider_key}, {model_key})\n'
+          f'Features: {features}')
 
     supported_not_supported = supported & not_supported
     if supported_not_supported:
       raise ValueError(
-          f'Features {supported_not_supported} appear in both supported and '
-          f'not_supported for provider_model_configs[{provider_key}][{model_key}]')
+          f'Features {supported_not_supported} appear in both SUPPORTED and '
+          'NOT_SUPPORTED for provider_model_configs for '
+          f'({provider_key}, {model_key})\n'
+          f'Features: {features}')
 
     best_effort_not_supported = best_effort & not_supported
     if best_effort_not_supported:
       raise ValueError(
-          f'Features {best_effort_not_supported} appear in both best_effort and '
-          f'not_supported for provider_model_configs[{provider_key}][{model_key}]')
+          f'Features {best_effort_not_supported} appear in both BEST_EFFORT and '
+          'NOT_SUPPORTED for provider_model_configs for '
+          f'({provider_key}, {model_key})\n'
+          f'Features: {features}')
 
   def _validate_provider_model_config(
       self,
