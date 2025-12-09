@@ -1,8 +1,11 @@
 import pytest
+import json
 import datetime
 import tempfile
 import copy
+import functools
 from typing import Dict, Optional, Callable
+import pydantic
 import proxai.types as types
 import proxai.caching.query_cache as query_cache
 import proxai.stat_types as stats_type
@@ -328,120 +331,127 @@ def _get_config_with_features(
 
 
 class TestFeatureCheck:
-  """Tests for feature_check business logic.
+  """Tests for feature_check, handle_feature_not_supported, handle_feature_best_effort.
 
   Regular features (e.g., system):
-  | Feature Type  | STRICT | BEST_EFFORT |
-  |---------------|--------|-------------|
-  | not_supported | raises | raises      |
-  | best_effort   | raises | omits       |
+  | Feature Type  | STRICT      | BEST_EFFORT |
+  |---------------|-------------|-------------|
+  | not_supported | raises      | raises      |
+  | best_effort   | raises      | omits       |
 
   response_format:: special syntax:
-  | Feature Type  | STRICT | BEST_EFFORT |
-  |---------------|--------|-------------|
-  | not_supported | raises | raises      |
-  | best_effort   | raises | keeps       |
+  | Feature Type  | STRICT      | BEST_EFFORT |
+  |---------------|-------------|-------------|
+  | not_supported | raises      | raises      |
+  | best_effort   | raises      | keeps       |
   """
 
-  # not_supported: Always raises, regardless of strategy
-  def test_not_supported_always_raises_with_strict(self):
+  # handle_feature_not_supported tests
+  def test_not_supported_regular_feature_raises(self):
     config = _get_config_with_features(not_supported=['system'])
-    connector = get_mock_provider_model_connector(
-        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
-        provider_model_config=config)
+    connector = get_mock_provider_model_connector(provider_model_config=config)
+    query_record = types.QueryRecord(system='Be helpful')
     with pytest.raises(Exception, match='does not support system'):
-      connector.generate_text(prompt='Hello', system='Be helpful')
+      connector.handle_feature_not_supported(query_record)
 
-  def test_not_supported_always_raises_with_best_effort(self):
+  def test_not_supported_feature_not_used_passes(self):
     config = _get_config_with_features(not_supported=['system'])
-    connector = get_mock_provider_model_connector(
-        feature_mapping_strategy=types.FeatureMappingStrategy.BEST_EFFORT,
-        provider_model_config=config)
-    with pytest.raises(Exception, match='does not support system'):
-      connector.generate_text(prompt='Hello', system='Be helpful')
+    connector = get_mock_provider_model_connector(provider_model_config=config)
+    query_record = types.QueryRecord(prompt='Hello')
+    connector.handle_feature_not_supported(query_record)  # Should not raise
 
-  # best_effort + STRICT: Raises
-  def test_best_effort_with_strict_raises(self):
+  def test_not_supported_response_format_raises(self):
+    config = _get_config_with_features(not_supported=['response_format::json'])
+    connector = get_mock_provider_model_connector(provider_model_config=config)
+    query_record = types.QueryRecord(
+        response_format=types.ResponseFormat(type=types.ResponseFormatType.JSON))
+    with pytest.raises(Exception, match='does not support response_format::json'):
+      connector.handle_feature_not_supported(query_record)
+
+  def test_not_supported_response_format_different_type_passes(self):
+    config = _get_config_with_features(not_supported=['response_format::json'])
+    connector = get_mock_provider_model_connector(provider_model_config=config)
+    query_record = types.QueryRecord(
+        response_format=types.ResponseFormat(type=types.ResponseFormatType.TEXT))
+    connector.handle_feature_not_supported(query_record)  # Should not raise
+
+  def test_not_supported_empty_list_passes(self):
+    config = _get_config_with_features(not_supported=[])
+    connector = get_mock_provider_model_connector(provider_model_config=config)
+    query_record = types.QueryRecord(system='Be helpful')
+    connector.handle_feature_not_supported(query_record)  # Should not raise
+
+  # handle_feature_best_effort tests
+  def test_best_effort_strict_raises(self):
     config = _get_config_with_features(best_effort=['system'])
     connector = get_mock_provider_model_connector(
         feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
         provider_model_config=config)
-    with pytest.raises(Exception, match='does not support system'):
-      connector.generate_text(prompt='Hello', system='Be helpful')
+    query_record = types.QueryRecord(system='Be helpful')
+    with pytest.raises(Exception, match='does not support system.*STRICT'):
+      connector.handle_feature_best_effort(query_record)
 
-  # best_effort + BEST_EFFORT: Omits feature
-  def test_best_effort_with_best_effort_omits_feature(self):
+  def test_best_effort_omits_regular_feature(self):
     config = _get_config_with_features(best_effort=['system'])
     connector = get_mock_provider_model_connector(
         feature_mapping_strategy=types.FeatureMappingStrategy.BEST_EFFORT,
         provider_model_config=config)
-    result = connector.generate_text(prompt='Hello', system='Be helpful')
-    assert result.response_record.response is not None
+    query_record = types.QueryRecord(system='Be helpful')
+    connector.handle_feature_best_effort(query_record)
+    assert query_record.system is None  # Feature was omitted
 
-  # No feature restriction: Always succeeds
-  def test_no_restriction_succeeds(self):
+  def test_best_effort_response_format_strict_raises(self):
+    config = _get_config_with_features(best_effort=['response_format::json'])
+    connector = get_mock_provider_model_connector(
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
+        provider_model_config=config)
+    query_record = types.QueryRecord(
+        response_format=types.ResponseFormat(type=types.ResponseFormatType.JSON))
+    with pytest.raises(Exception, match='does not support response_format::json.*STRICT'):
+      connector.handle_feature_best_effort(query_record)
+
+  def test_best_effort_response_format_keeps(self):
+    config = _get_config_with_features(best_effort=['response_format::json'])
+    connector = get_mock_provider_model_connector(
+        feature_mapping_strategy=types.FeatureMappingStrategy.BEST_EFFORT,
+        provider_model_config=config)
+    query_record = types.QueryRecord(
+        response_format=types.ResponseFormat(type=types.ResponseFormatType.JSON))
+    connector.handle_feature_best_effort(query_record)
+    assert query_record.response_format is not None  # Feature was kept
+
+  def test_best_effort_feature_not_used_passes(self):
+    config = _get_config_with_features(best_effort=['system'])
+    connector = get_mock_provider_model_connector(
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
+        provider_model_config=config)
+    query_record = types.QueryRecord(prompt='Hello')
+    connector.handle_feature_best_effort(query_record)  # Should not raise
+
+  # feature_check tests (integration of both handlers)
+  def test_feature_check_returns_copy(self):
     config = _get_config_with_features()
-    connector = get_mock_provider_model_connector(
-        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
-        provider_model_config=config)
-    result = connector.generate_text(prompt='Hello', system='Be helpful')
-    assert result.response_record.response is not None
+    connector = get_mock_provider_model_connector(provider_model_config=config)
+    original = types.QueryRecord(system='Be helpful')
+    result = connector.feature_check(original)
+    assert result is not original  # Returns a copy
 
-  # Feature not used: No error even if marked not_supported
-  def test_not_supported_feature_not_used_succeeds(self):
+  def test_feature_check_not_supported_raises(self):
     config = _get_config_with_features(not_supported=['system'])
-    connector = get_mock_provider_model_connector(
-        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
-        provider_model_config=config)
-    result = connector.generate_text(prompt='Hello')
-    assert result.response_record.response is not None
+    connector = get_mock_provider_model_connector(provider_model_config=config)
+    query_record = types.QueryRecord(system='Be helpful')
+    with pytest.raises(Exception, match='does not support system'):
+      connector.feature_check(query_record)
 
-  # response_format:: special syntax - not_supported
-  def test_not_supported_response_format_json_raises(self):
-    config = _get_config_with_features(not_supported=['response_format::json'])
-    connector = get_mock_provider_model_connector(
-        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
-        provider_model_config=config)
-    with pytest.raises(Exception, match='does not support response_format::json'):
-      connector.generate_text(
-          prompt='Hello',
-          response_format=types.ResponseFormat(
-              type=types.ResponseFormatType.JSON))
-
-  def test_not_supported_response_format_other_type_succeeds(self):
-    config = _get_config_with_features(not_supported=['response_format::json'])
-    connector = get_mock_provider_model_connector(
-        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
-        provider_model_config=config)
-    result = connector.generate_text(
-        prompt='Hello',
-        response_format=types.ResponseFormat(
-            type=types.ResponseFormatType.TEXT))
-    assert result.response_record.response is not None
-
-  # response_format:: special syntax - best_effort
-  def test_best_effort_response_format_with_strict_raises(self):
-    config = _get_config_with_features(best_effort=['response_format::json'])
-    connector = get_mock_provider_model_connector(
-        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
-        provider_model_config=config)
-    with pytest.raises(Exception, match='does not support response_format::json'):
-      connector.generate_text(
-          prompt='Hello',
-          response_format=types.ResponseFormat(
-              type=types.ResponseFormatType.JSON))
-
-  def test_best_effort_response_format_with_best_effort_keeps(self):
-    config = _get_config_with_features(best_effort=['response_format::json'])
+  def test_feature_check_best_effort_omits(self):
+    config = _get_config_with_features(best_effort=['system'])
     connector = get_mock_provider_model_connector(
         feature_mapping_strategy=types.FeatureMappingStrategy.BEST_EFFORT,
         provider_model_config=config)
-    result = connector.generate_text(
-        prompt='Hello',
-        response_format=types.ResponseFormat(
-            type=types.ResponseFormatType.JSON))
-    # Verify response_format was kept (not omitted) - mock returns JSON response
-    assert result.response_record.response.type == types.ResponseType.JSON
+    query_record = types.QueryRecord(system='Be helpful')
+    result = connector.feature_check(query_record)
+    assert result.system is None
+    assert query_record.system == 'Be helpful'  # Original unchanged
 
 class TestModelConnector:
   def test_mutually_exclusive_params(self):
@@ -587,3 +597,216 @@ class TestGetTokenCountEstimate:
         {'role': 'assistant', 'content': 'Hi there'}]
     result = connector.get_token_count_estimate(messages)
     assert result > 0
+
+
+class TestExtractJsonFromText:
+  """Tests for _extract_json_from_text helper function."""
+
+  def test_direct_json(self):
+    connector = get_mock_provider_model_connector()
+    result = connector._extract_json_from_text('{"name": "John", "age": 30}')
+    assert result == {"name": "John", "age": 30}
+
+  def test_markdown_code_block_with_json_tag(self):
+    connector = get_mock_provider_model_connector()
+    text = '```json\n{"name": "John"}\n```'
+    assert connector._extract_json_from_text(text) == {"name": "John"}
+
+  def test_markdown_code_block_without_tag(self):
+    connector = get_mock_provider_model_connector()
+    text = '```\n{"name": "John"}\n```'
+    assert connector._extract_json_from_text(text) == {"name": "John"}
+
+  def test_json_with_surrounding_text(self):
+    connector = get_mock_provider_model_connector()
+    text = 'Here is the result: {"name": "John"} Hope this helps!'
+    assert connector._extract_json_from_text(text) == {"name": "John"}
+
+  def test_python_dict_style_single_quotes(self):
+    connector = get_mock_provider_model_connector()
+    text = "{'name': 'John', 'age': 30}"
+    assert connector._extract_json_from_text(text) == {"name": "John", "age": 30}
+
+  def test_whitespace_handling(self):
+    connector = get_mock_provider_model_connector()
+    text = '  \n  {"name": "John"}  \n  '
+    assert connector._extract_json_from_text(text) == {"name": "John"}
+
+  def test_invalid_json_raises(self):
+    connector = get_mock_provider_model_connector()
+    with pytest.raises(json.JSONDecodeError):
+      connector._extract_json_from_text('not json at all')
+
+
+class SamplePydanticModel(pydantic.BaseModel):
+  name: str
+  age: int
+
+
+class TestSystemAndResponseFormatParams:
+  """Tests for system message and response format parameter handling.
+
+  Tests cover:
+  - _get_system_content_with_schema_guidance
+  - _add_response_format_param
+  - _add_supported_system_and_response_format_params
+  - _add_best_effort_system_and_response_format_params
+  - add_system_and_response_format_params
+  - format_response_from_providers
+  """
+
+  # _get_system_content_with_schema_guidance tests
+  def test_schema_guidance_json_without_system(self):
+    connector = get_mock_provider_model_connector()
+    query_record = types.QueryRecord(
+        response_format=types.ResponseFormat(type=types.ResponseFormatType.JSON))
+    result = connector._get_system_content_with_schema_guidance(query_record)
+    assert result == 'You must respond with valid JSON.'
+
+  def test_schema_guidance_json_with_system(self):
+    connector = get_mock_provider_model_connector()
+    query_record = types.QueryRecord(
+        system='Be helpful.',
+        response_format=types.ResponseFormat(type=types.ResponseFormatType.JSON))
+    result = connector._get_system_content_with_schema_guidance(query_record)
+    assert result == 'Be helpful.\n\nYou must respond with valid JSON.'
+
+  def test_schema_guidance_json_schema(self):
+    connector = get_mock_provider_model_connector()
+    schema = {'json_schema': {'schema': {'type': 'object'}}}
+    query_record = types.QueryRecord(
+        response_format=types.ResponseFormat(
+            type=types.ResponseFormatType.JSON_SCHEMA,
+            value=schema))
+    result = connector._get_system_content_with_schema_guidance(query_record)
+    assert 'You must respond with valid JSON that follows this schema:' in result
+    assert '"type": "object"' in result
+
+  def test_schema_guidance_pydantic(self):
+    connector = get_mock_provider_model_connector()
+    query_record = types.QueryRecord(
+        response_format=types.ResponseFormat(
+            type=types.ResponseFormatType.PYDANTIC,
+            value=types.ResponseFormatPydanticValue(
+                class_value=SamplePydanticModel)))
+    result = connector._get_system_content_with_schema_guidance(query_record)
+    assert 'You must respond with valid JSON that follows this schema:' in result
+    assert 'name' in result
+    assert 'age' in result
+
+  # add_system_and_response_format_params tests
+  def test_add_params_no_response_format(self):
+    config = _get_config_with_features(supported=['system'])
+    connector = get_mock_provider_model_connector(provider_model_config=config)
+    query_record = types.QueryRecord(system='Be helpful.')
+    base_func = lambda: None
+    result = connector.add_system_and_response_format_params(base_func, query_record)
+    assert result is not None
+
+  def test_add_params_text_response_format(self):
+    config = _get_config_with_features(supported=['system'])
+    connector = get_mock_provider_model_connector(provider_model_config=config)
+    query_record = types.QueryRecord(
+        response_format=types.ResponseFormat(type=types.ResponseFormatType.TEXT))
+    base_func = lambda: None
+    result = connector.add_system_and_response_format_params(base_func, query_record)
+    assert result is not None
+
+  def test_add_params_supported_json_format(self):
+    config = _get_config_with_features(supported=['response_format::json'])
+    connector = get_mock_provider_model_connector(provider_model_config=config)
+    query_record = types.QueryRecord(
+        response_format=types.ResponseFormat(type=types.ResponseFormatType.JSON))
+    base_func = lambda: None
+    result = connector.add_system_and_response_format_params(base_func, query_record)
+    assert result is not None
+
+  def test_add_params_best_effort_strict_raises(self):
+    config = _get_config_with_features(best_effort=['response_format::json'])
+    connector = get_mock_provider_model_connector(
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
+        provider_model_config=config)
+    query_record = types.QueryRecord(
+        provider_model=connector.provider_model,
+        response_format=types.ResponseFormat(type=types.ResponseFormatType.JSON))
+    base_func = lambda: None
+    with pytest.raises(Exception, match='does not support.*STRICT'):
+      connector.add_system_and_response_format_params(base_func, query_record)
+
+  def test_add_params_best_effort_mode(self):
+    config = _get_config_with_features(best_effort=['response_format::json'])
+    connector = get_mock_provider_model_connector(
+        feature_mapping_strategy=types.FeatureMappingStrategy.BEST_EFFORT,
+        provider_model_config=config)
+    query_record = types.QueryRecord(
+        response_format=types.ResponseFormat(type=types.ResponseFormatType.JSON))
+    base_func = lambda: None
+    result = connector.add_system_and_response_format_params(base_func, query_record)
+    assert result is not None
+
+  def test_add_params_not_supported_raises(self):
+    config = _get_config_with_features(not_supported=['response_format::json'])
+    connector = get_mock_provider_model_connector(provider_model_config=config)
+    query_record = types.QueryRecord(
+        provider_model=connector.provider_model,
+        response_format=types.ResponseFormat(type=types.ResponseFormatType.JSON))
+    base_func = lambda: None
+    with pytest.raises(Exception, match='does not support response_format::json'):
+      connector.add_system_and_response_format_params(base_func, query_record)
+
+  def test_add_params_unknown_feature_raises(self):
+    config = _get_config_with_features()  # Empty features
+    connector = get_mock_provider_model_connector(provider_model_config=config)
+    query_record = types.QueryRecord(
+        response_format=types.ResponseFormat(type=types.ResponseFormatType.JSON))
+    base_func = lambda: None
+    with pytest.raises(Exception, match='not found in provider model config'):
+      connector.add_system_and_response_format_params(base_func, query_record)
+
+  # format_response_from_providers tests
+  def test_format_response_text(self):
+    connector = get_mock_provider_model_connector()
+    query_record = types.QueryRecord()
+    response = connector.format_response_from_providers('hello', query_record)
+    assert response.type == types.ResponseType.TEXT
+
+  def test_format_response_json(self):
+    connector = get_mock_provider_model_connector()
+    query_record = types.QueryRecord(
+        response_format=types.ResponseFormat(type=types.ResponseFormatType.JSON))
+    response = connector.format_response_from_providers({'key': 'value'}, query_record)
+    assert response.type == types.ResponseType.JSON
+
+  def test_format_response_json_schema(self):
+    connector = get_mock_provider_model_connector()
+    query_record = types.QueryRecord(
+        response_format=types.ResponseFormat(type=types.ResponseFormatType.JSON_SCHEMA))
+    response = connector.format_response_from_providers({'key': 'value'}, query_record)
+    assert response.type == types.ResponseType.JSON
+
+  def test_format_response_pydantic_strict(self):
+    connector = get_mock_provider_model_connector(
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT)
+    query_record = types.QueryRecord(
+        response_format=types.ResponseFormat(
+            type=types.ResponseFormatType.PYDANTIC,
+            value=types.ResponseFormatPydanticValue(class_name='SamplePydanticModel')))
+    mock_instance = SamplePydanticModel(name='John', age=30)
+    response = connector.format_response_from_providers(mock_instance, query_record)
+    assert response.type == types.ResponseType.PYDANTIC
+    assert response.value.class_name == 'SamplePydanticModel'
+
+  def test_format_response_pydantic_best_effort(self):
+    connector = get_mock_provider_model_connector(
+        feature_mapping_strategy=types.FeatureMappingStrategy.BEST_EFFORT)
+    query_record = types.QueryRecord(
+        response_format=types.ResponseFormat(
+            type=types.ResponseFormatType.PYDANTIC,
+            value=types.ResponseFormatPydanticValue(
+                class_name='SamplePydanticModel',
+                class_value=SamplePydanticModel)))
+    response = connector.format_response_from_providers(
+        {'name': 'John', 'age': 30}, query_record)
+    assert response.type == types.ResponseType.PYDANTIC
+    assert response.value.instance_value.name == 'John'
+    assert response.value.instance_value.age == 30
