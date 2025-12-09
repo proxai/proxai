@@ -1,4 +1,4 @@
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 import functools
 import json
 import cohere
@@ -21,6 +21,41 @@ class CohereConnector(model_connector.ProviderModelConnector):
       self,
       query_record: types.QueryRecord) -> Callable:
     return functools.partial(self.api.chat)
+
+  def system_feature_mapping(
+      self,
+      query_function: Callable,
+      system_message: Optional[str] = None) -> Callable:
+    return functools.partial(query_function, preamble=system_message)
+
+  def json_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    return functools.partial(
+        query_function,
+        response_format={'type': 'json_object'})
+
+  def json_schema_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    schema_value = query_record.response_format.value
+    json_schema_obj = schema_value['json_schema']
+    raw_schema = json_schema_obj.get('schema', json_schema_obj)
+    return functools.partial(
+        query_function,
+        response_format={'type': 'json_object', 'schema': raw_schema})
+
+  def pydantic_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    pydantic_class = query_record.response_format.value.class_value
+    schema = pydantic_class.model_json_schema()
+    return functools.partial(
+        query_function,
+        response_format={'type': 'json_object', 'schema': schema})
 
   def _feature_mapping(
       self,
@@ -50,8 +85,6 @@ class CohereConnector(model_connector.ProviderModelConnector):
     if query_messages:
       create = functools.partial(create, chat_history=query_messages)
 
-    if query_record.system is not None:
-      create = functools.partial(create, preamble=query_record.system)
     if query_record.max_tokens is not None:
       create = functools.partial(create, max_tokens=query_record.max_tokens)
     if query_record.temperature is not None:
@@ -62,64 +95,34 @@ class CohereConnector(model_connector.ProviderModelConnector):
       else:
         create = functools.partial(create, stop_sequences=[query_record.stop])
 
-    # Handle response format configuration
-    if query_record.response_format is not None:
-      if query_record.response_format.type == types.ResponseFormatType.TEXT:
-        pass
-      elif query_record.response_format.type == types.ResponseFormatType.JSON:
-        # Simple JSON mode
-        create = functools.partial(
-            create,
-            response_format={'type': 'json_object'})
-      elif query_record.response_format.type == types.ResponseFormatType.JSON_SCHEMA:
-        # JSON Schema mode - Cohere uses 'json_object' type with 'schema' field
-        schema_value = query_record.response_format.value
-        json_schema_obj = schema_value['json_schema']
-        raw_schema = json_schema_obj.get('schema', json_schema_obj)
-        create = functools.partial(
-            create,
-            response_format={'type': 'json_object', 'schema': raw_schema})
-      elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
-        # Pydantic mode - extract schema from Pydantic class
-        pydantic_class = query_record.response_format.value.class_value
-        schema = pydantic_class.model_json_schema()
-        create = functools.partial(
-            create,
-            response_format={'type': 'json_object', 'schema': schema})
+    create = self.add_system_and_response_format_params(create, query_record)
 
     return create
 
-  def _response_mapping(
+  def format_text_response_from_provider(
       self,
       response: Any,
-      query_record: types.QueryRecord) -> types.Response:
-    # Handle response based on format type
-    if query_record.response_format is None:
-      return types.Response(
-          value=response.text,
-          type=types.ResponseType.TEXT)
-    elif query_record.response_format.type == types.ResponseFormatType.TEXT:
-      return types.Response(
-          value=response.text,
-          type=types.ResponseType.TEXT)
-    elif query_record.response_format.type == types.ResponseFormatType.JSON:
-      return types.Response(
-          value=json.loads(response.text),
-          type=types.ResponseType.JSON)
-    elif (query_record.response_format.type ==
-          types.ResponseFormatType.JSON_SCHEMA):
-      return types.Response(
-          value=json.loads(response.text),
-          type=types.ResponseType.JSON)
-    elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
-      # For Pydantic, parse JSON and validate with the Pydantic model
-      pydantic_class = query_record.response_format.value.class_value
-      instance = pydantic_class.model_validate_json(response.text)
-      return types.Response(
-          value=types.ResponsePydanticValue(
-              class_name=query_record.response_format.value.class_name,
-              instance_value=instance),
-          type=types.ResponseType.PYDANTIC)
+      query_record: types.QueryRecord) -> str:
+    return response.text
+
+  def format_json_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> dict:
+    return self._extract_json_from_text(response.text)
+
+  def format_json_schema_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> dict:
+    return self._extract_json_from_text(response.text)
+
+  def format_pydantic_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> Any:
+    pydantic_class = query_record.response_format.value.class_value
+    return pydantic_class.model_validate_json(response.text)
 
   def generate_text_proc(
       self, query_record: types.QueryRecord) -> types.Response:
@@ -129,4 +132,4 @@ class CohereConnector(model_connector.ProviderModelConnector):
 
     response = create()
 
-    return self._response_mapping(response, query_record)
+    return self.format_response_from_providers(response, query_record)

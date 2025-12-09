@@ -158,8 +158,12 @@ def main():
   # provider_model = ('claude', 'haiku-4.5')
   # provider_model = ('claude', 'haiku-3')
   # provider_model = ('gemini', 'gemini-2.5-flash')
-  provider_model = ('grok', 'grok-3-fast-beta')
+  # provider_model = ('grok', 'grok-3-fast-beta')
   # provider_model = ('mistral', 'mistral-small')
+  # provider_model = ('cohere', 'command-a')
+  # provider_model = ('deepseek', 'deepseek-v3')
+  # provider_model = ('databricks', 'meta-llama-3-1-8b-it')
+  provider_model = ('huggingface', 'deepseek-v3')
 
   test_feature_compatibility(
       provider_model=provider_model,

@@ -69,6 +69,51 @@ class HuggingFaceConnector(model_connector.ProviderModelConnector):
       query_record: types.QueryRecord) -> Callable:
     return functools.partial(self.api.generate_content)
 
+  def system_feature_mapping(
+      self,
+      query_function: Callable,
+      system_message: Optional[str] = None) -> Callable:
+    if system_message is None:
+      return query_function
+    messages = query_function.keywords.get('messages')
+    if messages is None:
+      raise Exception('Set messages parameter before adding system message.')
+    messages.insert(0, {'role': 'system', 'content': system_message})
+    return functools.partial(query_function, messages=messages)
+
+  def json_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    return functools.partial(
+        query_function,
+        response_format={'type': 'json_object'})
+
+  def json_schema_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    return functools.partial(
+        query_function,
+        response_format=query_record.response_format.value)
+
+  def pydantic_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    pydantic_class = query_record.response_format.value.class_value
+    schema = pydantic_class.model_json_schema()
+    return functools.partial(
+        query_function,
+        response_format={
+            'type': 'json_schema',
+            'json_schema': {
+                'name': query_record.response_format.value.class_name,
+                'schema': schema,
+                'strict': True
+            }
+        })
+
   def _feature_mapping(
       self,
       create: Callable,
@@ -78,8 +123,6 @@ class HuggingFaceConnector(model_connector.ProviderModelConnector):
         create, model=provider_model.provider_model_identifier)
 
     query_messages = []
-    if query_record.system is not None:
-      query_messages.append({'role': 'system', 'content': query_record.system})
     if query_record.prompt is not None:
       query_messages.append({'role': 'user', 'content': query_record.prompt})
     if query_record.messages is not None:
@@ -96,66 +139,39 @@ class HuggingFaceConnector(model_connector.ProviderModelConnector):
       else:
         create = functools.partial(create, stop=query_record.stop)
 
-    # Handle response format configuration
-    if query_record.response_format is not None:
-      if query_record.response_format.type == types.ResponseFormatType.TEXT:
-        pass
-      elif query_record.response_format.type == types.ResponseFormatType.JSON:
-        create = functools.partial(
-            create,
-            response_format={'type': 'json_object'})
-      elif query_record.response_format.type == types.ResponseFormatType.JSON_SCHEMA:
-        create = functools.partial(
-            create,
-            response_format=query_record.response_format.value)
-      elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
-        # For Pydantic, build json_schema format from Pydantic class
-        pydantic_class = query_record.response_format.value.class_value
-        schema = pydantic_class.model_json_schema()
-        create = functools.partial(
-            create,
-            response_format={
-                'type': 'json_schema',
-                'json_schema': {
-                    'name': query_record.response_format.value.class_name,
-                    'schema': schema,
-                    'strict': True
-                }
-            })
+    create = self.add_system_and_response_format_params(create, query_record)
 
     return create
 
-  def _response_mapping(
+  def format_text_response_from_provider(
       self,
       response: Any,
-      query_record: types.QueryRecord) -> types.Response:
-    # Handle response based on format type
-    if query_record.response_format is None:
-      return types.Response(
-          value=response,
-          type=types.ResponseType.TEXT)
-    elif query_record.response_format.type == types.ResponseFormatType.TEXT:
-      return types.Response(
-          value=response,
-          type=types.ResponseType.TEXT)
-    elif query_record.response_format.type == types.ResponseFormatType.JSON:
-      return types.Response(
-          value=json.loads(response),
-          type=types.ResponseType.JSON)
-    elif (query_record.response_format.type ==
-          types.ResponseFormatType.JSON_SCHEMA):
-      return types.Response(
-          value=json.loads(response),
-          type=types.ResponseType.JSON)
-    elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
-      # For Pydantic, parse JSON and validate with the Pydantic model
-      pydantic_class = query_record.response_format.value.class_value
-      instance = pydantic_class.model_validate_json(response)
-      return types.Response(
-          value=types.ResponsePydanticValue(
-              class_name=query_record.response_format.value.class_name,
-              instance_value=instance),
-          type=types.ResponseType.PYDANTIC)
+      query_record: types.QueryRecord) -> str:
+    return response
+
+  def format_json_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> dict:
+    return self._extract_json_from_text(response)
+
+  def format_json_schema_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> dict:
+    return self._extract_json_from_text(response)
+
+  def format_pydantic_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> Any:
+    pydantic_class = query_record.response_format.value.class_value
+    # NOTE: Double JSON encode/decode to ensure the response is a valid JSON
+    # object. This may slow down the response time but it's a workaround to
+    # ensure the response is a valid JSON object not well supported
+    # HuggingFace response format.
+    return pydantic_class.model_validate_json(
+        json.dumps(self._extract_json_from_text(response)))
 
   def generate_text_proc(
       self, query_record: types.QueryRecord) -> types.Response:
@@ -165,4 +181,4 @@ class HuggingFaceConnector(model_connector.ProviderModelConnector):
 
     response = create()
 
-    return self._response_mapping(response, query_record)
+    return self.format_response_from_providers(response, query_record)

@@ -41,21 +41,28 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
     messages.insert(0, {'role': 'system', 'content': system_message})
     return functools.partial(query_function, messages=messages)
 
-  def json_feature_mapping(
+  def _add_json_guidance_to_user_message(
       self,
-      query_function: Callable,
-      query_record: types.QueryRecord):
+      query_function: Callable):
+    # NOTE: Some API's expects the JSON to be in the user message.
+    # This is weird and proxai's workaround to add JSON guidance to the user
+    # message.
     messages = query_function.keywords.get('messages')
     if messages is None:
       raise Exception('Set messages parameter before adding system message.')
-    # NOTE: The weird OpenAI API expects the JSON to be in the user message.
-    # TODO: Find a better way to do this.
     for message in messages:
       if message['role'] == 'user':
         if 'json' not in message['content']:
           message['content'] = (
               f'{message["content"]}\n\nYou must respond with valid JSON.')
         break
+    return functools.partial(query_function, messages=messages)
+
+  def json_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    query_function = self._add_json_guidance_to_user_message(query_function)
     return functools.partial(
         query_function,
         response_format={'type': 'json_object'})
