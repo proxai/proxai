@@ -234,11 +234,20 @@ class ResponseFormat:
   type: Optional[ResponseFormatType] = None
 
 
-UserDefinedResponseFormatValueType = Union[
+ResponseFormatSchema = Union[
     str,
     Dict[str, Any],
     Type[pydantic.BaseModel],
-    ResponseFormat
+]
+
+@dataclasses.dataclass
+class StructuredResponseFormat:
+    schema: Optional[ResponseFormatSchema] = None
+    type: Optional[ResponseFormatType] = None
+
+ResponseFormatParam = Union[
+    ResponseFormatSchema,
+    StructuredResponseFormat,
 ]
 
 
