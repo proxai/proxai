@@ -45,7 +45,8 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
     messages = query_function.keywords.get('messages')
     if messages is None:
       raise Exception('Set messages parameter before adding system message.')
-    # The weird OpenAI API expects the JSON to be in the user message.
+    # NOTE: The weird OpenAI API expects the JSON to be in the user message.
+    # TODO: Find a better way to do this.
     for message in messages:
       if message['role'] == 'user':
         if 'json' not in message['content']:
