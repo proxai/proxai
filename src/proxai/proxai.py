@@ -54,9 +54,8 @@ _AVAILABLE_MODELS: Optional[available_models.AvailableModels]
 CacheOptions = types.CacheOptions
 LoggingOptions = types.LoggingOptions
 ProxDashOptions = types.ProxDashOptions
-ResponseFormat = types.ResponseFormat
+ResponseFormat = types.StructuredResponseFormat
 ResponseFormatType = types.ResponseFormatType
-ResponseFormatPydanticValue = types.ResponseFormatPydanticValue
 
 
 def _init_default_model_cache_manager():
@@ -565,7 +564,7 @@ def generate_text(
     max_tokens: Optional[int] = None,
     temperature: Optional[float] = None,
     stop: Optional[types.StopType] = None,
-    response_format: Optional[types.UserDefinedResponseFormatValueType] = None,
+    response_format: Optional[types.ResponseFormatParam] = None,
     web_search: Optional[bool] = None,
     provider_model: Optional[types.ProviderModelIdentifierType] = None,
     use_cache: Optional[bool] = None,

@@ -37,6 +37,41 @@ class TestCheckMessagesType:
       {'role': 'user', 'content': 'content'}])
 
 
+class TestCreateResponseFormat:
+  def test_none_returns_text_format(self):
+    result = type_utils.create_response_format(None)
+    assert result.type == types.ResponseFormatType.TEXT
+
+  def test_text_string_returns_text_format(self):
+    result = type_utils.create_response_format('text')
+    assert result.type == types.ResponseFormatType.TEXT
+
+  def test_json_string_returns_json_format(self):
+    result = type_utils.create_response_format('json')
+    assert result.type == types.ResponseFormatType.JSON
+
+  def test_dict_returns_json_schema_format(self):
+    schema = {'type': 'object', 'properties': {'name': {'type': 'string'}}}
+    result = type_utils.create_response_format(schema)
+    assert result.type == types.ResponseFormatType.JSON_SCHEMA
+    assert result.value == schema
+
+  def test_pydantic_model_returns_pydantic_format(self):
+    result = type_utils.create_response_format(SampleModel)
+    assert result.type == types.ResponseFormatType.PYDANTIC
+    assert result.value.class_name == 'SampleModel'
+    assert result.value.class_value == SampleModel
+
+  def test_response_format_returns_same(self):
+    response_format = types.ResponseFormat(type=types.ResponseFormatType.JSON)
+    result = type_utils.create_response_format(response_format)
+    assert result is response_format
+
+  def test_invalid_string_raises_error(self):
+    with pytest.raises(ValueError):
+      type_utils.create_response_format('invalid')
+
+
 class TestCreatePydanticInstanceFromResponsePydanticValue:
   def _create_response_format(self) -> types.ResponseFormat:
     return types.ResponseFormat(

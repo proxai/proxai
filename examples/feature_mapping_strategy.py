@@ -46,22 +46,12 @@ TEST_FEATURES = {
     'temperature': 0.5,
     # 'stop': '\n\n', # Fails for Claude
     'stop': 'STOP',
-    'response_format::text': px.ResponseFormat(
-      type=px.ResponseFormatType.TEXT,
-    ),
-    'response_format::json': px.ResponseFormat(
-      type=px.ResponseFormatType.JSON,
-    ),
-    'response_format::json_schema': px.ResponseFormat(
-      type=px.ResponseFormatType.JSON_SCHEMA,
-      value=JSON_SCHEMA,
-    ),
-    'response_format::pydantic': px.ResponseFormat(
-      type=px.ResponseFormatType.PYDANTIC,
-      value=SumOfNumbers,
-    ),
+    'response_format::text': px.ResponseFormat(type=px.ResponseFormatType.TEXT),
+    'response_format::json': px.ResponseFormat(type=px.ResponseFormatType.JSON),
+    'response_format::json_schema': px.ResponseFormat(type=px.ResponseFormatType.JSON_SCHEMA, schema=JSON_SCHEMA),
+    'response_format::pydantic': px.ResponseFormat(type=px.ResponseFormatType.PYDANTIC, schema=SumOfNumbers),
     'web_search': True,
-}
+  }
 
 
 def simple_test():
@@ -70,7 +60,7 @@ def simple_test():
   response = px.generate_text(
       PROMPT,
       provider_model=('claude', 'haiku-3'),
-      response_format=TEST_FEATURES['response_format::json'])
+      response_format=TEST_FEATURES['response_format::json_schema'])
   print(response)
 
 
