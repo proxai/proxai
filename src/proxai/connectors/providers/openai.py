@@ -42,6 +42,16 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
       self,
       query_function: Callable,
       query_record: types.QueryRecord):
+    messages = query_function.keywords.get('messages')
+    if messages is None:
+      raise Exception('Set messages parameter before adding system message.')
+    # The weird OpenAI API expects the JSON to be in the user message.
+    for message in messages:
+      if message['role'] == 'user':
+        if 'json' not in message['content']:
+          message['content'] = (
+              f'{message["content"]}\n\nYou must respond with valid JSON.')
+        break
     return functools.partial(
         query_function,
         response_format={'type': 'json_object'})
