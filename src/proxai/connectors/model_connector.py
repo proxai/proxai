@@ -294,24 +294,25 @@ class ProviderModelConnector(state_controller.StateControlled):
     supported_endpoints = []
     best_effort_endpoints = []
     for feature_name in types.FeatureNameType.__members__.values():
+      feature_name = feature_name.value
       if not self._check_feature_exists(
           feature_name=feature_name,
           query_record=query_record):
         continue
 
-      if feature_name in self.provider_model_config.features.supported:
-        supported_endpoints.append(set(
-            self.provider_model_config.features[feature_name].supported))
-      elif feature_name in self.provider_model_config.features.best_effort:
-        best_effort_endpoints.append(set(
-            self.provider_model_config.features[feature_name].supported +
-            self.provider_model_config.features[feature_name].best_effort))
+      supported_endpoints.append(set(
+          self.provider_model_config.features[feature_name].supported))
+      best_effort_endpoints.append(set(
+          self.provider_model_config.features[feature_name].supported +
+          self.provider_model_config.features[feature_name].best_effort))
 
-    supported_endpoints = list(
-        reduce(set.intersection, supported_endpoints))
+    if supported_endpoints:
+      supported_endpoints = list(
+          reduce(set.intersection, supported_endpoints))
 
-    best_effort_endpoints = list(
-        reduce(set.intersection, best_effort_endpoints))
+    if best_effort_endpoints:
+      best_effort_endpoints = list(
+          reduce(set.intersection, best_effort_endpoints))
 
     return supported_endpoints, best_effort_endpoints
 
@@ -341,7 +342,7 @@ class ProviderModelConnector(state_controller.StateControlled):
             logging_options=self.logging_options,
             query_record=query_record,
             message=message)
-        raise Exception(message=message)
+        raise Exception(message)
     elif (query_record.feature_mapping_strategy ==
           types.FeatureMappingStrategy.BEST_EFFORT):
       if (len(supported_endpoints) == 0 and
@@ -356,7 +357,7 @@ class ProviderModelConnector(state_controller.StateControlled):
             logging_options=self.logging_options,
             query_record=query_record,
             message=message)
-        raise Exception(message=message)
+        raise Exception(message)
 
   def _select_endpoint(
       self,
@@ -470,13 +471,11 @@ class ProviderModelConnector(state_controller.StateControlled):
     if self._check_feature_exists(
           feature_name='messages', query_record=query_record):
       query_record = self._sanitize_messages_feature(
-            feature_name='messages',
             query_record=query_record)
 
     if self._check_feature_exists(
           feature_name='system', query_record=query_record):
       query_record = self._sanitize_system_feature(
-            feature_name='system',
             query_record=query_record)
 
     for feature_name in ['stop', 'temperature', 'max_tokens']:
@@ -635,6 +634,13 @@ class ProviderModelConnector(state_controller.StateControlled):
           f'{feature_id} not found in provider model config features.\n'
           f'provider model config: {self.provider_model_config}')
 
+  def _temp_response_format_text_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    # Almost always, nothing done here. Because of that, this function does
+    # not delegated to inherited classes.
+    return query_function
 
   def add_features_to_query_function(
       self,
@@ -647,7 +653,8 @@ class ProviderModelConnector(state_controller.StateControlled):
         types.FeatureNameType.MAX_TOKENS: self.max_tokens_feature_mapping,
         types.FeatureNameType.TEMPERATURE: self.temperature_feature_mapping,
         types.FeatureNameType.STOP: self.stop_feature_mapping,
-        types.FeatureNameType.RESPONSE_FORMAT_TEXT: lambda x, y: x,
+        types.FeatureNameType.RESPONSE_FORMAT_TEXT: (
+            self._temp_response_format_text_feature_mapping),
         types.FeatureNameType.RESPONSE_FORMAT_JSON: self.json_feature_mapping,
         types.FeatureNameType.RESPONSE_FORMAT_JSON_SCHEMA: (
             self.json_schema_feature_mapping),
@@ -711,9 +718,11 @@ class ProviderModelConnector(state_controller.StateControlled):
         self.provider_model_config.features[
             'response_format::pydantic'].supported):
       return types.Response(
-          value=self.format_pydantic_response_from_provider(
-              response=response,
-              query_record=query_record),
+          value=types.ResponsePydanticValue(
+              class_name=query_record.response_format.value.class_name,
+              instance_value=self.format_pydantic_response_from_provider(
+                  response=response,
+                  query_record=query_record)),
           type=types.ResponseType.PYDANTIC)
     else:
       json_value = self._extract_json_from_text(
@@ -919,7 +928,7 @@ class ProviderModelConnector(state_controller.StateControlled):
         token_count=self.get_token_count_estimate(
             value = prompt if prompt is not None else messages))
 
-    updated_query_record, chosen_endpoint = self.feature_check(
+    updated_query_record = self.feature_check(
         query_record=query_record)
 
     look_fail_reason = None
@@ -965,9 +974,7 @@ class ProviderModelConnector(state_controller.StateControlled):
 
     response, error, error_traceback = None, None, None
     try:
-      response = self.generate_text_proc(
-          query_record=updated_query_record,
-          chosen_endpoint=chosen_endpoint)
+      response = self.generate_text_proc(query_record=updated_query_record)
     except Exception as e:
       error_traceback = traceback.format_exc()
       error = e

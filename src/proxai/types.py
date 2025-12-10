@@ -108,12 +108,14 @@ class ProviderModelMetadataType:
   default_candidate_priority: Optional[int] = None
   tags: Optional[List[str]] = None
 
+FeatureMappingType = Dict[FeatureNameType, EndpointFeatureInfoType]
+
 
 @dataclasses.dataclass
 class ProviderModelConfigType:
   provider_model: Optional[ProviderModelType] = None
   pricing: Optional[ProviderModelPricingType] = None
-  features: Optional[Dict[FeatureNameType, EndpointFeatureInfoType]] = None
+  features: Optional[FeatureMappingType] = None
   metadata: Optional[ProviderModelMetadataType] = None
 
 

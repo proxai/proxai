@@ -56,118 +56,117 @@ TEST_FEATURES = {
   }
 
 OPENAI_FEATURES = {
-  'prompt': {
-      'supported': [
-          'chat.completions.create',
-          'beta.chat.completions.parse',
-          'responses.create',
-      ],
-      'best_effort': [],
-      'not_supported': [],
-  },
-  'messages': {
-      'supported': [
-          'chat.completions.create',
-          'beta.chat.completions.parse',
-      ],
-      'best_effort': [
-          'responses.create',
-      ],
-      'not_supported': [],
-  },
-  'system': {
-      'supported': [
-          'chat.completions.create',
-          'beta.chat.completions.parse',
-          'responses.create',
-      ],
-      'best_effort': [],
-      'not_supported': [],
-  },
-  'max_tokens': {
-      'supported': [
-          'chat.completions.create',
-          'beta.chat.completions.parse',
-          'responses.create',
-      ],
-      'best_effort': [],
-      'not_supported': [],
-  },
-  'temperature': {
-      'supported': [
-          'chat.completions.create',
-          'beta.chat.completions.parse',
-          'responses.create',
-      ],
-      'best_effort': [],
-      'not_supported': [],
-  },
-  'stop': {
-      'supported': [
-          'chat.completions.create',
-          'beta.chat.completions.parse',
-      ],
-      'best_effort': [],
-      'not_supported': [
-          'responses.create',
-      ],
-  },
-  'response_format::text': {
-      'supported': [
-          'chat.completions.create',
-          'responses.create',
-      ],
-      'best_effort': [],
-      'not_supported': [
-          'beta.chat.completions.parse',
-      ],
-  },
-  'response_format::json': {
-      'supported': [
-          'chat.completions.create',
-      ],
-      'best_effort': [
-          'responses.create',
-      ],
-      'not_supported': [
-          'beta.chat.completions.parse',
-      ],
-  },
-  'response_format::json_schema': {
-      'supported': [
-          'chat.completions.create',
-      ],
-      'best_effort': [
-          'responses.create',
-      ],
-      'not_supported': [
-          'beta.chat.completions.parse',
-      ],
-  },
-  'response_format::pydantic': {
-      'supported': [
-          'beta.chat.completions.parse',
-          'responses.create',
-      ],
-      'best_effort': [
-          'chat.completions.create',
-      ],
-      'not_supported': [],
-  },
+  'prompt': px_types.EndpointFeatureInfoType(
+    supported=[
+        'chat.completions.create',
+        'beta.chat.completions.parse',
+        'responses.create',
+    ],
+    best_effort=[],
+    not_supported=[],
+  ),
+  'messages': px_types.EndpointFeatureInfoType(
+    supported=[
+        'chat.completions.create',
+        'beta.chat.completions.parse',
+    ],
+    best_effort=[
+        'responses.create',
+    ],
+    not_supported=[],
+  ),
+  'system': px_types.EndpointFeatureInfoType(
+    supported=[
+        'chat.completions.create',
+        'beta.chat.completions.parse',
+        'responses.create',
+    ],
+    best_effort=[],
+    not_supported=[],
+  ),
+  'max_tokens': px_types.EndpointFeatureInfoType(
+    supported=[
+        'chat.completions.create',
+        'beta.chat.completions.parse',
+        'responses.create',
+    ],
+    best_effort=[],
+    not_supported=[],
+  ),
+  'temperature': px_types.EndpointFeatureInfoType(
+    supported=[
+        'chat.completions.create',
+        'beta.chat.completions.parse',
+        'responses.create',
+    ],
+    best_effort=[],
+    not_supported=[],
+  ),
+  'stop': px_types.EndpointFeatureInfoType(
+    supported=[
+        'chat.completions.create',
+        'beta.chat.completions.parse',
+    ],
+    best_effort=[],
+    not_supported=[
+        'responses.create',
+    ],
+  ),
+  'response_format::text': px_types.EndpointFeatureInfoType(
+    supported=[
+        'chat.completions.create',
+        'responses.create',
+    ],
+    best_effort=[],
+    not_supported=[
+        'beta.chat.completions.parse',
+    ],
+  ),
+  'response_format::json': px_types.EndpointFeatureInfoType(
+    supported=[
+        'chat.completions.create',
+        'responses.create',
+    ],
+    best_effort=[
+
+    ],
+    not_supported=[
+        'beta.chat.completions.parse',
+    ],
+  ),
+  'response_format::json_schema': px_types.EndpointFeatureInfoType(
+    supported=[
+        'chat.completions.create',
+        'responses.create',
+    ],
+    best_effort=[
+
+    ],
+    not_supported=[
+        'beta.chat.completions.parse',
+    ],
+  ),
+  'response_format::pydantic': px_types.EndpointFeatureInfoType(
+    supported=[
+        'beta.chat.completions.parse',
+    ],
+    best_effort=[
+        'chat.completions.create',
+        'responses.create',
+    ],
+    not_supported=[],
+  ),
 }
 
 
 def test_feature_compatibility(
     provider_model: px_types.ProviderModelIdentifierType,
     feature_mapping_strategy: px_types.FeatureMappingStrategy,
-    put_response_format_to_supported: bool,
 ):
   print('=================================', provider_model)
   print('=================================', feature_mapping_strategy)
-  print('=================================', put_response_format_to_supported)
   px.reset_state()
-  px.connect(
-    feature_mapping_strategy=feature_mapping_strategy)
+  px.connect(feature_mapping_strategy=feature_mapping_strategy)
 
   model_configs = px._get_model_configs()
   config = copy.deepcopy(model_configs.model_configs_schema)
@@ -176,26 +175,26 @@ def test_feature_compatibility(
   provider_model_config.features = OPENAI_FEATURES
   model_configs.model_configs_schema = config
 
-  print('------- Plain call:')
-  try:
-    response = px.generate_text(
-        PROMPT,
-        provider_model=provider_model)
-    print('SUCCESS: ', response)
-  except Exception as e:
-    print('ERROR: ', e)
-    input('Press Enter to continue...')
+  # print('------- Plain call:')
+  # try:
+  #   response = px.generate_text(
+  #       PROMPT,
+  #       provider_model=provider_model)
+  #   print('SUCCESS: ', response)
+  # except Exception as e:
+  #   print('ERROR: ', e)
+  #   input('Press Enter to continue...')
 
-  print('------- System call:')
-  try:
-    response = px.generate_text(
-        PROMPT,
-        provider_model=provider_model,
-        system=TEST_FEATURES['system'])
-    print('SUCCESS: ', response)
-  except Exception as e:
-    print('ERROR: ', e)
-    input('Press Enter to continue...')
+  # print('------- System call:')
+  # try:
+  #   response = px.generate_text(
+  #       PROMPT,
+  #       provider_model=provider_model,
+  #       system=TEST_FEATURES['system'])
+  #   print('SUCCESS: ', response)
+  # except Exception as e:
+  #   print('ERROR: ', e)
+  #   input('Press Enter to continue...')
 
   print('------- Response format JSON call:')
   try:
@@ -208,27 +207,27 @@ def test_feature_compatibility(
     print('ERROR: ', e)
     input('Press Enter to continue...')
 
-  print('------- Response format JSON Schema call:')
-  try:
-    response = px.generate_text(
-      PROMPT,
-      provider_model=provider_model,
-      response_format=TEST_FEATURES['response_format::json_schema'])
-    print('SUCCESS: ', response)
-  except Exception as e:
-    print('ERROR: ', e)
-    input('Press Enter to continue...')
+  # print('------- Response format JSON Schema call:')
+  # try:
+  #   response = px.generate_text(
+  #     PROMPT,
+  #     provider_model=provider_model,
+  #     response_format=TEST_FEATURES['response_format::json_schema'])
+  #   print('SUCCESS: ', response)
+  # except Exception as e:
+  #   print('ERROR: ', e)
+  #   input('Press Enter to continue...')
 
-  print('------- Response format Pydantic call:')
-  try:
-    response = px.generate_text(
-      PROMPT,
-      provider_model=provider_model,
-        response_format=TEST_FEATURES['response_format::pydantic'])
-    print('SUCCESS: ', response)
-  except Exception as e:
-    print('ERROR: ', e)
-    input('Press Enter to continue...')
+  # print('------- Response format Pydantic call:')
+  # try:
+  #   response = px.generate_text(
+  #     PROMPT,
+  #     provider_model=provider_model,
+  #       response_format=TEST_FEATURES['response_format::pydantic'])
+  #   print('SUCCESS: ', response)
+  # except Exception as e:
+  #   print('ERROR: ', e)
+  #   input('Press Enter to continue...')
 
 
 def main():
@@ -246,23 +245,11 @@ def main():
 
   test_feature_compatibility(
       provider_model=provider_model,
-      feature_mapping_strategy=px_types.FeatureMappingStrategy.STRICT,
-      put_response_format_to_supported=True)
+      feature_mapping_strategy=px_types.FeatureMappingStrategy.STRICT)
 
-  test_feature_compatibility(
-      provider_model=provider_model,
-      feature_mapping_strategy=px_types.FeatureMappingStrategy.STRICT,
-      put_response_format_to_supported=False)
-
-  test_feature_compatibility(
-      provider_model=provider_model,
-      feature_mapping_strategy=px_types.FeatureMappingStrategy.BEST_EFFORT,
-      put_response_format_to_supported=True)
-
-  test_feature_compatibility(
-      provider_model=provider_model,
-      feature_mapping_strategy=px_types.FeatureMappingStrategy.BEST_EFFORT,
-      put_response_format_to_supported=False)
+  # test_feature_compatibility(
+  #     provider_model=provider_model,
+  #     feature_mapping_strategy=px_types.FeatureMappingStrategy.BEST_EFFORT)
 
 
 if __name__ == '__main__':
