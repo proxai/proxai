@@ -80,29 +80,49 @@ def decode_provider_model_pricing_type(
       per_query_token_cost=record['per_query_token_cost'])
 
 
-def encode_provider_model_feature_type(
-    provider_model_feature_type: types.ProviderModelFeatureType
+def encode_endpoint_feature_info_type(
+    endpoint_feature_info_type: types.EndpointFeatureInfoType
 ) -> Dict[str, Any]:
   record = {}
-  if provider_model_feature_type.supported != None:
-    record['supported'] = provider_model_feature_type.supported
-  if provider_model_feature_type.best_effort != None:
-    record['best_effort'] = provider_model_feature_type.best_effort
-  if provider_model_feature_type.not_supported != None:
-    record['not_supported'] = provider_model_feature_type.not_supported
+  if endpoint_feature_info_type.supported != None:
+    record['supported'] = endpoint_feature_info_type.supported
+  if endpoint_feature_info_type.best_effort != None:
+    record['best_effort'] = endpoint_feature_info_type.best_effort
+  if endpoint_feature_info_type.not_supported != None:
+    record['not_supported'] = endpoint_feature_info_type.not_supported
   return record
 
 
-def decode_provider_model_feature_type(
-    record: Dict[str, Any]) -> types.ProviderModelFeatureType:
-  provider_model_feature_type = types.ProviderModelFeatureType()
+def decode_endpoint_feature_info_type(
+    record: Dict[str, Any]) -> types.EndpointFeatureInfoType:
+  endpoint_feature_info_type = types.EndpointFeatureInfoType()
   if 'supported' in record:
-    provider_model_feature_type.supported = record['supported']
+    endpoint_feature_info_type.supported = record['supported']
   if 'best_effort' in record:
-    provider_model_feature_type.best_effort = record['best_effort']
+    endpoint_feature_info_type.best_effort = record['best_effort']
   if 'not_supported' in record:
-    provider_model_feature_type.not_supported = record['not_supported']
-  return provider_model_feature_type
+    endpoint_feature_info_type.not_supported = record['not_supported']
+  return endpoint_feature_info_type
+
+
+def encode_feature_mapping_type(
+    feature_mapping: types.FeatureMappingType
+) -> Dict[str, Any]:
+  record = {}
+  for feature_name, endpoint_feature_info in feature_mapping.items():
+    record[feature_name.value] = encode_endpoint_feature_info_type(
+        endpoint_feature_info)
+  return record
+
+
+def decode_feature_mapping_type(
+    record: Dict[str, Any]) -> types.FeatureMappingType:
+  feature_mapping = {}
+  for feature_name_str, endpoint_feature_info_record in record.items():
+    feature_name = types.FeatureNameType(feature_name_str)
+    feature_mapping[feature_name] = decode_endpoint_feature_info_type(
+        endpoint_feature_info_record)
+  return feature_mapping
 
 
 def encode_provider_model_metadata_type(
@@ -161,7 +181,7 @@ def encode_provider_model_config_type(
     record['pricing'] = encode_provider_model_pricing_type(
         provider_model_config_type.pricing)
   if provider_model_config_type.features != None:
-    record['features'] = encode_provider_model_feature_type(
+    record['features'] = encode_feature_mapping_type(
         provider_model_config_type.features)
   if provider_model_config_type.metadata != None:
     record['metadata'] = encode_provider_model_metadata_type(
@@ -179,7 +199,7 @@ def decode_provider_model_config_type(
     provider_model_config_type.pricing = decode_provider_model_pricing_type(
         record['pricing'])
   if 'features' in record:
-    provider_model_config_type.features = decode_provider_model_feature_type(
+    provider_model_config_type.features = decode_feature_mapping_type(
         record['features'])
   if 'metadata' in record:
     provider_model_config_type.metadata = decode_provider_model_metadata_type(

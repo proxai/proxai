@@ -21,9 +21,9 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
       self,
       chosen_endpoint: str) -> Callable:
     if chosen_endpoint == 'chat.completions.create':
-      return functools.partial(self.api.beta.chat.completions.parse)
-    elif chosen_endpoint == 'beta.chat.completions.parse':
       return functools.partial(self.api.chat.completions.create)
+    elif chosen_endpoint == 'beta.chat.completions.parse':
+      return functools.partial(self.api.beta.chat.completions.parse)
     elif chosen_endpoint == 'responses.create':
       return functools.partial(self.api.responses.create)
     else:
@@ -37,7 +37,7 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
         query_record.chosen_endpoint == 'beta.chat.completions.parse'):
       return functools.partial(
           query_function,
-          messages={'role': 'user', 'content': query_record.prompt})
+          messages=[{'role': 'user', 'content': query_record.prompt}])
     elif query_record.chosen_endpoint == 'responses.create':
       return functools.partial(
           query_function,
@@ -131,7 +131,7 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
     elif query_record.chosen_endpoint == 'responses.create':
       return functools.partial(
           query_function,
-          text_format={'type': 'json_object'})
+          text={'type': 'json_object'})
 
   def json_schema_feature_mapping(
       self,
@@ -140,7 +140,7 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
     if query_record.chosen_endpoint == 'chat.completions.create':
       return functools.partial(
           query_function,
-          response_format=query_record.response_format.value.class_value)
+          response_format=query_record.response_format.value)
     elif query_record.chosen_endpoint == 'beta.chat.completions.parse':
       raise Exception(
           'JSON schema response format is not supported for '
@@ -148,7 +148,7 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
     elif query_record.chosen_endpoint == 'responses.create':
       return functools.partial(
           query_function,
-          text_format=query_record.response_format.value.class_value)
+          text=query_record.response_format.value)
 
   def pydantic_feature_mapping(
       self,
@@ -163,9 +163,9 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
           query_function,
           response_format=query_record.response_format.value.class_value)
     elif query_record.chosen_endpoint == 'responses.create':
-      return functools.partial(
-          query_function,
-          text_format=query_record.response_format.value.class_value)
+      raise Exception(
+          'Pydantic response format is not supported for '
+          'responses.create. Code should never reach here.')
 
   def format_text_response_from_provider(
       self,
@@ -223,9 +223,8 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
 
   def generate_text_proc(
       self,
-      query_record: types.QueryRecord,
-      chosen_endpoint: str) -> types.Response:
-    create = self._get_api_call_function(chosen_endpoint)
+      query_record: types.QueryRecord) -> types.Response:
+    create = self._get_api_call_function(query_record.chosen_endpoint)
 
     provider_model = query_record.provider_model
     create = functools.partial(
@@ -233,6 +232,10 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
 
     create = self.add_features_to_query_function(create, query_record)
 
+    print('>>> chosen_endpoint', query_record.chosen_endpoint)
+    from pprint import pprint
+    pprint(query_record)
+    pprint(create.keywords)
     response = create()
 
     return self.format_response_from_providers(response, query_record)

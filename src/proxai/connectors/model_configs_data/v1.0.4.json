@@ -1068,9 +1068,7 @@
     "provider_model_configs": {
       "claude": {
         "haiku-3": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1090,9 +1088,7 @@
           }
         },
         "haiku-3.5": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1112,9 +1108,7 @@
           }
         },
         "haiku-4.5": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1134,9 +1128,7 @@
           }
         },
         "opus-3": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1153,9 +1145,7 @@
           }
         },
         "opus-4": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1175,9 +1165,7 @@
           }
         },
         "opus-4.5": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1198,9 +1186,7 @@
           }
         },
         "sonnet-3": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1217,9 +1203,7 @@
           }
         },
         "sonnet-3.5": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1236,9 +1220,7 @@
           }
         },
         "sonnet-3.5-old": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1255,9 +1237,7 @@
           }
         },
         "sonnet-3.7": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1274,9 +1254,7 @@
           }
         },
         "sonnet-4": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1296,9 +1274,7 @@
           }
         },
         "sonnet-4.5": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1320,9 +1296,7 @@
       },
       "cohere": {
         "command": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1342,9 +1316,7 @@
           }
         },
         "command-a": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1365,9 +1337,7 @@
           }
         },
         "command-light": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1387,9 +1357,7 @@
           }
         },
         "command-light-nightly": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1406,9 +1374,7 @@
           }
         },
         "command-nightly": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1428,9 +1394,7 @@
           }
         },
         "command-r": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1450,9 +1414,7 @@
           }
         },
         "command-r-08-2024": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1469,9 +1431,7 @@
           }
         },
         "command-r-plus": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1491,9 +1451,7 @@
           }
         },
         "command-r7b": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1515,9 +1473,7 @@
       },
       "databricks": {
         "claude-3-7-sonnet": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1537,9 +1493,7 @@
           }
         },
         "dbrx-it": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1560,9 +1514,7 @@
           }
         },
         "llama-4-maverick": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1579,9 +1531,7 @@
           }
         },
         "meta-llama-3-1-405b-it": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1598,9 +1548,7 @@
           }
         },
         "meta-llama-3-1-8b-it": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1620,9 +1568,7 @@
           }
         },
         "meta-llama-3-3-70b-it": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1643,9 +1589,7 @@
           }
         },
         "mixtral-8x7b-it": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1667,9 +1611,7 @@
       },
       "deepseek": {
         "deepseek-r1": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1690,9 +1632,7 @@
           }
         },
         "deepseek-v3": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1714,9 +1654,7 @@
       },
       "gemini": {
         "gemini-1.5-flash": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1733,9 +1671,7 @@
           }
         },
         "gemini-1.5-flash-8b": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1752,9 +1688,7 @@
           }
         },
         "gemini-1.5-pro": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1774,9 +1708,7 @@
           }
         },
         "gemini-2.0-flash": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1796,9 +1728,7 @@
           }
         },
         "gemini-2.0-flash-lite": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1815,9 +1745,7 @@
           }
         },
         "gemini-2.5-flash": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1837,9 +1765,7 @@
           }
         },
         "gemini-2.5-flash-lite-preview-06-17": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1856,9 +1782,7 @@
           }
         },
         "gemini-2.5-pro": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1878,9 +1802,7 @@
           }
         },
         "gemini-3-pro": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1903,9 +1825,7 @@
       },
       "grok": {
         "grok-3-beta": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1926,9 +1846,7 @@
           }
         },
         "grok-3-fast-beta": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1948,9 +1866,7 @@
           }
         },
         "grok-3-mini-beta": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1970,9 +1886,7 @@
           }
         },
         "grok-3-mini-fast-beta": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1994,9 +1908,7 @@
       },
       "huggingface": {
         "deepseek-r1": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2016,9 +1928,7 @@
           }
         },
         "deepseek-v3": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2038,9 +1948,7 @@
           }
         },
         "gemma-2-2b-it": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2060,9 +1968,7 @@
           }
         },
         "meta-llama-3.1-8b-it": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2082,9 +1988,7 @@
           }
         },
         "phi-4": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2105,9 +2009,7 @@
           }
         },
         "qwen3-32b": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2130,11 +2032,7 @@
       },
       "mistral": {
         "codestral": {
-          "features": {
-            "not_supported_features": [
-              "stop"
-            ]
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2154,11 +2052,7 @@
           }
         },
         "ministral-3b": {
-          "features": {
-            "not_supported_features": [
-              "stop"
-            ]
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2175,11 +2069,7 @@
           }
         },
         "ministral-8b": {
-          "features": {
-            "not_supported_features": [
-              "stop"
-            ]
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2196,11 +2086,7 @@
           }
         },
         "mistral-large": {
-          "features": {
-            "not_supported_features": [
-              "stop"
-            ]
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2221,9 +2107,7 @@
           }
         },
         "mistral-medium": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2240,11 +2124,7 @@
           }
         },
         "mistral-saba": {
-          "features": {
-            "not_supported_features": [
-              "stop"
-            ]
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2261,11 +2141,7 @@
           }
         },
         "mistral-small": {
-          "features": {
-            "not_supported_features": [
-              "stop"
-            ]
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2285,11 +2161,7 @@
           }
         },
         "open-mistral-7b": {
-          "features": {
-            "not_supported_features": [
-              "stop"
-            ]
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2306,11 +2178,7 @@
           }
         },
         "open-mistral-nemo": {
-          "features": {
-            "not_supported_features": [
-              "stop"
-            ]
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2327,11 +2195,7 @@
           }
         },
         "open-mixtral-8x22b": {
-          "features": {
-            "not_supported_features": [
-              "stop"
-            ]
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2351,11 +2215,7 @@
           }
         },
         "open-mixtral-8x7b": {
-          "features": {
-            "not_supported_features": [
-              "stop"
-            ]
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2372,11 +2232,7 @@
           }
         },
         "pixtral-12b": {
-          "features": {
-            "not_supported_features": [
-              "stop"
-            ]
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2396,11 +2252,7 @@
           }
         },
         "pixtral-large": {
-          "features": {
-            "not_supported_features": [
-              "stop"
-            ]
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2422,9 +2274,7 @@
       },
       "mock_failing_provider": {
         "mock_failing_model": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2443,9 +2293,7 @@
       },
       "mock_provider": {
         "mock_model": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2464,9 +2312,7 @@
       },
       "mock_slow_provider": {
         "mock_slow_model": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2485,9 +2331,7 @@
       },
       "openai": {
         "chatgpt-4o-latest": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2507,9 +2351,7 @@
           }
         },
         "computer-use-preview": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "is_default_candidate": false,
             "is_featured": false
@@ -2525,9 +2367,7 @@
           }
         },
         "gpt-3.5-turbo": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2547,9 +2387,7 @@
           }
         },
         "gpt-4": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2569,9 +2407,7 @@
           }
         },
         "gpt-4-32k": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "is_default_candidate": false,
             "is_featured": false
@@ -2587,9 +2423,7 @@
           }
         },
         "gpt-4-turbo": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2609,9 +2443,7 @@
           }
         },
         "gpt-4.1": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2631,9 +2463,7 @@
           }
         },
         "gpt-4.1-mini": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2653,9 +2483,7 @@
           }
         },
         "gpt-4.1-nano": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2675,9 +2503,7 @@
           }
         },
         "gpt-4.5-preview": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2697,9 +2523,7 @@
           }
         },
         "gpt-4o": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2719,9 +2543,7 @@
           }
         },
         "gpt-4o-audio-preview": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "is_default_candidate": false,
             "is_featured": false
@@ -2737,9 +2559,7 @@
           }
         },
         "gpt-4o-mini": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2759,9 +2579,7 @@
           }
         },
         "gpt-4o-mini-audio-preview": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "is_default_candidate": false,
             "is_featured": false
@@ -2777,9 +2595,7 @@
           }
         },
         "gpt-4o-mini-realtime-preview": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "is_default_candidate": false,
             "is_featured": false
@@ -2795,12 +2611,7 @@
           }
         },
         "gpt-4o-mini-search-preview": {
-          "features": {
-            "not_supported_features": [
-              "temperature",
-              "stop"
-            ]
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2820,9 +2631,7 @@
           }
         },
         "gpt-4o-realtime-preview": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "is_default_candidate": false,
             "is_featured": false
@@ -2838,12 +2647,7 @@
           }
         },
         "gpt-4o-search-preview": {
-          "features": {
-            "not_supported_features": [
-              "temperature",
-              "stop"
-            ]
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2863,9 +2667,7 @@
           }
         },
         "gpt-5.1": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2886,11 +2688,7 @@
           }
         },
         "o1": {
-          "features": {
-            "not_supported_features": [
-              "temperature"
-            ]
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2910,14 +2708,7 @@
           }
         },
         "o1-mini": {
-          "features": {
-            "not_supported_features": [
-              "system",
-              "max_tokens",
-              "temperature",
-              "stop"
-            ]
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2937,9 +2728,7 @@
           }
         },
         "o1-pro": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2959,9 +2748,7 @@
           }
         },
         "o3": {
-          "features": {
-            "not_supported_features": []
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2981,12 +2768,7 @@
           }
         },
         "o3-mini": {
-          "features": {
-            "not_supported_features": [
-              "max_tokens",
-              "temperature"
-            ]
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -3006,13 +2788,7 @@
           }
         },
         "o4-mini": {
-          "features": {
-            "not_supported_features": [
-              "max_tokens",
-              "temperature",
-              "stop"
-            ]
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
