@@ -6,6 +6,7 @@ import re
 import json
 import traceback
 import functools
+from functools import reduce
 import math
 from typing import Any, Callable, Dict, List, Optional, Union
 import proxai.types as types
@@ -274,107 +275,242 @@ class ProviderModelConnector(state_controller.StateControlled):
         text,
         0)
 
-  def handle_feature_not_supported(self, query_record: types.QueryRecord):
-    if not self.provider_model_config.features.not_supported:
-      return
+  def _check_feature_exists(
+      self,
+      feature_name: types.FeatureNameType,
+      query_record: types.QueryRecord) -> Any:
+    if feature_name.startswith('response_format::'):
+      response_format_type = feature_name.split('::')[1]
+      return(
+          query_record.response_format is not None and
+          query_record.response_format.type == types.ResponseFormatType(
+              response_format_type.upper()))
+    else:
+      return getattr(query_record, feature_name, None) is not None
 
-    for feature in self.provider_model_config.features.not_supported:
-      if feature.startswith('response_format::'):
-        if query_record.response_format is None:
-          continue
+  def _get_available_endpoints(
+      self,
+      query_record: types.QueryRecord) -> List[str]:
+    supported_endpoints = []
+    best_effort_endpoints = []
+    for feature_name in types.FeatureNameType.__members__.values():
+      if not self._check_feature_exists(
+          feature_name=feature_name,
+          query_record=query_record):
+        continue
 
-        response_format_type = feature.split('::')[1]
-        if query_record.response_format.type != types.ResponseFormatType(
-            response_format_type.upper()):
-          continue
+      if feature_name in self.provider_model_config.features.supported:
+        supported_endpoints.append(set(
+            self.provider_model_config.features[feature_name].supported))
+      elif feature_name in self.provider_model_config.features.best_effort:
+        best_effort_endpoints.append(set(
+            self.provider_model_config.features[feature_name].supported +
+            self.provider_model_config.features[feature_name].best_effort))
 
-        message=f'{self.provider_model.model} does not support {feature}.'
+    supported_endpoints = list(
+        reduce(set.intersection, supported_endpoints))
+
+    best_effort_endpoints = list(
+        reduce(set.intersection, best_effort_endpoints))
+
+    return supported_endpoints, best_effort_endpoints
+
+  def _check_endpoints_usability(
+      self,
+      supported_endpoints: List[str],
+      best_effort_endpoints: List[str],
+      query_record: types.QueryRecord):
+    requested_feature_names = []
+    for feature_name in types.FeatureNameType.__members__.values():
+      if self._check_feature_exists(
+          feature_name=feature_name,
+          query_record=query_record):
+        requested_feature_names.append(feature_name)
+
+    if (query_record.feature_mapping_strategy ==
+        types.FeatureMappingStrategy.STRICT):
+      if len(supported_endpoints) == 0:
+        message = (
+            f'For {query_record.provider_model}, it is not possible to ' +
+            'use following features all at once in STRICT mode. ' +
+            'Please consider to use BEST_EFFORT mode or remove some '
+            'features.\n' +
+            f'Requested features: {", ".join(requested_feature_names)}.')
         logging_utils.log_message(
             type=types.LoggingType.ERROR,
             logging_options=self.logging_options,
             query_record=query_record,
             message=message)
-        raise Exception(message)
-
-      elif getattr(query_record, feature) is not None:
-        message=f'{self.provider_model.model} does not support {feature}.'
+        raise Exception(message=message)
+    elif (query_record.feature_mapping_strategy ==
+          types.FeatureMappingStrategy.BEST_EFFORT):
+      if (len(supported_endpoints) == 0 and
+          len(best_effort_endpoints) == 0):
+        message = (
+            f'For {query_record.provider_model}, it is not possible to ' +
+            'use following features all at once in BEST_EFFORT mode. ' +
+            'Please consider to remove some features.\n' +
+            f'Requested features: {", ".join(requested_feature_names)}.')
         logging_utils.log_message(
             type=types.LoggingType.ERROR,
             logging_options=self.logging_options,
             query_record=query_record,
             message=message)
-        raise Exception(message)
+        raise Exception(message=message)
 
-  def handle_feature_best_effort(self, query_record: types.QueryRecord):
-    if not self.provider_model_config.features.best_effort:
-      return
+  def _select_endpoint(
+      self,
+      supported_endpoints: List[str],
+      best_effort_endpoints: List[str]) -> str:
+    if len(supported_endpoints) != 0:
+      return supported_endpoints[0]
+    elif len(best_effort_endpoints) != 0:
+      return best_effort_endpoints[0]
 
-    for feature in self.provider_model_config.features.best_effort:
-      if feature.startswith('response_format::'):
-        if query_record.response_format is None:
-          continue
+  def _sanitize_system_feature(
+      self,
+      query_record: types.QueryRecord):
+    if query_record.chosen_endpoint not in self.provider_model_config.features[
+        'system'].supported:
+      return query_record
+    query_record.prompt = f'{query_record.system}\n\n{query_record.prompt}'
+    query_record.system = None
+    return query_record
 
-        response_format_type = feature.split('::')[1]
-        if query_record.response_format.type != types.ResponseFormatType(
-            response_format_type.upper()):
-          continue
+  def _sanitize_messages_feature(
+      self,
+      query_record: types.QueryRecord):
+    if query_record.chosen_endpoint not in self.provider_model_config.features[
+        'messages'].supported:
+      return query_record
+    prompt = query_record.prompt
+    result_prompt = '\n'.join(
+        f'{message["role"].upper()}: {message["content"]}'
+        for message in query_record.messages)
+    if prompt is not None:
+      result_prompt = f'{result_prompt}\n\nUSER: {prompt}'
+    query_record.prompt = result_prompt
+    query_record.messages = None
+    return query_record
 
-        if (query_record.feature_mapping_strategy ==
-            types.FeatureMappingStrategy.STRICT):
-          message=(
-              f'{self.provider_model.model} does not support {feature} '
-              'in STRICT mode.')
-          logging_utils.log_message(
-              type=types.LoggingType.ERROR,
-              logging_options=self.logging_options,
-              query_record=query_record,
-              message=message)
-          raise Exception(message)
+  def _omit_best_effort_feature(
+      self,
+      feature_name: types.FeatureNameType,
+      query_record: types.QueryRecord):
+    if query_record.chosen_endpoint not in self.provider_model_config.features[
+          feature_name].supported:
+        message = (
+            f'{self.provider_model.model} does not support {feature_name} '
+            'in BEST_EFFORT mode. Omitting this feature.'
+            f'Model endpoint: {query_record.chosen_endpoint}')
+        logging_utils.log_message(
+            type=types.LoggingType.WARNING,
+            logging_options=self.logging_options,
+            query_record=query_record,
+            message=message)
+        setattr(query_record, feature_name, None)
+    return query_record
 
-      elif getattr(query_record, feature) is not None:
-        if (query_record.feature_mapping_strategy ==
-            types.FeatureMappingStrategy.STRICT):
-          message=(
-              f'{self.provider_model.model} does not support {feature} '
-              'in STRICT mode.')
-          logging_utils.log_message(
-              type=types.LoggingType.ERROR,
-              logging_options=self.logging_options,
-              query_record=query_record,
-              message=message)
-          raise Exception(message)
+  def _get_schema_guidance(self, query_record: types.QueryRecord) -> str:
+    schema_guidance = ''
+    if query_record.response_format.type == types.ResponseFormatType.JSON:
+      schema_guidance = 'You must respond with valid JSON.'
+    elif (query_record.response_format.type ==
+        types.ResponseFormatType.JSON_SCHEMA):
+      schema_value = query_record.response_format.value
+      json_schema_obj = schema_value['json_schema']
+      raw_schema = json_schema_obj.get('schema', json_schema_obj)
+      schema_guidance = (
+          'You must respond with valid JSON that follows this schema:\n'
+          f'{json.dumps(raw_schema, indent=2)}')
+    elif (query_record.response_format.type ==
+          types.ResponseFormatType.PYDANTIC):
+      pydantic_class = query_record.response_format.value.class_value
+      schema = pydantic_class.model_json_schema()
+      schema_guidance = (
+          'You must respond with valid JSON that follows this schema:\n'
+          f'{json.dumps(schema, indent=2)}')
+    return schema_guidance
 
-        if (query_record.feature_mapping_strategy ==
-            types.FeatureMappingStrategy.BEST_EFFORT):
-          message = (
-              f'{self.provider_model.model} does not support {feature} '
-              'in BEST_EFFORT mode.\n'
-              'Omitting this feature.')
-          logging_utils.log_message(
-              type=types.LoggingType.WARNING,
-              logging_options=self.logging_options,
-              query_record=query_record,
-              message=message)
-          setattr(query_record, feature, None)
+  def _sanitize_response_format_feature(
+      self,
+      feature_name: types.FeatureNameType,
+      query_record: types.QueryRecord):
+    if query_record.chosen_endpoint in self.provider_model_config.features[
+        feature_name].supported:
+      return query_record
+
+    schema_guidance = self._get_schema_guidance(query_record)
+
+    if self.provider_model_config.features['system'].supported:
+      query_record.system = (
+          f'{query_record.system}\n\n{schema_guidance}')
+    elif query_record.prompt is not None:
+      query_record.prompt = (
+          f'{query_record.prompt}\n\n{schema_guidance}')
+    else:
+      query_record.prompt = schema_guidance
+    return query_record
+
+  def _sanitize_query_record(
+      self,
+      supported_endpoints: List[str],
+      best_effort_endpoints: List[str],
+      query_record: types.QueryRecord):
+    query_record = copy.deepcopy(query_record)
+
+    query_record.chosen_endpoint = self._select_endpoint(
+        supported_endpoints=supported_endpoints,
+        best_effort_endpoints=best_effort_endpoints)
+
+    if (query_record.feature_mapping_strategy ==
+        types.FeatureMappingStrategy.STRICT):
+      return query_record
+
+    if self._check_feature_exists(
+          feature_name='messages', query_record=query_record):
+      query_record = self._sanitize_messages_feature(
+            feature_name='messages',
+            query_record=query_record)
+
+    if self._check_feature_exists(
+          feature_name='system', query_record=query_record):
+      query_record = self._sanitize_system_feature(
+            feature_name='system',
+            query_record=query_record)
+
+    for feature_name in ['stop', 'temperature', 'max_tokens']:
+      if self._check_feature_exists(
+          feature_name=feature_name, query_record=query_record):
+        query_record = self._omit_best_effort_feature(
+            feature_name=feature_name,
+            query_record=query_record)
+
+    for feature_name in [
+        'response_format::json',
+        'response_format::json_schema',
+        'response_format::pydantic',
+    ]:
+      if self._check_feature_exists(
+          feature_name=feature_name, query_record=query_record):
+        query_record = self._sanitize_response_format_feature(
+            feature_name=feature_name,
+            query_record=query_record)
+
+    return query_record
 
   def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
-    """Checks and handles feature support based on feature_mapping_strategy.
-
-    Regular features (e.g., system):
-    | Feature Type  | STRICT | BEST_EFFORT |
-    |---------------|--------|-------------|
-    | not_supported | raises | raises      |
-    | best_effort   | raises | omits       |
-
-    response_format:: special syntax:
-    | Feature Type  | STRICT | BEST_EFFORT |
-    |---------------|--------|-------------|
-    | not_supported | raises | raises      |
-    | best_effort   | raises | keeps       |
-    """
-    query_record = copy.deepcopy(query_record)
-    self.handle_feature_not_supported(query_record=query_record)
-    self.handle_feature_best_effort(query_record=query_record)
+    supported_endpoints, best_effort_endpoints = self._get_available_endpoints(
+        query_record=query_record)
+    self._check_endpoints_usability(
+        supported_endpoints=supported_endpoints,
+        best_effort_endpoints=best_effort_endpoints,
+        query_record=query_record)
+    query_record = (
+        self._sanitize_query_record(
+            supported_endpoints=supported_endpoints,
+            best_effort_endpoints=best_effort_endpoints,
+            query_record=query_record))
     return query_record
 
   def _get_system_content_with_schema_guidance(
@@ -499,6 +635,99 @@ class ProviderModelConnector(state_controller.StateControlled):
           f'{feature_id} not found in provider model config features.\n'
           f'provider model config: {self.provider_model_config}')
 
+
+  def add_features_to_query_function(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    feature_mappings = {
+        types.FeatureNameType.PROMPT: self.prompt_feature_mapping,
+        types.FeatureNameType.MESSAGES: self.messages_feature_mapping,
+        types.FeatureNameType.SYSTEM: self.system_feature_mapping,
+        types.FeatureNameType.MAX_TOKENS: self.max_tokens_feature_mapping,
+        types.FeatureNameType.TEMPERATURE: self.temperature_feature_mapping,
+        types.FeatureNameType.STOP: self.stop_feature_mapping,
+        types.FeatureNameType.RESPONSE_FORMAT_TEXT: lambda x, y: x,
+        types.FeatureNameType.RESPONSE_FORMAT_JSON: self.json_feature_mapping,
+        types.FeatureNameType.RESPONSE_FORMAT_JSON_SCHEMA: (
+            self.json_schema_feature_mapping),
+        types.FeatureNameType.RESPONSE_FORMAT_PYDANTIC: (
+            self.pydantic_feature_mapping),
+    }
+    for feature_name in types.FeatureNameType.__members__.values():
+      if not self._check_feature_exists(
+          feature_name=feature_name,
+          query_record=query_record):
+        continue
+      query_function = feature_mappings[feature_name](
+          query_record=query_record,
+          query_function=query_function)
+    return query_function
+
+  def _handle_json_response_format(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> types.Response:
+    if (query_record.chosen_endpoint in
+        self.provider_model_config.features['response_format::json'].supported):
+      return types.Response(
+          value=self.format_json_response_from_provider(
+              response=response,
+              query_record=query_record),
+          type=types.ResponseType.JSON)
+    else:
+      return types.Response(
+          value=self._extract_json_from_text(
+              self.format_text_response_from_provider(
+                  response=response,
+                  query_record=query_record)),
+          type=types.ResponseType.JSON)
+
+  def _handle_json_schema_response_format(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> types.Response:
+    if (query_record.chosen_endpoint in
+        self.provider_model_config.features[
+            'response_format::json_schema'].supported):
+      return types.Response(
+          value=self.format_json_schema_response_from_provider(
+              response=response,
+              query_record=query_record),
+          type=types.ResponseType.JSON)
+    else:
+      return types.Response(
+          value=self._extract_json_from_text(
+              self.format_text_response_from_provider(
+                  response=response,
+                  query_record=query_record)),
+          type=types.ResponseType.JSON)
+
+  def _handle_pydantic_response_format(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> types.Response:
+    if (query_record.chosen_endpoint in
+        self.provider_model_config.features[
+            'response_format::pydantic'].supported):
+      return types.Response(
+          value=self.format_pydantic_response_from_provider(
+              response=response,
+              query_record=query_record),
+          type=types.ResponseType.PYDANTIC)
+    else:
+      json_value = self._extract_json_from_text(
+          self.format_text_response_from_provider(
+              response=response,
+              query_record=query_record))
+      pydantic_class = query_record.response_format.value.class_value
+      instance = pydantic_class.model_validate(json_value)
+      return types.Response(
+          value=types.ResponsePydanticValue(
+              class_name=query_record.response_format.value.class_name,
+              instance_value=instance),
+          type=types.ResponseType.PYDANTIC)
+
   def format_response_from_providers(
       self,
       response: Any,
@@ -511,40 +740,18 @@ class ProviderModelConnector(state_controller.StateControlled):
               query_record=query_record),
           type=types.ResponseType.TEXT)
     elif query_record.response_format.type == types.ResponseFormatType.JSON:
-      return types.Response(
-          value=self.format_json_response_from_provider(
-              response=response,
-              query_record=query_record),
-          type=types.ResponseType.JSON)
+      return self._handle_json_response_format(
+          response=response,
+          query_record=query_record)
     elif (query_record.response_format.type ==
           types.ResponseFormatType.JSON_SCHEMA):
-      return types.Response(
-          value=self.format_json_schema_response_from_provider(
-              response=response,
-              query_record=query_record),
-          type=types.ResponseType.JSON)
+      return self._handle_json_schema_response_format(
+          response=response,
+          query_record=query_record)
     elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
-      if (query_record.feature_mapping_strategy ==
-          types.FeatureMappingStrategy.STRICT):
-        return types.Response(
-            value=types.ResponsePydanticValue(
-                class_name=query_record.response_format.value.class_name,
-                instance_value=self.format_pydantic_response_from_provider(
-                    response=response,
-                    query_record=query_record)),
-            type=types.ResponseType.PYDANTIC)
-      elif (query_record.feature_mapping_strategy ==
-            types.FeatureMappingStrategy.BEST_EFFORT):
-        json_value = self.format_json_response_from_provider(
-            response=response,
-            query_record=query_record)
-        pydantic_class = query_record.response_format.value.class_value
-        instance = pydantic_class.model_validate(json_value)
-        return types.Response(
-            value=types.ResponsePydanticValue(
-                class_name=query_record.response_format.value.class_name,
-                instance_value=instance),
-            type=types.ResponseType.PYDANTIC)
+      return self._handle_pydantic_response_format(
+          response=response,
+          query_record=query_record)
 
   def get_token_count_estimate(
       self,
@@ -712,7 +919,8 @@ class ProviderModelConnector(state_controller.StateControlled):
         token_count=self.get_token_count_estimate(
             value = prompt if prompt is not None else messages))
 
-    updated_query_record = self.feature_check(query_record=query_record)
+    updated_query_record, chosen_endpoint = self.feature_check(
+        query_record=query_record)
 
     look_fail_reason = None
     if self.query_cache_manager and use_cache:
@@ -757,7 +965,9 @@ class ProviderModelConnector(state_controller.StateControlled):
 
     response, error, error_traceback = None, None, None
     try:
-      response = self.generate_text_proc(query_record=updated_query_record)
+      response = self.generate_text_proc(
+          query_record=updated_query_record,
+          chosen_endpoint=chosen_endpoint)
     except Exception as e:
       error_traceback = traceback.format_exc()
       error = e

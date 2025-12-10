@@ -70,10 +70,24 @@ class ProviderModelPricingType:
 
 
 @dataclasses.dataclass
-class ProviderModelFeatureType:
+class EndpointFeatureInfoType:
   supported: List[str] = dataclasses.field(default_factory=list)
   best_effort: List[str] = dataclasses.field(default_factory=list)
   not_supported: List[str] = dataclasses.field(default_factory=list)
+
+
+class FeatureNameType(str, enum.Enum):
+  PROMPT = 'prompt'
+  MESSAGES = 'messages'
+  SYSTEM = 'system'
+  MAX_TOKENS = 'max_tokens'
+  TEMPERATURE = 'temperature'
+  STOP = 'stop'
+  WEB_SEARCH = 'web_search'
+  RESPONSE_FORMAT_TEXT = 'response_format::text'
+  RESPONSE_FORMAT_JSON = 'response_format::json'
+  RESPONSE_FORMAT_JSON_SCHEMA = 'response_format::json_schema'
+  RESPONSE_FORMAT_PYDANTIC = 'response_format::pydantic'
 
 
 class ModelSizeType(str, enum.Enum):
@@ -99,7 +113,7 @@ class ProviderModelMetadataType:
 class ProviderModelConfigType:
   provider_model: Optional[ProviderModelType] = None
   pricing: Optional[ProviderModelPricingType] = None
-  features: Optional[ProviderModelFeatureType] = None
+  features: Optional[Dict[FeatureNameType, EndpointFeatureInfoType]] = None
   metadata: Optional[ProviderModelMetadataType] = None
 
 
@@ -264,6 +278,7 @@ class QueryRecord:
   response_format: Optional[ResponseFormat] = None
   web_search: Optional[bool] = None
   feature_mapping_strategy: Optional[FeatureMappingStrategy] = None
+  chosen_endpoint: Optional[str] = None
   hash_value: Optional[str] = None
 
 
