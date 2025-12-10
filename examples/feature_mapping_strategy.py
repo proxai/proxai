@@ -137,10 +137,9 @@ OPENAI_FEATURES = {
   'response_format::json_schema': px_types.EndpointFeatureInfoType(
     supported=[
         'chat.completions.create',
-        'responses.create',
     ],
     best_effort=[
-
+        'responses.create',
     ],
     not_supported=[
         'beta.chat.completions.parse',
@@ -175,26 +174,26 @@ def test_feature_compatibility(
   provider_model_config.features = OPENAI_FEATURES
   model_configs.model_configs_schema = config
 
-  # print('------- Plain call:')
-  # try:
-  #   response = px.generate_text(
-  #       PROMPT,
-  #       provider_model=provider_model)
-  #   print('SUCCESS: ', response)
-  # except Exception as e:
-  #   print('ERROR: ', e)
-  #   input('Press Enter to continue...')
+  print('------- Plain call:')
+  try:
+    response = px.generate_text(
+        PROMPT,
+        provider_model=provider_model)
+    print('SUCCESS: ', response)
+  except Exception as e:
+    print('ERROR: ', e)
+    input('Press Enter to continue...')
 
-  # print('------- System call:')
-  # try:
-  #   response = px.generate_text(
-  #       PROMPT,
-  #       provider_model=provider_model,
-  #       system=TEST_FEATURES['system'])
-  #   print('SUCCESS: ', response)
-  # except Exception as e:
-  #   print('ERROR: ', e)
-  #   input('Press Enter to continue...')
+  print('------- System call:')
+  try:
+    response = px.generate_text(
+        PROMPT,
+        provider_model=provider_model,
+        system=TEST_FEATURES['system'])
+    print('SUCCESS: ', response)
+  except Exception as e:
+    print('ERROR: ', e)
+    input('Press Enter to continue...')
 
   print('------- Response format JSON call:')
   try:
@@ -207,27 +206,27 @@ def test_feature_compatibility(
     print('ERROR: ', e)
     input('Press Enter to continue...')
 
-  # print('------- Response format JSON Schema call:')
-  # try:
-  #   response = px.generate_text(
-  #     PROMPT,
-  #     provider_model=provider_model,
-  #     response_format=TEST_FEATURES['response_format::json_schema'])
-  #   print('SUCCESS: ', response)
-  # except Exception as e:
-  #   print('ERROR: ', e)
-  #   input('Press Enter to continue...')
+  print('------- Response format JSON Schema call:')
+  try:
+    response = px.generate_text(
+      PROMPT,
+      provider_model=provider_model,
+      response_format=TEST_FEATURES['response_format::json_schema'])
+    print('SUCCESS: ', response)
+  except Exception as e:
+    print('ERROR: ', e)
+    input('Press Enter to continue...')
 
-  # print('------- Response format Pydantic call:')
-  # try:
-  #   response = px.generate_text(
-  #     PROMPT,
-  #     provider_model=provider_model,
-  #       response_format=TEST_FEATURES['response_format::pydantic'])
-  #   print('SUCCESS: ', response)
-  # except Exception as e:
-  #   print('ERROR: ', e)
-  #   input('Press Enter to continue...')
+  print('------- Response format Pydantic call:')
+  try:
+    response = px.generate_text(
+      PROMPT,
+      provider_model=provider_model,
+        response_format=TEST_FEATURES['response_format::pydantic'])
+    print('SUCCESS: ', response)
+  except Exception as e:
+    print('ERROR: ', e)
+    input('Press Enter to continue...')
 
 
 def main():
@@ -245,11 +244,11 @@ def main():
 
   test_feature_compatibility(
       provider_model=provider_model,
-      feature_mapping_strategy=px_types.FeatureMappingStrategy.STRICT)
+      feature_mapping_strategy=px_types.FeatureMappingStrategy.BEST_EFFORT)
 
-  # test_feature_compatibility(
-  #     provider_model=provider_model,
-  #     feature_mapping_strategy=px_types.FeatureMappingStrategy.BEST_EFFORT)
+  test_feature_compatibility(
+      provider_model=provider_model,
+      feature_mapping_strategy=px_types.FeatureMappingStrategy.STRICT)
 
 
 if __name__ == '__main__':
