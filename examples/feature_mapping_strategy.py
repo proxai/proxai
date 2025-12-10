@@ -55,6 +55,107 @@ TEST_FEATURES = {
     'web_search': True,
   }
 
+OPENAI_FEATURES = {
+  'prompt': {
+      'supported': [
+          'chat.completions.create',
+          'beta.chat.completions.parse',
+          'responses.create',
+      ],
+      'best_effort': [],
+      'not_supported': [],
+  },
+  'messages': {
+      'supported': [
+          'chat.completions.create',
+          'beta.chat.completions.parse',
+      ],
+      'best_effort': [
+          'responses.create',
+      ],
+      'not_supported': [],
+  },
+  'system': {
+      'supported': [
+          'chat.completions.create',
+          'beta.chat.completions.parse',
+          'responses.create',
+      ],
+      'best_effort': [],
+      'not_supported': [],
+  },
+  'max_tokens': {
+      'supported': [
+          'chat.completions.create',
+          'beta.chat.completions.parse',
+          'responses.create',
+      ],
+      'best_effort': [],
+      'not_supported': [],
+  },
+  'temperature': {
+      'supported': [
+          'chat.completions.create',
+          'beta.chat.completions.parse',
+          'responses.create',
+      ],
+      'best_effort': [],
+      'not_supported': [],
+  },
+  'stop': {
+      'supported': [
+          'chat.completions.create',
+          'beta.chat.completions.parse',
+      ],
+      'best_effort': [],
+      'not_supported': [
+          'responses.create',
+      ],
+  },
+  'response_format::text': {
+      'supported': [
+          'chat.completions.create',
+          'responses.create',
+      ],
+      'best_effort': [],
+      'not_supported': [
+          'beta.chat.completions.parse',
+      ],
+  },
+  'response_format::json': {
+      'supported': [
+          'chat.completions.create',
+      ],
+      'best_effort': [
+          'responses.create',
+      ],
+      'not_supported': [
+          'beta.chat.completions.parse',
+      ],
+  },
+  'response_format::json_schema': {
+      'supported': [
+          'chat.completions.create',
+      ],
+      'best_effort': [
+          'responses.create',
+      ],
+      'not_supported': [
+          'beta.chat.completions.parse',
+      ],
+  },
+  'response_format::pydantic': {
+      'supported': [
+          'beta.chat.completions.parse',
+          'responses.create',
+      ],
+      'best_effort': [
+          'chat.completions.create',
+      ],
+      'not_supported': [],
+  },
+}
+
 
 def test_feature_compatibility(
     provider_model: px_types.ProviderModelIdentifierType,
@@ -70,31 +171,9 @@ def test_feature_compatibility(
 
   model_configs = px._get_model_configs()
   config = copy.deepcopy(model_configs.model_configs_schema)
-  provider_model_features = config.version_config.provider_model_configs[
-      provider_model[0]][provider_model[1]].features
-  provider_model_features.supported = [
-      'messages',
-      'system',
-      'max_tokens',
-      'temperature',
-      'stop',
-      'response_format::text',
-  ]
-  provider_model_features.best_effort = []
-
-  if put_response_format_to_supported:
-    provider_model_features.supported.extend([
-        'response_format::json',
-        'response_format::json_schema',
-        'response_format::pydantic',
-    ])
-  else:
-    provider_model_features.best_effort.extend([
-        'response_format::json',
-        'response_format::json_schema',
-        'response_format::pydantic',
-    ])
-
+  provider_model_config = config.version_config.provider_model_configs[
+      provider_model[0]][provider_model[1]]
+  provider_model_config.features = OPENAI_FEATURES
   model_configs.model_configs_schema = config
 
   print('------- Plain call:')
@@ -153,7 +232,7 @@ def test_feature_compatibility(
 
 
 def main():
-  # provider_model = ('openai', 'gpt-4o-mini')
+  provider_model = ('openai', 'gpt-4o-mini')
   # provider_model = ('openai', 'gpt-5.1')
   # provider_model = ('claude', 'haiku-4.5')
   # provider_model = ('claude', 'haiku-3')
@@ -163,7 +242,7 @@ def main():
   # provider_model = ('cohere', 'command-a')
   # provider_model = ('deepseek', 'deepseek-v3')
   # provider_model = ('databricks', 'meta-llama-3-1-8b-it')
-  provider_model = ('huggingface', 'deepseek-v3')
+  # provider_model = ('huggingface', 'deepseek-v3')
 
   test_feature_compatibility(
       provider_model=provider_model,
