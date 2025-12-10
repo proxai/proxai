@@ -131,7 +131,7 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
     elif query_record.chosen_endpoint == 'responses.create':
       return functools.partial(
           query_function,
-          text={'type': 'json_object'})
+          text={'format': {'type': 'json_object'}})
 
   def json_schema_feature_mapping(
       self,
@@ -146,9 +146,12 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
           'JSON schema response format is not supported for '
           'beta.chat.completions.parse. Code should never reach here.')
     elif query_record.chosen_endpoint == 'responses.create':
-      return functools.partial(
-          query_function,
-          text=query_record.response_format.value)
+      raise Exception(
+          'JSON schema response format is not supported for '
+          'responses.create yet in ProxAI. It uses different json_schema '
+          'format and requires a different mapping. Code should never reach '
+          'here. Please reach out to ProxAI team if you need this feature.\n'
+          'GitHub: https://github.com/proxai/')
 
   def pydantic_feature_mapping(
       self,
@@ -232,10 +235,10 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
 
     create = self.add_features_to_query_function(create, query_record)
 
-    print('>>> chosen_endpoint', query_record.chosen_endpoint)
-    from pprint import pprint
-    pprint(query_record)
-    pprint(create.keywords)
+    # print('>>> chosen_endpoint', query_record.chosen_endpoint)
+    # from pprint import pprint
+    # pprint(query_record)
+    # pprint(create.keywords)
     response = create()
 
     return self.format_response_from_providers(response, query_record)

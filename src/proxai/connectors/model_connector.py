@@ -435,18 +435,10 @@ class ProviderModelConnector(state_controller.StateControlled):
 
   def _sanitize_response_format_feature(
       self,
-      feature_name: types.FeatureNameType,
       query_record: types.QueryRecord):
-    if query_record.chosen_endpoint in self.provider_model_config.features[
-        feature_name].supported:
-      return query_record
-
     schema_guidance = self._get_schema_guidance(query_record)
 
-    if self.provider_model_config.features['system'].supported:
-      query_record.system = (
-          f'{query_record.system}\n\n{schema_guidance}')
-    elif query_record.prompt is not None:
+    if query_record.prompt is not None:
       query_record.prompt = (
           f'{query_record.prompt}\n\n{schema_guidance}')
     else:
@@ -493,7 +485,6 @@ class ProviderModelConnector(state_controller.StateControlled):
       if self._check_feature_exists(
           feature_name=feature_name, query_record=query_record):
         query_record = self._sanitize_response_format_feature(
-            feature_name=feature_name,
             query_record=query_record)
 
     return query_record
