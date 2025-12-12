@@ -381,7 +381,7 @@ class ProviderModelConnector(state_controller.StateControlled):
   def _sanitize_messages_feature(
       self,
       query_record: types.QueryRecord):
-    if query_record.chosen_endpoint not in self.provider_model_config.features[
+    if query_record.chosen_endpoint in self.provider_model_config.features[
         'messages'].supported:
       return query_record
     prompt = query_record.prompt
@@ -587,6 +587,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       self,
       query_function: Callable,
       query_record: types.QueryRecord):
+    raise Exception('Not supported anymore.')
     if query_record.response_format is None:
       return self.system_feature_mapping(
           query_function,
@@ -644,6 +645,18 @@ class ProviderModelConnector(state_controller.StateControlled):
         types.FeatureNameType.MAX_TOKENS: self.max_tokens_feature_mapping,
         types.FeatureNameType.TEMPERATURE: self.temperature_feature_mapping,
         types.FeatureNameType.STOP: self.stop_feature_mapping,
+        types.FeatureNameType.WEB_SEARCH: self.web_search_feature_mapping,
+    }
+    for feature_name in feature_mappings.keys():
+      if not self._check_feature_exists(
+          feature_name=feature_name.value,
+          query_record=query_record):
+        continue
+      query_function = feature_mappings[feature_name](
+          query_record=query_record,
+          query_function=query_function)
+
+    response_format_feature_mappings = {
         types.FeatureNameType.RESPONSE_FORMAT_TEXT: (
             self._temp_response_format_text_feature_mapping),
         types.FeatureNameType.RESPONSE_FORMAT_JSON: self.json_feature_mapping,
@@ -652,14 +665,15 @@ class ProviderModelConnector(state_controller.StateControlled):
         types.FeatureNameType.RESPONSE_FORMAT_PYDANTIC: (
             self.pydantic_feature_mapping),
     }
-    for feature_name in types.FeatureNameType.__members__.values():
-      if not self._check_feature_exists(
-          feature_name=feature_name,
-          query_record=query_record):
-        continue
-      query_function = feature_mappings[feature_name](
-          query_record=query_record,
-          query_function=query_function)
+    response_format = query_record.response_format
+    if response_format is not None:
+      response_format_str = (
+          f'response_format::{response_format.type.value.lower()}')
+      if query_record.chosen_endpoint in self.provider_model_config.features[
+            response_format_str].supported:
+        query_function = response_format_feature_mappings[response_format_str](
+            query_record=query_record,
+            query_function=query_function)
     return query_function
 
   def _handle_json_response_format(
@@ -1037,6 +1051,12 @@ class ProviderModelConnector(state_controller.StateControlled):
     raise NotImplementedError
 
   def pydantic_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    raise NotImplementedError
+
+  def web_search_feature_mapping(
       self,
       query_function: Callable,
       query_record: types.QueryRecord):

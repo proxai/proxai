@@ -610,7 +610,8 @@ def generate_text(
       feature_mapping_strategy=feature_mapping_strategy,
       use_cache=use_cache,
       unique_response_limit=unique_response_limit)
-  if logging_record.response_record.error:
+  if (logging_record.response_record.error or
+      logging_record.response_record.error_traceback):
     if suppress_provider_errors or (
         suppress_provider_errors is None and _get_suppress_provider_errors()):
       if extensive_return:
