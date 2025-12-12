@@ -170,6 +170,13 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
           'Pydantic response format is not supported for '
           'responses.create. Code should never reach here.')
 
+  def web_search_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    raise Exception(
+        'Web search is not supported for OpenAI. Code should never reach here.')
+
   def format_text_response_from_provider(
       self,
       response: Any,
@@ -235,10 +242,6 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
 
     create = self.add_features_to_query_function(create, query_record)
 
-    # print('>>> chosen_endpoint', query_record.chosen_endpoint)
-    # from pprint import pprint
-    # pprint(query_record)
-    # pprint(create.keywords)
     response = create()
 
     return self.format_response_from_providers(response, query_record)
