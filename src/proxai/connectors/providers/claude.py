@@ -23,47 +23,90 @@ class ClaudeConnector(model_connector.ProviderModelConnector):
 
   def _get_api_call_function(
       self,
-      query_record: types.QueryRecord) -> Callable:
-    provider_model = query_record.provider_model
-    # Choose the appropriate API method based on response format
-    if (query_record.response_format is not None and
-        query_record.response_format.type ==
-        types.ResponseFormatType.PYDANTIC and
-        'response_format::pydantic' in
-        self.provider_model_config.features.supported):
-      # Use beta.messages.parse for Pydantic models
-      return functools.partial(
-          self.api.beta.messages.parse,
-          betas=[STRUCTURED_OUTPUTS_BETA])
-    elif (query_record.response_format is not None and
-          query_record.response_format.type ==
-          types.ResponseFormatType.JSON_SCHEMA and
-          'response_format::json_schema' in
-          self.provider_model_config.features.supported):
-      # Use beta.messages.create for JSON schema
+      chosen_endpoint: str) -> Callable:
+    if chosen_endpoint == 'messages.create':
+      return functools.partial(self.api.messages.create)
+    elif chosen_endpoint == 'beta.messages.create':
       return functools.partial(
           self.api.beta.messages.create,
           betas=[STRUCTURED_OUTPUTS_BETA])
+    elif chosen_endpoint == 'beta.messages.parse':
+      return functools.partial(
+          self.api.beta.messages.parse,
+          betas=[STRUCTURED_OUTPUTS_BETA])
     else:
-      # Use standard messages.create for text and simple JSON
-      return functools.partial(self.api.messages.create)
+      raise Exception(f'Invalid endpoint: {chosen_endpoint}')
+
+  def prompt_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    return functools.partial(
+        query_function,
+        messages=[{'role': 'user', 'content': query_record.prompt}])
+
+  def messages_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    messages = query_function.keywords.get('messages')
+    if messages is None:
+      return functools.partial(
+          query_function,
+          messages=query_record.messages)
+    else:
+      messages = query_record.messages + messages
+      return functools.partial(
+          query_function,
+          messages=messages)
 
   def system_feature_mapping(
       self,
       query_function: Callable,
-      system_message: Optional[str] = None) -> Callable:
-    if system_message is not None:
-      return functools.partial(query_function, system=system_message)
+      query_record: types.QueryRecord) -> Callable:
+    return functools.partial(query_function, system=query_record.system)
+
+  def max_tokens_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    if query_record.max_tokens is not None:
+      return functools.partial(
+        query_function,
+        max_tokens=query_record.max_tokens)
     else:
-      return query_function
+      return functools.partial(
+        query_function,
+        max_tokens=4096)
+
+  def temperature_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    return functools.partial(
+        query_function,
+        temperature=query_record.temperature)
+
+  def stop_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    if isinstance(query_record.stop, str):
+      return functools.partial(
+          query_function,
+          stop_sequences=[query_record.stop])
+    else:
+      return functools.partial(
+          query_function,
+          stop_sequences=query_record.stop)
 
   def json_feature_mapping(
       self,
       query_function: Callable,
       query_record: types.QueryRecord):
     raise Exception(
-          f'{query_record.provider_model.model} does not support JSON '
-          'response format.')
+          'JSON response format is not supported for Claude. Code should '
+          'never reach here.')
 
   def json_schema_feature_mapping(
       self,
@@ -87,45 +130,15 @@ class ClaudeConnector(model_connector.ProviderModelConnector):
         query_function,
         output_format=query_record.response_format.value.class_value)
 
-  def _feature_mapping(
+  def web_search_feature_mapping(
       self,
-      create: Callable,
-      query_record: types.QueryRecord) -> Callable:
-    provider_model = query_record.provider_model
-    create = functools.partial(
-        create, model=provider_model.provider_model_identifier)
-
-    # Note: Claude uses 'user' and 'assistant' as roles. 'system' is a
-    # different parameter.
-    query_messages = []
-    if query_record.prompt is not None:
-      query_messages.append({'role': 'user', 'content': query_record.prompt})
-    if query_record.messages is not None:
-      query_messages.extend(query_record.messages)
-    create = functools.partial(create, messages=query_messages)
-
-    if query_record.max_tokens is not None:
-      create = functools.partial(create, max_tokens=query_record.max_tokens)
-    else:
-      # Note: Claude models require a max_tokens parameter.
-      create = functools.partial(create, max_tokens=4096)
-    if query_record.temperature is not None:
-      create = functools.partial(create, temperature=query_record.temperature)
-    if query_record.stop is not None:
-      if isinstance(query_record.stop, str):
-        create = functools.partial(create, stop_sequences=[query_record.stop])
-      else:
-        create = functools.partial(create, stop_sequences=query_record.stop)
-    if query_record.web_search is not None:
-      create = functools.partial(create, tools=[{
-          "type": "web_search_20250305",
-          "name": "web_search",
-          "max_uses": 5
-      }])
-
-    create = self.add_system_and_response_format_params(create, query_record)
-
-    return create
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    return functools.partial(query_function, tools=[{
+        "type": "web_search_20250305",
+        "name": "web_search",
+        "max_uses": 5
+    }])
 
   def _extract_text_from_content(self, content_blocks) -> str:
     # Extract text from content blocks
@@ -165,9 +178,13 @@ class ClaudeConnector(model_connector.ProviderModelConnector):
 
   def generate_text_proc(
       self, query_record: types.QueryRecord) -> types.Response:
-    create = self._get_api_call_function(query_record)
+    create = self._get_api_call_function(query_record.chosen_endpoint)
 
-    create = self._feature_mapping(create, query_record)
+    provider_model = query_record.provider_model
+    create = functools.partial(
+        create, model=provider_model.provider_model_identifier)
+
+    create = self.add_features_to_query_function(create, query_record)
 
     response = create()
 
