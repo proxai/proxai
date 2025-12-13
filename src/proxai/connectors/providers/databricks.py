@@ -20,41 +20,89 @@ class DatabricksConnector(model_connector.ProviderModelConnector):
 
   def _get_api_call_function(
       self,
-      query_record: types.QueryRecord) -> Callable:
-    # Use beta.chat.completions.parse for Pydantic models
-    if (query_record.response_format is not None and
-        query_record.response_format.type ==
-        types.ResponseFormatType.PYDANTIC and
-        'response_format::pydantic' in
-        self.provider_model_config.features.supported):
+      chosen_endpoint: str) -> Callable:
+    if chosen_endpoint == 'chat.completions.create':
+      return functools.partial(self.api.chat.completions.create)
+    elif chosen_endpoint == 'beta.chat.completions.parse':
       return functools.partial(self.api.beta.chat.completions.parse)
     else:
-      return functools.partial(self.api.chat.completions.create)
+      raise Exception(f'Invalid endpoint: {chosen_endpoint}')
+
+  def prompt_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    return functools.partial(
+        query_function,
+        messages=[{'role': 'user', 'content': query_record.prompt}])
+
+  def messages_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    # Note: Databricks uses OpenAI-compatible API with 'system', 'user', and
+    # 'assistant' as roles.
+    # Some parameters may not work as expected for some models. For example,
+    # the system instruction doesn't have any effect on the completion for
+    # databricks-dbrx-instruct. But the stop parameter works as expected for
+    # this model. However, system instruction works for
+    # databricks-llama-2-70b-chat.
+    messages = query_function.keywords.get('messages')
+    if messages is None:
+      return functools.partial(
+          query_function,
+          messages=query_record.messages)
+    else:
+      messages = query_record.messages + messages
+      return functools.partial(
+          query_function,
+          messages=messages)
 
   def system_feature_mapping(
       self,
       query_function: Callable,
-      system_message: Optional[str] = None) -> Callable:
-    if system_message is None:
-      return query_function
+      query_record: types.QueryRecord) -> Callable:
     messages = query_function.keywords.get('messages')
     if messages is None:
       raise Exception('Set messages parameter before adding system message.')
-    messages.insert(0, {'role': 'system', 'content': system_message})
+    messages.insert(0, {'role': 'system', 'content': query_record.system})
     return functools.partial(query_function, messages=messages)
+
+  def max_tokens_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    return functools.partial(
+        query_function,
+        max_tokens=query_record.max_tokens)
+
+  def temperature_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    return functools.partial(
+        query_function,
+        temperature=query_record.temperature)
+
+  def stop_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    return functools.partial(
+        query_function,
+        stop=query_record.stop)
 
   def _add_json_guidance_to_user_message(
       self,
       query_function: Callable):
-    # NOTE: Some API's expects the JSON to be in the user message.
-    # This is weird and proxai's workaround to add JSON guidance to the user
-    # message.
+    # NOTE: Some Databricks models expect JSON guidance to be in the user message.
+    # This is a workaround to add JSON guidance to the user message.
     messages = query_function.keywords.get('messages')
     if messages is None:
-      raise Exception('Set messages parameter before adding system message.')
+      raise Exception('Set messages parameter before adding JSON guidance.')
     for message in messages:
       if message['role'] == 'user':
-        if 'json' not in message['content']:
+        if 'json' not in message['content'].lower():
           message['content'] = (
               f'{message["content"]}\n\nYou must respond with valid JSON.')
         break
@@ -81,42 +129,21 @@ class DatabricksConnector(model_connector.ProviderModelConnector):
       self,
       query_function: Callable,
       query_record: types.QueryRecord):
-    return functools.partial(
-        query_function,
-        response_format=query_record.response_format.value.class_value)
+    if query_record.chosen_endpoint == 'chat.completions.create':
+      raise Exception(
+          'Pydantic response format is not supported for '
+          'chat.completions.create. Code should never reach here.')
+    elif query_record.chosen_endpoint == 'beta.chat.completions.parse':
+      return functools.partial(
+          query_function,
+          response_format=query_record.response_format.value.class_value)
 
-  def _feature_mapping(
+  def web_search_feature_mapping(
       self,
-      create: Callable,
-      query_record: types.QueryRecord) -> Callable:
-    provider_model = query_record.provider_model
-    create = functools.partial(
-        create, model=provider_model.provider_model_identifier)
-
-    # Note: Databricks uses OpenAI-compatible API with 'system', 'user', and
-    # 'assistant' as roles.
-    # Some parameters may not work as expected for some models. For example,
-    # the system instruction doesn't have any effect on the completion for
-    # databricks-dbrx-instruct. But the stop parameter works as expected for
-    # this model. However, system instruction works for
-    # databricks-llama-2-70b-chat.
-    query_messages = []
-    if query_record.prompt != None:
-      query_messages.append({'role': 'user', 'content': query_record.prompt})
-    if query_record.messages != None:
-      query_messages.extend(query_record.messages)
-    create = functools.partial(create, messages=query_messages)
-
-    if query_record.max_tokens != None:
-      create = functools.partial(create, max_tokens=query_record.max_tokens)
-    if query_record.temperature != None:
-      create = functools.partial(create, temperature=query_record.temperature)
-    if query_record.stop != None:
-      create = functools.partial(create, stop=query_record.stop)
-
-    create = self.add_system_and_response_format_params(create, query_record)
-
-    return create
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    raise Exception(
+        'Web search is not supported for Databricks. Code should never reach here.')
 
   def format_text_response_from_provider(
       self,
@@ -140,13 +167,23 @@ class DatabricksConnector(model_connector.ProviderModelConnector):
       self,
       response: Any,
       query_record: types.QueryRecord) -> Any:
-    return response.choices[0].message.parsed
+    if query_record.chosen_endpoint == 'chat.completions.create':
+      raise Exception(
+          'Pydantic response format is not supported for '
+          'chat.completions.create. Code should never reach here.')
+    elif query_record.chosen_endpoint == 'beta.chat.completions.parse':
+      return response.choices[0].message.parsed
 
   def generate_text_proc(
-      self, query_record: types.QueryRecord) -> types.Response:
-    create = self._get_api_call_function(query_record)
+      self,
+      query_record: types.QueryRecord) -> types.Response:
+    create = self._get_api_call_function(query_record.chosen_endpoint)
 
-    create = self._feature_mapping(create, query_record)
+    provider_model = query_record.provider_model
+    create = functools.partial(
+        create, model=provider_model.provider_model_identifier)
+
+    create = self.add_features_to_query_function(create, query_record)
 
     response = create()
 
