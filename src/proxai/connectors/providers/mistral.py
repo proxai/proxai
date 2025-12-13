@@ -22,29 +22,80 @@ class MistralConnector(model_connector.ProviderModelConnector):
 
   def _get_api_call_function(
       self,
-      query_record: types.QueryRecord) -> Callable:
-    if (query_record.response_format is not None and
-        query_record.response_format.type ==
-        types.ResponseFormatType.PYDANTIC and
-        'response_format::pydantic' in
-        self.provider_model_config.features.supported):
-      # Use chat.parse for Pydantic models
+      chosen_endpoint: str) -> Callable:
+    if chosen_endpoint == 'chat.complete':
+      return functools.partial(self.api.chat.complete)
+    elif chosen_endpoint == 'chat.parse':
       return functools.partial(self.api.chat.parse)
     else:
-      # Use chat.complete for other formats
-      return functools.partial(self.api.chat.complete)
+      raise Exception(f'Invalid endpoint: {chosen_endpoint}')
+
+  def prompt_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    return functools.partial(
+        query_function,
+        messages=[{'role': 'user', 'content': query_record.prompt}])
+
+  def messages_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    # Note: Mistral uses 'system', 'user', and 'assistant' as roles.
+    converted_messages = []
+    for message in query_record.messages:
+      if message['role'] == 'user':
+        converted_messages.append(
+            {'role': 'user', 'content': message['content']})
+      elif message['role'] == 'assistant':
+        converted_messages.append(
+            {'role': 'assistant', 'content': message['content']})
+
+    messages = query_function.keywords.get('messages')
+    if messages is None:
+      return functools.partial(
+          query_function,
+          messages=converted_messages)
+    else:
+      messages = converted_messages + messages
+      return functools.partial(
+          query_function,
+          messages=messages)
 
   def system_feature_mapping(
       self,
       query_function: Callable,
-      system_message: Optional[str] = None) -> Callable:
-    if system_message is None:
-      return query_function
+      query_record: types.QueryRecord) -> Callable:
     messages = query_function.keywords.get('messages')
     if messages is None:
       raise Exception('Set messages parameter before adding system message.')
-    messages.insert(0, {'role': 'system', 'content': system_message})
+    messages.insert(0, {'role': 'system', 'content': query_record.system})
     return functools.partial(query_function, messages=messages)
+
+  def max_tokens_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    return functools.partial(
+        query_function,
+        max_tokens=query_record.max_tokens)
+
+  def temperature_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    return functools.partial(
+        query_function,
+        temperature=query_record.temperature)
+
+  def stop_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    return functools.partial(
+        query_function,
+        stop=query_record.stop)
 
   def json_feature_mapping(
       self,
@@ -58,57 +109,29 @@ class MistralConnector(model_connector.ProviderModelConnector):
       self,
       query_function: Callable,
       query_record: types.QueryRecord):
-    schema_value = query_record.response_format.value
-    json_schema_obj = schema_value['json_schema']
-    schema_name = json_schema_obj.get('name', 'response_schema')
-    raw_schema = json_schema_obj.get('schema', json_schema_obj)
-    json_schema = JSONSchema(
-        name=schema_name,
-        schema=raw_schema)
     return functools.partial(
         query_function,
-        response_format=ResponseFormat(
-            type='json_schema',
-            json_schema=json_schema))
+        response_format=query_record.response_format.value)
 
   def pydantic_feature_mapping(
       self,
       query_function: Callable,
       query_record: types.QueryRecord):
-    return functools.partial(
-        query_function,
-        response_format=query_record.response_format.value.class_value)
+    if query_record.chosen_endpoint == 'chat.complete':
+      raise Exception(
+          'Pydantic response format is not supported for '
+          'chat.complete. Code should never reach here.')
+    elif query_record.chosen_endpoint == 'chat.parse':
+      return functools.partial(
+          query_function,
+          response_format=query_record.response_format.value.class_value)
 
-  def _feature_mapping(
+  def web_search_feature_mapping(
       self,
-      create: Callable,
-      query_record: types.QueryRecord) -> Callable:
-    provider_model = query_record.provider_model
-    create = functools.partial(
-        create, model=provider_model.provider_model_identifier)
-
-    # Note: Mistral uses 'system', 'user', and 'assistant' as roles.
-    query_messages = []
-    if query_record.prompt is not None:
-      query_messages.append({'role': 'user', 'content': query_record.prompt})
-    if query_record.messages is not None:
-      for message in query_record.messages:
-        if message['role'] == 'user':
-          query_messages.append({'role': 'user', 'content': message['content']})
-        if message['role'] == 'assistant':
-          query_messages.append({'role': 'assistant', 'content': message['content']})
-    create = functools.partial(create, messages=query_messages)
-
-    if query_record.max_tokens is not None:
-      create = functools.partial(create, max_tokens=query_record.max_tokens)
-    if query_record.temperature is not None:
-      create = functools.partial(create, temperature=query_record.temperature)
-    if query_record.stop is not None:
-      create = functools.partial(create, stop=query_record.stop)
-
-    create = self.add_system_and_response_format_params(create, query_record)
-
-    return create
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    raise Exception(
+        'Web search is not supported for Mistral. Code should never reach here.')
 
   def format_text_response_from_provider(
       self,
@@ -132,13 +155,23 @@ class MistralConnector(model_connector.ProviderModelConnector):
       self,
       response: Any,
       query_record: types.QueryRecord) -> Any:
-    return response.choices[0].message.parsed
+    if query_record.chosen_endpoint == 'chat.complete':
+      raise Exception(
+          'Pydantic response format is not supported for '
+          'chat.complete. Code should never reach here.')
+    elif query_record.chosen_endpoint == 'chat.parse':
+      return response.choices[0].message.parsed
 
   def generate_text_proc(
-      self, query_record: types.QueryRecord) -> types.Response:
-    create = self._get_api_call_function(query_record)
+      self,
+      query_record: types.QueryRecord) -> types.Response:
+    create = self._get_api_call_function(query_record.chosen_endpoint)
 
-    create = self._feature_mapping(create, query_record)
+    provider_model = query_record.provider_model
+    create = functools.partial(
+        create, model=provider_model.provider_model_identifier)
+
+    create = self.add_features_to_query_function(create, query_record)
 
     response = create()
 

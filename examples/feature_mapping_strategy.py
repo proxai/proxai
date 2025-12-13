@@ -342,13 +342,17 @@ def main():
   # ]
   # provider_model = ('gemini', 'gemini-2.5-flash')
 
-  endpoints = [
-      'chat.completions.create',
-      'beta.chat.completions.parse',
-  ]
-  provider_model = ('grok', 'grok-3-fast-beta')
+  # endpoints = [
+  #     'chat.completions.create',
+  #     'beta.chat.completions.parse',
+  # ]
+  # provider_model = ('grok', 'grok-3-fast-beta')
 
-  # provider_model = ('mistral', 'mistral-small')
+  endpoints = [
+      'chat.complete',
+      'chat.parse',
+  ]
+  provider_model = ('mistral', 'mistral-small')
   # provider_model = ('cohere', 'command-a')
   # provider_model = ('deepseek', 'deepseek-v3')
   # provider_model = ('databricks', 'meta-llama-3-1-8b-it')
