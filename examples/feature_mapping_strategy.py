@@ -348,12 +348,17 @@ def main():
   # ]
   # provider_model = ('grok', 'grok-3-fast-beta')
 
+  # endpoints = [
+  #     'chat.complete',
+  #     'chat.parse',
+  # ]
+  # provider_model = ('mistral', 'mistral-small')
+
   endpoints = [
-      'chat.complete',
-      'chat.parse',
+      'chat',
   ]
-  provider_model = ('mistral', 'mistral-small')
-  # provider_model = ('cohere', 'command-a')
+  provider_model = ('cohere', 'command-a')
+
   # provider_model = ('deepseek', 'deepseek-v3')
   # provider_model = ('databricks', 'meta-llama-3-1-8b-it')
   # provider_model = ('huggingface', 'deepseek-v3')
