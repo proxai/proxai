@@ -174,8 +174,16 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
       self,
       query_function: Callable,
       query_record: types.QueryRecord):
-    raise Exception(
-        'Web search is not supported for OpenAI. Code should never reach here.')
+    if (query_record.chosen_endpoint == 'chat.completions.create' or
+        query_record.chosen_endpoint == 'beta.chat.completions.parse'):
+      raise Exception(
+          'Web search is not supported for '
+          'chat.completions.create or beta.chat.completions.parse. '
+          'Code should never reach here.')
+    elif query_record.chosen_endpoint == 'responses.create':
+      return functools.partial(
+          query_function,
+          tools=[{"type": "web_search"}])
 
   def format_text_response_from_provider(
       self,
