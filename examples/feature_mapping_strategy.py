@@ -354,12 +354,15 @@ def main():
   # ]
   # provider_model = ('mistral', 'mistral-small')
 
-  endpoints = [
-      'chat',
-  ]
-  provider_model = ('cohere', 'command-a')
+  # endpoints = [
+  #     'chat',
+  # ]
+  # provider_model = ('cohere', 'command-a')
 
-  # provider_model = ('deepseek', 'deepseek-v3')
+  endpoints = [
+    'chat.completions.create',
+  ]
+  provider_model = ('deepseek', 'deepseek-v3')
   # provider_model = ('databricks', 'meta-llama-3-1-8b-it')
   # provider_model = ('huggingface', 'deepseek-v3')
 
