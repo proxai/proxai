@@ -321,12 +321,12 @@ def generate_config_for_model(
 
 
 def main():
-  # endpoints = [
-  #     'chat.completions.create',
-  #     'beta.chat.completions.parse',
-  #     'responses.create',
-  # ]
-  # provider_model = ('openai', 'gpt-4o-mini')
+  endpoints = [
+      'chat.completions.create',
+      'beta.chat.completions.parse',
+      'responses.create',
+  ]
+  provider_model = ('openai', 'gpt-4o-mini')
   # provider_model = ('openai', 'gpt-5.1')
 
   # endpoints = [
@@ -370,25 +370,25 @@ def main():
   # ]
   # provider_model = ('databricks', 'meta-llama-3-1-8b-it')
 
-  endpoints = [
-    'generate_content',
-  ]
-  provider_model = ('huggingface', 'deepseek-v3')
+  # endpoints = [
+  #   'generate_content',
+  # ]
+  # provider_model = ('huggingface', 'deepseek-v3')
 
   generate_config_for_model(
       provider_model=provider_model,
       endpoints=endpoints,
       test_features=[
-          'prompt',
-          'messages',
-          'system',
-          'max_tokens',
-          'temperature',
-          'stop',
-          'response_format::text',
-          'response_format::json',
-          'response_format::json_schema',
-          'response_format::pydantic',
+          # 'prompt',
+          # 'messages',
+          # 'system',
+          # 'max_tokens',
+          # 'temperature',
+          # 'stop',
+          # 'response_format::text',
+          # 'response_format::json',
+          # 'response_format::json_schema',
+          # 'response_format::pydantic',
           'web_search',
       ],
       verbose=True,
