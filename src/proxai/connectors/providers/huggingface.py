@@ -66,20 +66,74 @@ class HuggingFaceConnector(model_connector.ProviderModelConnector):
 
   def _get_api_call_function(
       self,
+      chosen_endpoint: str) -> Callable:
+    if chosen_endpoint == 'generate_content':
+      return functools.partial(self.api.generate_content)
+    else:
+      raise Exception(f'Invalid endpoint: {chosen_endpoint}')
+
+  def prompt_feature_mapping(
+      self,
+      query_function: Callable,
       query_record: types.QueryRecord) -> Callable:
-    return functools.partial(self.api.generate_content)
+    return functools.partial(
+        query_function,
+        messages=[{'role': 'user', 'content': query_record.prompt}])
+
+  def messages_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    messages = query_function.keywords.get('messages')
+    if messages is None:
+      return functools.partial(
+          query_function,
+          messages=query_record.messages)
+    else:
+      messages = query_record.messages + messages
+      return functools.partial(
+          query_function,
+          messages=messages)
 
   def system_feature_mapping(
       self,
       query_function: Callable,
-      system_message: Optional[str] = None) -> Callable:
-    if system_message is None:
-      return query_function
+      query_record: types.QueryRecord) -> Callable:
     messages = query_function.keywords.get('messages')
     if messages is None:
       raise Exception('Set messages parameter before adding system message.')
-    messages.insert(0, {'role': 'system', 'content': system_message})
+    messages.insert(0, {'role': 'system', 'content': query_record.system})
     return functools.partial(query_function, messages=messages)
+
+  def max_tokens_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    return functools.partial(
+        query_function,
+        max_tokens=query_record.max_tokens)
+
+  def temperature_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    return functools.partial(
+        query_function,
+        temperature=query_record.temperature)
+
+  def stop_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    # Note: HuggingFace API expects stop to be a list.
+    if isinstance(query_record.stop, str):
+      return functools.partial(
+          query_function,
+          stop=[query_record.stop])
+    else:
+      return functools.partial(
+          query_function,
+          stop=query_record.stop)
 
   def json_feature_mapping(
       self,
@@ -101,6 +155,8 @@ class HuggingFaceConnector(model_connector.ProviderModelConnector):
       self,
       query_function: Callable,
       query_record: types.QueryRecord):
+    # Note: HuggingFace doesn't have native pydantic support.
+    # We use json_schema format and parse manually in format_pydantic_response.
     pydantic_class = query_record.response_format.value.class_value
     schema = pydantic_class.model_json_schema()
     return functools.partial(
@@ -114,39 +170,19 @@ class HuggingFaceConnector(model_connector.ProviderModelConnector):
             }
         })
 
-  def _feature_mapping(
+  def web_search_feature_mapping(
       self,
-      create: Callable,
-      query_record: types.QueryRecord) -> Callable:
-    provider_model = query_record.provider_model
-    create = functools.partial(
-        create, model=provider_model.provider_model_identifier)
-
-    query_messages = []
-    if query_record.prompt is not None:
-      query_messages.append({'role': 'user', 'content': query_record.prompt})
-    if query_record.messages is not None:
-      query_messages.extend(query_record.messages)
-    create = functools.partial(create, messages=query_messages)
-
-    if query_record.max_tokens is not None:
-      create = functools.partial(create, max_tokens=query_record.max_tokens)
-    if query_record.temperature is not None:
-      create = functools.partial(create, temperature=query_record.temperature)
-    if query_record.stop is not None:
-      if isinstance(query_record.stop, str):
-        create = functools.partial(create, stop=[query_record.stop])
-      else:
-        create = functools.partial(create, stop=query_record.stop)
-
-    create = self.add_system_and_response_format_params(create, query_record)
-
-    return create
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    raise Exception(
+        'Web search is not supported for HuggingFace. Code should never reach here.')
 
   def format_text_response_from_provider(
       self,
       response: Any,
       query_record: types.QueryRecord) -> str:
+    # Note: HuggingFace response is already extracted as a string
+    # in _HuggingFaceRequest.generate_content
     return response
 
   def format_json_response_from_provider(
@@ -174,10 +210,15 @@ class HuggingFaceConnector(model_connector.ProviderModelConnector):
         json.dumps(self._extract_json_from_text(response)))
 
   def generate_text_proc(
-      self, query_record: types.QueryRecord) -> types.Response:
-    create = self._get_api_call_function(query_record)
+      self,
+      query_record: types.QueryRecord) -> types.Response:
+    create = self._get_api_call_function(query_record.chosen_endpoint)
 
-    create = self._feature_mapping(create, query_record)
+    provider_model = query_record.provider_model
+    create = functools.partial(
+        create, model=provider_model.provider_model_identifier)
+
+    create = self.add_features_to_query_function(create, query_record)
 
     response = create()
 

@@ -364,12 +364,16 @@ def main():
   # ]
   # provider_model = ('deepseek', 'deepseek-v3')
 
+  # endpoints = [
+  #     'chat.completions.create',
+  #     'beta.chat.completions.parse',
+  # ]
+  # provider_model = ('databricks', 'meta-llama-3-1-8b-it')
+
   endpoints = [
-      'chat.completions.create',
-      'beta.chat.completions.parse',
+    'generate_content',
   ]
-  provider_model = ('databricks', 'meta-llama-3-1-8b-it')
-  # provider_model = ('huggingface', 'deepseek-v3')
+  provider_model = ('huggingface', 'deepseek-v3')
 
   generate_config_for_model(
       provider_model=provider_model,
