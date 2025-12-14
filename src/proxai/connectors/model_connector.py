@@ -371,7 +371,7 @@ class ProviderModelConnector(state_controller.StateControlled):
   def _sanitize_system_feature(
       self,
       query_record: types.QueryRecord):
-    if query_record.chosen_endpoint not in self.provider_model_config.features[
+    if query_record.chosen_endpoint in self.provider_model_config.features[
         'system'].supported:
       return query_record
     query_record.prompt = f'{query_record.system}\n\n{query_record.prompt}'
@@ -582,49 +582,6 @@ class ProviderModelConnector(state_controller.StateControlled):
         query_function,
         system_message=system_message)
     return query_function
-
-  def add_system_and_response_format_params(
-      self,
-      query_function: Callable,
-      query_record: types.QueryRecord):
-    raise Exception('Not supported anymore.')
-    if query_record.response_format is None:
-      return self.system_feature_mapping(
-          query_function,
-          system_message=query_record.system)
-
-    if query_record.response_format.type == types.ResponseFormatType.TEXT:
-      return self.system_feature_mapping(
-          query_function,
-          system_message=query_record.system)
-
-    feature_id = (
-        f'response_format::{query_record.response_format.type.value.lower()}')
-
-    if feature_id in self.provider_model_config.features.supported:
-      return self._add_supported_system_and_response_format_params(
-          query_function,
-          query_record=query_record)
-    elif feature_id in self.provider_model_config.features.best_effort:
-      if (query_record.feature_mapping_strategy ==
-          types.FeatureMappingStrategy.STRICT):
-        raise Exception(
-            f'{query_record.provider_model.model} does not support '
-            f'{feature_id} in STRICT mode.')
-
-      elif (query_record.feature_mapping_strategy ==
-            types.FeatureMappingStrategy.BEST_EFFORT):
-        return self._add_best_effort_system_and_response_format_params(
-            query_function,
-            query_record=query_record)
-
-    elif feature_id in self.provider_model_config.features.not_supported:
-      raise Exception(
-          f'{query_record.provider_model.model} does not support {feature_id}.')
-    else:
-      raise Exception(
-          f'{feature_id} not found in provider model config features.\n'
-          f'provider model config: {self.provider_model_config}')
 
   def _temp_response_format_text_feature_mapping(
       self,

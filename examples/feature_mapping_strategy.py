@@ -321,12 +321,12 @@ def generate_config_for_model(
 
 
 def main():
-  endpoints = [
-      'chat.completions.create',
-      'beta.chat.completions.parse',
-      'responses.create',
-  ]
-  provider_model = ('openai', 'gpt-4o-mini')
+  # endpoints = [
+  #     'chat.completions.create',
+  #     'beta.chat.completions.parse',
+  #     'responses.create',
+  # ]
+  # provider_model = ('openai', 'gpt-4o-mini')
   # provider_model = ('openai', 'gpt-5.1')
 
   # endpoints = [
@@ -342,11 +342,10 @@ def main():
   # ]
   # provider_model = ('gemini', 'gemini-2.5-flash')
 
-  # endpoints = [
-  #     'chat.completions.create',
-  #     'beta.chat.completions.parse',
-  # ]
-  # provider_model = ('grok', 'grok-3-fast-beta')
+  endpoints = [
+      'chat.create',
+  ]
+  provider_model = ('grok', 'grok-3-fast-beta')
 
   # endpoints = [
   #     'chat.complete',
@@ -392,7 +391,7 @@ def main():
           'web_search',
       ],
       verbose=True,
-      verbose_test_feature_compatibility=False,
+      verbose_test_feature_compatibility=True,
       verbose_find_endpoint_minimum_required_features=False,
   )
 
