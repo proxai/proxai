@@ -251,7 +251,7 @@ def decode_featured_models_type(
         provider_model_identifier_records):
       provider_model_identifiers.append(
           decode_provider_model_identifier(provider_model_identifier_record))
-    featured_models[provider] = tuple(provider_model_identifiers)
+    featured_models[provider] = provider_model_identifiers
   return featured_models
 
 
@@ -281,7 +281,7 @@ def decode_models_by_call_type_type(
           provider_model_identifier_records):
         provider_model_identifiers.append(
             decode_provider_model_identifier(provider_model_identifier_record))
-      provider_dict[provider] = tuple(provider_model_identifiers)
+      provider_dict[provider] = provider_model_identifiers
     models_by_call_type[call_type] = provider_dict
   return models_by_call_type
 
@@ -307,7 +307,7 @@ def decode_models_by_size_type(
         provider_model_identifier_records):
       provider_model_identifiers.append(
           decode_provider_model_identifier(provider_model_identifier_record))
-    models_by_size[model_size] = tuple(provider_model_identifiers)
+    models_by_size[model_size] = provider_model_identifiers
   return models_by_size
 
 
@@ -326,7 +326,7 @@ def decode_default_model_priority_list_type(
   for provider_model_identifier_record in record:
     default_model_priority_list.append(
         decode_provider_model_identifier(provider_model_identifier_record))
-  return tuple(default_model_priority_list)
+  return default_model_priority_list
 
 
 def encode_model_configs_schema_metadata_type(

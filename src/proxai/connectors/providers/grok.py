@@ -2,7 +2,9 @@ from typing import Any, Callable, Optional
 import functools
 import json
 import os
-from openai import OpenAI
+from xai_sdk import Client
+from xai_sdk.chat import user, system, assistant
+from xai_sdk.tools import web_search
 import proxai.types as types
 import proxai.connectors.providers.openai_mock as openai_mock
 import proxai.connectors.model_connector as model_connector
@@ -13,9 +15,7 @@ class GrokConnector(model_connector.ProviderModelConnector):
     return 'grok'
 
   def init_model(self):
-    return OpenAI(
-        api_key=os.getenv("XAI_API_KEY"),
-        base_url="https://api.x.ai/v1")
+    return Client(api_key=os.getenv("XAI_API_KEY"))
 
   def init_mock_model(self):
     return openai_mock.OpenAIMock()
@@ -23,10 +23,8 @@ class GrokConnector(model_connector.ProviderModelConnector):
   def _get_api_call_function(
       self,
       chosen_endpoint: str) -> Callable:
-    if chosen_endpoint == 'chat.completions.create':
-      return functools.partial(self.api.chat.completions.create)
-    elif chosen_endpoint == 'beta.chat.completions.parse':
-      return functools.partial(self.api.beta.chat.completions.parse)
+    if chosen_endpoint == 'chat.create':
+      return functools.partial(self.api.chat.create)
     else:
       raise Exception(f'Invalid endpoint: {chosen_endpoint}')
 
@@ -109,66 +107,108 @@ class GrokConnector(model_connector.ProviderModelConnector):
       self,
       query_function: Callable,
       query_record: types.QueryRecord):
-    return functools.partial(
-        query_function,
-        response_format={'type': 'json_object'})
+    raise Exception(
+        'JSON response format is not supported for Grok. '
+        'Code should never reach here.')
 
   def json_schema_feature_mapping(
       self,
       query_function: Callable,
       query_record: types.QueryRecord):
-    return functools.partial(
-        query_function,
-        response_format=query_record.response_format.value)
+    raise Exception(
+        'JSON schema response format is not supported for Grok. '
+        'Code should never reach here.')
 
   def pydantic_feature_mapping(
       self,
       query_function: Callable,
       query_record: types.QueryRecord):
-    if query_record.chosen_endpoint == 'chat.completions.create':
-      raise Exception(
-          'Pydantic response format is not supported for '
-          'chat.completions.create. Code should never reach here.')
-    elif query_record.chosen_endpoint == 'beta.chat.completions.parse':
-      return functools.partial(
-          query_function,
-          response_format=query_record.response_format.value.class_value)
+    return query_function
 
   def web_search_feature_mapping(
       self,
       query_function: Callable,
       query_record: types.QueryRecord):
-    raise Exception(
-        'Web search is not supported for Grok. Code should never reach here.')
+    return functools.partial(
+        query_function,
+        tools=[web_search()])
 
   def format_text_response_from_provider(
       self,
       response: Any,
       query_record: types.QueryRecord) -> str:
-    return response.choices[0].message.content
+    return response.content
 
   def format_json_response_from_provider(
       self,
       response: Any,
       query_record: types.QueryRecord) -> dict:
-    return self._extract_json_from_text(response.choices[0].message.content)
+    raise Exception(
+        'JSON response format is not supported for Grok. '
+        'Code should never reach here.')
 
   def format_json_schema_response_from_provider(
       self,
       response: Any,
       query_record: types.QueryRecord) -> dict:
-    return self._extract_json_from_text(response.choices[0].message.content)
+    raise Exception(
+        'JSON schema response format is not supported for Grok. '
+        'Code should never reach here.')
 
   def format_pydantic_response_from_provider(
       self,
       response: Any,
       query_record: types.QueryRecord) -> Any:
-    if query_record.chosen_endpoint == 'chat.completions.create':
-      raise Exception(
-          'Pydantic response format is not supported for '
-          'chat.completions.create. Code should never reach here.')
-    elif query_record.chosen_endpoint == 'beta.chat.completions.parse':
-      return response.choices[0].message.parsed
+    return response[1]
+
+  def _grok_chat_api_mapping(
+      self,
+      chat_function: Callable,
+      query_record: types.QueryRecord) -> dict:
+
+    def _collect_params(**kwargs) -> dict:
+      return kwargs
+    params = self.add_features_to_query_function(
+        functools.partial(_collect_params), query_record)()
+
+    if params.get('temperature') is not None:
+      chat_function = functools.partial(
+          chat_function, temperature=params['temperature'])
+    if params.get('stop') is not None:
+      chat_function = functools.partial(
+          chat_function, stop=params['stop'])
+    if params.get('tools') is not None:
+      chat_function = functools.partial(
+          chat_function, tools=params['tools'])
+
+    chat = chat_function()
+
+    if params.get('system') is not None:
+      chat.append(system(params['system']))
+    if params.get('messages') is not None:
+      for message in params['messages']:
+        if message['role'] == 'system':
+          chat.append(system(message['content']))
+        if message['role'] == 'user':
+          chat.append(user(message['content']))
+        elif message['role'] == 'assistant':
+          chat.append(assistant(message['content']))
+    if params.get('prompt') is not None:
+      chat.append(user(params['prompt']))
+
+    if query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
+      chat_sample = functools.partial(
+          chat.parse,
+          query_record.response_format.value.class_value)
+    else:
+      chat_sample = functools.partial(chat.sample)
+
+    if params.get('max_tokens') is not None:
+      chat_sample = functools.partial(
+          chat_sample, max_tokens=params['max_tokens'])
+
+    return chat_sample
+
 
   def generate_text_proc(
       self,
@@ -179,7 +219,7 @@ class GrokConnector(model_connector.ProviderModelConnector):
     create = functools.partial(
         create, model=provider_model.provider_model_identifier)
 
-    create = self.add_features_to_query_function(create, query_record)
+    create = self._grok_chat_api_mapping(create, query_record)
 
     response = create()
 
