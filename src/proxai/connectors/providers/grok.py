@@ -32,76 +32,84 @@ class GrokConnector(model_connector.ProviderModelConnector):
       self,
       query_function: Callable,
       query_record: types.QueryRecord) -> Callable:
+    params_after_construction = query_function.keywords.get(
+        'params_after_construction', {})
+    messages = params_after_construction.get('messages', [])
+    messages.append(user(query_record.prompt))
+    params_after_construction['messages'] = messages
     return functools.partial(
         query_function,
-        messages=[{'role': 'user', 'content': query_record.prompt}])
+        params_after_construction=params_after_construction)
 
   def messages_feature_mapping(
       self,
       query_function: Callable,
       query_record: types.QueryRecord) -> Callable:
-    messages = query_function.keywords.get('messages')
-    if messages is None:
-      return functools.partial(
-          query_function,
-          messages=query_record.messages)
-    else:
-      messages = query_record.messages + messages
-      return functools.partial(
-          query_function,
-          messages=messages)
+    params_after_construction = query_function.keywords.get(
+        'params_after_construction', {})
+    existing_messages = params_after_construction.get('messages', [])
+
+    messages = []
+    for message in query_record.messages:
+      if message['role'] == 'user':
+        messages.append(user(message['content']))
+      elif message['role'] == 'assistant':
+        messages.append(assistant(message['content']))
+      elif message['role'] == 'system':
+        messages.append(system(message['content']))
+
+    params_after_construction['messages'] = existing_messages + messages
+    return functools.partial(
+        query_function,
+        params_after_construction=params_after_construction)
 
   def system_feature_mapping(
       self,
       query_function: Callable,
       query_record: types.QueryRecord) -> Callable:
-    messages = query_function.keywords.get('messages')
+    params_after_construction = query_function.keywords.get(
+        'params_after_construction', {})
+    messages = params_after_construction.get('messages', None)
     if messages is None:
       raise Exception('Set messages parameter before adding system message.')
-    messages.insert(0, {'role': 'system', 'content': query_record.system})
-    return functools.partial(query_function, messages=messages)
+    messages.append(system(query_record.system))
+    params_after_construction['messages'] = messages
+    return functools.partial(
+        query_function,
+        params_after_construction=params_after_construction)
 
   def max_tokens_feature_mapping(
       self,
       query_function: Callable,
       query_record: types.QueryRecord) -> Callable:
-    # Note: There is a bug in the grok api for grok-3-mini-beta and
-    # grok-3-mini-fast-beta that if max_completion_tokens is not set,
-    # the response is empty string.
-    # TODO: Remove this workaround once the bug is fixed.
-    if query_record.max_tokens is not None:
-      return functools.partial(
-          query_function,
-          max_completion_tokens=query_record.max_tokens)
-    elif self.provider_model.model in [
-        'grok-3-mini-beta', 'grok-3-mini-fast-beta']:
-      if (query_record.feature_mapping_strategy ==
-          types.FeatureMappingStrategy.BEST_EFFORT):
-        return functools.partial(
-            query_function,
-            max_completion_tokens=1000000)
-    return query_function
+    params_at_construction = query_function.keywords.get(
+        'params_at_construction', {})
+    params_at_construction['max_tokens'] = query_record.max_tokens
+    return functools.partial(
+        query_function,
+        params_at_construction=params_at_construction)
 
   def temperature_feature_mapping(
       self,
       query_function: Callable,
       query_record: types.QueryRecord) -> Callable:
+    params_at_construction = query_function.keywords.get(
+        'params_at_construction', {})
+    params_at_construction['temperature'] = query_record.temperature
     return functools.partial(
         query_function,
-        temperature=query_record.temperature)
+        params_at_construction=params_at_construction)
 
   def stop_feature_mapping(
       self,
       query_function: Callable,
       query_record: types.QueryRecord) -> Callable:
-    if isinstance(query_record.stop, str):
-      return functools.partial(
-          query_function,
-          stop=[query_record.stop])
-    else:
-      return functools.partial(
-          query_function,
-          stop=query_record.stop)
+    params_at_construction = query_function.keywords.get(
+        'params_at_construction', {})
+    params_at_construction['stop'] = query_record.stop
+    return functools.partial(
+        query_function,
+        params_at_construction=params_at_construction)
 
   def json_feature_mapping(
       self,
@@ -129,9 +137,12 @@ class GrokConnector(model_connector.ProviderModelConnector):
       self,
       query_function: Callable,
       query_record: types.QueryRecord):
+    params_at_construction = query_function.keywords.get(
+        'params_at_construction', {})
+    params_at_construction['tools'] = [web_search()]
     return functools.partial(
         query_function,
-        tools=[web_search()])
+        params_at_construction=params_at_construction)
 
   def format_text_response_from_provider(
       self,
@@ -163,52 +174,48 @@ class GrokConnector(model_connector.ProviderModelConnector):
 
   def _grok_chat_api_mapping(
       self,
-      chat_function: Callable,
+      create: Callable,
       query_record: types.QueryRecord) -> dict:
 
-    def _collect_params(**kwargs) -> dict:
-      return kwargs
-    params = self.add_features_to_query_function(
-        functools.partial(_collect_params), query_record)()
+      params_at_construction = None
+      params_after_construction = None
 
-    if params.get('temperature') is not None:
-      chat_function = functools.partial(
-          chat_function, temperature=params['temperature'])
-    if params.get('stop') is not None:
-      chat_function = functools.partial(
-          chat_function, stop=params['stop'])
-    if params.get('tools') is not None:
-      chat_function = functools.partial(
-          chat_function, tools=params['tools'])
+      if 'params_at_construction' in create.keywords:
+        params_at_construction = create.keywords.get(
+            'params_at_construction')
+        del create.keywords['params_at_construction']
 
-    chat = chat_function()
+      if 'params_after_construction' in create.keywords:
+        params_after_construction = create.keywords.get(
+            'params_after_construction')
+        del create.keywords['params_after_construction']
 
-    if params.get('system') is not None:
-      chat.append(system(params['system']))
-    if params.get('messages') is not None:
-      for message in params['messages']:
-        if message['role'] == 'system':
-          chat.append(system(message['content']))
-        if message['role'] == 'user':
-          chat.append(user(message['content']))
-        elif message['role'] == 'assistant':
-          chat.append(assistant(message['content']))
-    if params.get('prompt') is not None:
-      chat.append(user(params['prompt']))
+      # Responsible for temperature, stop, tools.
+      if params_at_construction:
+        create = functools.partial(create, **params_at_construction)
+      create = create()
 
-    if query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
-      chat_sample = functools.partial(
-          chat.parse,
-          query_record.response_format.value.class_value)
-    else:
-      chat_sample = functools.partial(chat.sample)
+      # Responsible for messages, prompt, system.
+      if params_after_construction:
+        messages = params_after_construction.get('messages', [])
+        if messages:
+          for message in messages:
+            create.append(message)
+        del params_after_construction['messages']
 
-    if params.get('max_tokens') is not None:
-      chat_sample = functools.partial(
-          chat_sample, max_tokens=params['max_tokens'])
+      # Responsible for response format text, json, json schema, pydantic.
+      if query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
+        create = functools.partial(
+            create.parse,
+            query_record.response_format.value.class_value)
+      else:
+        create = functools.partial(create.sample)
 
-    return chat_sample
+      # Responsible for max_tokens.
+      if params_after_construction:
+        create = functools.partial(create, **params_after_construction)
 
+      return create
 
   def generate_text_proc(
       self,
@@ -218,6 +225,8 @@ class GrokConnector(model_connector.ProviderModelConnector):
     provider_model = query_record.provider_model
     create = functools.partial(
         create, model=provider_model.provider_model_identifier)
+
+    create = self.add_features_to_query_function(create, query_record)
 
     create = self._grok_chat_api_mapping(create, query_record)
 

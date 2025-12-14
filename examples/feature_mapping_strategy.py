@@ -316,7 +316,7 @@ def generate_config_for_model(
         result_configs[test_feature]['not_supported'].append(endpoint)
     if verbose:
       pprint({test_feature: result_configs[test_feature]})
-      input('Press Enter to continue...')
+      # input('Press Enter to continue...')
   return result_configs
 
 
