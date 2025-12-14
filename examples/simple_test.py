@@ -9,8 +9,8 @@ from dataclasses import asdict
 def simple_model_test():
   random_int = random.randint(1, 1000000)
   result = px.generate_text(
-      'This is a test message to check if the cache is working or '
-      f'not. {random_int}',
+      'When is the first galatasaray and fenerbahce?',
+      web_search=True,
       extensive_return=True)
   pprint(asdict(result))
 
@@ -68,8 +68,8 @@ def check_health():
 
 
 def main():
-  # simple_model_test()
-  simple_cache_test()
+  simple_model_test()
+  # simple_cache_test()
   # list_models()
   # check_health()
 
