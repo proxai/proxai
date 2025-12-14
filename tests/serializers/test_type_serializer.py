@@ -35,7 +35,7 @@ def _get_provider_model_pricing_type_options():
        'per_query_token_cost': 0.5},]
 
 
-def _get_provider_model_feature_type_options():
+def _get_endpoint_feature_info_type_options():
   return [
       {},
       {'supported': []},
@@ -88,8 +88,9 @@ def _get_provider_model_config_type_options():
       {'pricing': types.ProviderModelPricingType(
           per_response_token_cost=0.001,
           per_query_token_cost=0.002)},
-      {'features': types.ProviderModelFeatureType(
-          not_supported=['feature1'])},
+      {'features': {
+          types.FeatureNameType.PROMPT: types.EndpointFeatureInfoType(
+              not_supported=['feature1'])}},
       {'metadata': types.ProviderModelMetadataType(
           call_type=types.CallType.GENERATE_TEXT,
           is_featured=True)},
@@ -97,8 +98,9 @@ def _get_provider_model_config_type_options():
        'pricing': types.ProviderModelPricingType(
           per_response_token_cost=0.003,
           per_query_token_cost=0.001),
-       'features': types.ProviderModelFeatureType(
-          not_supported=['feature1', 'feature2']),
+       'features': {
+          types.FeatureNameType.PROMPT: types.EndpointFeatureInfoType(
+              not_supported=['feature1', 'feature2'])},
        'metadata': types.ProviderModelMetadataType(
           call_type=types.CallType.GENERATE_TEXT,
           is_featured=True,
@@ -183,8 +185,9 @@ def _get_model_configs_schema_version_config_type_options():
                   pricing=types.ProviderModelPricingType(
                       per_response_token_cost=0.001,
                       per_query_token_cost=0.002),
-                  features=types.ProviderModelFeatureType(
-                      not_supported=['feature1']),
+                  features={
+                      types.FeatureNameType.PROMPT: types.EndpointFeatureInfoType(
+                          not_supported=['feature1'])},
                   metadata=types.ProviderModelMetadataType(
                       call_type=types.CallType.GENERATE_TEXT,
                       is_featured=True,
@@ -270,8 +273,9 @@ def _get_model_configs_schema_type_options():
                       pricing=types.ProviderModelPricingType(
                           per_response_token_cost=0.001,
                           per_query_token_cost=0.002),
-                      features=types.ProviderModelFeatureType(
-                          not_supported=['feature1']),
+                      features={
+                          types.FeatureNameType.PROMPT: types.EndpointFeatureInfoType(
+                              not_supported=['feature1'])},
                       metadata=types.ProviderModelMetadataType(
                           call_type=types.CallType.GENERATE_TEXT,
                           is_featured=True,
@@ -329,6 +333,8 @@ def _get_query_record_options():
       {'web_search': False},
       {'feature_mapping_strategy': types.FeatureMappingStrategy.BEST_EFFORT},
       {'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT},
+      {'hash_value': 'some_hash_value'},
+      {'chosen_endpoint': 'some_endpoint'},
       {'call_type': types.CallType.GENERATE_TEXT,
        'provider_model': model_configs_instance.get_provider_model(('openai', 'gpt-4')),
        'prompt': 'Hello, world!',
@@ -337,7 +343,11 @@ def _get_query_record_options():
        'max_tokens': 100,
        'temperature': 0.5,
        'stop': ['stop'],
-       'token_count': 100},]
+       'token_count': 100,
+       'web_search': True,
+       'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT,
+       'hash_value': 'test_hash',
+       'chosen_endpoint': 'test_endpoint'},]
 
 
 def _get_query_response_record_options():
@@ -346,6 +356,7 @@ def _get_query_response_record_options():
           type=types.ResponseType.TEXT,
           value='Hello, world!')},
       {'error': 'Error message'},
+      {'error_traceback': 'Traceback (most recent call last):\n  File...'},
       {'start_utc_date': datetime.datetime.now(datetime.timezone.utc)},
       {'end_utc_date': datetime.datetime.now(datetime.timezone.utc)},
       {'local_time_offset_minute': (
@@ -365,7 +376,8 @@ def _get_query_response_record_options():
           // 60) * -1,
        'response_time': datetime.timedelta(seconds=1),
        'estimated_cost': 1,
-       'token_count': 100},]
+       'token_count': 100,
+       'error_traceback': 'Traceback info'},]
 
 
 def _get_cache_record_options():
@@ -440,7 +452,16 @@ def _get_cache_options_options():
       {'unique_response_limit': 1},
       {'retry_if_error_cached': True},
       {'clear_query_cache_on_connect': True},
-      {'clear_model_cache_on_connect': True},]
+      {'clear_model_cache_on_connect': True},
+      {'disable_model_cache': True},
+      {'model_cache_duration': 3600},
+      {'cache_path': 'cache_path',
+       'unique_response_limit': 5,
+       'retry_if_error_cached': True,
+       'clear_query_cache_on_connect': True,
+       'clear_model_cache_on_connect': True,
+       'disable_model_cache': False,
+       'model_cache_duration': 7200},]
 
 
 def _get_proxdash_options_options():
@@ -448,7 +469,14 @@ def _get_proxdash_options_options():
       {},
       {'stdout': True},
       {'hide_sensitive_content': True},
-      {'disable_proxdash': True},]
+      {'disable_proxdash': True},
+      {'api_key': 'test_api_key'},
+      {'base_url': 'https://test.example.com'},
+      {'stdout': True,
+       'hide_sensitive_content': True,
+       'disable_proxdash': False,
+       'api_key': 'my_api_key',
+       'base_url': 'https://api.proxai.com'},]
 
 
 def _get_run_options_options():
@@ -1041,19 +1069,19 @@ class TestTypeSerializer:
     assert provider_model_pricing_type == decoded_provider_model_pricing_type
 
   @pytest.mark.parametrize(
-      'provider_model_feature_type_options',
-      _get_provider_model_feature_type_options())
-  def test_encode_decode_provider_model_feature_type(
-      self, provider_model_feature_type_options):
-    provider_model_feature_type = types.ProviderModelFeatureType(
-        **provider_model_feature_type_options)
-    encoded_provider_model_feature_type = (
-        type_serializer.encode_provider_model_feature_type(
-            provider_model_feature_type=provider_model_feature_type))
-    decoded_provider_model_feature_type = (
-        type_serializer.decode_provider_model_feature_type(
-            record=encoded_provider_model_feature_type))
-    assert provider_model_feature_type == decoded_provider_model_feature_type
+      'endpoint_feature_info_type_options',
+      _get_endpoint_feature_info_type_options())
+  def test_encode_decode_endpoint_feature_info_type(
+      self, endpoint_feature_info_type_options):
+    endpoint_feature_info_type = types.EndpointFeatureInfoType(
+        **endpoint_feature_info_type_options)
+    encoded_endpoint_feature_info_type = (
+        type_serializer.encode_endpoint_feature_info_type(
+            endpoint_feature_info_type=endpoint_feature_info_type))
+    decoded_endpoint_feature_info_type = (
+        type_serializer.decode_endpoint_feature_info_type(
+            record=encoded_endpoint_feature_info_type))
+    assert endpoint_feature_info_type == decoded_endpoint_feature_info_type
 
   @pytest.mark.parametrize(
       'provider_model_metadata_type_options',

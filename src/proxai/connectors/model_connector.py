@@ -1032,10 +1032,34 @@ class ProviderModelConnector(state_controller.StateControlled):
   def init_mock_model(self):
     raise NotImplementedError
 
-  def system_feature_mapping(
+  def prompt_feature_mapping(
       self,
       query_function: Callable,
-      system_message: Optional[str] = None) -> Callable:
+      query_record: types.QueryRecord) -> Callable:
+    raise NotImplementedError
+
+  def messages_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    raise NotImplementedError
+
+  def max_tokens_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    raise NotImplementedError
+
+  def temperature_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    raise NotImplementedError
+
+  def stop_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
     raise NotImplementedError
 
   def json_feature_mapping(

@@ -605,6 +605,8 @@ def encode_query_record(
         query_record.feature_mapping_strategy.value)
   if query_record.hash_value != None:
     record['hash_value'] = query_record.hash_value
+  if query_record.chosen_endpoint != None:
+    record['chosen_endpoint'] = query_record.chosen_endpoint
   return record
 
 
@@ -634,6 +636,8 @@ def decode_query_record(
   if 'feature_mapping_strategy' in record:
     query_record.feature_mapping_strategy = (
         types.FeatureMappingStrategy(record['feature_mapping_strategy']))
+  if 'chosen_endpoint' in record:
+    query_record.chosen_endpoint = record['chosen_endpoint']
   query_record.hash_value = record.get('hash_value', None)
   return query_record
 
@@ -646,6 +650,8 @@ def encode_query_response_record(
     record['response'] = encode_response(query_response_record.response)
   if query_response_record.error != None:
     record['error'] = query_response_record.error
+  if query_response_record.error_traceback != None:
+    record['error_traceback'] = query_response_record.error_traceback
   if query_response_record.start_utc_date != None:
     record['start_utc_date'] = query_response_record.start_utc_date.isoformat()
   if query_response_record.end_utc_date != None:
@@ -669,6 +675,7 @@ def decode_query_response_record(
   if 'response' in record:
     query_response_record.response = decode_response(record['response'])
   query_response_record.error = record.get('error', None)
+  query_response_record.error_traceback = record.get('error_traceback', None)
   if 'start_utc_date' in record:
     query_response_record.start_utc_date = datetime.datetime.fromisoformat(
         record['start_utc_date'])
@@ -896,6 +903,10 @@ def encode_cache_options(
   if cache_options.clear_model_cache_on_connect != None:
     record['clear_model_cache_on_connect'] = (
         cache_options.clear_model_cache_on_connect)
+  if cache_options.disable_model_cache != None:
+    record['disable_model_cache'] = cache_options.disable_model_cache
+  if cache_options.model_cache_duration != None:
+    record['model_cache_duration'] = cache_options.model_cache_duration
   return record
 
 
@@ -908,6 +919,10 @@ def encode_proxdash_options(
     record['hide_sensitive_content'] = proxdash_options.hide_sensitive_content
   if proxdash_options.disable_proxdash != None:
     record['disable_proxdash'] = proxdash_options.disable_proxdash
+  if proxdash_options.api_key != None:
+    record['api_key'] = proxdash_options.api_key
+  if proxdash_options.base_url != None:
+    record['base_url'] = proxdash_options.base_url
   return record
 
 
@@ -971,6 +986,10 @@ def decode_cache_options(
   if 'clear_model_cache_on_connect' in record:
     cache_options.clear_model_cache_on_connect = (
         record['clear_model_cache_on_connect'])
+  if 'disable_model_cache' in record:
+    cache_options.disable_model_cache = record['disable_model_cache']
+  if 'model_cache_duration' in record:
+    cache_options.model_cache_duration = record['model_cache_duration']
   return cache_options
 
 
@@ -983,6 +1002,10 @@ def decode_proxdash_options(
     proxdash_options.hide_sensitive_content = record['hide_sensitive_content']
   if 'disable_proxdash' in record:
     proxdash_options.disable_proxdash = record['disable_proxdash']
+  if 'api_key' in record:
+    proxdash_options.api_key = record['api_key']
+  if 'base_url' in record:
+    proxdash_options.base_url = record['base_url']
   return proxdash_options
 
 
