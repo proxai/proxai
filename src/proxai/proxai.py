@@ -623,17 +623,21 @@ def generate_text(
         error_traceback = logging_record.response_record.error_traceback + '\n'
       raise Exception(error_traceback + logging_record.response_record.error)
 
+  if logging_record.response_record.response.type == types.ResponseType.PYDANTIC:
+    instance =  (
+        type_utils.create_pydantic_instance_from_response_pydantic_value(
+            response_format=response_format,
+            response_pydantic_value=(
+                logging_record.response_record.response.value)))
+    logging_record.response_record.response.value.instance_value = instance
+
   if extensive_return:
     return logging_record
 
-  response = logging_record.response_record.response
-
-  if response.type == types.ResponseType.PYDANTIC:
-    return type_utils.create_pydantic_instance_from_response_pydantic_value(
-        response_format=response_format,
-        response_pydantic_value=response.value)
-
-  return response.value
+  if logging_record.response_record.response.type == types.ResponseType.PYDANTIC:
+    return logging_record.response_record.response.value.instance_value
+  else:
+    return logging_record.response_record.response.value
 
 
 def get_summary(
