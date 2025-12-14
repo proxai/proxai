@@ -70,14 +70,9 @@ class ClaudeConnector(model_connector.ProviderModelConnector):
       self,
       query_function: Callable,
       query_record: types.QueryRecord) -> Callable:
-    if query_record.max_tokens is not None:
-      return functools.partial(
+    return functools.partial(
         query_function,
         max_tokens=query_record.max_tokens)
-    else:
-      return functools.partial(
-        query_function,
-        max_tokens=4096)
 
   def temperature_feature_mapping(
       self,
@@ -185,6 +180,12 @@ class ClaudeConnector(model_connector.ProviderModelConnector):
         create, model=provider_model.provider_model_identifier)
 
     create = self.add_features_to_query_function(create, query_record)
+
+    # NOTE: Claude API requires max_tokens to be set.
+    if create.keywords.get('max_tokens') is None:
+      create = functools.partial(
+          create,
+          max_tokens=4096)
 
     response = create()
 

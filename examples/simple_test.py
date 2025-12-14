@@ -28,27 +28,21 @@ def simple_cache_test():
         f'not. {random_int}',
         provider_model=('openai', 'gpt-5.1'),
         extensive_return=True)
+    print('Response    :', result.response_record.response.value)
+    print('Source      :', result.response_source)
+    print('Fail reason :', result.look_fail_reason)
     return result
 
   print('1:')
   result = _test_function()
-  print(result.response_record.response.value)
-  print(result.response_source)
-  print(result.look_fail_reason)
   time.sleep(1)
 
   print('2:')
   result = _test_function()
-  print(result.response_record.response.value)
-  print(result.response_source)
-  print(result.look_fail_reason)
   time.sleep(1)
 
   print('3:')
   result = _test_function()
-  print(result.response_record.response.value)
-  print(result.response_source)
-  print(result.look_fail_reason)
   time.sleep(1)
 
 
