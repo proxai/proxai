@@ -345,7 +345,8 @@ def main():
   endpoints = [
       'chat.create',
   ]
-  provider_model = ('grok', 'grok-3-fast-beta')
+  # provider_model = ('grok', 'grok-3-fast-beta')
+  provider_model = ('grok', 'grok-4-1-fast-non-reasoning')
 
   # endpoints = [
   #     'chat.complete',
@@ -391,7 +392,7 @@ def main():
           'web_search',
       ],
       verbose=True,
-      verbose_test_feature_compatibility=True,
+      verbose_test_feature_compatibility=False,
       verbose_find_endpoint_minimum_required_features=False,
   )
 

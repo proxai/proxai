@@ -2,10 +2,9 @@
   "metadata": {
     "config_origin": "BUILT_IN",
     "min_proxai_version": ">=0.2.7",
-    "release_notes": "New feature types (supported, best_effort, and not_supported) are added.\n",
-    "released_at": "2025-12-13 22:10:42",
-    "version": "1.1.1",
-    "version_type": "SOURCE"
+    "release_notes": "ProviderModelFeatureType has supported, best_effort, and not_supported values.\n",
+    "released_at": "2025-12-14T00:44:34",
+    "version": "1.1.1"
   },
   "version_config": {
     "default_model_priority_list": [
@@ -225,6 +224,11 @@
         {
           "model": "grok-3-mini-fast-beta",
           "provider": "grok"
+        },
+        {
+          "model": "grok-4-1-fast-non-reasoning",
+          "provider": "grok",
+          "provider_model_identifier": "grok-4-1-fast-non-reasoning"
         }
       ],
       "huggingface": [
@@ -588,6 +592,11 @@
           {
             "model": "grok-3-mini-fast-beta",
             "provider": "grok"
+          },
+          {
+            "model": "grok-4-1-fast-non-reasoning",
+            "provider": "grok",
+            "provider_model_identifier": "grok-4-1-fast-non-reasoning"
           }
         ],
         "huggingface": [
@@ -1063,64 +1072,17 @@
         {
           "model": "haiku-4.5",
           "provider": "claude"
+        },
+        {
+          "model": "grok-4-1-fast-non-reasoning",
+          "provider": "grok",
+          "provider_model_identifier": "grok-4-1-fast-non-reasoning"
         }
       ]
     },
-    "provider_display_priority": [
-      {
-        "display_priority": 1,
-        "provider": "gemini",
-        "provider_display_name": "Gemini"
-      },
-      {
-        "display_priority": 2,
-        "provider": "openai",
-        "provider_display_name": "OpenAI"
-      },
-      {
-        "display_priority": 3,
-        "provider": "claude",
-        "provider_display_name": "Claude"
-      },
-      {
-        "display_priority": 5,
-        "provider": "grok",
-        "provider_display_name": "Grok"
-      },
-      {
-        "display_priority": 6,
-        "provider": "deepseek",
-        "provider_display_name": "DeepSeek"
-      },
-      {
-        "display_priority": 7,
-        "provider": "mistral",
-        "provider_display_name": "Mistral"
-      },
-      {
-        "display_priority": 8,
-        "provider": "cohere",
-        "provider_display_name": "Cohere"
-      },
-      {
-        "display_priority": 9,
-        "provider": "databricks",
-        "provider_display_name": "Databricks"
-      },
-      {
-        "display_priority": 10,
-        "provider": "huggingface",
-        "provider_display_name": "Hugging Face"
-      }
-    ],
     "provider_model_configs": {
       "claude": {
         "haiku-3": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Haiku-3",
-            "provider_display_name": "Claude"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -1241,11 +1203,6 @@
           }
         },
         "haiku-3.5": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Haiku-3.5",
-            "provider_display_name": "Claude"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -1366,11 +1323,6 @@
           }
         },
         "haiku-4.5": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Haiku-4.5",
-            "provider_display_name": "Claude"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -1493,11 +1445,6 @@
           }
         },
         "opus-3": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Opus-3",
-            "provider_display_name": "Claude"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -1615,11 +1562,6 @@
           }
         },
         "opus-4": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Opus-4",
-            "provider_display_name": "Claude"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -1740,11 +1682,6 @@
           }
         },
         "opus-4.5": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Opus-4.5",
-            "provider_display_name": "Claude"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -1868,11 +1805,6 @@
           }
         },
         "sonnet-3": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Sonnet-3",
-            "provider_display_name": "Claude"
-          },
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
@@ -1890,11 +1822,6 @@
           }
         },
         "sonnet-3.5": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Sonnet-3.5",
-            "provider_display_name": "Claude"
-          },
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
@@ -1912,11 +1839,6 @@
           }
         },
         "sonnet-3.5-old": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Sonnet-3.5-Old",
-            "provider_display_name": "Claude"
-          },
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
@@ -1934,11 +1856,6 @@
           }
         },
         "sonnet-3.7": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Sonnet-3.7",
-            "provider_display_name": "Claude"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -2056,11 +1973,6 @@
           }
         },
         "sonnet-4": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Sonnet-4",
-            "provider_display_name": "Claude"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -2181,11 +2093,6 @@
           }
         },
         "sonnet-4.5": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Sonnet-4.5",
-            "provider_display_name": "Claude"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -2310,11 +2217,6 @@
       },
       "cohere": {
         "command": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Command",
-            "provider_display_name": "Cohere"
-          },
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
@@ -2335,11 +2237,6 @@
           }
         },
         "command-a": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Command-A",
-            "provider_display_name": "Cohere"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -2439,11 +2336,6 @@
           }
         },
         "command-light": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Command-Light",
-            "provider_display_name": "Cohere"
-          },
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
@@ -2464,11 +2356,6 @@
           }
         },
         "command-light-nightly": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Command-Light-Nightly",
-            "provider_display_name": "Cohere"
-          },
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
@@ -2486,11 +2373,6 @@
           }
         },
         "command-nightly": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Command-Nightly",
-            "provider_display_name": "Cohere"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -2589,11 +2471,6 @@
           }
         },
         "command-r": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Command-R",
-            "provider_display_name": "Cohere"
-          },
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
@@ -2614,11 +2491,6 @@
           }
         },
         "command-r-08-2024": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Command-R-08-2024",
-            "provider_display_name": "Cohere"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -2714,11 +2586,6 @@
           }
         },
         "command-r-plus": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Command-R-Plus",
-            "provider_display_name": "Cohere"
-          },
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
@@ -2739,11 +2606,6 @@
           }
         },
         "command-r7b": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Command-R7b",
-            "provider_display_name": "Cohere"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -2844,11 +2706,6 @@
       },
       "databricks": {
         "claude-3-7-sonnet": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Claude-3-7-Sonnet",
-            "provider_display_name": "Databricks"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -2959,11 +2816,6 @@
           }
         },
         "dbrx-it": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "DBRX-IT",
-            "provider_display_name": "Databricks"
-          },
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
@@ -2985,11 +2837,6 @@
           }
         },
         "llama-4-maverick": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Llama-4-Maverick",
-            "provider_display_name": "Databricks"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -3097,9 +2944,6 @@
           }
         },
         "meta-llama-3-1-405b-it": {
-          "display_metadata": {
-            "is_featured": false
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -3207,11 +3051,6 @@
           }
         },
         "meta-llama-3-1-8b-it": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Meta-Llama-3-1-8B-IT",
-            "provider_display_name": "Databricks"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -3322,11 +3161,6 @@
           }
         },
         "meta-llama-3-3-70b-it": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Meta-Llama-3-3-70B-IT",
-            "provider_display_name": "Databricks"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -3438,11 +3272,6 @@
           }
         },
         "mixtral-8x7b-it": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Mixtral-8x7B-IT",
-            "provider_display_name": "Databricks"
-          },
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
@@ -3465,11 +3294,6 @@
       },
       "deepseek": {
         "deepseek-r1": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Deepseek-R1",
-            "provider_display_name": "DeepSeek"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -3569,11 +3393,6 @@
           }
         },
         "deepseek-v3": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Deepseek-V3",
-            "provider_display_name": "DeepSeek"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -3674,11 +3493,6 @@
       },
       "gemini": {
         "gemini-1.5-flash": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Gemini-1.5-Flash",
-            "provider_display_name": "Gemini"
-          },
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
@@ -3696,11 +3510,6 @@
           }
         },
         "gemini-1.5-flash-8b": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Gemini-1.5-Flash-8B",
-            "provider_display_name": "Gemini"
-          },
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
@@ -3718,11 +3527,6 @@
           }
         },
         "gemini-1.5-pro": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Gemini-1.5-Pro",
-            "provider_display_name": "Gemini"
-          },
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
@@ -3743,11 +3547,6 @@
           }
         },
         "gemini-2.0-flash": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Gemini-2.0-Flash",
-            "provider_display_name": "Gemini"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -3846,11 +3645,6 @@
           }
         },
         "gemini-2.0-flash-lite": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Gemini-2.0-Flash-Lite",
-            "provider_display_name": "Gemini"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -3946,11 +3740,6 @@
           }
         },
         "gemini-2.5-flash": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Gemini-2.5-Flash",
-            "provider_display_name": "Gemini"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -4049,11 +3838,6 @@
           }
         },
         "gemini-2.5-flash-lite-preview-06-17": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Gemini-2.5-Flash-Lite-Preview-06-17",
-            "provider_display_name": "Gemini"
-          },
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
@@ -4071,11 +3855,6 @@
           }
         },
         "gemini-2.5-pro": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Gemini-2.5-Pro",
-            "provider_display_name": "Gemini"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -4174,11 +3953,6 @@
           }
         },
         "gemini-3-pro": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Haiku-4.5",
-            "provider_display_name": "Claude"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -4280,86 +4054,93 @@
       },
       "grok": {
         "grok-3-beta": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Grok-3-Beta",
-            "provider_display_name": "Grok"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.create"
+                "chat.completions.create",
+                "beta.chat.completions.parse"
               ]
             },
             "messages": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.create"
+                "chat.completions.create",
+                "beta.chat.completions.parse"
               ]
             },
             "prompt": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.create"
+                "chat.completions.create",
+                "beta.chat.completions.parse"
               ]
             },
             "response_format::json": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.create"
+                "chat.completions.create",
+                "beta.chat.completions.parse"
               ]
             },
             "response_format::json_schema": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.create"
+                "chat.completions.create",
+                "beta.chat.completions.parse"
               ]
             },
             "response_format::pydantic": {
-              "best_effort": [],
+              "best_effort": [
+                "chat.completions.create"
+              ],
               "not_supported": [],
               "supported": [
-                "chat.create"
+                "beta.chat.completions.parse"
               ]
             },
             "response_format::text": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.create"
+                "chat.completions.create",
+                "beta.chat.completions.parse"
               ]
             },
             "stop": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.create"
+                "chat.completions.create",
+                "beta.chat.completions.parse"
               ]
             },
             "system": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.create"
+                "chat.completions.create",
+                "beta.chat.completions.parse"
               ]
             },
             "temperature": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.create"
+                "chat.completions.create",
+                "beta.chat.completions.parse"
               ]
             },
             "web_search": {
               "best_effort": [],
               "not_supported": [
-                "chat.create"
+                "chat.completions.create",
+                "beta.chat.completions.parse"
               ],
               "supported": []
             }
@@ -4384,11 +4165,6 @@
           }
         },
         "grok-3-fast-beta": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Grok-3-Fast-Beta",
-            "provider_display_name": "Grok"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -4499,11 +4275,6 @@
           }
         },
         "grok-3-mini-beta": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Grok-3-Mini-Beta",
-            "provider_display_name": "Grok"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -4614,11 +4385,6 @@
           }
         },
         "grok-3-mini-fast-beta": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Grok-3-Mini-Fast-Beta",
-            "provider_display_name": "Grok"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -4727,15 +4493,30 @@
             "provider": "grok",
             "provider_model_identifier": "grok-3-mini-fast-beta"
           }
+        },
+        "grok-4-1-fast-non-reasoning": {
+          "features": {},
+          "metadata": {
+            "call_type": "GENERATE_TEXT",
+            "is_default_candidate": false,
+            "is_featured": true,
+            "model_size_tags": [
+              "small"
+            ]
+          },
+          "pricing": {
+            "per_query_token_cost": 0.2,
+            "per_response_token_cost": 0.5
+          },
+          "provider_model": {
+            "model": "grok-4-1-fast-non-reasoning",
+            "provider": "grok",
+            "provider_model_identifier": "grok-4-1-fast-non-reasoning"
+          }
         }
       },
       "huggingface": {
         "deepseek-r1": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Deepseek-R1",
-            "provider_display_name": "Hugging Face"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -4834,11 +4615,6 @@
           }
         },
         "deepseek-v3": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Deepseek-V3",
-            "provider_display_name": "Hugging Face"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -4937,11 +4713,6 @@
           }
         },
         "gemma-2-2b-it": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Gemma-2-2B-IT",
-            "provider_display_name": "Hugging Face"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -5040,11 +4811,6 @@
           }
         },
         "meta-llama-3.1-8b-it": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Meta-Llama-3.1-8B-IT",
-            "provider_display_name": "Hugging Face"
-          },
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
@@ -5065,11 +4831,6 @@
           }
         },
         "phi-4": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Phi-4",
-            "provider_display_name": "Hugging Face"
-          },
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
@@ -5091,11 +4852,6 @@
           }
         },
         "qwen3-32b": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Qwen3-32B",
-            "provider_display_name": "Hugging Face"
-          },
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
@@ -5119,11 +4875,6 @@
       },
       "mistral": {
         "codestral": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Codestral",
-            "provider_display_name": "Mistral"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -5237,11 +4988,6 @@
           }
         },
         "ministral-3b": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Ministral-3B",
-            "provider_display_name": "Mistral"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -5352,11 +5098,6 @@
           }
         },
         "ministral-8b": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Ministral-8B",
-            "provider_display_name": "Mistral"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -5467,11 +5208,6 @@
           }
         },
         "mistral-large": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Mistral-Large",
-            "provider_display_name": "Mistral"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -5586,11 +5322,6 @@
           }
         },
         "mistral-medium": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Mistral-Medium",
-            "provider_display_name": "Mistral"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -5701,11 +5432,6 @@
           }
         },
         "mistral-saba": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Mistral-Saba",
-            "provider_display_name": "Mistral"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -5816,11 +5542,6 @@
           }
         },
         "mistral-small": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Mistral-Small",
-            "provider_display_name": "Mistral"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -5934,11 +5655,6 @@
           }
         },
         "open-mistral-7b": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Open-Mistral-7B",
-            "provider_display_name": "Mistral"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -6049,11 +5765,6 @@
           }
         },
         "open-mistral-nemo": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Open-Mistral-NeMo",
-            "provider_display_name": "Mistral"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -6164,11 +5875,6 @@
           }
         },
         "open-mixtral-8x22b": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Open-Mixtral-8x22B",
-            "provider_display_name": "Mistral"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -6282,11 +5988,6 @@
           }
         },
         "open-mixtral-8x7b": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Open-Mixtral-8x7B",
-            "provider_display_name": "Mistral"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -6397,11 +6098,6 @@
           }
         },
         "pixtral-12b": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Pixtral-12B",
-            "provider_display_name": "Mistral"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -6515,11 +6211,6 @@
           }
         },
         "pixtral-large": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "Pixtral-Large",
-            "provider_display_name": "Mistral"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -6635,9 +6326,6 @@
       },
       "mock_failing_provider": {
         "mock_failing_model": {
-          "display_metadata": {
-            "is_featured": false
-          },
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
@@ -6657,9 +6345,6 @@
       },
       "mock_provider": {
         "mock_model": {
-          "display_metadata": {
-            "is_featured": false
-          },
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
@@ -6679,9 +6364,6 @@
       },
       "mock_slow_provider": {
         "mock_slow_model": {
-          "display_metadata": {
-            "is_featured": false
-          },
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
@@ -6701,11 +6383,6 @@
       },
       "openai": {
         "chatgpt-4o-latest": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "ChatGPT-4o-Latest",
-            "provider_display_name": "OpenAI"
-          },
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
@@ -6726,9 +6403,6 @@
           }
         },
         "computer-use-preview": {
-          "display_metadata": {
-            "is_featured": false
-          },
           "features": {},
           "metadata": {
             "is_default_candidate": false,
@@ -6745,11 +6419,6 @@
           }
         },
         "gpt-3.5-turbo": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "GPT-3.5-Turbo",
-            "provider_display_name": "OpenAI"
-          },
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
@@ -6770,11 +6439,6 @@
           }
         },
         "gpt-4": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "GPT-4",
-            "provider_display_name": "OpenAI"
-          },
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
@@ -6795,9 +6459,6 @@
           }
         },
         "gpt-4-32k": {
-          "display_metadata": {
-            "is_featured": false
-          },
           "features": {},
           "metadata": {
             "is_default_candidate": false,
@@ -6814,11 +6475,6 @@
           }
         },
         "gpt-4-turbo": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "GPT-4-Turbo",
-            "provider_display_name": "OpenAI"
-          },
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
@@ -6839,11 +6495,6 @@
           }
         },
         "gpt-4.1": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "GPT-4.1",
-            "provider_display_name": "OpenAI"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -6972,11 +6623,6 @@
           }
         },
         "gpt-4.1-mini": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "GPT-4.1-Mini",
-            "provider_display_name": "OpenAI"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -7105,11 +6751,6 @@
           }
         },
         "gpt-4.1-nano": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "GPT-4.1-Nano",
-            "provider_display_name": "OpenAI"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -7237,11 +6878,6 @@
           }
         },
         "gpt-4.5-preview": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "GPT-4.5-Preview",
-            "provider_display_name": "OpenAI"
-          },
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
@@ -7262,11 +6898,6 @@
           }
         },
         "gpt-4o": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "GPT-4o",
-            "provider_display_name": "OpenAI"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -7395,9 +7026,6 @@
           }
         },
         "gpt-4o-audio-preview": {
-          "display_metadata": {
-            "is_featured": false
-          },
           "features": {},
           "metadata": {
             "is_default_candidate": false,
@@ -7414,11 +7042,6 @@
           }
         },
         "gpt-4o-mini": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "GPT-4o-Mini",
-            "provider_display_name": "OpenAI"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -7547,9 +7170,6 @@
           }
         },
         "gpt-4o-mini-audio-preview": {
-          "display_metadata": {
-            "is_featured": false
-          },
           "features": {},
           "metadata": {
             "is_default_candidate": false,
@@ -7566,9 +7186,6 @@
           }
         },
         "gpt-4o-mini-realtime-preview": {
-          "display_metadata": {
-            "is_featured": false
-          },
           "features": {},
           "metadata": {
             "is_default_candidate": false,
@@ -7585,11 +7202,6 @@
           }
         },
         "gpt-4o-mini-search-preview": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "GPT-4o-Mini-Search-Preview",
-            "provider_display_name": "OpenAI"
-          },
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
@@ -7610,9 +7222,6 @@
           }
         },
         "gpt-4o-realtime-preview": {
-          "display_metadata": {
-            "is_featured": false
-          },
           "features": {},
           "metadata": {
             "is_default_candidate": false,
@@ -7629,11 +7238,6 @@
           }
         },
         "gpt-4o-search-preview": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "GPT-4o-Search-Preview",
-            "provider_display_name": "OpenAI"
-          },
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
@@ -7654,11 +7258,6 @@
           }
         },
         "gpt-5.1": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "GPT-5.1",
-            "provider_display_name": "OpenAI"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -7787,11 +7386,6 @@
           }
         },
         "o1": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "O1",
-            "provider_display_name": "OpenAI"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -7919,11 +7513,6 @@
           }
         },
         "o1-mini": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "O1-Mini",
-            "provider_display_name": "OpenAI"
-          },
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
@@ -7944,11 +7533,6 @@
           }
         },
         "o1-pro": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "O1-Pro",
-            "provider_display_name": "OpenAI"
-          },
           "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
@@ -7969,11 +7553,6 @@
           }
         },
         "o3": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "O3",
-            "provider_display_name": "OpenAI"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -8101,11 +7680,6 @@
           }
         },
         "o3-mini": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "O3-Mini",
-            "provider_display_name": "OpenAI"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
@@ -8233,11 +7807,6 @@
           }
         },
         "o4-mini": {
-          "display_metadata": {
-            "is_featured": true,
-            "model_display_name": "O4-Mini",
-            "provider_display_name": "OpenAI"
-          },
           "features": {
             "max_tokens": {
               "best_effort": [],
