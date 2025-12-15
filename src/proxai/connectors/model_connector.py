@@ -542,59 +542,6 @@ class ProviderModelConnector(state_controller.StateControlled):
     else:
       return schema_guidance
 
-  def _add_response_format_param(
-      self,
-      query_function: Callable,
-      query_record: types.QueryRecord):
-    if (query_record.response_format.type ==
-        types.ResponseFormatType.JSON):
-      return self.json_feature_mapping(
-          query_function,
-          query_record=query_record)
-    elif (query_record.response_format.type ==
-          types.ResponseFormatType.JSON_SCHEMA):
-      return self.json_schema_feature_mapping(
-          query_function,
-          query_record=query_record)
-    elif (query_record.response_format.type ==
-          types.ResponseFormatType.PYDANTIC):
-      return self.pydantic_feature_mapping(
-          query_function,
-          query_record=query_record)
-
-  def _add_supported_system_and_response_format_params(
-      self,
-      query_function: Callable,
-      query_record: types.QueryRecord):
-    """Supported system and response format parameter addition.
-
-    - Adds system message as is.
-    - Adds structured output parameters.
-    """
-    query_function = self.system_feature_mapping(
-        query_function,
-        system_message=query_record.system)
-    query_function = self._add_response_format_param(
-        query_function,
-        query_record=query_record)
-    return query_function
-
-  def _add_best_effort_system_and_response_format_params(
-      self,
-      query_function: Callable,
-      query_record: types.QueryRecord):
-    """Best effort system and response format parameter addition.
-
-    - Adds system message with schema guidance
-    - Ignores structured output parameters.
-    """
-    system_message = self._get_system_content_with_schema_guidance(
-        query_record=query_record)
-    query_function = self.system_feature_mapping(
-        query_function,
-        system_message=system_message)
-    return query_function
-
   def _temp_response_format_text_feature_mapping(
       self,
       query_function: Callable,
