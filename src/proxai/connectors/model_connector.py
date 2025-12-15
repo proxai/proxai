@@ -394,6 +394,13 @@ class ProviderModelConnector(state_controller.StateControlled):
     query_record.messages = None
     return query_record
 
+  def _sanitize_web_search_feature(
+      self,
+      query_record: types.QueryRecord):
+    if not query_record.web_search:
+      query_record.web_search = None
+    return query_record
+
   def _omit_best_effort_feature(
       self,
       feature_name: types.FeatureNameType,
@@ -475,6 +482,11 @@ class ProviderModelConnector(state_controller.StateControlled):
           feature_name=feature_name, query_record=query_record):
         query_record = self._omit_best_effort_feature(
             feature_name=feature_name,
+            query_record=query_record)
+
+    if self._check_feature_exists(
+          feature_name='web_search', query_record=query_record):
+      query_record = self._sanitize_web_search_feature(
             query_record=query_record)
 
     for feature_name in [
