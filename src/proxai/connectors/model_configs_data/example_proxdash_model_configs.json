@@ -41,11 +41,7 @@
             "per_response_token_cost": 0.6,
             "per_query_token_cost": 0.15
           },
-          "features": {
-            "not_supported_features": [
-              "stop"
-            ]
-          },
+          "features": {},
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_featured": false,
