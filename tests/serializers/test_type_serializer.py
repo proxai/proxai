@@ -52,6 +52,36 @@ def _get_endpoint_feature_info_type_options():
        'not_supported': ['feature3']},]
 
 
+def _get_feature_mapping_type_options():
+  return [
+      {},
+      {types.FeatureNameType.PROMPT: types.EndpointFeatureInfoType()},
+      {types.FeatureNameType.PROMPT: types.EndpointFeatureInfoType(
+          supported=['value1'])},
+      {types.FeatureNameType.MESSAGES: types.EndpointFeatureInfoType(
+          best_effort=['value1', 'value2'])},
+      {types.FeatureNameType.SYSTEM: types.EndpointFeatureInfoType(
+          not_supported=['value1'])},
+      {types.FeatureNameType.PROMPT: types.EndpointFeatureInfoType(
+          supported=['value1'],
+          best_effort=['value2'],
+          not_supported=['value3'])},
+      {types.FeatureNameType.PROMPT: types.EndpointFeatureInfoType(
+          supported=['value1']),
+       types.FeatureNameType.MESSAGES: types.EndpointFeatureInfoType(
+          best_effort=['value2'])},
+      {types.FeatureNameType.PROMPT: types.EndpointFeatureInfoType(
+          supported=['value1']),
+       types.FeatureNameType.MESSAGES: types.EndpointFeatureInfoType(
+          best_effort=['value2']),
+       types.FeatureNameType.SYSTEM: types.EndpointFeatureInfoType(
+          not_supported=['value3']),
+       types.FeatureNameType.MAX_TOKENS: types.EndpointFeatureInfoType(
+          supported=['value4'],
+          best_effort=['value5'],
+          not_supported=['value6'])},]
+
+
 def _get_provider_model_metadata_type_options():
   return [
       {},
@@ -154,29 +184,29 @@ def _get_model_configs_schema_version_config_type_options():
                   metadata=types.ProviderModelMetadataType(
                       is_featured=True))}}},
       {'featured_models': {
-          'openai': (
-              model_configs_instance.get_provider_model(('openai', 'gpt-4')),)}},
+          'openai': [
+              model_configs_instance.get_provider_model(('openai', 'gpt-4'))]}},
       {'featured_models': {
-          'openai': (
-              model_configs_instance.get_provider_model(('openai', 'gpt-4')),),
-          'claude': (
-              ('claude', 'opus-4'),)}},
+          'openai': [
+              model_configs_instance.get_provider_model(('openai', 'gpt-4'))],
+          'claude': [
+              ('claude', 'opus-4')]}},
       {'models_by_call_type': {
           types.CallType.GENERATE_TEXT: {
-              'openai': (
-                  model_configs_instance.get_provider_model(('openai', 'gpt-4')),),
-              'claude': (
-                  ('claude', 'sonnet-4'),)}}},
+              'openai': [
+                  model_configs_instance.get_provider_model(('openai', 'gpt-4'))],
+              'claude': [
+                  ('claude', 'sonnet-4')]}}},
       {'models_by_size': {
-          types.ModelSizeType.SMALL: (
-              ('openai', 'gpt-4o-mini'),),
-          types.ModelSizeType.LARGE: (
+          types.ModelSizeType.SMALL: [
+              ('openai', 'gpt-4o-mini')],
+          types.ModelSizeType.LARGE: [
               model_configs_instance.get_provider_model(('openai', 'gpt-4')),
-              ('claude', 'opus-4'),)}},
-      {'default_model_priority_list': (
+              ('claude', 'opus-4')]}},
+      {'default_model_priority_list': [
           model_configs_instance.get_provider_model(('openai', 'gpt-4')),
           ('claude', 'opus-4'),
-          ('openai', 'o3-mini'),)},
+          ('openai', 'o3-mini')]},
       {'provider_model_configs': {
           'openai': {
               'gpt-4': types.ProviderModelConfigType(
@@ -206,26 +236,26 @@ def _get_model_configs_schema_version_config_type_options():
                   provider_model=model_configs_instance.get_provider_model(
                       ('claude', 'sonnet-4')))}},
        'featured_models': {
-          'openai': (
-              model_configs_instance.get_provider_model(('openai', 'gpt-4')),),
-          'claude': (
-              ('claude', 'opus-4'),)},
+          'openai': [
+              model_configs_instance.get_provider_model(('openai', 'gpt-4'))],
+          'claude': [
+              ('claude', 'opus-4')]},
        'models_by_call_type': {
           types.CallType.GENERATE_TEXT: {
-              'openai': (
-                  model_configs_instance.get_provider_model(('openai', 'gpt-4')),),
-              'claude': (
-                  ('claude', 'sonnet-4'),)}},
+              'openai': [
+                  model_configs_instance.get_provider_model(('openai', 'gpt-4'))],
+              'claude': [
+                  ('claude', 'sonnet-4')]}},
        'models_by_size': {
-          types.ModelSizeType.SMALL: (
-              ('openai', 'gpt-4o-mini'),),
-          types.ModelSizeType.LARGE: (
+          types.ModelSizeType.SMALL: [
+              ('openai', 'gpt-4o-mini')],
+          types.ModelSizeType.LARGE: [
               model_configs_instance.get_provider_model(('openai', 'gpt-4')),
-              ('claude', 'opus-4'),)},
-       'default_model_priority_list': (
+              ('claude', 'opus-4')]},
+       'default_model_priority_list': [
           model_configs_instance.get_provider_model(('openai', 'gpt-4')),
           ('claude', 'opus-4'),
-          ('openai', 'o3-mini'),)},]
+          ('openai', 'o3-mini')]}]
 
 
 def _get_model_configs_schema_type_options():
@@ -247,8 +277,8 @@ def _get_model_configs_schema_type_options():
                           ('openai', 'gpt-4')))}})},
       {'version_config': types.ModelConfigsSchemaVersionConfigType(
           featured_models={
-              'openai': (
-                  model_configs_instance.get_provider_model(('openai', 'gpt-4')),)})},
+              'openai': [
+                  model_configs_instance.get_provider_model(('openai', 'gpt-4'))]})},
       {'metadata': types.ModelConfigsSchemaMetadataType(
           version='1.0.0',
           released_at=datetime.datetime.now(datetime.timezone.utc)),
@@ -294,27 +324,27 @@ def _get_model_configs_schema_type_options():
                       provider_model=model_configs_instance.get_provider_model(
                           ('claude', 'sonnet-4')))}},
           featured_models={
-              'openai': (
-                  model_configs_instance.get_provider_model(('openai', 'gpt-4')),),
-              'claude': (
-                  ('claude', 'opus-4'),)},
+              'openai': [
+                  model_configs_instance.get_provider_model(('openai', 'gpt-4'))],
+              'claude': [
+                  ('claude', 'opus-4')]},
           models_by_call_type={
               types.CallType.GENERATE_TEXT: {
-                  'openai': (
+                  'openai': [
                       model_configs_instance.get_provider_model(
-                          ('openai', 'gpt-4')),),
-                  'claude': (
-                      ('claude', 'sonnet-4'),)}},
+                          ('openai', 'gpt-4'))],
+                  'claude': [
+                      ('claude', 'sonnet-4')]}},
           models_by_size={
-              types.ModelSizeType.SMALL: (
-                  ('openai', 'gpt-4o-mini'),),
-              types.ModelSizeType.LARGE: (
+              types.ModelSizeType.SMALL: [
+                  ('openai', 'gpt-4o-mini')],
+              types.ModelSizeType.LARGE: [
                   model_configs_instance.get_provider_model(('openai', 'gpt-4')),
-                  ('claude', 'opus-4'),)},
-          default_model_priority_list=(
+                  ('claude', 'opus-4')]},
+          default_model_priority_list=[
               model_configs_instance.get_provider_model(('openai', 'gpt-4')),
               ('claude', 'opus-4'),
-              ('openai', 'o3-mini'),))},]
+              ('openai', 'o3-mini')])}]
 
 
 def _get_query_record_options():
@@ -335,6 +365,13 @@ def _get_query_record_options():
       {'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT},
       {'hash_value': 'some_hash_value'},
       {'chosen_endpoint': 'some_endpoint'},
+      {'response_format': types.ResponseFormat(
+          type=types.ResponseFormatType.TEXT)},
+      {'response_format': types.ResponseFormat(
+          type=types.ResponseFormatType.JSON)},
+      {'response_format': types.ResponseFormat(
+          type=types.ResponseFormatType.JSON_SCHEMA,
+          value={'type': 'object', 'properties': {'name': {'type': 'string'}}})},
       {'call_type': types.CallType.GENERATE_TEXT,
        'provider_model': model_configs_instance.get_provider_model(('openai', 'gpt-4')),
        'prompt': 'Hello, world!',
@@ -344,6 +381,9 @@ def _get_query_record_options():
        'temperature': 0.5,
        'stop': ['stop'],
        'token_count': 100,
+       'response_format': types.ResponseFormat(
+          type=types.ResponseFormatType.JSON_SCHEMA,
+          value={'type': 'object', 'properties': {'id': {'type': 'integer'}}}),
        'web_search': True,
        'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT,
        'hash_value': 'test_hash',
@@ -646,11 +686,41 @@ def _get_provider_stats_options():
 
 
 def _get_run_stats_options():
+  model_configs_instance = model_configs.ModelConfigs()
   return [
     {'provider_stats': stat_types.BaseProviderStats(total_queries=1)},
     {'cache_stats': stat_types.BaseCacheStats(total_cache_hit=1)},
+    {'providers': {
+        'openai': stat_types.ProviderStats(provider='openai')}},
+    {'providers': {
+        'openai': stat_types.ProviderStats(
+            provider='openai',
+            provider_stats=stat_types.BaseProviderStats(total_queries=1))}},
+    {'providers': {
+        'openai': stat_types.ProviderStats(
+            provider='openai',
+            provider_models={
+                model_configs_instance.get_provider_model(
+                    ('openai', 'gpt-4')): stat_types.ProviderModelStats()})}},
+    {'providers': {
+        'openai': stat_types.ProviderStats(provider='openai'),
+        'claude': stat_types.ProviderStats(provider='claude')}},
     {'provider_stats': stat_types.BaseProviderStats(total_queries=1),
-     'cache_stats': stat_types.BaseCacheStats(total_cache_hit=1)}]
+     'cache_stats': stat_types.BaseCacheStats(total_cache_hit=1),
+     'providers': {
+        'openai': stat_types.ProviderStats(
+            provider='openai',
+            provider_stats=stat_types.BaseProviderStats(total_queries=1),
+            cache_stats=stat_types.BaseCacheStats(total_cache_hit=1),
+            provider_models={
+                model_configs_instance.get_provider_model(
+                    ('openai', 'gpt-4')): stat_types.ProviderModelStats(
+                        provider_model=model_configs_instance.get_provider_model(
+                            ('openai', 'gpt-4')),
+                        provider_stats=stat_types.BaseProviderStats(
+                            total_queries=1),
+                        cache_stats=stat_types.BaseCacheStats(
+                            total_cache_hit=1))})}}]
 
 
 def _get_provider_model_configs_type_options():
@@ -678,65 +748,65 @@ def _get_provider_model_configs_type_options():
 def _get_featured_models_type_options():
   model_configs_instance = model_configs.ModelConfigs()
   return [
-    {'openai': (
-        model_configs_instance.get_provider_model(('openai', 'gpt-4')),)},
-    {'openai': (
-        model_configs_instance.get_provider_model(('openai', 'gpt-4')),),
-     'claude': (
-        ('claude', 'opus-4'),)},
-    {'openai': (
+    {'openai': [
+        model_configs_instance.get_provider_model(('openai', 'gpt-4'))]},
+    {'openai': [
+        model_configs_instance.get_provider_model(('openai', 'gpt-4'))],
+     'claude': [
+        ('claude', 'opus-4')]},
+    {'openai': [
         model_configs_instance.get_provider_model(('openai', 'gpt-4')),
-        ('openai', 'o3-mini'),),
-     'claude': (
+        ('openai', 'o3-mini')],
+     'claude': [
         ('claude', 'opus-4'),
-        model_configs_instance.get_provider_model(('claude', 'sonnet-4')),)},]
+        model_configs_instance.get_provider_model(('claude', 'sonnet-4'))]}]
 
 
 def _get_models_by_call_type_type_options():
   model_configs_instance = model_configs.ModelConfigs()
   return [
     {types.CallType.GENERATE_TEXT: {
-        'openai': (
-            model_configs_instance.get_provider_model(('openai', 'gpt-4')),)}},
+        'openai': [
+            model_configs_instance.get_provider_model(('openai', 'gpt-4'))]}},
     {types.CallType.GENERATE_TEXT: {
-        'openai': (
-            model_configs_instance.get_provider_model(('openai', 'gpt-4')),),
-        'claude': (
-            ('claude', 'sonnet-4'),)}},
+        'openai': [
+            model_configs_instance.get_provider_model(('openai', 'gpt-4'))],
+        'claude': [
+            ('claude', 'sonnet-4')]}},
     {types.CallType.GENERATE_TEXT: {
-        'openai': (
+        'openai': [
             model_configs_instance.get_provider_model(('openai', 'gpt-4')),
-            ('openai', 'o3-mini'),),
-        'claude': (
+            ('openai', 'o3-mini')],
+        'claude': [
             ('claude', 'sonnet-4'),
-            model_configs_instance.get_provider_model(('claude', 'opus-4')),)}},]
+            model_configs_instance.get_provider_model(('claude', 'opus-4'))]}}]
 
 
 def _get_models_by_size_type_options():
   model_configs_instance = model_configs.ModelConfigs()
   return [
-    {types.ModelSizeType.SMALL: (
-        ('openai', 'gpt-4o-mini'),)},
-    {types.ModelSizeType.SMALL: (
-        ('openai', 'gpt-4o-mini'),),
-     types.ModelSizeType.LARGE: (
-        model_configs_instance.get_provider_model(('openai', 'gpt-4')),)},
-    {types.ModelSizeType.SMALL: (
-        ('openai', 'gpt-4o-mini'),),
-     types.ModelSizeType.LARGE: (
+    {types.ModelSizeType.SMALL: [
+        ('openai', 'gpt-4o-mini')]},
+    {types.ModelSizeType.SMALL: [
+        ('openai', 'gpt-4o-mini')],
+     types.ModelSizeType.LARGE: [
+        model_configs_instance.get_provider_model(('openai', 'gpt-4'))]},
+    {types.ModelSizeType.SMALL: [
+        ('openai', 'gpt-4o-mini')],
+     types.ModelSizeType.LARGE: [
         model_configs_instance.get_provider_model(('openai', 'gpt-4')),
-        ('claude', 'opus-4'),)},]
+        ('claude', 'opus-4')]}]
 
 
 def _get_default_model_priority_list_type_options():
   model_configs_instance = model_configs.ModelConfigs()
   return [
-    (model_configs_instance.get_provider_model(('openai', 'gpt-4')),),
-    (model_configs_instance.get_provider_model(('openai', 'gpt-4')),
-     ('claude', 'opus-4'),),
-    (model_configs_instance.get_provider_model(('openai', 'gpt-4')),
+    [model_configs_instance.get_provider_model(('openai', 'gpt-4'))],
+    [model_configs_instance.get_provider_model(('openai', 'gpt-4')),
+     ('claude', 'opus-4')],
+    [model_configs_instance.get_provider_model(('openai', 'gpt-4')),
      ('claude', 'opus-4'),
-     ('openai', 'o3-mini'),),]
+     ('openai', 'o3-mini')]]
 
 
 class _UserModel(pydantic.BaseModel):
@@ -1082,6 +1152,19 @@ class TestTypeSerializer:
         type_serializer.decode_endpoint_feature_info_type(
             record=encoded_endpoint_feature_info_type))
     assert endpoint_feature_info_type == decoded_endpoint_feature_info_type
+
+  @pytest.mark.parametrize(
+      'feature_mapping_type_options',
+      _get_feature_mapping_type_options())
+  def test_encode_decode_feature_mapping_type(
+      self, feature_mapping_type_options):
+    encoded_feature_mapping_type = (
+        type_serializer.encode_feature_mapping_type(
+            feature_mapping=feature_mapping_type_options))
+    decoded_feature_mapping_type = (
+        type_serializer.decode_feature_mapping_type(
+            record=encoded_feature_mapping_type))
+    assert feature_mapping_type_options == decoded_feature_mapping_type
 
   @pytest.mark.parametrize(
       'provider_model_metadata_type_options',
