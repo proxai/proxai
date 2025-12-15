@@ -230,33 +230,37 @@ class ModelConfigs(state_controller.StateControlled):
     if features is None:
       return
 
-    # supported = set(features.supported or [])
-    # best_effort = set(features.best_effort or [])
-    # not_supported = set(features.not_supported or [])
+    for feature_name, feature in features.items():
+      supported = set(feature.supported or [])
+      best_effort = set(feature.best_effort or [])
+      not_supported = set(feature.not_supported or [])
 
-    # supported_best_effort = supported & best_effort
-    # if supported_best_effort:
-    #   raise ValueError(
-    #       f'Features {supported_best_effort} appear in both SUPPORTED and '
-    #       'BEST_EFFORT for provider_model_configs for '
-    #       f'({provider_key}, {model_key})\n'
-    #       f'Features: {features}')
+      supported_best_effort = supported & best_effort
+      if supported_best_effort:
+        raise ValueError(
+            f'Features {supported_best_effort} appear in both SUPPORTED and '
+            'BEST_EFFORT for provider_model_configs for '
+            f'({provider_key}, {model_key})\n'
+            f'Feature name: {feature_name}\n'
+            f'Feature config: {feature}')
 
-    # supported_not_supported = supported & not_supported
-    # if supported_not_supported:
-    #   raise ValueError(
-    #       f'Features {supported_not_supported} appear in both SUPPORTED and '
-    #       'NOT_SUPPORTED for provider_model_configs for '
-    #       f'({provider_key}, {model_key})\n'
-    #       f'Features: {features}')
+      supported_not_supported = supported & not_supported
+      if supported_not_supported:
+        raise ValueError(
+            f'Features {supported_not_supported} appear in both SUPPORTED and '
+            'NOT_SUPPORTED for provider_model_configs for '
+            f'({provider_key}, {model_key})\n'
+            f'Feature name: {feature_name}\n'
+            f'Feature config: {feature}')
 
-    # best_effort_not_supported = best_effort & not_supported
-    # if best_effort_not_supported:
-    #   raise ValueError(
-    #       f'Features {best_effort_not_supported} appear in both BEST_EFFORT and '
-    #       'NOT_SUPPORTED for provider_model_configs for '
-    #       f'({provider_key}, {model_key})\n'
-    #       f'Features: {features}')
+      best_effort_not_supported = best_effort & not_supported
+      if best_effort_not_supported:
+        raise ValueError(
+            f'Features {best_effort_not_supported} appear in both BEST_EFFORT and '
+            'NOT_SUPPORTED for provider_model_configs for '
+            f'({provider_key}, {model_key})\n'
+            f'Feature name: {feature_name}\n'
+            f'Feature config: {feature}')
 
   def _validate_provider_model_config(
       self,
