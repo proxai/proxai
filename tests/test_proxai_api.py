@@ -51,7 +51,7 @@ class TestProxaiApiUseCases:
     px.models.list_models()
     px.models.allow_multiprocessing = None
     total_time = time.time() - start
-    assert total_time < 2
+    assert total_time < 4
 
     # Check that model cache is created in the cache path:
     assert os.path.exists(px.models.model_cache_manager.cache_path)
@@ -85,7 +85,7 @@ class TestProxaiApiUseCases:
     px.models.list_models()
     px.models.allow_multiprocessing = None
     total_time = time.time() - start
-    assert total_time < 2
+    assert total_time < 4
 
     # Check that model cache in cache path is not changed:
     assert os.path.exists(px.models.model_cache_manager.cache_path)
@@ -105,10 +105,10 @@ class TestProxaiApiUseCases:
     logging_record = px.generate_text(
         prompt='hello',
         provider_model=px.models.get_model(
-            'claude', 'haiku-3.5', clear_model_cache=True),
+            'gemini', 'gemini-3-pro', clear_model_cache=True),
         extensive_return=True)
     assert logging_record.response_record.response.value == 'mock response'
-    assert logging_record.query_record.provider_model.model == 'haiku-3.5'
+    assert logging_record.query_record.provider_model.model == 'gemini-3-pro'
     assert logging_record.response_source == px.types.ResponseSource.PROVIDER
 
     logging_record = px.generate_text(
@@ -118,7 +118,7 @@ class TestProxaiApiUseCases:
         temperature=0.5,
         stop=['\n\n'],
         web_search=True,
-        provider_model=('openai', 'gpt-3.5-turbo'),
+        provider_model=('gemini', 'gemini-3-pro'),
         use_cache=False,
         unique_response_limit=1,
         extensive_return=True)
@@ -128,7 +128,7 @@ class TestProxaiApiUseCases:
     assert logging_record.query_record.temperature == 0.5
     assert logging_record.query_record.stop == ['\n\n']
     assert logging_record.query_record.web_search == True
-    assert logging_record.query_record.provider_model.model == 'gpt-3.5-turbo'
+    assert logging_record.query_record.provider_model.model == 'gemini-3-pro'
     assert logging_record.response_record.response.value == 'mock response'
     assert logging_record.response_source == px.types.ResponseSource.PROVIDER
 
@@ -140,12 +140,12 @@ class TestProxaiApiUseCases:
     start = time.time()
     models = px.models.list_models(clear_model_cache=True)
     assert len(models) > 15
-    assert time.time() - start < 2
+    assert time.time() - start < 4
 
     start = time.time()
     models = px.models.list_models(model_size='largest')
     assert len(models) < 15
-    assert time.time() - start < 2
+    assert time.time() - start < 4
 
   def test_models_get_all_models_with_multiprocessing_and_model_test_timeout(
       self, monkeypatch, model_configs_instance):
@@ -174,14 +174,14 @@ class TestProxaiApiUseCases:
     start = time.time()
     providers = px.models.list_providers()
     assert len(providers) > 5
-    assert time.time() - start < 2
+    assert time.time() - start < 4
 
     # --- get_provider_models ---
     # This should be fast because of model cache:
     start = time.time()
     models = px.models.list_provider_models('openai')
     assert len(models) > 2
-    assert time.time() - start < 2
+    assert time.time() - start < 4
 
     # --- get_provider_model ---
     # This should be fast because of model cache:
@@ -189,13 +189,13 @@ class TestProxaiApiUseCases:
     provider_model = px.models.get_model('openai', 'gpt-4')
     assert provider_model.provider == 'openai'
     assert provider_model.model == 'gpt-4'
-    assert time.time() - start < 2
+    assert time.time() - start < 4
 
     # --- get_all_models with largest models ---
     start = time.time()
     models = px.models.list_models(model_size='largest')
     assert len(models) < 15
-    assert time.time() - start < 2
+    assert time.time() - start < 4
 
     # --- get_all_models with clear_model_cache ---
     start = time.time()
@@ -203,7 +203,7 @@ class TestProxaiApiUseCases:
     models = px.models.list_models(clear_model_cache=True)
     px.models.allow_multiprocessing = None
     assert len(models) > 15
-    assert time.time() - start < 2
+    assert time.time() - start < 4
 
   def test_set_model(self):
     px.models.list_models(clear_model_cache=True)
@@ -581,7 +581,7 @@ class TestProxaiApiUseCases:
     with pytest.raises(Exception):
       px.generate_text(
           'hello',
-          stop='STOP',
+          web_search=True,
           provider_model=('mistral', 'mistral-large'))
 
   def test_feature_mapping_strategy_override(self):

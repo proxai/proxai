@@ -6,7 +6,7 @@ from xai_sdk import Client
 from xai_sdk.chat import user, system, assistant
 from xai_sdk.tools import web_search
 import proxai.types as types
-import proxai.connectors.providers.openai_mock as openai_mock
+import proxai.connectors.providers.grok_mock as grok_mock
 import proxai.connectors.model_connector as model_connector
 
 
@@ -18,7 +18,7 @@ class GrokConnector(model_connector.ProviderModelConnector):
     return Client(api_key=os.getenv("XAI_API_KEY"))
 
   def init_mock_model(self):
-    return openai_mock.OpenAIMock()
+    return grok_mock.GrokMock()
 
   def _get_api_call_function(
       self,

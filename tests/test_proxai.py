@@ -481,7 +481,7 @@ class TestGenerateText:
     self._test_generate_text(('claude', 'opus-4'))
 
   def test_gemini(self):
-    self._test_generate_text(('gemini', 'gemini-1.5-pro'))
+    self._test_generate_text(('gemini', 'gemini-3-pro'))
 
   def test_cohere(self):
     self._test_generate_text(('cohere', 'command-r'))

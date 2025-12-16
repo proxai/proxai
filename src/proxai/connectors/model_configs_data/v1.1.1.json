@@ -1,9 +1,9 @@
 {
   "metadata": {
-    "config_origin": "BUILT_IN",
-    "min_proxai_version": ">=0.2.7",
+    "config_origin": "PROXDASH",
+    "min_proxai_version": ">=0.2.12",
     "release_notes": "ProviderModelFeatureType has supported, best_effort, and not_supported values.\n",
-    "released_at": "2025-12-14T00:44:34",
+    "released_at": "2025-12-15T20:35:05",
     "version": "1.1.1"
   },
   "version_config": {
@@ -1086,102 +1086,113 @@
           "features": {
             "max_tokens": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "messages": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "prompt": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "response_format::json": {
-              "best_effort": [
-                "messages.create",
-                "beta.messages.create",
+              "best_effort": [],
+              "not_supported": [
                 "beta.messages.parse"
               ],
-              "not_supported": [],
-              "supported": []
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
             },
             "response_format::json_schema": {
-              "best_effort": [
-                "messages.create",
-                "beta.messages.create",
+              "best_effort": [],
+              "not_supported": [
                 "beta.messages.parse"
               ],
-              "not_supported": [],
-              "supported": []
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
             },
             "response_format::pydantic": {
-              "best_effort": [
-                "messages.create",
-                "beta.messages.create",
+              "best_effort": [],
+              "not_supported": [
                 "beta.messages.parse"
               ],
-              "not_supported": [],
-              "supported": []
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
             },
             "response_format::text": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "stop": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "system": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "temperature": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "web_search": {
               "best_effort": [],
               "not_supported": [
-                "messages.create",
-                "beta.messages.create",
                 "beta.messages.parse"
               ],
-              "supported": []
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
             }
           },
           "metadata": {
@@ -1206,101 +1217,112 @@
           "features": {
             "max_tokens": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "messages": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "prompt": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "response_format::json": {
-              "best_effort": [
-                "messages.create",
-                "beta.messages.create",
+              "best_effort": [],
+              "not_supported": [
                 "beta.messages.parse"
               ],
-              "not_supported": [],
-              "supported": []
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
             },
             "response_format::json_schema": {
-              "best_effort": [
-                "messages.create",
-                "beta.messages.create",
+              "best_effort": [],
+              "not_supported": [
                 "beta.messages.parse"
               ],
-              "not_supported": [],
-              "supported": []
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
             },
             "response_format::pydantic": {
-              "best_effort": [
-                "messages.create",
-                "beta.messages.create",
+              "best_effort": [],
+              "not_supported": [
                 "beta.messages.parse"
               ],
-              "not_supported": [],
-              "supported": []
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
             },
             "response_format::text": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "stop": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "system": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "temperature": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "web_search": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             }
           },
@@ -1326,103 +1348,112 @@
           "features": {
             "max_tokens": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "messages": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "prompt": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "response_format::json": {
-              "best_effort": [
-                "messages.create",
-                "beta.messages.create",
+              "best_effort": [],
+              "not_supported": [
                 "beta.messages.parse"
               ],
-              "not_supported": [],
-              "supported": []
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
             },
             "response_format::json_schema": {
-              "best_effort": [
-                "messages.create",
+              "best_effort": [],
+              "not_supported": [
                 "beta.messages.parse"
               ],
-              "not_supported": [],
               "supported": [
+                "messages.create",
                 "beta.messages.create"
               ]
             },
             "response_format::pydantic": {
-              "best_effort": [
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
                 "messages.create",
                 "beta.messages.create"
-              ],
-              "not_supported": [],
-              "supported": [
-                "beta.messages.parse"
               ]
             },
             "response_format::text": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "stop": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "system": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "temperature": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "web_search": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             }
           },
@@ -1448,102 +1479,113 @@
           "features": {
             "max_tokens": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "messages": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "prompt": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "response_format::json": {
-              "best_effort": [
-                "messages.create",
-                "beta.messages.create",
+              "best_effort": [],
+              "not_supported": [
                 "beta.messages.parse"
               ],
-              "not_supported": [],
-              "supported": []
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
             },
             "response_format::json_schema": {
-              "best_effort": [
-                "messages.create",
-                "beta.messages.create",
+              "best_effort": [],
+              "not_supported": [
                 "beta.messages.parse"
               ],
-              "not_supported": [],
-              "supported": []
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
             },
             "response_format::pydantic": {
-              "best_effort": [
-                "messages.create",
-                "beta.messages.create",
+              "best_effort": [],
+              "not_supported": [
                 "beta.messages.parse"
               ],
-              "not_supported": [],
-              "supported": []
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
             },
             "response_format::text": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "stop": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "system": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "temperature": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "web_search": {
               "best_effort": [],
               "not_supported": [
-                "messages.create",
-                "beta.messages.create",
                 "beta.messages.parse"
               ],
-              "supported": []
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
             }
           },
           "metadata": {
@@ -1565,101 +1607,112 @@
           "features": {
             "max_tokens": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "messages": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "prompt": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "response_format::json": {
-              "best_effort": [
-                "messages.create",
-                "beta.messages.create",
+              "best_effort": [],
+              "not_supported": [
                 "beta.messages.parse"
               ],
-              "not_supported": [],
-              "supported": []
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
             },
             "response_format::json_schema": {
-              "best_effort": [
-                "messages.create",
-                "beta.messages.create",
+              "best_effort": [],
+              "not_supported": [
                 "beta.messages.parse"
               ],
-              "not_supported": [],
-              "supported": []
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
             },
             "response_format::pydantic": {
-              "best_effort": [
-                "messages.create",
-                "beta.messages.create",
+              "best_effort": [],
+              "not_supported": [
                 "beta.messages.parse"
               ],
-              "not_supported": [],
-              "supported": []
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
             },
             "response_format::text": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "stop": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "system": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "temperature": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "web_search": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             }
           },
@@ -1685,103 +1738,112 @@
           "features": {
             "max_tokens": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "messages": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "prompt": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "response_format::json": {
-              "best_effort": [
-                "messages.create",
-                "beta.messages.create",
+              "best_effort": [],
+              "not_supported": [
                 "beta.messages.parse"
               ],
-              "not_supported": [],
-              "supported": []
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
             },
             "response_format::json_schema": {
-              "best_effort": [
-                "messages.create",
+              "best_effort": [],
+              "not_supported": [
                 "beta.messages.parse"
               ],
-              "not_supported": [],
               "supported": [
+                "messages.create",
                 "beta.messages.create"
               ]
             },
             "response_format::pydantic": {
-              "best_effort": [
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
                 "messages.create",
                 "beta.messages.create"
-              ],
-              "not_supported": [],
-              "supported": [
-                "beta.messages.parse"
               ]
             },
             "response_format::text": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "stop": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "system": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "temperature": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "web_search": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             }
           },
@@ -1805,7 +1867,118 @@
           }
         },
         "sonnet-3": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
+            }
+          },
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1822,7 +1995,118 @@
           }
         },
         "sonnet-3.5": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
+            }
+          },
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1839,7 +2123,118 @@
           }
         },
         "sonnet-3.5-old": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
+            }
+          },
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -1859,101 +2254,112 @@
           "features": {
             "max_tokens": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "messages": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "prompt": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "response_format::json": {
-              "best_effort": [
-                "messages.create",
-                "beta.messages.create",
+              "best_effort": [],
+              "not_supported": [
                 "beta.messages.parse"
               ],
-              "not_supported": [],
-              "supported": []
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
             },
             "response_format::json_schema": {
-              "best_effort": [
-                "messages.create",
-                "beta.messages.create",
+              "best_effort": [],
+              "not_supported": [
                 "beta.messages.parse"
               ],
-              "not_supported": [],
-              "supported": []
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
             },
             "response_format::pydantic": {
-              "best_effort": [
-                "messages.create",
-                "beta.messages.create",
+              "best_effort": [],
+              "not_supported": [
                 "beta.messages.parse"
               ],
-              "not_supported": [],
-              "supported": []
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
             },
             "response_format::text": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "stop": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "system": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "temperature": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "web_search": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             }
           },
@@ -1976,101 +2382,112 @@
           "features": {
             "max_tokens": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "messages": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "prompt": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "response_format::json": {
-              "best_effort": [
-                "messages.create",
-                "beta.messages.create",
+              "best_effort": [],
+              "not_supported": [
                 "beta.messages.parse"
               ],
-              "not_supported": [],
-              "supported": []
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
             },
             "response_format::json_schema": {
-              "best_effort": [
-                "messages.create",
-                "beta.messages.create",
+              "best_effort": [],
+              "not_supported": [
                 "beta.messages.parse"
               ],
-              "not_supported": [],
-              "supported": []
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
             },
             "response_format::pydantic": {
-              "best_effort": [
-                "messages.create",
-                "beta.messages.create",
+              "best_effort": [],
+              "not_supported": [
                 "beta.messages.parse"
               ],
-              "not_supported": [],
-              "supported": []
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
             },
             "response_format::text": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "stop": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "system": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "temperature": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "web_search": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             }
           },
@@ -2096,103 +2513,112 @@
           "features": {
             "max_tokens": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "messages": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "prompt": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "response_format::json": {
-              "best_effort": [
-                "messages.create",
-                "beta.messages.create",
+              "best_effort": [],
+              "not_supported": [
                 "beta.messages.parse"
               ],
-              "not_supported": [],
-              "supported": []
+              "supported": [
+                "messages.create",
+                "beta.messages.create"
+              ]
             },
             "response_format::json_schema": {
-              "best_effort": [
-                "messages.create",
+              "best_effort": [],
+              "not_supported": [
                 "beta.messages.parse"
               ],
-              "not_supported": [],
               "supported": [
+                "messages.create",
                 "beta.messages.create"
               ]
             },
             "response_format::pydantic": {
-              "best_effort": [
+              "best_effort": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
+              "supported": [
                 "messages.create",
                 "beta.messages.create"
-              ],
-              "not_supported": [],
-              "supported": [
-                "beta.messages.parse"
               ]
             },
             "response_format::text": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "stop": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "system": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "temperature": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             },
             "web_search": {
               "best_effort": [],
-              "not_supported": [],
+              "not_supported": [
+                "beta.messages.parse"
+              ],
               "supported": [
                 "messages.create",
-                "beta.messages.create",
-                "beta.messages.parse"
+                "beta.messages.create"
               ]
             }
           },
@@ -2217,7 +2643,85 @@
       },
       "cohere": {
         "command": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            }
+          },
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2336,7 +2840,85 @@
           }
         },
         "command-light": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            }
+          },
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2356,7 +2938,85 @@
           }
         },
         "command-light-nightly": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            }
+          },
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2471,7 +3131,85 @@
           }
         },
         "command-r": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            }
+          },
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2586,7 +3324,85 @@
           }
         },
         "command-r-plus": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat"
+              ]
+            }
+          },
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -2816,7 +3632,96 @@
           }
         },
         "dbrx-it": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create",
+                "beta.chat.completions.parse"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create",
+                "beta.chat.completions.parse"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create",
+                "beta.chat.completions.parse"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create",
+                "beta.chat.completions.parse"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create",
+                "beta.chat.completions.parse"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create",
+                "beta.chat.completions.parse"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create",
+                "beta.chat.completions.parse"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create",
+                "beta.chat.completions.parse"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create",
+                "beta.chat.completions.parse"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create",
+                "beta.chat.completions.parse"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create",
+                "beta.chat.completions.parse"
+              ]
+            }
+          },
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -3272,7 +4177,96 @@
           }
         },
         "mixtral-8x7b-it": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create",
+                "beta.chat.completions.parse"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create",
+                "beta.chat.completions.parse"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create",
+                "beta.chat.completions.parse"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create",
+                "beta.chat.completions.parse"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create",
+                "beta.chat.completions.parse"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create",
+                "beta.chat.completions.parse"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create",
+                "beta.chat.completions.parse"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create",
+                "beta.chat.completions.parse"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create",
+                "beta.chat.completions.parse"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create",
+                "beta.chat.completions.parse"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create",
+                "beta.chat.completions.parse"
+              ]
+            }
+          },
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -3493,7 +4487,85 @@
       },
       "gemini": {
         "gemini-1.5-flash": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            }
+          },
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -3510,7 +4582,85 @@
           }
         },
         "gemini-1.5-flash-8b": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            }
+          },
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -3527,7 +4677,85 @@
           }
         },
         "gemini-1.5-pro": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            }
+          },
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -3838,7 +5066,85 @@
           }
         },
         "gemini-2.5-flash-lite-preview-06-17": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            }
+          },
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -4059,90 +5365,78 @@
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "messages": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "prompt": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "response_format::json": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "response_format::json_schema": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "response_format::pydantic": {
-              "best_effort": [
-                "chat.completions.create"
-              ],
+              "best_effort": [],
               "not_supported": [],
               "supported": [
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "response_format::text": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "stop": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "system": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "temperature": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "web_search": {
               "best_effort": [],
-              "not_supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
-              ],
-              "supported": []
+              "not_supported": [],
+              "supported": [
+                "chat.create"
+              ]
             }
           },
           "metadata": {
@@ -4170,90 +5464,78 @@
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "messages": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "prompt": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "response_format::json": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "response_format::json_schema": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "response_format::pydantic": {
-              "best_effort": [
-                "chat.completions.create"
-              ],
+              "best_effort": [],
               "not_supported": [],
               "supported": [
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "response_format::text": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "stop": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "system": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "temperature": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "web_search": {
               "best_effort": [],
-              "not_supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
-              ],
-              "supported": []
+              "not_supported": [],
+              "supported": [
+                "chat.create"
+              ]
             }
           },
           "metadata": {
@@ -4280,90 +5562,78 @@
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "messages": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "prompt": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "response_format::json": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "response_format::json_schema": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "response_format::pydantic": {
-              "best_effort": [
-                "chat.completions.create"
-              ],
+              "best_effort": [],
               "not_supported": [],
               "supported": [
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "response_format::text": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "stop": {
-              "best_effort": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
-              ],
+              "best_effort": [],
               "not_supported": [],
-              "supported": []
+              "supported": [
+                "chat.create"
+              ]
             },
             "system": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "temperature": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "web_search": {
               "best_effort": [],
-              "not_supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
-              ],
-              "supported": []
+              "not_supported": [],
+              "supported": [
+                "chat.create"
+              ]
             }
           },
           "metadata": {
@@ -4390,90 +5660,78 @@
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "messages": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "prompt": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "response_format::json": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "response_format::json_schema": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "response_format::pydantic": {
-              "best_effort": [
-                "chat.completions.create"
-              ],
+              "best_effort": [],
               "not_supported": [],
               "supported": [
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "response_format::text": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "stop": {
-              "best_effort": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
-              ],
+              "best_effort": [],
               "not_supported": [],
-              "supported": []
+              "supported": [
+                "chat.create"
+              ]
             },
             "system": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "temperature": {
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
+                "chat.create"
               ]
             },
             "web_search": {
               "best_effort": [],
-              "not_supported": [
-                "chat.completions.create",
-                "beta.chat.completions.parse"
-              ],
-              "supported": []
+              "not_supported": [],
+              "supported": [
+                "chat.create"
+              ]
             }
           },
           "metadata": {
@@ -4495,7 +5753,85 @@
           }
         },
         "grok-4-1-fast-non-reasoning": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.create"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.create"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.create"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.create"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.create"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.create"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.create"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.create"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.create"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.create"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.create"
+              ]
+            }
+          },
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -4811,7 +6147,85 @@
           }
         },
         "meta-llama-3.1-8b-it": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "generate_content"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "generate_content"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "generate_content"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "generate_content"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "generate_content"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "generate_content"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "generate_content"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "generate_content"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "generate_content"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "generate_content"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "generate_content"
+              ]
+            }
+          },
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -4831,7 +6245,85 @@
           }
         },
         "phi-4": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "generate_content"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "generate_content"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "generate_content"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "generate_content"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "generate_content"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "generate_content"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "generate_content"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "generate_content"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "generate_content"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "generate_content"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "generate_content"
+              ]
+            }
+          },
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -4852,7 +6344,85 @@
           }
         },
         "qwen3-32b": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "generate_content"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "generate_content"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "generate_content"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "generate_content"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "generate_content"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "generate_content"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "generate_content"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "generate_content"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "generate_content"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "generate_content"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "generate_content"
+              ]
+            }
+          },
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -6326,7 +7896,85 @@
       },
       "mock_failing_provider": {
         "mock_failing_model": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create"
+              ]
+            }
+          },
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -6345,7 +7993,85 @@
       },
       "mock_provider": {
         "mock_model": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create"
+              ]
+            }
+          },
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -6364,7 +8090,85 @@
       },
       "mock_slow_provider": {
         "mock_slow_model": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create"
+              ]
+            }
+          },
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -6383,7 +8187,118 @@
       },
       "openai": {
         "chatgpt-4o-latest": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            }
+          },
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -6403,7 +8318,118 @@
           }
         },
         "computer-use-preview": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            }
+          },
           "metadata": {
             "is_default_candidate": false,
             "is_featured": false
@@ -6419,7 +8445,118 @@
           }
         },
         "gpt-3.5-turbo": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            }
+          },
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -6439,7 +8576,118 @@
           }
         },
         "gpt-4": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            }
+          },
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -6459,7 +8707,118 @@
           }
         },
         "gpt-4-32k": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            }
+          },
           "metadata": {
             "is_default_candidate": false,
             "is_featured": false
@@ -6475,7 +8834,118 @@
           }
         },
         "gpt-4-turbo": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            }
+          },
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -6878,7 +9348,118 @@
           }
         },
         "gpt-4.5-preview": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            }
+          },
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -7026,7 +9607,118 @@
           }
         },
         "gpt-4o-audio-preview": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            }
+          },
           "metadata": {
             "is_default_candidate": false,
             "is_featured": false
@@ -7170,7 +9862,118 @@
           }
         },
         "gpt-4o-mini-audio-preview": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            }
+          },
           "metadata": {
             "is_default_candidate": false,
             "is_featured": false
@@ -7186,7 +9989,118 @@
           }
         },
         "gpt-4o-mini-realtime-preview": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            }
+          },
           "metadata": {
             "is_default_candidate": false,
             "is_featured": false
@@ -7202,7 +10116,118 @@
           }
         },
         "gpt-4o-mini-search-preview": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            }
+          },
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -7222,7 +10247,118 @@
           }
         },
         "gpt-4o-realtime-preview": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            }
+          },
           "metadata": {
             "is_default_candidate": false,
             "is_featured": false
@@ -7238,7 +10374,118 @@
           }
         },
         "gpt-4o-search-preview": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            }
+          },
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -7513,7 +10760,118 @@
           }
         },
         "o1-mini": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            }
+          },
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
@@ -7533,7 +10891,118 @@
           }
         },
         "o1-pro": {
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            }
+          },
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_default_candidate": false,
