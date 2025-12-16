@@ -329,24 +329,24 @@ def main():
   # provider_model = ('openai', 'gpt-4o-mini')
   # provider_model = ('openai', 'gpt-5.1')
 
-  # endpoints = [
-  #     'messages.create',
-  #     'beta.messages.create',
-  #     'beta.messages.parse',
-  # ]
+  endpoints = [
+      'messages.create',
+      'beta.messages.create',
+      'beta.messages.parse',
+  ]
   # provider_model = ('claude', 'haiku-3')
-  # provider_model = ('claude', 'haiku-4.5')
+  provider_model = ('claude', 'opus-4.5')
 
   # endpoints = [
   #     'models.generate_content',
   # ]
   # provider_model = ('gemini', 'gemini-2.5-flash')
 
-  endpoints = [
-      'chat.create',
-  ]
+  # endpoints = [
+  #     'chat.create',
+  # ]
   # provider_model = ('grok', 'grok-3-fast-beta')
-  provider_model = ('grok', 'grok-4-1-fast-non-reasoning')
+  # provider_model = ('grok', 'grok-4-1-fast-non-reasoning')
 
   # endpoints = [
   #     'chat.complete',
