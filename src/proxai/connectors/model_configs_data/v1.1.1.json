@@ -1397,13 +1397,13 @@
               ]
             },
             "response_format::pydantic": {
-              "best_effort": [],
-              "not_supported": [
-                "beta.messages.parse"
-              ],
-              "supported": [
+              "best_effort": [
                 "messages.create",
                 "beta.messages.create"
+              ],
+              "not_supported": [],
+              "supported": [
+                "beta.messages.parse"
               ]
             },
             "response_format::text": {
@@ -1448,10 +1448,9 @@
             },
             "web_search": {
               "best_effort": [],
-              "not_supported": [
-                "beta.messages.parse"
-              ],
+              "not_supported": [],
               "supported": [
+                "beta.messages.parse"
                 "messages.create",
                 "beta.messages.create"
               ]
@@ -2555,13 +2554,13 @@
               ]
             },
             "response_format::pydantic": {
-              "best_effort": [],
-              "not_supported": [
-                "beta.messages.parse"
-              ],
-              "supported": [
+              "best_effort": [
                 "messages.create",
                 "beta.messages.create"
+              ],
+              "not_supported": [],
+              "supported": [
+                "beta.messages.parse"
               ]
             },
             "response_format::text": {
@@ -2606,12 +2605,11 @@
             },
             "web_search": {
               "best_effort": [],
-              "not_supported": [
-                "beta.messages.parse"
-              ],
+              "not_supported": [],
               "supported": [
                 "messages.create",
-                "beta.messages.create"
+                "beta.messages.create",
+                "beta.messages.parse"
               ]
             }
           },
