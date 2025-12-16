@@ -1450,7 +1450,7 @@
               "best_effort": [],
               "not_supported": [],
               "supported": [
-                "beta.messages.parse"
+                "beta.messages.parse",
                 "messages.create",
                 "beta.messages.create"
               ]
