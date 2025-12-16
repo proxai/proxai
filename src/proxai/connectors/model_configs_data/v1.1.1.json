@@ -1738,112 +1738,105 @@
           "features": {
             "max_tokens": {
               "best_effort": [],
-              "not_supported": [
-                "beta.messages.parse"
-              ],
+              "not_supported": [],
               "supported": [
                 "messages.create",
-                "beta.messages.create"
+                "beta.messages.create",
+                "beta.messages.parse"
               ]
             },
             "messages": {
               "best_effort": [],
-              "not_supported": [
-                "beta.messages.parse"
-              ],
+              "not_supported": [],
               "supported": [
                 "messages.create",
-                "beta.messages.create"
+                "beta.messages.create",
+                "beta.messages.parse"
               ]
             },
             "prompt": {
               "best_effort": [],
-              "not_supported": [
-                "beta.messages.parse"
-              ],
+              "not_supported": [],
               "supported": [
                 "messages.create",
-                "beta.messages.create"
+                "beta.messages.create",
+                "beta.messages.parse"
               ]
             },
             "response_format::json": {
-              "best_effort": [],
-              "not_supported": [
-                "beta.messages.parse"
+              "best_effort": [
+                  "messages.create",
+                  "beta.messages.create",
+                  "beta.messages.parse"
               ],
-              "supported": [
-                "messages.create",
-                "beta.messages.create"
-              ]
+              "not_supported": [],
+              "supported": []
             },
             "response_format::json_schema": {
-              "best_effort": [],
-              "not_supported": [
+              "best_effort": [
+                "messages.create",
                 "beta.messages.parse"
               ],
+              "not_supported": [],
               "supported": [
-                "messages.create",
                 "beta.messages.create"
               ]
             },
             "response_format::pydantic": {
-              "best_effort": [],
-              "not_supported": [
-                "beta.messages.parse"
-              ],
-              "supported": [
+              "best_effort": [
                 "messages.create",
                 "beta.messages.create"
+              ],
+              "not_supported": [],
+              "supported": [
+                "beta.messages.parse"
               ]
             },
             "response_format::text": {
               "best_effort": [],
               "not_supported": [
-                "beta.messages.parse"
+
               ],
               "supported": [
                 "messages.create",
-                "beta.messages.create"
+                "beta.messages.create",
+                "beta.messages.parse"
               ]
             },
             "stop": {
               "best_effort": [],
-              "not_supported": [
-                "beta.messages.parse"
-              ],
+              "not_supported": [],
               "supported": [
                 "messages.create",
-                "beta.messages.create"
+                "beta.messages.create",
+                "beta.messages.parse"
               ]
             },
             "system": {
               "best_effort": [],
-              "not_supported": [
-                "beta.messages.parse"
-              ],
+              "not_supported": [],
               "supported": [
                 "messages.create",
-                "beta.messages.create"
+                "beta.messages.create",
+                "beta.messages.parse"
               ]
             },
             "temperature": {
               "best_effort": [],
-              "not_supported": [
-                "beta.messages.parse"
-              ],
+              "not_supported": [],
               "supported": [
                 "messages.create",
-                "beta.messages.create"
+                "beta.messages.create",
+                "beta.messages.parse"
               ]
             },
             "web_search": {
               "best_effort": [],
-              "not_supported": [
-                "beta.messages.parse"
-              ],
+              "not_supported": [],
               "supported": [
                 "messages.create",
-                "beta.messages.create"
+                "beta.messages.create",
+                "beta.messages.parse"
               ]
             }
           },
