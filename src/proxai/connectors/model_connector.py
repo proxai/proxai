@@ -821,6 +821,10 @@ class ProviderModelConnector(state_controller.StateControlled):
     if messages != None:
       type_utils.check_messages_type(messages)
 
+    if response_format is None:
+      response_format = types.ResponseFormat(
+          type=types.ResponseFormatType.TEXT)
+
     if provider_model is not None:
       if type(provider_model) == types.ProviderModelTupleType:
         provider_model = self.provider_model_config.provider_model
