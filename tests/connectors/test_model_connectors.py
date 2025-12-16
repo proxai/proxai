@@ -708,16 +708,20 @@ class TestSanitizeResponseFormatFeature:
 class TestSanitizeQueryRecord:
   """Tests for _sanitize_query_record method."""
 
-  def test_sets_chosen_endpoint(self):
+  def test_sanitizes_with_chosen_endpoint(self):
     config = _create_config_with_features({
-        'prompt': {'supported': ['chat'], 'best_effort': []}
+        'prompt': {'supported': ['chat'], 'best_effort': []},
+        'system': {'supported': ['chat'], 'best_effort': []},
     })
     connector = get_mock_provider_model_connector(provider_model_config=config)
-    query_record = types.QueryRecord(prompt='Hello')
+    query_record = types.QueryRecord(
+        prompt='Hello',
+        chosen_endpoint='chat')
 
-    result = connector._sanitize_query_record(['chat'], [], query_record)
+    result = connector._sanitize_query_record(query_record)
 
     assert result.chosen_endpoint == 'chat'
+    assert result.prompt == 'Hello'
 
   def test_strict_mode_returns_unchanged(self):
     config = _create_config_with_features({
@@ -726,12 +730,171 @@ class TestSanitizeQueryRecord:
     connector = get_mock_provider_model_connector(provider_model_config=config)
     query_record = types.QueryRecord(
         prompt='Hello',
+        chosen_endpoint='chat',
         feature_mapping_strategy=types.FeatureMappingStrategy.STRICT)
 
-    result = connector._sanitize_query_record(['chat'], [], query_record)
+    result = connector._sanitize_query_record(query_record)
 
     assert result.prompt == 'Hello'
     assert result.chosen_endpoint == 'chat'
+
+
+class TestGetFeatureSignature:
+  """Tests for _get_feature_signature method."""
+
+  def test_basic_prompt_signature(self):
+    connector = get_mock_provider_model_connector()
+    query_record = types.QueryRecord(prompt='Hello')
+    result = connector._get_feature_signature(query_record)
+
+    assert 'prompt' in result
+    assert 'None' in result  # provider_model and feature_mapping_strategy
+
+  def test_signature_includes_provider_model(self, model_configs_instance):
+    connector = get_mock_provider_model_connector()
+    query_record = types.QueryRecord(
+        prompt='Hello',
+        provider_model=model_configs_instance.get_provider_model(
+            ('mock_provider', 'mock_model')))
+    result = connector._get_feature_signature(query_record)
+
+    assert 'mock_provider' in result
+    assert 'mock_model' in result
+
+  def test_signature_includes_feature_mapping_strategy(self):
+    connector = get_mock_provider_model_connector()
+    query_record = types.QueryRecord(
+        prompt='Hello',
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT)
+    result = connector._get_feature_signature(query_record)
+
+    assert 'STRICT' in result
+
+  def test_signature_with_response_format_json(self):
+    connector = get_mock_provider_model_connector()
+    query_record = types.QueryRecord(
+        prompt='Hello',
+        response_format=types.ResponseFormat(type=types.ResponseFormatType.JSON))
+    result = connector._get_feature_signature(query_record)
+
+    assert 'JSON' in result
+    assert 'prompt' in result
+
+  def test_signature_without_response_format(self):
+    connector = get_mock_provider_model_connector()
+    query_record = types.QueryRecord(prompt='Hello')
+    result = connector._get_feature_signature(query_record)
+
+    # Should not raise error and should not include response_format
+    assert 'JSON' not in result
+    assert 'prompt' in result
+
+  def test_signature_with_multiple_features(self):
+    connector = get_mock_provider_model_connector()
+    query_record = types.QueryRecord(
+        prompt='Hello',
+        system='Be helpful',
+        max_tokens=100,
+        temperature=0.7)
+    result = connector._get_feature_signature(query_record)
+
+    assert 'prompt' in result
+    assert 'system' in result
+    assert 'max_tokens' in result
+    assert 'temperature' in result
+
+  def test_same_features_produce_same_signature(self):
+    connector = get_mock_provider_model_connector()
+    query_record1 = types.QueryRecord(
+        prompt='Hello world',
+        system='Be helpful')
+    query_record2 = types.QueryRecord(
+        prompt='Different prompt',
+        system='Different system')
+    result1 = connector._get_feature_signature(query_record1)
+    result2 = connector._get_feature_signature(query_record2)
+
+    # Same features used, so same signature (content doesn't matter)
+    assert result1 == result2
+
+  def test_different_features_produce_different_signatures(self):
+    connector = get_mock_provider_model_connector()
+    query_record1 = types.QueryRecord(prompt='Hello')
+    query_record2 = types.QueryRecord(prompt='Hello', system='Be helpful')
+    result1 = connector._get_feature_signature(query_record1)
+    result2 = connector._get_feature_signature(query_record2)
+
+    assert result1 != result2
+
+
+class TestChosenEndpointCachedResult:
+  """Tests for _chosen_endpoint_cached_result caching logic."""
+
+  def test_cache_is_initialized_empty(self):
+    connector = get_mock_provider_model_connector()
+    assert connector._chosen_endpoint_cached_result == {}
+
+  def test_feature_check_caches_endpoint_result(self):
+    config = _create_config_with_features({
+        'prompt': {'supported': ['chat'], 'best_effort': []}
+    })
+    connector = get_mock_provider_model_connector(provider_model_config=config)
+    query_record = types.QueryRecord(prompt='Hello')
+
+    # First call should populate the cache
+    result1 = connector.feature_check(query_record)
+
+    # Cache should now contain the result
+    assert len(connector._chosen_endpoint_cached_result) == 1
+    assert result1.chosen_endpoint == 'chat'
+
+  def test_feature_check_uses_cached_result(self):
+    config = _create_config_with_features({
+        'prompt': {'supported': ['chat'], 'best_effort': []}
+    })
+    connector = get_mock_provider_model_connector(provider_model_config=config)
+    query_record = types.QueryRecord(prompt='Hello')
+
+    # First call
+    result1 = connector.feature_check(query_record)
+    cache_size_after_first = len(connector._chosen_endpoint_cached_result)
+
+    # Second call with same features
+    result2 = connector.feature_check(query_record)
+    cache_size_after_second = len(connector._chosen_endpoint_cached_result)
+
+    # Cache size should not increase
+    assert cache_size_after_first == cache_size_after_second
+    assert result1.chosen_endpoint == result2.chosen_endpoint
+
+  def test_different_features_create_different_cache_entries(self):
+    config = _create_config_with_features({
+        'prompt': {'supported': ['chat'], 'best_effort': []},
+        'system': {'supported': ['chat'], 'best_effort': []},
+    })
+    connector = get_mock_provider_model_connector(provider_model_config=config)
+    query_record1 = types.QueryRecord(prompt='Hello')
+    query_record2 = types.QueryRecord(prompt='Hello', system='Be helpful')
+
+    connector.feature_check(query_record1)
+    connector.feature_check(query_record2)
+
+    # Two different feature combinations should create two cache entries
+    assert len(connector._chosen_endpoint_cached_result) == 2
+
+  def test_same_features_different_content_uses_cache(self):
+    config = _create_config_with_features({
+        'prompt': {'supported': ['chat'], 'best_effort': []}
+    })
+    connector = get_mock_provider_model_connector(provider_model_config=config)
+    query_record1 = types.QueryRecord(prompt='Hello')
+    query_record2 = types.QueryRecord(prompt='Goodbye')
+
+    connector.feature_check(query_record1)
+    connector.feature_check(query_record2)
+
+    # Same features (just prompt), so only one cache entry
+    assert len(connector._chosen_endpoint_cached_result) == 1
 
 
 # Note: add_features_to_query_function is tested indirectly through generate_text

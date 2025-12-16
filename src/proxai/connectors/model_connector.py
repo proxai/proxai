@@ -39,6 +39,8 @@ class ProviderModelConnector(state_controller.StateControlled):
       Callable[[bool], proxdash.ProxDashConnection]]
   _provider_model_state: Optional[types.ProviderModelState]
 
+  _chosen_endpoint_cached_result: Optional[Dict[str, bool]]
+
   def __init__(
       self,
       provider_model: Optional[types.ProviderModelType] = None,
@@ -71,6 +73,8 @@ class ProviderModelConnector(state_controller.StateControlled):
         get_logging_options=get_logging_options,
         proxdash_connection=proxdash_connection,
         get_proxdash_connection=get_proxdash_connection)
+
+    self._chosen_endpoint_cached_result = {}
 
     if init_state:
       if init_state.provider_model is None:
@@ -288,6 +292,22 @@ class ProviderModelConnector(state_controller.StateControlled):
     else:
       return getattr(query_record, feature_name, None) is not None
 
+  def _get_feature_signature(
+      self,
+      query_record: types.QueryRecord) -> str:
+    feature_signature = [
+        str(query_record.provider_model),
+        str(query_record.feature_mapping_strategy),
+    ]
+    for feature_name in types.FeatureNameType.__members__.values():
+      feature_name = feature_name.value
+      if feature_name.startswith('response_format::'):
+        if self._check_feature_exists(feature_name, query_record):
+          feature_signature.append(query_record.response_format.type.value)
+      elif getattr(query_record, feature_name, None):
+        feature_signature.append(feature_name)
+    return '::'.join(feature_signature)
+
   def _get_available_endpoints(
       self,
       query_record: types.QueryRecord) -> List[str]:
@@ -454,14 +474,7 @@ class ProviderModelConnector(state_controller.StateControlled):
 
   def _sanitize_query_record(
       self,
-      supported_endpoints: List[str],
-      best_effort_endpoints: List[str],
       query_record: types.QueryRecord):
-    query_record = copy.deepcopy(query_record)
-
-    query_record.chosen_endpoint = self._select_endpoint(
-        supported_endpoints=supported_endpoints,
-        best_effort_endpoints=best_effort_endpoints)
 
     if (query_record.feature_mapping_strategy ==
         types.FeatureMappingStrategy.STRICT):
@@ -502,17 +515,31 @@ class ProviderModelConnector(state_controller.StateControlled):
     return query_record
 
   def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
-    supported_endpoints, best_effort_endpoints = self._get_available_endpoints(
-        query_record=query_record)
-    self._check_endpoints_usability(
-        supported_endpoints=supported_endpoints,
-        best_effort_endpoints=best_effort_endpoints,
-        query_record=query_record)
-    query_record = (
-        self._sanitize_query_record(
-            supported_endpoints=supported_endpoints,
-            best_effort_endpoints=best_effort_endpoints,
-            query_record=query_record))
+    query_record = copy.deepcopy(query_record)
+    feature_signature = self._get_feature_signature(query_record)
+    if (self._chosen_endpoint_cached_result is not None and
+        feature_signature in self._chosen_endpoint_cached_result):
+      query_record.chosen_endpoint = self._chosen_endpoint_cached_result[
+          feature_signature]
+    else:
+      supported_endpoints, best_effort_endpoints = self._get_available_endpoints(
+          query_record=query_record)
+
+      self._check_endpoints_usability(
+          supported_endpoints=supported_endpoints,
+          best_effort_endpoints=best_effort_endpoints,
+          query_record=query_record)
+
+      self._chosen_endpoint_cached_result[
+          feature_signature] = self._select_endpoint(
+              supported_endpoints=supported_endpoints,
+              best_effort_endpoints=best_effort_endpoints)
+
+      query_record.chosen_endpoint = self._chosen_endpoint_cached_result[
+          feature_signature]
+
+    query_record = self._sanitize_query_record(query_record=query_record)
+
     return query_record
 
   def _get_system_content_with_schema_guidance(
