@@ -384,9 +384,9 @@ class ProviderModelConnector(state_controller.StateControlled):
       supported_endpoints: List[str],
       best_effort_endpoints: List[str]) -> str:
     if len(supported_endpoints) != 0:
-      return supported_endpoints[0]
+      return sorted(supported_endpoints)[0]
     elif len(best_effort_endpoints) != 0:
-      return best_effort_endpoints[0]
+      return sorted(best_effort_endpoints)[0]
 
   def _sanitize_system_feature(
       self,
@@ -880,7 +880,7 @@ class ProviderModelConnector(state_controller.StateControlled):
         token_count=self.get_token_count_estimate(
             value = prompt if prompt is not None else messages))
 
-    updated_query_record = self.feature_check(
+    query_record = self.feature_check(
         query_record=query_record)
 
     look_fail_reason = None
@@ -889,7 +889,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       response_record = None
       try:
         cache_look_result = self.query_cache_manager.look(
-            updated_query_record,
+            query_record,
             unique_response_limit=unique_response_limit)
         if cache_look_result.query_response:
           response_record = cache_look_result.query_response
@@ -926,7 +926,7 @@ class ProviderModelConnector(state_controller.StateControlled):
 
     response, error, error_traceback = None, None, None
     try:
-      response = self.generate_text_proc(query_record=updated_query_record)
+      response = self.generate_text_proc(query_record=query_record)
     except Exception as e:
       error_traceback = traceback.format_exc()
       error = e
@@ -952,7 +952,7 @@ class ProviderModelConnector(state_controller.StateControlled):
 
     if self.query_cache_manager and use_cache:
       self.query_cache_manager.cache(
-          query_record=updated_query_record,
+          query_record=query_record,
           response_record=response_record,
           unique_response_limit=unique_response_limit)
 
