@@ -13,6 +13,7 @@ class RunType(enum.Enum):
 
 class CallType(str, enum.Enum):
   GENERATE_TEXT = 'GENERATE_TEXT'
+  OTHER = 'OTHER'
 
 
 ProviderNameType = str
