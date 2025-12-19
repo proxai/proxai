@@ -138,6 +138,7 @@ def is_query_record_equal(
     pprint(query_record_1)
     print('-'*80, 'query_record_2')
     pprint(query_record_2)
+    print('-'*80, 'query_record_1 == query_record_2', query_record_1 == query_record_2)
   # QueryRecord(call_type=<CallType.GENERATE_TEXT: 'GENERATE_TEXT'>,
   #             provider_model=ProviderModelType(provider=openai, model=gpt-4-0613, provider_model_identifier=gpt-4-0613),
   #             prompt='A=5, B=10. Give me {"A": A, '
