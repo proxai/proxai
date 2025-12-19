@@ -131,6 +131,29 @@ def is_query_record_equal(
               pydantic_value_2.class_value.model_json_schema()))
       del query_record_2.response_format.value.class_value
 
+  if (query_record_1.provider_model.provider_model_identifier == 'gpt-4-0613' and
+      query_record_1.prompt == 'A=5, B=10. Give me {"A": A, "B": B, "C": A + B}.'):
+    from pprint import pprint
+    print('-'*80, 'query_record_1')
+    pprint(query_record_1)
+    print('-'*80, 'query_record_2')
+    pprint(query_record_2)
+  # QueryRecord(call_type=<CallType.GENERATE_TEXT: 'GENERATE_TEXT'>,
+  #             provider_model=ProviderModelType(provider=openai, model=gpt-4-0613, provider_model_identifier=gpt-4-0613),
+  #             prompt='A=5, B=10. Give me {"A": A, '
+  #                   '"B": B, "C": A + B}.',
+  #             system=None,
+  #             messages=None,
+  #             max_tokens=None,
+  #             temperature=None,
+  #             stop=None,
+  #             token_count=16,
+  #             response_format=ResponseFormat(value=None,
+  #                                           type=<ResponseFormatType.TEXT: 'TEXT'>),
+  #             web_search=None,
+  #             feature_mapping_strategy=<FeatureMappingStrategy.STRICT: 'STRICT'>,
+  #             chosen_endpoint='beta.chat.completions.parse',
+  #             hash_value='01fabc40400cabe9')
   return query_record_1 == query_record_2
 
 
