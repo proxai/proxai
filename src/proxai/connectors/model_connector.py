@@ -313,6 +313,8 @@ class ProviderModelConnector(state_controller.StateControlled):
       query_record: types.QueryRecord) -> List[str]:
     supported_endpoints = []
     best_effort_endpoints = []
+    from pprint import pprint
+    pprint(self.provider_model_config.features)
     for feature_name in types.FeatureNameType.__members__.values():
       if not self._check_feature_exists(
           feature_name=feature_name,
