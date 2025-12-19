@@ -314,7 +314,6 @@ class ProviderModelConnector(state_controller.StateControlled):
     supported_endpoints = []
     best_effort_endpoints = []
     for feature_name in types.FeatureNameType.__members__.values():
-      feature_name = feature_name.value
       if not self._check_feature_exists(
           feature_name=feature_name,
           query_record=query_record):
