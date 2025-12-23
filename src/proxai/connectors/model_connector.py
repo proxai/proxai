@@ -757,9 +757,17 @@ class ProviderModelConnector(state_controller.StateControlled):
     if type(response_token_count) != int:
       response_token_count = 0
     model_pricing_config = self.provider_model_config.pricing
+
+    query_token_cost = model_pricing_config.per_query_token_cost
+    if query_token_cost is None:
+      query_token_cost = 0
+    response_token_cost = model_pricing_config.per_response_token_cost
+    if response_token_cost is None:
+      response_token_cost = 0
+
     return math.floor(
-        query_token_count * model_pricing_config.per_query_token_cost +
-        response_token_count * model_pricing_config.per_response_token_cost)
+        query_token_count * query_token_cost +
+        response_token_count * response_token_cost)
 
   def _update_stats(self, logging_record: types.LoggingRecord):
     if getattr(self, '_stats', None) is None:

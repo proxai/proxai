@@ -27,6 +27,9 @@ def _get_provider_model_identifier_options():
 
 def _get_provider_model_pricing_type_options():
   return [
+      {},
+      {'per_response_token_cost': 0.001},
+      {'per_query_token_cost': 0.002},
       {'per_response_token_cost': 0.001,
        'per_query_token_cost': 0.002},
       {'per_response_token_cost': 0.0,

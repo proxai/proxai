@@ -66,8 +66,8 @@ MessagesType = List[Dict[str, str]]
 
 @dataclasses.dataclass
 class ProviderModelPricingType:
-  per_response_token_cost: float
-  per_query_token_cost: float
+  per_response_token_cost: Optional[float] = None
+  per_query_token_cost: Optional[float] = None
 
 
 @dataclasses.dataclass
