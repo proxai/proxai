@@ -62,22 +62,25 @@ def encode_provider_model_pricing_type(
     provider_model_pricing_type: types.ProviderModelPricingType
 ) -> Dict[str, Any]:
   record = {}
-  record['per_response_token_cost'] = (
-      provider_model_pricing_type.per_response_token_cost)
-  record['per_query_token_cost'] = (
-      provider_model_pricing_type.per_query_token_cost)
+  if provider_model_pricing_type.per_response_token_cost != None:
+    record['per_response_token_cost'] = (
+        provider_model_pricing_type.per_response_token_cost)
+  if provider_model_pricing_type.per_query_token_cost != None:
+    record['per_query_token_cost'] = (
+        provider_model_pricing_type.per_query_token_cost)
   return record
 
 
 def decode_provider_model_pricing_type(
     record: Dict[str, Any]) -> types.ProviderModelPricingType:
-  if 'per_response_token_cost' not in record:
-    raise ValueError(f'per_response_token_cost not found in record: {record=}')
-  if 'per_query_token_cost' not in record:
-    raise ValueError(f'per_query_token_cost not found in record: {record=}')
-  return types.ProviderModelPricingType(
-      per_response_token_cost=record['per_response_token_cost'],
-      per_query_token_cost=record['per_query_token_cost'])
+  provider_model_pricing_type = types.ProviderModelPricingType()
+  if 'per_response_token_cost' in record:
+    provider_model_pricing_type.per_response_token_cost = (
+        float(record['per_response_token_cost']))
+  if 'per_query_token_cost' in record:
+    provider_model_pricing_type.per_query_token_cost = (
+        float(record['per_query_token_cost']))
+  return provider_model_pricing_type
 
 
 def encode_endpoint_feature_info_type(
