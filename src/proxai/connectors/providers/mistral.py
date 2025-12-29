@@ -133,23 +133,45 @@ class MistralConnector(model_connector.ProviderModelConnector):
     raise Exception(
         'Web search is not supported for Mistral. Code should never reach here.')
 
+  def _extract_text_from_content(self, content) -> str:
+    # If content is already a string, return it directly
+    if isinstance(content, str):
+      return content
+
+    # If content is a list of chunks, extract text from TextChunk objects
+    if isinstance(content, list):
+      text_parts = []
+      for chunk in content:
+        # Check for TextChunk (has type='text' and text attribute)
+        chunk_type = getattr(chunk, 'type', None)
+        if chunk_type == 'text':
+          text = getattr(chunk, 'text', None)
+          if text:
+            text_parts.append(text)
+      return '\n'.join(text_parts) if text_parts else ''
+
+    # Fallback: try to convert to string
+    return str(content) if content else ''
+
   def format_text_response_from_provider(
       self,
       response: Any,
       query_record: types.QueryRecord) -> str:
-    return response.choices[0].message.content
+    return self._extract_text_from_content(response.choices[0].message.content)
 
   def format_json_response_from_provider(
       self,
       response: Any,
       query_record: types.QueryRecord) -> dict:
-    return self._extract_json_from_text(response.choices[0].message.content)
+    return self._extract_json_from_text(
+        self._extract_text_from_content(response.choices[0].message.content))
 
   def format_json_schema_response_from_provider(
       self,
       response: Any,
       query_record: types.QueryRecord) -> dict:
-    return self._extract_json_from_text(response.choices[0].message.content)
+    return self._extract_json_from_text(
+        self._extract_text_from_content(response.choices[0].message.content))
 
   def format_pydantic_response_from_provider(
       self,
