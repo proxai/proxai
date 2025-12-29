@@ -197,12 +197,12 @@ class ModelConfigs(state_controller.StateControlled):
       raise ValueError(
           f'pricing is None for provider_model_configs[{provider_key}][{model_key}]')
 
-    if pricing.per_query_token_cost < 0:
+    if pricing is not None and pricing.per_query_token_cost < 0:
       raise ValueError(
           f'per_query_token_cost is negative ({pricing.per_query_token_cost}) '
           f'for provider_model_configs[{provider_key}][{model_key}]')
 
-    if pricing.per_response_token_cost < 0:
+    if pricing is not None and pricing.per_response_token_cost < 0:
       raise ValueError(
           f'per_response_token_cost is negative ({pricing.per_response_token_cost}) '
           f'for provider_model_configs[{provider_key}][{model_key}]')
