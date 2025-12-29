@@ -2,56 +2,10 @@ from typing import Any, Callable
 import functools
 import json
 import os
-import requests
-from typing import Any, Dict, List, Optional
+from huggingface_hub import InferenceClient
 import proxai.types as types
-import proxai.connectors.providers.huggingface_mock as huggingface_mock
+import proxai.connectors.providers.openai_mock as openai_mock
 import proxai.connectors.model_connector as model_connector
-
-_MODEL_URL_MAP = {
-    'Qwen/Qwen3-32B': 'https://router.huggingface.co/hf-inference/models/Qwen/Qwen2.5-Coder-32B-Instruct/v1/chat/completions',
-    'deepseek-ai/DeepSeek-R1': 'https://router.huggingface.co/together/v1/chat/completions',
-    'deepseek-ai/DeepSeek-V3': 'https://router.huggingface.co/together/v1/chat/completions',
-    'google/gemma-2-2b-it': 'https://router.huggingface.co/nebius/v1/chat/completions',
-    'meta-llama/Meta-Llama-3.1-8B-Instruct': 'https://router.huggingface.co/hf-inference/models/meta-llama/Meta-Llama-3.1-8B-Instruct/v1/chat/completions',
-    'microsoft/phi-4': 'https://router.huggingface.co/nebius/v1/chat/completions'
-}
-
-
-class _HuggingFaceRequest:
-  def __init__(self):
-    self.headers = {
-        'Authorization': f'Bearer {os.environ["HUGGINGFACE_API_KEY"]}'}
-
-  def generate_content(
-      self,
-      messages: List[Dict[str, str]],
-      model: str,
-      max_tokens: Optional[int]=None,
-      temperature: Optional[float]=None,
-      stop: Optional[List[str]]=None,
-      response_format: Optional[Dict[str, Any]]=None) -> str:
-    payload = {
-        'model': model,
-        'messages': messages
-    }
-    if max_tokens is not None:
-      payload['max_tokens'] = max_tokens
-    if temperature is not None:
-      payload['temperature'] = temperature
-    if stop is not None:
-      payload['stop'] = stop
-    if response_format is not None:
-      payload['response_format'] = response_format
-    response = requests.post(
-        _MODEL_URL_MAP[model],
-        headers=self.headers,
-        json=payload)
-    if response.status_code != 200:
-      raise Exception(
-          f"HuggingFace API error {response.status_code}: {response.text}")
-    response_text = response.json()['choices'][0]['message']['content']
-    return response_text
 
 
 class HuggingFaceConnector(model_connector.ProviderModelConnector):
@@ -59,16 +13,18 @@ class HuggingFaceConnector(model_connector.ProviderModelConnector):
     return 'huggingface'
 
   def init_model(self):
-    return _HuggingFaceRequest()
+    return InferenceClient(
+        provider="auto",
+        token=os.getenv("HF_TOKEN"))
 
   def init_mock_model(self):
-    return huggingface_mock.HuggingFaceMock()
+    return openai_mock.OpenAIMock()
 
   def _get_api_call_function(
       self,
       chosen_endpoint: str) -> Callable:
-    if chosen_endpoint == 'generate_content':
-      return functools.partial(self.api.generate_content)
+    if chosen_endpoint == 'chat.completions.create':
+      return functools.partial(self.api.chat.completions.create)
     else:
       raise Exception(f'Invalid endpoint: {chosen_endpoint}')
 
@@ -181,33 +137,27 @@ class HuggingFaceConnector(model_connector.ProviderModelConnector):
       self,
       response: Any,
       query_record: types.QueryRecord) -> str:
-    # Note: HuggingFace response is already extracted as a string
-    # in _HuggingFaceRequest.generate_content
-    return response
+    return response.choices[0].message.content
 
   def format_json_response_from_provider(
       self,
       response: Any,
       query_record: types.QueryRecord) -> dict:
-    return self._extract_json_from_text(response)
+    return self._extract_json_from_text(response.choices[0].message.content)
 
   def format_json_schema_response_from_provider(
       self,
       response: Any,
       query_record: types.QueryRecord) -> dict:
-    return self._extract_json_from_text(response)
+    return self._extract_json_from_text(response.choices[0].message.content)
 
   def format_pydantic_response_from_provider(
       self,
       response: Any,
       query_record: types.QueryRecord) -> Any:
     pydantic_class = query_record.response_format.value.class_value
-    # NOTE: Double JSON encode/decode to ensure the response is a valid JSON
-    # object. This may slow down the response time but it's a workaround to
-    # ensure the response is a valid JSON object not well supported
-    # HuggingFace response format.
     return pydantic_class.model_validate_json(
-        json.dumps(self._extract_json_from_text(response)))
+        response.choices[0].message.content)
 
   def generate_text_proc(
       self,

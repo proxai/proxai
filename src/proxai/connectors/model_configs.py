@@ -22,7 +22,7 @@ PROVIDER_KEY_MAP: Dict[str, Tuple[str]] = MappingProxyType({
     'deepseek': tuple(['DEEPSEEK_API_KEY']),
     'gemini': tuple(['GEMINI_API_KEY']),
     'grok': tuple(['XAI_API_KEY']),
-    'huggingface': tuple(['HUGGINGFACE_API_KEY']),
+    'huggingface': tuple(['HF_TOKEN']),
     'mistral': tuple(['MISTRAL_API_KEY']),
     'openai': tuple(['OPENAI_API_KEY']),
 
