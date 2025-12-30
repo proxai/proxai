@@ -2827,7 +2827,7 @@
           "provider_model": {
             "model": "command-a",
             "provider": "cohere",
-            "provider_model_identifier": "command-a-03-2025"
+            "provider_model_identifier": "command-a-reasoning-08-2025"
           }
         },
         "command-light": {

@@ -10,7 +10,7 @@ def simple_model_test():
   random_int = random.randint(1, 1000000)
   result = px.generate_text(
       'When is the first galatasaray and fenerbahce?',
-      web_search=True,
+      provider_model=('cohere', 'command-a'),
       extensive_return=True)
   pprint(asdict(result))
 
