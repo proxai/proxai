@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "config_origin": "PROXDASH",
+    "config_origin": "BUILT_IN",
     "min_proxai_version": ">=0.2.12",
     "release_notes": "ProviderModelFeatureType has supported, best_effort, and not_supported values.\n",
     "released_at": "2025-12-30T13:02:06.224223",
