@@ -36,7 +36,7 @@ class ModelConfigs(state_controller.StateControlled):
   _model_configs_schema: Optional[types.ModelConfigsSchemaType]
   _model_configs_state: Optional[types.ModelConfigsState]
 
-  LOCAL_CONFIG_VERSION = "v1.1.1"
+  LOCAL_CONFIG_VERSION = "v1.1.2"
 
   def __init__(
       self,
