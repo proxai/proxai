@@ -12,7 +12,7 @@ class CohereConnector(model_connector.ProviderModelConnector):
     return 'cohere'
 
   def init_model(self):
-    return cohere.Client()
+    return cohere.ClientV2()
 
   def init_mock_model(self):
     return cohere_api_mock.CohereMock()
@@ -29,49 +29,40 @@ class CohereConnector(model_connector.ProviderModelConnector):
       self,
       query_function: Callable,
       query_record: types.QueryRecord) -> Callable:
-    # Note: Cohere uses 'message' parameter for the current prompt,
-    # not 'messages' array like OpenAI-style APIs.
+    # Note: Cohere v2 API uses 'messages' array like OpenAI-style APIs.
     return functools.partial(
         query_function,
-        message=query_record.prompt)
+        messages=[{'role': 'user', 'content': query_record.prompt}])
 
   def messages_feature_mapping(
       self,
       query_function: Callable,
       query_record: types.QueryRecord) -> Callable:
-    # Note: Cohere uses 'SYSTEM', 'USER', and 'CHATBOT' as roles.
-    # Uses 'chat_history' for previous messages and 'message' for current.
-    # The last user message becomes the 'message' parameter.
+    # Note: Cohere v2 API uses 'user' and 'assistant' as roles (lowercase).
+    # Uses a single 'messages' parameter like OpenAI-style APIs.
     query_messages = []
     for message in query_record.messages:
       if message['role'] == 'user':
         query_messages.append(
-            {'role': 'USER', 'message': message['content']})
+            {'role': 'user', 'content': message['content']})
       elif message['role'] == 'assistant':
         query_messages.append(
-            {'role': 'CHATBOT', 'message': message['content']})
+            {'role': 'assistant', 'content': message['content']})
 
-    # The last message becomes the current 'message' parameter
-    current_message = query_messages[-1]['message']
-    chat_history = query_messages[:-1]
-
-    query_function = functools.partial(
+    return functools.partial(
         query_function,
-        message=current_message)
-    if chat_history:
-      query_function = functools.partial(
-          query_function,
-          chat_history=chat_history)
-    return query_function
+        messages=query_messages)
 
   def system_feature_mapping(
       self,
       query_function: Callable,
       query_record: types.QueryRecord) -> Callable:
-    # Note: Cohere system instructions can be provided in two ways:
-    # preamble parameter and chat_history 'SYSTEM' role.
-    # The suggested way is to use the preamble parameter.
-    return functools.partial(query_function, preamble=query_record.system)
+    # Note: Cohere v2 API uses 'system' role in messages array.
+    # We need to prepend the system message to existing messages.
+    existing_messages = query_function.keywords.get('messages', [])
+    system_message = {'role': 'system', 'content': query_record.system}
+    updated_messages = [system_message] + existing_messages
+    return functools.partial(query_function, messages=updated_messages)
 
   def max_tokens_feature_mapping(
       self,
@@ -141,30 +132,60 @@ class CohereConnector(model_connector.ProviderModelConnector):
     raise Exception(
         'Web search is not supported for Cohere. Code should never reach here.')
 
+  def _extract_text_from_content(self, content_items: list) -> str:
+    """Extract text from Cohere v2 API response content items.
+
+    The content array can contain different types of items:
+    - TextAssistantMessageResponseContentItem (type='text') - has .text attribute
+    - ThinkingAssistantMessageResponseContentItem (type='thinking') - no .text attribute
+
+    We need to find the item with type='text' to get the actual response.
+    """
+    for item in content_items:
+      # Check if item has 'type' attribute and it's 'text', or if it has 'text' attribute
+      if hasattr(item, 'type') and item.type == 'text':
+        return item.text
+      elif hasattr(item, 'text') and not hasattr(item, 'type'):
+        return item.text
+
+    # Fallback: try to find any item with a text attribute
+    for item in content_items:
+      if hasattr(item, 'text'):
+        return item.text
+
+    raise ValueError(
+        f"Could not find text content in Cohere response. "
+        f"Content types: {[type(item).__name__ for item in content_items]}")
+
   def format_text_response_from_provider(
       self,
       response: Any,
       query_record: types.QueryRecord) -> str:
-    return response.text
+    # Cohere v2 API response structure: response.message.content is a list
+    # with different content types (text, thinking, etc.)
+    return self._extract_text_from_content(response.message.content)
 
   def format_json_response_from_provider(
       self,
       response: Any,
       query_record: types.QueryRecord) -> dict:
-    return self._extract_json_from_text(response.text)
+    text = self._extract_text_from_content(response.message.content)
+    return self._extract_json_from_text(text)
 
   def format_json_schema_response_from_provider(
       self,
       response: Any,
       query_record: types.QueryRecord) -> dict:
-    return self._extract_json_from_text(response.text)
+    text = self._extract_text_from_content(response.message.content)
+    return self._extract_json_from_text(text)
 
   def format_pydantic_response_from_provider(
       self,
       response: Any,
       query_record: types.QueryRecord) -> Any:
+    text = self._extract_text_from_content(response.message.content)
     pydantic_class = query_record.response_format.value.class_value
-    return pydantic_class.model_validate_json(response.text)
+    return pydantic_class.model_validate_json(text)
 
   def generate_text_proc(
       self,
