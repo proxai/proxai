@@ -788,4 +788,5 @@ class TestStructuredOutput:
     assert result.response_record.response.type == px.types.ResponseType.PYDANTIC
     assert isinstance(
         result.response_record.response.value,
-        px.types.ResponsePydanticValue)
+        mock_provider.SamplePydanticModel)
+    assert result.response_record.response.pydantic_metadata is not None

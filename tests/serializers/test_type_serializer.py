@@ -858,20 +858,15 @@ def _get_response_format_options():
           class_value=_UserWithAddressModel)},]
 
 
-def _get_response_pydantic_value_options():
+def _get_pydantic_metadata_options():
   return [
-      {'class_name': 'UserModel',
-       'instance_value': _UserModel(name='John', age=30)},
-      {'class_name': 'AddressModel',
-       'instance_value': _AddressModel(
-          street='123 Main St',
-          city='New York',
-          country='USA')},
-      {'instance_value': _UserModel(name='Jane', age=25)},
       {'class_name': 'UserModel'},
+      {'class_name': 'AddressModel'},
       {'instance_json_value': {'name': 'Bob', 'age': 40}},
       {'class_name': 'CustomModel',
-       'instance_json_value': {'id': 123, 'data': 'test'}},]
+       'instance_json_value': {'id': 123, 'data': 'test'}},
+      {'class_name': 'UserModel',
+       'instance_json_value': {'name': 'John', 'age': 30}},]
 
 
 def _get_response_options():
@@ -883,11 +878,12 @@ def _get_response_options():
       {'type': types.ResponseType.JSON,
        'value': {'nested': {'data': [1, 2, 3]}}},
       {'type': types.ResponseType.PYDANTIC,
-       'value': types.ResponsePydanticValue(
-          class_name='UserModel',
-          instance_value=_UserModel(name='John', age=30))},
+       'value': _UserModel(name='John', age=30),
+       'pydantic_metadata': types.PydanticMetadataType(
+          class_name='UserModel')},
       {'type': types.ResponseType.PYDANTIC,
-       'value': types.ResponsePydanticValue(
+       'value': None,
+       'pydantic_metadata': types.PydanticMetadataType(
           class_name='UserModel',
           instance_json_value={'name': 'Jane', 'age': 25})},]
 
@@ -1360,31 +1356,18 @@ class TestTypeSerializer:
     assert hash_before == hash_after
 
   @pytest.mark.parametrize(
-      'response_pydantic_value_options',
-      _get_response_pydantic_value_options())
-  def test_encode_decode_response_pydantic_value(
-      self, response_pydantic_value_options):
-    pydantic_value = types.ResponsePydanticValue(
-        **response_pydantic_value_options)
-    encoded = type_serializer.encode_response_pydantic_value(
-        pydantic_value=pydantic_value)
-    decoded = type_serializer.decode_response_pydantic_value(
+      'pydantic_metadata_options',
+      _get_pydantic_metadata_options())
+  def test_encode_decode_pydantic_metadata(
+      self, pydantic_metadata_options):
+    pydantic_metadata = types.PydanticMetadataType(
+        **pydantic_metadata_options)
+    encoded = type_serializer.encode_pydantic_metadata(
+        pydantic_metadata=pydantic_metadata)
+    decoded = type_serializer.decode_pydantic_metadata(
         record=encoded)
-    assert decoded.class_name == pydantic_value.class_name
-    if pydantic_value.instance_value != None:
-      assert decoded.instance_json_value == (
-          pydantic_value.instance_value.model_dump())
-    elif pydantic_value.instance_json_value != None:
-      assert decoded.instance_json_value == (
-          pydantic_value.instance_json_value)
-
-  def test_encode_response_pydantic_value_both_set_raises_error(self):
-    pydantic_value = types.ResponsePydanticValue(
-        instance_value=_UserModel(name='John', age=30),
-        instance_json_value={'name': 'Jane', 'age': 25})
-    with pytest.raises(ValueError, match='cannot have both'):
-      type_serializer.encode_response_pydantic_value(
-          pydantic_value=pydantic_value)
+    assert decoded.class_name == pydantic_metadata.class_name
+    assert decoded.instance_json_value == pydantic_metadata.instance_json_value
 
   @pytest.mark.parametrize(
       'response_options',
@@ -1399,10 +1382,16 @@ class TestTypeSerializer:
     elif response.type == types.ResponseType.JSON:
       assert decoded.value == response.value
     elif response.type == types.ResponseType.PYDANTIC:
-      assert decoded.value.class_name == response.value.class_name
-      if response.value.instance_value != None:
-        assert decoded.value.instance_json_value == (
-            response.value.instance_value.model_dump())
-      elif response.value.instance_json_value != None:
-        assert decoded.value.instance_json_value == (
-            response.value.instance_json_value)
+      # After decode, value is None (instance not serialized)
+      # pydantic_metadata contains class_name and instance_json_value
+      assert decoded.value is None
+      assert decoded.pydantic_metadata is not None
+      assert decoded.pydantic_metadata.class_name == (
+          response.pydantic_metadata.class_name)
+      # Check instance_json_value - either from original or converted from value
+      if response.value is not None:
+        assert decoded.pydantic_metadata.instance_json_value == (
+            response.value.model_dump())
+      elif response.pydantic_metadata.instance_json_value is not None:
+        assert decoded.pydantic_metadata.instance_json_value == (
+            response.pydantic_metadata.instance_json_value)

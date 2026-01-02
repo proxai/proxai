@@ -749,6 +749,58 @@ def query_cache_with_clear_cache_and_override_unique_responses(state_data):
 
 
 @integration_block
+def query_cache_with_pydantic_response(state_data):
+  from pydantic import BaseModel
+  px.connect(
+      experiment_path=_EXPERIMENT_PATH,
+      cache_options=px.types.CacheOptions(
+          cache_path=_ROOT_CACHE_PATH
+      ),
+      proxdash_options=px.types.ProxDashOptions(
+          base_url=_PROXDASH_BASE_URL,
+          api_key=state_data['api_key'],
+      ),
+  )
+
+  class ColorInfo(BaseModel):
+    color_name: str
+    hex_code: str
+
+  response = px.generate_text(
+      'Give me a random color name and its hex code, please.',
+      provider_model=('openai', 'gpt-4.1'),
+      response_format=ColorInfo,
+      extensive_return=True)
+  first_value = response.response_record.response.value
+  print(f'> Response Source: {response.response_source}')
+  assert response.response_source == 'PROVIDER'
+
+  response = px.generate_text(
+      'Give me a random color name and its hex code, please.',
+      provider_model=('openai', 'gpt-4.1'),
+      response_format=ColorInfo,
+      extensive_return=True)
+  second_value = response.response_record.response.value
+  print(f'> Response Source: {response.response_source}')
+  assert response.response_source == 'CACHE'
+  assert second_value.color_name == first_value.color_name
+  assert second_value.hex_code == first_value.hex_code
+
+  response = px.generate_text(
+      'Give me a random color name and its hex code, please.',
+      provider_model=('openai', 'gpt-4.1'),
+      response_format=ColorInfo,
+      extensive_return=True)
+  third_value = response.response_record.response.value
+  print(f'> Response Source: {response.response_source}')
+  assert response.response_source == 'CACHE'
+  assert third_value.color_name == first_value.color_name
+  assert third_value.hex_code == first_value.hex_code
+
+  return state_data
+
+
+@integration_block
 def proxdash_logging_record(state_data):
   px.connect(
       experiment_path=_EXPERIMENT_PATH,
@@ -1199,6 +1251,7 @@ def main():
   state_data = query_cache_with_unique_response_limit(state_data=state_data)
   state_data = query_cache_with_use_cache_false(state_data=state_data)
   state_data = query_cache_with_clear_cache_and_override_unique_responses(state_data=state_data)
+  state_data = query_cache_with_pydantic_response(state_data=state_data, force_run=True)
   state_data = proxdash_logging_record(state_data=state_data)
   state_data = proxdash_logging_record_with_all_options(state_data=state_data)
   state_data = proxdash_logging_record_with_hide_sensitive_content_prompt(state_data=state_data)
