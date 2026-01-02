@@ -664,13 +664,14 @@ class ProviderModelConnector(state_controller.StateControlled):
     if (query_record.chosen_endpoint in
         self.provider_model_config.features[
             'response_format::pydantic'].supported):
+      instance = self.format_pydantic_response_from_provider(
+          response=response,
+          query_record=query_record)
       return types.Response(
-          value=types.ResponsePydanticValue(
-              class_name=query_record.response_format.value.class_name,
-              instance_value=self.format_pydantic_response_from_provider(
-                  response=response,
-                  query_record=query_record)),
-          type=types.ResponseType.PYDANTIC)
+          value=instance,
+          type=types.ResponseType.PYDANTIC,
+          pydantic_metadata=types.PydanticMetadataType(
+              class_name=query_record.response_format.value.class_name))
     else:
       json_value = self._extract_json_from_text(
           self.format_text_response_from_provider(
@@ -679,10 +680,10 @@ class ProviderModelConnector(state_controller.StateControlled):
       pydantic_class = query_record.response_format.value.class_value
       instance = pydantic_class.model_validate(json_value)
       return types.Response(
-          value=types.ResponsePydanticValue(
-              class_name=query_record.response_format.value.class_name,
-              instance_value=instance),
-          type=types.ResponseType.PYDANTIC)
+          value=instance,
+          type=types.ResponseType.PYDANTIC,
+          pydantic_metadata=types.PydanticMetadataType(
+              class_name=query_record.response_format.value.class_name))
 
   def format_response_from_providers(
       self,
@@ -728,12 +729,14 @@ class ProviderModelConnector(state_controller.StateControlled):
       elif value.type == types.ResponseType.JSON:
         total += _get_token_count_estimate_from_prompt(json.dumps(value.value))
       elif value.type == types.ResponseType.PYDANTIC:
-        if value.value.instance_json_value is not None:
+        # Try pydantic_metadata.instance_json_value first, then value (instance)
+        if (value.pydantic_metadata is not None and
+            value.pydantic_metadata.instance_json_value is not None):
           total += _get_token_count_estimate_from_prompt(
-              json.dumps(value.value.instance_json_value))
-        else:
+              json.dumps(value.pydantic_metadata.instance_json_value))
+        elif value.value is not None:
           total += _get_token_count_estimate_from_prompt(
-              json.dumps(value.value.instance_value.model_dump()))
+              json.dumps(value.value.model_dump()))
       else:
         raise ValueError(f'Invalid response type: {value.type}')
     elif isinstance(value, list):

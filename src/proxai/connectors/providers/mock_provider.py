@@ -89,12 +89,10 @@ class MockProviderModelConnector(model_connector.ProviderModelConnector):
           type=types.ResponseType.JSON)
     elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
       return types.Response(
-          value=types.ResponsePydanticValue(
-              class_name='SamplePydanticModel',
-              instance_value=SamplePydanticModel(
-                name='John Doe',
-                age=30)),
-          type=types.ResponseType.PYDANTIC)
+          value=SamplePydanticModel(name='John Doe', age=30),
+          type=types.ResponseType.PYDANTIC,
+          pydantic_metadata=types.PydanticMetadataType(
+              class_name='SamplePydanticModel'))
 
 
 class MockFailingProviderModelConnector(model_connector.ProviderModelConnector):
@@ -143,9 +141,7 @@ class MockSlowProviderModelConnector(model_connector.ProviderModelConnector):
           type=types.ResponseType.JSON)
     elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
       return types.Response(
-          value=types.ResponsePydanticValue(
-              class_name='SamplePydanticModel',
-              instance_value=SamplePydanticModel(
-                name='John Doe',
-                age=30)),
-          type=types.ResponseType.PYDANTIC)
+          value=SamplePydanticModel(name='John Doe', age=30),
+          type=types.ResponseType.PYDANTIC,
+          pydantic_metadata=types.PydanticMetadataType(
+              class_name='SamplePydanticModel'))
