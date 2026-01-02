@@ -1,5 +1,6 @@
 import functools
 import json
+from typing import Any, Callable, Optional
 from openai import OpenAI
 import proxai.types as types
 import proxai.connectors.providers.openai_mock as openai_mock
@@ -16,78 +17,239 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
   def init_mock_model(self):
     return openai_mock.OpenAIMock()
 
-  def generate_text_proc(
-      self, query_record: types.QueryRecord) -> types.Response:
-    # Note: OpenAI uses 'system', 'user', and 'assistant' as roles.
-    query_messages = []
-    if query_record.system is not None:
-      query_messages.append({'role': 'system', 'content': query_record.system})
-    if query_record.prompt is not None:
-      query_messages.append({'role': 'user', 'content': query_record.prompt})
-    if query_record.messages is not None:
-      query_messages.extend(query_record.messages)
-    provider_model = query_record.provider_model
-
-    if (
-      query_record.response_format is not None and
-      query_record.response_format.type == types.ResponseFormatType.PYDANTIC):
-      create = functools.partial(
-          self.api.beta.chat.completions.parse,
-          model=provider_model.provider_model_identifier,
-          messages=query_messages)
+  def _get_api_call_function(
+      self,
+      chosen_endpoint: str) -> Callable:
+    if chosen_endpoint == 'chat.completions.create':
+      return functools.partial(self.api.chat.completions.create)
+    elif chosen_endpoint == 'beta.chat.completions.parse':
+      return functools.partial(self.api.beta.chat.completions.parse)
+    elif chosen_endpoint == 'responses.create':
+      return functools.partial(self.api.responses.create)
     else:
-      create = functools.partial(
-          self.api.chat.completions.create,
-          model=provider_model.provider_model_identifier,
-          messages=query_messages)
+      raise Exception(f'Invalid endpoint: {chosen_endpoint}')
 
+  def prompt_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    if (query_record.chosen_endpoint == 'chat.completions.create' or
+        query_record.chosen_endpoint == 'beta.chat.completions.parse'):
+      return functools.partial(
+          query_function,
+          messages=[{'role': 'user', 'content': query_record.prompt}])
+    elif query_record.chosen_endpoint == 'responses.create':
+      return functools.partial(
+          query_function,
+          input=query_record.prompt)
 
-    if query_record.max_tokens is not None:
-      create = functools.partial(
-          create, max_completion_tokens=query_record.max_tokens)
-    if query_record.temperature is not None:
-      create = functools.partial(create, temperature=query_record.temperature)
-    if query_record.stop is not None:
-      create = functools.partial(create, stop=query_record.stop)
+  def messages_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    if (query_record.chosen_endpoint == 'chat.completions.create' or
+        query_record.chosen_endpoint == 'beta.chat.completions.parse'):
+      messages = query_function.keywords.get('messages')
+      if messages is None:
+        return functools.partial(
+            query_function,
+            messages=query_record.messages)
+      else:
+        messages = query_record.messages + messages
+        return functools.partial(
+            query_function,
+            messages=messages)
+    elif query_record.chosen_endpoint == 'responses.create':
+      raise Exception(
+          'Responses.create does not support messages parameter. Code should '
+          'never reach here.')
 
-    if query_record.response_format is not None:
-      if query_record.response_format.type == types.ResponseFormatType.TEXT:
-        pass
-      elif query_record.response_format.type == types.ResponseFormatType.JSON:
-        create = functools.partial(
-            create,
-            response_format={'type': 'json_object'})
-      elif query_record.response_format.type == types.ResponseFormatType.JSON_SCHEMA:
-        create = functools.partial(
-            create,
-            response_format=query_record.response_format.value)
-      elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
-        create = functools.partial(
-            create,
-            response_format=query_record.response_format.value.class_value)
+  def system_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    if (query_record.chosen_endpoint == 'chat.completions.create' or
+        query_record.chosen_endpoint == 'beta.chat.completions.parse'):
+      messages = query_function.keywords.get('messages')
+      if messages is None:
+        raise Exception('Set messages parameter before adding system message.')
+      messages.insert(0, {'role': 'system', 'content': query_record.system})
+      return functools.partial(query_function, messages=messages)
+    elif query_record.chosen_endpoint == 'responses.create':
+      return functools.partial(
+          query_function,
+          instructions=query_record.system)
 
-    completion = create()
+  def max_tokens_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    if (query_record.chosen_endpoint == 'chat.completions.create' or
+        query_record.chosen_endpoint == 'beta.chat.completions.parse'):
+      return functools.partial(
+          query_function,
+          max_completion_tokens=query_record.max_tokens)
+    elif query_record.chosen_endpoint == 'responses.create':
+      return functools.partial(
+          query_function,
+          max_output_tokens=query_record.max_tokens)
 
-    if query_record.response_format is None:
-      return types.Response(
-          value=completion.choices[0].message.content,
-          type=types.ResponseType.TEXT)
-    elif query_record.response_format.type == types.ResponseFormatType.TEXT:
-      return types.Response(
-          value=completion.choices[0].message.content,
-          type=types.ResponseType.TEXT)
-    elif query_record.response_format.type == types.ResponseFormatType.JSON:
-      return types.Response(
-          value=json.loads(completion.choices[0].message.content),
-          type=types.ResponseType.JSON)
-    elif (query_record.response_format.type ==
-          types.ResponseFormatType.JSON_SCHEMA):
-      return types.Response(
-          value=json.loads(completion.choices[0].message.content),
-          type=types.ResponseType.JSON)
-    elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
-      return types.Response(
-          value=types.ResponsePydanticValue(
-              class_name=query_record.response_format.value.class_name,
-              instance_value=completion.choices[0].message.parsed),
-          type=types.ResponseType.PYDANTIC)
+  def temperature_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    return functools.partial(
+        query_function,
+        temperature=query_record.temperature)
+
+  def stop_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    if (query_record.chosen_endpoint == 'chat.completions.create' or
+        query_record.chosen_endpoint == 'beta.chat.completions.parse'):
+      return functools.partial(
+          query_function,
+          stop=query_record.stop)
+    elif query_record.chosen_endpoint == 'responses.create':
+      raise Exception(
+          'Responses.create does not support stop parameter. Code should '
+          'never reach here.')
+
+  def json_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    if query_record.chosen_endpoint == 'chat.completions.create':
+      return functools.partial(
+          query_function,
+          response_format={'type': 'json_object'})
+    elif query_record.chosen_endpoint == 'beta.chat.completions.parse':
+      raise Exception(
+          'JSON response format is not supported for '
+          'beta.chat.completions.parse. Code should never reach here.')
+    elif query_record.chosen_endpoint == 'responses.create':
+      return functools.partial(
+          query_function,
+          text={'format': {'type': 'json_object'}})
+
+  def json_schema_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    if query_record.chosen_endpoint == 'chat.completions.create':
+      return functools.partial(
+          query_function,
+          response_format=query_record.response_format.value)
+    elif query_record.chosen_endpoint == 'beta.chat.completions.parse':
+      raise Exception(
+          'JSON schema response format is not supported for '
+          'beta.chat.completions.parse. Code should never reach here.')
+    elif query_record.chosen_endpoint == 'responses.create':
+      raise Exception(
+          'JSON schema response format is not supported for '
+          'responses.create yet in ProxAI. It uses different json_schema '
+          'format and requires a different mapping. Code should never reach '
+          'here. Please reach out to ProxAI team if you need this feature.\n'
+          'GitHub: https://github.com/proxai/')
+
+  def pydantic_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    if query_record.chosen_endpoint == 'chat.completions.create':
+      raise Exception(
+          'Pydantic response format is not supported for '
+          'chat.completions.create. Code should never reach here.')
+    elif query_record.chosen_endpoint == 'beta.chat.completions.parse':
+      return functools.partial(
+          query_function,
+          response_format=query_record.response_format.value.class_value)
+    elif query_record.chosen_endpoint == 'responses.create':
+      raise Exception(
+          'Pydantic response format is not supported for '
+          'responses.create. Code should never reach here.')
+
+  def web_search_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    if (query_record.chosen_endpoint == 'chat.completions.create' or
+        query_record.chosen_endpoint == 'beta.chat.completions.parse'):
+      raise Exception(
+          'Web search is not supported for '
+          'chat.completions.create or beta.chat.completions.parse. '
+          'Code should never reach here.')
+    elif query_record.chosen_endpoint == 'responses.create':
+      return functools.partial(
+          query_function,
+          tools=[{"type": "web_search"}])
+
+  def format_text_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> str:
+    if query_record.chosen_endpoint == 'chat.completions.create':
+      return response.choices[0].message.content
+    elif query_record.chosen_endpoint == 'beta.chat.completions.parse':
+      raise Exception(
+          'Text response format is not supported for '
+          'beta.chat.completions.parse. Code should never reach here.')
+    elif query_record.chosen_endpoint == 'responses.create':
+      return response.output_text
+
+  def format_json_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> dict:
+    if query_record.chosen_endpoint == 'chat.completions.create':
+      return self._extract_json_from_text(
+          response.choices[0].message.content)
+    elif query_record.chosen_endpoint == 'beta.chat.completions.parse':
+      raise Exception(
+          'JSON response format is not supported for '
+          'beta.chat.completions.parse. Code should never reach here.')
+    elif query_record.chosen_endpoint == 'responses.create':
+      return self._extract_json_from_text(response.output_text)
+
+  def format_json_schema_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> dict:
+    if query_record.chosen_endpoint == 'chat.completions.create':
+      return self._extract_json_from_text(
+          response.choices[0].message.content)
+    elif query_record.chosen_endpoint == 'beta.chat.completions.parse':
+      raise Exception(
+          'JSON schema response format is not supported for '
+          'beta.chat.completions.parse. Code should never reach here.')
+    elif query_record.chosen_endpoint == 'responses.create':
+      return self._extract_json_from_text(response.output_text)
+
+  def format_pydantic_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> Any:
+    if query_record.chosen_endpoint == 'chat.completions.create':
+      raise Exception(
+          'Pydantic response format is not supported for '
+          'chat.completions.create. Code should never reach here.')
+    elif query_record.chosen_endpoint == 'beta.chat.completions.parse':
+      return response.choices[0].message.parsed
+    elif query_record.chosen_endpoint == 'responses.create':
+      return response.output_parsed
+
+  def generate_text_proc(
+      self,
+      query_record: types.QueryRecord) -> types.Response:
+    create = self._get_api_call_function(query_record.chosen_endpoint)
+
+    provider_model = query_record.provider_model
+    create = functools.partial(
+        create, model=provider_model.provider_model_identifier)
+
+    create = self.add_features_to_query_function(create, query_record)
+
+    response = create()
+
+    return self.format_response_from_providers(response, query_record)

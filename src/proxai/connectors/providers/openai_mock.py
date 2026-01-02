@@ -21,13 +21,10 @@ class _MockResponse(object):
 
 
 class _MockCompletions(object):
-  def create(
-      self,
-      model: str,
-      messages: List[Dict],
-      max_completion_tokens: Optional[int]=None,
-      temperature: Optional[float]=None,
-      stop: Optional[List[str]]=None) -> _MockResponse:
+  def create(self, *args, **kwargs) -> _MockResponse:
+    return _MockResponse()
+
+  def parse(self, *args, **kwargs) -> _MockResponse:
     return _MockResponse()
 
 
@@ -38,8 +35,36 @@ class _MockChat(object):
     self.completions = _MockCompletions()
 
 
-class OpenAIMock(object):
+class _MockBeta(object):
   chat: _MockChat
 
   def __init__(self):
     self.chat = _MockChat()
+
+
+class _MockResponsesResponse(object):
+  output_text: str
+  output_parsed: dict
+
+  def __init__(self):
+    self.output_text = 'mock response'
+    self.output_parsed = {'mock': 'response'}
+
+
+class _MockResponses(object):
+  def create(
+      self,
+      model: str,
+      input: str) -> _MockResponsesResponse:
+    return _MockResponsesResponse()
+
+
+class OpenAIMock(object):
+  chat: _MockChat
+  beta: _MockBeta
+  responses: _MockResponses
+
+  def __init__(self):
+    self.chat = _MockChat()
+    self.beta = _MockBeta()
+    self.responses = _MockResponses()

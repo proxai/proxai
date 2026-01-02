@@ -257,33 +257,43 @@ class TestInitAllowMultiprocessing:
     assert proxai._ALLOW_MULTIPROCESSING == original_value
 
 
-class TestInitStrictFeatureTest:
+class TestInitFeatureMappingStrategy:
   def test_default_value(self):
-    assert proxai._set_strict_feature_test() is None
+    assert proxai._set_feature_mapping_strategy() is None
 
   def test_valid_value(self):
-    assert proxai._set_strict_feature_test(True) == True
-    assert proxai._set_strict_feature_test(False) == False
+    assert (proxai._set_feature_mapping_strategy(
+        types.FeatureMappingStrategy.STRICT) ==
+        types.FeatureMappingStrategy.STRICT)
+    assert (proxai._set_feature_mapping_strategy(
+        types.FeatureMappingStrategy.BEST_EFFORT) ==
+        types.FeatureMappingStrategy.BEST_EFFORT)
 
   def test_global_init(self):
     proxai.set_run_type(types.RunType.TEST)
     proxai.connect()
-    proxai._set_strict_feature_test(True, global_set=True)
-    assert proxai._STRICT_FEATURE_TEST == True
+    proxai._set_feature_mapping_strategy(
+        types.FeatureMappingStrategy.STRICT, global_set=True)
+    assert (proxai._FEATURE_MAPPING_STRATEGY ==
+        types.FeatureMappingStrategy.STRICT)
 
   def test_global_init_multiple(self):
     proxai.set_run_type(types.RunType.TEST)
     proxai.connect()
-    proxai._set_strict_feature_test(True, global_set=True)
-    proxai._set_strict_feature_test(False, global_set=True)
-    assert proxai._STRICT_FEATURE_TEST == False
+    proxai._set_feature_mapping_strategy(
+        types.FeatureMappingStrategy.STRICT, global_set=True)
+    proxai._set_feature_mapping_strategy(
+        types.FeatureMappingStrategy.BEST_EFFORT, global_set=True)
+    assert (proxai._FEATURE_MAPPING_STRATEGY ==
+        types.FeatureMappingStrategy.BEST_EFFORT)
 
   def test_no_global_init(self):
     proxai.set_run_type(types.RunType.TEST)
     proxai.connect()
-    original_value = proxai._STRICT_FEATURE_TEST
-    proxai._set_strict_feature_test(True, global_set=False)
-    assert proxai._STRICT_FEATURE_TEST == original_value
+    original_value = proxai._FEATURE_MAPPING_STRATEGY
+    proxai._set_feature_mapping_strategy(
+        types.FeatureMappingStrategy.STRICT, global_set=False)
+    assert proxai._FEATURE_MAPPING_STRATEGY == original_value
 
 
 class TestRetryIfErrorCached:
@@ -440,12 +450,12 @@ class TestRegisterModel:
 
   def test_successful_register_model(self):
     proxai.set_run_type(types.RunType.TEST)
-    proxai.set_model(generate_text=('openai', 'o1'))
+    proxai.set_model(generate_text=('openai', 'gpt-5.1'))
     assert proxai._REGISTERED_MODEL_CONNECTORS[
         types.CallType.GENERATE_TEXT].provider_model == types.ProviderModelType(
             provider='openai',
-            model='o1',
-            provider_model_identifier='o1-2024-12-17')
+            model='gpt-5.1',
+            provider_model_identifier='gpt-5.1')
 
 
 class TestGenerateText:
@@ -471,7 +481,7 @@ class TestGenerateText:
     self._test_generate_text(('claude', 'opus-4'))
 
   def test_gemini(self):
-    self._test_generate_text(('gemini', 'gemini-1.5-pro'))
+    self._test_generate_text(('gemini', 'gemini-3-pro'))
 
   def test_cohere(self):
     self._test_generate_text(('cohere', 'command-r'))
@@ -483,7 +493,7 @@ class TestGenerateText:
     self._test_generate_text(('mistral', 'open-mistral-7b'))
 
   def test_huggingface(self):
-    self._test_generate_text(('huggingface', 'gemma-2-2b-it'))
+    self._test_generate_text(('huggingface', 'meta-llama/llama-3.2-3b-instruct'))
 
 
 class TestDefaultModel:

@@ -6,7 +6,6 @@ from proxai.proxai import (
     ProxDashOptions,
     ResponseFormat,
     ResponseFormatType,
-    ResponseFormatPydanticValue,
     set_run_type,
     check_health,
     connect,

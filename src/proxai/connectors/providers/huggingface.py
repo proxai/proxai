@@ -1,57 +1,11 @@
-import copy
+from typing import Any, Callable
 import functools
 import json
 import os
-import requests
-from typing import Any, Dict, List, Optional
+from huggingface_hub import InferenceClient
 import proxai.types as types
-import proxai.connectors.providers.huggingface_mock as huggingface_mock
+import proxai.connectors.providers.openai_mock as openai_mock
 import proxai.connectors.model_connector as model_connector
-
-_MODEL_URL_MAP = {
-    'Qwen/Qwen3-32B': 'https://router.huggingface.co/hf-inference/models/Qwen/Qwen2.5-Coder-32B-Instruct/v1/chat/completions',
-    'deepseek-ai/DeepSeek-R1': 'https://router.huggingface.co/together/v1/chat/completions',
-    'deepseek-ai/DeepSeek-V3': 'https://router.huggingface.co/together/v1/chat/completions',
-    'google/gemma-2-2b-it': 'https://router.huggingface.co/nebius/v1/chat/completions',
-    'meta-llama/Meta-Llama-3.1-8B-Instruct': 'https://router.huggingface.co/hf-inference/models/meta-llama/Meta-Llama-3.1-8B-Instruct/v1/chat/completions',
-    'microsoft/phi-4': 'https://router.huggingface.co/nebius/v1/chat/completions'
-}
-
-
-class _HuggingFaceRequest:
-  def __init__(self):
-    self.headers = {
-        'Authorization': f'Bearer {os.environ["HUGGINGFACE_API_KEY"]}'}
-
-  def generate_content(
-      self,
-      messages: List[Dict[str, str]],
-      model: str,
-      max_tokens: Optional[int]=None,
-      temperature: Optional[float]=None,
-      stop: Optional[List[str]]=None,
-      response_format: Optional[Dict[str, Any]]=None) -> str:
-    payload = {
-        'model': model,
-        'messages': messages
-    }
-    if max_tokens is not None:
-      payload['max_tokens'] = max_tokens
-    if temperature is not None:
-      payload['temperature'] = temperature
-    if stop is not None:
-      payload['stop'] = stop
-    if response_format is not None:
-      payload['response_format'] = response_format
-    response = requests.post(
-        _MODEL_URL_MAP[model],
-        headers=self.headers,
-        json=payload)
-    if response.status_code != 200:
-      raise Exception(
-          f"HuggingFace API error {response.status_code}: {response.text}")
-    response_text = response.json()['choices'][0]['message']['content']
-    return response_text
 
 
 class HuggingFaceConnector(model_connector.ProviderModelConnector):
@@ -59,89 +13,163 @@ class HuggingFaceConnector(model_connector.ProviderModelConnector):
     return 'huggingface'
 
   def init_model(self):
-    return _HuggingFaceRequest()
+    return InferenceClient(
+        provider="auto",
+        token=os.getenv("HF_TOKEN"))
 
   def init_mock_model(self):
-    return huggingface_mock.HuggingFaceMock()
+    return openai_mock.OpenAIMock()
+
+  def _get_api_call_function(
+      self,
+      chosen_endpoint: str) -> Callable:
+    if chosen_endpoint == 'chat.completions.create':
+      return functools.partial(self.api.chat.completions.create)
+    else:
+      raise Exception(f'Invalid endpoint: {chosen_endpoint}')
+
+  def prompt_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    return functools.partial(
+        query_function,
+        messages=[{'role': 'user', 'content': query_record.prompt}])
+
+  def messages_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    messages = query_function.keywords.get('messages')
+    if messages is None:
+      return functools.partial(
+          query_function,
+          messages=query_record.messages)
+    else:
+      messages = query_record.messages + messages
+      return functools.partial(
+          query_function,
+          messages=messages)
+
+  def system_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    messages = query_function.keywords.get('messages')
+    if messages is None:
+      raise Exception('Set messages parameter before adding system message.')
+    messages.insert(0, {'role': 'system', 'content': query_record.system})
+    return functools.partial(query_function, messages=messages)
+
+  def max_tokens_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    return functools.partial(
+        query_function,
+        max_tokens=query_record.max_tokens)
+
+  def temperature_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    return functools.partial(
+        query_function,
+        temperature=query_record.temperature)
+
+  def stop_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    # Note: HuggingFace API expects stop to be a list.
+    if isinstance(query_record.stop, str):
+      return functools.partial(
+          query_function,
+          stop=[query_record.stop])
+    else:
+      return functools.partial(
+          query_function,
+          stop=query_record.stop)
+
+  def json_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    return functools.partial(
+        query_function,
+        response_format={'type': 'json_object'})
+
+  def json_schema_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    return functools.partial(
+        query_function,
+        response_format=query_record.response_format.value)
+
+  def pydantic_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    # Note: HuggingFace doesn't have native pydantic support.
+    # We use json_schema format and parse manually in format_pydantic_response.
+    pydantic_class = query_record.response_format.value.class_value
+    schema = pydantic_class.model_json_schema()
+    return functools.partial(
+        query_function,
+        response_format={
+            'type': 'json_schema',
+            'json_schema': {
+                'name': query_record.response_format.value.class_name,
+                'schema': schema,
+                'strict': True
+            }
+        })
+
+  def web_search_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    raise Exception(
+        'Web search is not supported for HuggingFace. Code should never reach here.')
+
+  def format_text_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> str:
+    return response.choices[0].message.content
+
+  def format_json_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> dict:
+    return self._extract_json_from_text(response.choices[0].message.content)
+
+  def format_json_schema_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> dict:
+    return self._extract_json_from_text(response.choices[0].message.content)
+
+  def format_pydantic_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> Any:
+    pydantic_class = query_record.response_format.value.class_value
+    return pydantic_class.model_validate_json(
+        response.choices[0].message.content)
 
   def generate_text_proc(
-      self, query_record: types.QueryRecord) -> types.Response:
+      self,
+      query_record: types.QueryRecord) -> types.Response:
+    create = self._get_api_call_function(query_record.chosen_endpoint)
+
     provider_model = query_record.provider_model
-    query_messages = []
-    if query_record.system is not None:
-      query_messages.append({'role': 'system', 'content': query_record.system})
-    if query_record.prompt is not None:
-      query_messages.append({'role': 'user', 'content': query_record.prompt})
-    if query_record.messages is not None:
-      query_messages.extend(query_record.messages)
-
     create = functools.partial(
-        self.api.generate_content,
-        model=provider_model.provider_model_identifier,
-        messages=query_messages)
-    if query_record.max_tokens is not None:
-      create = functools.partial(create, max_tokens=query_record.max_tokens)
-    if query_record.temperature is not None:
-      create = functools.partial(create, temperature=query_record.temperature)
-    if query_record.stop is not None:
-      if isinstance(query_record.stop, str):
-        create = functools.partial(create, stop=[query_record.stop])
-      else:
-        create = functools.partial(create, stop=query_record.stop)
+        create, model=provider_model.provider_model_identifier)
 
-    # Handle response format configuration
-    if query_record.response_format is not None:
-      if query_record.response_format.type == types.ResponseFormatType.TEXT:
-        pass
-      elif query_record.response_format.type == types.ResponseFormatType.JSON:
-        create = functools.partial(
-            create,
-            response_format={'type': 'json_object'})
-      elif query_record.response_format.type == types.ResponseFormatType.JSON_SCHEMA:
-        create = functools.partial(
-            create,
-            response_format=query_record.response_format.value)
-      elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
-        # For Pydantic, build json_schema format from Pydantic class
-        pydantic_class = query_record.response_format.value.class_value
-        schema = pydantic_class.model_json_schema()
-        create = functools.partial(
-            create,
-            response_format={
-                'type': 'json_schema',
-                'json_schema': {
-                    'name': query_record.response_format.value.class_name,
-                    'schema': schema,
-                    'strict': True
-                }
-            })
+    create = self.add_features_to_query_function(create, query_record)
 
-    completion = create()
+    response = create()
 
-    # Handle response based on format type
-    if query_record.response_format is None:
-      return types.Response(
-          value=completion,
-          type=types.ResponseType.TEXT)
-    elif query_record.response_format.type == types.ResponseFormatType.TEXT:
-      return types.Response(
-          value=completion,
-          type=types.ResponseType.TEXT)
-    elif query_record.response_format.type == types.ResponseFormatType.JSON:
-      return types.Response(
-          value=json.loads(completion),
-          type=types.ResponseType.JSON)
-    elif (query_record.response_format.type ==
-          types.ResponseFormatType.JSON_SCHEMA):
-      return types.Response(
-          value=json.loads(completion),
-          type=types.ResponseType.JSON)
-    elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
-      # For Pydantic, parse JSON and validate with the Pydantic model
-      pydantic_class = query_record.response_format.value.class_value
-      instance = pydantic_class.model_validate_json(completion)
-      return types.Response(
-          value=types.ResponsePydanticValue(
-              class_name=query_record.response_format.value.class_name,
-              instance_value=instance),
-          type=types.ResponseType.PYDANTIC)
+    return self.format_response_from_providers(response, query_record)

@@ -1,10 +1,12 @@
-import copy
+from typing import Any, Callable, Optional
 import functools
 import json
 import os
-from openai import OpenAI
+from xai_sdk import Client
+from xai_sdk.chat import user, system, assistant
+from xai_sdk.tools import web_search
 import proxai.types as types
-import proxai.connectors.providers.openai_mock as openai_mock
+import proxai.connectors.providers.grok_mock as grok_mock
 import proxai.connectors.model_connector as model_connector
 
 
@@ -13,95 +15,221 @@ class GrokConnector(model_connector.ProviderModelConnector):
     return 'grok'
 
   def init_model(self):
-    return OpenAI(
-        api_key=os.getenv("XAI_API_KEY"),
-        base_url="https://api.x.ai/v1")
+    return Client(api_key=os.getenv("XAI_API_KEY"))
 
   def init_mock_model(self):
-    return openai_mock.OpenAIMock()
+    return grok_mock.GrokMock()
+
+  def _get_api_call_function(
+      self,
+      chosen_endpoint: str) -> Callable:
+    if chosen_endpoint == 'chat.create':
+      return functools.partial(self.api.chat.create)
+    else:
+      raise Exception(f'Invalid endpoint: {chosen_endpoint}')
+
+  def prompt_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    params_after_construction = query_function.keywords.get(
+        'params_after_construction', {})
+    messages = params_after_construction.get('messages', [])
+    messages.append(user(query_record.prompt))
+    params_after_construction['messages'] = messages
+    return functools.partial(
+        query_function,
+        params_after_construction=params_after_construction)
+
+  def messages_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    params_after_construction = query_function.keywords.get(
+        'params_after_construction', {})
+    existing_messages = params_after_construction.get('messages', [])
+
+    messages = []
+    for message in query_record.messages:
+      if message['role'] == 'user':
+        messages.append(user(message['content']))
+      elif message['role'] == 'assistant':
+        messages.append(assistant(message['content']))
+      elif message['role'] == 'system':
+        messages.append(system(message['content']))
+
+    params_after_construction['messages'] = existing_messages + messages
+    return functools.partial(
+        query_function,
+        params_after_construction=params_after_construction)
+
+  def system_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    params_after_construction = query_function.keywords.get(
+        'params_after_construction', {})
+    messages = params_after_construction.get('messages', None)
+    if messages is None:
+      raise Exception('Set messages parameter before adding system message.')
+    messages.append(system(query_record.system))
+    params_after_construction['messages'] = messages
+    return functools.partial(
+        query_function,
+        params_after_construction=params_after_construction)
+
+  def max_tokens_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    params_at_construction = query_function.keywords.get(
+        'params_at_construction', {})
+    params_at_construction['max_tokens'] = query_record.max_tokens
+    return functools.partial(
+        query_function,
+        params_at_construction=params_at_construction)
+
+  def temperature_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    params_at_construction = query_function.keywords.get(
+        'params_at_construction', {})
+    params_at_construction['temperature'] = query_record.temperature
+    return functools.partial(
+        query_function,
+        params_at_construction=params_at_construction)
+
+  def stop_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    params_at_construction = query_function.keywords.get(
+        'params_at_construction', {})
+    params_at_construction['stop'] = query_record.stop
+    return functools.partial(
+        query_function,
+        params_at_construction=params_at_construction)
+
+  def json_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    raise Exception(
+        'JSON response format is not supported for Grok. '
+        'Code should never reach here.')
+
+  def json_schema_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    raise Exception(
+        'JSON schema response format is not supported for Grok. '
+        'Code should never reach here.')
+
+  def pydantic_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    return query_function
+
+  def web_search_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    params_at_construction = query_function.keywords.get(
+        'params_at_construction', {})
+    params_at_construction['tools'] = [web_search()]
+    return functools.partial(
+        query_function,
+        params_at_construction=params_at_construction)
+
+  def format_text_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> str:
+    return response.content
+
+  def format_json_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> dict:
+    raise Exception(
+        'JSON response format is not supported for Grok. '
+        'Code should never reach here.')
+
+  def format_json_schema_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> dict:
+    raise Exception(
+        'JSON schema response format is not supported for Grok. '
+        'Code should never reach here.')
+
+  def format_pydantic_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> Any:
+    return response[1]
+
+  def _grok_chat_api_mapping(
+      self,
+      create: Callable,
+      query_record: types.QueryRecord) -> dict:
+
+      params_at_construction = None
+      params_after_construction = None
+
+      if 'params_at_construction' in create.keywords:
+        params_at_construction = create.keywords.get(
+            'params_at_construction')
+        del create.keywords['params_at_construction']
+
+      if 'params_after_construction' in create.keywords:
+        params_after_construction = create.keywords.get(
+            'params_after_construction')
+        del create.keywords['params_after_construction']
+
+      # Responsible for temperature, stop, tools.
+      if params_at_construction:
+        create = functools.partial(create, **params_at_construction)
+      create = create()
+
+      # Responsible for messages, prompt, system.
+      if params_after_construction:
+        messages = params_after_construction.get('messages', [])
+        if messages:
+          for message in messages:
+            create.append(message)
+        del params_after_construction['messages']
+
+      # Responsible for response format text, json, json schema, pydantic.
+      if query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
+        create = functools.partial(
+            create.parse,
+            query_record.response_format.value.class_value)
+      else:
+        create = functools.partial(create.sample)
+
+      # Responsible for max_tokens.
+      if params_after_construction:
+        create = functools.partial(create, **params_after_construction)
+
+      return create
 
   def generate_text_proc(
-      self, query_record: types.QueryRecord) -> types.Response:
-    # Note: Grok uses OpenAI-compatible API with 'system', 'user', and
-    # 'assistant' as roles.
-    query_messages = []
-    if query_record.system is not None:
-      query_messages.append({'role': 'system', 'content': query_record.system})
-    if query_record.prompt is not None:
-      query_messages.append({'role': 'user', 'content': query_record.prompt})
-    if query_record.messages is not None:
-      query_messages.extend(query_record.messages)
+      self,
+      query_record: types.QueryRecord) -> types.Response:
+    create = self._get_api_call_function(query_record.chosen_endpoint)
+
     provider_model = query_record.provider_model
+    create = functools.partial(
+        create, model=provider_model.provider_model_identifier)
 
-    # Use beta.chat.completions.parse for Pydantic models
-    if (query_record.response_format is not None and
-        query_record.response_format.type == types.ResponseFormatType.PYDANTIC):
-      create = functools.partial(
-          self.api.beta.chat.completions.parse,
-          model=provider_model.provider_model_identifier,
-          messages=query_messages)
-    else:
-      create = functools.partial(
-          self.api.chat.completions.create,
-          model=provider_model.provider_model_identifier,
-          messages=query_messages)
+    create = self.add_features_to_query_function(create, query_record)
 
-    if query_record.max_tokens is not None:
-      create = functools.partial(
-          create, max_completion_tokens=query_record.max_tokens)
-    elif self.provider_model.model in [
-        'grok-3-mini-beta', 'grok-3-mini-fast-beta']:
-      # Note: There is a bug in the grok api that if max_completion_tokens is
-      # not set, the response is empty string.
-      create = functools.partial(create, max_completion_tokens=1000000)
-    if query_record.temperature is not None:
-      create = functools.partial(create, temperature=query_record.temperature)
-    if query_record.stop is not None:
-      if isinstance(query_record.stop, str):
-        create = functools.partial(create, stop=[query_record.stop])
-      else:
-        create = functools.partial(create, stop=query_record.stop)
+    create = self._grok_chat_api_mapping(create, query_record)
 
-    # Handle response format configuration
-    if query_record.response_format is not None:
-      if query_record.response_format.type == types.ResponseFormatType.TEXT:
-        pass
-      elif query_record.response_format.type == types.ResponseFormatType.JSON:
-        create = functools.partial(
-            create,
-            response_format={'type': 'json_object'})
-      elif query_record.response_format.type == types.ResponseFormatType.JSON_SCHEMA:
-        create = functools.partial(
-            create,
-            response_format=query_record.response_format.value)
-      elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
-        create = functools.partial(
-            create,
-            response_format=query_record.response_format.value.class_value)
+    response = create()
 
-    completion = create()
-
-    # Handle response based on format type
-    if query_record.response_format is None:
-      return types.Response(
-          value=completion.choices[0].message.content,
-          type=types.ResponseType.TEXT)
-    elif query_record.response_format.type == types.ResponseFormatType.TEXT:
-      return types.Response(
-          value=completion.choices[0].message.content,
-          type=types.ResponseType.TEXT)
-    elif query_record.response_format.type == types.ResponseFormatType.JSON:
-      return types.Response(
-          value=json.loads(completion.choices[0].message.content),
-          type=types.ResponseType.JSON)
-    elif (query_record.response_format.type ==
-          types.ResponseFormatType.JSON_SCHEMA):
-      return types.Response(
-          value=json.loads(completion.choices[0].message.content),
-          type=types.ResponseType.JSON)
-    elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
-      return types.Response(
-          value=types.ResponsePydanticValue(
-              class_name=query_record.response_format.value.class_name,
-              instance_value=completion.choices[0].message.parsed),
-          type=types.ResponseType.PYDANTIC)
+    return self.format_response_from_providers(response, query_record)
