@@ -689,22 +689,22 @@ class TestProxaiApiUseCases:
     summary = px.get_summary()
     assert summary.provider_stats.total_queries == 1
     assert summary.cache_stats.total_cache_hit == 2
-    assert summary.providers['openai'].provider_stats.total_queries == 1
-    assert summary.providers['openai'].cache_stats.total_cache_hit == 2
+    assert summary.providers['gemini'].provider_stats.total_queries == 1
+    assert summary.providers['gemini'].cache_stats.total_cache_hit == 2
 
     summary = px.get_summary(json=True)
     assert summary['provider_stats']['total_queries'] == 1
     assert summary['cache_stats']['total_cache_hit'] == 2
-    assert summary['providers']['openai']['provider_stats'][
+    assert summary['providers']['gemini']['provider_stats'][
         'total_queries'] == 1
-    assert summary['providers']['openai']['cache_stats']['total_cache_hit'] == 2
+    assert summary['providers']['gemini']['cache_stats']['total_cache_hit'] == 2
 
   def test_check_health(self):
     model_status = px.check_health(
         extensive_return=True,
         allow_multiprocessing=False)
     assert len(model_status.working_models) > 10
-    assert len(model_status.failed_models) == 1
+    assert len(model_status.failed_models) == 0
 
   def test_proxdash_model_configs_schema(self, requests_mock):
     # Mock proxdash model configs schema response
