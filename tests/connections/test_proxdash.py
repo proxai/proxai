@@ -67,7 +67,7 @@ def _create_test_logging_record(
   )
 
   response_record = types.QueryResponseRecord(
-      response=response,
+      response=types.Response(value=response, type=types.ResponseType.TEXT),
       error=error,
       error_traceback=error_traceback,
       start_utc_date=datetime.datetime(2024, 1, 1, 12, 0),
@@ -1375,7 +1375,8 @@ class TestProxDashConnectionHideSensitiveContent:
     )
 
     response_record = types.QueryResponseRecord(
-        response="sensitive response",
+        response=types.Response(
+            value="sensitive response", type=types.ResponseType.TEXT),
         error=None,
         error_traceback=None,
         start_utc_date=datetime.datetime.now(datetime.timezone.utc),
@@ -1403,7 +1404,7 @@ class TestProxDashConnectionHideSensitiveContent:
         {"role": "user", "content": "sensitive user message"},
         {"role": "assistant", "content": "sensitive assistant message"}
     ]
-    assert logging_record.response_record.response == "sensitive response"
+    assert logging_record.response_record.response.value == "sensitive response"
 
     # Hidden record should have sensitive content replaced
     assert hidden_record.query_record.prompt == "<sensitive content hidden>"
@@ -1413,7 +1414,7 @@ class TestProxDashConnectionHideSensitiveContent:
         "content": "<sensitive content hidden>"
     }]
     assert (
-        hidden_record.response_record.response ==
+        hidden_record.response_record.response.value ==
         "<sensitive content hidden>")
 
     # Non-sensitive fields should remain unchanged
@@ -1742,7 +1743,8 @@ class TestProxDashConnectionUploadLoggingRecord:
             hash_value="test_hash"
         ),
         response_record=types.QueryResponseRecord(
-            response="test response",
+            response=types.Response(
+                value="test response", type=types.ResponseType.TEXT),
             error="test error",
             error_traceback="test error traceback",
             start_utc_date=datetime.datetime(

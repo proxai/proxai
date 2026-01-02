@@ -45,12 +45,12 @@ def _get_example_model_status():
   model_configs_instance = model_configs.ModelConfigs()
   models = [
       model_configs_instance.get_provider_model(('openai', 'gpt-3.5-turbo')),
-      model_configs_instance.get_provider_model(('claude', 'haiku-3.5')),
+      model_configs_instance.get_provider_model(('claude', 'haiku-4.5')),
       model_configs_instance.get_provider_model(('openai', 'gpt-4')),
       model_configs_instance.get_provider_model(('claude', 'opus-4')),
       model_configs_instance.get_provider_model(('openai', 'gpt-4.1-mini')),
       model_configs_instance.get_provider_model(('claude', 'sonnet-4')),
-      model_configs_instance.get_provider_model(('gemini', 'gemini-1.5-pro')),
+      model_configs_instance.get_provider_model(('gemini', 'gemini-3-pro')),
       model_configs_instance.get_provider_model(('cohere', 'command-r'))
   ]
 
