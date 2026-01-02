@@ -427,9 +427,9 @@ class ProxDashConnection(state_controller.StateControlled):
             logging_record.response_record.response.value,
             indent=2, sort_keys=True)
       elif response_type == types.ResponseType.PYDANTIC:
+        # response.value is now the pydantic instance directly
         response = json.dumps(
-            logging_record.response_record.response.value
-            .instance_value.model_dump_json(),
+            logging_record.response_record.response.value.model_dump(),
             indent=2, sort_keys=True)
 
     if logging_record.query_record.stop is not None:

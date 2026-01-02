@@ -286,16 +286,15 @@ class QueryRecord:
 
 
 @dataclasses.dataclass
-class ResponsePydanticValue:
+class PydanticMetadataType:
   class_name: Optional[str] = None
-  instance_value: Optional[Type[pydantic.BaseModel]] = None
   instance_json_value: Optional[Dict[str, Any]] = None
 
 
 ResponseValue = Union[
     str,
     Dict[str, Any],
-    ResponsePydanticValue
+    pydantic.BaseModel
 ]
 
 
@@ -309,6 +308,7 @@ class ResponseType(str, enum.Enum):
 class Response:
   value: Optional[ResponseValue] = None
   type: Optional[ResponseType] = None
+  pydantic_metadata: Optional[PydanticMetadataType] = None
 
 
 @dataclasses.dataclass

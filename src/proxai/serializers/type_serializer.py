@@ -512,36 +512,26 @@ def decode_response_format(
   return response_format
 
 
-def encode_response_pydantic_value(
-    pydantic_value: types.ResponsePydanticValue) -> Dict[str, Any]:
+def encode_pydantic_metadata(
+    pydantic_metadata: types.PydanticMetadataType) -> Dict[str, Any]:
   record = {}
-  if (pydantic_value.instance_json_value != None and
-      pydantic_value.instance_value != None):
-    raise ValueError(
-        'ResponsePydanticValue cannot have both '
-        'instance_json_value and instance_value set.')
-  instance_json = None
-  if pydantic_value.instance_value != None:
-    instance_json = pydantic_value.instance_value.model_dump()
-  elif pydantic_value.instance_json_value != None:
-    instance_json = pydantic_value.instance_json_value
-  if instance_json != None:
+  if pydantic_metadata.class_name != None:
+    record['class_name'] = pydantic_metadata.class_name
+  if pydantic_metadata.instance_json_value != None:
     record['instance_json_value'] = json.dumps(
-        instance_json,
+        pydantic_metadata.instance_json_value,
         sort_keys=True)
-  if pydantic_value.class_name != None:
-    record['class_name'] = pydantic_value.class_name
   return record
 
 
-def decode_response_pydantic_value(
-    record: Dict[str, Any]) -> types.ResponsePydanticValue:
-  pydantic_value = types.ResponsePydanticValue()
-  pydantic_value.class_name = record.get('class_name', None)
+def decode_pydantic_metadata(
+    record: Dict[str, Any]) -> types.PydanticMetadataType:
+  pydantic_metadata = types.PydanticMetadataType()
+  pydantic_metadata.class_name = record.get('class_name', None)
   if 'instance_json_value' in record:
-    pydantic_value.instance_json_value = json.loads(
+    pydantic_metadata.instance_json_value = json.loads(
         record['instance_json_value'])
-  return pydantic_value
+  return pydantic_metadata
 
 
 def encode_response(
@@ -549,15 +539,23 @@ def encode_response(
   record = {}
   if response.type != None:
     record['type'] = response.type.value
-  if response.value != None:
-    if response.type == types.ResponseType.TEXT:
+  if response.type == types.ResponseType.TEXT:
+    if response.value != None:
       record['value'] = response.value
-    elif response.type == types.ResponseType.JSON:
+  elif response.type == types.ResponseType.JSON:
+    if response.value != None:
       record['value'] = json.dumps(
           response.value,
           sort_keys=True)
-    elif response.type == types.ResponseType.PYDANTIC:
-      record.update(encode_response_pydantic_value(response.value))
+  elif response.type == types.ResponseType.PYDANTIC:
+    # For PYDANTIC: convert value (instance) to instance_json_value if needed
+    pydantic_metadata = response.pydantic_metadata
+    if pydantic_metadata is None:
+      pydantic_metadata = types.PydanticMetadataType()
+    # If value exists (live instance), convert to JSON for serialization
+    if response.value != None and pydantic_metadata.instance_json_value is None:
+      pydantic_metadata.instance_json_value = response.value.model_dump()
+    record['pydantic_metadata'] = encode_pydantic_metadata(pydantic_metadata)
   return record
 
 
@@ -572,7 +570,10 @@ def decode_response(
     if 'value' in record:
       response.value = json.loads(record['value'])
   elif response.type == types.ResponseType.PYDANTIC:
-    response.value = decode_response_pydantic_value(record)
+    # For PYDANTIC: restore pydantic_metadata, value stays None until runtime
+    if 'pydantic_metadata' in record:
+      response.pydantic_metadata = decode_pydantic_metadata(
+          record['pydantic_metadata'])
   return response
 
 
