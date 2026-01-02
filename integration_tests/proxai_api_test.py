@@ -5,10 +5,10 @@ Flags:
   --print-code: print code blocks
 
 Examples:
-  python3 integration_tests/proxai_api_test.py
-  python3 integration_tests/proxai_api_test.py --mode new
-  python3 integration_tests/proxai_api_test.py --print-code
-  python3 integration_tests/proxai_api_test.py --env prod --print-code
+  poetry run python3 integration_tests/proxai_api_test.py
+  poetry run python3 integration_tests/proxai_api_test.py --mode new
+  poetry run python3 integration_tests/proxai_api_test.py --print-code
+  poetry run python3 integration_tests/proxai_api_test.py --env prod --print-code
 """
 import os
 import inspect
@@ -117,8 +117,8 @@ def integration_block(func):
         print(inspect.getsource(func).strip())
         print(f'\033[32m</Code Block> \033[0m')
       state_data = func(**kwargs)
-      json.dump(state_data, open(state_path, 'w'))
       input('> Press Enter to continue...')
+      json.dump(state_data, open(state_path, 'w'))
       return state_data
   return wrapper
 
@@ -138,8 +138,8 @@ def _manual_user_check(test_message, fail_message):
 def create_user(state_data):
   print(f'1 - Go to {_WEBVIEW_BASE_URL}/signup')
   print('2 - Create an account')
-  print('    * Username: manueltest')
-  print('    * Email   : manueltest@proxai.co')
+  print('    * Username: manualtest')
+  print('    * Email   : manualtest@proxai.co')
   print('    * Password: test123!')
   print(f'3 - Create API key: {_WEBVIEW_BASE_URL}/dashboard/api-keys')
   state_data['api_key'] = input('> Enter the API key: ')
@@ -172,8 +172,13 @@ def local_proxdash_connection(state_data):
 def list_models(state_data):
   provider_models = px.models.list_models()
   assert len(provider_models) > 0, 'No models found.'
-  for provider_model in provider_models:
-    print(f'{provider_model.provider:>25} - {provider_model.model}')
+  print(f'Available models: {len(provider_models)}')
+  for idx, provider_model in enumerate(provider_models):
+    if idx > 15:
+      break
+    print(f'{idx:>3}: {provider_model.provider:>25} - {provider_model.model}')
+  if len(provider_models) > 15:
+    print(f'...')
   return state_data
 
 
@@ -185,7 +190,7 @@ def list_models_with_model_size_filter(state_data):
   for provider_model in provider_models:
     print(f'{provider_model.provider:>25} - {provider_model.model}')
   assert px.models.get_model(
-      provider='claude', model='haiku-3') in provider_models
+      provider='claude', model='haiku-4.5') in provider_models
   end_time = time.time()
   assert end_time - start_time < 1
 
@@ -196,7 +201,7 @@ def list_models_with_model_size_filter(state_data):
   for provider_model in provider_models:
     print(f'{provider_model.provider:>25} - {provider_model.model}')
   assert px.models.get_model(
-      provider='claude', model='haiku-3.5') in provider_models
+      provider='claude', model='sonnet-4.5') in provider_models
   end_time = time.time()
   assert end_time - start_time < 1
 
@@ -206,7 +211,7 @@ def list_models_with_model_size_filter(state_data):
   for provider_model in provider_models:
     print(f'{provider_model.provider:>25} - {provider_model.model}')
   assert px.models.get_model(
-      provider='claude', model='opus-4') in provider_models
+      provider='claude', model='opus-4.5') in provider_models
   end_time = time.time()
   assert end_time - start_time < 1
 
@@ -258,7 +263,7 @@ def list_provider_models(state_data):
   for provider_model in provider_models:
     print(f'{provider_model.provider:>25} - {provider_model.model}')
   assert px.models.get_model(
-      provider='openai', model='gpt-4o-mini') in provider_models
+      provider='openai', model='gpt-5.2-pro') in provider_models
   return state_data
 
 
@@ -270,7 +275,7 @@ def list_provider_models_with_model_size_filter(state_data):
   for provider_model in provider_models:
     print(f'{provider_model.provider:>25} - {provider_model.model}')
   assert px.models.get_model(
-      provider='openai', model='o1') in provider_models
+      provider='openai', model='gpt-5.2-pro') in provider_models
   return state_data
 
 
@@ -285,14 +290,14 @@ def generate_text(state_data):
 def generate_text_with_provider_model(state_data):
   response = px.generate_text(
       'Hello! Which model are you?',
-      provider_model=('cohere', 'command-a'))
+      provider_model=('gemini', 'gemini-2.5-flash'))
   print(response)
   return state_data
 
 
 @integration_block
 def generate_text_with_provider_model_type(state_data):
-  provider_model = px.models.get_model('claude', 'opus-4')
+  provider_model = px.models.get_model('claude', 'opus-4.5')
   print(type(provider_model))
   print(f'{provider_model.provider=}')
   print(f'{provider_model.model=}')
@@ -384,13 +389,71 @@ def generate_text_with_suppress_provider_errors(state_data):
 
   return state_data
 
+@integration_block
+def generate_text_with_web_search(state_data):
+  response = px.generate_text(
+      'When is the next Fenerbahce vs Galatasaray soccer match?',
+      provider_model=('gemini', 'gemini-3-flash'),
+      web_search=True)
+  print(response)
+  return state_data
+
+
+@integration_block
+def generate_text_with_json_response(state_data):
+  response_format = {
+      'type': 'json_schema',
+      'json_schema': {
+          'name': 'ColorInfo',
+          'strict': True,
+          'schema': {
+              'type': 'object',
+              'properties': {
+                  'color_name': {'type': 'string'},
+                  'hex_code': {'type': 'string'}
+              },
+              'required': ['color_name', 'hex_code'],
+              'additionalProperties': False
+          },
+      },
+  }
+  for provider_model in [('openai', 'o4-mini'), ('gemini', 'gemini-3-flash')]:
+    response = px.generate_text(
+        'Give me a random color name and its hex code.',
+        provider_model=provider_model,
+        response_format=response_format)
+    print(provider_model)
+    print(response)
+  assert isinstance(response, dict), 'Response should be a dictionary.'
+  assert 'color_name' in response, 'Response should have color_name.'
+  assert 'hex_code' in response, 'Response should have hex_code.'
+  return state_data
+
+
+@integration_block
+def generate_text_with_pydantic_response(state_data):
+  from pydantic import BaseModel
+
+  class ColorInfo(BaseModel):
+    color_name: str
+    hex_code: str
+
+  response = px.generate_text(
+      'Give me a random color name and its hex code.',
+      provider_model=('openai', 'gpt-4.1'),
+      response_format=ColorInfo)
+  print(response)
+  assert isinstance(response, ColorInfo), 'Response should be a ColorInfo.'
+  assert response.color_name, 'Response should have color_name.'
+  assert response.hex_code, 'Response should have hex_code.'
+  return state_data
+
 
 @integration_block
 def set_model(state_data):
   def get_response_of_simple_request():
     return px.generate_text(
         'Hey AI model! This is simple request. Give an answer.',
-        max_tokens=20,
         suppress_provider_errors=True
     ).strip().replace('\n', ' ')[:80]
 
@@ -487,7 +550,7 @@ def logging_with_hide_sensitive_content(state_data):
       '<sensitive content hidden>'
   ), 'Sensitive content is not hidden.'
   assert (
-      last_log_data['response_record']['response'] ==
+      last_log_data['response_record']['response']['value'] ==
       '<sensitive content hidden>'
   ), 'Sensitive content is not hidden.'
   pprint(last_log_data)
@@ -604,7 +667,7 @@ def query_cache_with_unique_response_limit(state_data):
       assert response.response_source == 'PROVIDER'
     else:
       assert response.response_source == 'CACHE'
-    response_text = response.response_record.response[:100].replace('\n', '')
+    response_text = response.response_record.response.value[:100].replace('\n', '')
     response_time = response.response_record.response_time.total_seconds()
     print(f'{response.response_source:9} | '
           f'{response_time:9.2f}s | '
@@ -965,7 +1028,7 @@ def connect_strict_feature_test(state_data):
           base_url=_PROXDASH_BASE_URL,
           api_key=state_data['api_key'],
       ),
-      strict_feature_test=True)
+      feature_mapping_strategy=px.types.FeatureMappingStrategy.STRICT)
 
   error_message = None
   try:
@@ -979,7 +1042,11 @@ def connect_strict_feature_test(state_data):
     print(f'Error message raised: {error_message}')
 
   assert error_message is not None, 'Error should be raised.'
-  assert error_message == 'o4-mini does not support temperature.', (
+  expected_error_message = (
+      'For (openai, o4-mini), it is not possible to use following features all '
+      'at once in STRICT mode.'
+  )
+  assert expected_error_message in error_message, (
       'Error message should mention that o4-mini does not support temperature.')
   return state_data
 
@@ -1046,8 +1113,10 @@ def get_current_options_with_empty_connect(state_data):
       'Cache path should be None.')
   assert options.allow_multiprocessing is True, (
       'Allow multiprocessing should be True.')
-  assert options.strict_feature_test is False, (
-      'Strict feature test should be False.')
+  assert (
+      options.feature_mapping_strategy ==
+      px.types.FeatureMappingStrategy.BEST_EFFORT), (
+          'Feature mapping strategy should be BEST_EFFORT.')
   return state_data
 
 
@@ -1070,7 +1139,7 @@ def get_current_options(state_data):
       ),
       allow_multiprocessing=False,
       suppress_provider_errors=True,
-      strict_feature_test=True,
+      feature_mapping_strategy=px.types.FeatureMappingStrategy.STRICT,
   )
   options = px.get_current_options()
   print('Current options:')
@@ -1087,8 +1156,10 @@ def get_current_options(state_data):
       'Allow multiprocessing should be False.')
   assert options.suppress_provider_errors is True, (
       'Suppress provider errors should be True.')
-  assert options.strict_feature_test is True, (
-      'Strict feature test should be True.')
+  assert (
+      options.feature_mapping_strategy ==
+      px.types.FeatureMappingStrategy.STRICT), (
+          'Feature mapping strategy should be STRICT.')
   return state_data
 
 
@@ -1113,6 +1184,9 @@ def main():
   state_data = generate_text_with_temperature(state_data=state_data)
   state_data = generate_text_with_extensive_return(state_data=state_data)
   state_data = generate_text_with_suppress_provider_errors(state_data=state_data)
+  state_data = generate_text_with_web_search(state_data=state_data)
+  state_data = generate_text_with_json_response(state_data=state_data)
+  state_data = generate_text_with_pydantic_response(state_data=state_data)
   state_data = set_model(state_data=state_data)
   state_data = check_health(state_data=state_data)
   state_data = check_health_without_multiprocessing(state_data=state_data, skip=True)

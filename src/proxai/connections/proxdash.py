@@ -391,7 +391,10 @@ class ProxDashConnection(state_controller.StateControlled):
       ]
     if (logging_record.response_record and
         logging_record.response_record.response):
-      logging_record.response_record.response = '<sensitive content hidden>'
+      logging_record.response_record.response = types.Response(
+          value='<sensitive content hidden>',
+          type=types.ResponseType.TEXT
+      )
     return logging_record
 
   def upload_logging_record(self, logging_record: types.LoggingRecord):
@@ -412,6 +415,22 @@ class ProxDashConnection(state_controller.StateControlled):
           sort_keys=True)
     else:
       messages = None
+
+    # Note: Needs to be updated after backend API response format change.
+    response = ''
+    if logging_record.response_record.response:
+      response_type = logging_record.response_record.response.type
+      if response_type == types.ResponseType.TEXT:
+        response = logging_record.response_record.response.value
+      elif response_type == types.ResponseType.JSON:
+        response = json.dumps(
+            logging_record.response_record.response.value,
+            indent=2, sort_keys=True)
+      elif response_type == types.ResponseType.PYDANTIC:
+        response = json.dumps(
+            logging_record.response_record.response.value
+            .instance_value.model_dump_json(),
+            indent=2, sort_keys=True)
 
     if logging_record.query_record.stop is not None:
       stop = logging_record.query_record.stop
@@ -437,7 +456,7 @@ class ProxDashConnection(state_controller.StateControlled):
       'stop': stop,
       'hashValue': logging_record.query_record.hash_value,
       'queryTokens': logging_record.query_record.token_count,
-      'response': logging_record.response_record.response,
+      'response': response,
       'error': logging_record.response_record.error,
       'errorTraceback': logging_record.response_record.error_traceback,
       'startUTCDate': logging_record.response_record.start_utc_date.isoformat(),
