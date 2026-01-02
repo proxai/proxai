@@ -13,6 +13,7 @@ class RunType(enum.Enum):
 
 class CallType(str, enum.Enum):
   GENERATE_TEXT = 'GENERATE_TEXT'
+  OTHER = 'OTHER'
 
 
 ProviderNameType = str
@@ -65,13 +66,29 @@ MessagesType = List[Dict[str, str]]
 
 @dataclasses.dataclass
 class ProviderModelPricingType:
-  per_response_token_cost: float
-  per_query_token_cost: float
+  per_response_token_cost: Optional[float] = None
+  per_query_token_cost: Optional[float] = None
 
 
 @dataclasses.dataclass
-class ProviderModelFeatureType:
-  not_supported_features: List[str] = dataclasses.field(default_factory=list)
+class EndpointFeatureInfoType:
+  supported: List[str] = dataclasses.field(default_factory=list)
+  best_effort: List[str] = dataclasses.field(default_factory=list)
+  not_supported: List[str] = dataclasses.field(default_factory=list)
+
+
+class FeatureNameType(str, enum.Enum):
+  PROMPT = 'prompt'
+  MESSAGES = 'messages'
+  SYSTEM = 'system'
+  MAX_TOKENS = 'max_tokens'
+  TEMPERATURE = 'temperature'
+  STOP = 'stop'
+  WEB_SEARCH = 'web_search'
+  RESPONSE_FORMAT_TEXT = 'response_format::text'
+  RESPONSE_FORMAT_JSON = 'response_format::json'
+  RESPONSE_FORMAT_JSON_SCHEMA = 'response_format::json_schema'
+  RESPONSE_FORMAT_PYDANTIC = 'response_format::pydantic'
 
 
 class ModelSizeType(str, enum.Enum):
@@ -92,12 +109,14 @@ class ProviderModelMetadataType:
   default_candidate_priority: Optional[int] = None
   tags: Optional[List[str]] = None
 
+FeatureMappingType = Dict[FeatureNameType, EndpointFeatureInfoType]
+
 
 @dataclasses.dataclass
 class ProviderModelConfigType:
   provider_model: Optional[ProviderModelType] = None
   pricing: Optional[ProviderModelPricingType] = None
-  features: Optional[ProviderModelFeatureType] = None
+  features: Optional[FeatureMappingType] = None
   metadata: Optional[ProviderModelMetadataType] = None
 
 
@@ -183,6 +202,11 @@ class SummaryOptions:
   json: bool = True
 
 
+class FeatureMappingStrategy(str, enum.Enum):
+  BEST_EFFORT = 'BEST_EFFORT'
+  STRICT = 'STRICT'
+
+
 @dataclasses.dataclass
 class RunOptions:
   run_type: Optional[RunType] = None
@@ -195,7 +219,7 @@ class RunOptions:
   proxdash_options: Optional[ProxDashOptions] = None
   allow_multiprocessing: Optional[bool] = None
   model_test_timeout: Optional[int] = None
-  strict_feature_test: Optional[bool] = None
+  feature_mapping_strategy: Optional[FeatureMappingStrategy] = None
   suppress_provider_errors: Optional[bool] = None
 
 
@@ -226,11 +250,20 @@ class ResponseFormat:
   type: Optional[ResponseFormatType] = None
 
 
-UserDefinedResponseFormatValueType = Union[
+ResponseFormatSchema = Union[
     str,
     Dict[str, Any],
     Type[pydantic.BaseModel],
-    ResponseFormat
+]
+
+@dataclasses.dataclass
+class StructuredResponseFormat:
+    schema: Optional[ResponseFormatSchema] = None
+    type: Optional[ResponseFormatType] = None
+
+ResponseFormatParam = Union[
+    ResponseFormatSchema,
+    StructuredResponseFormat,
 ]
 
 
@@ -247,20 +280,21 @@ class QueryRecord:
   token_count: Optional[int] = None
   response_format: Optional[ResponseFormat] = None
   web_search: Optional[bool] = None
+  feature_mapping_strategy: Optional[FeatureMappingStrategy] = None
+  chosen_endpoint: Optional[str] = None
   hash_value: Optional[str] = None
 
 
 @dataclasses.dataclass
-class ResponsePydanticValue:
+class PydanticMetadataType:
   class_name: Optional[str] = None
-  instance_value: Optional[Type[pydantic.BaseModel]] = None
   instance_json_value: Optional[Dict[str, Any]] = None
 
 
 ResponseValue = Union[
     str,
     Dict[str, Any],
-    ResponsePydanticValue
+    pydantic.BaseModel
 ]
 
 
@@ -274,6 +308,7 @@ class ResponseType(str, enum.Enum):
 class Response:
   value: Optional[ResponseValue] = None
   type: Optional[ResponseType] = None
+  pydantic_metadata: Optional[PydanticMetadataType] = None
 
 
 @dataclasses.dataclass
@@ -419,7 +454,7 @@ class ProviderModelState(StateContainer):
   provider_model: Optional[ProviderModelType] = None
   run_type: Optional[RunType] = None
   provider_model_config: Optional[ProviderModelConfigType] = None
-  strict_feature_test: Optional[bool] = None
+  feature_mapping_strategy: Optional[FeatureMappingStrategy] = None
   query_cache_manager: Optional[QueryCacheManagerState] = None
   logging_options: Optional[LoggingOptions] = None
   proxdash_connection: Optional[ProxDashConnectionState] = None

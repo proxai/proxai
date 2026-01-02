@@ -20,14 +20,26 @@ class _MockResponse(object):
 class _MockMessages(object):
   def create(
       self,
-      model: str,
-      max_tokens: Optional[int] = None,
-      messages: Optional[List[Dict]] = None) -> _MockResponse:
+      **kwargs) -> _MockResponse:
+    return _MockResponse()
+
+  def parse(
+      self,
+      **kwargs) -> _MockResponse:
     return _MockResponse()
 
 
-class ClaudeMock(object):
+class _MockBeta(object):
   messages: _MockMessages
 
   def __init__(self):
     self.messages = _MockMessages()
+
+
+class ClaudeMock(object):
+  messages: _MockMessages
+  beta: _MockBeta
+
+  def __init__(self):
+    self.messages = _MockMessages()
+    self.beta = _MockBeta()

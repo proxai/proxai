@@ -7,45 +7,43 @@ from dataclasses import asdict
 
 
 def simple_model_test():
-  response = px.generate_text(
-      'When is the Galatasary and Besiktas game for this season?',
-      provider_model=('mistral', 'mistral-large'),
-      web_search=True)
-  print(response)
-  # random_int = random.randint(1, 1000000)
-  # result = px.generate_text(
-  #     'This is a test message to check if the cache is working or '
-  #     f'not. {random_int}',
-  #     extensive_return=True)
-  # pprint(asdict(result))
+  random_int = random.randint(1, 1000000)
+  result = px.generate_text(
+      'When is the first galatasaray and fenerbahce?',
+      provider_model=('cohere', 'command-a'),
+      extensive_return=True)
+  pprint(asdict(result))
 
 
 def simple_cache_test():
   px.connect(
       experiment_path='simple_test/run_1',
-      logging_path=f'{Path.home()}/proxai_log/',
-      cache_path=f'{Path.home()}/proxai_cache/',
-      proxdash_options=px.ProxDashOptions(
-          stdout=True,
-          base_url='http://localhost:3001',
-          api_key='bry2oe2-m9xev24i-q2pjebcpc9'))
+      cache_path=f'{Path.home()}/proxai_cache/')
+
   random_int = random.randint(1, 1000000)
-  result = px.generate_text(
-      'This is a test message to check if the cache is working or '
-      f'not. {random_int}')
-  print(f'1: {result}')
+
+  def _test_function():
+    result = px.generate_text(
+        'This is a test message to check if the cache is working or '
+        f'not. {random_int}',
+        provider_model=('openai', 'gpt-5.1'),
+        extensive_return=True)
+    print('Response    :', result.response_record.response.value)
+    print('Source      :', result.response_source)
+    print('Fail reason :', result.look_fail_reason)
+    return result
+
+  print('1:')
+  result = _test_function()
   time.sleep(1)
 
-  result = px.generate_text(
-      'This is a test message to check if the cache is working or '
-      f'not. {random_int}')
-  print(f'2: {result}')
+  print('2:')
+  result = _test_function()
   time.sleep(1)
 
-  result = px.generate_text(
-      'This is a test message to check if the cache is working or '
-      f'not. {random_int}')
-  print(f'3: {result}')
+  print('3:')
+  result = _test_function()
+  time.sleep(1)
 
 
 def list_models():

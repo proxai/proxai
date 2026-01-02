@@ -22,7 +22,7 @@ PROVIDER_KEY_MAP: Dict[str, Tuple[str]] = MappingProxyType({
     'deepseek': tuple(['DEEPSEEK_API_KEY']),
     'gemini': tuple(['GEMINI_API_KEY']),
     'grok': tuple(['XAI_API_KEY']),
-    'huggingface': tuple(['HUGGINGFACE_API_KEY']),
+    'huggingface': tuple(['HF_TOKEN']),
     'mistral': tuple(['MISTRAL_API_KEY']),
     'openai': tuple(['OPENAI_API_KEY']),
 
@@ -36,7 +36,7 @@ class ModelConfigs(state_controller.StateControlled):
   _model_configs_schema: Optional[types.ModelConfigsSchemaType]
   _model_configs_state: Optional[types.ModelConfigsState]
 
-  LOCAL_CONFIG_VERSION = "v1.0.4"
+  LOCAL_CONFIG_VERSION = "v1.1.2"
 
   def __init__(
       self,
@@ -197,12 +197,14 @@ class ModelConfigs(state_controller.StateControlled):
       raise ValueError(
           f'pricing is None for provider_model_configs[{provider_key}][{model_key}]')
 
-    if pricing.per_query_token_cost < 0:
+    if (pricing.per_query_token_cost is not None and
+        pricing.per_query_token_cost < 0):
       raise ValueError(
           f'per_query_token_cost is negative ({pricing.per_query_token_cost}) '
           f'for provider_model_configs[{provider_key}][{model_key}]')
 
-    if pricing.per_response_token_cost < 0:
+    if (pricing.per_response_token_cost is not None and
+        pricing.per_response_token_cost < 0):
       raise ValueError(
           f'per_response_token_cost is negative ({pricing.per_response_token_cost}) '
           f'for provider_model_configs[{provider_key}][{model_key}]')
@@ -221,6 +223,47 @@ class ModelConfigs(state_controller.StateControlled):
             f'provider_model_configs[{provider_key}][{model_key}]. '
             f'Valid values: {[s.value for s in types.ModelSizeType]}')
 
+  def _validate_features(
+      self,
+      provider_key: str,
+      model_key: str,
+      features: types.ProviderModelFeatureType):
+    """Validate supported, best_effort, and not_supported are disjoint."""
+    if features is None:
+      return
+
+    for feature_name, feature in features.items():
+      supported = set(feature.supported or [])
+      best_effort = set(feature.best_effort or [])
+      not_supported = set(feature.not_supported or [])
+
+      supported_best_effort = supported & best_effort
+      if supported_best_effort:
+        raise ValueError(
+            f'Features {supported_best_effort} appear in both SUPPORTED and '
+            'BEST_EFFORT for provider_model_configs for '
+            f'({provider_key}, {model_key})\n'
+            f'Feature name: {feature_name}\n'
+            f'Feature config: {feature}')
+
+      supported_not_supported = supported & not_supported
+      if supported_not_supported:
+        raise ValueError(
+            f'Features {supported_not_supported} appear in both SUPPORTED and '
+            'NOT_SUPPORTED for provider_model_configs for '
+            f'({provider_key}, {model_key})\n'
+            f'Feature name: {feature_name}\n'
+            f'Feature config: {feature}')
+
+      best_effort_not_supported = best_effort & not_supported
+      if best_effort_not_supported:
+        raise ValueError(
+            f'Features {best_effort_not_supported} appear in both BEST_EFFORT and '
+            'NOT_SUPPORTED for provider_model_configs for '
+            f'({provider_key}, {model_key})\n'
+            f'Feature name: {feature_name}\n'
+            f'Feature config: {feature}')
+
   def _validate_provider_model_config(
       self,
       provider_key: str,
@@ -231,6 +274,8 @@ class ModelConfigs(state_controller.StateControlled):
         provider_key, model_key, config)
 
     self._validate_pricing(provider_key, model_key, config.pricing)
+
+    self._validate_features(provider_key, model_key, config.features)
 
     if (config.metadata and
         config.metadata.model_size_tags is not None):
@@ -506,18 +551,6 @@ class ModelConfigs(state_controller.StateControlled):
     return math.floor(
         query_token_count * model_pricing_config.per_query_token_cost +
         response_token_count * model_pricing_config.per_response_token_cost)
-
-  def is_feature_supported(
-      self,
-      provider_model: types.ProviderModelType,
-      feature: str,
-  ) -> bool:
-    version_config = self.model_configs_schema.version_config
-    model_features = version_config.provider_model_configs[
-        provider_model.provider][provider_model.model].features
-    if model_features is None:
-      return True
-    return feature in model_features.not_supported_features
 
   def get_all_models(
       self,

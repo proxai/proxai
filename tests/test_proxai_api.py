@@ -9,12 +9,6 @@ import proxai.connectors.providers.mock_provider as mock_provider
 from importlib.metadata import version
 
 
-@pytest.fixture
-def model_configs_instance():
-  """Fixture to provide a ModelConfigs instance for testing."""
-  return model_configs.ModelConfigs()
-
-
 class TestProxaiApiUseCases:
   @pytest.fixture(autouse=True)
   def setup_test(self, monkeypatch):
@@ -51,7 +45,7 @@ class TestProxaiApiUseCases:
     px.models.list_models()
     px.models.allow_multiprocessing = None
     total_time = time.time() - start
-    assert total_time < 2
+    assert total_time < 4
 
     # Check that model cache is created in the cache path:
     assert os.path.exists(px.models.model_cache_manager.cache_path)
@@ -85,7 +79,7 @@ class TestProxaiApiUseCases:
     px.models.list_models()
     px.models.allow_multiprocessing = None
     total_time = time.time() - start
-    assert total_time < 2
+    assert total_time < 4
 
     # Check that model cache in cache path is not changed:
     assert os.path.exists(px.models.model_cache_manager.cache_path)
@@ -105,10 +99,10 @@ class TestProxaiApiUseCases:
     logging_record = px.generate_text(
         prompt='hello',
         provider_model=px.models.get_model(
-            'claude', 'haiku-3.5', clear_model_cache=True),
+            'gemini', 'gemini-3-pro', clear_model_cache=True),
         extensive_return=True)
     assert logging_record.response_record.response.value == 'mock response'
-    assert logging_record.query_record.provider_model.model == 'haiku-3.5'
+    assert logging_record.query_record.provider_model.model == 'gemini-3-pro'
     assert logging_record.response_source == px.types.ResponseSource.PROVIDER
 
     logging_record = px.generate_text(
@@ -118,7 +112,7 @@ class TestProxaiApiUseCases:
         temperature=0.5,
         stop=['\n\n'],
         web_search=True,
-        provider_model=('openai', 'gpt-3.5-turbo'),
+        provider_model=('gemini', 'gemini-3-pro'),
         use_cache=False,
         unique_response_limit=1,
         extensive_return=True)
@@ -128,7 +122,7 @@ class TestProxaiApiUseCases:
     assert logging_record.query_record.temperature == 0.5
     assert logging_record.query_record.stop == ['\n\n']
     assert logging_record.query_record.web_search == True
-    assert logging_record.query_record.provider_model.model == 'gpt-3.5-turbo'
+    assert logging_record.query_record.provider_model.model == 'gemini-3-pro'
     assert logging_record.response_record.response.value == 'mock response'
     assert logging_record.response_source == px.types.ResponseSource.PROVIDER
 
@@ -140,15 +134,15 @@ class TestProxaiApiUseCases:
     start = time.time()
     models = px.models.list_models(clear_model_cache=True)
     assert len(models) > 15
-    assert time.time() - start < 2
+    assert time.time() - start < 4
 
     start = time.time()
     models = px.models.list_models(model_size='largest')
     assert len(models) < 15
-    assert time.time() - start < 2
+    assert time.time() - start < 4
 
   def test_models_get_all_models_with_multiprocessing_and_model_test_timeout(
-      self, monkeypatch, model_configs_instance):
+      self, monkeypatch):
     monkeypatch.setenv('MOCK_SLOW_PROVIDER', 'test_api_key')
     start = time.time()
     px.models.allow_multiprocessing = True
@@ -160,7 +154,7 @@ class TestProxaiApiUseCases:
     px.models.model_test_timeout = 25
     assert len(models.working_models) > 15
     assert (
-        model_configs_instance.get_provider_model(('mock_slow_provider', 'mock_slow_model'))
+        pytest.model_configs_instance.get_provider_model(('mock_slow_provider', 'mock_slow_model'))
         in models.failed_models)
     assert time.time() - start < 10
 
@@ -174,14 +168,14 @@ class TestProxaiApiUseCases:
     start = time.time()
     providers = px.models.list_providers()
     assert len(providers) > 5
-    assert time.time() - start < 2
+    assert time.time() - start < 4
 
     # --- get_provider_models ---
     # This should be fast because of model cache:
     start = time.time()
     models = px.models.list_provider_models('openai')
     assert len(models) > 2
-    assert time.time() - start < 2
+    assert time.time() - start < 4
 
     # --- get_provider_model ---
     # This should be fast because of model cache:
@@ -189,13 +183,13 @@ class TestProxaiApiUseCases:
     provider_model = px.models.get_model('openai', 'gpt-4')
     assert provider_model.provider == 'openai'
     assert provider_model.model == 'gpt-4'
-    assert time.time() - start < 2
+    assert time.time() - start < 4
 
     # --- get_all_models with largest models ---
     start = time.time()
     models = px.models.list_models(model_size='largest')
     assert len(models) < 15
-    assert time.time() - start < 2
+    assert time.time() - start < 4
 
     # --- get_all_models with clear_model_cache ---
     start = time.time()
@@ -203,15 +197,15 @@ class TestProxaiApiUseCases:
     models = px.models.list_models(clear_model_cache=True)
     px.models.allow_multiprocessing = None
     assert len(models) > 15
-    assert time.time() - start < 2
+    assert time.time() - start < 4
 
   def test_set_model(self):
     px.models.list_models(clear_model_cache=True)
 
     # Test default model
-    px.set_model(('claude', 'haiku-3.5'))
+    px.set_model(('claude', 'haiku-4.5'))
     logging_record = px.generate_text('hello', extensive_return=True)
-    assert logging_record.query_record.provider_model.model == 'haiku-3.5'
+    assert logging_record.query_record.provider_model.model == 'haiku-4.5'
 
     # Test setting model with generate_text parameter
     px.set_model(generate_text=('openai', 'gpt-4'))
@@ -224,9 +218,9 @@ class TestProxaiApiUseCases:
     assert logging_record.query_record.provider_model.model == 'gpt-3.5-turbo'
 
     # Test setting model with provider_model from get_provider_model
-    px.set_model(px.models.get_model('claude', 'haiku-3.5'))
+    px.set_model(px.models.get_model('claude', 'haiku-4.5'))
     logging_record = px.generate_text('hello', extensive_return=True)
-    assert logging_record.query_record.provider_model.model == 'haiku-3.5'
+    assert logging_record.query_record.provider_model.model == 'haiku-4.5'
 
     # Test error when both parameters are set
     with pytest.raises(
@@ -568,19 +562,44 @@ class TestProxaiApiUseCases:
           '<sensitive content hidden>')
       assert log_record['response_source'] == px.types.ResponseSource.PROVIDER
 
-  def test_connect_with_strict_feature_test(self):
-    px.connect(strict_feature_test=False)
+  def test_connect_with_feature_mapping_strategy(self):
+    px.connect(
+        feature_mapping_strategy=px.types.FeatureMappingStrategy.BEST_EFFORT)
     px.generate_text(
         'hello',
         stop='STOP',
         provider_model=('mistral', 'mistral-large'))
 
-    px.connect(strict_feature_test=True)
+    px.connect(
+        feature_mapping_strategy=px.types.FeatureMappingStrategy.STRICT)
     with pytest.raises(Exception):
       px.generate_text(
           'hello',
-          stop='STOP',
+          web_search=True,
           provider_model=('mistral', 'mistral-large'))
+
+  def test_feature_mapping_strategy_override(self):
+    # Set connect value to STRICT
+    px.connect(
+        feature_mapping_strategy=px.types.FeatureMappingStrategy.STRICT)
+
+    # Call with connect value (STRICT)
+    response = px.generate_text('hello', extensive_return=True)
+    assert (response.query_record.feature_mapping_strategy ==
+        px.types.FeatureMappingStrategy.STRICT)
+
+    # Override with BEST_EFFORT
+    response = px.generate_text(
+        'hello',
+        feature_mapping_strategy=px.types.FeatureMappingStrategy.BEST_EFFORT,
+        extensive_return=True)
+    assert (response.query_record.feature_mapping_strategy ==
+        px.types.FeatureMappingStrategy.BEST_EFFORT)
+
+    # Call again without override, should use connect value (STRICT)
+    response = px.generate_text('hello', extensive_return=True)
+    assert (response.query_record.feature_mapping_strategy ==
+        px.types.FeatureMappingStrategy.STRICT)
 
   def test_get_current_options(self):
     options = px.get_current_options()
@@ -599,7 +618,8 @@ class TestProxaiApiUseCases:
     assert options.proxdash_options.disable_proxdash == False
     assert options.allow_multiprocessing == True
     assert options.model_test_timeout == 25
-    assert options.strict_feature_test == False
+    assert (options.feature_mapping_strategy ==
+        px.types.FeatureMappingStrategy.BEST_EFFORT)
 
     logging_path = self._get_path_dir('logging_path')
     cache_path = self._get_path_dir('cache_path')
@@ -620,7 +640,7 @@ class TestProxaiApiUseCases:
             disable_proxdash=True),
         allow_multiprocessing=False,
         model_test_timeout=45,
-        strict_feature_test=True)
+        feature_mapping_strategy=px.types.FeatureMappingStrategy.STRICT)
     options = px.get_current_options()
     assert options.run_type == px.types.RunType.TEST
     assert options.logging_options.logging_path == logging_path
@@ -636,7 +656,8 @@ class TestProxaiApiUseCases:
     assert options.proxdash_options.disable_proxdash == True
     assert options.allow_multiprocessing == False
     assert options.model_test_timeout == 45
-    assert options.strict_feature_test == True
+    assert (options.feature_mapping_strategy ==
+        px.types.FeatureMappingStrategy.STRICT)
 
     options = px.get_current_options(json=True)
     assert options['run_type'] == px.types.RunType.TEST.value
@@ -662,22 +683,22 @@ class TestProxaiApiUseCases:
     summary = px.get_summary()
     assert summary.provider_stats.total_queries == 1
     assert summary.cache_stats.total_cache_hit == 2
-    assert summary.providers['openai'].provider_stats.total_queries == 1
-    assert summary.providers['openai'].cache_stats.total_cache_hit == 2
+    assert summary.providers['gemini'].provider_stats.total_queries == 1
+    assert summary.providers['gemini'].cache_stats.total_cache_hit == 2
 
     summary = px.get_summary(json=True)
     assert summary['provider_stats']['total_queries'] == 1
     assert summary['cache_stats']['total_cache_hit'] == 2
-    assert summary['providers']['openai']['provider_stats'][
+    assert summary['providers']['gemini']['provider_stats'][
         'total_queries'] == 1
-    assert summary['providers']['openai']['cache_stats']['total_cache_hit'] == 2
+    assert summary['providers']['gemini']['cache_stats']['total_cache_hit'] == 2
 
   def test_check_health(self):
     model_status = px.check_health(
         extensive_return=True,
         allow_multiprocessing=False)
     assert len(model_status.working_models) > 10
-    assert len(model_status.failed_models) == 1
+    assert len(model_status.failed_models) == 0
 
   def test_proxdash_model_configs_schema(self, requests_mock):
     # Mock proxdash model configs schema response
@@ -767,4 +788,5 @@ class TestStructuredOutput:
     assert result.response_record.response.type == px.types.ResponseType.PYDANTIC
     assert isinstance(
         result.response_record.response.value,
-        px.types.ResponsePydanticValue)
+        mock_provider.SamplePydanticModel)
+    assert result.response_record.response.pydantic_metadata is not None

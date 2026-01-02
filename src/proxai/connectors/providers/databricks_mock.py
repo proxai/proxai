@@ -21,13 +21,10 @@ class _MockResponse(object):
 
 
 class _MockCompletions(object):
-  def create(
-      self,
-      model: str,
-      messages: List[Dict],
-      max_tokens: Optional[int]=None,
-      temperature: Optional[float]=None,
-      stop: Optional[List[str]]=None) -> _MockResponse:
+  def create(self, *args, **kwargs) -> _MockResponse:
+    return _MockResponse()
+
+  def parse(self, *args, **kwargs) -> _MockResponse:
     return _MockResponse()
 
 
@@ -38,8 +35,17 @@ class _MockChat(object):
     self.completions = _MockCompletions()
 
 
-class DatabricksMock(object):
+class _MockBeta(object):
   chat: _MockChat
 
   def __init__(self):
     self.chat = _MockChat()
+
+
+class DatabricksMock(object):
+  chat: _MockChat
+  beta: _MockBeta
+
+  def __init__(self):
+    self.chat = _MockChat()
+    self.beta = _MockBeta()

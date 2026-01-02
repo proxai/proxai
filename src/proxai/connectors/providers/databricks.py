@@ -1,5 +1,4 @@
-import os
-import copy
+from typing import Any, Callable, Optional
 import functools
 import json
 from databricks.sdk import WorkspaceClient
@@ -19,8 +18,28 @@ class DatabricksConnector(model_connector.ProviderModelConnector):
   def init_mock_model(self):
     return databricks_mock.DatabricksMock()
 
-  def generate_text_proc(
-      self, query_record: types.QueryRecord) -> types.Response:
+  def _get_api_call_function(
+      self,
+      chosen_endpoint: str) -> Callable:
+    if chosen_endpoint == 'chat.completions.create':
+      return functools.partial(self.api.chat.completions.create)
+    elif chosen_endpoint == 'beta.chat.completions.parse':
+      return functools.partial(self.api.beta.chat.completions.parse)
+    else:
+      raise Exception(f'Invalid endpoint: {chosen_endpoint}')
+
+  def prompt_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    return functools.partial(
+        query_function,
+        messages=[{'role': 'user', 'content': query_record.prompt}])
+
+  def messages_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
     # Note: Databricks uses OpenAI-compatible API with 'system', 'user', and
     # 'assistant' as roles.
     # Some parameters may not work as expected for some models. For example,
@@ -28,75 +47,166 @@ class DatabricksConnector(model_connector.ProviderModelConnector):
     # databricks-dbrx-instruct. But the stop parameter works as expected for
     # this model. However, system instruction works for
     # databricks-llama-2-70b-chat.
-    query_messages = []
-    if query_record.system != None:
-      query_messages.append({'role': 'system', 'content': query_record.system})
-    if query_record.prompt != None:
-      query_messages.append({'role': 'user', 'content': query_record.prompt})
-    if query_record.messages != None:
-      query_messages.extend(query_record.messages)
-    provider_model = query_record.provider_model
-
-    # Use beta.chat.completions.parse for Pydantic models
-    if (query_record.response_format is not None and
-        query_record.response_format.type == types.ResponseFormatType.PYDANTIC):
-      create = functools.partial(
-          self.api.beta.chat.completions.parse,
-          model=provider_model.provider_model_identifier,
-          messages=query_messages)
+    messages = query_function.keywords.get('messages')
+    if messages is None:
+      return functools.partial(
+          query_function,
+          messages=query_record.messages)
     else:
-      create = functools.partial(
-          self.api.chat.completions.create,
-          model=provider_model.provider_model_identifier,
-          messages=query_messages)
+      messages = query_record.messages + messages
+      return functools.partial(
+          query_function,
+          messages=messages)
 
-    if query_record.max_tokens != None:
-      create = functools.partial(create, max_tokens=query_record.max_tokens)
-    if query_record.temperature != None:
-      create = functools.partial(create, temperature=query_record.temperature)
-    if query_record.stop != None:
-      create = functools.partial(create, stop=query_record.stop)
+  def system_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    messages = query_function.keywords.get('messages')
+    if messages is None:
+      raise Exception('Set messages parameter before adding system message.')
+    messages.insert(0, {'role': 'system', 'content': query_record.system})
+    return functools.partial(query_function, messages=messages)
 
-    # Handle response format configuration
-    if query_record.response_format is not None:
-      if query_record.response_format.type == types.ResponseFormatType.TEXT:
-        pass
-      elif query_record.response_format.type == types.ResponseFormatType.JSON:
-        create = functools.partial(
-            create,
-            response_format={'type': 'json_object'})
-      elif query_record.response_format.type == types.ResponseFormatType.JSON_SCHEMA:
-        create = functools.partial(
-            create,
-            response_format=query_record.response_format.value)
-      elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
-        create = functools.partial(
-            create,
-            response_format=query_record.response_format.value.class_value)
+  def max_tokens_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    return functools.partial(
+        query_function,
+        max_tokens=query_record.max_tokens)
 
-    completion = create()
+  def temperature_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    return functools.partial(
+        query_function,
+        temperature=query_record.temperature)
 
-    # Handle response based on format type
-    if query_record.response_format is None:
-      return types.Response(
-          value=completion.choices[0].message.content,
-          type=types.ResponseType.TEXT)
-    elif query_record.response_format.type == types.ResponseFormatType.TEXT:
-      return types.Response(
-          value=completion.choices[0].message.content,
-          type=types.ResponseType.TEXT)
-    elif query_record.response_format.type == types.ResponseFormatType.JSON:
-      return types.Response(
-          value=json.loads(completion.choices[0].message.content),
-          type=types.ResponseType.JSON)
-    elif (query_record.response_format.type ==
-          types.ResponseFormatType.JSON_SCHEMA):
-      return types.Response(
-          value=json.loads(completion.choices[0].message.content),
-          type=types.ResponseType.JSON)
-    elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
-      return types.Response(
-          value=types.ResponsePydanticValue(
-              class_name=query_record.response_format.value.class_name,
-              instance_value=completion.choices[0].message.parsed),
-          type=types.ResponseType.PYDANTIC)
+  def stop_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord) -> Callable:
+    return functools.partial(
+        query_function,
+        stop=query_record.stop)
+
+  def _add_json_guidance_to_user_message(
+      self,
+      query_function: Callable):
+    # NOTE: Some Databricks models expect JSON guidance to be in the user message.
+    # This is a workaround to add JSON guidance to the user message.
+    messages = query_function.keywords.get('messages')
+    if messages is None:
+      raise Exception('Set messages parameter before adding JSON guidance.')
+    for message in messages:
+      if message['role'] == 'user':
+        if 'json' not in message['content'].lower():
+          message['content'] = (
+              f'{message["content"]}\n\nYou must respond with valid JSON.')
+        break
+    return functools.partial(query_function, messages=messages)
+
+  def json_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    query_function = self._add_json_guidance_to_user_message(query_function)
+    return functools.partial(
+        query_function,
+        response_format={'type': 'json_object'})
+
+  def json_schema_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    return functools.partial(
+        query_function,
+        response_format=query_record.response_format.value)
+
+  def pydantic_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    if query_record.chosen_endpoint == 'chat.completions.create':
+      raise Exception(
+          'Pydantic response format is not supported for '
+          'chat.completions.create. Code should never reach here.')
+    elif query_record.chosen_endpoint == 'beta.chat.completions.parse':
+      return functools.partial(
+          query_function,
+          response_format=query_record.response_format.value.class_value)
+
+  def web_search_feature_mapping(
+      self,
+      query_function: Callable,
+      query_record: types.QueryRecord):
+    raise Exception(
+        'Web search is not supported for Databricks. Code should never reach here.')
+
+  def _extract_text_from_content(self, content) -> str:
+    # If content is already a string, return it directly
+    if isinstance(content, str):
+      return content
+
+    # If content is a list of chunks, extract text from TextChunk objects
+    if isinstance(content, list):
+      text_parts = []
+      for chunk in content:
+        # Check for TextChunk (has type='text' and text attribute)
+        chunk_type = getattr(chunk, 'type', None)
+        if chunk_type == 'text':
+          text = getattr(chunk, 'text', None)
+          if text:
+            text_parts.append(text)
+      return '\n'.join(text_parts) if text_parts else ''
+
+    # Fallback: try to convert to string
+    return str(content) if content else ''
+
+  def format_text_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> str:
+    return self._extract_text_from_content(response.choices[0].message.content)
+
+  def format_json_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> dict:
+    return self._extract_json_from_text(
+        self._extract_text_from_content(response.choices[0].message.content))
+
+  def format_json_schema_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> dict:
+    return self._extract_json_from_text(
+        self._extract_text_from_content(response.choices[0].message.content))
+
+  def format_pydantic_response_from_provider(
+      self,
+      response: Any,
+      query_record: types.QueryRecord) -> Any:
+    if query_record.chosen_endpoint == 'chat.completions.create':
+      raise Exception(
+          'Pydantic response format is not supported for '
+          'chat.completions.create. Code should never reach here.')
+    elif query_record.chosen_endpoint == 'beta.chat.completions.parse':
+      return response.choices[0].message.parsed
+
+  def generate_text_proc(
+      self,
+      query_record: types.QueryRecord) -> types.Response:
+    create = self._get_api_call_function(query_record.chosen_endpoint)
+
+    provider_model = query_record.provider_model
+    create = functools.partial(
+        create, model=provider_model.provider_model_identifier)
+
+    create = self.add_features_to_query_function(create, query_record)
+
+    response = create()
+
+    return self.format_response_from_providers(response, query_record)

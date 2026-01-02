@@ -5,7 +5,7 @@ import proxai as px
 from pprint import pprint
 from pydantic import BaseModel, Field
 
-PROVIDER_MODEL = ('huggingface', 'deepseek-v3')
+PROVIDER_MODEL = ('openai', 'gpt-5.1')
 
 TEST_PROMPT = """
 I need you to calculate the payroll costs for a small team.
@@ -132,7 +132,7 @@ def test_response_format_options():
   result = px.generate_text(
       TEST_PROMPT,
       response_format=px.ResponseFormat(
-        type=px.ResponseFormatType.TEXT))
+          type=px.ResponseFormatType.TEXT))
   print(f'TYPE: {type(result)}')
   pprint(result)
   assert type(result) == str
@@ -141,7 +141,7 @@ def test_response_format_options():
   result = px.generate_text(
       TEST_PROMPT,
       response_format=px.ResponseFormat(
-        type=px.ResponseFormatType.JSON))
+          type=px.ResponseFormatType.JSON))
   print(f'TYPE: {type(result)}')
   pprint(result)
   assert type(result) == dict
@@ -150,8 +150,8 @@ def test_response_format_options():
   result = px.generate_text(
       TEST_PROMPT,
       response_format=px.ResponseFormat(
-        type=px.ResponseFormatType.JSON_SCHEMA,
-        value=JSON_SCHEMA))
+          type=px.ResponseFormatType.JSON_SCHEMA,
+          schema=JSON_SCHEMA))
   print(f'TYPE: {type(result)}')
   pprint(result)
   assert type(result) == dict
@@ -160,10 +160,8 @@ def test_response_format_options():
   result = px.generate_text(
       TEST_PROMPT,
       response_format=px.ResponseFormat(
-        type=px.ResponseFormatType.PYDANTIC,
-        value=px.ResponseFormatPydanticValue(
-            class_name=PayrollCalculation.__name__,
-            class_value=PayrollCalculation)))
+          type=px.ResponseFormatType.PYDANTIC,
+          schema=PayrollCalculation))
   print(f'TYPE: {type(result)}')
   pprint(result)
   assert type(result) == PayrollCalculation
@@ -231,7 +229,7 @@ def test_cached_response():
   result = px.generate_text(
       TEST_PROMPT,
       response_format=px.ResponseFormat(
-        type=px.ResponseFormatType.TEXT),
+          type=px.ResponseFormatType.TEXT),
       extensive_return=True)
   print(f'TYPE: {type(result)}')
   print(f'RESPONSE SOURCE: {result.response_source}')
@@ -240,7 +238,7 @@ def test_cached_response():
   result = px.generate_text(
       TEST_PROMPT,
       response_format=px.ResponseFormat(
-        type=px.ResponseFormatType.JSON),
+          type=px.ResponseFormatType.JSON),
       extensive_return=True)
   print(f'TYPE: {type(result)}')
   print(f'RESPONSE SOURCE: {result.response_source}')
@@ -249,8 +247,8 @@ def test_cached_response():
   result = px.generate_text(
       TEST_PROMPT,
       response_format=px.ResponseFormat(
-        type=px.ResponseFormatType.JSON_SCHEMA,
-        value=JSON_SCHEMA),
+          type=px.ResponseFormatType.JSON_SCHEMA,
+          schema=JSON_SCHEMA),
       extensive_return=True)
   print(f'TYPE: {type(result)}')
   print(f'RESPONSE SOURCE: {result.response_source}')
@@ -259,10 +257,8 @@ def test_cached_response():
   result = px.generate_text(
       TEST_PROMPT,
       response_format=px.ResponseFormat(
-        type=px.ResponseFormatType.PYDANTIC,
-        value=px.ResponseFormatPydanticValue(
-            class_name=PayrollCalculation.__name__,
-            class_value=PayrollCalculation)),
+          type=px.ResponseFormatType.PYDANTIC,
+          schema=PayrollCalculation),
       extensive_return=True)
   print(f'TYPE: {type(result)}')
   print(f'RESPONSE SOURCE: {result.response_source}')
@@ -341,8 +337,8 @@ def test_cached_response_with_modified_schemas():
 
 def main():
   test_response_format_options()
-  # test_cached_response()
-  # test_cached_response_with_modified_schemas()
+  test_cached_response()
+  test_cached_response_with_modified_schemas()
 
 
 if __name__ == '__main__':

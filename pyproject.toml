@@ -15,7 +15,7 @@ include = ["src/proxai/connectors/model_configs_data/*.json"]
 "Issues" = "https://github.com/proxai/proxai/issues"
 
 [tool.poetry.dependencies]
-python = ">=3.9,<4.0"
+python = ">=3.10,<4.0"
 urllib3 = "<2.0.0"
 openai = "^1.14.3"
 anthropic = "^0.75.0"
@@ -24,7 +24,9 @@ mistralai = "^1.9.11"
 google-genai = "<1.9.0"
 databricks-sdk = {extras = ["openai"], version = "^0.73.0"}
 platformdirs = "^4.0.0"
-packaging = "^24.0"
+packaging = "^25.0"
+xai-sdk = "^1.5.0"
+huggingface-hub = "^1.2.3"
 
 [tool.poetry.dev-dependencies]
 

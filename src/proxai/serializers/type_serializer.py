@@ -62,41 +62,70 @@ def encode_provider_model_pricing_type(
     provider_model_pricing_type: types.ProviderModelPricingType
 ) -> Dict[str, Any]:
   record = {}
-  record['per_response_token_cost'] = (
-      provider_model_pricing_type.per_response_token_cost)
-  record['per_query_token_cost'] = (
-      provider_model_pricing_type.per_query_token_cost)
+  if provider_model_pricing_type.per_response_token_cost != None:
+    record['per_response_token_cost'] = (
+        provider_model_pricing_type.per_response_token_cost)
+  if provider_model_pricing_type.per_query_token_cost != None:
+    record['per_query_token_cost'] = (
+        provider_model_pricing_type.per_query_token_cost)
   return record
 
 
 def decode_provider_model_pricing_type(
     record: Dict[str, Any]) -> types.ProviderModelPricingType:
-  if 'per_response_token_cost' not in record:
-    raise ValueError(f'per_response_token_cost not found in record: {record=}')
-  if 'per_query_token_cost' not in record:
-    raise ValueError(f'per_query_token_cost not found in record: {record=}')
-  return types.ProviderModelPricingType(
-      per_response_token_cost=record['per_response_token_cost'],
-      per_query_token_cost=record['per_query_token_cost'])
+  provider_model_pricing_type = types.ProviderModelPricingType()
+  if 'per_response_token_cost' in record:
+    provider_model_pricing_type.per_response_token_cost = (
+        float(record['per_response_token_cost']))
+  if 'per_query_token_cost' in record:
+    provider_model_pricing_type.per_query_token_cost = (
+        float(record['per_query_token_cost']))
+  return provider_model_pricing_type
 
 
-def encode_provider_model_feature_type(
-    provider_model_feature_type: types.ProviderModelFeatureType
+def encode_endpoint_feature_info_type(
+    endpoint_feature_info_type: types.EndpointFeatureInfoType
 ) -> Dict[str, Any]:
   record = {}
-  if provider_model_feature_type.not_supported_features != None:
-    record['not_supported_features'] = (
-        provider_model_feature_type.not_supported_features)
+  if endpoint_feature_info_type.supported != None:
+    record['supported'] = endpoint_feature_info_type.supported
+  if endpoint_feature_info_type.best_effort != None:
+    record['best_effort'] = endpoint_feature_info_type.best_effort
+  if endpoint_feature_info_type.not_supported != None:
+    record['not_supported'] = endpoint_feature_info_type.not_supported
   return record
 
 
-def decode_provider_model_feature_type(
-    record: Dict[str, Any]) -> types.ProviderModelFeatureType:
-  provider_model_feature_type = types.ProviderModelFeatureType()
-  if 'not_supported_features' in record:
-    provider_model_feature_type.not_supported_features = (
-        record['not_supported_features'])
-  return provider_model_feature_type
+def decode_endpoint_feature_info_type(
+    record: Dict[str, Any]) -> types.EndpointFeatureInfoType:
+  endpoint_feature_info_type = types.EndpointFeatureInfoType()
+  if 'supported' in record:
+    endpoint_feature_info_type.supported = record['supported']
+  if 'best_effort' in record:
+    endpoint_feature_info_type.best_effort = record['best_effort']
+  if 'not_supported' in record:
+    endpoint_feature_info_type.not_supported = record['not_supported']
+  return endpoint_feature_info_type
+
+
+def encode_feature_mapping_type(
+    feature_mapping: types.FeatureMappingType
+) -> Dict[str, Any]:
+  record = {}
+  for feature_name, endpoint_feature_info in feature_mapping.items():
+    record[feature_name.value] = encode_endpoint_feature_info_type(
+        endpoint_feature_info)
+  return record
+
+
+def decode_feature_mapping_type(
+    record: Dict[str, Any]) -> types.FeatureMappingType:
+  feature_mapping = {}
+  for feature_name_str, endpoint_feature_info_record in record.items():
+    feature_name = types.FeatureNameType(feature_name_str)
+    feature_mapping[feature_name] = decode_endpoint_feature_info_type(
+        endpoint_feature_info_record)
+  return feature_mapping
 
 
 def encode_provider_model_metadata_type(
@@ -155,7 +184,7 @@ def encode_provider_model_config_type(
     record['pricing'] = encode_provider_model_pricing_type(
         provider_model_config_type.pricing)
   if provider_model_config_type.features != None:
-    record['features'] = encode_provider_model_feature_type(
+    record['features'] = encode_feature_mapping_type(
         provider_model_config_type.features)
   if provider_model_config_type.metadata != None:
     record['metadata'] = encode_provider_model_metadata_type(
@@ -173,7 +202,7 @@ def decode_provider_model_config_type(
     provider_model_config_type.pricing = decode_provider_model_pricing_type(
         record['pricing'])
   if 'features' in record:
-    provider_model_config_type.features = decode_provider_model_feature_type(
+    provider_model_config_type.features = decode_feature_mapping_type(
         record['features'])
   if 'metadata' in record:
     provider_model_config_type.metadata = decode_provider_model_metadata_type(
@@ -225,7 +254,7 @@ def decode_featured_models_type(
         provider_model_identifier_records):
       provider_model_identifiers.append(
           decode_provider_model_identifier(provider_model_identifier_record))
-    featured_models[provider] = tuple(provider_model_identifiers)
+    featured_models[provider] = provider_model_identifiers
   return featured_models
 
 
@@ -255,7 +284,7 @@ def decode_models_by_call_type_type(
           provider_model_identifier_records):
         provider_model_identifiers.append(
             decode_provider_model_identifier(provider_model_identifier_record))
-      provider_dict[provider] = tuple(provider_model_identifiers)
+      provider_dict[provider] = provider_model_identifiers
     models_by_call_type[call_type] = provider_dict
   return models_by_call_type
 
@@ -281,7 +310,7 @@ def decode_models_by_size_type(
         provider_model_identifier_records):
       provider_model_identifiers.append(
           decode_provider_model_identifier(provider_model_identifier_record))
-    models_by_size[model_size] = tuple(provider_model_identifiers)
+    models_by_size[model_size] = provider_model_identifiers
   return models_by_size
 
 
@@ -300,7 +329,7 @@ def decode_default_model_priority_list_type(
   for provider_model_identifier_record in record:
     default_model_priority_list.append(
         decode_provider_model_identifier(provider_model_identifier_record))
-  return tuple(default_model_priority_list)
+  return default_model_priority_list
 
 
 def encode_model_configs_schema_metadata_type(
@@ -483,36 +512,26 @@ def decode_response_format(
   return response_format
 
 
-def encode_response_pydantic_value(
-    pydantic_value: types.ResponsePydanticValue) -> Dict[str, Any]:
+def encode_pydantic_metadata(
+    pydantic_metadata: types.PydanticMetadataType) -> Dict[str, Any]:
   record = {}
-  if (pydantic_value.instance_json_value != None and
-      pydantic_value.instance_value != None):
-    raise ValueError(
-        'ResponsePydanticValue cannot have both '
-        'instance_json_value and instance_value set.')
-  instance_json = None
-  if pydantic_value.instance_value != None:
-    instance_json = pydantic_value.instance_value.model_dump()
-  elif pydantic_value.instance_json_value != None:
-    instance_json = pydantic_value.instance_json_value
-  if instance_json != None:
+  if pydantic_metadata.class_name != None:
+    record['class_name'] = pydantic_metadata.class_name
+  if pydantic_metadata.instance_json_value != None:
     record['instance_json_value'] = json.dumps(
-        instance_json,
+        pydantic_metadata.instance_json_value,
         sort_keys=True)
-  if pydantic_value.class_name != None:
-    record['class_name'] = pydantic_value.class_name
   return record
 
 
-def decode_response_pydantic_value(
-    record: Dict[str, Any]) -> types.ResponsePydanticValue:
-  pydantic_value = types.ResponsePydanticValue()
-  pydantic_value.class_name = record.get('class_name', None)
+def decode_pydantic_metadata(
+    record: Dict[str, Any]) -> types.PydanticMetadataType:
+  pydantic_metadata = types.PydanticMetadataType()
+  pydantic_metadata.class_name = record.get('class_name', None)
   if 'instance_json_value' in record:
-    pydantic_value.instance_json_value = json.loads(
+    pydantic_metadata.instance_json_value = json.loads(
         record['instance_json_value'])
-  return pydantic_value
+  return pydantic_metadata
 
 
 def encode_response(
@@ -520,15 +539,23 @@ def encode_response(
   record = {}
   if response.type != None:
     record['type'] = response.type.value
-  if response.value != None:
-    if response.type == types.ResponseType.TEXT:
+  if response.type == types.ResponseType.TEXT:
+    if response.value != None:
       record['value'] = response.value
-    elif response.type == types.ResponseType.JSON:
+  elif response.type == types.ResponseType.JSON:
+    if response.value != None:
       record['value'] = json.dumps(
           response.value,
           sort_keys=True)
-    elif response.type == types.ResponseType.PYDANTIC:
-      record.update(encode_response_pydantic_value(response.value))
+  elif response.type == types.ResponseType.PYDANTIC:
+    # For PYDANTIC: convert value (instance) to instance_json_value if needed
+    pydantic_metadata = response.pydantic_metadata
+    if pydantic_metadata is None:
+      pydantic_metadata = types.PydanticMetadataType()
+    # If value exists (live instance), convert to JSON for serialization
+    if response.value != None and pydantic_metadata.instance_json_value is None:
+      pydantic_metadata.instance_json_value = response.value.model_dump()
+    record['pydantic_metadata'] = encode_pydantic_metadata(pydantic_metadata)
   return record
 
 
@@ -543,7 +570,10 @@ def decode_response(
     if 'value' in record:
       response.value = json.loads(record['value'])
   elif response.type == types.ResponseType.PYDANTIC:
-    response.value = decode_response_pydantic_value(record)
+    # For PYDANTIC: restore pydantic_metadata, value stays None until runtime
+    if 'pydantic_metadata' in record:
+      response.pydantic_metadata = decode_pydantic_metadata(
+          record['pydantic_metadata'])
   return response
 
 
@@ -574,8 +604,13 @@ def encode_query_record(
         query_record.response_format)
   if query_record.web_search != None:
     record['web_search'] = query_record.web_search
+  if query_record.feature_mapping_strategy != None:
+    record['feature_mapping_strategy'] = (
+        query_record.feature_mapping_strategy.value)
   if query_record.hash_value != None:
     record['hash_value'] = query_record.hash_value
+  if query_record.chosen_endpoint != None:
+    record['chosen_endpoint'] = query_record.chosen_endpoint
   return record
 
 
@@ -602,6 +637,11 @@ def decode_query_record(
         record['response_format'])
   if 'web_search' in record:
     query_record.web_search = bool(record['web_search'])
+  if 'feature_mapping_strategy' in record:
+    query_record.feature_mapping_strategy = (
+        types.FeatureMappingStrategy(record['feature_mapping_strategy']))
+  if 'chosen_endpoint' in record:
+    query_record.chosen_endpoint = record['chosen_endpoint']
   query_record.hash_value = record.get('hash_value', None)
   return query_record
 
@@ -614,6 +654,8 @@ def encode_query_response_record(
     record['response'] = encode_response(query_response_record.response)
   if query_response_record.error != None:
     record['error'] = query_response_record.error
+  if query_response_record.error_traceback != None:
+    record['error_traceback'] = query_response_record.error_traceback
   if query_response_record.start_utc_date != None:
     record['start_utc_date'] = query_response_record.start_utc_date.isoformat()
   if query_response_record.end_utc_date != None:
@@ -637,6 +679,7 @@ def decode_query_response_record(
   if 'response' in record:
     query_response_record.response = decode_response(record['response'])
   query_response_record.error = record.get('error', None)
+  query_response_record.error_traceback = record.get('error_traceback', None)
   if 'start_utc_date' in record:
     query_response_record.start_utc_date = datetime.datetime.fromisoformat(
         record['start_utc_date'])
@@ -864,6 +907,10 @@ def encode_cache_options(
   if cache_options.clear_model_cache_on_connect != None:
     record['clear_model_cache_on_connect'] = (
         cache_options.clear_model_cache_on_connect)
+  if cache_options.disable_model_cache != None:
+    record['disable_model_cache'] = cache_options.disable_model_cache
+  if cache_options.model_cache_duration != None:
+    record['model_cache_duration'] = cache_options.model_cache_duration
   return record
 
 
@@ -876,6 +923,10 @@ def encode_proxdash_options(
     record['hide_sensitive_content'] = proxdash_options.hide_sensitive_content
   if proxdash_options.disable_proxdash != None:
     record['disable_proxdash'] = proxdash_options.disable_proxdash
+  if proxdash_options.api_key != None:
+    record['api_key'] = proxdash_options.api_key
+  if proxdash_options.base_url != None:
+    record['base_url'] = proxdash_options.base_url
   return record
 
 
@@ -905,8 +956,8 @@ def encode_run_options(
     record['allow_multiprocessing'] = run_options.allow_multiprocessing
   if run_options.model_test_timeout != None:
     record['model_test_timeout'] = run_options.model_test_timeout
-  if run_options.strict_feature_test != None:
-    record['strict_feature_test'] = run_options.strict_feature_test
+  if run_options.feature_mapping_strategy != None:
+    record['feature_mapping_strategy'] = run_options.feature_mapping_strategy
   if run_options.suppress_provider_errors != None:
     record['suppress_provider_errors'] = run_options.suppress_provider_errors
   return record
@@ -939,6 +990,10 @@ def decode_cache_options(
   if 'clear_model_cache_on_connect' in record:
     cache_options.clear_model_cache_on_connect = (
         record['clear_model_cache_on_connect'])
+  if 'disable_model_cache' in record:
+    cache_options.disable_model_cache = record['disable_model_cache']
+  if 'model_cache_duration' in record:
+    cache_options.model_cache_duration = record['model_cache_duration']
   return cache_options
 
 
@@ -951,6 +1006,10 @@ def decode_proxdash_options(
     proxdash_options.hide_sensitive_content = record['hide_sensitive_content']
   if 'disable_proxdash' in record:
     proxdash_options.disable_proxdash = record['disable_proxdash']
+  if 'api_key' in record:
+    proxdash_options.api_key = record['api_key']
+  if 'base_url' in record:
+    proxdash_options.base_url = record['base_url']
   return proxdash_options
 
 
@@ -980,8 +1039,9 @@ def decode_run_options(
     run_options.allow_multiprocessing = record['allow_multiprocessing']
   if 'model_test_timeout' in record:
     run_options.model_test_timeout = record['model_test_timeout']
-  if 'strict_feature_test' in record:
-    run_options.strict_feature_test = record['strict_feature_test']
+  if 'feature_mapping_strategy' in record:
+    run_options.feature_mapping_strategy = types.FeatureMappingStrategy(
+        record['feature_mapping_strategy'])
   if 'suppress_provider_errors' in record:
     run_options.suppress_provider_errors = record['suppress_provider_errors']
   return run_options

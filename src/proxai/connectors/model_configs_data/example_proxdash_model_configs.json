@@ -19,7 +19,114 @@
             "per_response_token_cost": 10.0,
             "per_query_token_cost": 2.5
           },
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create",
+                "beta.chat.completions.parse",
+                "responses.create"
+              ]
+            },
+            "messages": {
+              "best_effort": [
+                "responses.create"
+              ],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create",
+                "beta.chat.completions.parse"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create",
+                "beta.chat.completions.parse",
+                "responses.create"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [
+                "chat.completions.create",
+                "responses.create"
+              ],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": []
+            },
+            "response_format::json_schema": {
+              "best_effort": [
+                "responses.create"
+              ],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [
+                "chat.completions.create",
+                "responses.create"
+              ],
+              "not_supported": [],
+              "supported": [
+                "beta.chat.completions.parse"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "stop": {
+              "best_effort": [
+                "chat.completions.create",
+                "beta.chat.completions.parse",
+                "responses.create"
+              ],
+              "not_supported": [],
+              "supported": []
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create",
+                "beta.chat.completions.parse",
+                "responses.create"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create",
+                "beta.chat.completions.parse",
+                "responses.create"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [
+                "chat.completions.create",
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "responses.create"
+              ]
+            }
+          },
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_featured": true,
@@ -42,9 +149,112 @@
             "per_query_token_cost": 0.15
           },
           "features": {
-            "not_supported_features": [
-              "stop"
-            ]
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create",
+                "beta.chat.completions.parse",
+                "responses.create"
+              ]
+            },
+            "messages": {
+              "best_effort": [
+                "responses.create"
+              ],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create",
+                "beta.chat.completions.parse"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create",
+                "beta.chat.completions.parse",
+                "responses.create"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [
+                "chat.completions.create",
+                "responses.create"
+              ],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": []
+            },
+            "response_format::json_schema": {
+              "best_effort": [
+                "responses.create"
+              ],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [
+                "chat.completions.create",
+                "responses.create"
+              ],
+              "not_supported": [],
+              "supported": [
+                "beta.chat.completions.parse"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "chat.completions.create",
+                "responses.create"
+              ]
+            },
+            "stop": {
+              "best_effort": [
+                "chat.completions.create",
+                "beta.chat.completions.parse",
+                "responses.create"
+              ],
+              "not_supported": [],
+              "supported": []
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create",
+                "beta.chat.completions.parse",
+                "responses.create"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "chat.completions.create",
+                "beta.chat.completions.parse",
+                "responses.create"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [
+                "chat.completions.create",
+                "beta.chat.completions.parse"
+              ],
+              "supported": [
+                "responses.create"
+              ]
+            }
           },
           "metadata": {
             "call_type": "GENERATE_TEXT",
@@ -68,7 +278,85 @@
             "per_response_token_cost": 1.25,
             "per_query_token_cost": 10.0
           },
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            }
+          },
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_featured": true,
@@ -90,7 +378,85 @@
             "per_response_token_cost": 0.1,
             "per_query_token_cost": 0.4
           },
-          "features": {},
+          "features": {
+            "max_tokens": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "messages": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "prompt": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "response_format::json": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "response_format::json_schema": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "response_format::pydantic": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "response_format::text": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "stop": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "system": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "temperature": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            },
+            "web_search": {
+              "best_effort": [],
+              "not_supported": [],
+              "supported": [
+                "models.generate_content"
+              ]
+            }
+          },
           "metadata": {
             "call_type": "GENERATE_TEXT",
             "is_featured": true,

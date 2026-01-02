@@ -67,4 +67,9 @@ def get_query_record_hash(query_record: types.QueryRecord) -> str:
         query_record.response_format) + _SEPARATOR_CHAR
   if query_record.web_search != None:
     signature_str += str(query_record.web_search) + _SEPARATOR_CHAR
+  if query_record.feature_mapping_strategy != None:
+    signature_str += (
+        query_record.feature_mapping_strategy.value + _SEPARATOR_CHAR)
+  if query_record.chosen_endpoint != None:
+    signature_str += query_record.chosen_endpoint + _SEPARATOR_CHAR
   return hashlib.sha256(signature_str.encode()).hexdigest()[:_HASH_LENGTH]

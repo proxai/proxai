@@ -3,7 +3,6 @@ import proxai.types as types
 import proxai.stat_types as stat_types
 import proxai.serializers.type_serializer as type_serializer
 import proxai.serializers.hash_serializer as hash_serializer
-import proxai.connectors.model_configs as model_configs
 import pytest
 import pydantic
 from typing import List, Optional
@@ -17,16 +16,18 @@ def _get_provider_model_type_options():
 
 
 def _get_provider_model_identifier_options():
-  model_configs_instance = model_configs.ModelConfigs()
   return [
-      model_configs_instance.get_provider_model(('openai', 'gpt-4')),
-      model_configs_instance.get_provider_model(('claude', 'opus-4')),
+      pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4')),
+      pytest.model_configs_instance.get_provider_model(('claude', 'opus-4')),
       ('openai', 'gpt-4'),
       ('claude', 'sonnet-4'),]
 
 
 def _get_provider_model_pricing_type_options():
   return [
+      {},
+      {'per_response_token_cost': 0.001},
+      {'per_query_token_cost': 0.002},
       {'per_response_token_cost': 0.001,
        'per_query_token_cost': 0.002},
       {'per_response_token_cost': 0.0,
@@ -35,12 +36,51 @@ def _get_provider_model_pricing_type_options():
        'per_query_token_cost': 0.5},]
 
 
-def _get_provider_model_feature_type_options():
+def _get_endpoint_feature_info_type_options():
   return [
       {},
-      {'not_supported_features': []},
-      {'not_supported_features': ['feature1']},
-      {'not_supported_features': ['feature1', 'feature2', 'feature3']},]
+      {'supported': []},
+      {'supported': ['feature1']},
+      {'supported': ['feature1', 'feature2', 'feature3']},
+      {'best_effort': []},
+      {'best_effort': ['feature1']},
+      {'best_effort': ['feature1', 'feature2']},
+      {'not_supported': []},
+      {'not_supported': ['feature1']},
+      {'not_supported': ['feature1', 'feature2', 'feature3']},
+      {'supported': ['feature1'],
+       'best_effort': ['feature2'],
+       'not_supported': ['feature3']},]
+
+
+def _get_feature_mapping_type_options():
+  return [
+      {},
+      {types.FeatureNameType.PROMPT: types.EndpointFeatureInfoType()},
+      {types.FeatureNameType.PROMPT: types.EndpointFeatureInfoType(
+          supported=['value1'])},
+      {types.FeatureNameType.MESSAGES: types.EndpointFeatureInfoType(
+          best_effort=['value1', 'value2'])},
+      {types.FeatureNameType.SYSTEM: types.EndpointFeatureInfoType(
+          not_supported=['value1'])},
+      {types.FeatureNameType.PROMPT: types.EndpointFeatureInfoType(
+          supported=['value1'],
+          best_effort=['value2'],
+          not_supported=['value3'])},
+      {types.FeatureNameType.PROMPT: types.EndpointFeatureInfoType(
+          supported=['value1']),
+       types.FeatureNameType.MESSAGES: types.EndpointFeatureInfoType(
+          best_effort=['value2'])},
+      {types.FeatureNameType.PROMPT: types.EndpointFeatureInfoType(
+          supported=['value1']),
+       types.FeatureNameType.MESSAGES: types.EndpointFeatureInfoType(
+          best_effort=['value2']),
+       types.FeatureNameType.SYSTEM: types.EndpointFeatureInfoType(
+          not_supported=['value3']),
+       types.FeatureNameType.MAX_TOKENS: types.EndpointFeatureInfoType(
+          supported=['value4'],
+          best_effort=['value5'],
+          not_supported=['value6'])},]
 
 
 def _get_provider_model_metadata_type_options():
@@ -72,24 +112,25 @@ def _get_provider_model_metadata_type_options():
 
 
 def _get_provider_model_config_type_options():
-  model_configs_instance = model_configs.ModelConfigs()
   return [
       {},
-      {'provider_model': model_configs_instance.get_provider_model(('openai', 'gpt-4'))},
+      {'provider_model': pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4'))},
       {'pricing': types.ProviderModelPricingType(
           per_response_token_cost=0.001,
           per_query_token_cost=0.002)},
-      {'features': types.ProviderModelFeatureType(
-          not_supported_features=['feature1'])},
+      {'features': {
+          types.FeatureNameType.PROMPT: types.EndpointFeatureInfoType(
+              not_supported=['feature1'])}},
       {'metadata': types.ProviderModelMetadataType(
           call_type=types.CallType.GENERATE_TEXT,
           is_featured=True)},
-      {'provider_model': model_configs_instance.get_provider_model(('claude', 'opus-4')),
+      {'provider_model': pytest.model_configs_instance.get_provider_model(('claude', 'opus-4')),
        'pricing': types.ProviderModelPricingType(
           per_response_token_cost=0.003,
           per_query_token_cost=0.001),
-       'features': types.ProviderModelFeatureType(
-          not_supported_features=['feature1', 'feature2']),
+       'features': {
+          types.FeatureNameType.PROMPT: types.EndpointFeatureInfoType(
+              not_supported=['feature1', 'feature2'])},
        'metadata': types.ProviderModelMetadataType(
           call_type=types.CallType.GENERATE_TEXT,
           is_featured=True,
@@ -120,104 +161,103 @@ def _get_model_configs_schema_metadata_type_options():
 
 
 def _get_model_configs_schema_version_config_type_options():
-  model_configs_instance = model_configs.ModelConfigs()
   return [
       {},
       {'provider_model_configs': {
           'openai': {
               'gpt-4': types.ProviderModelConfigType(
-                  provider_model=model_configs_instance.get_provider_model(
+                  provider_model=pytest.model_configs_instance.get_provider_model(
                       ('openai', 'gpt-4')))}}},
       {'provider_model_configs': {
           'openai': {
               'gpt-4': types.ProviderModelConfigType(
-                  provider_model=model_configs_instance.get_provider_model(
+                  provider_model=pytest.model_configs_instance.get_provider_model(
                       ('openai', 'gpt-4')),
                   pricing=types.ProviderModelPricingType(
                       per_response_token_cost=0.001,
                       per_query_token_cost=0.002))},
           'claude': {
               'opus-4': types.ProviderModelConfigType(
-                  provider_model=model_configs_instance.get_provider_model(
+                  provider_model=pytest.model_configs_instance.get_provider_model(
                       ('claude', 'opus-4')),
                   metadata=types.ProviderModelMetadataType(
                       is_featured=True))}}},
       {'featured_models': {
-          'openai': (
-              model_configs_instance.get_provider_model(('openai', 'gpt-4')),)}},
+          'openai': [
+              pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4'))]}},
       {'featured_models': {
-          'openai': (
-              model_configs_instance.get_provider_model(('openai', 'gpt-4')),),
-          'claude': (
-              ('claude', 'opus-4'),)}},
+          'openai': [
+              pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4'))],
+          'claude': [
+              ('claude', 'opus-4')]}},
       {'models_by_call_type': {
           types.CallType.GENERATE_TEXT: {
-              'openai': (
-                  model_configs_instance.get_provider_model(('openai', 'gpt-4')),),
-              'claude': (
-                  ('claude', 'sonnet-4'),)}}},
+              'openai': [
+                  pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4'))],
+              'claude': [
+                  ('claude', 'sonnet-4')]}}},
       {'models_by_size': {
-          types.ModelSizeType.SMALL: (
-              ('openai', 'gpt-4o-mini'),),
-          types.ModelSizeType.LARGE: (
-              model_configs_instance.get_provider_model(('openai', 'gpt-4')),
-              ('claude', 'opus-4'),)}},
-      {'default_model_priority_list': (
-          model_configs_instance.get_provider_model(('openai', 'gpt-4')),
+          types.ModelSizeType.SMALL: [
+              ('openai', 'gpt-4o-mini')],
+          types.ModelSizeType.LARGE: [
+              pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4')),
+              ('claude', 'opus-4')]}},
+      {'default_model_priority_list': [
+          pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4')),
           ('claude', 'opus-4'),
-          ('openai', 'o3-mini'),)},
+          ('openai', 'o3-mini')]},
       {'provider_model_configs': {
           'openai': {
               'gpt-4': types.ProviderModelConfigType(
-                  provider_model=model_configs_instance.get_provider_model(
+                  provider_model=pytest.model_configs_instance.get_provider_model(
                       ('openai', 'gpt-4')),
                   pricing=types.ProviderModelPricingType(
                       per_response_token_cost=0.001,
                       per_query_token_cost=0.002),
-                  features=types.ProviderModelFeatureType(
-                      not_supported_features=['feature1']),
+                  features={
+                      types.FeatureNameType.PROMPT: types.EndpointFeatureInfoType(
+                          not_supported=['feature1'])},
                   metadata=types.ProviderModelMetadataType(
                       call_type=types.CallType.GENERATE_TEXT,
                       is_featured=True,
                       model_size_tags=[types.ModelSizeType.LARGE])),
               'o3-mini': types.ProviderModelConfigType(
-                  provider_model=model_configs_instance.get_provider_model(
+                  provider_model=pytest.model_configs_instance.get_provider_model(
                       ('openai', 'o3-mini')))},
           'claude': {
               'opus-4': types.ProviderModelConfigType(
-                  provider_model=model_configs_instance.get_provider_model(
+                  provider_model=pytest.model_configs_instance.get_provider_model(
                       ('claude', 'opus-4')),
                   metadata=types.ProviderModelMetadataType(
                       is_featured=True,
                       model_size_tags=[types.ModelSizeType.LARGEST])),
               'sonnet-4': types.ProviderModelConfigType(
-                  provider_model=model_configs_instance.get_provider_model(
+                  provider_model=pytest.model_configs_instance.get_provider_model(
                       ('claude', 'sonnet-4')))}},
        'featured_models': {
-          'openai': (
-              model_configs_instance.get_provider_model(('openai', 'gpt-4')),),
-          'claude': (
-              ('claude', 'opus-4'),)},
+          'openai': [
+              pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4'))],
+          'claude': [
+              ('claude', 'opus-4')]},
        'models_by_call_type': {
           types.CallType.GENERATE_TEXT: {
-              'openai': (
-                  model_configs_instance.get_provider_model(('openai', 'gpt-4')),),
-              'claude': (
-                  ('claude', 'sonnet-4'),)}},
+              'openai': [
+                  pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4'))],
+              'claude': [
+                  ('claude', 'sonnet-4')]}},
        'models_by_size': {
-          types.ModelSizeType.SMALL: (
-              ('openai', 'gpt-4o-mini'),),
-          types.ModelSizeType.LARGE: (
-              model_configs_instance.get_provider_model(('openai', 'gpt-4')),
-              ('claude', 'opus-4'),)},
-       'default_model_priority_list': (
-          model_configs_instance.get_provider_model(('openai', 'gpt-4')),
+          types.ModelSizeType.SMALL: [
+              ('openai', 'gpt-4o-mini')],
+          types.ModelSizeType.LARGE: [
+              pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4')),
+              ('claude', 'opus-4')]},
+       'default_model_priority_list': [
+          pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4')),
           ('claude', 'opus-4'),
-          ('openai', 'o3-mini'),)},]
+          ('openai', 'o3-mini')]}]
 
 
 def _get_model_configs_schema_type_options():
-  model_configs_instance = model_configs.ModelConfigs()
   return [
       {},
       {'metadata': types.ModelConfigsSchemaMetadataType(
@@ -231,12 +271,12 @@ def _get_model_configs_schema_type_options():
           provider_model_configs={
               'openai': {
                   'gpt-4': types.ProviderModelConfigType(
-                      provider_model=model_configs_instance.get_provider_model(
+                      provider_model=pytest.model_configs_instance.get_provider_model(
                           ('openai', 'gpt-4')))}})},
       {'version_config': types.ModelConfigsSchemaVersionConfigType(
           featured_models={
-              'openai': (
-                  model_configs_instance.get_provider_model(('openai', 'gpt-4')),)})},
+              'openai': [
+                  pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4'))]})},
       {'metadata': types.ModelConfigsSchemaMetadataType(
           version='1.0.0',
           released_at=datetime.datetime.now(datetime.timezone.utc)),
@@ -244,7 +284,7 @@ def _get_model_configs_schema_type_options():
           provider_model_configs={
               'openai': {
                   'gpt-4': types.ProviderModelConfigType(
-                      provider_model=model_configs_instance.get_provider_model(
+                      provider_model=pytest.model_configs_instance.get_provider_model(
                           ('openai', 'gpt-4')))}})},
       {'metadata': types.ModelConfigsSchemaMetadataType(
           version='2.1.0',
@@ -256,59 +296,59 @@ def _get_model_configs_schema_type_options():
           provider_model_configs={
               'openai': {
                   'gpt-4': types.ProviderModelConfigType(
-                      provider_model=model_configs_instance.get_provider_model(
+                      provider_model=pytest.model_configs_instance.get_provider_model(
                           ('openai', 'gpt-4')),
                       pricing=types.ProviderModelPricingType(
                           per_response_token_cost=0.001,
                           per_query_token_cost=0.002),
-                      features=types.ProviderModelFeatureType(
-                          not_supported_features=['feature1']),
+                      features={
+                          types.FeatureNameType.PROMPT: types.EndpointFeatureInfoType(
+                              not_supported=['feature1'])},
                       metadata=types.ProviderModelMetadataType(
                           call_type=types.CallType.GENERATE_TEXT,
                           is_featured=True,
                           model_size_tags=[types.ModelSizeType.LARGE])),
                   'o3-mini': types.ProviderModelConfigType(
-                      provider_model=model_configs_instance.get_provider_model(
+                      provider_model=pytest.model_configs_instance.get_provider_model(
                           ('openai', 'o3-mini')))},
               'claude': {
                   'opus-4': types.ProviderModelConfigType(
-                      provider_model=model_configs_instance.get_provider_model(
+                      provider_model=pytest.model_configs_instance.get_provider_model(
                           ('claude', 'opus-4')),
                       metadata=types.ProviderModelMetadataType(
                           is_featured=True,
                           model_size_tags=[types.ModelSizeType.LARGEST])),
                   'sonnet-4': types.ProviderModelConfigType(
-                      provider_model=model_configs_instance.get_provider_model(
+                      provider_model=pytest.model_configs_instance.get_provider_model(
                           ('claude', 'sonnet-4')))}},
           featured_models={
-              'openai': (
-                  model_configs_instance.get_provider_model(('openai', 'gpt-4')),),
-              'claude': (
-                  ('claude', 'opus-4'),)},
+              'openai': [
+                  pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4'))],
+              'claude': [
+                  ('claude', 'opus-4')]},
           models_by_call_type={
               types.CallType.GENERATE_TEXT: {
-                  'openai': (
-                      model_configs_instance.get_provider_model(
-                          ('openai', 'gpt-4')),),
-                  'claude': (
-                      ('claude', 'sonnet-4'),)}},
+                  'openai': [
+                      pytest.model_configs_instance.get_provider_model(
+                          ('openai', 'gpt-4'))],
+                  'claude': [
+                      ('claude', 'sonnet-4')]}},
           models_by_size={
-              types.ModelSizeType.SMALL: (
-                  ('openai', 'gpt-4o-mini'),),
-              types.ModelSizeType.LARGE: (
-                  model_configs_instance.get_provider_model(('openai', 'gpt-4')),
-                  ('claude', 'opus-4'),)},
-          default_model_priority_list=(
-              model_configs_instance.get_provider_model(('openai', 'gpt-4')),
+              types.ModelSizeType.SMALL: [
+                  ('openai', 'gpt-4o-mini')],
+              types.ModelSizeType.LARGE: [
+                  pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4')),
+                  ('claude', 'opus-4')]},
+          default_model_priority_list=[
+              pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4')),
               ('claude', 'opus-4'),
-              ('openai', 'o3-mini'),))},]
+              ('openai', 'o3-mini')])}]
 
 
 def _get_query_record_options():
-  model_configs_instance = model_configs.ModelConfigs()
   return [
       {'call_type': types.CallType.GENERATE_TEXT},
-      {'provider_model': model_configs_instance.get_provider_model(('openai', 'gpt-4'))},
+      {'provider_model': pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4'))},
       {'prompt': 'Hello, world!'},
       {'system': 'Hello, system!'},
       {'messages': [{'role': 'user', 'content': 'Hello, user!'}]},
@@ -318,15 +358,33 @@ def _get_query_record_options():
       {'token_count': 100},
       {'web_search': True},
       {'web_search': False},
+      {'feature_mapping_strategy': types.FeatureMappingStrategy.BEST_EFFORT},
+      {'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT},
+      {'hash_value': 'some_hash_value'},
+      {'chosen_endpoint': 'some_endpoint'},
+      {'response_format': types.ResponseFormat(
+          type=types.ResponseFormatType.TEXT)},
+      {'response_format': types.ResponseFormat(
+          type=types.ResponseFormatType.JSON)},
+      {'response_format': types.ResponseFormat(
+          type=types.ResponseFormatType.JSON_SCHEMA,
+          value={'type': 'object', 'properties': {'name': {'type': 'string'}}})},
       {'call_type': types.CallType.GENERATE_TEXT,
-       'provider_model': model_configs_instance.get_provider_model(('openai', 'gpt-4')),
+       'provider_model': pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4')),
        'prompt': 'Hello, world!',
        'system': 'Hello, system!',
        'messages': [{'role': 'user', 'content': 'Hello, user!'}],
        'max_tokens': 100,
        'temperature': 0.5,
        'stop': ['stop'],
-       'token_count': 100},]
+       'token_count': 100,
+       'response_format': types.ResponseFormat(
+          type=types.ResponseFormatType.JSON_SCHEMA,
+          value={'type': 'object', 'properties': {'id': {'type': 'integer'}}}),
+       'web_search': True,
+       'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT,
+       'hash_value': 'test_hash',
+       'chosen_endpoint': 'test_endpoint'},]
 
 
 def _get_query_response_record_options():
@@ -335,6 +393,7 @@ def _get_query_response_record_options():
           type=types.ResponseType.TEXT,
           value='Hello, world!')},
       {'error': 'Error message'},
+      {'error_traceback': 'Traceback (most recent call last):\n  File...'},
       {'start_utc_date': datetime.datetime.now(datetime.timezone.utc)},
       {'end_utc_date': datetime.datetime.now(datetime.timezone.utc)},
       {'local_time_offset_minute': (
@@ -354,7 +413,8 @@ def _get_query_response_record_options():
           // 60) * -1,
        'response_time': datetime.timedelta(seconds=1),
        'estimated_cost': 1,
-       'token_count': 100},]
+       'token_count': 100,
+       'error_traceback': 'Traceback info'},]
 
 
 def _get_cache_record_options():
@@ -429,7 +489,16 @@ def _get_cache_options_options():
       {'unique_response_limit': 1},
       {'retry_if_error_cached': True},
       {'clear_query_cache_on_connect': True},
-      {'clear_model_cache_on_connect': True},]
+      {'clear_model_cache_on_connect': True},
+      {'disable_model_cache': True},
+      {'model_cache_duration': 3600},
+      {'cache_path': 'cache_path',
+       'unique_response_limit': 5,
+       'retry_if_error_cached': True,
+       'clear_query_cache_on_connect': True,
+       'clear_model_cache_on_connect': True,
+       'disable_model_cache': False,
+       'model_cache_duration': 7200},]
 
 
 def _get_proxdash_options_options():
@@ -437,7 +506,14 @@ def _get_proxdash_options_options():
       {},
       {'stdout': True},
       {'hide_sensitive_content': True},
-      {'disable_proxdash': True},]
+      {'disable_proxdash': True},
+      {'api_key': 'test_api_key'},
+      {'base_url': 'https://test.example.com'},
+      {'stdout': True,
+       'hide_sensitive_content': True,
+       'disable_proxdash': False,
+       'api_key': 'my_api_key',
+       'base_url': 'https://api.proxai.com'},]
 
 
 def _get_run_options_options():
@@ -464,7 +540,8 @@ def _get_run_options_options():
           disable_proxdash=True)},
       {'allow_multiprocessing': True},
       {'model_test_timeout': 25},
-      {'strict_feature_test': True},
+      {'feature_mapping_strategy': types.FeatureMappingStrategy.BEST_EFFORT},
+      {'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT},
       {'suppress_provider_errors': True},
       {'run_type': types.RunType.TEST,
        'hidden_run_key': 'hidden_run_key',
@@ -486,15 +563,15 @@ def _get_run_options_options():
           hide_sensitive_content=True,
           disable_proxdash=True),
        'allow_multiprocessing': True,
-       'model_test_timeout': 25},]
+       'model_test_timeout': 25,
+       'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT},]
 
 
 def _get_model_status_options():
-  model_configs_instance = model_configs.ModelConfigs()
-  model_1 = model_configs_instance.get_provider_model(('openai', 'gpt-4'))
-  model_2 = model_configs_instance.get_provider_model(('openai', 'o3-mini'))
-  model_3 = model_configs_instance.get_provider_model(('claude', 'opus-4'))
-  model_4 = model_configs_instance.get_provider_model(('claude', 'sonnet-4'))
+  model_1 = pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4'))
+  model_2 = pytest.model_configs_instance.get_provider_model(('openai', 'o3-mini'))
+  model_3 = pytest.model_configs_instance.get_provider_model(('claude', 'opus-4'))
+  model_4 = pytest.model_configs_instance.get_provider_model(('claude', 'sonnet-4'))
   return [
       {},
       {'unprocessed_models': {model_1}},
@@ -577,30 +654,28 @@ def _get_base_cache_stats_options():
 
 
 def _get_provider_model_stats_options():
-  model_configs_instance = model_configs.ModelConfigs()
   return [
-    {'provider_model': model_configs_instance.get_provider_model(('openai', 'gpt-4'))},
+    {'provider_model': pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4'))},
     {'provider_stats': stat_types.BaseProviderStats(total_queries=1)},
     {'cache_stats': stat_types.BaseCacheStats(total_cache_hit=1)},
-    {'provider_model': model_configs_instance.get_provider_model(('openai', 'gpt-4')),
+    {'provider_model': pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4')),
      'provider_stats': stat_types.BaseProviderStats(total_queries=1),
      'cache_stats': stat_types.BaseCacheStats(total_cache_hit=1)}]
 
 
 def _get_provider_stats_options():
-  model_configs_instance = model_configs.ModelConfigs()
   return [
     {'provider': 'openai'},
     {'provider_stats': stat_types.BaseProviderStats(total_queries=1)},
     {'cache_stats': stat_types.BaseCacheStats(total_cache_hit=1)},
     {'provider_models': {
-        model_configs_instance.get_provider_model(
+        pytest.model_configs_instance.get_provider_model(
             ('openai', 'gpt-4')): stat_types.ProviderModelStats()}},
     {'provider': 'openai',
      'provider_stats': stat_types.BaseProviderStats(total_queries=1),
      'cache_stats': stat_types.BaseCacheStats(total_cache_hit=1),
      'provider_models': {
-        model_configs_instance.get_provider_model(
+        pytest.model_configs_instance.get_provider_model(
             ('openai', 'gpt-4')): stat_types.ProviderModelStats()}}]
 
 
@@ -608,94 +683,118 @@ def _get_run_stats_options():
   return [
     {'provider_stats': stat_types.BaseProviderStats(total_queries=1)},
     {'cache_stats': stat_types.BaseCacheStats(total_cache_hit=1)},
+    {'providers': {
+        'openai': stat_types.ProviderStats(provider='openai')}},
+    {'providers': {
+        'openai': stat_types.ProviderStats(
+            provider='openai',
+            provider_stats=stat_types.BaseProviderStats(total_queries=1))}},
+    {'providers': {
+        'openai': stat_types.ProviderStats(
+            provider='openai',
+            provider_models={
+                pytest.model_configs_instance.get_provider_model(
+                    ('openai', 'gpt-4')): stat_types.ProviderModelStats()})}},
+    {'providers': {
+        'openai': stat_types.ProviderStats(provider='openai'),
+        'claude': stat_types.ProviderStats(provider='claude')}},
     {'provider_stats': stat_types.BaseProviderStats(total_queries=1),
-     'cache_stats': stat_types.BaseCacheStats(total_cache_hit=1)}]
+     'cache_stats': stat_types.BaseCacheStats(total_cache_hit=1),
+     'providers': {
+        'openai': stat_types.ProviderStats(
+            provider='openai',
+            provider_stats=stat_types.BaseProviderStats(total_queries=1),
+            cache_stats=stat_types.BaseCacheStats(total_cache_hit=1),
+            provider_models={
+                pytest.model_configs_instance.get_provider_model(
+                    ('openai', 'gpt-4')): stat_types.ProviderModelStats(
+                        provider_model=pytest.model_configs_instance.get_provider_model(
+                            ('openai', 'gpt-4')),
+                        provider_stats=stat_types.BaseProviderStats(
+                            total_queries=1),
+                        cache_stats=stat_types.BaseCacheStats(
+                            total_cache_hit=1))})}}]
 
 
 def _get_provider_model_configs_type_options():
-  model_configs_instance = model_configs.ModelConfigs()
   return [
     {'openai': {
         'gpt-4': types.ProviderModelConfigType(
-            provider_model=model_configs_instance.get_provider_model(
+            provider_model=pytest.model_configs_instance.get_provider_model(
                 ('openai', 'gpt-4')))}},
     {'openai': {
         'gpt-4': types.ProviderModelConfigType(
-            provider_model=model_configs_instance.get_provider_model(
+            provider_model=pytest.model_configs_instance.get_provider_model(
                 ('openai', 'gpt-4')),
             pricing=types.ProviderModelPricingType(
                 per_response_token_cost=0.001,
                 per_query_token_cost=0.002))},
      'claude': {
         'opus-4': types.ProviderModelConfigType(
-            provider_model=model_configs_instance.get_provider_model(
+            provider_model=pytest.model_configs_instance.get_provider_model(
                 ('claude', 'opus-4')),
             metadata=types.ProviderModelMetadataType(
                 is_featured=True))}},]
 
 
 def _get_featured_models_type_options():
-  model_configs_instance = model_configs.ModelConfigs()
   return [
-    {'openai': (
-        model_configs_instance.get_provider_model(('openai', 'gpt-4')),)},
-    {'openai': (
-        model_configs_instance.get_provider_model(('openai', 'gpt-4')),),
-     'claude': (
-        ('claude', 'opus-4'),)},
-    {'openai': (
-        model_configs_instance.get_provider_model(('openai', 'gpt-4')),
-        ('openai', 'o3-mini'),),
-     'claude': (
+    {'openai': [
+        pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4'))]},
+    {'openai': [
+        pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4'))],
+     'claude': [
+        ('claude', 'opus-4')]},
+    {'openai': [
+        pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4')),
+        ('openai', 'o3-mini')],
+     'claude': [
         ('claude', 'opus-4'),
-        model_configs_instance.get_provider_model(('claude', 'sonnet-4')),)},]
+        pytest.model_configs_instance.get_provider_model(('claude', 'sonnet-4'))]}]
 
 
 def _get_models_by_call_type_type_options():
-  model_configs_instance = model_configs.ModelConfigs()
   return [
     {types.CallType.GENERATE_TEXT: {
-        'openai': (
-            model_configs_instance.get_provider_model(('openai', 'gpt-4')),)}},
+        'openai': [
+            pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4'))]}},
     {types.CallType.GENERATE_TEXT: {
-        'openai': (
-            model_configs_instance.get_provider_model(('openai', 'gpt-4')),),
-        'claude': (
-            ('claude', 'sonnet-4'),)}},
+        'openai': [
+            pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4'))],
+        'claude': [
+            ('claude', 'sonnet-4')]}},
     {types.CallType.GENERATE_TEXT: {
-        'openai': (
-            model_configs_instance.get_provider_model(('openai', 'gpt-4')),
-            ('openai', 'o3-mini'),),
-        'claude': (
+        'openai': [
+            pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4')),
+            ('openai', 'o3-mini')],
+        'claude': [
             ('claude', 'sonnet-4'),
-            model_configs_instance.get_provider_model(('claude', 'opus-4')),)}},]
+            pytest.model_configs_instance.get_provider_model(('claude', 'opus-4'))]}}]
 
 
 def _get_models_by_size_type_options():
-  model_configs_instance = model_configs.ModelConfigs()
   return [
-    {types.ModelSizeType.SMALL: (
-        ('openai', 'gpt-4o-mini'),)},
-    {types.ModelSizeType.SMALL: (
-        ('openai', 'gpt-4o-mini'),),
-     types.ModelSizeType.LARGE: (
-        model_configs_instance.get_provider_model(('openai', 'gpt-4')),)},
-    {types.ModelSizeType.SMALL: (
-        ('openai', 'gpt-4o-mini'),),
-     types.ModelSizeType.LARGE: (
-        model_configs_instance.get_provider_model(('openai', 'gpt-4')),
-        ('claude', 'opus-4'),)},]
+    {types.ModelSizeType.SMALL: [
+        ('openai', 'gpt-4o-mini')]},
+    {types.ModelSizeType.SMALL: [
+        ('openai', 'gpt-4o-mini')],
+     types.ModelSizeType.LARGE: [
+        pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4'))]},
+    {types.ModelSizeType.SMALL: [
+        ('openai', 'gpt-4o-mini')],
+     types.ModelSizeType.LARGE: [
+        pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4')),
+        ('claude', 'opus-4')]}]
 
 
 def _get_default_model_priority_list_type_options():
-  model_configs_instance = model_configs.ModelConfigs()
   return [
-    (model_configs_instance.get_provider_model(('openai', 'gpt-4')),),
-    (model_configs_instance.get_provider_model(('openai', 'gpt-4')),
-     ('claude', 'opus-4'),),
-    (model_configs_instance.get_provider_model(('openai', 'gpt-4')),
+    [pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4'))],
+    [pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4')),
+     ('claude', 'opus-4')],
+    [pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4')),
      ('claude', 'opus-4'),
-     ('openai', 'o3-mini'),),]
+     pytest.model_configs_instance.get_provider_model(('openai', 'o3-mini'))]]
 
 
 class _UserModel(pydantic.BaseModel):
@@ -759,20 +858,15 @@ def _get_response_format_options():
           class_value=_UserWithAddressModel)},]
 
 
-def _get_response_pydantic_value_options():
+def _get_pydantic_metadata_options():
   return [
-      {'class_name': 'UserModel',
-       'instance_value': _UserModel(name='John', age=30)},
-      {'class_name': 'AddressModel',
-       'instance_value': _AddressModel(
-          street='123 Main St',
-          city='New York',
-          country='USA')},
-      {'instance_value': _UserModel(name='Jane', age=25)},
       {'class_name': 'UserModel'},
+      {'class_name': 'AddressModel'},
       {'instance_json_value': {'name': 'Bob', 'age': 40}},
       {'class_name': 'CustomModel',
-       'instance_json_value': {'id': 123, 'data': 'test'}},]
+       'instance_json_value': {'id': 123, 'data': 'test'}},
+      {'class_name': 'UserModel',
+       'instance_json_value': {'name': 'John', 'age': 30}},]
 
 
 def _get_response_options():
@@ -784,11 +878,12 @@ def _get_response_options():
       {'type': types.ResponseType.JSON,
        'value': {'nested': {'data': [1, 2, 3]}}},
       {'type': types.ResponseType.PYDANTIC,
-       'value': types.ResponsePydanticValue(
-          class_name='UserModel',
-          instance_value=_UserModel(name='John', age=30))},
+       'value': _UserModel(name='John', age=30),
+       'pydantic_metadata': types.PydanticMetadataType(
+          class_name='UserModel')},
       {'type': types.ResponseType.PYDANTIC,
-       'value': types.ResponsePydanticValue(
+       'value': None,
+       'pydantic_metadata': types.PydanticMetadataType(
           class_name='UserModel',
           instance_json_value={'name': 'Jane', 'age': 25})},]
 
@@ -799,8 +894,7 @@ class TestTypeSerializer:
       _get_provider_model_type_options())
   def test_encode_decode_provider_model_type(self, provider_model_type_options):
     # Test successful encode/decode round-trip
-    model_configs_instance = model_configs.ModelConfigs()
-    provider_model_type = model_configs_instance.get_provider_model(
+    provider_model_type = pytest.model_configs_instance.get_provider_model(
         (provider_model_type_options['provider'],
          provider_model_type_options['model']))
     encoded_provider_model_type = type_serializer.encode_provider_model_type(
@@ -1028,19 +1122,32 @@ class TestTypeSerializer:
     assert provider_model_pricing_type == decoded_provider_model_pricing_type
 
   @pytest.mark.parametrize(
-      'provider_model_feature_type_options',
-      _get_provider_model_feature_type_options())
-  def test_encode_decode_provider_model_feature_type(
-      self, provider_model_feature_type_options):
-    provider_model_feature_type = types.ProviderModelFeatureType(
-        **provider_model_feature_type_options)
-    encoded_provider_model_feature_type = (
-        type_serializer.encode_provider_model_feature_type(
-            provider_model_feature_type=provider_model_feature_type))
-    decoded_provider_model_feature_type = (
-        type_serializer.decode_provider_model_feature_type(
-            record=encoded_provider_model_feature_type))
-    assert provider_model_feature_type == decoded_provider_model_feature_type
+      'endpoint_feature_info_type_options',
+      _get_endpoint_feature_info_type_options())
+  def test_encode_decode_endpoint_feature_info_type(
+      self, endpoint_feature_info_type_options):
+    endpoint_feature_info_type = types.EndpointFeatureInfoType(
+        **endpoint_feature_info_type_options)
+    encoded_endpoint_feature_info_type = (
+        type_serializer.encode_endpoint_feature_info_type(
+            endpoint_feature_info_type=endpoint_feature_info_type))
+    decoded_endpoint_feature_info_type = (
+        type_serializer.decode_endpoint_feature_info_type(
+            record=encoded_endpoint_feature_info_type))
+    assert endpoint_feature_info_type == decoded_endpoint_feature_info_type
+
+  @pytest.mark.parametrize(
+      'feature_mapping_type_options',
+      _get_feature_mapping_type_options())
+  def test_encode_decode_feature_mapping_type(
+      self, feature_mapping_type_options):
+    encoded_feature_mapping_type = (
+        type_serializer.encode_feature_mapping_type(
+            feature_mapping=feature_mapping_type_options))
+    decoded_feature_mapping_type = (
+        type_serializer.decode_feature_mapping_type(
+            record=encoded_feature_mapping_type))
+    assert feature_mapping_type_options == decoded_feature_mapping_type
 
   @pytest.mark.parametrize(
       'provider_model_metadata_type_options',
@@ -1249,31 +1356,18 @@ class TestTypeSerializer:
     assert hash_before == hash_after
 
   @pytest.mark.parametrize(
-      'response_pydantic_value_options',
-      _get_response_pydantic_value_options())
-  def test_encode_decode_response_pydantic_value(
-      self, response_pydantic_value_options):
-    pydantic_value = types.ResponsePydanticValue(
-        **response_pydantic_value_options)
-    encoded = type_serializer.encode_response_pydantic_value(
-        pydantic_value=pydantic_value)
-    decoded = type_serializer.decode_response_pydantic_value(
+      'pydantic_metadata_options',
+      _get_pydantic_metadata_options())
+  def test_encode_decode_pydantic_metadata(
+      self, pydantic_metadata_options):
+    pydantic_metadata = types.PydanticMetadataType(
+        **pydantic_metadata_options)
+    encoded = type_serializer.encode_pydantic_metadata(
+        pydantic_metadata=pydantic_metadata)
+    decoded = type_serializer.decode_pydantic_metadata(
         record=encoded)
-    assert decoded.class_name == pydantic_value.class_name
-    if pydantic_value.instance_value != None:
-      assert decoded.instance_json_value == (
-          pydantic_value.instance_value.model_dump())
-    elif pydantic_value.instance_json_value != None:
-      assert decoded.instance_json_value == (
-          pydantic_value.instance_json_value)
-
-  def test_encode_response_pydantic_value_both_set_raises_error(self):
-    pydantic_value = types.ResponsePydanticValue(
-        instance_value=_UserModel(name='John', age=30),
-        instance_json_value={'name': 'Jane', 'age': 25})
-    with pytest.raises(ValueError, match='cannot have both'):
-      type_serializer.encode_response_pydantic_value(
-          pydantic_value=pydantic_value)
+    assert decoded.class_name == pydantic_metadata.class_name
+    assert decoded.instance_json_value == pydantic_metadata.instance_json_value
 
   @pytest.mark.parametrize(
       'response_options',
@@ -1288,10 +1382,16 @@ class TestTypeSerializer:
     elif response.type == types.ResponseType.JSON:
       assert decoded.value == response.value
     elif response.type == types.ResponseType.PYDANTIC:
-      assert decoded.value.class_name == response.value.class_name
-      if response.value.instance_value != None:
-        assert decoded.value.instance_json_value == (
-            response.value.instance_value.model_dump())
-      elif response.value.instance_json_value != None:
-        assert decoded.value.instance_json_value == (
-            response.value.instance_json_value)
+      # After decode, value is None (instance not serialized)
+      # pydantic_metadata contains class_name and instance_json_value
+      assert decoded.value is None
+      assert decoded.pydantic_metadata is not None
+      assert decoded.pydantic_metadata.class_name == (
+          response.pydantic_metadata.class_name)
+      # Check instance_json_value - either from original or converted from value
+      if response.value is not None:
+        assert decoded.pydantic_metadata.instance_json_value == (
+            response.value.model_dump())
+      elif response.pydantic_metadata.instance_json_value is not None:
+        assert decoded.pydantic_metadata.instance_json_value == (
+            response.pydantic_metadata.instance_json_value)

@@ -9,11 +9,7 @@ class _MockResponse(object):
 
 
 class _MockModel(object):
-  def generate_content(
-      self,
-      model,
-      config,
-      contents) -> _MockResponse:
+  def generate_content(self, *args, **kwargs) -> _MockResponse:
     return _MockResponse()
 
 
