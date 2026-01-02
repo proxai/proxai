@@ -97,7 +97,7 @@ class TestCreateResponseFormat:
       type_utils.create_response_format('invalid')
 
 
-class TestCreatePydanticInstanceFromResponsePydanticValue:
+class TestCreatePydanticInstanceFromResponse:
   def _create_response_format(self) -> types.ResponseFormat:
     return types.ResponseFormat(
         value=types.ResponseFormatPydanticValue(
@@ -108,12 +108,14 @@ class TestCreatePydanticInstanceFromResponsePydanticValue:
   def test_returns_instance_value_when_present(self):
     response_format = self._create_response_format()
     instance = SampleModel(name='John', age=30)
-    response_pydantic_value = types.ResponsePydanticValue(
-        class_name=SampleModel.__name__,
-        instance_value=instance)
+    response = types.Response(
+        value=instance,
+        type=types.ResponseType.PYDANTIC,
+        pydantic_metadata=types.PydanticMetadataType(
+            class_name=SampleModel.__name__))
 
-    result = type_utils.create_pydantic_instance_from_response_pydantic_value(
-        response_format, response_pydantic_value)
+    result = type_utils.create_pydantic_instance_from_response(
+        response_format, response)
 
     assert result is instance
     assert result.name == 'John'
@@ -121,12 +123,15 @@ class TestCreatePydanticInstanceFromResponsePydanticValue:
 
   def test_creates_instance_from_json_value(self):
     response_format = self._create_response_format()
-    response_pydantic_value = types.ResponsePydanticValue(
-        class_name=SampleModel.__name__,
-        instance_json_value={'name': 'Jane', 'age': 25})
+    response = types.Response(
+        value=None,
+        type=types.ResponseType.PYDANTIC,
+        pydantic_metadata=types.PydanticMetadataType(
+            class_name=SampleModel.__name__,
+            instance_json_value={'name': 'Jane', 'age': 25}))
 
-    result = type_utils.create_pydantic_instance_from_response_pydantic_value(
-        response_format, response_pydantic_value)
+    result = type_utils.create_pydantic_instance_from_response(
+        response_format, response)
 
     assert isinstance(result, SampleModel)
     assert result.name == 'Jane'
@@ -135,24 +140,29 @@ class TestCreatePydanticInstanceFromResponsePydanticValue:
   def test_prefers_instance_value_over_json_value(self):
     response_format = self._create_response_format()
     instance = SampleModel(name='John', age=30)
-    response_pydantic_value = types.ResponsePydanticValue(
-        class_name=SampleModel.__name__,
-        instance_value=instance,
-        instance_json_value={'name': 'Jane', 'age': 25})
+    response = types.Response(
+        value=instance,
+        type=types.ResponseType.PYDANTIC,
+        pydantic_metadata=types.PydanticMetadataType(
+            class_name=SampleModel.__name__,
+            instance_json_value={'name': 'Jane', 'age': 25}))
 
-    result = type_utils.create_pydantic_instance_from_response_pydantic_value(
-        response_format, response_pydantic_value)
+    result = type_utils.create_pydantic_instance_from_response(
+        response_format, response)
 
     assert result is instance
     assert result.name == 'John'
 
   def test_raises_error_when_no_value_present(self):
     response_format = self._create_response_format()
-    response_pydantic_value = types.ResponsePydanticValue(
-        class_name=SampleModel.__name__)
+    response = types.Response(
+        value=None,
+        type=types.ResponseType.PYDANTIC,
+        pydantic_metadata=types.PydanticMetadataType(
+            class_name=SampleModel.__name__))
 
     with pytest.raises(ValueError) as exc_info:
-      type_utils.create_pydantic_instance_from_response_pydantic_value(
-          response_format, response_pydantic_value)
+      type_utils.create_pydantic_instance_from_response(
+          response_format, response)
 
-    assert 'no instance_value or instance_json_value' in str(exc_info.value)
+    assert 'no value (instance) or' in str(exc_info.value)

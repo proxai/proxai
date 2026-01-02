@@ -980,7 +980,7 @@ class TestHandlePydanticResponseFormat:
     result = connector._handle_pydantic_response_format(mock_instance, query_record)
 
     assert result.type == types.ResponseType.PYDANTIC
-    assert result.value.class_name == 'SamplePydanticModel'
+    assert result.pydantic_metadata.class_name == 'SamplePydanticModel'
 
   def test_unsupported_endpoint_parses_json_to_pydantic(self):
     config = _create_config_with_features({
@@ -998,8 +998,8 @@ class TestHandlePydanticResponseFormat:
     result = connector._handle_pydantic_response_format('{"name": "John", "age": 30}', query_record)
 
     assert result.type == types.ResponseType.PYDANTIC
-    assert result.value.instance_value.name == 'John'
-    assert result.value.instance_value.age == 30
+    assert result.value.name == 'John'
+    assert result.value.age == 30
 
 
 class TestGetEstimatedCost:
@@ -1159,8 +1159,9 @@ class TestGetTokenCountEstimate:
     connector = get_mock_provider_model_connector()
     response = types.Response(
         type=types.ResponseType.PYDANTIC,
-        value=types.ResponsePydanticValue(
-            instance_value=TestModel(name='test', value=42)))
+        value=TestModel(name='test', value=42),
+        pydantic_metadata=types.PydanticMetadataType(
+            class_name='TestModel'))
     result = connector.get_token_count_estimate(response)
     assert result > 0
 
@@ -1168,7 +1169,8 @@ class TestGetTokenCountEstimate:
     connector = get_mock_provider_model_connector()
     response = types.Response(
         type=types.ResponseType.PYDANTIC,
-        value=types.ResponsePydanticValue(
+        value=None,
+        pydantic_metadata=types.PydanticMetadataType(
             instance_json_value={'name': 'test', 'value': 42}))
     result = connector.get_token_count_estimate(response)
     assert result > 0
@@ -1299,4 +1301,4 @@ class TestFormatResponseFromProviders:
     mock_instance = SamplePydanticModel(name='John', age=30)
     response = connector.format_response_from_providers(mock_instance, query_record)
     assert response.type == types.ResponseType.PYDANTIC
-    assert response.value.class_name == 'SamplePydanticModel'
+    assert response.pydantic_metadata.class_name == 'SamplePydanticModel'
