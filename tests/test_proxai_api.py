@@ -9,12 +9,6 @@ import proxai.connectors.providers.mock_provider as mock_provider
 from importlib.metadata import version
 
 
-@pytest.fixture
-def model_configs_instance():
-  """Fixture to provide a ModelConfigs instance for testing."""
-  return model_configs.ModelConfigs()
-
-
 class TestProxaiApiUseCases:
   @pytest.fixture(autouse=True)
   def setup_test(self, monkeypatch):
@@ -148,7 +142,7 @@ class TestProxaiApiUseCases:
     assert time.time() - start < 4
 
   def test_models_get_all_models_with_multiprocessing_and_model_test_timeout(
-      self, monkeypatch, model_configs_instance):
+      self, monkeypatch):
     monkeypatch.setenv('MOCK_SLOW_PROVIDER', 'test_api_key')
     start = time.time()
     px.models.allow_multiprocessing = True
@@ -160,7 +154,7 @@ class TestProxaiApiUseCases:
     px.models.model_test_timeout = 25
     assert len(models.working_models) > 15
     assert (
-        model_configs_instance.get_provider_model(('mock_slow_provider', 'mock_slow_model'))
+        pytest.model_configs_instance.get_provider_model(('mock_slow_provider', 'mock_slow_model'))
         in models.failed_models)
     assert time.time() - start < 10
 

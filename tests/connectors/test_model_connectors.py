@@ -28,12 +28,6 @@ def setup_test(monkeypatch, requests_mock):
   yield
 
 
-@pytest.fixture
-def model_configs_instance():
-  """Fixture to provide a ModelConfigs instance for testing."""
-  return model_configs.ModelConfigs()
-
-
 # =============================================================================
 # Test Helpers
 # =============================================================================
@@ -69,8 +63,7 @@ def _create_config_with_features(feature_endpoint_map: Dict[str, Dict[str, list]
   Returns:
       ProviderModelConfigType with the specified features.
   """
-  model_configs_instance = model_configs.ModelConfigs()
-  base_config = model_configs_instance.get_provider_model_config(
+  base_config = pytest.model_configs_instance.get_provider_model_config(
       ('mock_provider', 'mock_model'))
 
   return types.ProviderModelConfigType(
@@ -105,9 +98,8 @@ def get_mock_provider_model_connector(
         Callable[[], query_cache.QueryCacheManager]] = None,
     stats: Optional[Dict[str, stats_type.ProviderModelStats]] = None,
 ):
-  model_configs_instance = model_configs.ModelConfigs()
   if provider_model_config is None:
-    base_config = model_configs_instance.get_provider_model_config(
+    base_config = pytest.model_configs_instance.get_provider_model_config(
         ('mock_provider', 'mock_model'))
     # Mock provider has empty features, so we provide defaults
     provider_model_config = types.ProviderModelConfigType(
@@ -116,7 +108,7 @@ def get_mock_provider_model_connector(
         features=_get_default_mock_features(),
         metadata=base_config.metadata)
   connector = mock_provider.MockProviderModelConnector(
-      provider_model=model_configs_instance.get_provider_model(('mock_provider', 'mock_model')),
+      provider_model=pytest.model_configs_instance.get_provider_model(('mock_provider', 'mock_model')),
       run_type=types.RunType.TEST,
       provider_model_config=provider_model_config,
       logging_options=types.LoggingOptions(),
@@ -155,12 +147,12 @@ class TestModelConnectorGettersSetters:
         match='api should not be set directly.'):
       connector.api = "test_api_2"
 
-  def test_generic_property(self, model_configs_instance):
+  def test_generic_property(self):
     connector = get_mock_provider_model_connector()
-    assert connector.provider_model == model_configs_instance.get_provider_model(('mock_provider', 'mock_model'))
+    assert connector.provider_model == pytest.model_configs_instance.get_provider_model(('mock_provider', 'mock_model'))
     assert (
         connector._provider_model_state.provider_model ==
-        model_configs_instance.get_provider_model(('mock_provider', 'mock_model')))
+        pytest.model_configs_instance.get_provider_model(('mock_provider', 'mock_model')))
 
     connector.provider_model = 'test_provider_model'
     assert connector.provider_model == 'test_provider_model'
@@ -186,7 +178,7 @@ class TestModelConnectorGettersSetters:
         connector._provider_model_state.proxdash_connection ==
         connector.proxdash_connection.get_state())
 
-  def test_proxdash_connection_function(self, model_configs_instance):
+  def test_proxdash_connection_function(self):
     dynamic_proxdash_connection = proxdash.ProxDashConnection(
         init_state=types.ProxDashConnectionState(
             status=types.ProxDashConnectionStatus.CONNECTED,
@@ -202,7 +194,7 @@ class TestModelConnectorGettersSetters:
       return dynamic_proxdash_connection
 
     connector = mock_provider.MockProviderModelConnector(
-        provider_model=model_configs_instance.get_provider_model(('mock_provider', 'mock_model')),
+        provider_model=pytest.model_configs_instance.get_provider_model(('mock_provider', 'mock_model')),
         run_type=types.RunType.TEST,
         logging_options=types.LoggingOptions(),
         get_proxdash_connection=get_proxdash_connection)
@@ -233,9 +225,9 @@ class TestModelConnectorGettersSetters:
 
 
 class TestModelConnectorInit:
-  def test_init_state(self, model_configs_instance):
+  def test_init_state(self):
     init_state = types.ProviderModelState(
-        provider_model=model_configs_instance.get_provider_model(('mock_provider', 'mock_model')),
+        provider_model=pytest.model_configs_instance.get_provider_model(('mock_provider', 'mock_model')),
         run_type=types.RunType.TEST,
         feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
         logging_options=types.LoggingOptions(stdout=True),
@@ -252,7 +244,7 @@ class TestModelConnectorInit:
 
     connector = mock_provider.MockProviderModelConnector(init_state=init_state)
 
-    assert connector.provider_model == model_configs_instance.get_provider_model(('mock_provider', 'mock_model'))
+    assert connector.provider_model == pytest.model_configs_instance.get_provider_model(('mock_provider', 'mock_model'))
     assert connector.run_type == types.RunType.TEST
     assert connector.feature_mapping_strategy == types.FeatureMappingStrategy.STRICT
     assert connector.logging_options.stdout == True
@@ -263,9 +255,9 @@ class TestModelConnectorInit:
         connector.proxdash_connection.proxdash_options.api_key ==
         'test_api_key')
 
-  def test_init_with_mismatched_model(self, model_configs_instance):
+  def test_init_with_mismatched_model(self):
     init_state = types.ProviderModelState(
-        provider_model=model_configs_instance.get_provider_model(('claude', 'opus-4')),
+        provider_model=pytest.model_configs_instance.get_provider_model(('claude', 'opus-4')),
         run_type=types.RunType.TEST)
 
     with pytest.raises(
@@ -275,10 +267,10 @@ class TestModelConnectorInit:
             'provider_model: *')):
       mock_provider.MockProviderModelConnector(init_state=init_state)
 
-  def test_init_state_with_all_options(self, model_configs_instance):
+  def test_init_state_with_all_options(self):
     with tempfile.TemporaryDirectory() as temp_dir:
       init_state = types.ProviderModelState(
-          provider_model=model_configs_instance.get_provider_model(('mock_provider', 'mock_model')),
+          provider_model=pytest.model_configs_instance.get_provider_model(('mock_provider', 'mock_model')),
           run_type=types.RunType.TEST,
           feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
           logging_options=types.LoggingOptions(
@@ -300,7 +292,7 @@ class TestModelConnectorInit:
       connector = mock_provider.MockProviderModelConnector(
           init_state=init_state)
 
-      assert connector.provider_model == model_configs_instance.get_provider_model(('mock_provider', 'mock_model'))
+      assert connector.provider_model == pytest.model_configs_instance.get_provider_model(('mock_provider', 'mock_model'))
       assert connector.run_type == types.RunType.TEST
       assert connector.feature_mapping_strategy == types.FeatureMappingStrategy.STRICT
       assert connector.logging_options.stdout == True
@@ -315,7 +307,7 @@ class TestModelConnectorInit:
           'test_api_key')
       assert connector.proxdash_connection.experiment_path == 'test/path'
 
-  def test_init_with_literals(self, model_configs_instance):
+  def test_init_with_literals(self):
     with tempfile.TemporaryDirectory() as temp_dir:
       base_logging_options = types.LoggingOptions(
           stdout=True,
@@ -331,14 +323,14 @@ class TestModelConnectorInit:
               api_key='test_api_key'))
 
       connector = mock_provider.MockProviderModelConnector(
-          provider_model=model_configs_instance.get_provider_model(('mock_provider', 'mock_model')),
+          provider_model=pytest.model_configs_instance.get_provider_model(('mock_provider', 'mock_model')),
           run_type=types.RunType.TEST,
           feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
           logging_options=base_logging_options,
           proxdash_connection=proxdash_connection)
 
       init_state = connector.get_state()
-      assert init_state.provider_model == model_configs_instance.get_provider_model(('mock_provider', 'mock_model'))
+      assert init_state.provider_model == pytest.model_configs_instance.get_provider_model(('mock_provider', 'mock_model'))
       assert init_state.run_type == types.RunType.TEST
       assert init_state.feature_mapping_strategy == types.FeatureMappingStrategy.STRICT
       assert init_state.logging_options.stdout == True
@@ -361,19 +353,19 @@ class TestModelConnectorInit:
         match='provider_model needs to be set in init_state.'):
       mock_provider.MockProviderModelConnector(init_state=init_state)
 
-  def test_init_with_invalid_combinations(self, model_configs_instance):
+  def test_init_with_invalid_combinations(self):
     with pytest.raises(
         ValueError,
         match=(
             'Only one of logging_options or get_logging_options should be set '
             'while initializing the StateControlled object.')):
       mock_provider.MockProviderModelConnector(
-          provider_model=model_configs_instance.get_provider_model(('mock_provider', 'mock_model')),
+          provider_model=pytest.model_configs_instance.get_provider_model(('mock_provider', 'mock_model')),
           run_type=types.RunType.TEST,
           logging_options=types.LoggingOptions(stdout=True),
           get_logging_options=lambda: types.LoggingOptions(stdout=True))
 
-  def test_invalid_model_combination(self, model_configs_instance):
+  def test_invalid_model_combination(self):
     connector = get_mock_provider_model_connector()
     with pytest.raises(
         ValueError,
@@ -382,7 +374,7 @@ class TestModelConnectorInit:
             'provider_model: *')):
       connector.generate_text(
           prompt="Hello",
-          provider_model=model_configs_instance.get_provider_model(('claude', 'opus-4')))
+          provider_model=pytest.model_configs_instance.get_provider_model(('claude', 'opus-4')))
 
 
 class TestCheckFeatureExists:
@@ -750,11 +742,11 @@ class TestGetFeatureSignature:
     assert 'prompt' in result
     assert 'None' in result  # provider_model and feature_mapping_strategy
 
-  def test_signature_includes_provider_model(self, model_configs_instance):
+  def test_signature_includes_provider_model(self):
     connector = get_mock_provider_model_connector()
     query_record = types.QueryRecord(
         prompt='Hello',
-        provider_model=model_configs_instance.get_provider_model(
+        provider_model=pytest.model_configs_instance.get_provider_model(
             ('mock_provider', 'mock_model')))
     result = connector._get_feature_signature(query_record)
 
@@ -1111,8 +1103,8 @@ class TestModelConnector:
       result3 = connector.generate_text(prompt="Hello")
       assert result3.response_source == types.ResponseSource.CACHE
 
-  def test_stats_update(self, model_configs_instance):
-    provider_model = model_configs_instance.get_provider_model(('mock_provider', 'mock_model'))
+  def test_stats_update(self):
+    provider_model = pytest.model_configs_instance.get_provider_model(('mock_provider', 'mock_model'))
     stats = {
         stats_type.GlobalStatType.RUN_TIME: stats_type.ProviderModelStats(
             provider_model=provider_model),
