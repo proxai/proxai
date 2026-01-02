@@ -1025,9 +1025,9 @@ class TestGetEstimatedCost:
 
     result = connector.get_estimated_cost(logging_record)
 
-    # mock_provider pricing: query=2.0, response=1.0 per token
-    # Expected: 100 * 2.0 + 50 * 1.0 = 250
-    assert result == 250
+    # mock_provider pricing: query=1.0, response=2.0 per token
+    # Expected: 100 * 1.0 + 50 * 2.0 = 200
+    assert result == 200
 
   def test_handles_none_token_counts(self):
     connector = get_mock_provider_model_connector()
