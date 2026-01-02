@@ -3,11 +3,27 @@
     "config_origin": "BUILT_IN",
     "min_proxai_version": ">=0.2.12",
     "release_notes": "ProviderModelFeatureType has supported, best_effort, and not_supported values.\n",
-    "released_at": "2026-01-01T12:30:21.228960",
+    "released_at": "2026-01-02T11:39:14.199207",
     "version": "1.1.2"
   },
   "version_config": {
-    "default_model_priority_list": [],
+    "default_model_priority_list": [
+      {
+        "model": "gemini-3-flash",
+        "provider": "gemini",
+        "provider_model_identifier": "gemini-3-flash-preview"
+      },
+      {
+        "model": "gpt-4o-mini",
+        "provider": "openai",
+        "provider_model_identifier": "gpt-4o-mini"
+      },
+      {
+        "model": "haiku-4.5",
+        "provider": "claude",
+        "provider_model_identifier": "claude-haiku-4-5-20251001"
+      }
+    ],
     "featured_models": {
       "claude": [
         {
@@ -3002,7 +3018,7 @@
           },
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_default_candidate": false,
+            "is_default_candidate": true,
             "is_featured": true,
             "model_size_tags": [
               "small"
@@ -8610,7 +8626,7 @@
           },
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_default_candidate": false,
+            "is_default_candidate": true,
             "is_featured": true,
             "model_size_tags": [
               "small"
@@ -25948,7 +25964,7 @@
           },
           "metadata": {
             "call_type": "GENERATE_TEXT",
-            "is_default_candidate": false,
+            "is_default_candidate": true,
             "is_featured": false,
             "model_size_tags": [
               "small"

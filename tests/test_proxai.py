@@ -450,12 +450,12 @@ class TestRegisterModel:
 
   def test_successful_register_model(self):
     proxai.set_run_type(types.RunType.TEST)
-    proxai.set_model(generate_text=('openai', 'o1'))
+    proxai.set_model(generate_text=('openai', 'gpt-5.1'))
     assert proxai._REGISTERED_MODEL_CONNECTORS[
         types.CallType.GENERATE_TEXT].provider_model == types.ProviderModelType(
             provider='openai',
-            model='o1',
-            provider_model_identifier='o1-2024-12-17')
+            model='gpt-5.1',
+            provider_model_identifier='gpt-5.1')
 
 
 class TestGenerateText:
@@ -493,7 +493,7 @@ class TestGenerateText:
     self._test_generate_text(('mistral', 'open-mistral-7b'))
 
   def test_huggingface(self):
-    self._test_generate_text(('huggingface', 'gemma-2-2b-it'))
+    self._test_generate_text(('huggingface', 'meta-llama/llama-3.2-3b-instruct'))
 
 
 class TestDefaultModel:
