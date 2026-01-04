@@ -91,6 +91,14 @@ class FeatureNameType(str, enum.Enum):
   RESPONSE_FORMAT_PYDANTIC = 'response_format::pydantic'
 
 
+FeatureListType = List[FeatureNameType]
+
+FeatureListParam = List[Union[
+    str,
+    FeatureNameType,
+]]
+
+
 class ModelSizeType(str, enum.Enum):
   SMALL = 'small'
   MEDIUM = 'medium'

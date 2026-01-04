@@ -170,7 +170,7 @@ def local_proxdash_connection(state_data):
 
 @integration_block
 def list_models(state_data):
-  provider_models = px.models.list_models()
+  provider_models = px.models.list_working_models()
   assert len(provider_models) > 0, 'No models found.'
   print(f'Available models: {len(provider_models)}')
   for idx, provider_model in enumerate(provider_models):
@@ -185,32 +185,32 @@ def list_models(state_data):
 @integration_block
 def list_models_with_model_size_filter(state_data):
   start_time = time.time()
-  provider_models = px.models.list_models(model_size='small')
+  provider_models = px.models.list_working_models(model_size='small')
   print(f'Small models: {len(provider_models)}')
   for provider_model in provider_models:
     print(f'{provider_model.provider:>25} - {provider_model.model}')
-  assert px.models.get_model(
+  assert px.models.get_working_model(
       provider='claude', model='haiku-4.5') in provider_models
   end_time = time.time()
   assert end_time - start_time < 1
 
   start_time = time.time()
-  provider_models = px.models.list_models(
+  provider_models = px.models.list_working_models(
       model_size=px.types.ModelSizeType.MEDIUM)
   print(f'Medium models: {len(provider_models)}')
   for provider_model in provider_models:
     print(f'{provider_model.provider:>25} - {provider_model.model}')
-  assert px.models.get_model(
+  assert px.models.get_working_model(
       provider='claude', model='sonnet-4.5') in provider_models
   end_time = time.time()
   assert end_time - start_time < 1
 
   start_time = time.time()
-  provider_models = px.models.list_models(model_size='largest')
+  provider_models = px.models.list_working_models(model_size='largest')
   print(f'Largest models: {len(provider_models)}')
   for provider_model in provider_models:
     print(f'{provider_model.provider:>25} - {provider_model.model}')
-  assert px.models.get_model(
+  assert px.models.get_working_model(
       provider='claude', model='opus-4.5') in provider_models
   end_time = time.time()
   assert end_time - start_time < 1
@@ -220,7 +220,7 @@ def list_models_with_model_size_filter(state_data):
 
 @integration_block
 def list_models_with_return_all(state_data):
-  model_status = px.models.list_models(return_all=True)
+  model_status = px.models.list_working_models(return_all=True)
   print(str(model_status)[:150] + '...')
   print(f'Available models: {len(model_status.working_models)}')
   print(f'Failed models: {len(model_status.failed_models)}')
@@ -229,7 +229,7 @@ def list_models_with_return_all(state_data):
 
 @integration_block
 def list_models_with_clear_model_cache_and_verbose_output(state_data):
-  model_status = px.models.list_models(
+  model_status = px.models.list_working_models(
       clear_model_cache=True,
       return_all=True,
       verbose=True
@@ -247,7 +247,7 @@ def list_models_with_clear_model_cache_and_verbose_output(state_data):
 
 @integration_block
 def list_providers(state_data):
-  providers = px.models.list_providers()
+  providers = px.models.list_working_providers()
   print(f'Providers: {len(providers)}')
   for provider in providers:
     print(f'{provider}')
@@ -258,23 +258,23 @@ def list_providers(state_data):
 
 @integration_block
 def list_provider_models(state_data):
-  provider_models = px.models.list_provider_models('openai')
+  provider_models = px.models.list_working_provider_models('openai')
   print(f'Provider Models: {len(provider_models)}')
   for provider_model in provider_models:
     print(f'{provider_model.provider:>25} - {provider_model.model}')
-  assert px.models.get_model(
+  assert px.models.get_working_model(
       provider='openai', model='gpt-5.2-pro') in provider_models
   return state_data
 
 
 @integration_block
 def list_provider_models_with_model_size_filter(state_data):
-  provider_models = px.models.list_provider_models(
+  provider_models = px.models.list_working_provider_models(
       'openai', model_size='large')
   print(f'Provider Models: {len(provider_models)}')
   for provider_model in provider_models:
     print(f'{provider_model.provider:>25} - {provider_model.model}')
-  assert px.models.get_model(
+  assert px.models.get_working_model(
       provider='openai', model='gpt-5.2-pro') in provider_models
   return state_data
 
@@ -297,7 +297,7 @@ def generate_text_with_provider_model(state_data):
 
 @integration_block
 def generate_text_with_provider_model_type(state_data):
-  provider_model = px.models.get_model('claude', 'opus-4.5')
+  provider_model = px.models.get_working_model('claude', 'opus-4.5')
   print(type(provider_model))
   print(f'{provider_model.provider=}')
   print(f'{provider_model.model=}')
@@ -457,7 +457,7 @@ def set_model(state_data):
         suppress_provider_errors=True
     ).strip().replace('\n', ' ')[:80]
 
-  for provider_model in px.models.list_models()[:10]:
+  for provider_model in px.models.list_working_models()[:10]:
     px.set_model(provider_model)
 
     response = get_response_of_simple_request()
@@ -1113,7 +1113,7 @@ def connect_allow_multiprocessing(state_data):
       ),
       allow_multiprocessing=False)
 
-  px.models.list_models(verbose=True)
+  px.models.list_working_models(verbose=True)
   print('1 - Check if warning message is printed about sequential testing.')
   _manual_user_check(
       test_message='Warning message is printed about sequential testing?',
