@@ -42,7 +42,7 @@ class TestProxaiApiUseCases:
     # If multiprocessing is disabled, it should be fast:
     start = time.time()
     px.models.allow_multiprocessing = False
-    px.models.list_models()
+    px.models.list_working_models()
     px.models.allow_multiprocessing = None
     total_time = time.time() - start
     assert total_time < 4
@@ -76,7 +76,7 @@ class TestProxaiApiUseCases:
     # fast:
     start = time.time()
     px.models.allow_multiprocessing = True
-    px.models.list_models()
+    px.models.list_working_models()
     px.models.allow_multiprocessing = None
     total_time = time.time() - start
     assert total_time < 4
@@ -98,7 +98,7 @@ class TestProxaiApiUseCases:
 
     logging_record = px.generate_text(
         prompt='hello',
-        provider_model=px.models.get_model(
+        provider_model=px.models.get_working_model(
             'gemini', 'gemini-3-pro', clear_model_cache=True),
         extensive_return=True)
     assert logging_record.response_record.response.value == 'mock response'
@@ -132,12 +132,12 @@ class TestProxaiApiUseCases:
 
   def test_models_get_all_models(self):
     start = time.time()
-    models = px.models.list_models(clear_model_cache=True)
+    models = px.models.list_working_models(clear_model_cache=True)
     assert len(models) > 15
     assert time.time() - start < 4
 
     start = time.time()
-    models = px.models.list_models(model_size='largest')
+    models = px.models.list_working_models(model_size='largest')
     assert len(models) < 15
     assert time.time() - start < 4
 
@@ -147,7 +147,7 @@ class TestProxaiApiUseCases:
     start = time.time()
     px.models.allow_multiprocessing = True
     px.models.model_test_timeout = 2
-    models = px.models.list_models(
+    models = px.models.list_working_models(
         return_all=True,
         clear_model_cache=True)
     px.models.allow_multiprocessing = None
@@ -180,27 +180,27 @@ class TestProxaiApiUseCases:
     # --- get_provider_model ---
     # This should be fast because of model cache:
     start = time.time()
-    provider_model = px.models.get_model('openai', 'gpt-4')
+    provider_model = px.models.get_working_model('openai', 'gpt-4')
     assert provider_model.provider == 'openai'
     assert provider_model.model == 'gpt-4'
     assert time.time() - start < 4
 
     # --- get_all_models with largest models ---
     start = time.time()
-    models = px.models.list_models(model_size='largest')
+    models = px.models.list_working_models(model_size='largest')
     assert len(models) < 15
     assert time.time() - start < 4
 
     # --- get_all_models with clear_model_cache ---
     start = time.time()
     px.models.allow_multiprocessing = False
-    models = px.models.list_models(clear_model_cache=True)
+    models = px.models.list_working_models(clear_model_cache=True)
     px.models.allow_multiprocessing = None
     assert len(models) > 15
     assert time.time() - start < 4
 
   def test_set_model(self):
-    px.models.list_models(clear_model_cache=True)
+    px.models.list_working_models(clear_model_cache=True)
 
     # Test default model
     px.set_model(('claude', 'haiku-4.5'))
@@ -218,7 +218,7 @@ class TestProxaiApiUseCases:
     assert logging_record.query_record.provider_model.model == 'gpt-3.5-turbo'
 
     # Test setting model with provider_model from get_provider_model
-    px.set_model(px.models.get_model('claude', 'haiku-4.5'))
+    px.set_model(px.models.get_working_model('claude', 'haiku-4.5'))
     logging_record = px.generate_text('hello', extensive_return=True)
     assert logging_record.query_record.provider_model.model == 'haiku-4.5'
 
@@ -719,7 +719,7 @@ class TestProxaiApiUseCases:
     px.set_run_type(px.types.RunType.TEST)
     px.models.allow_multiprocessing = False
 
-    models = px.models.list_models()
+    models = px.models.list_working_models()
     assert len(models) > 2
     assert len(models) < 10
     assert (

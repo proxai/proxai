@@ -154,3 +154,17 @@ def create_pydantic_instance_from_response(
         'pydantic_metadata.instance_json_value. Please create an issue at '
         'https://github.com/proxai/proxai/issues.\n'
         f'Response: {response}')
+
+
+def create_feature_list_type(
+    features: types.FeatureListParam
+) -> types.FeatureListType:
+  result_features = []
+  for feature in features:
+    if isinstance(feature, str):
+      result_features.append(types.FeatureNameType(feature))
+    elif isinstance(feature, types.FeatureNameType):
+      result_features.append(feature)
+    else:
+      raise ValueError(f'Invalid feature: {feature}')
+  return result_features

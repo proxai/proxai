@@ -292,38 +292,40 @@ class ProviderModelConnector(state_controller.StateControlled):
     else:
       return getattr(query_record, feature_name, None) is not None
 
+  def _get_features_from_query_record(
+      self,
+      query_record: types.QueryRecord) -> types.FeatureListType:
+    features = []
+    for feature in types.FeatureNameType.__members__.values():
+      if self._check_feature_exists(feature.value, query_record):
+        features.append(feature)
+    return features
+
   def _get_feature_signature(
       self,
-      query_record: types.QueryRecord) -> str:
+      provider_model: types.ProviderModelType,
+      feature_mapping_strategy: types.FeatureMappingStrategy,
+      features: types.FeatureListType
+  ) -> str:
     feature_signature = [
-        str(query_record.provider_model),
-        str(query_record.feature_mapping_strategy),
+        str(provider_model),
+        str(feature_mapping_strategy),
     ]
-    for feature_name in types.FeatureNameType.__members__.values():
-      feature_name = feature_name.value
-      if feature_name.startswith('response_format::'):
-        if self._check_feature_exists(feature_name, query_record):
-          feature_signature.append(query_record.response_format.type.value)
-      elif getattr(query_record, feature_name, None):
-        feature_signature.append(feature_name)
-    return '::'.join(feature_signature)
+    for feature in features:
+      feature_signature.append(feature.value)
+    return ':::'.join(feature_signature)
 
   def _get_available_endpoints(
       self,
-      query_record: types.QueryRecord) -> List[str]:
+      features: types.FeatureListType) -> List[str]:
     supported_endpoints = []
     best_effort_endpoints = []
-    for feature_name in types.FeatureNameType.__members__.values():
-      if not self._check_feature_exists(
-          feature_name=feature_name,
-          query_record=query_record):
-        continue
-
+    for feature in features:
       supported_endpoints.append(set(
-          self.provider_model_config.features[feature_name].supported))
+          self.provider_model_config.features[feature.value].supported))
       best_effort_endpoints.append(set(
-          self.provider_model_config.features[feature_name].supported +
-          self.provider_model_config.features[feature_name].best_effort))
+          self.provider_model_config.features[feature.value].supported +
+          self.provider_model_config.features[feature.value].best_effort))
 
     if supported_endpoints:
       supported_endpoints = list(
@@ -339,44 +341,44 @@ class ProviderModelConnector(state_controller.StateControlled):
       self,
       supported_endpoints: List[str],
       best_effort_endpoints: List[str],
-      query_record: types.QueryRecord):
-    requested_feature_names = []
-    for feature_name in types.FeatureNameType.__members__.values():
-      if self._check_feature_exists(
-          feature_name=feature_name,
-          query_record=query_record):
-        requested_feature_names.append(feature_name)
+      provider_model: types.ProviderModelType,
+      feature_mapping_strategy: types.FeatureMappingStrategy,
+      features: types.FeatureListType,
+      raise_error: bool = True):
 
-    if (query_record.feature_mapping_strategy ==
+    if (feature_mapping_strategy ==
         types.FeatureMappingStrategy.STRICT):
       if len(supported_endpoints) == 0:
+        if not raise_error:
+          return False
         message = (
-            f'For {query_record.provider_model}, it is not possible to ' +
+            f'For {provider_model}, it is not possible to ' +
             'use following features all at once in STRICT mode. ' +
             'Please consider to use BEST_EFFORT mode or remove some '
             'features.\n' +
-            f'Requested features: {", ".join(requested_feature_names)}.')
+            f'Requested features: {", ".join(features)}.')
         logging_utils.log_message(
             type=types.LoggingType.ERROR,
             logging_options=self.logging_options,
-            query_record=query_record,
             message=message)
         raise Exception(message)
-    elif (query_record.feature_mapping_strategy ==
+    elif (feature_mapping_strategy ==
           types.FeatureMappingStrategy.BEST_EFFORT):
       if (len(supported_endpoints) == 0 and
           len(best_effort_endpoints) == 0):
+        if not raise_error:
+          return False
         message = (
-            f'For {query_record.provider_model}, it is not possible to ' +
+            f'For {provider_model}, it is not possible to ' +
             'use following features all at once in BEST_EFFORT mode. ' +
             'Please consider to remove some features.\n' +
-            f'Requested features: {", ".join(requested_feature_names)}.')
+            f'Requested features: {", ".join(features)}.')
         logging_utils.log_message(
             type=types.LoggingType.ERROR,
             logging_options=self.logging_options,
-            query_record=query_record,
             message=message)
         raise Exception(message)
+    return True
 
   def _select_endpoint(
       self,
@@ -513,33 +515,78 @@ class ProviderModelConnector(state_controller.StateControlled):
 
     return query_record
 
-  def feature_check(self, query_record: types.QueryRecord) -> types.QueryRecord:
-    query_record = copy.deepcopy(query_record)
-    feature_signature = self._get_feature_signature(query_record)
+  def _get_feature_check_result_endpoint(
+      self,
+      provider_model: types.ProviderModelType,
+      feature_mapping_strategy: types.FeatureMappingStrategy,
+      features: types.FeatureListType,
+      raise_error: bool = True) -> str:
+    feature_signature = self._get_feature_signature(
+        provider_model=provider_model,
+        feature_mapping_strategy=feature_mapping_strategy,
+        features=features)
+
     if (self._chosen_endpoint_cached_result is not None and
         feature_signature in self._chosen_endpoint_cached_result):
-      query_record.chosen_endpoint = self._chosen_endpoint_cached_result[
-          feature_signature]
+      chosen_endpoint = self._chosen_endpoint_cached_result[feature_signature]
     else:
       supported_endpoints, best_effort_endpoints = self._get_available_endpoints(
-          query_record=query_record)
+          features=features)
 
-      self._check_endpoints_usability(
+      is_endpoints_usable = self._check_endpoints_usability(
           supported_endpoints=supported_endpoints,
           best_effort_endpoints=best_effort_endpoints,
-          query_record=query_record)
+          provider_model=provider_model,
+          feature_mapping_strategy=feature_mapping_strategy,
+          features=features,
+          raise_error=raise_error)
 
-      self._chosen_endpoint_cached_result[
-          feature_signature] = self._select_endpoint(
-              supported_endpoints=supported_endpoints,
-              best_effort_endpoints=best_effort_endpoints)
+      if not is_endpoints_usable:
+        # Note: This set to False to indicate that the endpoints are not usable.
+        # Cache is checking if the value is None or not. If value set to False,
+        # cache will return False instead of retrying.
+        chosen_endpoint = False
+      else:
+        self._chosen_endpoint_cached_result[
+            feature_signature] = self._select_endpoint(
+                supported_endpoints=supported_endpoints,
+                best_effort_endpoints=best_effort_endpoints)
 
-      query_record.chosen_endpoint = self._chosen_endpoint_cached_result[
-          feature_signature]
+        chosen_endpoint = self._chosen_endpoint_cached_result[
+            feature_signature]
+
+    return chosen_endpoint
+
+  def feature_check_and_sanitize(
+      self,
+      query_record: types.QueryRecord) -> types.QueryRecord:
+    query_record = copy.deepcopy(query_record)
+
+    chosen_endpoint = self._get_feature_check_result_endpoint(
+        provider_model=query_record.provider_model,
+        feature_mapping_strategy=query_record.feature_mapping_strategy,
+        features=self._get_features_from_query_record(query_record),
+        raise_error=True)
+
+    query_record.chosen_endpoint = chosen_endpoint
 
     query_record = self._sanitize_query_record(query_record=query_record)
 
     return query_record
+
+  def check_feature_compatibility(
+      self,
+      features: types.FeatureListType) -> bool:
+    chosen_endpoint = self._get_feature_check_result_endpoint(
+        provider_model=self.provider_model,
+        feature_mapping_strategy=self.feature_mapping_strategy,
+        features=features,
+        raise_error=False)
+
+    if chosen_endpoint:
+      return True
+    else:
+      return False
 
   def _get_system_content_with_schema_guidance(
       self,
@@ -890,8 +937,7 @@ class ProviderModelConnector(state_controller.StateControlled):
         token_count=self.get_token_count_estimate(
             value = prompt if prompt is not None else messages))
 
-    query_record = self.feature_check(
-        query_record=query_record)
+    query_record = self.feature_check_and_sanitize(query_record=query_record)
 
     look_fail_reason = None
     if self.query_cache_manager and use_cache:
