@@ -249,7 +249,7 @@ class TestAvailableModels:
     monkeypatch.setenv(
         model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key')
     available_models_manager = self._get_available_models()
-    models = available_models_manager.list_models()
+    models = available_models_manager.list_working_models()
     assert models == sorted(list(self._get_models_set(['openai'])))
 
   def test_get_all_models_filters(self, monkeypatch):
@@ -263,7 +263,7 @@ class TestAvailableModels:
     available_models_manager = self._get_available_models()
 
     # Check that the failed model was filtered out
-    models = available_models_manager.list_models()
+    models = available_models_manager.list_working_models()
     assert models == sorted(list(
         self._get_models_set(['openai', 'mock_provider'])
         - set([pytest.model_configs_instance.get_provider_model(('openai', 'gpt-5-mini'))])))
@@ -296,7 +296,7 @@ class TestAvailableModels:
         model_configs.PROVIDER_KEY_MAP['claude'][0], 'test_api_key')
     available_models_manager = self._get_available_models(
         set_model_cache_manager=False)
-    providers = available_models_manager.list_providers()
+    providers = available_models_manager.list_working_providers()
     assert providers == ['claude', 'openai']
 
   def test_get_providers_with_cache(self, monkeypatch):
@@ -307,25 +307,25 @@ class TestAvailableModels:
         model_configs.PROVIDER_KEY_MAP['claude'][0], 'test_api_key')
     available_models_manager = self._get_available_models()
 
-    providers = available_models_manager.list_providers()
+    providers = available_models_manager.list_working_providers()
     assert set(providers) == set(['openai', 'claude'])
 
     monkeypatch.delenv(
         model_configs.PROVIDER_KEY_MAP['claude'][0], raising=False)
-    providers = available_models_manager.list_providers()
+    providers = available_models_manager.list_working_providers()
     assert set(providers) == set(['openai'])
 
   def test_get_providers_invalid_call_type(self):
     available_models_manager = self._get_available_models()
     with pytest.raises(ValueError, match='Call type not supported:'):
-      available_models_manager.list_providers(call_type='invalid_type')
+      available_models_manager.list_working_providers(call_type='invalid_type')
 
   def test_get_providers_verbose(self, monkeypatch):
     self._save_temp_cache_state()
     monkeypatch.setenv(
         model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key')
     available_models_manager = self._get_available_models()
-    providers = available_models_manager.list_providers(verbose=True)
+    providers = available_models_manager.list_working_providers(verbose=True)
     assert set(providers) == set(['openai'])
 
   def test_get_provider_models_without_cache(self, monkeypatch):
@@ -336,7 +336,7 @@ class TestAvailableModels:
         set_model_cache_manager=False)
 
     # Test provider with key
-    models = available_models_manager.list_provider_models('openai')
+    models = available_models_manager.list_working_provider_models('openai')
     assert set(models) == set(
         pytest.model_configs_instance.get_all_models(call_type=types.CallType.GENERATE_TEXT, provider='openai'))
 
@@ -345,7 +345,7 @@ class TestAvailableModels:
         ValueError,
         match='Provider key not found in environment variables for claude.\n'
         'Required keys'):
-      available_models_manager.list_provider_models('claude')
+      available_models_manager.list_working_provider_models('claude')
 
   def test_get_provider_models_with_cache(self, monkeypatch):
     self._save_temp_cache_state()
@@ -355,30 +355,30 @@ class TestAvailableModels:
         model_configs.PROVIDER_KEY_MAP['claude'][0], 'test_api_key')
     available_models_manager = self._get_available_models()
 
-    models = available_models_manager.list_provider_models('openai')
+    models = available_models_manager.list_working_provider_models('openai')
     # 'gpt-5-mini' saved as failed model, so it should not be included
     assert set(models) == (
         self._get_models_set(['openai'])
         - set([pytest.model_configs_instance.get_provider_model(('openai', 'gpt-5-mini'))]))
 
-    models = available_models_manager.list_provider_models('claude')
+    models = available_models_manager.list_working_provider_models('claude')
     assert set(models) == set(
         pytest.model_configs_instance.get_all_models(call_type=types.CallType.GENERATE_TEXT, provider='claude'))
 
     monkeypatch.delenv(
         model_configs.PROVIDER_KEY_MAP['claude'][0], raising=False)
-    models = available_models_manager.list_provider_models('openai')
+    models = available_models_manager.list_working_provider_models('openai')
     # 'gpt-5-mini' saved as failed model, so it should not be included
     assert set(models) == (
         self._get_models_set(['openai'])
         - set([pytest.model_configs_instance.get_provider_model(('openai', 'gpt-5-mini'))]))
-    models = available_models_manager.list_provider_models('claude')
+    models = available_models_manager.list_working_provider_models('claude')
     assert set(models) == set()
 
   def test_get_provider_models_invalid_call_type(self):
     available_models_manager = self._get_available_models()
     with pytest.raises(ValueError, match='Call type not supported:'):
-      available_models_manager.list_provider_models(
+      available_models_manager.list_working_provider_models(
           'openai', call_type='invalid_type')
 
   def test_get_provider_models_verbose(self, monkeypatch):
@@ -386,7 +386,7 @@ class TestAvailableModels:
     monkeypatch.setenv(
         model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key')
     available_models_manager = self._get_available_models()
-    models = available_models_manager.list_provider_models(
+    models = available_models_manager.list_working_provider_models(
         'openai', verbose=True)
     assert set(models) == (
         self._get_models_set(['openai'])
@@ -399,7 +399,7 @@ class TestAvailableModels:
         set_model_cache_manager=False)
 
     # Test successful case
-    provider_model = available_models_manager.get_model(
+    provider_model = available_models_manager.get_working_model(
         'openai', 'o4-mini')
     assert provider_model == pytest.model_configs_instance.get_provider_model(('openai', 'o4-mini'))
 
@@ -407,19 +407,19 @@ class TestAvailableModels:
     with pytest.raises(
         ValueError,
         match='Provider key not found in environment variables for claude.'):
-      available_models_manager.get_model('claude', 'haiku-4.5')
+      available_models_manager.get_working_model('claude', 'haiku-4.5')
 
     # Test invalid provider
     with pytest.raises(
         KeyError,
         match='invalid_provider'):
-      available_models_manager.get_model('invalid_provider', 'model')
+      available_models_manager.get_working_model('invalid_provider', 'model')
 
     # Test invalid model
     with pytest.raises(
         KeyError,
         match='invalid_model'):
-      available_models_manager.get_model('openai', 'invalid_model')
+      available_models_manager.get_working_model('openai', 'invalid_model')
 
   def test_get_provider_model_with_cache_manager(self, monkeypatch):
     monkeypatch.setenv(
@@ -428,7 +428,7 @@ class TestAvailableModels:
     available_models_manager = self._get_available_models()
 
     # Test successful case with cached model
-    provider_model = available_models_manager.get_model(
+    provider_model = available_models_manager.get_working_model(
         'openai', 'o4-mini')
     assert provider_model == pytest.model_configs_instance.get_provider_model(('openai', 'o4-mini'))
 
@@ -436,7 +436,7 @@ class TestAvailableModels:
     with pytest.raises(
         ValueError,
         match='Provider model not found in working models'):
-      available_models_manager.get_model(
+      available_models_manager.get_working_model(
           'openai', 'gpt-5-mini')
 
   def test_get_provider_model_clear_cache(self, monkeypatch):
@@ -444,7 +444,7 @@ class TestAvailableModels:
         model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key')
     available_models_manager = self._get_available_models()
 
-    provider_model = available_models_manager.get_model(
+    provider_model = available_models_manager.get_working_model(
         'openai', 'o4-mini')
     assert provider_model == pytest.model_configs_instance.get_provider_model(('openai', 'o4-mini'))
 
@@ -453,28 +453,29 @@ class TestAvailableModels:
     with pytest.raises(
         ValueError,
         match='No provider API keys found in environment variables'):
-      available_models_manager.get_model(
+      available_models_manager.get_working_model(
           'openai', 'o4-mini', clear_model_cache=True)
 
   def test_get_provider_model_with_ignore_model_status(self, monkeypatch):
+    # NOTE: REMOVE THIS TEST BECAUSE THIS IS NOT A VALID USE CASE
     monkeypatch.setenv(
         model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key')
     self._save_temp_cache_state()
     available_models_manager = self._get_available_models()
 
     # Check that the model is returned even if it is in the failed models
-    provider_model = available_models_manager.get_model(
+    provider_model = available_models_manager.get_working_model(
         'openai', 'gpt-5-mini', allow_non_working_model=True)
     assert provider_model == pytest.model_configs_instance.get_provider_model(('openai', 'gpt-5-mini'))
 
     assert (
         pytest.model_configs_instance.get_provider_model(('openai', 'gpt-5-mini')) in
-        available_models_manager.list_models(return_all=True).failed_models)
+        available_models_manager.list_working_models(return_all=True).failed_models)
 
   def test_get_provider_model_invalid_call_type(self):
     available_models_manager = self._get_available_models()
     with pytest.raises(ValueError, match='Call type not supported:'):
-      available_models_manager.get_model(
+      available_models_manager.get_working_model(
           'openai', 'o4-mini', call_type='invalid_type')
 
 

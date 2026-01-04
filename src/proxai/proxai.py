@@ -392,7 +392,7 @@ def _get_registered_model_connector(
           not available_models.model_cache_manager.get(
               types.CallType.GENERATE_TEXT).working_models):
         print('Checking available models, this may take a while...')
-      models = get_available_models().list_models(return_all=True)
+      models = get_available_models().list_working_models(return_all=True)
       model_configs_instance = _get_model_configs()
       for provider_model in model_configs_instance.get_default_model_priority_list():
         if provider_model in models.working_models:
@@ -768,7 +768,7 @@ def check_health(
       allow_multiprocessing=allow_multiprocessing,
       model_test_timeout=model_test_timeout,
       get_model_connector=_get_modified_model_connector)
-  model_status = models.list_models(
+  model_status = models.list_working_models(
       verbose=verbose, return_all=True)
   if verbose:
     providers = set(
