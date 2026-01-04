@@ -294,7 +294,7 @@ class ProviderModelConnector(state_controller.StateControlled):
 
   def _get_features_from_query_record(
       self,
-      query_record: types.QueryRecord) -> List[types.FeatureNameType]:
+      query_record: types.QueryRecord) -> types.FeatureListType:
     features = []
     for feature in types.FeatureNameType.__members__.values():
       if self._check_feature_exists(feature.value, query_record):
@@ -305,7 +305,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       self,
       provider_model: types.ProviderModelType,
       feature_mapping_strategy: types.FeatureMappingStrategy,
-      features: List[types.FeatureNameType]
+      features: types.FeatureListType
   ) -> str:
     feature_signature = [
         str(provider_model),
@@ -317,7 +317,7 @@ class ProviderModelConnector(state_controller.StateControlled):
 
   def _get_available_endpoints(
       self,
-      features: List[types.FeatureNameType]) -> List[str]:
+      features: types.FeatureListType) -> List[str]:
     supported_endpoints = []
     best_effort_endpoints = []
     for feature in features:
@@ -343,11 +343,14 @@ class ProviderModelConnector(state_controller.StateControlled):
       best_effort_endpoints: List[str],
       provider_model: types.ProviderModelType,
       feature_mapping_strategy: types.FeatureMappingStrategy,
-      features: List[types.FeatureNameType]):
+      features: types.FeatureListType,
+      raise_error: bool = True):
 
     if (feature_mapping_strategy ==
         types.FeatureMappingStrategy.STRICT):
       if len(supported_endpoints) == 0:
+        if not raise_error:
+          return False
         message = (
             f'For {provider_model}, it is not possible to ' +
             'use following features all at once in STRICT mode. ' +
@@ -363,6 +366,8 @@ class ProviderModelConnector(state_controller.StateControlled):
           types.FeatureMappingStrategy.BEST_EFFORT):
       if (len(supported_endpoints) == 0 and
           len(best_effort_endpoints) == 0):
+        if not raise_error:
+          return False
         message = (
             f'For {provider_model}, it is not possible to ' +
             'use following features all at once in BEST_EFFORT mode. ' +
@@ -373,6 +378,7 @@ class ProviderModelConnector(state_controller.StateControlled):
             logging_options=self.logging_options,
             message=message)
         raise Exception(message)
+    return True
 
   def _select_endpoint(
       self,
@@ -513,7 +519,8 @@ class ProviderModelConnector(state_controller.StateControlled):
       self,
       provider_model: types.ProviderModelType,
       feature_mapping_strategy: types.FeatureMappingStrategy,
-      features: List[types.FeatureNameType]) -> str:
+      features: types.FeatureListType,
+      raise_error: bool = True) -> str:
     feature_signature = self._get_feature_signature(
         provider_model=provider_model,
         feature_mapping_strategy=feature_mapping_strategy,
@@ -526,20 +533,27 @@ class ProviderModelConnector(state_controller.StateControlled):
       supported_endpoints, best_effort_endpoints = self._get_available_endpoints(
           features=features)
 
-      self._check_endpoints_usability(
+      is_endpoints_usable = self._check_endpoints_usability(
           supported_endpoints=supported_endpoints,
           best_effort_endpoints=best_effort_endpoints,
           provider_model=provider_model,
           feature_mapping_strategy=feature_mapping_strategy,
-          features=features)
+          features=features,
+          raise_error=raise_error)
 
-      self._chosen_endpoint_cached_result[
-          feature_signature] = self._select_endpoint(
-              supported_endpoints=supported_endpoints,
-              best_effort_endpoints=best_effort_endpoints)
+      if not is_endpoints_usable:
+        # Note: This set to False to indicate that the endpoints are not usable.
+        # Cache is checking if the value is None or not. If value set to False,
+        # cache will return False instead of retrying.
+        chosen_endpoint = False
+      else:
+        self._chosen_endpoint_cached_result[
+            feature_signature] = self._select_endpoint(
+                supported_endpoints=supported_endpoints,
+                best_effort_endpoints=best_effort_endpoints)
 
-      chosen_endpoint = self._chosen_endpoint_cached_result[
-          feature_signature]
+        chosen_endpoint = self._chosen_endpoint_cached_result[
+            feature_signature]
 
     return chosen_endpoint
 
@@ -551,7 +565,8 @@ class ProviderModelConnector(state_controller.StateControlled):
     chosen_endpoint = self._get_feature_check_result_endpoint(
         provider_model=query_record.provider_model,
         feature_mapping_strategy=query_record.feature_mapping_strategy,
-        features=self._get_features_from_query_record(query_record))
+        features=self._get_features_from_query_record(query_record),
+        raise_error=True)
 
     query_record.chosen_endpoint = chosen_endpoint
 
@@ -561,12 +576,17 @@ class ProviderModelConnector(state_controller.StateControlled):
 
   def check_feature_compatibility(
       self,
-      features: List[types.FeatureNameType]) -> bool:
+      features: types.FeatureListType) -> bool:
     chosen_endpoint = self._get_feature_check_result_endpoint(
         provider_model=self.provider_model,
         feature_mapping_strategy=self.feature_mapping_strategy,
-        features=features)
-    return chosen_endpoint is not None
+        features=features,
+        raise_error=False)
+
+    if chosen_endpoint:
+      return True
+    else:
+      return False
 
   def _get_system_content_with_schema_guidance(
       self,

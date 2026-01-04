@@ -166,3 +166,50 @@ class TestCreatePydanticInstanceFromResponse:
           response_format, response)
 
     assert 'no value (instance) or' in str(exc_info.value)
+
+
+class TestCreateFeatureListType:
+  def test_string_features_converted_to_enum(self):
+    features = ['prompt', 'messages', 'system']
+    result = type_utils.create_feature_list_type(features)
+    assert result == [
+        types.FeatureNameType.PROMPT,
+        types.FeatureNameType.MESSAGES,
+        types.FeatureNameType.SYSTEM,
+    ]
+
+  def test_enum_features_kept_as_is(self):
+    features = [
+        types.FeatureNameType.PROMPT,
+        types.FeatureNameType.MAX_TOKENS,
+    ]
+    result = type_utils.create_feature_list_type(features)
+    assert result == [
+        types.FeatureNameType.PROMPT,
+        types.FeatureNameType.MAX_TOKENS,
+    ]
+
+  def test_mixed_string_and_enum_features(self):
+    features = [
+        'prompt',
+        types.FeatureNameType.MESSAGES,
+        'temperature',
+    ]
+    result = type_utils.create_feature_list_type(features)
+    assert result == [
+        types.FeatureNameType.PROMPT,
+        types.FeatureNameType.MESSAGES,
+        types.FeatureNameType.TEMPERATURE,
+    ]
+
+  def test_empty_list_returns_empty_list(self):
+    result = type_utils.create_feature_list_type([])
+    assert result == []
+
+  def test_invalid_string_raises_error(self):
+    with pytest.raises(ValueError):
+      type_utils.create_feature_list_type(['invalid_feature'])
+
+  def test_invalid_type_raises_error(self):
+    with pytest.raises(ValueError):
+      type_utils.create_feature_list_type([123])
