@@ -696,10 +696,9 @@ class TestCheckFeatureCompatibility:
     connector = get_mock_provider_model_connector(
         feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
         provider_model_config=config)
-    with pytest.raises(Exception, match='STRICT mode'):
-      connector.check_feature_compatibility([
+    assert connector.check_feature_compatibility([
           types.FeatureNameType.PROMPT,
-          types.FeatureNameType.SYSTEM])
+          types.FeatureNameType.SYSTEM]) is False
 
   def test_best_effort_mode_fallback(self):
     config = _create_config_with_features({

@@ -313,6 +313,27 @@ class AvailableModels(state_controller.StateControlled):
     models.working_models = _filter_set(models.working_models)
     models.failed_models = _filter_set(models.failed_models)
 
+  def _filter_by_features(
+      self,
+      models: types.ModelStatus,
+      features: Optional[types.FeatureListType] = None):
+    if features is None:
+      return
+    def _filter_set(
+        provider_model_set: Set[types.ProviderModelType]
+    ) -> Tuple[Set[types.ProviderModelType], Set[types.ProviderModelType]]:
+      not_filtered_models = set()
+      for provider_model in provider_model_set:
+        if self._get_model_connector(
+          provider_model).check_feature_compatibility(features=features):
+          not_filtered_models.add(provider_model)
+        else:
+          models.filtered_models.add(provider_model)
+      return not_filtered_models
+    models.unprocessed_models = _filter_set(models.unprocessed_models)
+    models.working_models = _filter_set(models.working_models)
+    models.failed_models = _filter_set(models.failed_models)
+
   def _filter_by_cache(
       self,
       models: types.ModelStatus,
@@ -419,7 +440,6 @@ class AvailableModels(state_controller.StateControlled):
           '- https://docs.python.org/3/library/multiprocessing.html#the-'
           'spawn-and-forkserver-start-methods\n')
     return None
-
 
   def _test_models_with_multiprocessing(
       self,
@@ -569,6 +589,7 @@ class AvailableModels(state_controller.StateControlled):
       selected_providers: Optional[Set[str]] = None,
       selected_provider_models: Optional[Set[types.ProviderModelType]] = None,
       model_size: Optional[types.ModelSizeType] = None,
+      features: Optional[types.FeatureListType] = None,
       verbose: bool = False,
       clear_model_cache: bool = False,
       raw_config_results_without_test: bool = False,
@@ -595,6 +616,7 @@ class AvailableModels(state_controller.StateControlled):
     self._filter_by_provider_models(
         models, provider_models=selected_provider_models)
     self._filter_by_model_size(models, model_size=model_size)
+    self._filter_by_features(models, features=features)
 
     if raw_config_results_without_test:
       return models
@@ -640,6 +662,7 @@ class AvailableModels(state_controller.StateControlled):
   def list_models(
       self,
       model_size: Optional[types.ModelSizeIdentifierType] = None,
+      features: Optional[types.FeatureListParam] = None,
       return_all: bool = False,
       call_type: types.CallType = types.CallType.GENERATE_TEXT
   ) -> Union[List[types.ProviderModelType], types.ModelStatus]:
@@ -647,11 +670,14 @@ class AvailableModels(state_controller.StateControlled):
       raise ValueError(f'Call type not supported: {call_type}')
     if model_size is not None:
       model_size = type_utils.check_model_size_identifier_type(model_size)
+    if features is not None:
+      features = type_utils.create_feature_list_type(features=features)
 
     model_status: Optional[types.ModelStatus] = None
     model_status = self._fetch_all_models(
         model_size=model_size,
         call_type=call_type,
+        features=features,
         raw_config_results_without_test=True)
 
     if return_all:
@@ -678,6 +704,7 @@ class AvailableModels(state_controller.StateControlled):
       self,
       provider: str,
       model_size: Optional[types.ModelSizeIdentifierType] = None,
+      features: Optional[types.FeatureListParam] = None,
       return_all: bool = False,
       call_type: types.CallType = types.CallType.GENERATE_TEXT,
   ) -> Union[List[types.ProviderModelType], types.ModelStatus]:
@@ -685,6 +712,8 @@ class AvailableModels(state_controller.StateControlled):
       raise ValueError(f'Call type not supported: {call_type}')
     if model_size is not None:
       model_size = type_utils.check_model_size_identifier_type(model_size)
+    if features is not None:
+      features = type_utils.create_feature_list_type(features=features)
 
     provider_models = self.model_configs.get_all_models(
         provider=provider,
@@ -700,6 +729,7 @@ class AvailableModels(state_controller.StateControlled):
     for provider_model in provider_models:
       model_status.unprocessed_models.add(provider_model)
     self._filter_by_model_size(model_status, model_size=model_size)
+    self._filter_by_features(model_status, features=features)
 
     if return_all:
       return model_status
@@ -738,6 +768,7 @@ class AvailableModels(state_controller.StateControlled):
   def list_working_models(
       self,
       model_size: Optional[types.ModelSizeIdentifierType] = None,
+      features: Optional[types.FeatureListParam] = None,
       verbose: bool = True,
       return_all: bool = False,
       clear_model_cache: bool = False,
@@ -747,6 +778,8 @@ class AvailableModels(state_controller.StateControlled):
       raise ValueError(f'Call type not supported: {call_type}')
     if model_size is not None:
       model_size = type_utils.check_model_size_identifier_type(model_size)
+    if features is not None:
+      features = type_utils.create_feature_list_type(features=features)
 
     model_status: Optional[types.ModelStatus] = None
     if not self.model_cache_manager:
@@ -757,6 +790,7 @@ class AvailableModels(state_controller.StateControlled):
           type=types.LoggingType.WARNING)
       model_status = self._fetch_all_models(
           model_size=model_size,
+          features=features,
           call_type=call_type,
           verbose=verbose)
     elif (
@@ -765,11 +799,13 @@ class AvailableModels(state_controller.StateControlled):
       model_status = self._fetch_all_models(
           model_size=model_size,
           clear_model_cache=clear_model_cache,
+          features=features,
           call_type=call_type,
           verbose=verbose)
     else:
       model_status = self._fetch_all_models(
           model_size=model_size,
+          features=features,
           call_type=call_type,
           verbose=verbose)
 
@@ -779,7 +815,7 @@ class AvailableModels(state_controller.StateControlled):
 
   def list_working_providers(
       self,
-      verbose: bool = False,
+      verbose: bool = True,
       clear_model_cache: bool = False,
       call_type: types.CallType = types.CallType.GENERATE_TEXT
   ) -> List[str]:
@@ -816,7 +852,8 @@ class AvailableModels(state_controller.StateControlled):
       self,
       provider: str,
       model_size: Optional[types.ModelSizeIdentifierType] = None,
-      verbose: bool = False,
+      features: Optional[types.FeatureListParam] = None,
+      verbose: bool = True,
       return_all: bool = False,
       clear_model_cache: bool = False,
       call_type: types.CallType = types.CallType.GENERATE_TEXT,
@@ -825,6 +862,8 @@ class AvailableModels(state_controller.StateControlled):
       raise ValueError(f'Call type not supported: {call_type}')
     if model_size is not None:
       model_size = type_utils.check_model_size_identifier_type(model_size)
+    if features is not None:
+      features = type_utils.create_feature_list_type(features=features)
 
     provider_models = self.model_configs.get_all_models(
         provider=provider,
@@ -842,12 +881,14 @@ class AvailableModels(state_controller.StateControlled):
       for provider_model in provider_models:
         model_status.working_models.add(provider_model)
       self._filter_by_model_size(model_status, model_size=model_size)
+      self._filter_by_features(model_status, features=features)
     elif (
         clear_model_cache or
         not self._check_model_cache_path_same()):
       model_status = self._fetch_all_models(
           selected_providers=set([provider]),
           model_size=model_size,
+          features=features,
           verbose=verbose,
           clear_model_cache=clear_model_cache,
           call_type=call_type)
@@ -855,6 +896,7 @@ class AvailableModels(state_controller.StateControlled):
       model_status = self._fetch_all_models(
           selected_providers=set([provider]),
           model_size=model_size,
+          features=features,
           verbose=verbose,
           call_type=call_type)
 
@@ -866,7 +908,7 @@ class AvailableModels(state_controller.StateControlled):
       self,
       provider: str,
       model: str,
-      verbose: bool = False,
+      verbose: bool = True,
       clear_model_cache: bool = False,
       call_type: types.CallType = types.CallType.GENERATE_TEXT
   ) -> types.ProviderModelType:
