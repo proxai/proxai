@@ -570,3 +570,156 @@ class TestAvailableModelsState:
     restored_models = restored.model_configs.get_all_models(
         call_type=types.CallType.GENERATE_TEXT)
     assert set(original_models) == set(restored_models)
+
+
+class TestFilterByFeatures:
+  """Tests for filtering models by feature compatibility."""
+
+  cache_dir: Optional[tempfile.TemporaryDirectory] = None
+  initialized_model_connectors: Optional[
+      Dict[
+          types.ProviderModelType,
+          model_connector.ProviderModelConnector]] = None
+
+  def _init_test_variables(self):
+    if self.cache_dir is None:
+      self.cache_dir = tempfile.TemporaryDirectory()
+    if self.initialized_model_connectors is None:
+      self.initialized_model_connectors = {}
+
+  def _init_model_connector(self, provider_model: types.ProviderModelType):
+    if provider_model in self.initialized_model_connectors:
+      return self.initialized_model_connectors[provider_model]
+    connector = model_registry.get_model_connector(
+        provider_model_identifier=provider_model,
+        model_configs=pytest.model_configs_instance)
+    self.initialized_model_connectors[provider_model] = connector(
+        logging_options=types.LoggingOptions(),
+        proxdash_connection=proxdash.ProxDashConnection(
+            logging_options=types.LoggingOptions(),
+            proxdash_options=types.ProxDashOptions(
+                disable_proxdash=True)),
+        run_type=types.RunType.TEST)
+    return self.initialized_model_connectors[provider_model]
+
+  def _get_model_connector(self, provider_model: types.ProviderModelType):
+    return self._init_model_connector(provider_model)
+
+  def _get_available_models(self):
+    self._init_test_variables()
+    return available_models.AvailableModels(
+        run_type=types.RunType.TEST,
+        model_configs=pytest.model_configs_instance,
+        get_model_connector=self._get_model_connector,
+        allow_multiprocessing=False)
+
+  def test_filter_by_features_none_does_nothing(self):
+    """When features is None, no filtering should occur."""
+    available_models_manager = self._get_available_models()
+    models = types.ModelStatus()
+    models.unprocessed_models.add(
+        pytest.model_configs_instance.get_provider_model(('openai', 'o4-mini')))
+    models.unprocessed_models.add(
+        pytest.model_configs_instance.get_provider_model(('claude', 'haiku-4.5')))
+
+    original_count = len(models.unprocessed_models)
+    available_models_manager._filter_by_features(models, features=None)
+
+    assert len(models.unprocessed_models) == original_count
+    assert len(models.filtered_models) == 0
+
+  def test_filter_by_features_basic_prompt(self):
+    """All models should support the basic 'prompt' feature."""
+    available_models_manager = self._get_available_models()
+    models = types.ModelStatus()
+    models.unprocessed_models.add(
+        pytest.model_configs_instance.get_provider_model(('openai', 'o4-mini')))
+    models.unprocessed_models.add(
+        pytest.model_configs_instance.get_provider_model(('claude', 'haiku-4.5')))
+
+    available_models_manager._filter_by_features(
+        models, features=[types.FeatureNameType.PROMPT])
+
+    # All models should support prompt feature
+    assert len(models.unprocessed_models) == 2
+    assert len(models.filtered_models) == 0
+
+  def test_filter_by_features_filters_working_and_failed_models(self):
+    """Features filter should apply to working and failed models too."""
+    available_models_manager = self._get_available_models()
+    models = types.ModelStatus()
+
+    openai_model = pytest.model_configs_instance.get_provider_model(
+        ('openai', 'o4-mini'))
+    claude_model = pytest.model_configs_instance.get_provider_model(
+        ('claude', 'haiku-4.5'))
+
+    models.working_models.add(openai_model)
+    models.failed_models.add(claude_model)
+
+    available_models_manager._filter_by_features(
+        models, features=[types.FeatureNameType.PROMPT])
+
+    # Both should still be in their respective sets (prompt is supported)
+    assert openai_model in models.working_models
+    assert claude_model in models.failed_models
+
+  def test_list_models_with_features(self, monkeypatch):
+    """Test list_models filters by features parameter."""
+    monkeypatch.setenv(
+        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key')
+    available_models_manager = self._get_available_models()
+
+    all_models = available_models_manager.list_models()
+    models_with_prompt = available_models_manager.list_models(
+        features=['prompt'])
+
+    # All models support prompt, so counts should be equal
+    assert len(models_with_prompt) == len(all_models)
+
+  def test_list_models_with_features_enum(self, monkeypatch):
+    """Test list_models accepts FeatureNameType enum values."""
+    monkeypatch.setenv(
+        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key')
+    available_models_manager = self._get_available_models()
+
+    models = available_models_manager.list_models(
+        features=[types.FeatureNameType.PROMPT])
+
+    assert len(models) > 0
+
+  def test_list_provider_models_with_features(self, monkeypatch):
+    """Test list_provider_models filters by features parameter."""
+    monkeypatch.setenv(
+        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key')
+    available_models_manager = self._get_available_models()
+
+    all_models = available_models_manager.list_provider_models('openai')
+    models_with_prompt = available_models_manager.list_provider_models(
+        'openai', features=['prompt'])
+
+    assert len(models_with_prompt) == len(all_models)
+
+  def test_list_working_models_with_features(self, monkeypatch):
+    """Test list_working_models filters by features parameter."""
+    monkeypatch.setenv(
+        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key')
+    available_models_manager = self._get_available_models()
+
+    all_models = available_models_manager.list_working_models()
+    models_with_prompt = available_models_manager.list_working_models(
+        features=['prompt'])
+
+    assert len(models_with_prompt) == len(all_models)
+
+  def test_list_working_provider_models_with_features(self, monkeypatch):
+    """Test list_working_provider_models filters by features parameter."""
+    monkeypatch.setenv(
+        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key')
+    available_models_manager = self._get_available_models()
+
+    all_models = available_models_manager.list_working_provider_models('openai')
+    models_with_prompt = available_models_manager.list_working_provider_models(
+        'openai', features=['prompt'])
+
+    assert len(models_with_prompt) == len(all_models)
