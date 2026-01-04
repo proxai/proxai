@@ -408,6 +408,56 @@ class TestCheckFeatureExists:
     assert connector._check_feature_exists('response_format::json', query_record) is False
 
 
+class TestGetFeaturesFromQueryRecord:
+  """Tests for _get_features_from_query_record method."""
+
+  def test_prompt_only(self):
+    connector = get_mock_provider_model_connector()
+    query_record = types.QueryRecord(prompt='Hello')
+    features = connector._get_features_from_query_record(query_record)
+    assert types.FeatureNameType.PROMPT in features
+    assert len(features) == 1
+
+  def test_multiple_features(self):
+    connector = get_mock_provider_model_connector()
+    query_record = types.QueryRecord(
+        prompt='Hello',
+        system='Be helpful',
+        max_tokens=100)
+    features = connector._get_features_from_query_record(query_record)
+    assert types.FeatureNameType.PROMPT in features
+    assert types.FeatureNameType.SYSTEM in features
+    assert types.FeatureNameType.MAX_TOKENS in features
+    assert len(features) == 3
+
+  def test_response_format_json(self):
+    connector = get_mock_provider_model_connector()
+    query_record = types.QueryRecord(
+        prompt='Hello',
+        response_format=types.ResponseFormat(type=types.ResponseFormatType.JSON))
+    features = connector._get_features_from_query_record(query_record)
+    assert types.FeatureNameType.PROMPT in features
+    assert types.FeatureNameType.RESPONSE_FORMAT_JSON in features
+
+  def test_response_format_pydantic(self):
+    connector = get_mock_provider_model_connector()
+    query_record = types.QueryRecord(
+        prompt='Hello',
+        response_format=types.ResponseFormat(
+            type=types.ResponseFormatType.PYDANTIC,
+            value=types.ResponseFormatPydanticValue(
+                class_name='TestModel',
+                class_value=SamplePydanticModel)))
+    features = connector._get_features_from_query_record(query_record)
+    assert types.FeatureNameType.RESPONSE_FORMAT_PYDANTIC in features
+
+  def test_empty_query_record(self):
+    connector = get_mock_provider_model_connector()
+    query_record = types.QueryRecord()
+    features = connector._get_features_from_query_record(query_record)
+    assert len(features) == 0
+
+
 class TestGetAvailableEndpoints:
   """Tests for _get_available_endpoints method."""
 
@@ -418,7 +468,8 @@ class TestGetAvailableEndpoints:
     connector = get_mock_provider_model_connector(provider_model_config=config)
     query_record = types.QueryRecord(prompt='Hello')
 
-    supported, best_effort = connector._get_available_endpoints(query_record)
+    features = connector._get_features_from_query_record(query_record)
+    supported, best_effort = connector._get_available_endpoints(features=features)
 
     assert 'chat' in supported
     assert 'completion' in supported
@@ -431,7 +482,8 @@ class TestGetAvailableEndpoints:
     connector = get_mock_provider_model_connector(provider_model_config=config)
     query_record = types.QueryRecord(prompt='Hello', system='Be helpful')
 
-    supported, best_effort = connector._get_available_endpoints(query_record)
+    features = connector._get_features_from_query_record(query_record)
+    supported, best_effort = connector._get_available_endpoints(features=features)
 
     # Only 'chat' is in supported for both features
     assert supported == ['chat']
@@ -447,7 +499,8 @@ class TestGetAvailableEndpoints:
     connector = get_mock_provider_model_connector(provider_model_config=config)
     query_record = types.QueryRecord(prompt='Hello', system='Be helpful')
 
-    supported, best_effort = connector._get_available_endpoints(query_record)
+    features = connector._get_features_from_query_record(query_record)
+    supported, best_effort = connector._get_available_endpoints(features=features)
 
     assert supported == []
     assert 'chat' in best_effort
@@ -466,7 +519,12 @@ class TestCheckEndpointsUsability:
         feature_mapping_strategy=types.FeatureMappingStrategy.STRICT)
 
     # Should not raise
-    connector._check_endpoints_usability(['chat'], [], query_record)
+    connector._check_endpoints_usability(
+        supported_endpoints=['chat'],
+        best_effort_endpoints=[],
+        provider_model=query_record.provider_model,
+        feature_mapping_strategy=query_record.feature_mapping_strategy,
+        features=connector._get_features_from_query_record(query_record))
 
   def test_strict_mode_without_supported_endpoints_raises(self):
     config = _create_config_with_features({
@@ -478,7 +536,12 @@ class TestCheckEndpointsUsability:
         feature_mapping_strategy=types.FeatureMappingStrategy.STRICT)
 
     with pytest.raises(Exception, match='STRICT mode'):
-      connector._check_endpoints_usability([], ['chat'], query_record)
+      connector._check_endpoints_usability(
+          supported_endpoints=[],
+          best_effort_endpoints=['chat'],
+          provider_model=query_record.provider_model,
+          feature_mapping_strategy=query_record.feature_mapping_strategy,
+          features=connector._get_features_from_query_record(query_record))
 
   def test_best_effort_mode_with_best_effort_endpoints_passes(self):
     config = _create_config_with_features({
@@ -490,7 +553,12 @@ class TestCheckEndpointsUsability:
         feature_mapping_strategy=types.FeatureMappingStrategy.BEST_EFFORT)
 
     # Should not raise
-    connector._check_endpoints_usability([], ['chat'], query_record)
+    connector._check_endpoints_usability(
+        supported_endpoints=[],
+        best_effort_endpoints=['chat'],
+        provider_model=query_record.provider_model,
+        feature_mapping_strategy=query_record.feature_mapping_strategy,
+        features=connector._get_features_from_query_record(query_record))
 
   def test_best_effort_mode_without_any_endpoints_raises(self):
     config = _create_config_with_features({
@@ -502,7 +570,12 @@ class TestCheckEndpointsUsability:
         feature_mapping_strategy=types.FeatureMappingStrategy.BEST_EFFORT)
 
     with pytest.raises(Exception, match='BEST_EFFORT mode'):
-      connector._check_endpoints_usability([], [], query_record)
+      connector._check_endpoints_usability(
+          supported_endpoints=[],
+          best_effort_endpoints=[],
+          provider_model=query_record.provider_model,
+          feature_mapping_strategy=query_record.feature_mapping_strategy,
+          features=connector._get_features_from_query_record(query_record))
 
 
 class TestSelectEndpoint:
@@ -522,6 +595,130 @@ class TestSelectEndpoint:
     connector = get_mock_provider_model_connector()
     result = connector._select_endpoint([], [])
     assert result is None
+
+
+class TestGetFeatureCheckResultEndpoint:
+  """Tests for _get_feature_check_result_endpoint method."""
+
+  def test_returns_supported_endpoint(self):
+    config = _create_config_with_features({
+        'prompt': {'supported': ['chat'], 'best_effort': []}
+    })
+    connector = get_mock_provider_model_connector(provider_model_config=config)
+    result = connector._get_feature_check_result_endpoint(
+        provider_model=connector.provider_model,
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
+        features=[types.FeatureNameType.PROMPT])
+    assert result == 'chat'
+
+  def test_returns_best_effort_endpoint(self):
+    config = _create_config_with_features({
+        'prompt': {'supported': [], 'best_effort': ['completion']}
+    })
+    connector = get_mock_provider_model_connector(
+        feature_mapping_strategy=types.FeatureMappingStrategy.BEST_EFFORT,
+        provider_model_config=config)
+    result = connector._get_feature_check_result_endpoint(
+        provider_model=connector.provider_model,
+        feature_mapping_strategy=types.FeatureMappingStrategy.BEST_EFFORT,
+        features=[types.FeatureNameType.PROMPT])
+    assert result == 'completion'
+
+  def test_caches_result(self):
+    config = _create_config_with_features({
+        'prompt': {'supported': ['chat'], 'best_effort': []}
+    })
+    connector = get_mock_provider_model_connector(provider_model_config=config)
+    assert len(connector._chosen_endpoint_cached_result) == 0
+
+    connector._get_feature_check_result_endpoint(
+        provider_model=connector.provider_model,
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
+        features=[types.FeatureNameType.PROMPT])
+
+    assert len(connector._chosen_endpoint_cached_result) == 1
+
+  def test_uses_cached_result(self):
+    config = _create_config_with_features({
+        'prompt': {'supported': ['chat'], 'best_effort': []}
+    })
+    connector = get_mock_provider_model_connector(provider_model_config=config)
+
+    # First call
+    result1 = connector._get_feature_check_result_endpoint(
+        provider_model=connector.provider_model,
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
+        features=[types.FeatureNameType.PROMPT])
+
+    # Modify cache to verify it's being used
+    signature = list(connector._chosen_endpoint_cached_result.keys())[0]
+    connector._chosen_endpoint_cached_result[signature] = 'cached_endpoint'
+
+    # Second call should return cached value
+    result2 = connector._get_feature_check_result_endpoint(
+        provider_model=connector.provider_model,
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
+        features=[types.FeatureNameType.PROMPT])
+
+    assert result2 == 'cached_endpoint'
+
+
+class TestCheckFeatureCompatibility:
+  """Tests for check_feature_compatibility method."""
+
+  def test_compatible_single_feature(self):
+    config = _create_config_with_features({
+        'prompt': {'supported': ['chat'], 'best_effort': []}
+    })
+    connector = get_mock_provider_model_connector(
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
+        provider_model_config=config)
+    assert connector.check_feature_compatibility([types.FeatureNameType.PROMPT]) is True
+
+  def test_compatible_multiple_features(self):
+    config = _create_config_with_features({
+        'prompt': {'supported': ['chat'], 'best_effort': []},
+        'system': {'supported': ['chat'], 'best_effort': []},
+    })
+    connector = get_mock_provider_model_connector(
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
+        provider_model_config=config)
+    result = connector.check_feature_compatibility([
+        types.FeatureNameType.PROMPT,
+        types.FeatureNameType.SYSTEM])
+    assert result is True
+
+  def test_incompatible_features_strict_mode(self):
+    config = _create_config_with_features({
+        'prompt': {'supported': ['chat'], 'best_effort': []},
+        'system': {'supported': ['completion'], 'best_effort': []},
+    })
+    connector = get_mock_provider_model_connector(
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
+        provider_model_config=config)
+    with pytest.raises(Exception, match='STRICT mode'):
+      connector.check_feature_compatibility([
+          types.FeatureNameType.PROMPT,
+          types.FeatureNameType.SYSTEM])
+
+  def test_best_effort_mode_fallback(self):
+    config = _create_config_with_features({
+        'prompt': {'supported': ['chat'], 'best_effort': []},
+        'system': {'supported': [], 'best_effort': ['chat']},
+    })
+    connector = get_mock_provider_model_connector(
+        feature_mapping_strategy=types.FeatureMappingStrategy.BEST_EFFORT,
+        provider_model_config=config)
+    result = connector.check_feature_compatibility([
+        types.FeatureNameType.PROMPT,
+        types.FeatureNameType.SYSTEM])
+    assert result is True
+
+  def test_empty_features_list(self):
+    connector = get_mock_provider_model_connector()
+    result = connector.check_feature_compatibility([])
+    # Empty features returns False (no endpoint found)
+    assert result is False
 
 
 class TestSanitizeSystemFeature:
@@ -737,10 +934,14 @@ class TestGetFeatureSignature:
   def test_basic_prompt_signature(self):
     connector = get_mock_provider_model_connector()
     query_record = types.QueryRecord(prompt='Hello')
-    result = connector._get_feature_signature(query_record)
+    features = connector._get_features_from_query_record(query_record)
+    result = connector._get_feature_signature(
+        provider_model=query_record.provider_model,
+        feature_mapping_strategy=query_record.feature_mapping_strategy,
+        features=features)
 
     assert 'prompt' in result
-    assert 'None' in result  # provider_model and feature_mapping_strategy
+    assert 'None' in result  # provider_model and feature_mapping_strategy are not included in the signature
 
   def test_signature_includes_provider_model(self):
     connector = get_mock_provider_model_connector()
@@ -748,7 +949,11 @@ class TestGetFeatureSignature:
         prompt='Hello',
         provider_model=pytest.model_configs_instance.get_provider_model(
             ('mock_provider', 'mock_model')))
-    result = connector._get_feature_signature(query_record)
+    features = connector._get_features_from_query_record(query_record)
+    result = connector._get_feature_signature(
+        provider_model=query_record.provider_model,
+        feature_mapping_strategy=query_record.feature_mapping_strategy,
+        features=features)
 
     assert 'mock_provider' in result
     assert 'mock_model' in result
@@ -758,7 +963,11 @@ class TestGetFeatureSignature:
     query_record = types.QueryRecord(
         prompt='Hello',
         feature_mapping_strategy=types.FeatureMappingStrategy.STRICT)
-    result = connector._get_feature_signature(query_record)
+    features = connector._get_features_from_query_record(query_record)
+    result = connector._get_feature_signature(
+        provider_model=query_record.provider_model,
+        feature_mapping_strategy=query_record.feature_mapping_strategy,
+        features=features)
 
     assert 'STRICT' in result
 
@@ -767,18 +976,26 @@ class TestGetFeatureSignature:
     query_record = types.QueryRecord(
         prompt='Hello',
         response_format=types.ResponseFormat(type=types.ResponseFormatType.JSON))
-    result = connector._get_feature_signature(query_record)
+    features = connector._get_features_from_query_record(query_record)
+    result = connector._get_feature_signature(
+        provider_model=query_record.provider_model,
+        feature_mapping_strategy=query_record.feature_mapping_strategy,
+        features=features)
 
-    assert 'JSON' in result
+    assert 'response_format::json' in result
     assert 'prompt' in result
 
   def test_signature_without_response_format(self):
     connector = get_mock_provider_model_connector()
     query_record = types.QueryRecord(prompt='Hello')
-    result = connector._get_feature_signature(query_record)
+    features = connector._get_features_from_query_record(query_record)
+    result = connector._get_feature_signature(
+        provider_model=query_record.provider_model,
+        feature_mapping_strategy=query_record.feature_mapping_strategy,
+        features=features)
 
     # Should not raise error and should not include response_format
-    assert 'JSON' not in result
+    assert 'response_format::json' not in result
     assert 'prompt' in result
 
   def test_signature_with_multiple_features(self):
@@ -788,7 +1005,11 @@ class TestGetFeatureSignature:
         system='Be helpful',
         max_tokens=100,
         temperature=0.7)
-    result = connector._get_feature_signature(query_record)
+    features = connector._get_features_from_query_record(query_record)
+    result = connector._get_feature_signature(
+        provider_model=query_record.provider_model,
+        feature_mapping_strategy=query_record.feature_mapping_strategy,
+        features=features)
 
     assert 'prompt' in result
     assert 'system' in result
@@ -803,8 +1024,16 @@ class TestGetFeatureSignature:
     query_record2 = types.QueryRecord(
         prompt='Different prompt',
         system='Different system')
-    result1 = connector._get_feature_signature(query_record1)
-    result2 = connector._get_feature_signature(query_record2)
+    features1 = connector._get_features_from_query_record(query_record1)
+    features2 = connector._get_features_from_query_record(query_record2)
+    result1 = connector._get_feature_signature(
+        provider_model=query_record1.provider_model,
+        feature_mapping_strategy=query_record1.feature_mapping_strategy,
+        features=features1)
+    result2 = connector._get_feature_signature(
+        provider_model=query_record2.provider_model,
+        feature_mapping_strategy=query_record2.feature_mapping_strategy,
+        features=features2)
 
     # Same features used, so same signature (content doesn't matter)
     assert result1 == result2
@@ -813,8 +1042,16 @@ class TestGetFeatureSignature:
     connector = get_mock_provider_model_connector()
     query_record1 = types.QueryRecord(prompt='Hello')
     query_record2 = types.QueryRecord(prompt='Hello', system='Be helpful')
-    result1 = connector._get_feature_signature(query_record1)
-    result2 = connector._get_feature_signature(query_record2)
+    features1 = connector._get_features_from_query_record(query_record1)
+    features2 = connector._get_features_from_query_record(query_record2)
+    result1 = connector._get_feature_signature(
+        provider_model=query_record1.provider_model,
+        feature_mapping_strategy=query_record1.feature_mapping_strategy,
+        features=features1)
+    result2 = connector._get_feature_signature(
+        provider_model=query_record2.provider_model,
+        feature_mapping_strategy=query_record2.feature_mapping_strategy,
+        features=features2)
 
     assert result1 != result2
 
@@ -834,7 +1071,7 @@ class TestChosenEndpointCachedResult:
     query_record = types.QueryRecord(prompt='Hello')
 
     # First call should populate the cache
-    result1 = connector.feature_check(query_record)
+    result1 = connector.feature_check_and_sanitize(query_record)
 
     # Cache should now contain the result
     assert len(connector._chosen_endpoint_cached_result) == 1
@@ -848,11 +1085,11 @@ class TestChosenEndpointCachedResult:
     query_record = types.QueryRecord(prompt='Hello')
 
     # First call
-    result1 = connector.feature_check(query_record)
+    result1 = connector.feature_check_and_sanitize(query_record)
     cache_size_after_first = len(connector._chosen_endpoint_cached_result)
 
     # Second call with same features
-    result2 = connector.feature_check(query_record)
+    result2 = connector.feature_check_and_sanitize(query_record)
     cache_size_after_second = len(connector._chosen_endpoint_cached_result)
 
     # Cache size should not increase
@@ -868,8 +1105,8 @@ class TestChosenEndpointCachedResult:
     query_record1 = types.QueryRecord(prompt='Hello')
     query_record2 = types.QueryRecord(prompt='Hello', system='Be helpful')
 
-    connector.feature_check(query_record1)
-    connector.feature_check(query_record2)
+    connector.feature_check_and_sanitize(query_record1)
+    connector.feature_check_and_sanitize(query_record2)
 
     # Two different feature combinations should create two cache entries
     assert len(connector._chosen_endpoint_cached_result) == 2
@@ -882,8 +1119,8 @@ class TestChosenEndpointCachedResult:
     query_record1 = types.QueryRecord(prompt='Hello')
     query_record2 = types.QueryRecord(prompt='Goodbye')
 
-    connector.feature_check(query_record1)
-    connector.feature_check(query_record2)
+    connector.feature_check_and_sanitize(query_record1)
+    connector.feature_check_and_sanitize(query_record2)
 
     # Same features (just prompt), so only one cache entry
     assert len(connector._chosen_endpoint_cached_result) == 1
