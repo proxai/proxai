@@ -480,3 +480,36 @@ class AvailableModelsState(StateContainer):
   providers_with_key: Optional[Set[str]] = None
   has_fetched_all_models: Optional[bool] = None
   latest_model_cache_path_used_for_update: Optional[str] = None
+
+
+@dataclasses.dataclass
+class ProxAIClientState(StateContainer):
+  run_type: Optional[RunType] = None
+  hidden_run_key: Optional[str] = None
+  experiment_path: Optional[str] = None
+  root_logging_path: Optional[str] = None
+  default_model_cache_path: Optional[str] = None
+  platform_used_for_default_model_cache: Optional[bool] = None
+
+  logging_options: Optional[LoggingOptions] = None
+  cache_options: Optional[CacheOptions] = None
+  proxdash_options: Optional[ProxDashOptions] = None
+
+  model_configs: Optional[ModelConfigsState] = None
+  model_configs_requested_from_proxdash: Optional[bool] = None
+
+  registered_model_connectors: Optional[Dict[
+      CallType, ProviderModelState]] = None
+  model_connectors: Optional[Dict[
+      ProviderModelType, ProviderModelState]] = None
+  default_model_cache_manager: Optional[ModelCacheManagerState] = None
+  model_cache_manager: Optional[ModelCacheManagerState] = None
+  query_cache_manager: Optional[QueryCacheManagerState] = None
+  proxdash_connection: Optional[ProxDashConnectionState] = None
+
+  feature_mapping_strategy: Optional[FeatureMappingStrategy] = None
+  suppress_provider_errors: Optional[bool] = None
+  allow_multiprocessing: Optional[bool] = None
+  model_test_timeout: Optional[int] = None
+
+  available_models: Optional[AvailableModelsState] = None

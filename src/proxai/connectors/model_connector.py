@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import copy
 import datetime
 import re
@@ -20,90 +21,63 @@ import proxai.state_controllers.state_controller as state_controller
 _PROVIDER_MODEL_STATE_PROPERTY = '_provider_model_state'
 
 
+@dataclasses.dataclass
+class ProviderModelConnectorParams:
+  provider_model: Optional[types.ProviderModelType] = None
+  run_type: Optional[types.RunType] = None
+  provider_model_config: Optional[types.ProviderModelConfigType] = None
+  feature_mapping_strategy: Optional[types.FeatureMappingStrategy] = None
+  query_cache_manager: Optional[types.QueryCacheManagerState] = None
+  logging_options: Optional[types.LoggingOptions] = None
+  proxdash_connection: Optional[proxdash.ProxDashConnection] = None
+
+
 class ProviderModelConnector(state_controller.StateControlled):
   _provider_model: Optional[types.ProviderModelType]
   _run_type: Optional[types.RunType]
   _provider_model_config: Optional[types.ProviderModelConfigType]
-  _get_run_type: Optional[Callable[[], types.RunType]]
   _feature_mapping_strategy: Optional[types.FeatureMappingStrategy]
-  _get_feature_mapping_strategy: Optional[Callable[[], types.FeatureMappingStrategy]]
   _query_cache_manager: Optional[query_cache.QueryCacheManager]
-  _get_query_cache_manager: Optional[
-      Callable[[], query_cache.QueryCacheManager]]
   _api: Optional[Any]
   _stats: Optional[Dict[str, stats_type.RunStats]]
   _logging_options: Optional[types.LoggingOptions]
-  _get_logging_options: Optional[Dict]
   _proxdash_connection: Optional[proxdash.ProxDashConnection]
-  _get_proxdash_connection: Optional[
-      Callable[[bool], proxdash.ProxDashConnection]]
   _provider_model_state: Optional[types.ProviderModelState]
 
   _chosen_endpoint_cached_result: Optional[Dict[str, bool]]
 
   def __init__(
       self,
-      provider_model: Optional[types.ProviderModelType] = None,
-      run_type: Optional[types.RunType] = None,
-      provider_model_config: Optional[types.ProviderModelConfigType] = None,
-      get_run_type: Optional[Callable[[], types.RunType]] = None,
-      feature_mapping_strategy: Optional[types.FeatureMappingStrategy] = None,
-      get_feature_mapping_strategy: Optional[Callable[[], types.FeatureMappingStrategy]] = None,
-      query_cache_manager: Optional[query_cache.QueryCacheManager] = None,
-      get_query_cache_manager: Optional[
-          Callable[[], query_cache.QueryCacheManager]] = None,
-      logging_options: Optional[types.LoggingOptions] = None,
-      get_logging_options: Optional[Callable[[], types.LoggingOptions]] = None,
-      proxdash_connection: Optional[proxdash.ProxDashConnection] = None,
-      get_proxdash_connection: Optional[
-          Callable[[bool], proxdash.ProxDashConnection]] = None,
-      init_state: Optional[types.ProviderModelState] = None,
-      stats: Optional[Dict[str, stats_type.RunStats]] = None):
+      init_from_params: Optional[ProviderModelConnectorParams] = None,
+      init_from_state: Optional[types.ProviderModelState] = None
+  ):
     super().__init__(
-        init_state=init_state,
-        provider_model=provider_model,
-        run_type=run_type,
-        provider_model_config=provider_model_config,
-        get_run_type=get_run_type,
-        feature_mapping_strategy=feature_mapping_strategy,
-        get_feature_mapping_strategy=get_feature_mapping_strategy,
-        query_cache_manager=query_cache_manager,
-        get_query_cache_manager=get_query_cache_manager,
-        logging_options=logging_options,
-        get_logging_options=get_logging_options,
-        proxdash_connection=proxdash_connection,
-        get_proxdash_connection=get_proxdash_connection)
+        init_from_params=init_from_params,
+        init_from_state=init_from_state)
 
     self._chosen_endpoint_cached_result = {}
 
-    if init_state:
-      if init_state.provider_model is None:
-        raise ValueError('provider_model needs to be set in init_state.')
-      if init_state.provider_model.provider != self.get_provider_name():
+    if init_from_state:
+      if init_from_state.provider_model is None:
+        raise ValueError('provider_model needs to be set in init_from_state.')
+      if init_from_state.provider_model.provider != self.get_provider_name():
         raise ValueError(
             'provider_model needs to be same with the class provider name.\n'
-            f'provider_model: {init_state.provider_model}\n'
+            f'provider_model: {init_from_state.provider_model}\n'
             f'class provider name: {self.get_provider_name()}')
-      self.load_state(init_state)
+      self.load_state(init_from_state)
     else:
       initial_state = self.get_state()
 
-      self._get_run_type = get_run_type
-      self._get_feature_mapping_strategy = get_feature_mapping_strategy
-      self._get_query_cache_manager = get_query_cache_manager
-      self._get_logging_options = get_logging_options
-      self._get_proxdash_connection = get_proxdash_connection
+      self.provider_model = init_from_params.provider_model
+      self.run_type = init_from_params.run_type
+      self.provider_model_config = init_from_params.provider_model_config
+      self.feature_mapping_strategy = init_from_params.feature_mapping_strategy
+      self.query_cache_manager = init_from_params.query_cache_manager
+      self.logging_options = init_from_params.logging_options
+      self.proxdash_connection = init_from_params.proxdash_connection
 
-      self.provider_model = provider_model
-      self.run_type = run_type
-      self.provider_model_config = provider_model_config
-      self.feature_mapping_strategy = feature_mapping_strategy
-      self.query_cache_manager = query_cache_manager
-      self.logging_options = logging_options
-      self.proxdash_connection = proxdash_connection
-      self._stats = stats
-
-      self.handle_changes(initial_state, self.get_state())
+      # self.handle_changes(initial_state, self.get_state())
 
   def get_internal_state_property_name(self):
     return _PROVIDER_MODEL_STATE_PROPERTY
@@ -115,38 +89,39 @@ class ProviderModelConnector(state_controller.StateControlled):
       self,
       old_state: types.ProviderModelState,
       current_state: types.ProviderModelState):
-    result_state = copy.deepcopy(old_state)
-    if current_state.provider_model is not None:
-      result_state.provider_model = current_state.provider_model
-    if current_state.run_type is not None:
-      result_state.run_type = current_state.run_type
-    if current_state.feature_mapping_strategy is not None:
-      result_state.feature_mapping_strategy = current_state.feature_mapping_strategy
-    if current_state.logging_options is not None:
-      result_state.logging_options = current_state.logging_options
-    if current_state.proxdash_connection is not None:
-      result_state.proxdash_connection = (
-          current_state.proxdash_connection)
+    pass
+    # result_state = copy.deepcopy(old_state)
+    # if current_state.provider_model is not None:
+    #   result_state.provider_model = current_state.provider_model
+    # if current_state.run_type is not None:
+    #   result_state.run_type = current_state.run_type
+    # if current_state.feature_mapping_strategy is not None:
+    #   result_state.feature_mapping_strategy = current_state.feature_mapping_strategy
+    # if current_state.logging_options is not None:
+    #   result_state.logging_options = current_state.logging_options
+    # if current_state.proxdash_connection is not None:
+    #   result_state.proxdash_connection = (
+    #       current_state.proxdash_connection)
 
-    if result_state.provider_model is None:
-      raise ValueError(
-          'Provider model is not set for both old and new states. '
-          'This creates an invalid state change.')
+    # if result_state.provider_model is None:
+    #   raise ValueError(
+    #       'Provider model is not set for both old and new states. '
+    #       'This creates an invalid state change.')
 
-    if result_state.provider_model.provider != self.get_provider_name():
-      raise ValueError(
-          'Provider needs to be same with the class provider name.\n'
-          f'provider_model: {result_state.provider_model}\n'
-          f'class provider name: {self.get_provider_name()}')
+    # if result_state.provider_model.provider != self.get_provider_name():
+    #   raise ValueError(
+    #       'Provider needs to be same with the class provider name.\n'
+    #       f'provider_model: {result_state.provider_model}\n'
+    #       f'class provider name: {self.get_provider_name()}')
 
-    if result_state.logging_options is None:
-      raise ValueError(
-          'Logging options are not set for both old and new states. '
-          'This creates an invalid state change.')
-    if result_state.proxdash_connection is None:
-      raise ValueError(
-          'ProxDash connection is not set for both old and new states. '
-          'This creates an invalid state change.')
+    # if result_state.logging_options is None:
+    #   raise ValueError(
+    #       'Logging options are not set for both old and new states. '
+    #       'This creates an invalid state change.')
+    # if result_state.proxdash_connection is None:
+    #   raise ValueError(
+    #       'ProxDash connection is not set for both old and new states. '
+    #       'This creates an invalid state change.')
 
   @property
   def api(self):
@@ -205,7 +180,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       self,
       state_value: types.QueryCacheManagerState
   ) -> query_cache.QueryCacheManager:
-    return query_cache.QueryCacheManager(init_state=state_value)
+    return query_cache.QueryCacheManager(init_from_state=state_value)
 
   @property
   def logging_options(self):
@@ -227,7 +202,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       self,
       state_value: types.ProxDashConnectionState
   ) -> proxdash.ProxDashConnection:
-    return proxdash.ProxDashConnection(init_state=state_value)
+    return proxdash.ProxDashConnection(init_from_state=state_value)
 
   def _extract_json_from_text(self, text: str) -> dict:
     """Helper function for extracting JSON from text.
