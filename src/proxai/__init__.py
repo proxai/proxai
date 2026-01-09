@@ -2,8 +2,10 @@
 from importlib.metadata import version
 from proxai.proxai import (
      connect,
+     check_health,
      generate_text,
      get_available_models,
+     set_model
 )
 
 
