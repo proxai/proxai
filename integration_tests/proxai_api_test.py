@@ -1161,8 +1161,8 @@ def get_current_options_with_empty_connect(state_data):
       'Experiment path should be None.')
   assert options.logging_options.logging_path is None, (
       'Logging path should be None.')
-  assert options.cache_options.cache_path is None, (
-      'Cache path should be None.')
+  assert options.cache_options is None, (
+      'Cache options should be None.')
   assert options.allow_multiprocessing is True, (
       'Allow multiprocessing should be True.')
   assert (

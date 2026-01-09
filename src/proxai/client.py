@@ -12,6 +12,7 @@ import proxai.connections.proxdash as proxdash
 import proxai.experiment.experiment as experiment
 import proxai.connectors.model_configs as model_configs
 import proxai.state_controllers.state_controller as state_controller
+import proxai.serializers.type_serializer as type_serializer
 
 
 _PROXAI_CLIENT_STATE_PROPERTY = '_proxai_client_state'
@@ -529,3 +530,23 @@ class ProxAIClient(state_controller.StateControlled):
       return logging_record
 
     return logging_record.response_record.response.value
+
+  def get_current_options(
+      self,
+      json: bool = False):
+    run_options = types.RunOptions(
+        run_type=self.run_type,
+        hidden_run_key=self.hidden_run_key,
+        experiment_path=self.experiment_path,
+        root_logging_path=self.root_logging_path,
+        default_model_cache_path=self.default_model_cache_path,
+        logging_options=self.logging_options,
+        cache_options=self.cache_options,
+        proxdash_options=self.proxdash_options,
+        feature_mapping_strategy=self.feature_mapping_strategy,
+        suppress_provider_errors=self.suppress_provider_errors,
+        allow_multiprocessing=self.allow_multiprocessing,
+        model_test_timeout=self.model_test_timeout)
+    if json:
+      return type_serializer.encode_run_options(run_options=run_options)
+    return run_options
