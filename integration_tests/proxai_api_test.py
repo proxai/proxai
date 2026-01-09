@@ -1251,7 +1251,7 @@ def main():
   state_data = query_cache_with_unique_response_limit(state_data=state_data)
   state_data = query_cache_with_use_cache_false(state_data=state_data)
   state_data = query_cache_with_clear_cache_and_override_unique_responses(state_data=state_data)
-  state_data = query_cache_with_pydantic_response(state_data=state_data, force_run=True)
+  state_data = query_cache_with_pydantic_response(state_data=state_data)
   state_data = proxdash_logging_record(state_data=state_data)
   state_data = proxdash_logging_record_with_all_options(state_data=state_data)
   state_data = proxdash_logging_record_with_hide_sensitive_content_prompt(state_data=state_data)

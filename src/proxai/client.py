@@ -55,7 +55,7 @@ class ProxAIClient(state_controller.StateControlled):
 
       _ = self.model_cache_manager
       _ = self.query_cache_manager
-      _ = self.proxdash_connection
+      self._init_proxdash_connection()
 
       if (self.cache_options and
           self.cache_options.clear_model_cache_on_connect):
@@ -63,6 +63,20 @@ class ProxAIClient(state_controller.StateControlled):
       if (self.cache_options and
           self.cache_options.clear_query_cache_on_connect):
         self.query_cache_manager.clear_cache()
+
+      available_models_params = available_models.AvailableModelsParams(
+          run_type=self.run_type,
+          feature_mapping_strategy=self.feature_mapping_strategy,
+          model_configs_instance=self.model_configs_instance,
+          model_cache_manager=self.model_cache_manager,
+          query_cache_manager=self.query_cache_manager,
+          logging_options=self.logging_options,
+          proxdash_connection=self.proxdash_connection,
+          allow_multiprocessing=self.allow_multiprocessing,
+          model_test_timeout=self.model_test_timeout,
+      )
+      self._available_models_instance = available_models.AvailableModels(
+          init_from_params=available_models_params)
 
   def get_internal_state_property_name(self):
     return _PROXAI_CLIENT_STATE_PROPERTY
@@ -298,7 +312,7 @@ class ProxAIClient(state_controller.StateControlled):
         self.proxdash_connection):
       model_configs_schema = self.proxdash_connection.get_model_configs_schema()
       if model_configs_schema is not None:
-        self.model_configs_instance.model_configs_schema = model_configs_schema
+        self._model_configs_instance.model_configs_schema = model_configs_schema
       self.model_configs_requested_from_proxdash = True
     return self.get_property_value('model_configs_instance')
 
@@ -358,25 +372,11 @@ class ProxAIClient(state_controller.StateControlled):
 
   @property
   def available_models_instance(self) -> available_models.AvailableModels:
-    if self._available_models_instance is None:
-      available_models_params = available_models.AvailableModelsParams(
-          run_type=self.run_type,
-          feature_mapping_strategy=self.feature_mapping_strategy,
-          model_configs_instance=self.model_configs_instance,
-          model_cache_manager=self.model_cache_manager,
-          query_cache_manager=self.query_cache_manager,
-          logging_options=self.logging_options,
-          proxdash_connection=self.proxdash_connection,
-          allow_multiprocessing=self.allow_multiprocessing,
-          model_test_timeout=self.model_test_timeout,
-      )
-      self._available_models_instance = available_models.AvailableModels(
-          init_from_params=available_models_params)
-    return self.get_property_value('available_models_instance')
+    return self.get_state_controlled_property_value('available_models_instance')
 
   @available_models_instance.setter
   def available_models_instance(self, value: available_models.AvailableModels):
-    self.set_property_value('available_models_instance', value)
+    self.set_state_controlled_property_value('available_models_instance', value)
 
   def _init_proxdash_connection(self):
     if self._proxdash_connection is None:
@@ -398,7 +398,9 @@ class ProxAIClient(state_controller.StateControlled):
     if call_type not in self.registered_model_connectors:
       for provider_model in self.model_configs_instance.get_default_model_priority_list():
         try:
-          self.available_models_instance.get_working_model(provider_model)
+          self.available_models_instance.get_working_model(
+              provider=provider_model.provider,
+              model=provider_model.model)
           self.registered_model_connectors[
               call_type] = self.available_models_instance.get_model_connector(
                   provider_model)
@@ -463,6 +465,10 @@ class ProxAIClient(state_controller.StateControlled):
       type_utils.check_messages_type(messages)
 
     if use_cache:
+      if self.query_cache_manager is None:
+        raise ValueError(
+            'use_cache is True but query cache is not working.\n'
+            'Please set query cache options to enable query cache.')
       if (self.query_cache_manager.status !=
           types.QueryCacheManagerStatus.WORKING):
         raise ValueError(
@@ -470,6 +476,7 @@ class ProxAIClient(state_controller.StateControlled):
             f'Query Cache Manager Status: {self.query_cache_manager.status}')
     elif use_cache is None:
       use_cache = (
+          self.query_cache_manager is not None and
           self.query_cache_manager.status ==
           types.QueryCacheManagerStatus.WORKING)
 
