@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import json
 import math
 from typing import List, Set
@@ -32,6 +33,11 @@ PROVIDER_KEY_MAP: Dict[str, Tuple[str]] = MappingProxyType({
 })
 
 
+@dataclasses.dataclass
+class ModelConfigsParams:
+  model_configs_schema: Optional[types.ModelConfigsSchemaType] = None
+
+
 class ModelConfigs(state_controller.StateControlled):
   _model_configs_schema: Optional[types.ModelConfigsSchemaType]
   _model_configs_state: Optional[types.ModelConfigsState]
@@ -40,20 +46,24 @@ class ModelConfigs(state_controller.StateControlled):
 
   def __init__(
       self,
-      model_configs_schema: Optional[types.ModelConfigsSchemaType] = None,
-      init_state=None):
+      init_from_params: Optional[ModelConfigsParams] = None,
+      init_from_state: Optional[types.ModelConfigsState] = None
+  ):
     super().__init__(
-        model_configs_schema=model_configs_schema,
-        init_state=init_state)
+        init_from_params=init_from_params,
+        init_from_state=init_from_state)
 
-    if init_state:
-      self.load_state(init_state)
+    if init_from_state:
+      self.load_state(init_from_state)
     else:
       initial_state = self.get_state()
 
-      if model_configs_schema is None:
+      if not init_from_params or init_from_params.model_configs_schema is None:
         model_configs_schema = self._load_model_config_schema_from_local_files()
+      else:
+        model_configs_schema = init_from_params.model_configs_schema
       self.model_configs_schema = model_configs_schema
+
       self.handle_changes(initial_state, self.get_state())
 
   def get_internal_state_property_name(self):

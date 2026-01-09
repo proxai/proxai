@@ -1,3 +1,4 @@
+import dataclasses
 import os
 import copy
 import json
@@ -14,55 +15,44 @@ _PROXDASH_STATE_PROPERTY = '_proxdash_connection_state'
 _NOT_SET_EXPERIMENT_PATH_VALUE = '(not set)'
 
 
+@dataclasses.dataclass
+class ProxDashConnectionParams:
+  hidden_run_key: Optional[str] = None
+  experiment_path: Optional[str] = None
+  logging_options: Optional[types.LoggingOptions] = None
+  proxdash_options: Optional[types.ProxDashOptions] = None
+
+
 class ProxDashConnection(state_controller.StateControlled):
   _status: Optional[types.ProxDashConnectionStatus]
   _hidden_run_key: Optional[str]
   _experiment_path: Optional[str]
-  _get_experiment_path: Optional[Callable[[], str]]
   _logging_options: Optional[types.LoggingOptions]
-  _get_logging_options: Optional[Callable[[], types.LoggingOptions]]
   _proxdash_options: Optional[types.ProxDashOptions]
-  _get_proxdash_options: Optional[Callable[[], types.ProxDashOptions]]
   _key_info_from_proxdash: Optional[Dict]
   _connected_experiment_path: Optional[str]
   _proxdash_connection_state: Optional[types.ProxDashConnectionState]
 
   def __init__(
       self,
-      hidden_run_key: Optional[str] = None,
-      experiment_path: Optional[str] = None,
-      get_experiment_path: Optional[Callable[[], str]] = None,
-      logging_options: Optional[types.LoggingOptions] = None,
-      get_logging_options: Optional[Callable[[], types.LoggingOptions]] = None,
-      proxdash_options: Optional[types.ProxDashOptions] = None,
-      get_proxdash_options: Optional[
-          Callable[[], types.ProxDashOptions]] = None,
-      init_state: Optional[types.ProxDashConnectionState] = None):
+      init_from_params: Optional[ProxDashConnectionParams] = None,
+      init_from_state: Optional[types.ProxDashConnectionState] = None
+  ):
     super().__init__(
-        init_state=init_state,
-        hidden_run_key=hidden_run_key,
-        experiment_path=experiment_path,
-        get_experiment_path=get_experiment_path,
-        logging_options=logging_options,
-        get_logging_options=get_logging_options,
-        proxdash_options=proxdash_options,
-        get_proxdash_options=get_proxdash_options)
+        init_from_params=init_from_params,
+        init_from_state=init_from_state)
 
     self.set_property_value(
         'status', types.ProxDashConnectionStatus.INITIALIZING)
 
-    if init_state:
-      self.load_state(init_state)
+    if init_from_state:
+      self.load_state(init_from_state)
     else:
       initial_state = self.get_state()
-      self._get_experiment_path = get_experiment_path
-      self._get_logging_options = get_logging_options
-      self._get_proxdash_options = get_proxdash_options
-
-      self.hidden_run_key = hidden_run_key
-      self.logging_options = logging_options
-      self.proxdash_options = proxdash_options
-      self.experiment_path = experiment_path
+      self.hidden_run_key = init_from_params.hidden_run_key
+      self.logging_options = init_from_params.logging_options
+      self.proxdash_options = init_from_params.proxdash_options
+      self.experiment_path = init_from_params.experiment_path
       self.handle_changes(initial_state, self.get_state())
 
   def get_internal_state_property_name(self):
@@ -233,15 +223,11 @@ class ProxDashConnection(state_controller.StateControlled):
   def experiment_path(self) -> str:
     internal_experiment_path = self.get_property_internal_value(
         'experiment_path')
-    internal_get_experiment_path = self.get_property_func_getter(
-        'experiment_path')
 
     experiment_path = None
     if (internal_experiment_path is not None and
         internal_experiment_path != _NOT_SET_EXPERIMENT_PATH_VALUE):
       experiment_path = internal_experiment_path
-    elif internal_get_experiment_path is not None:
-      experiment_path = internal_get_experiment_path()
 
     if experiment_path is None:
       experiment_path = _NOT_SET_EXPERIMENT_PATH_VALUE

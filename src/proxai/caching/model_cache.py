@@ -1,3 +1,4 @@
+import dataclasses
 import os
 import copy
 import datetime
@@ -11,6 +12,11 @@ AVAILABLE_MODELS_PATH = 'available_models.json'
 _MODEL_CACHE_MANAGER_STATE_PROPERTY = '_model_cache_manager_state'
 
 
+@dataclasses.dataclass
+class ModelCacheManagerParams:
+  cache_options: Optional[types.CacheOptions] = None
+
+
 class ModelCacheManager(state_controller.StateControlled):
   _cache_options: types.CacheOptions
   _model_status_by_call_type: types.ModelStatusByCallType
@@ -18,23 +24,21 @@ class ModelCacheManager(state_controller.StateControlled):
 
   def __init__(
       self,
-      cache_options: Optional[types.CacheOptions] = None,
-      get_cache_options: Optional[Callable[[], types.CacheOptions]] = None,
-      init_state: Optional[types.ModelCacheManagerState] = None):
+      init_from_params: Optional[ModelCacheManagerParams] = None,
+      init_from_state: Optional[types.ModelCacheManagerState] = None
+  ):
     super().__init__(
-        init_state=init_state,
-        cache_options=cache_options,
-        get_cache_options=get_cache_options)
+        init_from_params=init_from_params,
+        init_from_state=init_from_state)
 
     self.set_property_value(
         'status', types.ModelCacheManagerStatus.INITIALIZING)
 
-    if init_state:
-      self.load_state(init_state)
+    if init_from_state:
+      self.load_state(init_from_state)
     else:
       initial_state = self.get_state()
-      self._get_cache_options = get_cache_options
-      self.cache_options = cache_options
+      self.cache_options = init_from_params.cache_options
       self.handle_changes(initial_state, self.get_state())
 
   def get_internal_state_property_name(self):
