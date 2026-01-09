@@ -104,8 +104,8 @@ def get_available_models():
     return _get_default_client().available_models_instance
 
 
-# def get_current_options(**kwargs):
-#     return _get_default_client().get_current_options(**kwargs)
+def get_current_options(json: bool = False):
+    return _get_default_client().get_current_options(json=json)
 
 
 # def reset_state():

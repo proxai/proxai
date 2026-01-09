@@ -5,6 +5,7 @@ from proxai.proxai import (
      check_health,
      generate_text,
      get_available_models,
+     get_current_options,
      set_model
 )
 
