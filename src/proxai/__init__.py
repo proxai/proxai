@@ -8,8 +8,9 @@ from proxai.proxai import (
      get_default_proxai_client,
      set_model,
      reset_state,
+     DefaultModelsConnector,
 )
 
 
 __version__ = version("proxai")
-models = get_default_proxai_client().available_models_instance
+models = DefaultModelsConnector()
