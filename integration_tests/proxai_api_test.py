@@ -9,6 +9,7 @@ Examples:
   poetry run python3 integration_tests/proxai_api_test.py --mode new
   poetry run python3 integration_tests/proxai_api_test.py --print-code
   poetry run python3 integration_tests/proxai_api_test.py --env prod --print-code
+  poetry run python3 integration_tests/proxai_api_test.py --auto-continue
 """
 import os
 import inspect
@@ -32,6 +33,7 @@ _ROOT_LOGGING_PATH = None
 _ROOT_CACHE_PATH = None
 _EXPERIMENT_PATH = None
 _PRINT_CODE = False
+_AUTO_CONTINUE = False
 
 
 def print_separator(status, message, color):
@@ -55,6 +57,7 @@ def init_test_path():
   global _ROOT_CACHE_PATH
   global _EXPERIMENT_PATH
   global _PRINT_CODE
+  global _AUTO_CONTINUE
   global _WEBVIEW_BASE_URL
   global _PROXDASH_BASE_URL
   os.makedirs(_ROOT_INTEGRATION_TEST_PATH, exist_ok=True)
@@ -63,6 +66,8 @@ def init_test_path():
                       help='Execution mode for the integration test')
   parser.add_argument('--print-code', action='store_true',
                       help='Print code blocks')
+  parser.add_argument('--auto-continue', action='store_true',
+                      help='Auto continue the test without user input')
   parser.add_argument('--env', choices=['dev', 'prod'], default='dev',
                       help='Environment for the integration test')
   args = parser.parse_args()
@@ -73,6 +78,7 @@ def init_test_path():
     _WEBVIEW_BASE_URL = 'http://localhost:3000'
     _PROXDASH_BASE_URL = 'http://localhost:3001'
   _PRINT_CODE = args.print_code
+  _AUTO_CONTINUE = args.auto_continue
   dir_list = os.listdir(_ROOT_INTEGRATION_TEST_PATH)
   test_ids = [
       int(dir_name.split('test_')[1])
@@ -117,7 +123,8 @@ def integration_block(func):
         print(inspect.getsource(func).strip())
         print(f'\033[32m</Code Block> \033[0m')
       state_data = func(**kwargs)
-      input('> Press Enter to continue...')
+      if not _AUTO_CONTINUE:
+        input('> Press Enter to continue...')
       json.dump(state_data, open(state_path, 'w'))
       return state_data
   return wrapper
@@ -171,7 +178,10 @@ def local_proxdash_connection(state_data):
 
 @integration_block
 def list_models(state_data):
-  provider_models = px.models.list_working_models()
+  start_time = time.time()
+  provider_models = px.models.list_models()
+  end_time = time.time()
+  assert end_time - start_time < 1, 'List models should be fast.'
   assert len(provider_models) > 0, 'No models found.'
   print(f'Available models: {len(provider_models)}')
   for idx, provider_model in enumerate(provider_models):
@@ -185,6 +195,62 @@ def list_models(state_data):
 
 @integration_block
 def list_models_with_model_size_filter(state_data):
+  start_time = time.time()
+  provider_models = px.models.list_models(model_size='small')
+  print(f'Small models: {len(provider_models)}')
+  for provider_model in provider_models:
+    print(f'{provider_model.provider:>25} - {provider_model.model}')
+  assert px.models.get_model(
+      provider='claude', model='haiku-4.5') in provider_models
+  end_time = time.time()
+  assert end_time - start_time < 1
+
+  start_time = time.time()
+  provider_models = px.models.list_models(
+      model_size=px.types.ModelSizeType.MEDIUM)
+  print(f'Medium models: {len(provider_models)}')
+  for provider_model in provider_models:
+    print(f'{provider_model.provider:>25} - {provider_model.model}')
+  assert px.models.get_model(
+      provider='claude', model='sonnet-4.5') in provider_models
+  end_time = time.time()
+  assert end_time - start_time < 1
+
+  start_time = time.time()
+  provider_models = px.models.list_models(model_size='largest')
+  print(f'Largest models: {len(provider_models)}')
+  for provider_model in provider_models:
+    print(f'{provider_model.provider:>25} - {provider_model.model}')
+  assert px.models.get_model(
+      provider='claude', model='opus-4.5') in provider_models
+  end_time = time.time()
+  assert end_time - start_time < 1
+
+  return state_data
+
+
+@integration_block
+def list_working_models(state_data):
+  start_time = time.time()
+  provider_models = px.models.list_working_models()
+  end_time = time.time()
+  assert end_time - start_time > 1, (
+      'List models should take time at this stage because previous '
+      'integration_blocks didn\'t call any model list that caches the results.'
+  )
+  assert len(provider_models) > 0, 'No models found.'
+  print(f'Available models: {len(provider_models)}')
+  for idx, provider_model in enumerate(provider_models):
+    if idx > 15:
+      break
+    print(f'{idx:>3}: {provider_model.provider:>25} - {provider_model.model}')
+  if len(provider_models) > 15:
+    print(f'...')
+  return state_data
+
+
+@integration_block
+def list_working_models_with_model_size_filter(state_data):
   start_time = time.time()
   provider_models = px.models.list_working_models(model_size='small')
   print(f'Small models: {len(provider_models)}')
@@ -220,7 +286,7 @@ def list_models_with_model_size_filter(state_data):
 
 
 @integration_block
-def list_models_with_return_all(state_data):
+def list_working_models_with_return_all(state_data):
   model_status = px.models.list_working_models(return_all=True)
   print(str(model_status)[:150] + '...')
   print(f'Available models: {len(model_status.working_models)}')
@@ -229,7 +295,7 @@ def list_models_with_return_all(state_data):
 
 
 @integration_block
-def list_models_with_clear_model_cache_and_verbose_output(state_data):
+def list_working_models_with_clear_model_cache_and_verbose_output(state_data):
   model_status = px.models.list_working_models(
       clear_model_cache=True,
       return_all=True,
@@ -247,7 +313,7 @@ def list_models_with_clear_model_cache_and_verbose_output(state_data):
 
 
 @integration_block
-def list_providers(state_data):
+def list_working_providers(state_data):
   providers = px.models.list_working_providers()
   print(f'Providers: {len(providers)}')
   for provider in providers:
@@ -258,7 +324,7 @@ def list_providers(state_data):
 
 
 @integration_block
-def list_provider_models(state_data):
+def list_working_provider_models(state_data):
   provider_models = px.models.list_working_provider_models('openai')
   print(f'Provider Models: {len(provider_models)}')
   for provider_model in provider_models:
@@ -269,7 +335,7 @@ def list_provider_models(state_data):
 
 
 @integration_block
-def list_provider_models_with_model_size_filter(state_data):
+def list_working_provider_models_with_model_size_filter(state_data):
   provider_models = px.models.list_working_provider_models(
       'openai', model_size='large')
   print(f'Provider Models: {len(provider_models)}')
@@ -918,17 +984,22 @@ def proxdash_logging_record_with_hide_sensitive_content_message(state_data):
       messages=messages)
   print(f'1 - Go to ProxDash page: {_WEBVIEW_BASE_URL}/dashboard/logging')
   print('2 - Check if the latest logging record is:')
-  print('    * Prompt: <sensitive content hidden> ')
+  print('    * Prompt: [{"content": "<sensitive content hidden>", '
+        '"role": "assistant"}] ')
   print('    * Response: <sensitive content hidden> ')
   _manual_user_check(
       test_message='Latest logging record prompt and response are hidden?',
       fail_message='Latest logging record prompt or response is not hidden.')
   print('3 - Click "Open" button to see the details of the logging record.')
   print('4 - Check all of the followings are hidden:')
-  print('    * Prompt: <sensitive content hidden> ')
   print('    * Response: <sensitive content hidden> ')
   print('    * System: <sensitive content hidden> ')
-  print('    * Messages: <sensitive content hidden> ')
+  print('''    * Messages: [
+  {
+    "content": "<sensitive content hidden>",
+    "role": "assistant"
+  }
+] ''')
   _manual_user_check(
       test_message='All contents are hidden in single logging record view page?',
       fail_message='Some contents are not hidden in single logging record view page.')
@@ -1074,7 +1145,7 @@ def proxdash_limited_api_key(state_data):
 
 
 @integration_block
-def connect_strict_feature_test(state_data):
+def connect_feature_mapping_strategy_strict(state_data):
   px.connect(
       experiment_path=_EXPERIMENT_PATH,
       proxdash_options=px.types.ProxDashOptions(
@@ -1223,11 +1294,15 @@ def main():
   state_data = local_proxdash_connection(state_data=state_data, force_run=True)
   state_data = list_models(state_data=state_data)
   state_data = list_models_with_model_size_filter(state_data=state_data)
-  state_data = list_models_with_return_all(state_data=state_data)
-  state_data = list_models_with_clear_model_cache_and_verbose_output(state_data=state_data)
-  state_data = list_providers(state_data=state_data)
-  state_data = list_provider_models(state_data=state_data)
-  state_data = list_provider_models_with_model_size_filter(state_data=state_data)
+  state_data = list_working_models(state_data=state_data)
+  state_data = list_working_models_with_model_size_filter(state_data=state_data)
+  state_data = list_working_models_with_return_all(state_data=state_data)
+  state_data = list_working_models_with_clear_model_cache_and_verbose_output(
+      state_data=state_data)
+  state_data = list_working_providers(state_data=state_data)
+  state_data = list_working_provider_models(state_data=state_data)
+  state_data = list_working_provider_models_with_model_size_filter(
+      state_data=state_data)
   state_data = generate_text(state_data=state_data)
   state_data = generate_text_with_provider_model(state_data=state_data)
   state_data = generate_text_with_provider_model_type(state_data=state_data)
@@ -1262,7 +1337,7 @@ def main():
   state_data = proxdash_disable(state_data=state_data)
   state_data = proxdash_logging(state_data=state_data)
   state_data = proxdash_limited_api_key(state_data=state_data)
-  state_data = connect_strict_feature_test(state_data=state_data)
+  state_data = connect_feature_mapping_strategy_strict(state_data=state_data)
   state_data = connect_allow_multiprocessing(state_data=state_data, skip=True)
   state_data = connect_suppress_provider_errors(state_data=state_data)
   state_data = get_current_options_with_empty_connect(state_data=state_data)
