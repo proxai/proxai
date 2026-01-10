@@ -137,7 +137,7 @@ class AvailableModels(state_controller.StateControlled):
   def model_configs_instance(self, model_configs_instance: model_configs.ModelConfigs):
     self.set_state_controlled_property_value('model_configs_instance', model_configs_instance)
 
-  def model_configs_deserializer(
+  def model_configs_instance_deserializer(
       self,
       state_value: types.ModelConfigsState
   ) -> model_configs.ModelConfigs:
@@ -164,7 +164,7 @@ class AvailableModels(state_controller.StateControlled):
       self,
       state_value: types.ModelCacheManagerState
   ) -> model_cache.ModelCacheManager:
-    return model_cache.ModelCacheManager(init_state=state_value)
+    return model_cache.ModelCacheManager(init_from_state=state_value)
 
   @property
   def proxdash_connection(self) -> proxdash.ProxDashConnection:
