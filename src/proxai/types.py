@@ -471,7 +471,7 @@ class ProviderModelState(StateContainer):
 @dataclasses.dataclass
 class AvailableModelsState(StateContainer):
   run_type: Optional[RunType] = None
-  model_configs: Optional[ModelConfigsState] = None
+  model_configs_instance: Optional[ModelConfigsState] = None
   model_cache_manager: Optional[ModelCacheManagerState] = None
   logging_options: Optional[LoggingOptions] = None
   proxdash_connection: Optional[ProxDashConnectionState] = None
