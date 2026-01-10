@@ -13,7 +13,7 @@ ProxDashOptions = types.ProxDashOptions
 _DEFAULT_CLIENT: Optional[client.ProxAIClient] = None
 
 
-def _get_default_client() -> client.ProxAIClient:
+def get_default_proxai_client() -> client.ProxAIClient:
     global _DEFAULT_CLIENT
     if _DEFAULT_CLIENT is None:
         proxai_client_params = client.ProxAIClientParams()
@@ -29,19 +29,15 @@ def connect(**kwargs):
 
 
 def generate_text(prompt: Optional[str] = None, **kwargs):
-  return _get_default_client().generate_text(prompt=prompt, **kwargs)
+  return get_default_proxai_client().generate_text(prompt=prompt, **kwargs)
 
 
 def set_model(
     provider_model: Optional[types.ProviderModelIdentifierType] = None,
     generate_text: Optional[types.ProviderModelIdentifierType] = None):
-  _get_default_client().set_model(
+  get_default_proxai_client().set_model(
       provider_model=provider_model,
       generate_text=generate_text)
-
-
-# def set_run_type(run_type: types.RunType):
-#     _get_default_client().run_type = run_type
 
 
 def check_health(
@@ -95,43 +91,12 @@ def check_health(
     return model_status
 
 
-
-# def get_summary(**kwargs):
-#     return _get_default_client().get_summary(**kwargs)
-
-
-def get_available_models():
-    return _get_default_client().available_models_instance
-
-
 def get_current_options(json: bool = False):
-    return _get_default_client().get_current_options(json=json)
+    return get_default_proxai_client().get_current_options(json=json)
 
 
-# def reset_state():
-#     global _DEFAULT_CLIENT
-#     if _DEFAULT_CLIENT is not None:
-#         _DEFAULT_CLIENT.reset_platform_cache()
-#     _DEFAULT_CLIENT = None
-
-
-# def reset_platform_cache():
-#     _get_default_client().reset_platform_cache()
-
-
-# # === New Functions ===
-
-# def export_client_state() -> types.ProxAIClientState:
-#     """Export state for multiprocessing."""
-#     return _get_default_client().export_state()
-
-
-# def import_client_state(state: types.ProxAIClientState):
-#     """Import state in worker process."""
-#     global _DEFAULT_CLIENT
-#     _DEFAULT_CLIENT = ProxAIClient.from_state(state)
-
-
-# def get_client() -> ProxAIClient:
-#     """Get the default client instance."""
-#     return _get_default_client()
+def reset_state():
+    global _DEFAULT_CLIENT
+    if _DEFAULT_CLIENT.platform_used_for_default_model_cache:
+        _DEFAULT_CLIENT.model_cache_manager.clear_cache()
+    _DEFAULT_CLIENT = None
