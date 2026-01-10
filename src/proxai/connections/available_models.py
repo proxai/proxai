@@ -328,7 +328,9 @@ class AvailableModels(state_controller.StateControlled):
       self,
       models: types.ModelStatus,
       call_type: str):
-    if not self.model_cache_manager:
+    if (not self.model_cache_manager or
+        self.model_cache_manager.status !=
+        types.ModelCacheManagerStatus.WORKING):
       return
     cache_model_status = types.ModelStatus()
     if self.model_cache_manager:

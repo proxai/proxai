@@ -92,11 +92,55 @@ def check_health(
 
 
 def get_current_options(json: bool = False):
-    return get_default_proxai_client().get_current_options(json=json)
+  return get_default_proxai_client().get_current_options(json=json)
 
 
 def reset_state():
-    global _DEFAULT_CLIENT
-    if _DEFAULT_CLIENT.platform_used_for_default_model_cache:
-        _DEFAULT_CLIENT.model_cache_manager.clear_cache()
-    _DEFAULT_CLIENT = None
+  global _DEFAULT_CLIENT
+  if _DEFAULT_CLIENT is None:
+    return
+  if _DEFAULT_CLIENT.platform_used_for_default_model_cache:
+    _DEFAULT_CLIENT.model_cache_manager.clear_cache()
+  _DEFAULT_CLIENT = None
+
+
+class DefaultModelsConnector:
+  def list_models(self, *args, **kwargs):
+    return (
+        get_default_proxai_client()
+        .available_models_instance.list_models(*args, **kwargs))
+
+  def list_providers(self, *args, **kwargs):
+    return (
+        get_default_proxai_client()
+        .available_models_instance.list_providers(*args, **kwargs))
+
+  def list_provider_models(self, *args, **kwargs):
+    return (
+        get_default_proxai_client()
+        .available_models_instance.list_provider_models(*args, **kwargs))
+
+  def get_model(self, *args, **kwargs):
+    return (
+        get_default_proxai_client()
+        .available_models_instance.get_model(*args, **kwargs))
+
+  def list_working_models(self, *args, **kwargs):
+    return (
+        get_default_proxai_client()
+        .available_models_instance.list_working_models(*args, **kwargs))
+
+  def list_working_providers(self, *args, **kwargs):
+    return (
+        get_default_proxai_client()
+        .available_models_instance.list_working_providers(*args, **kwargs))
+
+  def list_working_provider_models(self, *args, **kwargs):
+    return (
+        get_default_proxai_client()
+        .available_models_instance.list_working_provider_models(*args, **kwargs))
+
+  def get_working_model(self, *args, **kwargs):
+    return (
+        get_default_proxai_client()
+        .available_models_instance.get_working_model(*args, **kwargs))

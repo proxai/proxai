@@ -219,7 +219,7 @@ class ProxAIClient(state_controller.StateControlled):
   def cache_options(self, value: Optional[types.CacheOptions]):
     result_cache_options = None
     if value is not None:
-      if not value.cache_path:
+      if not value.cache_path and not value.disable_model_cache:
         raise ValueError('cache_path is required while setting cache_options')
       result_cache_options = types.CacheOptions()
 
@@ -332,11 +332,7 @@ class ProxAIClient(state_controller.StateControlled):
           cache_options=self.cache_options)
       self._model_cache_manager = model_cache.ModelCacheManager(
           init_from_params=model_cache_manager_params)
-    if (self._model_cache_manager.status !=
-        types.ModelCacheManagerStatus.CACHE_PATH_NOT_FOUND):
-      return self._model_cache_manager
-
-    return None
+    return self.get_property_value('model_cache_manager')
 
   @model_cache_manager.setter
   def model_cache_manager(self, value: model_cache.ModelCacheManager):
