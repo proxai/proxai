@@ -56,27 +56,17 @@ class ModelConfigs(state_controller.StateControlled):
     if init_from_state:
       self.load_state(init_from_state)
     else:
-      initial_state = self.get_state()
-
       if not init_from_params or init_from_params.model_configs_schema is None:
         model_configs_schema = self._load_model_config_schema_from_local_files()
       else:
         model_configs_schema = init_from_params.model_configs_schema
       self.model_configs_schema = model_configs_schema
 
-      self.handle_changes(initial_state, self.get_state())
-
   def get_internal_state_property_name(self):
     return _MODEL_CONFIGS_STATE_PROPERTY
 
   def get_internal_state_type(self):
     return types.ModelConfigsState
-
-  def handle_changes(
-      self,
-      old_state: types.ModelConfigsState,
-      current_state: types.ModelConfigsState):
-    pass
 
   @property
   def model_configs_schema(self) -> types.ModelConfigsSchemaType:

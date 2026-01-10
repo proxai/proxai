@@ -25,13 +25,8 @@ class User:
 user = User()
 user.name = "Alice"  # Sets name and automatically updates internal state
 print(user._user_state)  # {'name': 'Alice'}
-
-Note: Current implementation makes deep copies if the value is not a primitive
-type. Further optimizations can be made in the future for specific use cases.
 """
-import copy
-from functools import wraps
-from typing import List, Callable, Any, Optional
+from typing import Any, Optional
 from abc import ABC, abstractmethod
 import dataclasses
 import proxai.types as types
@@ -62,17 +57,6 @@ class StateControlled(BaseStateControlled):
       raise ValueError(
           f'Invalid state type.\nExpected: {self.get_internal_state_type()}\n'
           f'Actual: {type(init_from_state)}')
-    # # Validate the properties provided in the kwargs.
-    # available_properties = set([
-    #     field.name
-    #     for field in dataclasses.fields(self.get_internal_state_type())
-    # ])
-    # for property_name in init_from_state.items():
-    #   if property_name not in available_properties:
-    #     raise ValueError(
-    #         f'Invalid property name:\n'
-    #         f'Property name: {property_name}\n'
-    #         f'Available properties: {available_properties}')
 
   @abstractmethod
   def get_internal_state_property_name(self):
@@ -81,14 +65,6 @@ class StateControlled(BaseStateControlled):
   @abstractmethod
   def get_internal_state_type(self):
     raise NotImplementedError('Subclasses must implement this method')
-
-  @abstractmethod
-  def handle_changes(
-      self,
-      old_state: dataclasses.dataclass,
-      current_state: dataclasses.dataclass):
-    raise NotImplementedError(
-        'Subclasses must implement this method before using it.')
 
   @staticmethod
   def get_property_internal_name(field: str) -> str:
@@ -121,18 +97,11 @@ class StateControlled(BaseStateControlled):
       property_name: str,
       value: Any):
     """Sets the property value directly in the internal state."""
-    # Note: This is not efficient but safely copies the value to the internal
-    # state. In the future, we can optimize this further for specific use cases.
-    if value is None:
-      copied_value = None
-    elif isinstance(value, (str, int, float, bool, type(None))):
-      copied_value = value
-    else:
-      copied_value = copy.deepcopy(value)
+
     setattr(
       getattr(self, self.get_internal_state_property_name()),
       property_name,
-      copied_value)
+      value)
 
   def get_property_value(self, property_name: str) -> Any:
     result = self.get_property_internal_value(property_name)
@@ -225,8 +194,7 @@ class StateControlled(BaseStateControlled):
     return result
 
   def get_internal_state(self) -> Any:
-    return copy.deepcopy(
-        getattr(self, self.get_internal_state_property_name()))
+    return getattr(self, self.get_internal_state_property_name())
 
   def load_state(self, state: Any):
     if type(state) != self.get_internal_state_type():
@@ -243,27 +211,3 @@ class StateControlled(BaseStateControlled):
             self,
             self.get_state_controlled_deserializer_name(field.name))(value)
       self.set_property_value_without_triggering_getters(field.name, value)
-
-  def apply_state_changes(self, changes: Optional[Any] = None):
-    if changes is None:
-      changes = self.get_internal_state_type()()
-
-    if type(changes) != self.get_internal_state_type():
-      raise ValueError(
-          f'Invalid state type.\nExpected: {self.get_internal_state_type()}\n'
-          f'Actual: {type(changes)}')
-
-    old_state = self.get_internal_state()
-    self.load_state(changes)
-    self.handle_changes(old_state, self.get_internal_state())
-
-  def apply_external_state_changes(self) -> Any:
-    old_state = self.get_internal_state()
-    state_changed = False
-    for field in dataclasses.fields(self.get_internal_state_type()):
-      property_value = getattr(self, field.name)
-      if getattr(old_state, field.name, None) != property_value:
-        state_changed = True
-    if not state_changed:
-      return None
-    self.handle_changes(old_state, self.get_internal_state())

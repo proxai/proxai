@@ -60,13 +60,6 @@ class ProxDashConnection(state_controller.StateControlled):
   def get_internal_state_type(cls):
     return types.ProxDashConnectionState
 
-  def handle_changes(
-      self,
-      old_state: types.ProxDashConnectionState,
-      current_state: types.ProxDashConnectionState
-  ):
-    pass
-
   @property
   def hidden_run_key(self) -> Optional[str]:
     return self.get_property_value('hidden_run_key')
@@ -341,8 +334,6 @@ class ProxDashConnection(state_controller.StateControlled):
     return logging_record
 
   def upload_logging_record(self, logging_record: types.LoggingRecord):
-    self.apply_external_state_changes()
-
     if self.status != types.ProxDashConnectionStatus.CONNECTED:
       return
     if ((self.proxdash_options and

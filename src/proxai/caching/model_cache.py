@@ -37,9 +37,8 @@ class ModelCacheManager(state_controller.StateControlled):
     if init_from_state:
       self.load_state(init_from_state)
     else:
-      initial_state = self.get_state()
       self.cache_options = init_from_params.cache_options
-      self.handle_changes(initial_state, self.get_state())
+      self.init_status()
 
   def get_internal_state_property_name(self):
     return _MODEL_CACHE_MANAGER_STATE_PROPERTY
@@ -47,45 +46,28 @@ class ModelCacheManager(state_controller.StateControlled):
   def get_internal_state_type(self):
     return types.ModelCacheManagerState
 
-  def handle_changes(
-      self,
-      old_state: types.ModelCacheManagerState,
-      current_state: types.ModelCacheManagerState):
-
-    if current_state.cache_options is None:
+  def init_status(self):
+    if self.cache_options is None:
       self.status = types.ModelCacheManagerStatus.CACHE_OPTIONS_NOT_FOUND
       self.model_status_by_call_type = None
       return
 
-    if current_state.cache_options.disable_model_cache == True:
+    if self.cache_options.disable_model_cache == True:
       self.status = types.ModelCacheManagerStatus.DISABLED
       self.model_status_by_call_type = None
       return
 
-    if current_state.cache_options.cache_path is None:
+    if self.cache_options.cache_path is None:
       self.status = types.ModelCacheManagerStatus.CACHE_PATH_NOT_FOUND
       self.model_status_by_call_type = None
       return
 
-    if not os.access(current_state.cache_options.cache_path, os.W_OK):
+    if not os.access(self.cache_options.cache_path, os.W_OK):
       self.status = types.ModelCacheManagerStatus.CACHE_PATH_NOT_WRITABLE
       self.model_status_by_call_type = None
       return
 
-    if current_state == old_state:
-      return
-
-    if (old_state.cache_options is None or
-        old_state.cache_options.cache_path !=
-        current_state.cache_options.cache_path or
-        old_state.cache_options.disable_model_cache !=
-        current_state.cache_options.disable_model_cache or
-        old_state.cache_options.clear_model_cache_on_connect !=
-        current_state.cache_options.clear_model_cache_on_connect or
-        old_state.cache_options.model_cache_duration !=
-        current_state.cache_options.model_cache_duration):
-      self._load_from_cache_path()
-
+    self._load_from_cache_path()
     self.status = types.ModelCacheManagerStatus.WORKING
 
   @property

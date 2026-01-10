@@ -63,11 +63,8 @@ class AvailableModels(state_controller.StateControlled):
     self.model_connectors = {}
 
     if init_from_state:
-      print('model_cache_manager', init_from_state.model_cache_manager.cache_options)
-      raise Exception('stop here')
       self.load_state(init_from_state)
     else:
-      initial_state = self.get_state()
       self.run_type = init_from_params.run_type
       self.feature_mapping_strategy = init_from_params.feature_mapping_strategy
       self.model_configs_instance = init_from_params.model_configs_instance
@@ -83,19 +80,11 @@ class AvailableModels(state_controller.StateControlled):
       self.latest_model_cache_path_used_for_update = None
       self._load_provider_keys()
 
-      self.handle_changes(initial_state, self.get_state())
-
   def get_internal_state_property_name(self):
     return _AVAILABLE_MODELS_STATE_PROPERTY
 
   def get_internal_state_type(self):
     return types.AvailableModelsState
-
-  def handle_changes(
-      self,
-      old_state: types.AvailableModelsState,
-      current_state: types.AvailableModelsState):
-    pass
 
   def _load_provider_keys(self):
     self.providers_with_key = set()
