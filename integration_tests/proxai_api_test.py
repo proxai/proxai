@@ -148,6 +148,7 @@ def create_user(state_data):
 
 @integration_block
 def local_proxdash_connection(state_data):
+  px.reset_state()
   px.connect(
       experiment_path=_EXPERIMENT_PATH,
       logging_options=px.types.LoggingOptions(

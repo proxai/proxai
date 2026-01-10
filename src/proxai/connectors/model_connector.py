@@ -67,8 +67,6 @@ class ProviderModelConnector(state_controller.StateControlled):
             f'class provider name: {self.get_provider_name()}')
       self.load_state(init_from_state)
     else:
-      initial_state = self.get_state()
-
       self.provider_model = init_from_params.provider_model
       self.run_type = init_from_params.run_type
       self.provider_model_config = init_from_params.provider_model_config
@@ -77,51 +75,11 @@ class ProviderModelConnector(state_controller.StateControlled):
       self.logging_options = init_from_params.logging_options
       self.proxdash_connection = init_from_params.proxdash_connection
 
-      # self.handle_changes(initial_state, self.get_state())
-
   def get_internal_state_property_name(self):
     return _PROVIDER_MODEL_STATE_PROPERTY
 
   def get_internal_state_type(self):
     return types.ProviderModelState
-
-  def handle_changes(
-      self,
-      old_state: types.ProviderModelState,
-      current_state: types.ProviderModelState):
-    pass
-    # result_state = copy.deepcopy(old_state)
-    # if current_state.provider_model is not None:
-    #   result_state.provider_model = current_state.provider_model
-    # if current_state.run_type is not None:
-    #   result_state.run_type = current_state.run_type
-    # if current_state.feature_mapping_strategy is not None:
-    #   result_state.feature_mapping_strategy = current_state.feature_mapping_strategy
-    # if current_state.logging_options is not None:
-    #   result_state.logging_options = current_state.logging_options
-    # if current_state.proxdash_connection is not None:
-    #   result_state.proxdash_connection = (
-    #       current_state.proxdash_connection)
-
-    # if result_state.provider_model is None:
-    #   raise ValueError(
-    #       'Provider model is not set for both old and new states. '
-    #       'This creates an invalid state change.')
-
-    # if result_state.provider_model.provider != self.get_provider_name():
-    #   raise ValueError(
-    #       'Provider needs to be same with the class provider name.\n'
-    #       f'provider_model: {result_state.provider_model}\n'
-    #       f'class provider name: {self.get_provider_name()}')
-
-    # if result_state.logging_options is None:
-    #   raise ValueError(
-    #       'Logging options are not set for both old and new states. '
-    #       'This creates an invalid state change.')
-    # if result_state.proxdash_connection is None:
-    #   raise ValueError(
-    #       'ProxDash connection is not set for both old and new states. '
-    #       'This creates an invalid state change.')
 
   @property
   def api(self):

@@ -7,6 +7,7 @@ from proxai.proxai import (
      get_current_options,
      get_default_proxai_client,
      set_model,
+     reset_state,
 )
 
 

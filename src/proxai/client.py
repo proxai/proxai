@@ -85,13 +85,6 @@ class ProxAIClient(state_controller.StateControlled):
   def get_internal_state_type(self):
     return types.ProxAIClientState
 
-  def handle_changes(
-      self,
-      old_state: types.ProxAIClientState,
-      current_state: types.ProxAIClientState
-  ):
-    pass
-
   def _init_default_model_cache_manager(self):
     try:
       app_dirs = platformdirs.PlatformDirs(appname="proxai", appauthor="proxai")
