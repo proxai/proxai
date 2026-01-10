@@ -85,8 +85,10 @@ def _get_example_model_status():
 class TestModelCacheManagerGettersSetters:
   def test_cache_path(self):
     cache_path, _ = _get_path_dir('test_cache')
-    cache_manager = model_cache.ModelCacheManager(
+    cache_manager_params = model_cache.ModelCacheManagerParams(
         cache_options=types.CacheOptions(cache_path=cache_path))
+    cache_manager = model_cache.ModelCacheManager(
+        init_from_params=cache_manager_params)
     assert cache_manager.cache_path == os.path.join(
         cache_path, model_cache.AVAILABLE_MODELS_PATH)
 
@@ -95,8 +97,10 @@ class TestModelCacheManagerGettersSetters:
 
   def test_status(self):
     cache_path, _ = _get_path_dir('test_cache')
-    cache_manager = model_cache.ModelCacheManager(
+    cache_manager_params = model_cache.ModelCacheManagerParams(
         cache_options=types.CacheOptions(cache_path=cache_path))
+    cache_manager = model_cache.ModelCacheManager(
+        init_from_params=cache_manager_params)
     assert cache_manager.status == types.ModelCacheManagerStatus.WORKING
 
     cache_manager.status = types.ModelCacheManagerStatus.INITIALIZING
@@ -113,8 +117,10 @@ class TestModelCacheManagerGettersSetters:
 
   def test_cache_options(self):
     cache_path, _ = _get_path_dir('test_cache')
-    cache_manager = model_cache.ModelCacheManager(
+    cache_manager_params = model_cache.ModelCacheManagerParams(
         cache_options=types.CacheOptions(cache_path=cache_path))
+    cache_manager = model_cache.ModelCacheManager(
+        init_from_params=cache_manager_params)
     assert cache_manager.cache_options == types.CacheOptions(
         cache_path=cache_path)
 
@@ -130,38 +136,12 @@ class TestModelCacheManagerGettersSetters:
             cache_path=cache_path,
             model_cache_duration=20))
 
-  def test_cache_options_function(self):
-    cache_path, _ = _get_path_dir('test_cache')
-    dynamic_cache_options = types.CacheOptions(
-        cache_path=cache_path)
-    cache_manager = model_cache.ModelCacheManager(
-        get_cache_options=lambda: dynamic_cache_options)
-    assert cache_manager.cache_options == types.CacheOptions(
-        cache_path=cache_path)
-    assert (
-        cache_manager._model_cache_manager_state.cache_options ==
-        types.CacheOptions(
-            cache_path=cache_path))
-
-    dynamic_cache_options.model_cache_duration = 20
-    assert (
-        cache_manager._model_cache_manager_state.cache_options ==
-        types.CacheOptions(
-            cache_path=cache_path))
-
-    assert cache_manager.cache_options == types.CacheOptions(
-        cache_path=cache_path,
-        model_cache_duration=20)
-    assert (
-        cache_manager._model_cache_manager_state.cache_options ==
-        types.CacheOptions(
-            cache_path=cache_path,
-            model_cache_duration=20))
-
   def test_model_status_by_call_type(self):
     cache_path, _ = _get_path_dir('test_cache')
-    cache_manager = model_cache.ModelCacheManager(
+    cache_manager_params = model_cache.ModelCacheManagerParams(
         cache_options=types.CacheOptions(cache_path=cache_path))
+    cache_manager = model_cache.ModelCacheManager(
+        init_from_params=cache_manager_params)
     assert cache_manager.model_status_by_call_type == {}
 
     cache_manager.model_status_by_call_type = {
@@ -178,20 +158,24 @@ class TestModelCacheManagerGettersSetters:
 class TestModelCacheManagerInit:
   def test_init(self):
     cache_path, _ = _get_path_dir('test_cache')
-    cache_manager = model_cache.ModelCacheManager(
+    cache_manager_params = model_cache.ModelCacheManagerParams(
         cache_options=types.CacheOptions(cache_path=cache_path))
+    cache_manager = model_cache.ModelCacheManager(
+        init_from_params=cache_manager_params)
     assert cache_manager.cache_options == types.CacheOptions(
         cache_path=cache_path)
     assert cache_manager.model_status_by_call_type == {}
 
   def test_init_with_all_options(self):
     cache_path, _ = _get_path_dir('test_cache')
-    cache_manager = model_cache.ModelCacheManager(
+    cache_manager_params = model_cache.ModelCacheManagerParams(
         cache_options=types.CacheOptions(
             cache_path=cache_path,
             disable_model_cache=False,
             clear_model_cache_on_connect=True,
             model_cache_duration=20))
+    cache_manager = model_cache.ModelCacheManager(
+        init_from_params=cache_manager_params)
     assert cache_manager.cache_options == types.CacheOptions(
         cache_path=cache_path,
         disable_model_cache=False,
@@ -204,20 +188,13 @@ class TestModelCacheManagerInit:
     with pytest.raises(
         ValueError,
         match=(
-            'Only one of cache_options or get_cache_options should be set '
-            'while initializing the StateControlled object.')):
+            'init_from_params and init_from_state cannot be set at the same '
+            'time.')):
+      cache_manager_params = model_cache.ModelCacheManagerParams(
+          cache_options=types.CacheOptions(cache_path=cache_path))
       model_cache.ModelCacheManager(
-          cache_options=types.CacheOptions(cache_path=cache_path),
-          get_cache_options=lambda: types.CacheOptions(cache_path=cache_path))
-
-    with pytest.raises(
-        ValueError,
-        match=(
-            'init_state and other parameters cannot be set at the same time.')):
-      model_cache.ModelCacheManager(
-          cache_options=types.CacheOptions(cache_path=cache_path),
-          init_state=types.ModelCacheManagerState(
-              status=types.ModelCacheManagerStatus.WORKING))
+          init_from_params=cache_manager_params,
+          init_from_state=cache_manager_params)
 
   def test_init_none_cache_options(self):
     cache_manager = model_cache.ModelCacheManager()
@@ -228,8 +205,10 @@ class TestModelCacheManagerInit:
     assert cache_manager.cache_path is None
 
   def test_init_none_cache_path(self):
-    cache_manager = model_cache.ModelCacheManager(
+    cache_manager_params = model_cache.ModelCacheManagerParams(
         cache_options=types.CacheOptions())
+    cache_manager = model_cache.ModelCacheManager(
+        init_from_params=cache_manager_params)
     assert cache_manager.cache_options == types.CacheOptions()
     assert (
         cache_manager.status ==
@@ -237,13 +216,15 @@ class TestModelCacheManagerInit:
     assert cache_manager.cache_path is None
 
   def test_init_disabled_model_cache(self):
-    cache_manager = model_cache.ModelCacheManager(
+    cache_manager_params = model_cache.ModelCacheManagerParams(
         cache_options=types.CacheOptions(disable_model_cache=True))
+    cache_manager = model_cache.ModelCacheManager(
+        init_from_params=cache_manager_params)
     assert cache_manager.cache_options == types.CacheOptions(
         disable_model_cache=True)
     assert cache_manager.status == types.ModelCacheManagerStatus.DISABLED
 
-  def test_init_state(self):
+  def test_init_from_state(self):
     cache_path, _ = _get_path_dir('test_cache')
     cache_manager_state = types.ModelCacheManagerState(
         status=types.ModelCacheManagerStatus.WORKING,
@@ -251,7 +232,7 @@ class TestModelCacheManagerInit:
             cache_path=cache_path,
             model_cache_duration=20),)
     cache_manager = model_cache.ModelCacheManager(
-        init_state=cache_manager_state)
+        init_from_state=cache_manager_state)
     assert cache_manager.cache_options == types.CacheOptions(
         cache_path=cache_path,
         model_cache_duration=20)
@@ -266,34 +247,44 @@ class TestModelCacheManagerInit:
     with pytest.raises(
         ValueError,
         match='_load_from_cache_path failed because of the parsing error.*'):
-      model_cache.ModelCacheManager(
+      model_cache_manager_params = model_cache.ModelCacheManagerParams(
         cache_options=types.CacheOptions(cache_path=cache_path))
+      model_cache.ModelCacheManager(
+        init_from_params=model_cache_manager_params)
 
 
 class TestModelCacheManager:
   def test_save_and_load(self):
     cache_path, temp_dir = _get_path_dir('test_cache')
-    save_cache = model_cache.ModelCacheManager(
+    model_cache_manager_params = model_cache.ModelCacheManagerParams(
         cache_options=types.CacheOptions(cache_path=cache_path))
+    save_cache = model_cache.ModelCacheManager(
+        init_from_params=model_cache_manager_params)
     data, _ = _get_example_model_status()
     save_cache.update(data, types.CallType.GENERATE_TEXT)
 
-    load_cache = model_cache.ModelCacheManager(
+    model_cache_manager_params = model_cache.ModelCacheManagerParams(
         cache_options=types.CacheOptions(cache_path=cache_path))
+    load_cache = model_cache.ModelCacheManager(
+        init_from_params=model_cache_manager_params)
     loaded_data = load_cache.get(types.CallType.GENERATE_TEXT)
     assert loaded_data == data
 
   def test_duration_filter(self):
     cache_path, temp_dir = _get_path_dir('test_cache')
-    save_cache = model_cache.ModelCacheManager(
+    model_cache_manager_params = model_cache.ModelCacheManagerParams(
         cache_options=types.CacheOptions(cache_path=cache_path))
+    save_cache = model_cache.ModelCacheManager(
+        init_from_params=model_cache_manager_params)
     data, _ = _get_example_model_status()
     save_cache.update(data, types.CallType.GENERATE_TEXT)
 
-    load_cache = model_cache.ModelCacheManager(
+    model_cache_manager_params = model_cache.ModelCacheManagerParams(
         cache_options=types.CacheOptions(
-            cache_path=cache_path,
-            model_cache_duration=10000))
+          cache_path=cache_path,
+          model_cache_duration=10000))
+    load_cache = model_cache.ModelCacheManager(
+        init_from_params=model_cache_manager_params)
     loaded_data = load_cache.get(types.CallType.GENERATE_TEXT)
 
     new_data, models = _get_example_model_status()
@@ -311,26 +302,34 @@ class TestModelCacheManager:
 
   def test_clear_cache(self):
     cache_path, temp_dir = _get_path_dir('test_cache')
-    save_cache = model_cache.ModelCacheManager(
+    model_cache_manager_params = model_cache.ModelCacheManagerParams(
         cache_options=types.CacheOptions(cache_path=cache_path))
+    save_cache = model_cache.ModelCacheManager(
+        init_from_params=model_cache_manager_params)
     data, _ = _get_example_model_status()
     save_cache.update(data, types.CallType.GENERATE_TEXT)
 
-    load_cache = model_cache.ModelCacheManager(
+    model_cache_manager_params = model_cache.ModelCacheManagerParams(
         cache_options=types.CacheOptions(cache_path=cache_path))
+    load_cache = model_cache.ModelCacheManager(
+        init_from_params=model_cache_manager_params)
     assert load_cache.get(types.CallType.GENERATE_TEXT) == data
 
     load_cache.clear_cache()
     assert load_cache.get(types.CallType.GENERATE_TEXT) == types.ModelStatus()
 
-    load_cache_2 = model_cache.ModelCacheManager(
+    model_cache_manager_params = model_cache.ModelCacheManagerParams(
         cache_options=types.CacheOptions(cache_path=cache_path))
+    load_cache_2 = model_cache.ModelCacheManager(
+        init_from_params=model_cache_manager_params)
     assert load_cache_2.get(types.CallType.GENERATE_TEXT) == types.ModelStatus()
 
   def test_update(self):
     cache_path, temp_dir = _get_path_dir('test_cache')
-    cache_manager = model_cache.ModelCacheManager(
+    model_cache_manager_params = model_cache.ModelCacheManagerParams(
         cache_options=types.CacheOptions(cache_path=cache_path))
+    cache_manager = model_cache.ModelCacheManager(
+        init_from_params=model_cache_manager_params)
     data, models = _get_example_model_status()
     cache_manager.update(data, types.CallType.GENERATE_TEXT)
 
@@ -382,8 +381,10 @@ class TestModelCacheManager:
 
   def test_update_invalid_provider_query(self):
     cache_path, temp_dir = _get_path_dir('test_cache')
-    cache_manager = model_cache.ModelCacheManager(
+    model_cache_manager_params = model_cache.ModelCacheManagerParams(
         cache_options=types.CacheOptions(cache_path=cache_path))
+    cache_manager = model_cache.ModelCacheManager(
+        init_from_params=model_cache_manager_params)
     data, models = _get_example_model_status()
     cache_manager.update(data, types.CallType.GENERATE_TEXT)
 
@@ -403,79 +404,3 @@ class TestModelCacheManager:
                         response='model_1 response')
             }),
         types.CallType.GENERATE_TEXT)
-
-  def test_handle_changes(self):
-    cache_path, temp_dir = _get_path_dir('test_cache')
-    save_cache = model_cache.ModelCacheManager(
-        cache_options=types.CacheOptions(cache_path=cache_path))
-    data, models = _get_example_model_status()
-    save_cache.update(data, types.CallType.GENERATE_TEXT)
-
-    cache_manager = model_cache.ModelCacheManager()
-    cache_manager.apply_state_changes(
-      types.ModelCacheManagerState(
-        status=types.ModelCacheManagerStatus.WORKING,
-        cache_options=types.CacheOptions(cache_path=cache_path),
-      )
-    )
-    assert cache_manager.model_status_by_call_type[
-        types.CallType.GENERATE_TEXT] == data
-    assert cache_manager.status == types.ModelCacheManagerStatus.WORKING
-    assert (
-        cache_manager._model_cache_manager_state.status ==
-        types.ModelCacheManagerStatus.WORKING)
-    assert cache_manager.cache_options == types.CacheOptions(
-        cache_path=cache_path)
-    assert (
-        cache_manager._model_cache_manager_state.cache_options ==
-        types.CacheOptions(cache_path=cache_path))
-
-  def test_handle_changes_cache_options_not_found(self):
-    cache_manager = model_cache.ModelCacheManager()
-    cache_manager.apply_state_changes(
-      types.ModelCacheManagerState(
-        status=types.ModelCacheManagerStatus.WORKING,
-      )
-    )
-    assert (
-        cache_manager.status ==
-        types.ModelCacheManagerStatus.CACHE_OPTIONS_NOT_FOUND)
-    assert (
-        cache_manager._model_cache_manager_state.status ==
-        types.ModelCacheManagerStatus.CACHE_OPTIONS_NOT_FOUND)
-    assert cache_manager.cache_options is None
-
-  def test_handle_changes_same_state(self):
-    cache_path, temp_dir = _get_path_dir('test_cache')
-    data, models = _get_example_model_status()
-
-    model_cache_manager = model_cache.ModelCacheManager(
-        cache_options=types.CacheOptions(cache_path=cache_path))
-    assert model_cache_manager.model_status_by_call_type == {}
-
-    save_cache = model_cache.ModelCacheManager(
-        cache_options=types.CacheOptions(cache_path=cache_path))
-    save_cache.update(data, types.CallType.GENERATE_TEXT)
-
-    model_cache_manager.apply_state_changes(
-      types.ModelCacheManagerState(
-        status=types.ModelCacheManagerStatus.WORKING,
-        cache_options=types.CacheOptions(cache_path=cache_path),
-      )
-    )
-    # No changes because nothing changed in the state and load from cache path
-    # is not called
-    assert model_cache_manager.model_status_by_call_type == {}
-
-    model_cache_manager.apply_state_changes(
-      types.ModelCacheManagerState(
-        status=types.ModelCacheManagerStatus.WORKING,
-        cache_options=types.CacheOptions(
-            cache_path=cache_path,
-            model_cache_duration=10000000),
-      )
-    )
-    # Load from cache path called because of model_cache_duration change
-    assert model_cache_manager.model_status_by_call_type == {
-        types.CallType.GENERATE_TEXT: data
-    }

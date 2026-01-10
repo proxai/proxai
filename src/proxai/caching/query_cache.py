@@ -457,7 +457,7 @@ class QueryCacheManager(state_controller.StateControlled):
       self.load_state(init_from_state)
       self._init_dir()
       self._init_managers()
-    else:
+    elif init_from_params:
       self._get_cache_options = init_from_params.get_cache_options
       self.cache_options = init_from_params.cache_options
       if init_from_params.response_per_file is not None:
@@ -466,7 +466,7 @@ class QueryCacheManager(state_controller.StateControlled):
         self.shard_count = init_from_params.shard_count
       if init_from_params.cache_response_size is not None:
         self.cache_response_size = init_from_params.cache_response_size
-      self.init_status()
+    self.init_status()
 
   def get_internal_state_property_name(self):
     return _QUERY_CACHE_MANAGER_STATE_PROPERTY

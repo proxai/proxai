@@ -36,9 +36,9 @@ class ModelCacheManager(state_controller.StateControlled):
 
     if init_from_state:
       self.load_state(init_from_state)
-    else:
+    elif init_from_params:
       self.cache_options = init_from_params.cache_options
-      self.init_status()
+    self.init_status()
 
   def get_internal_state_property_name(self):
     return _MODEL_CACHE_MANAGER_STATE_PROPERTY

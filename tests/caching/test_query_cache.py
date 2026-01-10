@@ -380,13 +380,15 @@ class TestBaseQueryCache:
       response_record_2 = _create_response_record(response_id=2)
 
       # First cache manager - populate cache
-      query_cache_manager = query_cache.QueryCacheManager(
+      query_cache_manager_params = query_cache.QueryCacheManagerParams(
           cache_options=types.CacheOptions(
               cache_path=temp_dir,
               clear_query_cache_on_connect=False),
           shard_count=_SHARD_COUNT,
           response_per_file=_RESPONSE_PER_FILE,
           cache_response_size=10)
+      query_cache_manager = query_cache.QueryCacheManager(
+          init_from_params=query_cache_manager_params)
 
       # Add some records
       query_cache_manager.cache(
@@ -403,13 +405,15 @@ class TestBaseQueryCache:
           query_record_2).query_response == response_record_2
 
       # Create new cache manager with clear_cache_on_connect=False
-      query_cache_manager_2 = query_cache.QueryCacheManager(
+      query_cache_manager_params = query_cache.QueryCacheManagerParams(
           cache_options=types.CacheOptions(
               cache_path=temp_dir,
               clear_query_cache_on_connect=False),
           shard_count=_SHARD_COUNT,
           response_per_file=_RESPONSE_PER_FILE,
           cache_response_size=10)
+      query_cache_manager_2 = query_cache.QueryCacheManager(
+          init_from_params=query_cache_manager_params)
 
       # Verify records still exist
       assert query_cache_manager_2.look(
@@ -418,13 +422,15 @@ class TestBaseQueryCache:
           query_record_2).query_response == response_record_2
 
       # Create new cache manager with clear_cache_on_connect=True
-      query_cache_manager_3 = query_cache.QueryCacheManager(
+      query_cache_manager_params = query_cache.QueryCacheManagerParams(
           cache_options=types.CacheOptions(
               cache_path=temp_dir,
               clear_query_cache_on_connect=True),
           shard_count=_SHARD_COUNT,
           response_per_file=_RESPONSE_PER_FILE,
           cache_response_size=10)
+      query_cache_manager_3 = query_cache.QueryCacheManager(
+          init_from_params=query_cache_manager_params)
       query_cache_manager_3.clear_cache()
 
       # Verify records are cleared
@@ -1197,11 +1203,13 @@ class TestShardManager:
 class TestQueryCache:
   def test_push_record_heap_empty_dir(self):
     with tempfile.TemporaryDirectory() as temp_dir:
-      query_cache_manager = query_cache.QueryCacheManager(
+      query_cache_manager_params = query_cache.QueryCacheManagerParams(
           cache_options=types.CacheOptions(cache_path=temp_dir),
           shard_count=_SHARD_COUNT,
           response_per_file=_RESPONSE_PER_FILE,
           cache_response_size=10)
+      query_cache_manager = query_cache.QueryCacheManager(
+          init_from_params=query_cache_manager_params)
       _check_record_heap(query_cache_manager, [])
 
       # First record
@@ -1256,11 +1264,13 @@ class TestQueryCache:
       _save_shard_manager(
           path=cache_path, records=records['all_light_cache_records'])
 
-      query_cache_manager = query_cache.QueryCacheManager(
+      query_cache_manager_params = query_cache.QueryCacheManagerParams(
           cache_options=types.CacheOptions(cache_path=temp_dir),
           shard_count=_SHARD_COUNT,
           response_per_file=_RESPONSE_PER_FILE,
           cache_response_size=10)
+      query_cache_manager = query_cache.QueryCacheManager(
+          init_from_params=query_cache_manager_params)
       _check_record_heap(
           query_cache_manager, [
               _get_hash_from_prompt(prompt='p1', records=records),
@@ -1297,11 +1307,13 @@ class TestQueryCache:
   def test_push_record_heap_overflow(self):
     with tempfile.TemporaryDirectory() as temp_dir:
       os.makedirs(os.path.join(temp_dir, query_cache.CACHE_DIR))
-      query_cache_manager = query_cache.QueryCacheManager(
+      query_cache_manager_params = query_cache.QueryCacheManagerParams(
           cache_options=types.CacheOptions(cache_path=temp_dir),
           shard_count=_SHARD_COUNT,
           response_per_file=_RESPONSE_PER_FILE,
           cache_response_size=10)
+      query_cache_manager = query_cache.QueryCacheManager(
+          init_from_params=query_cache_manager_params)
 
       # record_1: size = 4, heap = [record_1]
       record_1 = _create_cache_record(
@@ -1371,11 +1383,13 @@ class TestQueryCache:
       _save_shard_manager(
           path=cache_dir, records=records['all_light_cache_records'])
 
-      query_cache_manager = query_cache.QueryCacheManager(
+      query_cache_manager_params = query_cache.QueryCacheManagerParams(
           cache_options=types.CacheOptions(cache_path=temp_dir),
           shard_count=_SHARD_COUNT,
           response_per_file=_RESPONSE_PER_FILE,
           cache_response_size=10)
+      query_cache_manager = query_cache.QueryCacheManager(
+          init_from_params=query_cache_manager_params)
 
       (hash_1, light_1, enc_light_1,
        hash_2, light_2, enc_light_2,
@@ -1522,13 +1536,15 @@ class TestQueryCache:
       response_record_2 = _create_response_record(response_id=2)
       response_record_3 = _create_response_record(response_id=3)
 
-      query_cache_manager = query_cache.QueryCacheManager(
+      query_cache_manager_params = query_cache.QueryCacheManagerParams(
           cache_options=types.CacheOptions(
               cache_path=temp_dir,
               unique_response_limit=3),
           shard_count=_SHARD_COUNT,
           response_per_file=_RESPONSE_PER_FILE,
           cache_response_size=10)
+      query_cache_manager = query_cache.QueryCacheManager(
+          init_from_params=query_cache_manager_params)
 
       # Initial state validation
       assert query_cache_manager.look(query_record_1).look_fail_reason
@@ -1733,13 +1749,15 @@ class TestQueryCache:
       response_record_2 = _create_response_record(response_id=2)
       response_record_3 = _create_response_record(response_id=3)
 
-      query_cache_manager = query_cache.QueryCacheManager(
+      query_cache_manager_params = query_cache.QueryCacheManagerParams(
           cache_options=types.CacheOptions(
               cache_path=temp_dir,
               unique_response_limit=3),
           shard_count=1,
           response_per_file=_RESPONSE_PER_FILE,
           cache_response_size=10)
+      query_cache_manager = query_cache.QueryCacheManager(
+          init_from_params=query_cache_manager_params)
 
       # Initial state validation
       assert query_cache_manager.look(query_record_1).look_fail_reason
@@ -1823,7 +1841,7 @@ class TestQueryCache:
       error_record_2 = _create_response_record(response_id=2, error='e1')
       response_record_3 = _create_response_record(response_id=3)
 
-      query_cache_manager = query_cache.QueryCacheManager(
+      query_cache_manager_params = query_cache.QueryCacheManagerParams(
           cache_options=types.CacheOptions(
               cache_path=temp_dir,
               unique_response_limit=2,
@@ -1831,6 +1849,8 @@ class TestQueryCache:
           shard_count=_SHARD_COUNT,
           response_per_file=_RESPONSE_PER_FILE,
           cache_response_size=10)
+      query_cache_manager = query_cache.QueryCacheManager(
+          init_from_params=query_cache_manager_params)
 
       query_cache_manager.cache(
           query_record=query_record_1,
@@ -1861,7 +1881,7 @@ class TestQueryCache:
       error_record_2 = _create_response_record(response_id=2, error='e1')
       response_record_3 = _create_response_record(response_id=3)
 
-      query_cache_manager = query_cache.QueryCacheManager(
+      query_cache_manager_params = query_cache.QueryCacheManagerParams(
           cache_options=types.CacheOptions(
               cache_path=temp_dir,
               unique_response_limit=2,
@@ -1869,6 +1889,8 @@ class TestQueryCache:
           shard_count=_SHARD_COUNT,
           response_per_file=_RESPONSE_PER_FILE,
           cache_response_size=10)
+      query_cache_manager = query_cache.QueryCacheManager(
+          init_from_params=query_cache_manager_params)
 
       query_cache_manager.cache(
           query_record=query_record_1,
@@ -1893,12 +1915,15 @@ class TestQueryCache:
 class TestQueryCacheState:
   def test_invalid_combinations(self):
     with pytest.raises(ValueError):
-      query_cache.QueryCacheManager(
+      query_cache_manager_params = query_cache.QueryCacheManagerParams(
           cache_options=types.CacheOptions(cache_path=''),
           get_cache_options=lambda: types.CacheOptions(cache_path=''),
           shard_count=1,
           response_per_file=1,
           cache_response_size=10)
+      query_cache.QueryCacheManager(
+          init_from_params=query_cache_manager_params,
+          init_from_state=types.QueryCacheManagerState())
 
   def test_init_none_cache_options(self):
     query_cache_manager = query_cache.QueryCacheManager()
@@ -1907,39 +1932,47 @@ class TestQueryCacheState:
         types.QueryCacheManagerStatus.CACHE_OPTIONS_NOT_FOUND)
 
   def test_init_none_cache_path(self):
-    query_cache_manager = query_cache.QueryCacheManager(
+    query_cache_manager_params = query_cache.QueryCacheManagerParams(
         cache_options=types.CacheOptions())
+    query_cache_manager = query_cache.QueryCacheManager(
+        init_from_params=query_cache_manager_params)
     assert (
         query_cache_manager.status ==
         types.QueryCacheManagerStatus.CACHE_PATH_NOT_FOUND)
 
   def test_status_working(self):
     with tempfile.TemporaryDirectory() as temp_dir:
-      query_cache_manager = query_cache.QueryCacheManager(
+      query_cache_manager_params = query_cache.QueryCacheManagerParams(
           cache_options=types.CacheOptions(cache_path=temp_dir),
           shard_count=_SHARD_COUNT,
           response_per_file=_RESPONSE_PER_FILE,
           cache_response_size=10)
+      query_cache_manager = query_cache.QueryCacheManager(
+          init_from_params=query_cache_manager_params)
       assert (
           query_cache_manager.status == types.QueryCacheManagerStatus.WORKING)
 
-  def test_init_state(self):
+  def test_init_from_state(self):
     with tempfile.TemporaryDirectory() as temp_dir:
-      query_cache_manager = query_cache.QueryCacheManager(
+      query_cache_manager_params = query_cache.QueryCacheManagerParams(
           cache_options=types.CacheOptions(cache_path=temp_dir),
           shard_count=_SHARD_COUNT,
           response_per_file=_RESPONSE_PER_FILE,
           cache_response_size=10)
+      query_cache_manager = query_cache.QueryCacheManager(
+          init_from_params=query_cache_manager_params)
 
       query_cache_manager_2 = query_cache.QueryCacheManager(
-          init_state=query_cache_manager.get_state())
+          init_from_state=query_cache_manager.get_state())
       assert (
           query_cache_manager_2.get_state() == query_cache_manager.get_state())
 
   def test_init_default_values(self):
     with tempfile.TemporaryDirectory() as temp_dir:
-      query_cache_manager = query_cache.QueryCacheManager(
+      query_cache_manager_params = query_cache.QueryCacheManagerParams(
           cache_options=types.CacheOptions(cache_path=temp_dir))
+      query_cache_manager = query_cache.QueryCacheManager(
+          init_from_params=query_cache_manager_params)
 
       default_values = types.QueryCacheManagerState()
       assert (
@@ -1957,8 +1990,10 @@ class TestQueryCacheState:
 
   def test_not_working_state_calls(self):
     with tempfile.TemporaryDirectory() as temp_dir:
-      query_cache_manager = query_cache.QueryCacheManager(
+      query_cache_manager_params = query_cache.QueryCacheManagerParams(
           cache_options=types.CacheOptions())
+      query_cache_manager = query_cache.QueryCacheManager(
+          init_from_params=query_cache_manager_params)
       assert (
           query_cache_manager.status ==
           types.QueryCacheManagerStatus.CACHE_PATH_NOT_FOUND)
@@ -1982,7 +2017,3 @@ class TestQueryCacheState:
                 response=types.Response(
                     type=types.ResponseType.TEXT,
                     value='r1')))
-
-  def handle_state_changes(self):
-    # TODO: Implement additional tests for handle_state_changes
-    pass
