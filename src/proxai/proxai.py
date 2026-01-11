@@ -6,6 +6,8 @@ import proxai.client as client
 CacheOptions = types.CacheOptions
 LoggingOptions = types.LoggingOptions
 ProxDashOptions = types.ProxDashOptions
+ResponseFormat = types.StructuredResponseFormat
+ResponseFormatType = types.ResponseFormatType
 
 _DEFAULT_CLIENT: Optional[client.ProxAIClient] = None
 

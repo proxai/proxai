@@ -1,14 +1,19 @@
 # read version from installed package
 from importlib.metadata import version
 from proxai.proxai import (
-     connect,
-     check_health,
-     generate_text,
-     get_current_options,
-     get_default_proxai_client,
-     set_model,
-     reset_state,
-     DefaultModelsConnector,
+    CacheOptions,
+    LoggingOptions,
+    ProxDashOptions,
+    ResponseFormat,
+    ResponseFormatType,
+    connect,
+    check_health,
+    generate_text,
+    get_current_options,
+    get_default_proxai_client,
+    set_model,
+    reset_state,
+    DefaultModelsConnector,
 )
 
 
