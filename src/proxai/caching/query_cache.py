@@ -1,3 +1,4 @@
+import dataclasses
 import copy
 import os
 import shutil
@@ -422,6 +423,15 @@ class ShardManager:
       self._add_to_backlog(cache_record)
 
 
+@dataclasses.dataclass
+class QueryCacheManagerParams:
+  cache_options: Optional[types.CacheOptions] = None
+  get_cache_options: Optional[Callable[[], types.CacheOptions]] = None
+  shard_count: Optional[int] = None
+  response_per_file: Optional[int] = None
+  cache_response_size: Optional[int] = None
+
+
 class QueryCacheManager(state_controller.StateControlled):
   _cache_options: types.CacheOptions
   _shard_count: int
@@ -433,38 +443,30 @@ class QueryCacheManager(state_controller.StateControlled):
 
   def __init__(
       self,
-      cache_options: Optional[types.CacheOptions] = None,
-      get_cache_options: Optional[Callable[[], types.CacheOptions]] = None,
-      shard_count: Optional[int] = None,
-      response_per_file: Optional[int] = None,
-      cache_response_size: Optional[int] = None,
-      init_state: Optional[types.QueryCacheManagerState] = None):
+      init_from_params: Optional[QueryCacheManagerParams] = None,
+      init_from_state: Optional[types.QueryCacheManagerState] = None
+  ):
     super().__init__(
-        init_state=init_state,
-        cache_options=cache_options,
-        get_cache_options=get_cache_options,
-        shard_count=shard_count,
-        response_per_file=response_per_file,
-        cache_response_size=cache_response_size)
+        init_from_params=init_from_params,
+        init_from_state=init_from_state)
 
     self.set_property_value(
         'status', types.QueryCacheManagerStatus.INITIALIZING)
 
-    if init_state:
-      self.load_state(init_state)
+    if init_from_state:
+      self.load_state(init_from_state)
       self._init_dir()
       self._init_managers()
-    else:
-      initial_state = self.get_state()
-      self._get_cache_options = get_cache_options
-      self.cache_options = cache_options
-      if response_per_file is not None:
-        self.response_per_file = response_per_file
-      if shard_count is not None:
-        self.shard_count = shard_count
-      if cache_response_size is not None:
-        self.cache_response_size = cache_response_size
-      self.handle_changes(initial_state, self.get_state())
+    elif init_from_params:
+      self._get_cache_options = init_from_params.get_cache_options
+      self.cache_options = init_from_params.cache_options
+      if init_from_params.response_per_file is not None:
+        self.response_per_file = init_from_params.response_per_file
+      if init_from_params.shard_count is not None:
+        self.shard_count = init_from_params.shard_count
+      if init_from_params.cache_response_size is not None:
+        self.cache_response_size = init_from_params.cache_response_size
+    self.init_status()
 
   def get_internal_state_property_name(self):
     return _QUERY_CACHE_MANAGER_STATE_PROPERTY
@@ -472,34 +474,22 @@ class QueryCacheManager(state_controller.StateControlled):
   def get_internal_state_type(self):
     return types.QueryCacheManagerState
 
-  def handle_changes(
-      self,
-      old_state: types.QueryCacheManagerState,
-      current_state: types.QueryCacheManagerState):
-    if current_state.cache_options is None:
+  def init_status(
+      self):
+    if self.cache_options is None:
       self.status = types.QueryCacheManagerStatus.CACHE_OPTIONS_NOT_FOUND
       return
 
-    if current_state.cache_options.cache_path is None:
+    if self.cache_options.cache_path is None:
       self.status = types.QueryCacheManagerStatus.CACHE_PATH_NOT_FOUND
       return
 
-    if not os.access(current_state.cache_options.cache_path, os.W_OK):
+    if not os.access(self.cache_options.cache_path, os.W_OK):
       self.status = types.QueryCacheManagerStatus.CACHE_PATH_NOT_WRITABLE
       return
 
-    if (old_state.cache_options is None or
-        old_state.cache_options.cache_path !=
-        current_state.cache_options.cache_path):
-      self._init_dir()
-
-    if (
-        old_state.cache_options != current_state.cache_options or
-        old_state.shard_count != current_state.shard_count or
-        old_state.response_per_file != current_state.response_per_file or
-        old_state.cache_response_size != current_state.cache_response_size):
-      self._init_managers()
-
+    self._init_dir()
+    self._init_managers()
     self.status = types.QueryCacheManagerStatus.WORKING
 
   def clear_cache(self):

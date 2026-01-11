@@ -1,6 +1,5 @@
 import datetime
 import proxai.types as types
-import proxai.stat_types as stat_types
 import proxai.serializers.type_serializer as type_serializer
 import proxai.serializers.hash_serializer as hash_serializer
 import pytest
@@ -606,116 +605,6 @@ def _get_model_status_options():
                       value='Hello, world!')))}}]
 
 
-def _get_base_provider_stats_options():
-  return [
-    {'total_queries': 1},
-    {'total_successes': 2},
-    {'total_fails': 3},
-    {'total_token_count': 4},
-    {'total_query_token_count': 5},
-    {'total_response_token_count': 6},
-    {'total_successes': 1,
-     'total_response_time': 7.0},
-    {'estimated_cost': 8.0},
-    {'total_cache_look_fail_reasons': {
-        types.CacheLookFailReason.CACHE_NOT_FOUND: 9}},
-    {'total_queries': 1,
-     'total_successes': 2,
-     'total_fails': 3,
-     'total_token_count': 4,
-     'total_query_token_count': 5,
-     'total_response_token_count': 6,
-     'total_successes': 1,
-     'total_response_time': 7.0,
-     'estimated_cost': 8.0,
-     'total_cache_look_fail_reasons': {
-        types.CacheLookFailReason.CACHE_NOT_FOUND: 9}}]
-
-
-def _get_base_cache_stats_options():
-  return [
-    {'total_cache_hit': 1},
-    {'total_success_return': 2},
-    {'total_fail_return': 3},
-    {'saved_token_count': 4},
-    {'saved_query_token_count': 5},
-    {'saved_response_token_count': 6},
-    {'total_success_return': 1,
-     'saved_total_response_time': 7.0},
-    {'saved_estimated_cost': 8.0},
-    {'total_cache_hit': 1,
-     'total_success_return': 2,
-     'total_fail_return': 3,
-     'saved_token_count': 4,
-     'saved_query_token_count': 5,
-     'saved_response_token_count': 6,
-     'saved_total_response_time': 7.0,
-     'saved_estimated_cost': 8.0}]
-
-
-def _get_provider_model_stats_options():
-  return [
-    {'provider_model': pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4'))},
-    {'provider_stats': stat_types.BaseProviderStats(total_queries=1)},
-    {'cache_stats': stat_types.BaseCacheStats(total_cache_hit=1)},
-    {'provider_model': pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4')),
-     'provider_stats': stat_types.BaseProviderStats(total_queries=1),
-     'cache_stats': stat_types.BaseCacheStats(total_cache_hit=1)}]
-
-
-def _get_provider_stats_options():
-  return [
-    {'provider': 'openai'},
-    {'provider_stats': stat_types.BaseProviderStats(total_queries=1)},
-    {'cache_stats': stat_types.BaseCacheStats(total_cache_hit=1)},
-    {'provider_models': {
-        pytest.model_configs_instance.get_provider_model(
-            ('openai', 'gpt-4')): stat_types.ProviderModelStats()}},
-    {'provider': 'openai',
-     'provider_stats': stat_types.BaseProviderStats(total_queries=1),
-     'cache_stats': stat_types.BaseCacheStats(total_cache_hit=1),
-     'provider_models': {
-        pytest.model_configs_instance.get_provider_model(
-            ('openai', 'gpt-4')): stat_types.ProviderModelStats()}}]
-
-
-def _get_run_stats_options():
-  return [
-    {'provider_stats': stat_types.BaseProviderStats(total_queries=1)},
-    {'cache_stats': stat_types.BaseCacheStats(total_cache_hit=1)},
-    {'providers': {
-        'openai': stat_types.ProviderStats(provider='openai')}},
-    {'providers': {
-        'openai': stat_types.ProviderStats(
-            provider='openai',
-            provider_stats=stat_types.BaseProviderStats(total_queries=1))}},
-    {'providers': {
-        'openai': stat_types.ProviderStats(
-            provider='openai',
-            provider_models={
-                pytest.model_configs_instance.get_provider_model(
-                    ('openai', 'gpt-4')): stat_types.ProviderModelStats()})}},
-    {'providers': {
-        'openai': stat_types.ProviderStats(provider='openai'),
-        'claude': stat_types.ProviderStats(provider='claude')}},
-    {'provider_stats': stat_types.BaseProviderStats(total_queries=1),
-     'cache_stats': stat_types.BaseCacheStats(total_cache_hit=1),
-     'providers': {
-        'openai': stat_types.ProviderStats(
-            provider='openai',
-            provider_stats=stat_types.BaseProviderStats(total_queries=1),
-            cache_stats=stat_types.BaseCacheStats(total_cache_hit=1),
-            provider_models={
-                pytest.model_configs_instance.get_provider_model(
-                    ('openai', 'gpt-4')): stat_types.ProviderModelStats(
-                        provider_model=pytest.model_configs_instance.get_provider_model(
-                            ('openai', 'gpt-4')),
-                        provider_stats=stat_types.BaseProviderStats(
-                            total_queries=1),
-                        cache_stats=stat_types.BaseCacheStats(
-                            total_cache_hit=1))})}}]
-
-
 def _get_provider_model_configs_type_options():
   return [
     {'openai': {
@@ -1039,59 +928,6 @@ class TestTypeSerializer:
     decoded_model_status = type_serializer.decode_model_status(
         record=encoded_model_status)
     assert model_status == decoded_model_status
-
-  @pytest.mark.parametrize(
-      'base_provider_stats_options', _get_base_provider_stats_options())
-  def test_encode_decode_base_provider_stats(
-      self, base_provider_stats_options):
-    provider_stats = stat_types.BaseProviderStats(**base_provider_stats_options)
-    encoded_provider_stats = type_serializer.encode_base_provider_stats(
-        base_provider_stats=provider_stats)
-    decoded_provider_stats = type_serializer.decode_base_provider_stats(
-        record=encoded_provider_stats)
-    assert provider_stats == decoded_provider_stats
-
-  @pytest.mark.parametrize(
-      'base_cache_stats_options', _get_base_cache_stats_options())
-  def test_encode_decode_base_cache_stats(self, base_cache_stats_options):
-    cache_stats = stat_types.BaseCacheStats(**base_cache_stats_options)
-    encoded_cache_stats = type_serializer.encode_base_cache_stats(
-        base_cache_stats=cache_stats)
-    decoded_cache_stats = type_serializer.decode_base_cache_stats(
-        record=encoded_cache_stats)
-    assert cache_stats == decoded_cache_stats
-
-  @pytest.mark.parametrize(
-      'provider_model_stats_options',
-      _get_provider_model_stats_options())
-  def test_encode_decode_provider_model_stats(
-      self, provider_model_stats_options):
-    provider_model_stats = stat_types.ProviderModelStats(
-        **provider_model_stats_options)
-    encoded_provider_model_stats = type_serializer.encode_provider_model_stats(
-        provider_model_stats=provider_model_stats)
-    decoded_provider_model_stats = type_serializer.decode_provider_model_stats(
-        record=encoded_provider_model_stats)
-    assert provider_model_stats == decoded_provider_model_stats
-
-  @pytest.mark.parametrize(
-      'provider_stats_options', _get_provider_stats_options())
-  def test_encode_decode_provider_stats(self, provider_stats_options):
-    provider_stats = stat_types.ProviderStats(**provider_stats_options)
-    encoded_provider_stats = type_serializer.encode_provider_stats(
-        provider_stats=provider_stats)
-    decoded_provider_stats = type_serializer.decode_provider_stats(
-        record=encoded_provider_stats)
-    assert provider_stats == decoded_provider_stats
-
-  @pytest.mark.parametrize('run_stats_options', _get_run_stats_options())
-  def test_encode_decode_run_stats(self, run_stats_options):
-    run_stats = stat_types.RunStats(**run_stats_options)
-    encoded_run_stats = type_serializer.encode_run_stats(
-        run_stats=run_stats)
-    decoded_run_stats = type_serializer.decode_run_stats(
-        record=encoded_run_stats)
-    assert run_stats == decoded_run_stats
 
   @pytest.mark.parametrize(
       'provider_model_identifier',

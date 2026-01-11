@@ -8,9 +8,9 @@ from typing import Dict, Optional, Callable
 import pydantic
 import proxai.types as types
 import proxai.caching.query_cache as query_cache
-import proxai.stat_types as stats_type
 import proxai.connections.proxdash as proxdash
 import proxai.connectors.providers.mock_provider as mock_provider
+import proxai.connectors.model_connector as model_connector
 import proxai.connectors.model_configs as model_configs
 
 
@@ -94,9 +94,6 @@ def get_mock_provider_model_connector(
     feature_mapping_strategy: Optional[types.FeatureMappingStrategy] = None,
     provider_model_config: Optional[types.ProviderModelConfigType] = None,
     query_cache_manager: Optional[query_cache.QueryCacheManager] = None,
-    get_query_cache_manager: Optional[
-        Callable[[], query_cache.QueryCacheManager]] = None,
-    stats: Optional[Dict[str, stats_type.ProviderModelStats]] = None,
 ):
   if provider_model_config is None:
     base_config = pytest.model_configs_instance.get_provider_model_config(
@@ -107,17 +104,16 @@ def get_mock_provider_model_connector(
         pricing=base_config.pricing,
         features=_get_default_mock_features(),
         metadata=base_config.metadata)
-  connector = mock_provider.MockProviderModelConnector(
-      provider_model=pytest.model_configs_instance.get_provider_model(('mock_provider', 'mock_model')),
+  mock_provider_model_params = model_connector.ProviderModelConnectorParams(
+      provider_model=pytest.model_configs_instance.get_provider_model(
+          ('mock_provider', 'mock_model')),
       run_type=types.RunType.TEST,
       provider_model_config=provider_model_config,
       logging_options=types.LoggingOptions(),
       feature_mapping_strategy=feature_mapping_strategy,
       query_cache_manager=query_cache_manager,
-      get_query_cache_manager=get_query_cache_manager,
-      stats=stats,
       proxdash_connection=proxdash.ProxDashConnection(
-          init_state=types.ProxDashConnectionState(
+          init_from_state=types.ProxDashConnectionState(
               status=types.ProxDashConnectionStatus.CONNECTED,
               experiment_path='test/path',
               logging_options=types.LoggingOptions(),
@@ -126,6 +122,8 @@ def get_mock_provider_model_connector(
               ),
               key_info_from_proxdash={'permission': 'ALL'},
               connected_experiment_path='test/path')))
+  connector = mock_provider.MockProviderModelConnector(
+      init_from_params=mock_provider_model_params)
   return connector
 
 
@@ -178,51 +176,6 @@ class TestModelConnectorGettersSetters:
         connector._provider_model_state.proxdash_connection ==
         connector.proxdash_connection.get_state())
 
-  def test_proxdash_connection_function(self):
-    dynamic_proxdash_connection = proxdash.ProxDashConnection(
-        init_state=types.ProxDashConnectionState(
-            status=types.ProxDashConnectionStatus.CONNECTED,
-            experiment_path='test/path',
-            logging_options=types.LoggingOptions(),
-            proxdash_options=types.ProxDashOptions(
-                api_key='test_api_key',
-            ),
-            key_info_from_proxdash={'permission': 'ALL'},
-            connected_experiment_path='test/path'))
-
-    def get_proxdash_connection():
-      return dynamic_proxdash_connection
-
-    connector = mock_provider.MockProviderModelConnector(
-        provider_model=pytest.model_configs_instance.get_provider_model(('mock_provider', 'mock_model')),
-        run_type=types.RunType.TEST,
-        logging_options=types.LoggingOptions(),
-        get_proxdash_connection=get_proxdash_connection)
-
-    assert isinstance(
-        connector.proxdash_connection, proxdash.ProxDashConnection)
-    assert (
-        connector.proxdash_connection.status ==
-        types.ProxDashConnectionStatus.CONNECTED)
-    assert connector.proxdash_connection.experiment_path == 'test/path'
-    assert (
-        connector._provider_model_state.proxdash_connection ==
-        dynamic_proxdash_connection.get_state())
-
-    first_dynamic_proxdash_connection = copy.deepcopy(
-        dynamic_proxdash_connection)
-    dynamic_proxdash_connection.experiment_path = 'test/path_2'
-    assert (
-        connector._provider_model_state.proxdash_connection ==
-        first_dynamic_proxdash_connection.get_state())
-    # This getter updates the proxdash connection state:
-    assert (
-        connector.proxdash_connection.experiment_path ==
-        'test/path_2')
-    assert (
-        connector._provider_model_state.proxdash_connection ==
-        dynamic_proxdash_connection.get_state())
-
 
 class TestModelConnectorInit:
   def test_init_state(self):
@@ -242,7 +195,7 @@ class TestModelConnectorInit:
             key_info_from_proxdash={'permission': 'ALL'},
             connected_experiment_path='test/path'))
 
-    connector = mock_provider.MockProviderModelConnector(init_state=init_state)
+    connector = mock_provider.MockProviderModelConnector(init_from_state=init_state)
 
     assert connector.provider_model == pytest.model_configs_instance.get_provider_model(('mock_provider', 'mock_model'))
     assert connector.run_type == types.RunType.TEST
@@ -257,7 +210,8 @@ class TestModelConnectorInit:
 
   def test_init_with_mismatched_model(self):
     init_state = types.ProviderModelState(
-        provider_model=pytest.model_configs_instance.get_provider_model(('claude', 'opus-4')),
+        provider_model=pytest.model_configs_instance.get_provider_model(
+            ('claude', 'opus-4')),
         run_type=types.RunType.TEST)
 
     with pytest.raises(
@@ -265,7 +219,7 @@ class TestModelConnectorInit:
         match=(
             'provider_model needs to be same with the class provider name.\n'
             'provider_model: *')):
-      mock_provider.MockProviderModelConnector(init_state=init_state)
+      mock_provider.MockProviderModelConnector(init_from_state=init_state)
 
   def test_init_state_with_all_options(self):
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -290,7 +244,7 @@ class TestModelConnectorInit:
                   api_key='test_api_key')))
 
       connector = mock_provider.MockProviderModelConnector(
-          init_state=init_state)
+          init_from_state=init_state)
 
       assert connector.provider_model == pytest.model_configs_instance.get_provider_model(('mock_provider', 'mock_model'))
       assert connector.run_type == types.RunType.TEST
@@ -314,7 +268,7 @@ class TestModelConnectorInit:
           hide_sensitive_content=True,
           logging_path=temp_dir)
 
-      proxdash_connection = proxdash.ProxDashConnection(
+      proxdash_connection_params = proxdash.ProxDashConnectionParams(
           hidden_run_key='test_key',
           experiment_path='test/path',
           logging_options=base_logging_options,
@@ -322,12 +276,18 @@ class TestModelConnectorInit:
               stdout=True,
               api_key='test_api_key'))
 
-      connector = mock_provider.MockProviderModelConnector(
+      proxdash_connection = proxdash.ProxDashConnection(
+          init_from_params=proxdash_connection_params)
+
+      model_connector_params = model_connector.ProviderModelConnectorParams(
           provider_model=pytest.model_configs_instance.get_provider_model(('mock_provider', 'mock_model')),
           run_type=types.RunType.TEST,
           feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
           logging_options=base_logging_options,
           proxdash_connection=proxdash_connection)
+
+      connector = mock_provider.MockProviderModelConnector(
+          init_from_params=model_connector_params)
 
       init_state = connector.get_state()
       assert init_state.provider_model == pytest.model_configs_instance.get_provider_model(('mock_provider', 'mock_model'))
@@ -350,20 +310,26 @@ class TestModelConnectorInit:
 
     with pytest.raises(
         ValueError,
-        match='provider_model needs to be set in init_state.'):
-      mock_provider.MockProviderModelConnector(init_state=init_state)
+        match='provider_model needs to be set in init_from_state.'):
+      mock_provider.MockProviderModelConnector(init_from_state=init_state)
 
   def test_init_with_invalid_combinations(self):
     with pytest.raises(
         ValueError,
         match=(
-            'Only one of logging_options or get_logging_options should be set '
-            'while initializing the StateControlled object.')):
-      mock_provider.MockProviderModelConnector(
+            'init_from_params and init_from_state cannot be set at the same '
+            'time.')):
+      model_connector_params = model_connector.ProviderModelConnectorParams(
           provider_model=pytest.model_configs_instance.get_provider_model(('mock_provider', 'mock_model')),
           run_type=types.RunType.TEST,
-          logging_options=types.LoggingOptions(stdout=True),
-          get_logging_options=lambda: types.LoggingOptions(stdout=True))
+          logging_options=types.LoggingOptions(stdout=True))
+      model_connector_state = types.ProviderModelState(
+          provider_model=pytest.model_configs_instance.get_provider_model(('mock_provider', 'mock_model')),
+          run_type=types.RunType.TEST,
+          logging_options=types.LoggingOptions(stdout=True))
+      mock_provider.MockProviderModelConnector(
+          init_from_params=model_connector_params,
+          init_from_state=model_connector_state)
 
   def test_invalid_model_combination(self):
     connector = get_mock_provider_model_connector()
@@ -1296,8 +1262,10 @@ class TestModelConnector:
 
   def test_generate_text_with_cache(self):
     with tempfile.TemporaryDirectory() as temp_dir:
-      cache_manager = query_cache.QueryCacheManager(
+      query_cache_params = query_cache.QueryCacheManagerParams(
           cache_options=types.CacheOptions(cache_path=temp_dir))
+      cache_manager = query_cache.QueryCacheManager(
+          init_from_params=query_cache_params)
 
       connector = get_mock_provider_model_connector(
           query_cache_manager=cache_manager)
@@ -1309,58 +1277,6 @@ class TestModelConnector:
       # Second call - should hit the cache
       result2 = connector.generate_text(prompt="Hello")
       assert result2.response_source == types.ResponseSource.CACHE
-
-  def test_generate_text_with_query_cache_manager_function(self):
-    with tempfile.TemporaryDirectory() as temp_dir:
-      dynamic_cache_options = types.CacheOptions(cache_path=temp_dir)
-
-      def get_cache_options():
-        return dynamic_cache_options
-
-      def get_query_cache_manager():
-        return query_cache.QueryCacheManager(
-            get_cache_options=get_cache_options)
-
-      connector = get_mock_provider_model_connector(
-          get_query_cache_manager=get_query_cache_manager)
-
-      dynamic_cache_options.unique_response_limit = 2
-      connector.apply_external_state_changes()
-
-      # First call - should hit the provider
-      result1 = connector.generate_text(prompt="Hello")
-      assert result1.response_source == types.ResponseSource.PROVIDER
-
-      # Second call - should hit the provider
-      result2 = connector.generate_text(prompt="Hello")
-      assert result2.response_source == types.ResponseSource.PROVIDER
-
-      # Third call - should hit the cache
-      result3 = connector.generate_text(prompt="Hello")
-      assert result3.response_source == types.ResponseSource.CACHE
-
-  def test_stats_update(self):
-    provider_model = pytest.model_configs_instance.get_provider_model(('mock_provider', 'mock_model'))
-    stats = {
-        stats_type.GlobalStatType.RUN_TIME: stats_type.ProviderModelStats(
-            provider_model=provider_model),
-        stats_type.GlobalStatType.SINCE_CONNECT: stats_type.ProviderModelStats(
-            provider_model=provider_model)
-    }
-
-    connector = get_mock_provider_model_connector(stats=stats)
-
-    result = connector.generate_text(prompt="Hello")
-
-    # Verify stats were updated
-    run_time_stats = stats[stats_type.GlobalStatType.RUN_TIME]
-    assert run_time_stats.provider_stats.total_queries == 1
-    assert run_time_stats.provider_stats.total_successes == 1
-    assert run_time_stats.provider_stats.total_token_count > 0
-    assert run_time_stats.provider_stats.total_query_token_count > 0
-    assert run_time_stats.provider_stats.total_response_token_count > 0
-    assert run_time_stats.provider_stats.total_response_time > 0
-    assert run_time_stats.provider_stats.estimated_cost > 0
 
 
 class TestGetTokenCountEstimate:
