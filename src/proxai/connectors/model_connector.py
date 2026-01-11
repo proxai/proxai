@@ -14,7 +14,6 @@ import proxai.types as types
 import proxai.logging.utils as logging_utils
 import proxai.caching.query_cache as query_cache
 import proxai.type_utils as type_utils
-import proxai.stat_types as stats_type
 import proxai.connections.proxdash as proxdash
 import proxai.state_controllers.state_controller as state_controller
 
@@ -39,7 +38,6 @@ class ProviderModelConnector(state_controller.StateControlled):
   _feature_mapping_strategy: Optional[types.FeatureMappingStrategy]
   _query_cache_manager: Optional[query_cache.QueryCacheManager]
   _api: Optional[Any]
-  _stats: Optional[Dict[str, stats_type.RunStats]]
   _logging_options: Optional[types.LoggingOptions]
   _proxdash_connection: Optional[proxdash.ProxDashConnection]
   _provider_model_state: Optional[types.ProviderModelState]
@@ -752,58 +750,6 @@ class ProviderModelConnector(state_controller.StateControlled):
         query_token_count * query_token_cost +
         response_token_count * response_token_cost)
 
-  def _update_stats(self, logging_record: types.LoggingRecord):
-    if getattr(self, '_stats', None) is None:
-      return
-    provider_stats = stats_type.BaseProviderStats()
-    cache_stats = stats_type.BaseCacheStats()
-    query_token_count = logging_record.query_record.token_count
-    if type(query_token_count) != int:
-      query_token_count = 0
-    response_token_count = logging_record.response_record.token_count
-    if type(response_token_count) != int:
-      response_token_count = 0
-    if logging_record.response_source == types.ResponseSource.PROVIDER:
-      provider_stats.total_queries = 1
-      if logging_record.response_record.response:
-        provider_stats.total_successes = 1
-      else:
-        provider_stats.total_fails = 1
-      provider_stats.total_token_count = (
-          query_token_count + response_token_count)
-      provider_stats.total_query_token_count = query_token_count
-      provider_stats.total_response_token_count = response_token_count
-      provider_stats.total_response_time = (
-          logging_record.response_record.response_time.total_seconds())
-      provider_stats.estimated_cost = (
-          logging_record.response_record.estimated_cost)
-      provider_stats.total_cache_look_fail_reasons = {
-          logging_record.look_fail_reason: 1}
-    elif logging_record.response_source == types.ResponseSource.CACHE:
-      cache_stats.total_cache_hit = 1
-      if logging_record.response_record.response:
-        cache_stats.total_success_return = 1
-      else:
-        cache_stats.total_fail_return = 1
-      cache_stats.saved_token_count = (
-          query_token_count + response_token_count)
-      cache_stats.saved_query_token_count = query_token_count
-      cache_stats.saved_response_token_count = response_token_count
-      cache_stats.saved_total_response_time = (
-          logging_record.response_record.response_time.total_seconds())
-      cache_stats.saved_estimated_cost = (
-          logging_record.response_record.estimated_cost)
-    else:
-      raise ValueError(
-        f'Invalid response source.\n{logging_record.response_source}')
-
-    provider_model_stats = stats_type.ProviderModelStats(
-        provider_model=self.provider_model,
-        provider_stats=provider_stats,
-        cache_stats=cache_stats)
-    self._stats[stats_type.GlobalStatType.RUN_TIME] += provider_model_stats
-    self._stats[stats_type.GlobalStatType.SINCE_CONNECT] += provider_model_stats
-
   def _update_proxdash(self, logging_record: types.LoggingRecord):
     if not self.proxdash_connection:
       return
@@ -901,7 +847,6 @@ class ProviderModelConnector(state_controller.StateControlled):
         logging_utils.log_logging_record(
             logging_options=self.logging_options,
             logging_record=logging_record)
-        self._update_stats(logging_record=logging_record)
         self._update_proxdash(logging_record=logging_record)
         return logging_record
       look_fail_reason = cache_look_result.look_fail_reason
@@ -955,7 +900,6 @@ class ProviderModelConnector(state_controller.StateControlled):
     logging_utils.log_logging_record(
         logging_options=self.logging_options,
         logging_record=logging_record)
-    self._update_stats(logging_record=logging_record)
     self._update_proxdash(logging_record=logging_record)
     return logging_record
 
