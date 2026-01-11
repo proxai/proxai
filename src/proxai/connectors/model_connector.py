@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import copy
 import datetime
 import re
@@ -13,140 +14,70 @@ import proxai.types as types
 import proxai.logging.utils as logging_utils
 import proxai.caching.query_cache as query_cache
 import proxai.type_utils as type_utils
-import proxai.stat_types as stats_type
 import proxai.connections.proxdash as proxdash
 import proxai.state_controllers.state_controller as state_controller
 
 _PROVIDER_MODEL_STATE_PROPERTY = '_provider_model_state'
 
 
+@dataclasses.dataclass
+class ProviderModelConnectorParams:
+  provider_model: Optional[types.ProviderModelType] = None
+  run_type: Optional[types.RunType] = None
+  provider_model_config: Optional[types.ProviderModelConfigType] = None
+  feature_mapping_strategy: Optional[types.FeatureMappingStrategy] = None
+  query_cache_manager: Optional[types.QueryCacheManagerState] = None
+  logging_options: Optional[types.LoggingOptions] = None
+  proxdash_connection: Optional[proxdash.ProxDashConnection] = None
+
+
 class ProviderModelConnector(state_controller.StateControlled):
   _provider_model: Optional[types.ProviderModelType]
   _run_type: Optional[types.RunType]
   _provider_model_config: Optional[types.ProviderModelConfigType]
-  _get_run_type: Optional[Callable[[], types.RunType]]
   _feature_mapping_strategy: Optional[types.FeatureMappingStrategy]
-  _get_feature_mapping_strategy: Optional[Callable[[], types.FeatureMappingStrategy]]
   _query_cache_manager: Optional[query_cache.QueryCacheManager]
-  _get_query_cache_manager: Optional[
-      Callable[[], query_cache.QueryCacheManager]]
   _api: Optional[Any]
-  _stats: Optional[Dict[str, stats_type.RunStats]]
   _logging_options: Optional[types.LoggingOptions]
-  _get_logging_options: Optional[Dict]
   _proxdash_connection: Optional[proxdash.ProxDashConnection]
-  _get_proxdash_connection: Optional[
-      Callable[[bool], proxdash.ProxDashConnection]]
   _provider_model_state: Optional[types.ProviderModelState]
 
   _chosen_endpoint_cached_result: Optional[Dict[str, bool]]
 
   def __init__(
       self,
-      provider_model: Optional[types.ProviderModelType] = None,
-      run_type: Optional[types.RunType] = None,
-      provider_model_config: Optional[types.ProviderModelConfigType] = None,
-      get_run_type: Optional[Callable[[], types.RunType]] = None,
-      feature_mapping_strategy: Optional[types.FeatureMappingStrategy] = None,
-      get_feature_mapping_strategy: Optional[Callable[[], types.FeatureMappingStrategy]] = None,
-      query_cache_manager: Optional[query_cache.QueryCacheManager] = None,
-      get_query_cache_manager: Optional[
-          Callable[[], query_cache.QueryCacheManager]] = None,
-      logging_options: Optional[types.LoggingOptions] = None,
-      get_logging_options: Optional[Callable[[], types.LoggingOptions]] = None,
-      proxdash_connection: Optional[proxdash.ProxDashConnection] = None,
-      get_proxdash_connection: Optional[
-          Callable[[bool], proxdash.ProxDashConnection]] = None,
-      init_state: Optional[types.ProviderModelState] = None,
-      stats: Optional[Dict[str, stats_type.RunStats]] = None):
+      init_from_params: Optional[ProviderModelConnectorParams] = None,
+      init_from_state: Optional[types.ProviderModelState] = None
+  ):
     super().__init__(
-        init_state=init_state,
-        provider_model=provider_model,
-        run_type=run_type,
-        provider_model_config=provider_model_config,
-        get_run_type=get_run_type,
-        feature_mapping_strategy=feature_mapping_strategy,
-        get_feature_mapping_strategy=get_feature_mapping_strategy,
-        query_cache_manager=query_cache_manager,
-        get_query_cache_manager=get_query_cache_manager,
-        logging_options=logging_options,
-        get_logging_options=get_logging_options,
-        proxdash_connection=proxdash_connection,
-        get_proxdash_connection=get_proxdash_connection)
+        init_from_params=init_from_params,
+        init_from_state=init_from_state)
 
     self._chosen_endpoint_cached_result = {}
 
-    if init_state:
-      if init_state.provider_model is None:
-        raise ValueError('provider_model needs to be set in init_state.')
-      if init_state.provider_model.provider != self.get_provider_name():
+    if init_from_state:
+      if init_from_state.provider_model is None:
+        raise ValueError('provider_model needs to be set in init_from_state.')
+      if init_from_state.provider_model.provider != self.get_provider_name():
         raise ValueError(
             'provider_model needs to be same with the class provider name.\n'
-            f'provider_model: {init_state.provider_model}\n'
+            f'provider_model: {init_from_state.provider_model}\n'
             f'class provider name: {self.get_provider_name()}')
-      self.load_state(init_state)
+      self.load_state(init_from_state)
     else:
-      initial_state = self.get_state()
-
-      self._get_run_type = get_run_type
-      self._get_feature_mapping_strategy = get_feature_mapping_strategy
-      self._get_query_cache_manager = get_query_cache_manager
-      self._get_logging_options = get_logging_options
-      self._get_proxdash_connection = get_proxdash_connection
-
-      self.provider_model = provider_model
-      self.run_type = run_type
-      self.provider_model_config = provider_model_config
-      self.feature_mapping_strategy = feature_mapping_strategy
-      self.query_cache_manager = query_cache_manager
-      self.logging_options = logging_options
-      self.proxdash_connection = proxdash_connection
-      self._stats = stats
-
-      self.handle_changes(initial_state, self.get_state())
+      self.provider_model = init_from_params.provider_model
+      self.run_type = init_from_params.run_type
+      self.provider_model_config = init_from_params.provider_model_config
+      self.feature_mapping_strategy = init_from_params.feature_mapping_strategy
+      self.query_cache_manager = init_from_params.query_cache_manager
+      self.logging_options = init_from_params.logging_options
+      self.proxdash_connection = init_from_params.proxdash_connection
 
   def get_internal_state_property_name(self):
     return _PROVIDER_MODEL_STATE_PROPERTY
 
   def get_internal_state_type(self):
     return types.ProviderModelState
-
-  def handle_changes(
-      self,
-      old_state: types.ProviderModelState,
-      current_state: types.ProviderModelState):
-    result_state = copy.deepcopy(old_state)
-    if current_state.provider_model is not None:
-      result_state.provider_model = current_state.provider_model
-    if current_state.run_type is not None:
-      result_state.run_type = current_state.run_type
-    if current_state.feature_mapping_strategy is not None:
-      result_state.feature_mapping_strategy = current_state.feature_mapping_strategy
-    if current_state.logging_options is not None:
-      result_state.logging_options = current_state.logging_options
-    if current_state.proxdash_connection is not None:
-      result_state.proxdash_connection = (
-          current_state.proxdash_connection)
-
-    if result_state.provider_model is None:
-      raise ValueError(
-          'Provider model is not set for both old and new states. '
-          'This creates an invalid state change.')
-
-    if result_state.provider_model.provider != self.get_provider_name():
-      raise ValueError(
-          'Provider needs to be same with the class provider name.\n'
-          f'provider_model: {result_state.provider_model}\n'
-          f'class provider name: {self.get_provider_name()}')
-
-    if result_state.logging_options is None:
-      raise ValueError(
-          'Logging options are not set for both old and new states. '
-          'This creates an invalid state change.')
-    if result_state.proxdash_connection is None:
-      raise ValueError(
-          'ProxDash connection is not set for both old and new states. '
-          'This creates an invalid state change.')
 
   @property
   def api(self):
@@ -205,7 +136,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       self,
       state_value: types.QueryCacheManagerState
   ) -> query_cache.QueryCacheManager:
-    return query_cache.QueryCacheManager(init_state=state_value)
+    return query_cache.QueryCacheManager(init_from_state=state_value)
 
   @property
   def logging_options(self):
@@ -227,7 +158,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       self,
       state_value: types.ProxDashConnectionState
   ) -> proxdash.ProxDashConnection:
-    return proxdash.ProxDashConnection(init_state=state_value)
+    return proxdash.ProxDashConnection(init_from_state=state_value)
 
   def _extract_json_from_text(self, text: str) -> dict:
     """Helper function for extracting JSON from text.
@@ -819,58 +750,6 @@ class ProviderModelConnector(state_controller.StateControlled):
         query_token_count * query_token_cost +
         response_token_count * response_token_cost)
 
-  def _update_stats(self, logging_record: types.LoggingRecord):
-    if getattr(self, '_stats', None) is None:
-      return
-    provider_stats = stats_type.BaseProviderStats()
-    cache_stats = stats_type.BaseCacheStats()
-    query_token_count = logging_record.query_record.token_count
-    if type(query_token_count) != int:
-      query_token_count = 0
-    response_token_count = logging_record.response_record.token_count
-    if type(response_token_count) != int:
-      response_token_count = 0
-    if logging_record.response_source == types.ResponseSource.PROVIDER:
-      provider_stats.total_queries = 1
-      if logging_record.response_record.response:
-        provider_stats.total_successes = 1
-      else:
-        provider_stats.total_fails = 1
-      provider_stats.total_token_count = (
-          query_token_count + response_token_count)
-      provider_stats.total_query_token_count = query_token_count
-      provider_stats.total_response_token_count = response_token_count
-      provider_stats.total_response_time = (
-          logging_record.response_record.response_time.total_seconds())
-      provider_stats.estimated_cost = (
-          logging_record.response_record.estimated_cost)
-      provider_stats.total_cache_look_fail_reasons = {
-          logging_record.look_fail_reason: 1}
-    elif logging_record.response_source == types.ResponseSource.CACHE:
-      cache_stats.total_cache_hit = 1
-      if logging_record.response_record.response:
-        cache_stats.total_success_return = 1
-      else:
-        cache_stats.total_fail_return = 1
-      cache_stats.saved_token_count = (
-          query_token_count + response_token_count)
-      cache_stats.saved_query_token_count = query_token_count
-      cache_stats.saved_response_token_count = response_token_count
-      cache_stats.saved_total_response_time = (
-          logging_record.response_record.response_time.total_seconds())
-      cache_stats.saved_estimated_cost = (
-          logging_record.response_record.estimated_cost)
-    else:
-      raise ValueError(
-        f'Invalid response source.\n{logging_record.response_source}')
-
-    provider_model_stats = stats_type.ProviderModelStats(
-        provider_model=self.provider_model,
-        provider_stats=provider_stats,
-        cache_stats=cache_stats)
-    self._stats[stats_type.GlobalStatType.RUN_TIME] += provider_model_stats
-    self._stats[stats_type.GlobalStatType.SINCE_CONNECT] += provider_model_stats
-
   def _update_proxdash(self, logging_record: types.LoggingRecord):
     if not self.proxdash_connection:
       return
@@ -968,7 +847,6 @@ class ProviderModelConnector(state_controller.StateControlled):
         logging_utils.log_logging_record(
             logging_options=self.logging_options,
             logging_record=logging_record)
-        self._update_stats(logging_record=logging_record)
         self._update_proxdash(logging_record=logging_record)
         return logging_record
       look_fail_reason = cache_look_result.look_fail_reason
@@ -1022,7 +900,6 @@ class ProviderModelConnector(state_controller.StateControlled):
     logging_utils.log_logging_record(
         logging_options=self.logging_options,
         logging_record=logging_record)
-    self._update_stats(logging_record=logging_record)
     self._update_proxdash(logging_record=logging_record)
     return logging_record
 

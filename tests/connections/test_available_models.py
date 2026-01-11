@@ -74,22 +74,27 @@ class TestAvailableModels:
         set_model_cache_manager: bool = True):
     self._init_test_variables()
     if set_model_cache_manager:
-      self.model_cache_manager = model_cache.ModelCacheManager(
+      model_cache_manager_params = model_cache.ModelCacheManagerParams(
           cache_options=types.CacheOptions(cache_path=self.cache_dir.name))
-    available_models_manager = available_models.AvailableModels(
+      self.model_cache_manager = model_cache.ModelCacheManager(
+          init_from_params=model_cache_manager_params)
+    available_models_params = available_models.AvailableModelsParams(
         run_type=types.RunType.TEST,
-        model_configs=pytest.model_configs_instance,
-        get_model_connector=self._get_model_connector,
+        model_configs_instance=pytest.model_configs_instance,
         allow_multiprocessing=allow_multiprocessing,
         model_cache_manager=(
             self.model_cache_manager if set_model_cache_manager else None),
     )
+    available_models_manager = available_models.AvailableModels(
+        init_from_params=available_models_params)
     return available_models_manager
 
   def _save_temp_cache_state(self):
     self._init_test_variables()
+    model_cache_manager_params = model_cache.ModelCacheManagerParams(
+        cache_options=types.CacheOptions(cache_path=self.cache_dir.name))
     save_cache = model_cache.ModelCacheManager(
-          cache_options=types.CacheOptions(cache_path=self.cache_dir.name))
+        init_from_params=model_cache_manager_params)
     data = types.ModelStatus()
     data.working_models.add(
         pytest.model_configs_instance.get_provider_model(('openai', 'o4-mini')))
@@ -331,8 +336,10 @@ class TestAvailableModels:
     assert len(models.provider_queries) >= 4
 
     # Check cache file values
-    load_cache = model_cache.ModelCacheManager(
+    model_cache_manager_params = model_cache.ModelCacheManagerParams(
         cache_options=types.CacheOptions(cache_path=self.cache_dir.name))
+    load_cache = model_cache.ModelCacheManager(
+        init_from_params=model_cache_manager_params)
     models = load_cache.get(call_type=types.CallType.GENERATE_TEXT)
     assert models.working_models == (
         self._get_models_set(['openai', 'mock_provider'])
@@ -519,11 +526,13 @@ class TestAvailableModelsConstructor:
 
   def test_model_configs_parameter(self):
     """Test that model_configs parameter is properly used."""
-    available_models_manager = available_models.AvailableModels(
+    available_models_params = available_models.AvailableModelsParams(
         run_type=types.RunType.TEST,
-        model_configs=pytest.model_configs_instance)
+        model_configs_instance=pytest.model_configs_instance)
+    available_models_manager = available_models.AvailableModels(
+        init_from_params=available_models_params)
 
-    assert available_models_manager.model_configs is pytest.model_configs_instance
+    assert available_models_manager.model_configs_instance is pytest.model_configs_instance
 
 
 class TestAvailableModelsState:
@@ -535,14 +544,18 @@ class TestAvailableModelsState:
 
   def _create_available_models(self):
     self._init_test_variables()
-    model_cache_manager = model_cache.ModelCacheManager(
+    model_cache_manager_params = model_cache.ModelCacheManagerParams(
         cache_options=types.CacheOptions(cache_path=self.cache_dir.name))
-    return available_models.AvailableModels(
+    model_cache_manager = model_cache.ModelCacheManager(
+        init_from_params=model_cache_manager_params)
+    available_models_params = available_models.AvailableModelsParams(
         run_type=types.RunType.TEST,
-        model_configs=pytest.model_configs_instance,
+        model_configs_instance=pytest.model_configs_instance,
         model_cache_manager=model_cache_manager,
         allow_multiprocessing=False,
         model_test_timeout=30)
+    return available_models.AvailableModels(
+        init_from_params=available_models_params)
 
   def test_get_state_and_init_from_state(self):
     """Test state serialization and deserialization round-trip."""
@@ -550,7 +563,7 @@ class TestAvailableModelsState:
     original.providers_with_key = {'openai', 'claude'}
 
     state = original.get_state()
-    restored = available_models.AvailableModels(init_state=state)
+    restored = available_models.AvailableModels(init_from_state=state)
 
     assert restored.run_type == original.run_type
     assert restored.allow_multiprocessing == original.allow_multiprocessing
@@ -562,12 +575,12 @@ class TestAvailableModelsState:
     original = self._create_available_models()
 
     state = original.get_state()
-    restored = available_models.AvailableModels(init_state=state)
+    restored = available_models.AvailableModels(init_from_state=state)
 
-    assert restored.model_configs is not None
-    original_models = original.model_configs.get_all_models(
+    assert restored.model_configs_instance is not None
+    original_models = original.model_configs_instance.get_all_models(
         call_type=types.CallType.GENERATE_TEXT)
-    restored_models = restored.model_configs.get_all_models(
+    restored_models = restored.model_configs_instance.get_all_models(
         call_type=types.CallType.GENERATE_TEXT)
     assert set(original_models) == set(restored_models)
 
@@ -607,11 +620,11 @@ class TestFilterByFeatures:
 
   def _get_available_models(self):
     self._init_test_variables()
-    return available_models.AvailableModels(
+    available_models_params = available_models.AvailableModelsParams(
         run_type=types.RunType.TEST,
-        model_configs=pytest.model_configs_instance,
-        get_model_connector=self._get_model_connector,
+        model_configs_instance=pytest.model_configs_instance,
         allow_multiprocessing=False)
+    return available_models.AvailableModels(init_from_params=available_models_params)
 
   def test_filter_by_features_none_does_nothing(self):
     """When features is None, no filtering should occur."""

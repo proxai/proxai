@@ -487,7 +487,9 @@ class TestGetAllModels:
         },
         default_model_priority_list=[pm_featured])
     schema = create_schema(version_config)
-    return model_configs.ModelConfigs(model_configs_schema=schema)
+    model_configs_params = model_configs.ModelConfigsParams(
+        model_configs_schema=schema)
+    return model_configs.ModelConfigs(init_from_params=model_configs_params)
 
   def test_only_featured_filter(self, custom_configs):
     result = custom_configs.get_all_models(call_type=None, only_featured=True)

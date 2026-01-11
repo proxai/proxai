@@ -6,21 +6,16 @@ from proxai.proxai import (
     ProxDashOptions,
     ResponseFormat,
     ResponseFormatType,
-    set_run_type,
-    check_health,
     connect,
-    set_model,
+    check_health,
     generate_text,
-    get_summary,
-    get_available_models,
     get_current_options,
+    get_default_proxai_client,
+    set_model,
     reset_state,
-    reset_platform_cache,
-    _init_globals,
-    _get_model_configs,
+    DefaultModelsConnector,
 )
 
 
 __version__ = version("proxai")
-_init_globals()
-models = get_available_models()
+models = DefaultModelsConnector()
