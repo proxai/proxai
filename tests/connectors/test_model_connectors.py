@@ -8,7 +8,6 @@ from typing import Dict, Optional, Callable
 import pydantic
 import proxai.types as types
 import proxai.caching.query_cache as query_cache
-import proxai.stat_types as stats_type
 import proxai.connections.proxdash as proxdash
 import proxai.connectors.providers.mock_provider as mock_provider
 import proxai.connectors.model_connector as model_connector

@@ -1,9 +1,6 @@
-import datetime
-import copy
-from typing import Any, Dict, Optional, Union
+from typing import Optional
 import proxai.types as types
 import proxai.client as client
-import proxai.stat_types as stat_types
 
 # Re-export for backward compatibility
 CacheOptions = types.CacheOptions
