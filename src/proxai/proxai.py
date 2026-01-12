@@ -400,7 +400,6 @@ class DefaultModelsConnector:
       self,
       model_size: Optional[types.ModelSizeIdentifierType] = None,
       features: Optional[types.FeatureListParam] = None,
-      return_all: bool = False,
       call_type: types.CallType = types.CallType.GENERATE_TEXT,
   ) -> Union[List[types.ProviderModelType], types.ModelStatus]:
     """Lists all configured models matching the specified criteria.
@@ -414,9 +413,6 @@ class DefaultModelsConnector:
             enum value ('small', 'medium', 'large', 'largest') or a string.
         features: Filter by required features. List of feature names that
             models must support (e.g., ['system', 'temperature']).
-        return_all: If True, returns a ModelStatus object with detailed
-            categorization. If False, returns a simple list of models.
-            Defaults to False.
         call_type: The type of API call to filter models for.
             Defaults to GENERATE_TEXT.
 
@@ -440,7 +436,6 @@ class DefaultModelsConnector:
         .available_models_instance.list_models(
             model_size=model_size,
             features=features,
-            return_all=return_all,
             call_type=call_type,
         ))
 
@@ -478,7 +473,6 @@ class DefaultModelsConnector:
       provider: str,
       model_size: Optional[types.ModelSizeIdentifierType] = None,
       features: Optional[types.FeatureListParam] = None,
-      return_all: bool = False,
       call_type: types.CallType = types.CallType.GENERATE_TEXT,
   ) -> Union[List[types.ProviderModelType], types.ModelStatus]:
     """Lists all models available from a specific provider.
@@ -493,8 +487,6 @@ class DefaultModelsConnector:
             enum value or a string.
         features: Filter by required features. List of feature names that
             models must support.
-        return_all: If True, returns a ModelStatus object with detailed
-            categorization. Defaults to False.
         call_type: The type of API call to filter models for.
             Defaults to GENERATE_TEXT.
 
@@ -519,7 +511,6 @@ class DefaultModelsConnector:
             provider=provider,
             model_size=model_size,
             features=features,
-            return_all=return_all,
             call_type=call_type,
         ))
 

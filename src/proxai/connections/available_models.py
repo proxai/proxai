@@ -656,7 +656,6 @@ class AvailableModels(state_controller.StateControlled):
       self,
       model_size: Optional[types.ModelSizeIdentifierType] = None,
       features: Optional[types.FeatureListParam] = None,
-      return_all: bool = False,
       call_type: types.CallType = types.CallType.GENERATE_TEXT
   ) -> Union[List[types.ProviderModelType], types.ModelStatus]:
     if call_type != types.CallType.GENERATE_TEXT:
@@ -673,8 +672,6 @@ class AvailableModels(state_controller.StateControlled):
         features=features,
         raw_config_results_without_test=True)
 
-    if return_all:
-      return model_status
     return self._format_set(model_status.unprocessed_models)
 
   def list_providers(
@@ -698,7 +695,6 @@ class AvailableModels(state_controller.StateControlled):
       provider: str,
       model_size: Optional[types.ModelSizeIdentifierType] = None,
       features: Optional[types.FeatureListParam] = None,
-      return_all: bool = False,
       call_type: types.CallType = types.CallType.GENERATE_TEXT,
   ) -> Union[List[types.ProviderModelType], types.ModelStatus]:
     if call_type != types.CallType.GENERATE_TEXT:
@@ -724,8 +720,6 @@ class AvailableModels(state_controller.StateControlled):
     self._filter_by_model_size(model_status, model_size=model_size)
     self._filter_by_features(model_status, features=features)
 
-    if return_all:
-      return model_status
     return self._format_set(model_status.unprocessed_models)
 
   def get_model(
