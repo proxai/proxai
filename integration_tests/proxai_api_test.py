@@ -1,4 +1,4 @@
-"""ProxAI API Integration Test
+"""ProxAI API Integration Test.
 
 Flags:
   --mode: latest, new, or a specific test ID. Default is latest.
@@ -11,17 +11,17 @@ Examples:
   poetry run python3 integration_tests/proxai_api_test.py --env prod --print-code
   poetry run python3 integration_tests/proxai_api_test.py --auto-continue
 """
-import os
+import argparse
 import inspect
-from pathlib import Path
-import proxai as px
+import json
+import os
 import random
 import time
-from pprint import pprint
-import json
-import argparse
 from dataclasses import asdict
-from typing import Literal
+from pathlib import Path
+from pprint import pprint
+
+import proxai as px
 
 _ROOT_INTEGRATION_TEST_PATH = f'{Path.home()}/proxai_integration_test/'
 _WEBVIEW_BASE_URL = 'http://localhost:3000'
@@ -37,6 +37,7 @@ _AUTO_CONTINUE = False
 
 
 def print_separator(status, message, color):
+  """Print a colored separator line with status and message."""
   if color == 'green':
     color_code = '\033[32m'
   elif color == 'yellow':
@@ -50,6 +51,7 @@ def print_separator(status, message, color):
 
 
 def init_test_path():
+  """Initialize test paths and parse command line arguments."""
   global _TEST_ID
   global _TEST_NAME
   global _TEST_PATH
@@ -90,8 +92,8 @@ def init_test_path():
   else:
     try:
       _TEST_ID = int(args.mode)
-    except ValueError:
-      raise ValueError(f'Invalid test ID: {args.mode}')
+    except ValueError as err:
+      raise ValueError(f'Invalid test ID: {args.mode}') from err
   _TEST_NAME = f'test_{_TEST_ID}'
   _TEST_PATH = os.path.join(_ROOT_INTEGRATION_TEST_PATH, _TEST_NAME)
   _ROOT_LOGGING_PATH = f'{Path.home()}/proxai_log'
@@ -105,6 +107,7 @@ def init_test_path():
 
 
 def integration_block(func):
+  """Decorator that manages test state persistence and execution flow."""
   def wrapper(
       force_run=False,
       skip=None,
@@ -115,17 +118,19 @@ def integration_block(func):
       return kwargs.get('state_data', {})
     elif os.path.exists(state_path) and not force_run:
       print_separator('SKIPPED', func.__name__, 'yellow')
-      return json.load(open(state_path))
+      with open(state_path) as f:
+        return json.load(f)
     else:
       print_separator('RUNNING', func.__name__, 'green')
       if _PRINT_CODE:
-        print(f'\033[32m<Code Block> \033[0m')
+        print('\033[32m<Code Block> \033[0m')
         print(inspect.getsource(func).strip())
-        print(f'\033[32m</Code Block> \033[0m')
+        print('\033[32m</Code Block> \033[0m')
       state_data = func(**kwargs)
       if not _AUTO_CONTINUE:
         input('> Press Enter to continue...')
-      json.dump(state_data, open(state_path, 'w'))
+      with open(state_path, 'w') as f:
+        json.dump(state_data, f)
       return state_data
   return wrapper
 
@@ -189,7 +194,7 @@ def list_models(state_data):
       break
     print(f'{idx:>3}: {provider_model.provider:>25} - {provider_model.model}')
   if len(provider_models) > 15:
-    print(f'...')
+    print('...')
   return state_data
 
 
@@ -245,7 +250,7 @@ def list_working_models(state_data):
       break
     print(f'{idx:>3}: {provider_model.provider:>25} - {provider_model.model}')
   if len(provider_models) > 15:
-    print(f'...')
+    print('...')
   return state_data
 
 
@@ -579,7 +584,7 @@ def logging(state_data):
 
   pprint(os.listdir(logging_path))
   last_log_data = None
-  with open(os.path.join(logging_path, 'provider_queries.log'), 'r') as f:
+  with open(os.path.join(logging_path, 'provider_queries.log')) as f:
     for line in f:
       last_log_data = json.loads(line)
 
@@ -609,7 +614,7 @@ def logging_with_hide_sensitive_content(state_data):
   print('1 - Check prompt and response are hidden.')
   px.generate_text('Hello model! This test for log manager.')
   last_log_data = None
-  with open(os.path.join(logging_path, 'provider_queries.log'), 'r') as f:
+  with open(os.path.join(logging_path, 'provider_queries.log')) as f:
     for line in f:
       last_log_data = json.loads(line)
   assert (
@@ -633,7 +638,7 @@ def logging_with_hide_sensitive_content(state_data):
       ],
   )
   last_log_data = None
-  with open(os.path.join(logging_path, 'provider_queries.log'), 'r') as f:
+  with open(os.path.join(logging_path, 'provider_queries.log')) as f:
     for line in f:
       last_log_data = json.loads(line)
   assert (
@@ -688,19 +693,19 @@ def query_cache(state_data):
       ),
   )
   response = px.generate_text(
-      f'Hello model, what is 23 times 23?',
+      'Hello model, what is 23 times 23?',
       extensive_return=True)
   print(f'> Response Source: {response.response_source}')
   assert response.response_source == 'PROVIDER'
 
   response = px.generate_text(
-      f'Hello model, what is 23 times 23?',
+      'Hello model, what is 23 times 23?',
       extensive_return=True)
   print(f'> Response Source: {response.response_source}')
   assert response.response_source == 'CACHE'
 
   response = px.generate_text(
-      f'Hello model, what is 23 times 23?',
+      'Hello model, what is 23 times 23?',
       extensive_return=True)
   print(f'> Response Source: {response.response_source}')
   assert response.response_source == 'CACHE'
@@ -724,7 +729,7 @@ def query_cache_with_unique_response_limit(state_data):
     print(f'> {idx} | ', end='')
     response = px.generate_text(
         'Can you pick 100 different random positive integers which are less '
-        f'than 3000? Can you also explain why you picked these numbers? '
+        'than 3000? Can you also explain why you picked these numbers? '
         'Please think deeply about your decision and answer accordingly. '
         'Start your sentence with random simple poem.',
         provider_model=('openai', 'gpt-4.1'),
@@ -757,19 +762,19 @@ def query_cache_with_use_cache_false(state_data):
       ),
   )
   response = px.generate_text(
-      f'Hello model, what is 23 times 23?',
+      'Hello model, what is 23 times 23?',
       extensive_return=True)
   print(f'> Response Source: {response.response_source}')
   assert response.response_source == 'PROVIDER'
 
   response = px.generate_text(
-      f'Hello model, what is 23 times 23?',
+      'Hello model, what is 23 times 23?',
       extensive_return=True)
   print(f'> Response Source: {response.response_source}')
   assert response.response_source == 'CACHE'
 
   response = px.generate_text(
-      f'Hello model, what is 23 times 23?',
+      'Hello model, what is 23 times 23?',
       use_cache=False,
       extensive_return=True)
   print(f'> Response Source: {response.response_source}')
@@ -793,21 +798,21 @@ def query_cache_with_clear_cache_and_override_unique_responses(state_data):
   )
 
   response = px.generate_text(
-      f'Hello model, what is 23 times 23?',
+      'Hello model, what is 23 times 23?',
       unique_response_limit=1,
       extensive_return=True)
   print(f'> Response Source: {response.response_source}')
   assert response.response_source == 'PROVIDER'
 
   response = px.generate_text(
-      f'Hello model, what is 23 times 23?',
+      'Hello model, what is 23 times 23?',
       unique_response_limit=1,
       extensive_return=True)
   print(f'> Response Source: {response.response_source}')
   assert response.response_source == 'CACHE'
 
   response = px.generate_text(
-      f'Hello model, what is 23 times 23?',
+      'Hello model, what is 23 times 23?',
       unique_response_limit=1,
       extensive_return=True)
   print(f'> Response Source: {response.response_source}')
@@ -1072,7 +1077,7 @@ def proxdash_disable(state_data):
       ),
   )
   print('1 - Check if the proxdash stdout has:')
-  print(f'    * ProxDash connection disabled.')
+  print('    * ProxDash connection disabled.')
   _manual_user_check(
       test_message='ProxDash connection is disabled?',
       fail_message='ProxDash connection is not disabled.')
@@ -1095,7 +1100,7 @@ def proxdash_logging(state_data):
   logging_path = os.path.join(_ROOT_LOGGING_PATH, _EXPERIMENT_PATH)
   pprint(os.listdir(logging_path))
   logs = []
-  with open(os.path.join(logging_path, 'proxdash.log'), 'r') as f:
+  with open(os.path.join(logging_path, 'proxdash.log')) as f:
     for line in f:
       logs.append(json.loads(line))
 
