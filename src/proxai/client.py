@@ -1,35 +1,36 @@
 import dataclasses
 import os
 import tempfile
-from typing import Optional, Union
+
 import platformdirs
-import proxai.types as types
-import proxai.type_utils as type_utils
-import proxai.caching.query_cache as query_cache
+
 import proxai.caching.model_cache as model_cache
+import proxai.caching.query_cache as query_cache
 import proxai.connections.available_models as available_models
 import proxai.connections.proxdash as proxdash
-import proxai.experiment.experiment as experiment
 import proxai.connectors.model_configs as model_configs
-import proxai.state_controllers.state_controller as state_controller
+import proxai.experiment.experiment as experiment
 import proxai.serializers.type_serializer as type_serializer
-
+import proxai.state_controllers.state_controller as state_controller
+import proxai.type_utils as type_utils
+import proxai.types as types
 
 _PROXAI_CLIENT_STATE_PROPERTY = '_proxai_client_state'
 
 
 @dataclasses.dataclass
 class ProxAIClientParams:
-    experiment_path: Optional[str] = None
-    cache_options: Optional[types.CacheOptions] = None
-    logging_options: Optional[types.LoggingOptions] = None
-    proxdash_options: Optional[types.ProxDashOptions] = None
-    allow_multiprocessing: Optional[bool] = True
-    model_test_timeout: Optional[int] = 25
-    feature_mapping_strategy: Optional[
-        types.FeatureMappingStrategy
-    ] = types.FeatureMappingStrategy.BEST_EFFORT
-    suppress_provider_errors: Optional[bool] = False
+    """Initialization parameters for ProxAIClient."""
+
+    experiment_path: str | None = None
+    cache_options: types.CacheOptions | None = None
+    logging_options: types.LoggingOptions | None = None
+    proxdash_options: types.ProxDashOptions | None = None
+    allow_multiprocessing: bool | None = True
+    model_test_timeout: int | None = 25
+    feature_mapping_strategy: types.FeatureMappingStrategy | None = (
+        types.FeatureMappingStrategy.BEST_EFFORT)
+    suppress_provider_errors: bool | None = False
 
 
 class ProxAIClient(state_controller.StateControlled):
@@ -59,18 +60,18 @@ class ProxAIClient(state_controller.StateControlled):
 
   def __init__(
       self,
-      experiment_path: Optional[str] = None,
-      cache_options: Optional[types.CacheOptions] = None,
-      logging_options: Optional[types.LoggingOptions] = None,
-      proxdash_options: Optional[types.ProxDashOptions] = None,
-      allow_multiprocessing: Optional[bool] = True,
-      model_test_timeout: Optional[int] = 25,
-      feature_mapping_strategy: Optional[
-          types.FeatureMappingStrategy
-      ] = types.FeatureMappingStrategy.BEST_EFFORT,
-      suppress_provider_errors: Optional[bool] = False,
-      init_from_params: Optional[ProxAIClientParams] = None,
-      init_from_state: Optional[types.ProxAIClientState] = None
+      experiment_path: str | None = None,
+      cache_options: types.CacheOptions | None = None,
+      logging_options: types.LoggingOptions | None = None,
+      proxdash_options: types.ProxDashOptions | None = None,
+      allow_multiprocessing: bool | None = True,
+      model_test_timeout: int | None = 25,
+      feature_mapping_strategy: (
+          types.FeatureMappingStrategy | None
+      ) = types.FeatureMappingStrategy.BEST_EFFORT,
+      suppress_provider_errors: bool | None = False,
+      init_from_params: ProxAIClientParams | None = None,
+      init_from_state: types.ProxAIClientState | None = None
   ) -> None:
     """Initializes a new ProxAI client instance.
 
@@ -138,11 +139,11 @@ class ProxAIClient(state_controller.StateControlled):
           cache_options is not None or
           logging_options is not None or
           proxdash_options is not None or
-          allow_multiprocessing != True or
+          not allow_multiprocessing or
           model_test_timeout != 25 or
           (feature_mapping_strategy !=
            types.FeatureMappingStrategy.BEST_EFFORT) or
-          suppress_provider_errors != False):
+          suppress_provider_errors):
         raise ValueError(
             'init_from_params or init_from_state cannot be set at with '
             'direct arguments. Please use one of init_from_params, '
@@ -213,9 +214,11 @@ class ProxAIClient(state_controller.StateControlled):
           init_from_params=available_models_params)
 
   def get_internal_state_property_name(self):
+    """Return the name of the internal state property."""
     return _PROXAI_CLIENT_STATE_PROPERTY
 
   def get_internal_state_type(self):
+    """Return the dataclass type used for state storage."""
     return types.ProxAIClientState
 
   def _init_default_model_cache_manager(self):
@@ -232,7 +235,7 @@ class ProxAIClient(state_controller.StateControlled):
       self.default_model_cache_manager = model_cache.ModelCacheManager(
           init_from_params=model_cache_manager_params)
       self.platform_used_for_default_model_cache = True
-    except Exception as e:
+    except Exception:
       self.default_model_cache_path = tempfile.TemporaryDirectory()
       model_cache_manager_params = model_cache.ModelCacheManagerParams(
           cache_options=types.CacheOptions(
@@ -285,29 +288,29 @@ class ProxAIClient(state_controller.StateControlled):
     self.set_property_value('hidden_run_key', value)
 
   @property
-  def experiment_path(self) -> Optional[str]:
+  def experiment_path(self) -> str | None:
     return self.get_property_value('experiment_path')
 
   @experiment_path.setter
-  def experiment_path(self, value: Optional[str]):
+  def experiment_path(self, value: str | None):
     if value is not None:
       experiment.validate_experiment_path(value)
     self.set_property_value('experiment_path', value)
 
   @property
-  def default_model_cache_path(self) -> Optional[str]:
+  def default_model_cache_path(self) -> str | None:
     return self.get_property_value('default_model_cache_path')
 
   @default_model_cache_path.setter
-  def default_model_cache_path(self, value: Optional[str]):
+  def default_model_cache_path(self, value: str | None):
     self.set_property_value('default_model_cache_path', value)
 
   @property
-  def root_logging_path(self) -> Optional[str]:
+  def root_logging_path(self) -> str | None:
     return self.get_property_value('root_logging_path')
 
   @root_logging_path.setter
-  def root_logging_path(self, value: Optional[str]):
+  def root_logging_path(self, value: str | None):
     if value and not os.path.exists(value):
       raise ValueError(
           f'Root logging path does not exist: {value}')
@@ -318,7 +321,7 @@ class ProxAIClient(state_controller.StateControlled):
     return self.get_property_value('logging_options')
 
   @logging_options.setter
-  def logging_options(self, value: Optional[types.LoggingOptions]):
+  def logging_options(self, value: types.LoggingOptions | None):
     root_logging_path = None
     if value and value.logging_path:
       root_logging_path = value.logging_path
@@ -349,7 +352,7 @@ class ProxAIClient(state_controller.StateControlled):
     return self.get_property_value('cache_options')
 
   @cache_options.setter
-  def cache_options(self, value: Optional[types.CacheOptions]):
+  def cache_options(self, value: types.CacheOptions | None):
     result_cache_options = None
     if value is not None:
       if not value.cache_path and not value.disable_model_cache:
@@ -379,7 +382,7 @@ class ProxAIClient(state_controller.StateControlled):
     return self.get_property_value('proxdash_options')
 
   @proxdash_options.setter
-  def proxdash_options(self, value: Optional[types.ProxDashOptions]):
+  def proxdash_options(self, value: types.ProxDashOptions | None):
     result_proxdash_options = types.ProxDashOptions()
     if value is not None:
       result_proxdash_options.stdout = value.stdout
@@ -515,11 +518,14 @@ class ProxAIClient(state_controller.StateControlled):
       self,
       call_type: types.CallType
   ):
+    """Get or create a connector for the default model of a call type."""
     if call_type != types.CallType.GENERATE_TEXT:
       raise ValueError(f'Call type not supported: {call_type}')
 
     if call_type not in self.registered_model_connectors:
-      for provider_model in self.model_configs_instance.get_default_model_priority_list():
+      default_models = (
+          self.model_configs_instance.get_default_model_priority_list())
+      for provider_model in default_models:
         try:
           self.available_models_instance.get_working_model(
               provider=provider_model.provider,
@@ -548,8 +554,8 @@ class ProxAIClient(state_controller.StateControlled):
 
   def set_model(
       self,
-      provider_model: Optional[types.ProviderModelIdentifierType] = None,
-      generate_text: Optional[types.ProviderModelIdentifierType] = None,
+      provider_model: types.ProviderModelIdentifierType | None = None,
+      generate_text: types.ProviderModelIdentifierType | None = None,
   ) -> None:
     """Sets the default model for text generation requests.
 
@@ -592,21 +598,21 @@ class ProxAIClient(state_controller.StateControlled):
 
   def generate_text(
       self,
-      prompt: Optional[str] = None,
-      system: Optional[str] = None,
-      messages: Optional[types.MessagesType] = None,
-      max_tokens: Optional[int] = None,
-      temperature: Optional[float] = None,
-      stop: Optional[types.StopType] = None,
-      response_format: Optional[types.ResponseFormatParam] = None,
-      web_search: Optional[bool] = None,
-      provider_model: Optional[types.ProviderModelIdentifierType] = None,
-      feature_mapping_strategy: Optional[types.FeatureMappingStrategy] = None,
-      use_cache: Optional[bool] = None,
-      unique_response_limit: Optional[int] = None,
+      prompt: str | None = None,
+      system: str | None = None,
+      messages: types.MessagesType | None = None,
+      max_tokens: int | None = None,
+      temperature: float | None = None,
+      stop: types.StopType | None = None,
+      response_format: types.ResponseFormatParam | None = None,
+      web_search: bool | None = None,
+      provider_model: types.ProviderModelIdentifierType | None = None,
+      feature_mapping_strategy: types.FeatureMappingStrategy | None = None,
+      use_cache: bool | None = None,
+      unique_response_limit: int | None = None,
       extensive_return: bool = False,
-      suppress_provider_errors: Optional[bool] = None,
-  ) -> Union[str, types.LoggingRecord]:
+      suppress_provider_errors: bool | None = None,
+  ) -> str | types.LoggingRecord:
     """Generates text using the configured AI model.
 
     Sends a text generation request to the AI provider using either a simple
@@ -734,8 +740,10 @@ class ProxAIClient(state_controller.StateControlled):
       else:
         error_traceback = ''
         if logging_record.response_record.error_traceback:
-          error_traceback = logging_record.response_record.error_traceback + '\n'
-        raise Exception(error_traceback + logging_record.response_record.error)
+          error_traceback = (
+              logging_record.response_record.error_traceback + '\n')
+        raise Exception(
+            error_traceback + logging_record.response_record.error)
 
     if (logging_record.response_record.response.type ==
         types.ResponseType.PYDANTIC):
@@ -753,7 +761,7 @@ class ProxAIClient(state_controller.StateControlled):
   def get_current_options(
       self,
       json: bool = False,
-  ) -> Union[types.RunOptions, dict]:
+  ) -> types.RunOptions | dict:
     """Returns the current configuration options of this client.
 
     Retrieves all active configuration settings including run type, experiment

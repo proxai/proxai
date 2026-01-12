@@ -26,25 +26,31 @@ user = User()
 user.name = "Alice"  # Sets name and automatically updates internal state
 print(user._user_state)  # {'name': 'Alice'}
 """
-from typing import Any, Optional
-from abc import ABC, abstractmethod
 import dataclasses
+from abc import abstractmethod
+from typing import Any
+
 import proxai.types as types
 
 
-class BaseStateControlled(ABC):
+class BaseStateControlled:
+  """Base class for objects with serializable state."""
+
   def __init__(self, **kwargs):
     pass
 
 
 class StateControlled(BaseStateControlled):
+  """Mixin providing automatic state serialization for class properties."""
+
   def __init__(
       self,
       init_from_params=None,
       init_from_state=None):
     if init_from_params and init_from_state:
       raise ValueError(
-          'init_from_params and init_from_state cannot be set at the same time.')
+          'init_from_params and init_from_state cannot be set '
+          'at the same time.')
 
     if init_from_state is not None:
       self._validate_init_from_state_values(init_from_state)
@@ -52,26 +58,30 @@ class StateControlled(BaseStateControlled):
     # Initialize the internal state structure.
     self.init_state_with_default_values()
 
-  def _validate_init_from_state_values(self, init_from_state: Optional[Any]):
-    if type(init_from_state) != self.get_internal_state_type():
+  def _validate_init_from_state_values(self, init_from_state: Any | None):
+    if not isinstance(init_from_state, self.get_internal_state_type()):
       raise ValueError(
           f'Invalid state type.\nExpected: {self.get_internal_state_type()}\n'
           f'Actual: {type(init_from_state)}')
 
   @abstractmethod
   def get_internal_state_property_name(self):
+    """Return the name of the internal state property."""
     raise NotImplementedError('Subclasses must implement this method')
 
   @abstractmethod
   def get_internal_state_type(self):
+    """Return the dataclass type used for state storage."""
     raise NotImplementedError('Subclasses must implement this method')
 
   @staticmethod
   def get_property_internal_name(field: str) -> str:
+    """Return the internal storage name for a field."""
     return f'_{field}'
 
   @staticmethod
   def get_state_controlled_deserializer_name(field: str) -> str:
+    """Return the deserializer method name for a field."""
     return f'{field}_deserializer'
 
   def get_property_internal_value(self, property_name: str) -> Any:
@@ -97,24 +107,26 @@ class StateControlled(BaseStateControlled):
       property_name: str,
       value: Any):
     """Sets the property value directly in the internal state."""
-
     setattr(
       getattr(self, self.get_internal_state_property_name()),
       property_name,
       value)
 
   def get_property_value(self, property_name: str) -> Any:
+    """Get a property value and sync it to internal state."""
     result = self.get_property_internal_value(property_name)
     self.set_property_internal_state_value(property_name, result)
     return result
 
   def set_property_value(self, property_name: str, value: Any):
+    """Set a property value and sync it to internal state."""
     self.set_property_internal_value(property_name, value)
     # Call actual getter to get the updated state value:
     updated_value = getattr(self, property_name)
     self.set_property_internal_state_value(property_name, updated_value)
 
   def get_state_controlled_property_value(self, property_name: str) -> Any:
+    """Get a nested StateControlled property and sync its state."""
     result = self.get_property_internal_value(property_name)
 
     if result is None:
@@ -133,6 +145,7 @@ class StateControlled(BaseStateControlled):
       self,
       property_name: str,
       value: Any):
+    """Set a nested StateControlled property from value or state."""
     if value is None:
       self.set_property_internal_value(property_name, None)
     elif isinstance(value, BaseStateControlled):
@@ -166,12 +179,14 @@ class StateControlled(BaseStateControlled):
       self,
       property_name: str,
       value: Any):
+    """Set a property value directly without invoking computed getters."""
     self.set_property_internal_value(property_name, value)
     if isinstance(value, BaseStateControlled):
       value = value.get_state()
     self.set_property_internal_state_value(property_name, value)
 
   def init_state_with_default_values(self):
+    """Initialize the internal state with default field values."""
     setattr(
       self,
       self.get_internal_state_property_name(),
@@ -184,6 +199,7 @@ class StateControlled(BaseStateControlled):
     return self.get_state()
 
   def get_state(self) -> Any:
+    """Return a snapshot of the current state as a dataclass."""
     result = self.get_internal_state_type()()
     for field in dataclasses.fields(self.get_internal_state_type()):
       value = getattr(self, field.name, None)
@@ -194,10 +210,12 @@ class StateControlled(BaseStateControlled):
     return result
 
   def get_internal_state(self) -> Any:
+    """Return the raw internal state object."""
     return getattr(self, self.get_internal_state_property_name())
 
   def load_state(self, state: Any):
-    if type(state) != self.get_internal_state_type():
+    """Restore object state from a previously saved state dataclass."""
+    if not isinstance(state, self.get_internal_state_type()):
       raise ValueError(
           f'Invalid state type.\nExpected: {self.get_internal_state_type()}\n'
           f'Actual: {type(state)}')

@@ -1,11 +1,13 @@
 import datetime
 import json
-from typing import Any, Dict
+from typing import Any
+
 import proxai.types as types
 
 
 def encode_provider_model_type(
-    provider_model_type: types.ProviderModelType) -> Dict[str, Any]:
+    provider_model_type: types.ProviderModelType) -> dict[str, Any]:
+  """Serialize ProviderModelType to a dictionary."""
   record = {}
   record['provider'] = provider_model_type.provider
   record['model'] = provider_model_type.model
@@ -15,7 +17,8 @@ def encode_provider_model_type(
 
 
 def decode_provider_model_type(
-    record: Dict[str, Any]) -> types.ProviderModelType:
+    record: dict[str, Any]) -> types.ProviderModelType:
+  """Deserialize ProviderModelType from a dictionary."""
   if 'provider' not in record:
     raise ValueError(f'Provider not found in record: {record=}')
   if 'model' not in record:
@@ -32,7 +35,8 @@ def decode_provider_model_type(
 
 def encode_provider_model_identifier(
     provider_model_identifier: types.ProviderModelIdentifierType
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
+  """Serialize ProviderModelIdentifierType to a dictionary."""
   if isinstance(provider_model_identifier, types.ProviderModelType):
     return encode_provider_model_type(provider_model_identifier)
   else:
@@ -44,7 +48,8 @@ def encode_provider_model_identifier(
 
 
 def decode_provider_model_identifier(
-    record: Dict[str, Any]) -> types.ProviderModelIdentifierType:
+    record: dict[str, Any]) -> types.ProviderModelIdentifierType:
+  """Deserialize ProviderModelIdentifierType from a dictionary."""
   if 'provider_model_identifier' in record:
     # Full ProviderModelType
     return decode_provider_model_type(record)
@@ -59,19 +64,21 @@ def decode_provider_model_identifier(
 
 def encode_provider_model_pricing_type(
     provider_model_pricing_type: types.ProviderModelPricingType
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
+  """Serialize ProviderModelPricingType to a dictionary."""
   record = {}
-  if provider_model_pricing_type.per_response_token_cost != None:
+  if provider_model_pricing_type.per_response_token_cost is not None:
     record['per_response_token_cost'] = (
         provider_model_pricing_type.per_response_token_cost)
-  if provider_model_pricing_type.per_query_token_cost != None:
+  if provider_model_pricing_type.per_query_token_cost is not None:
     record['per_query_token_cost'] = (
         provider_model_pricing_type.per_query_token_cost)
   return record
 
 
 def decode_provider_model_pricing_type(
-    record: Dict[str, Any]) -> types.ProviderModelPricingType:
+    record: dict[str, Any]) -> types.ProviderModelPricingType:
+  """Deserialize ProviderModelPricingType from a dictionary."""
   provider_model_pricing_type = types.ProviderModelPricingType()
   if 'per_response_token_cost' in record:
     provider_model_pricing_type.per_response_token_cost = (
@@ -84,19 +91,21 @@ def decode_provider_model_pricing_type(
 
 def encode_endpoint_feature_info_type(
     endpoint_feature_info_type: types.EndpointFeatureInfoType
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
+  """Serialize EndpointFeatureInfoType to a dictionary."""
   record = {}
-  if endpoint_feature_info_type.supported != None:
+  if endpoint_feature_info_type.supported is not None:
     record['supported'] = endpoint_feature_info_type.supported
-  if endpoint_feature_info_type.best_effort != None:
+  if endpoint_feature_info_type.best_effort is not None:
     record['best_effort'] = endpoint_feature_info_type.best_effort
-  if endpoint_feature_info_type.not_supported != None:
+  if endpoint_feature_info_type.not_supported is not None:
     record['not_supported'] = endpoint_feature_info_type.not_supported
   return record
 
 
 def decode_endpoint_feature_info_type(
-    record: Dict[str, Any]) -> types.EndpointFeatureInfoType:
+    record: dict[str, Any]) -> types.EndpointFeatureInfoType:
+  """Deserialize EndpointFeatureInfoType from a dictionary."""
   endpoint_feature_info_type = types.EndpointFeatureInfoType()
   if 'supported' in record:
     endpoint_feature_info_type.supported = record['supported']
@@ -109,7 +118,8 @@ def decode_endpoint_feature_info_type(
 
 def encode_feature_mapping_type(
     feature_mapping: types.FeatureMappingType
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
+  """Serialize FeatureMappingType to a dictionary."""
   record = {}
   for feature_name, endpoint_feature_info in feature_mapping.items():
     record[feature_name.value] = encode_endpoint_feature_info_type(
@@ -118,7 +128,8 @@ def encode_feature_mapping_type(
 
 
 def decode_feature_mapping_type(
-    record: Dict[str, Any]) -> types.FeatureMappingType:
+    record: dict[str, Any]) -> types.FeatureMappingType:
+  """Deserialize FeatureMappingType from a dictionary."""
   feature_mapping = {}
   for feature_name_str, endpoint_feature_info_record in record.items():
     feature_name = types.FeatureNameType(feature_name_str)
@@ -129,29 +140,31 @@ def decode_feature_mapping_type(
 
 def encode_provider_model_metadata_type(
     provider_model_metadata_type: types.ProviderModelMetadataType
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
+  """Serialize ProviderModelMetadataType to a dictionary."""
   record = {}
-  if provider_model_metadata_type.call_type != None:
+  if provider_model_metadata_type.call_type is not None:
     record['call_type'] = provider_model_metadata_type.call_type.value
-  if provider_model_metadata_type.is_featured != None:
+  if provider_model_metadata_type.is_featured is not None:
     record['is_featured'] = provider_model_metadata_type.is_featured
-  if provider_model_metadata_type.model_size_tags != None:
+  if provider_model_metadata_type.model_size_tags is not None:
     record['model_size_tags'] = [
         model_size_tag.value
         for model_size_tag in provider_model_metadata_type.model_size_tags]
-  if provider_model_metadata_type.is_default_candidate != None:
+  if provider_model_metadata_type.is_default_candidate is not None:
     record['is_default_candidate'] = (
         provider_model_metadata_type.is_default_candidate)
-  if provider_model_metadata_type.default_candidate_priority != None:
+  if provider_model_metadata_type.default_candidate_priority is not None:
     record['default_candidate_priority'] = (
         provider_model_metadata_type.default_candidate_priority)
-  if provider_model_metadata_type.tags != None:
+  if provider_model_metadata_type.tags is not None:
     record['tags'] = provider_model_metadata_type.tags
   return record
 
 
 def decode_provider_model_metadata_type(
-    record: Dict[str, Any]) -> types.ProviderModelMetadataType:
+    record: dict[str, Any]) -> types.ProviderModelMetadataType:
+  """Deserialize ProviderModelMetadataType from a dictionary."""
   provider_model_metadata_type = types.ProviderModelMetadataType()
   if 'call_type' in record and record['call_type'] is not None:
     provider_model_metadata_type.call_type = types.CallType(record['call_type'])
@@ -174,25 +187,27 @@ def decode_provider_model_metadata_type(
 
 def encode_provider_model_config_type(
     provider_model_config_type: types.ProviderModelConfigType
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
+  """Serialize ProviderModelConfigType to a dictionary."""
   record = {}
-  if provider_model_config_type.provider_model != None:
+  if provider_model_config_type.provider_model is not None:
     record['provider_model'] = encode_provider_model_type(
         provider_model_config_type.provider_model)
-  if provider_model_config_type.pricing != None:
+  if provider_model_config_type.pricing is not None:
     record['pricing'] = encode_provider_model_pricing_type(
         provider_model_config_type.pricing)
-  if provider_model_config_type.features != None:
+  if provider_model_config_type.features is not None:
     record['features'] = encode_feature_mapping_type(
         provider_model_config_type.features)
-  if provider_model_config_type.metadata != None:
+  if provider_model_config_type.metadata is not None:
     record['metadata'] = encode_provider_model_metadata_type(
         provider_model_config_type.metadata)
   return record
 
 
 def decode_provider_model_config_type(
-    record: Dict[str, Any]) -> types.ProviderModelConfigType:
+    record: dict[str, Any]) -> types.ProviderModelConfigType:
+  """Deserialize ProviderModelConfigType from a dictionary."""
   provider_model_config_type = types.ProviderModelConfigType()
   if 'provider_model' in record:
     provider_model_config_type.provider_model = decode_provider_model_type(
@@ -211,7 +226,8 @@ def decode_provider_model_config_type(
 
 def encode_provider_model_configs_type(
     provider_model_configs: types.ProviderModelConfigsType
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
+  """Serialize ProviderModelConfigsType to a dictionary."""
   record = {}
   for provider, model_configs_dict in provider_model_configs.items():
     record[provider] = {}
@@ -222,7 +238,8 @@ def encode_provider_model_configs_type(
 
 
 def decode_provider_model_configs_type(
-    record: Dict[str, Any]) -> types.ProviderModelConfigsType:
+    record: dict[str, Any]) -> types.ProviderModelConfigsType:
+  """Deserialize ProviderModelConfigsType from a dictionary."""
   provider_model_configs = {}
   for provider, model_configs_dict_record in record.items():
     provider_model_configs[provider] = {}
@@ -234,7 +251,8 @@ def decode_provider_model_configs_type(
 
 
 def encode_featured_models_type(
-    featured_models: types.FeaturedModelsType) -> Dict[str, Any]:
+    featured_models: types.FeaturedModelsType) -> dict[str, Any]:
+  """Serialize FeaturedModelsType to a dictionary."""
   record = {}
   for provider, provider_model_identifiers in featured_models.items():
     record[provider] = []
@@ -245,7 +263,8 @@ def encode_featured_models_type(
 
 
 def decode_featured_models_type(
-    record: Dict[str, Any]) -> types.FeaturedModelsType:
+    record: dict[str, Any]) -> types.FeaturedModelsType:
+  """Deserialize FeaturedModelsType from a dictionary."""
   featured_models = {}
   for provider, provider_model_identifier_records in record.items():
     provider_model_identifiers = []
@@ -258,7 +277,8 @@ def decode_featured_models_type(
 
 
 def encode_models_by_call_type_type(
-    models_by_call_type: types.ModelsByCallTypeType) -> Dict[str, Any]:
+    models_by_call_type: types.ModelsByCallTypeType) -> dict[str, Any]:
+  """Serialize ModelsByCallTypeType to a dictionary."""
   record = {}
   for call_type, provider_dict in models_by_call_type.items():
     record[call_type.value] = {}
@@ -271,7 +291,8 @@ def encode_models_by_call_type_type(
 
 
 def decode_models_by_call_type_type(
-    record: Dict[str, Any]) -> types.ModelsByCallTypeType:
+    record: dict[str, Any]) -> types.ModelsByCallTypeType:
+  """Deserialize ModelsByCallTypeType from a dictionary."""
   models_by_call_type = {}
   for call_type_str, provider_dict_record in record.items():
     call_type = types.CallType(call_type_str)
@@ -289,7 +310,8 @@ def decode_models_by_call_type_type(
 
 
 def encode_models_by_size_type(
-    models_by_size: types.ModelsBySizeType) -> Dict[str, Any]:
+    models_by_size: types.ModelsBySizeType) -> dict[str, Any]:
+  """Serialize ModelsBySizeType to a dictionary."""
   record = {}
   for model_size, provider_model_identifiers in models_by_size.items():
     record[model_size.value] = []
@@ -300,7 +322,8 @@ def encode_models_by_size_type(
 
 
 def decode_models_by_size_type(
-    record: Dict[str, Any]) -> types.ModelsBySizeType:
+    record: dict[str, Any]) -> types.ModelsBySizeType:
+  """Deserialize ModelsBySizeType from a dictionary."""
   models_by_size = {}
   for model_size_str, provider_model_identifier_records in record.items():
     model_size = types.ModelSizeType(model_size_str)
@@ -315,7 +338,8 @@ def decode_models_by_size_type(
 
 def encode_default_model_priority_list_type(
     default_model_priority_list: types.DefaultModelPriorityListType
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
+  """Serialize DefaultModelPriorityListType to a list."""
   record = []
   for provider_model_identifier in default_model_priority_list:
     record.append(encode_provider_model_identifier(provider_model_identifier))
@@ -323,7 +347,8 @@ def encode_default_model_priority_list_type(
 
 
 def decode_default_model_priority_list_type(
-    record: Dict[str, Any]) -> types.DefaultModelPriorityListType:
+    record: dict[str, Any]) -> types.DefaultModelPriorityListType:
+  """Deserialize DefaultModelPriorityListType from a list."""
   default_model_priority_list = []
   for provider_model_identifier_record in record:
     default_model_priority_list.append(
@@ -333,26 +358,28 @@ def decode_default_model_priority_list_type(
 
 def encode_model_configs_schema_metadata_type(
     model_configs_schema_metadata_type: types.ModelConfigsSchemaMetadataType
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
+  """Serialize ModelConfigsSchemaMetadataType to a dictionary."""
   record = {}
-  if model_configs_schema_metadata_type.version != None:
+  if model_configs_schema_metadata_type.version is not None:
     record['version'] = model_configs_schema_metadata_type.version
-  if model_configs_schema_metadata_type.released_at != None:
+  if model_configs_schema_metadata_type.released_at is not None:
     record['released_at'] = (
         model_configs_schema_metadata_type.released_at.isoformat())
-  if model_configs_schema_metadata_type.min_proxai_version != None:
+  if model_configs_schema_metadata_type.min_proxai_version is not None:
     record['min_proxai_version'] = (
         model_configs_schema_metadata_type.min_proxai_version)
-  if model_configs_schema_metadata_type.config_origin != None:
+  if model_configs_schema_metadata_type.config_origin is not None:
     record['config_origin'] = (
         model_configs_schema_metadata_type.config_origin.value)
-  if model_configs_schema_metadata_type.release_notes != None:
+  if model_configs_schema_metadata_type.release_notes is not None:
     record['release_notes'] = model_configs_schema_metadata_type.release_notes
   return record
 
 
 def decode_model_configs_schema_metadata_type(
-    record: Dict[str, Any]) -> types.ModelConfigsSchemaMetadataType:
+    record: dict[str, Any]) -> types.ModelConfigsSchemaMetadataType:
+  """Deserialize ModelConfigsSchemaMetadataType from a dictionary."""
   model_configs_schema_metadata_type = types.ModelConfigsSchemaMetadataType()
   if 'version' in record:
     model_configs_schema_metadata_type.version = record['version']
@@ -373,21 +400,24 @@ def decode_model_configs_schema_metadata_type(
 def encode_model_configs_schema_version_config_type(
     model_configs_schema_version_config_type: (
         types.ModelConfigsSchemaVersionConfigType)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
+  """Serialize ModelConfigsSchemaVersionConfigType to a dictionary."""
   record = {}
-  if model_configs_schema_version_config_type.provider_model_configs != None:
+  if (model_configs_schema_version_config_type.provider_model_configs
+      is not None):
     record['provider_model_configs'] = encode_provider_model_configs_type(
         model_configs_schema_version_config_type.provider_model_configs)
-  if model_configs_schema_version_config_type.featured_models != None:
+  if model_configs_schema_version_config_type.featured_models is not None:
     record['featured_models'] = encode_featured_models_type(
         model_configs_schema_version_config_type.featured_models)
-  if model_configs_schema_version_config_type.models_by_call_type != None:
+  if model_configs_schema_version_config_type.models_by_call_type is not None:
     record['models_by_call_type'] = encode_models_by_call_type_type(
         model_configs_schema_version_config_type.models_by_call_type)
-  if model_configs_schema_version_config_type.models_by_size != None:
+  if model_configs_schema_version_config_type.models_by_size is not None:
     record['models_by_size'] = encode_models_by_size_type(
         model_configs_schema_version_config_type.models_by_size)
-  if model_configs_schema_version_config_type.default_model_priority_list != None:
+  if (model_configs_schema_version_config_type.default_model_priority_list
+      is not None):
     record['default_model_priority_list'] = (
         encode_default_model_priority_list_type(
             model_configs_schema_version_config_type.default_model_priority_list))
@@ -395,7 +425,8 @@ def encode_model_configs_schema_version_config_type(
 
 
 def decode_model_configs_schema_version_config_type(
-    record: Dict[str, Any]) -> types.ModelConfigsSchemaVersionConfigType:
+    record: dict[str, Any]) -> types.ModelConfigsSchemaVersionConfigType:
+  """Deserialize ModelConfigsSchemaVersionConfigType from a dictionary."""
   model_configs_schema_version_config_type = (
       types.ModelConfigsSchemaVersionConfigType())
   if 'provider_model_configs' in record:
@@ -419,19 +450,21 @@ def decode_model_configs_schema_version_config_type(
 
 def encode_model_configs_schema_type(
     model_configs_schema_type: types.ModelConfigsSchemaType
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
+  """Serialize ModelConfigsSchemaType to a dictionary."""
   record = {}
-  if model_configs_schema_type.metadata != None:
+  if model_configs_schema_type.metadata is not None:
     record['metadata'] = encode_model_configs_schema_metadata_type(
         model_configs_schema_type.metadata)
-  if model_configs_schema_type.version_config != None:
+  if model_configs_schema_type.version_config is not None:
     record['version_config'] = encode_model_configs_schema_version_config_type(
         model_configs_schema_type.version_config)
   return record
 
 
 def decode_model_configs_schema_type(
-    record: Dict[str, Any]) -> types.ModelConfigsSchemaType:
+    record: dict[str, Any]) -> types.ModelConfigsSchemaType:
+  """Deserialize ModelConfigsSchemaType from a dictionary."""
   model_configs_schema_type = types.ModelConfigsSchemaType()
   if 'metadata' in record:
     model_configs_schema_type.metadata = (
@@ -444,31 +477,33 @@ def decode_model_configs_schema_type(
 
 
 def encode_response_format_pydantic_value(
-    pydantic_value: types.ResponseFormatPydanticValue) -> Dict[str, Any]:
+    pydantic_value: types.ResponseFormatPydanticValue) -> dict[str, Any]:
+  """Serialize ResponseFormatPydanticValue to a dictionary."""
   record = {}
-  if (pydantic_value.class_json_schema_value != None and
-      pydantic_value.class_value != None):
+  if (pydantic_value.class_json_schema_value is not None and
+      pydantic_value.class_value is not None):
     raise ValueError(
         'ResponseFormatPydanticValue cannot have both '
         'class_json_schema_value and class_value set.')
   json_schema = None
-  if pydantic_value.class_value != None:
+  if pydantic_value.class_value is not None:
     json_schema = pydantic_value.class_value.model_json_schema()
-  elif pydantic_value.class_json_schema_value != None:
+  elif pydantic_value.class_json_schema_value is not None:
     json_schema = pydantic_value.class_json_schema_value
-  if json_schema != None:
+  if json_schema is not None:
     record['class_json_schema_value'] = json.dumps(
         json_schema,
         sort_keys=True)
-  if pydantic_value.class_name != None:
+  if pydantic_value.class_name is not None:
     record['class_name'] = pydantic_value.class_name
   return record
 
 
 def decode_response_format_pydantic_value(
-    record: Dict[str, Any]) -> types.ResponseFormatPydanticValue:
+    record: dict[str, Any]) -> types.ResponseFormatPydanticValue:
+  """Deserialize ResponseFormatPydanticValue from a dictionary."""
   pydantic_value = types.ResponseFormatPydanticValue()
-  pydantic_value.class_name = record.get('class_name', None)
+  pydantic_value.class_name = record.get('class_name')
   if 'class_json_schema_value' in record:
     pydantic_value.class_json_schema_value = json.loads(
         record['class_json_schema_value'])
@@ -476,14 +511,14 @@ def decode_response_format_pydantic_value(
 
 
 def encode_response_format(
-    response_format: types.ResponseFormat) -> Dict[str, Any]:
+    response_format: types.ResponseFormat) -> dict[str, Any]:
+  """Serialize ResponseFormat to a dictionary."""
   record = {}
-  if response_format.type != None:
+  if response_format.type is not None:
     record['type'] = response_format.type.value
-  if response_format.value != None:
-    if response_format.type == types.ResponseFormatType.TEXT:
-      pass
-    elif response_format.type == types.ResponseFormatType.JSON:
+  if response_format.value is not None:
+    if (response_format.type == types.ResponseFormatType.TEXT
+        or response_format.type == types.ResponseFormatType.JSON):
       pass
     elif response_format.type == types.ResponseFormatType.JSON_SCHEMA:
       record['value'] = json.dumps(
@@ -495,13 +530,13 @@ def encode_response_format(
 
 
 def decode_response_format(
-    record: Dict[str, Any]) -> types.ResponseFormat:
+    record: dict[str, Any]) -> types.ResponseFormat:
+  """Deserialize ResponseFormat from a dictionary."""
   response_format = types.ResponseFormat()
   if 'type' in record:
     response_format.type = types.ResponseFormatType(record['type'])
-  if response_format.type == types.ResponseFormatType.TEXT:
-    pass
-  elif response_format.type == types.ResponseFormatType.JSON:
+  if (response_format.type == types.ResponseFormatType.TEXT
+      or response_format.type == types.ResponseFormatType.JSON):
     pass
   elif response_format.type == types.ResponseFormatType.JSON_SCHEMA:
     if 'value' in record:
@@ -512,11 +547,12 @@ def decode_response_format(
 
 
 def encode_pydantic_metadata(
-    pydantic_metadata: types.PydanticMetadataType) -> Dict[str, Any]:
+    pydantic_metadata: types.PydanticMetadataType) -> dict[str, Any]:
+  """Serialize PydanticMetadataType to a dictionary."""
   record = {}
-  if pydantic_metadata.class_name != None:
+  if pydantic_metadata.class_name is not None:
     record['class_name'] = pydantic_metadata.class_name
-  if pydantic_metadata.instance_json_value != None:
+  if pydantic_metadata.instance_json_value is not None:
     record['instance_json_value'] = json.dumps(
         pydantic_metadata.instance_json_value,
         sort_keys=True)
@@ -524,9 +560,10 @@ def encode_pydantic_metadata(
 
 
 def decode_pydantic_metadata(
-    record: Dict[str, Any]) -> types.PydanticMetadataType:
+    record: dict[str, Any]) -> types.PydanticMetadataType:
+  """Deserialize PydanticMetadataType from a dictionary."""
   pydantic_metadata = types.PydanticMetadataType()
-  pydantic_metadata.class_name = record.get('class_name', None)
+  pydantic_metadata.class_name = record.get('class_name')
   if 'instance_json_value' in record:
     pydantic_metadata.instance_json_value = json.loads(
         record['instance_json_value'])
@@ -534,15 +571,16 @@ def decode_pydantic_metadata(
 
 
 def encode_response(
-    response: types.Response) -> Dict[str, Any]:
+    response: types.Response) -> dict[str, Any]:
+  """Serialize Response to a dictionary."""
   record = {}
-  if response.type != None:
+  if response.type is not None:
     record['type'] = response.type.value
   if response.type == types.ResponseType.TEXT:
-    if response.value != None:
+    if response.value is not None:
       record['value'] = response.value
   elif response.type == types.ResponseType.JSON:
-    if response.value != None:
+    if response.value is not None:
       record['value'] = json.dumps(
           response.value,
           sort_keys=True)
@@ -552,83 +590,87 @@ def encode_response(
     if pydantic_metadata is None:
       pydantic_metadata = types.PydanticMetadataType()
     # If value exists (live instance), convert to JSON for serialization
-    if response.value != None and pydantic_metadata.instance_json_value is None:
+    if (response.value is not None
+        and pydantic_metadata.instance_json_value is None):
       pydantic_metadata.instance_json_value = response.value.model_dump()
     record['pydantic_metadata'] = encode_pydantic_metadata(pydantic_metadata)
   return record
 
 
 def decode_response(
-    record: Dict[str, Any]) -> types.Response:
+    record: dict[str, Any]) -> types.Response:
+  """Deserialize Response from a dictionary."""
   response = types.Response()
   if 'type' in record:
     response.type = types.ResponseType(record['type'])
   if response.type == types.ResponseType.TEXT:
-    response.value = record.get('value', None)
+    response.value = record.get('value')
   elif response.type == types.ResponseType.JSON:
     if 'value' in record:
       response.value = json.loads(record['value'])
-  elif response.type == types.ResponseType.PYDANTIC:
+  elif (response.type == types.ResponseType.PYDANTIC
+        and 'pydantic_metadata' in record):
     # For PYDANTIC: restore pydantic_metadata, value stays None until runtime
-    if 'pydantic_metadata' in record:
-      response.pydantic_metadata = decode_pydantic_metadata(
-          record['pydantic_metadata'])
+    response.pydantic_metadata = decode_pydantic_metadata(
+        record['pydantic_metadata'])
   return response
 
 
 def encode_query_record(
-    query_record: types.QueryRecord) -> Dict[str, Any]:
+    query_record: types.QueryRecord) -> dict[str, Any]:
+  """Serialize QueryRecord to a dictionary."""
   record = {}
-  if query_record.call_type != None:
+  if query_record.call_type is not None:
     record['call_type'] = query_record.call_type.value
-  if query_record.provider_model != None:
+  if query_record.provider_model is not None:
     record['provider_model'] = encode_provider_model_type(
         query_record.provider_model)
-  if query_record.prompt != None:
+  if query_record.prompt is not None:
     record['prompt'] = query_record.prompt
-  if query_record.system != None:
+  if query_record.system is not None:
     record['system'] = query_record.system
-  if query_record.messages != None:
+  if query_record.messages is not None:
     record['messages'] = query_record.messages
-  if query_record.max_tokens != None:
+  if query_record.max_tokens is not None:
     record['max_tokens'] = str(query_record.max_tokens)
-  if query_record.temperature != None:
+  if query_record.temperature is not None:
     record['temperature'] = str(query_record.temperature)
-  if query_record.stop != None:
+  if query_record.stop is not None:
     record['stop'] = query_record.stop
-  if query_record.token_count != None:
+  if query_record.token_count is not None:
     record['token_count'] = str(query_record.token_count)
-  if query_record.response_format != None:
+  if query_record.response_format is not None:
     record['response_format'] = encode_response_format(
         query_record.response_format)
-  if query_record.web_search != None:
+  if query_record.web_search is not None:
     record['web_search'] = query_record.web_search
-  if query_record.feature_mapping_strategy != None:
+  if query_record.feature_mapping_strategy is not None:
     record['feature_mapping_strategy'] = (
         query_record.feature_mapping_strategy.value)
-  if query_record.hash_value != None:
+  if query_record.hash_value is not None:
     record['hash_value'] = query_record.hash_value
-  if query_record.chosen_endpoint != None:
+  if query_record.chosen_endpoint is not None:
     record['chosen_endpoint'] = query_record.chosen_endpoint
   return record
 
 
 def decode_query_record(
-    record: Dict[str, Any]) -> types.QueryRecord:
+    record: dict[str, Any]) -> types.QueryRecord:
+  """Deserialize QueryRecord from a dictionary."""
   query_record = types.QueryRecord()
   if 'call_type' in record:
     query_record.call_type = types.CallType(record['call_type'])
   if 'provider_model' in record:
     query_record.provider_model = decode_provider_model_type(
         record['provider_model'])
-  query_record.prompt = record.get('prompt', None)
-  query_record.system = record.get('system', None)
-  query_record.messages = record.get('messages', None)
+  query_record.prompt = record.get('prompt')
+  query_record.system = record.get('system')
+  query_record.messages = record.get('messages')
   if 'max_tokens' in record:
     query_record.max_tokens = int(record['max_tokens'])
   if 'temperature' in record:
     query_record.temperature = float(record['temperature'])
-  query_record.stop = record.get('stop', None)
+  query_record.stop = record.get('stop')
   if 'token_count' in record:
     query_record.token_count = int(record['token_count'])
   if 'response_format' in record:
@@ -641,44 +683,46 @@ def decode_query_record(
         types.FeatureMappingStrategy(record['feature_mapping_strategy']))
   if 'chosen_endpoint' in record:
     query_record.chosen_endpoint = record['chosen_endpoint']
-  query_record.hash_value = record.get('hash_value', None)
+  query_record.hash_value = record.get('hash_value')
   return query_record
 
 
 def encode_query_response_record(
     query_response_record: types.QueryResponseRecord
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
+  """Serialize QueryResponseRecord to a dictionary."""
   record = {}
-  if query_response_record.response != None:
+  if query_response_record.response is not None:
     record['response'] = encode_response(query_response_record.response)
-  if query_response_record.error != None:
+  if query_response_record.error is not None:
     record['error'] = query_response_record.error
-  if query_response_record.error_traceback != None:
+  if query_response_record.error_traceback is not None:
     record['error_traceback'] = query_response_record.error_traceback
-  if query_response_record.start_utc_date != None:
+  if query_response_record.start_utc_date is not None:
     record['start_utc_date'] = query_response_record.start_utc_date.isoformat()
-  if query_response_record.end_utc_date != None:
+  if query_response_record.end_utc_date is not None:
     record['end_utc_date'] = query_response_record.end_utc_date.isoformat()
-  if query_response_record.local_time_offset_minute != None:
+  if query_response_record.local_time_offset_minute is not None:
     record['local_time_offset_minute'] = (
         query_response_record.local_time_offset_minute)
-  if query_response_record.response_time != None:
+  if query_response_record.response_time is not None:
     record['response_time'] = (
         query_response_record.response_time.total_seconds())
-  if query_response_record.estimated_cost != None:
+  if query_response_record.estimated_cost is not None:
     record['estimated_cost'] = query_response_record.estimated_cost
-  if query_response_record.token_count != None:
+  if query_response_record.token_count is not None:
     record['token_count'] = str(query_response_record.token_count)
   return record
 
 
 def decode_query_response_record(
-    record: Dict[str, Any]) -> types.QueryResponseRecord:
+    record: dict[str, Any]) -> types.QueryResponseRecord:
+  """Deserialize QueryResponseRecord from a dictionary."""
   query_response_record = types.QueryResponseRecord()
   if 'response' in record:
     query_response_record.response = decode_response(record['response'])
-  query_response_record.error = record.get('error', None)
-  query_response_record.error_traceback = record.get('error_traceback', None)
+  query_response_record.error = record.get('error')
+  query_response_record.error_traceback = record.get('error_traceback')
   if 'start_utc_date' in record:
     query_response_record.start_utc_date = datetime.datetime.fromisoformat(
         record['start_utc_date'])
@@ -699,30 +743,32 @@ def decode_query_response_record(
 
 
 def encode_cache_record(
-    cache_record: types.CacheRecord) -> Dict[str, Any]:
+    cache_record: types.CacheRecord) -> dict[str, Any]:
+  """Serialize CacheRecord to a dictionary."""
   record = {}
-  if cache_record.query_record != None:
+  if cache_record.query_record is not None:
     record['query_record'] = encode_query_record(
         cache_record.query_record)
-  if cache_record.query_responses != None:
+  if cache_record.query_responses is not None:
     record['query_responses'] = []
     for query_response_record in cache_record.query_responses:
       record['query_responses'].append(
           encode_query_response_record(query_response_record))
-  if cache_record.shard_id != None:
+  if cache_record.shard_id is not None:
     try:
       record['shard_id'] = int(cache_record.shard_id)
     except ValueError:
       record['shard_id'] = cache_record.shard_id
-  if cache_record.last_access_time != None:
+  if cache_record.last_access_time is not None:
     record['last_access_time'] = cache_record.last_access_time.isoformat()
-  if cache_record.call_count != None:
+  if cache_record.call_count is not None:
     record['call_count'] = cache_record.call_count
   return record
 
 
 def decode_cache_record(
-    record: Dict[str, Any]) -> types.CacheRecord:
+    record: dict[str, Any]) -> types.CacheRecord:
+  """Deserialize CacheRecord from a dictionary."""
   cache_record = types.CacheRecord()
   if 'query_record' in record:
     cache_record.query_record = decode_query_record(
@@ -746,29 +792,31 @@ def decode_cache_record(
 
 
 def encode_light_cache_record(
-    light_cache_record: types.LightCacheRecord) -> Dict[str, Any]:
+    light_cache_record: types.LightCacheRecord) -> dict[str, Any]:
+  """Serialize LightCacheRecord to a dictionary."""
   record = {}
-  if light_cache_record.query_record_hash != None:
+  if light_cache_record.query_record_hash is not None:
     record['query_record_hash'] = light_cache_record.query_record_hash
-  if light_cache_record.query_response_count != None:
+  if light_cache_record.query_response_count is not None:
     record['query_response_count'] = light_cache_record.query_response_count
-  if light_cache_record.shard_id != None:
+  if light_cache_record.shard_id is not None:
     try:
       record['shard_id'] = int(light_cache_record.shard_id)
     except ValueError:
       record['shard_id'] = light_cache_record.shard_id
-  if light_cache_record.last_access_time != None:
+  if light_cache_record.last_access_time is not None:
     record['last_access_time'] = (
         light_cache_record.last_access_time.isoformat())
-  if light_cache_record.call_count != None:
+  if light_cache_record.call_count is not None:
     record['call_count'] = light_cache_record.call_count
   return record
 
 
 def decode_light_cache_record(
-    record: Dict[str, Any]) -> types.LightCacheRecord:
+    record: dict[str, Any]) -> types.LightCacheRecord:
+  """Deserialize LightCacheRecord from a dictionary."""
   light_cache_record = types.LightCacheRecord()
-  light_cache_record.query_record_hash = record.get('query_record_hash', None)
+  light_cache_record.query_record_hash = record.get('query_record_hash')
   if 'query_response_count' in record:
     light_cache_record.query_response_count = int(
         record['query_response_count'])
@@ -786,23 +834,25 @@ def decode_light_cache_record(
 
 
 def encode_logging_record(
-    logging_record: types.LoggingRecord) -> Dict[str, Any]:
+    logging_record: types.LoggingRecord) -> dict[str, Any]:
+  """Serialize LoggingRecord to a dictionary."""
   record = {}
-  if logging_record.query_record != None:
+  if logging_record.query_record is not None:
     record['query_record'] = encode_query_record(
         logging_record.query_record)
-  if logging_record.response_record != None:
+  if logging_record.response_record is not None:
     record['response_record'] = encode_query_response_record(
         logging_record.response_record)
-  if logging_record.response_source != None:
+  if logging_record.response_source is not None:
     record['response_source'] = logging_record.response_source.value
-  if logging_record.look_fail_reason != None:
+  if logging_record.look_fail_reason is not None:
     record['look_fail_reason'] = logging_record.look_fail_reason.value
   return record
 
 
 def decode_logging_record(
-    record: Dict[str, Any]) -> types.LoggingRecord:
+    record: dict[str, Any]) -> types.LoggingRecord:
+  """Deserialize LoggingRecord from a dictionary."""
   logging_record = types.LoggingRecord()
   if 'query_record' in record:
     logging_record.query_record = decode_query_record(
@@ -820,28 +870,29 @@ def decode_logging_record(
 
 
 def encode_model_status(
-    model_status: types.ModelStatus) -> Dict[str, Any]:
+    model_status: types.ModelStatus) -> dict[str, Any]:
+  """Serialize ModelStatus to a dictionary."""
   record = {}
-  if model_status.unprocessed_models != None:
+  if model_status.unprocessed_models is not None:
     record['unprocessed_models'] = []
     for provider_model in model_status.unprocessed_models:
       record['unprocessed_models'].append(
           encode_provider_model_type(provider_model))
-  if model_status.working_models != None:
+  if model_status.working_models is not None:
     record['working_models'] = []
     for provider_model in model_status.working_models:
       record['working_models'].append(
           encode_provider_model_type(provider_model))
-  if model_status.failed_models != None:
+  if model_status.failed_models is not None:
     record['failed_models'] = []
     for provider_model in model_status.failed_models:
       record['failed_models'].append(encode_provider_model_type(provider_model))
-  if model_status.filtered_models != None:
+  if model_status.filtered_models is not None:
     record['filtered_models'] = []
     for provider_model in model_status.filtered_models:
       record['filtered_models'].append(
           encode_provider_model_type(provider_model))
-  if model_status.provider_queries != None:
+  if model_status.provider_queries is not None:
     record['provider_queries'] = {}
     for provider_model, provider_query in model_status.provider_queries.items():
       provider_model = json.dumps(encode_provider_model_type(provider_model))
@@ -851,7 +902,8 @@ def encode_model_status(
 
 
 def decode_model_status(
-    record: Dict[str, Any]) -> types.ModelStatus:
+    record: dict[str, Any]) -> types.ModelStatus:
+  """Deserialize ModelStatus from a dictionary."""
   model_status = types.ModelStatus()
   if 'unprocessed_models' in record:
     for provider_model_record in record['unprocessed_models']:
@@ -880,90 +932,95 @@ def decode_model_status(
 
 
 def encode_logging_options(
-    logging_options: types.LoggingOptions) -> Dict[str, Any]:
+    logging_options: types.LoggingOptions) -> dict[str, Any]:
+  """Serialize LoggingOptions to a dictionary."""
   record = {}
-  if logging_options.logging_path != None:
+  if logging_options.logging_path is not None:
     record['logging_path'] = logging_options.logging_path
-  if logging_options.stdout != None:
+  if logging_options.stdout is not None:
     record['stdout'] = logging_options.stdout
-  if logging_options.hide_sensitive_content != None:
+  if logging_options.hide_sensitive_content is not None:
     record['hide_sensitive_content'] = logging_options.hide_sensitive_content
   return record
 
 
 def encode_cache_options(
-    cache_options: types.CacheOptions) -> Dict[str, Any]:
+    cache_options: types.CacheOptions) -> dict[str, Any]:
+  """Serialize CacheOptions to a dictionary."""
   record = {}
-  if cache_options.cache_path != None:
+  if cache_options.cache_path is not None:
     record['cache_path'] = cache_options.cache_path
-  if cache_options.unique_response_limit != None:
+  if cache_options.unique_response_limit is not None:
     record['unique_response_limit'] = cache_options.unique_response_limit
-  if cache_options.retry_if_error_cached != None:
+  if cache_options.retry_if_error_cached is not None:
     record['retry_if_error_cached'] = cache_options.retry_if_error_cached
-  if cache_options.clear_query_cache_on_connect != None:
+  if cache_options.clear_query_cache_on_connect is not None:
     record['clear_query_cache_on_connect'] = (
         cache_options.clear_query_cache_on_connect)
-  if cache_options.clear_model_cache_on_connect != None:
+  if cache_options.clear_model_cache_on_connect is not None:
     record['clear_model_cache_on_connect'] = (
         cache_options.clear_model_cache_on_connect)
-  if cache_options.disable_model_cache != None:
+  if cache_options.disable_model_cache is not None:
     record['disable_model_cache'] = cache_options.disable_model_cache
-  if cache_options.model_cache_duration != None:
+  if cache_options.model_cache_duration is not None:
     record['model_cache_duration'] = cache_options.model_cache_duration
   return record
 
 
 def encode_proxdash_options(
-    proxdash_options: types.ProxDashOptions) -> Dict[str, Any]:
+    proxdash_options: types.ProxDashOptions) -> dict[str, Any]:
+  """Serialize ProxDashOptions to a dictionary."""
   record = {}
-  if proxdash_options.stdout != None:
+  if proxdash_options.stdout is not None:
     record['stdout'] = proxdash_options.stdout
-  if proxdash_options.hide_sensitive_content != None:
+  if proxdash_options.hide_sensitive_content is not None:
     record['hide_sensitive_content'] = proxdash_options.hide_sensitive_content
-  if proxdash_options.disable_proxdash != None:
+  if proxdash_options.disable_proxdash is not None:
     record['disable_proxdash'] = proxdash_options.disable_proxdash
-  if proxdash_options.api_key != None:
+  if proxdash_options.api_key is not None:
     record['api_key'] = proxdash_options.api_key
-  if proxdash_options.base_url != None:
+  if proxdash_options.base_url is not None:
     record['base_url'] = proxdash_options.base_url
   return record
 
 
 def encode_run_options(
-    run_options: types.RunOptions) -> Dict[str, Any]:
+    run_options: types.RunOptions) -> dict[str, Any]:
+  """Serialize RunOptions to a dictionary."""
   record = {}
-  if run_options.run_type != None:
+  if run_options.run_type is not None:
     record['run_type'] = run_options.run_type.value
-  if run_options.hidden_run_key != None:
+  if run_options.hidden_run_key is not None:
     record['hidden_run_key'] = run_options.hidden_run_key
-  if run_options.experiment_path != None:
+  if run_options.experiment_path is not None:
     record['experiment_path'] = run_options.experiment_path
-  if run_options.root_logging_path != None:
+  if run_options.root_logging_path is not None:
     record['root_logging_path'] = run_options.root_logging_path
-  if run_options.default_model_cache_path != None:
+  if run_options.default_model_cache_path is not None:
     record['default_model_cache_path'] = run_options.default_model_cache_path
-  if run_options.logging_options != None:
+  if run_options.logging_options is not None:
     record['logging_options'] = encode_logging_options(
         run_options.logging_options)
-  if run_options.cache_options != None:
+  if run_options.cache_options is not None:
     record['cache_options'] = encode_cache_options(
         run_options.cache_options)
-  if run_options.proxdash_options != None:
+  if run_options.proxdash_options is not None:
     record['proxdash_options'] = encode_proxdash_options(
         run_options.proxdash_options)
-  if run_options.allow_multiprocessing != None:
+  if run_options.allow_multiprocessing is not None:
     record['allow_multiprocessing'] = run_options.allow_multiprocessing
-  if run_options.model_test_timeout != None:
+  if run_options.model_test_timeout is not None:
     record['model_test_timeout'] = run_options.model_test_timeout
-  if run_options.feature_mapping_strategy != None:
+  if run_options.feature_mapping_strategy is not None:
     record['feature_mapping_strategy'] = run_options.feature_mapping_strategy
-  if run_options.suppress_provider_errors != None:
+  if run_options.suppress_provider_errors is not None:
     record['suppress_provider_errors'] = run_options.suppress_provider_errors
   return record
 
 
 def decode_logging_options(
-    record: Dict[str, Any]) -> types.LoggingOptions:
+    record: dict[str, Any]) -> types.LoggingOptions:
+  """Deserialize LoggingOptions from a dictionary."""
   logging_options = types.LoggingOptions()
   if 'logging_path' in record:
     logging_options.logging_path = record['logging_path']
@@ -975,7 +1032,8 @@ def decode_logging_options(
 
 
 def decode_cache_options(
-    record: Dict[str, Any]) -> types.CacheOptions:
+    record: dict[str, Any]) -> types.CacheOptions:
+  """Deserialize CacheOptions from a dictionary."""
   cache_options = types.CacheOptions()
   if 'cache_path' in record:
     cache_options.cache_path = record['cache_path']
@@ -997,7 +1055,8 @@ def decode_cache_options(
 
 
 def decode_proxdash_options(
-    record: Dict[str, Any]) -> types.ProxDashOptions:
+    record: dict[str, Any]) -> types.ProxDashOptions:
+  """Deserialize ProxDashOptions from a dictionary."""
   proxdash_options = types.ProxDashOptions()
   if 'stdout' in record:
     proxdash_options.stdout = record['stdout']
@@ -1013,7 +1072,8 @@ def decode_proxdash_options(
 
 
 def decode_run_options(
-    record: Dict[str, Any]) -> types.RunOptions:
+    record: dict[str, Any]) -> types.RunOptions:
+  """Deserialize RunOptions from a dictionary."""
   run_options = types.RunOptions()
   if 'run_type' in record:
     run_options.run_type = types.RunType(record['run_type'])

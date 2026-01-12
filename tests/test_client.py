@@ -1,9 +1,11 @@
 import os
 import tempfile
+
 import pytest
-import proxai.types as types
+
 import proxai.client as client
 import proxai.connectors.model_configs as model_configs
+import proxai.types as types
 
 
 @pytest.fixture(autouse=True)
@@ -50,10 +52,10 @@ class TestProxAIClientParams:
     assert params.cache_options is None
     assert params.logging_options is None
     assert params.proxdash_options is None
-    assert params.allow_multiprocessing == True
+    assert params.allow_multiprocessing
     assert params.model_test_timeout == 25
     assert params.feature_mapping_strategy == types.FeatureMappingStrategy.BEST_EFFORT
-    assert params.suppress_provider_errors == False
+    assert not params.suppress_provider_errors
 
   def test_custom_values(self):
     cache_path, _ = _get_path_dir('test_cache')
@@ -67,10 +69,10 @@ class TestProxAIClientParams:
         suppress_provider_errors=True)
     assert params.experiment_path == 'test/experiment'
     assert params.cache_options == cache_options
-    assert params.allow_multiprocessing == False
+    assert not params.allow_multiprocessing
     assert params.model_test_timeout == 30
     assert params.feature_mapping_strategy == types.FeatureMappingStrategy.STRICT
-    assert params.suppress_provider_errors == True
+    assert params.suppress_provider_errors
 
 
 class TestProxAIClientInit:
@@ -79,10 +81,10 @@ class TestProxAIClientInit:
   def test_init_from_default_params(self):
     px_client = _create_client_from_params()
     assert px_client.run_type == types.RunType.PRODUCTION
-    assert px_client.allow_multiprocessing == True
+    assert px_client.allow_multiprocessing
     assert px_client.model_test_timeout == 25
     assert px_client.feature_mapping_strategy == types.FeatureMappingStrategy.BEST_EFFORT
-    assert px_client.suppress_provider_errors == False
+    assert not px_client.suppress_provider_errors
 
   def test_init_from_params_with_cache_options(self):
     cache_path, _ = _get_path_dir('test_cache')
@@ -101,7 +103,7 @@ class TestProxAIClientInit:
   def test_init_from_params_with_proxdash_disabled(self):
     proxdash_options = types.ProxDashOptions(disable_proxdash=True)
     px_client = _create_client_from_params(proxdash_options=proxdash_options)
-    assert px_client.proxdash_options.disable_proxdash == True
+    assert px_client.proxdash_options.disable_proxdash
     assert (
         px_client.proxdash_connection.status ==
         types.ProxDashConnectionStatus.DISABLED)
@@ -130,7 +132,7 @@ class TestProxAIClientInit:
         cache_path=cache_path,
         clear_model_cache_on_connect=True)
     px_client = _create_client_from_params(cache_options=cache_options)
-    assert px_client.cache_options.clear_model_cache_on_connect == True
+    assert px_client.cache_options.clear_model_cache_on_connect
 
   def test_clear_query_cache_on_connect(self):
     cache_path, _ = _get_path_dir('test_cache')
@@ -138,7 +140,7 @@ class TestProxAIClientInit:
         cache_path=cache_path,
         clear_query_cache_on_connect=True)
     px_client = _create_client_from_params(cache_options=cache_options)
-    assert px_client.cache_options.clear_query_cache_on_connect == True
+    assert px_client.cache_options.clear_query_cache_on_connect
 
 
 class TestProxAIClientPropertyGettersSetters:
@@ -208,18 +210,18 @@ class TestProxAIClientPropertyGettersSetters:
   def test_cache_options_with_disable_model_cache(self):
     px_client = _create_client_from_params()
     px_client.cache_options = types.CacheOptions(disable_model_cache=True)
-    assert px_client.cache_options.disable_model_cache == True
+    assert px_client.cache_options.disable_model_cache
 
   def test_proxdash_options(self):
     px_client = _create_client_from_params()
     px_client.proxdash_options = types.ProxDashOptions(stdout=True)
-    assert px_client.proxdash_options.stdout == True
+    assert px_client.proxdash_options.stdout
 
   def test_allow_multiprocessing(self):
     px_client = _create_client_from_params()
-    assert px_client.allow_multiprocessing == True
+    assert px_client.allow_multiprocessing
     px_client.allow_multiprocessing = False
-    assert px_client.allow_multiprocessing == False
+    assert not px_client.allow_multiprocessing
 
   def test_model_test_timeout_valid(self):
     px_client = _create_client_from_params()
@@ -239,9 +241,9 @@ class TestProxAIClientPropertyGettersSetters:
 
   def test_suppress_provider_errors(self):
     px_client = _create_client_from_params()
-    assert px_client.suppress_provider_errors == False
+    assert not px_client.suppress_provider_errors
     px_client.suppress_provider_errors = True
-    assert px_client.suppress_provider_errors == True
+    assert px_client.suppress_provider_errors
 
 
 class TestProxAIClientCacheManagers:
@@ -456,7 +458,7 @@ class TestProxAIClientGetCurrentOptions:
 
     assert isinstance(options, types.RunOptions)
     assert options.run_type == types.RunType.PRODUCTION
-    assert options.allow_multiprocessing == False
+    assert not options.allow_multiprocessing
     assert options.model_test_timeout == 30
     assert options.cache_options.cache_path == cache_path
 
@@ -466,7 +468,7 @@ class TestProxAIClientGetCurrentOptions:
 
     assert isinstance(options, dict)
     assert options['run_type'] == types.RunType.PRODUCTION.value
-    assert options['allow_multiprocessing'] == True
+    assert options['allow_multiprocessing']
     assert options['model_test_timeout'] == 25
 
 
@@ -497,5 +499,5 @@ class TestProxAIClientState:
     state = px_client.get_state()
     assert isinstance(state, types.ProxAIClientState)
     assert state.experiment_path == 'test/exp'
-    assert state.allow_multiprocessing == False
+    assert not state.allow_multiprocessing
     assert state.model_test_timeout == 30

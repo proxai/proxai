@@ -1,13 +1,17 @@
-from typing import Any, Callable, Optional
 import functools
-import json
+from collections.abc import Callable
+from typing import Any
+
 from databricks.sdk import WorkspaceClient
-import proxai.types as types
-import proxai.connectors.providers.databricks_mock as databricks_mock
+
 import proxai.connectors.model_connector as model_connector
+import proxai.connectors.providers.databricks_mock as databricks_mock
+import proxai.types as types
 
 
 class DatabricksConnector(model_connector.ProviderModelConnector):
+  """Connector for Databricks model serving endpoints."""
+
   def get_provider_name(self):
     return 'databricks'
 
@@ -95,7 +99,7 @@ class DatabricksConnector(model_connector.ProviderModelConnector):
   def _add_json_guidance_to_user_message(
       self,
       query_function: Callable):
-    # NOTE: Some Databricks models expect JSON guidance to be in the user message.
+    # NOTE: Some Databricks models expect JSON guidance in the user message.
     # This is a workaround to add JSON guidance to the user message.
     messages = query_function.keywords.get('messages')
     if messages is None:
@@ -143,7 +147,7 @@ class DatabricksConnector(model_connector.ProviderModelConnector):
       query_function: Callable,
       query_record: types.QueryRecord):
     raise Exception(
-        'Web search is not supported for Databricks. Code should never reach here.')
+        'Web search is not supported for Databricks.')
 
   def _extract_text_from_content(self, content) -> str:
     # If content is already a string, return it directly

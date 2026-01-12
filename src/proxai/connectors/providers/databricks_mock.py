@@ -1,11 +1,10 @@
-from typing import Dict, List, Optional
 
 
-class _MockMessage(object):
+class _MockMessage:
   content: str
 
 
-class _MockChoice(object):
+class _MockChoice:
   message: _MockMessage
 
   def __init__(self):
@@ -13,14 +12,14 @@ class _MockChoice(object):
     self.message.content = 'mock response'
 
 
-class _MockResponse(object):
-  choices: List[_MockChoice]
+class _MockResponse:
+  choices: list[_MockChoice]
 
   def __init__(self):
     self.choices = [_MockChoice()]
 
 
-class _MockCompletions(object):
+class _MockCompletions:
   def create(self, *args, **kwargs) -> _MockResponse:
     return _MockResponse()
 
@@ -28,21 +27,23 @@ class _MockCompletions(object):
     return _MockResponse()
 
 
-class _MockChat(object):
+class _MockChat:
   completions: _MockCompletions
 
   def __init__(self):
     self.completions = _MockCompletions()
 
 
-class _MockBeta(object):
+class _MockBeta:
   chat: _MockChat
 
   def __init__(self):
     self.chat = _MockChat()
 
 
-class DatabricksMock(object):
+class DatabricksMock:
+  """Mock Databricks API client for testing."""
+
   chat: _MockChat
   beta: _MockBeta
 

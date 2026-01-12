@@ -7,7 +7,10 @@ license = "MIT"
 readme = "README.md"
 homepage = "https://proxai.co"
 repository = "https://github.com/proxai/proxai"
-include = ["src/proxai/connectors/model_configs_data/*.json"]
+include = [
+    "src/proxai/connectors/model_configs_data/*.json",
+    "src/proxai/py.typed",
+]
 
 [tool.poetry.urls]
 "Homepage" = "https://proxai.co"
@@ -28,8 +31,6 @@ packaging = "^25.0"
 xai-sdk = "^1.5.0"
 huggingface-hub = "^1.2.3"
 
-[tool.poetry.dev-dependencies]
-
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.1.1"
 myst-nb = {version = "^1.0.0", python = "^3.9"}
@@ -37,7 +38,67 @@ sphinx-autoapi = "^3.0.0"
 sphinx-rtd-theme = "^2.0.0"
 jupyter = "^1.0.0"
 requests-mock = "^1.12.1"
+ruff = "^0.14.11"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 80
+target-version = "py310"
+src = ["src"]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort
+    "D",      # pydocstyle (docstring conventions)
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "SIM",    # flake8-simplify
+]
+ignore = [
+    "D100",   # Missing docstring in public module
+    "D104",   # Missing docstring in public package
+    "D105",   # Missing docstring in magic method
+    "D107",   # Missing docstring in __init__
+    "D102",   # Missing docstring in public method (mostly property getters)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+    "D101",   # Missing docstring in public class
+    "D103",   # Missing docstring in public function
+    "E501",   # Line too long (tests benefit from longer lines for readability)
+]
+"integration_tests/**/*.py" = [
+    "D101",   # Missing docstring in public class
+    "D103",   # Missing docstring in public function
+    "E501",   # Line too long (tests benefit from longer lines for readability)
+]
+"examples/**/*.py" = [
+    "D103",   # Missing docstring in public function (examples are self-explanatory)
+]
+"docs/**/*" = [
+    "D100",   # Missing docstring in public module
+    "D101",   # Missing docstring in public class
+    "D103",   # Missing docstring in public function
+    "E501",   # Line too long
+    "F401",   # Imported but unused
+    "I001",   # Import sorting
+    "UP015",  # Unnecessary mode argument
+    "UP025",  # Unicode literals
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.isort]
+known-first-party = ["proxai"]
+
+[tool.ruff.format]
+docstring-code-format = true

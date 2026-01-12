@@ -1,15 +1,17 @@
-import dataclasses
-import os
 import copy
+import dataclasses
 import json
+import os
+from importlib.metadata import version
+from typing import Union
+
 import requests
-import proxai.serializers.type_serializer as type_serializer
-import proxai.types as types
+
 import proxai.experiment.experiment as experiment
 import proxai.logging.utils as logging_utils
+import proxai.serializers.type_serializer as type_serializer
 import proxai.state_controllers.state_controller as state_controller
-from typing import Callable, Dict, Optional, Union, Tuple
-from importlib.metadata import version
+import proxai.types as types
 
 _PROXDASH_STATE_PROPERTY = '_proxdash_connection_state'
 _NOT_SET_EXPERIMENT_PATH_VALUE = '(not set)'
@@ -17,26 +19,30 @@ _NOT_SET_EXPERIMENT_PATH_VALUE = '(not set)'
 
 @dataclasses.dataclass
 class ProxDashConnectionParams:
-  hidden_run_key: Optional[str] = None
-  experiment_path: Optional[str] = None
-  logging_options: Optional[types.LoggingOptions] = None
-  proxdash_options: Optional[types.ProxDashOptions] = None
+  """Initialization parameters for ProxDashConnection."""
+
+  hidden_run_key: str | None = None
+  experiment_path: str | None = None
+  logging_options: types.LoggingOptions | None = None
+  proxdash_options: types.ProxDashOptions | None = None
 
 
 class ProxDashConnection(state_controller.StateControlled):
-  _status: Optional[types.ProxDashConnectionStatus]
-  _hidden_run_key: Optional[str]
-  _experiment_path: Optional[str]
-  _logging_options: Optional[types.LoggingOptions]
-  _proxdash_options: Optional[types.ProxDashOptions]
-  _key_info_from_proxdash: Optional[Dict]
-  _connected_experiment_path: Optional[str]
-  _proxdash_connection_state: Optional[types.ProxDashConnectionState]
+  """Manages connection and data upload to the ProxDash service."""
+
+  _status: types.ProxDashConnectionStatus | None
+  _hidden_run_key: str | None
+  _experiment_path: str | None
+  _logging_options: types.LoggingOptions | None
+  _proxdash_options: types.ProxDashOptions | None
+  _key_info_from_proxdash: dict | None
+  _connected_experiment_path: str | None
+  _proxdash_connection_state: types.ProxDashConnectionState | None
 
   def __init__(
       self,
-      init_from_params: Optional[ProxDashConnectionParams] = None,
-      init_from_state: Optional[types.ProxDashConnectionState] = None
+      init_from_params: ProxDashConnectionParams | None = None,
+      init_from_state: types.ProxDashConnectionState | None = None
   ):
     super().__init__(
         init_from_params=init_from_params,
@@ -55,17 +61,19 @@ class ProxDashConnection(state_controller.StateControlled):
       self._init_connection()
 
   def get_internal_state_property_name(self):
+    """Return the name of the internal state property."""
     return _PROXDASH_STATE_PROPERTY
 
   def get_internal_state_type(cls):
+    """Return the dataclass type used for state storage."""
     return types.ProxDashConnectionState
 
   @property
-  def hidden_run_key(self) -> Optional[str]:
+  def hidden_run_key(self) -> str | None:
     return self.get_property_value('hidden_run_key')
 
   @hidden_run_key.setter
-  def hidden_run_key(self, hidden_run_key: Optional[str]):
+  def hidden_run_key(self, hidden_run_key: str | None):
     self.set_property_value('hidden_run_key', hidden_run_key)
 
   @property
@@ -89,11 +97,11 @@ class ProxDashConnection(state_controller.StateControlled):
     self.set_property_value('proxdash_options', proxdash_options)
 
   @property
-  def key_info_from_proxdash(self) -> Optional[Dict]:
+  def key_info_from_proxdash(self) -> dict | None:
     return self.get_property_value('key_info_from_proxdash')
 
   @key_info_from_proxdash.setter
-  def key_info_from_proxdash(self, key_info_from_proxdash: Optional[Dict]):
+  def key_info_from_proxdash(self, key_info_from_proxdash: dict | None):
     self.set_property_value('key_info_from_proxdash', key_info_from_proxdash)
 
   @property
@@ -114,7 +122,7 @@ class ProxDashConnection(state_controller.StateControlled):
     return experiment_path
 
   @experiment_path.setter
-  def experiment_path(self, experiment_path: Optional[str]):
+  def experiment_path(self, experiment_path: str | None):
     if experiment_path is not None:
       experiment.validate_experiment_path(experiment_path)
     else:
@@ -127,7 +135,7 @@ class ProxDashConnection(state_controller.StateControlled):
     return self.get_property_value('connected_experiment_path')
 
   @connected_experiment_path.setter
-  def connected_experiment_path(self, connected_experiment_path: Optional[str]):
+  def connected_experiment_path(self, connected_experiment_path: str | None):
     if self.status != types.ProxDashConnectionStatus.CONNECTED:
       if connected_experiment_path is not None:
         raise ValueError(
@@ -287,13 +295,15 @@ class ProxDashConnection(state_controller.StateControlled):
   def _check_api_key_validity(
       self,
       base_url: str,
-      api_key: str) -> Tuple[
-      Union[
+      api_key: str,
+  ) -> tuple[
+      Union[  # noqa: UP007
           types.ProxDashConnectionStatus.API_KEY_NOT_VALID,
           types.ProxDashConnectionStatus.PROXDASH_INVALID_RETURN,
           types.ProxDashConnectionStatus.CONNECTED,
       ],
-      Optional[Dict]]:
+      dict | None,
+  ]:
     response = requests.get(
         f'{base_url}/ingestion/verify-key',
         headers={'X-API-Key': api_key})
@@ -334,6 +344,7 @@ class ProxDashConnection(state_controller.StateControlled):
     return logging_record
 
   def upload_logging_record(self, logging_record: types.LoggingRecord):
+    """Upload a logging record to ProxDash."""
     if self.status != types.ProxDashConnectionStatus.CONNECTED:
       return
     if ((self.proxdash_options and
@@ -368,7 +379,7 @@ class ProxDashConnection(state_controller.StateControlled):
 
     if logging_record.query_record.stop is not None:
       stop = logging_record.query_record.stop
-      if type(stop) == str:
+      if isinstance(stop, str):
         stop = [stop]
       stop = json.dumps(stop, indent=2, sort_keys=True)
     else:
@@ -376,13 +387,15 @@ class ProxDashConnection(state_controller.StateControlled):
 
     query_pydantic_class_name = None
     query_pydantic_class_json_schema = None
-    response_pydantic_json_value = None
-    if (logging_record.query_record.response_format and
-        logging_record.query_record.response_format.type == types.ResponseFormatType.PYDANTIC and
-        logging_record.query_record.response_format.value.class_name):
-      query_pydantic_class_name = logging_record.query_record.response_format.value.class_name
-      query_pydantic_class_json_schema = logging_record.query_record.response_format.value.class_value.model_json_schema()
-      response_pydantic_json_value = logging_record.response_record.response.value.model_dump()
+    response_format = logging_record.query_record.response_format
+    if (response_format and
+        response_format.type == types.ResponseFormatType.PYDANTIC and
+        response_format.value.class_name):
+      query_pydantic_class_name = response_format.value.class_name
+      query_pydantic_class_json_schema = (
+          response_format.value.class_value.model_json_schema())
+      # response_pydantic_json_value is for future use
+      _ = logging_record.response_record.response.value.model_dump()
 
 
     data = {
@@ -468,7 +481,8 @@ class ProxDashConnection(state_controller.StateControlled):
 
   def get_model_configs_schema(
       self,
-  ) -> Optional[types.ModelConfigsSchemaType]:
+  ) -> types.ModelConfigsSchemaType | None:
+    """Fetch the latest model configurations from ProxDash."""
     current_version = version("proxai")
     request_url = (
         f'{self.proxdash_options.base_url}' +
@@ -529,8 +543,8 @@ class ProxDashConnection(state_controller.StateControlled):
           logging_options=self.logging_options,
           proxdash_options=self.proxdash_options,
           message=(
-              'Model configs schema is invalid. Please report this issue to the '
-              'https://github.com/proxai/proxai.\n'
+              'Model configs schema is invalid. Please report this '
+              'issue to the https://github.com/proxai/proxai.\n'
               'Also, please check latest stable version of ProxAI. '
               f'Request URL: {request_url}'
               f'Response: {response.text}'),

@@ -1,15 +1,16 @@
 import copy
 import datetime
-import os
-from typing import Dict
-import json
-import proxai.types as types
-import proxai.caching.query_cache as query_cache
-import proxai.serializers.type_serializer as type_serializer
-import proxai.serializers.hash_serializer as hash_serializer
-import pytest
 import functools
+import json
+import os
 import tempfile
+
+import pytest
+
+import proxai.caching.query_cache as query_cache
+import proxai.serializers.hash_serializer as hash_serializer
+import proxai.serializers.type_serializer as type_serializer
+import proxai.types as types
 
 _SHARD_COUNT = 3
 _RESPONSE_PER_FILE = 4
@@ -157,15 +158,15 @@ def _get_example_records(shard_dir=None, shard_count=None):
 
 
 def _check_file_json(filepath, expected):
-  with open(filepath, 'r') as f:
-    for line, expected_data in zip(f, expected):
+  with open(filepath) as f:
+    for line, expected_data in zip(f, expected, strict=False):
       assert json.loads(line) == expected_data
 
 
 def _check_light_cache_records_file(
     filepath, expected):
   data = {}
-  with open(filepath, 'r') as f:
+  with open(filepath) as f:
     for line in f:
       record_data = json.loads(line)
       for hash_value, record in record_data.items():
@@ -306,7 +307,7 @@ def _print_state(
   pprint(shard_manager._shard_active_count)
   for shard_id in shard_manager.shard_paths:
     print(f'---- Shard {shard_id}')
-    with open(shard_manager.shard_paths[shard_id], 'r') as f:
+    with open(shard_manager.shard_paths[shard_id]) as f:
       for line in f:
         pprint(json.loads(line))
 
@@ -1346,7 +1347,7 @@ class TestQueryCache:
       _check_record_heap(query_cache_manager, [hash_2, hash_3])
       assert (
           set(query_cache_manager._shard_manager._light_cache_records.keys())
-          == set([hash_2, hash_3]))
+          == {hash_2, hash_3})
 
       # record_4: size = 2, heap = [record_2, record_3, record_4]
       record_4 = _create_cache_record(
@@ -1359,7 +1360,7 @@ class TestQueryCache:
       _check_record_heap(query_cache_manager, [hash_2, hash_3, hash_4])
       assert (
           set(query_cache_manager._shard_manager._light_cache_records.keys())
-          == set([hash_2, hash_3, hash_4]))
+          == {hash_2, hash_3, hash_4})
 
       # Override and overflow
       # record_2: size = 10, heap = [record_2]
@@ -1372,7 +1373,7 @@ class TestQueryCache:
       _check_record_heap(query_cache_manager, [hash_2])
       assert (
           set(query_cache_manager._shard_manager._light_cache_records.keys())
-          == set([hash_2]))
+          == {hash_2})
 
   def test_look(self):
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -1744,7 +1745,7 @@ class TestQueryCache:
       query_record_1 = types.QueryRecord(prompt='p1')
       query_record_2 = types.QueryRecord(prompt='p2')
       query_record_3 = types.QueryRecord(prompt='p3')
-      query_record_4 = types.QueryRecord(prompt='p4')
+      types.QueryRecord(prompt='p4')
       response_record_1 = _create_response_record(response_id=1)
       response_record_2 = _create_response_record(response_id=2)
       response_record_3 = _create_response_record(response_id=3)
@@ -1989,7 +1990,7 @@ class TestQueryCacheState:
           default_values.cache_response_size)
 
   def test_not_working_state_calls(self):
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with tempfile.TemporaryDirectory():
       query_cache_manager_params = query_cache.QueryCacheManagerParams(
           cache_options=types.CacheOptions())
       query_cache_manager = query_cache.QueryCacheManager(

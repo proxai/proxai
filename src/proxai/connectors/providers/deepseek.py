@@ -1,14 +1,18 @@
-from typing import Any, Callable, Optional
 import functools
-import json
 import os
+from collections.abc import Callable
+from typing import Any
+
 from openai import OpenAI
-import proxai.types as types
-import proxai.connectors.providers.openai_mock as openai_mock
+
 import proxai.connectors.model_connector as model_connector
+import proxai.connectors.providers.openai_mock as openai_mock
+import proxai.types as types
 
 
 class DeepSeekConnector(model_connector.ProviderModelConnector):
+  """Connector for DeepSeek models."""
+
   def get_provider_name(self):
     return 'deepseek'
 
@@ -137,7 +141,7 @@ class DeepSeekConnector(model_connector.ProviderModelConnector):
       query_function: Callable,
       query_record: types.QueryRecord):
     raise Exception(
-        'Web search is not supported for DeepSeek. Code should never reach here.')
+        'Web search is not supported for DeepSeek.')
 
   def format_text_response_from_provider(
       self,

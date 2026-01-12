@@ -1,17 +1,24 @@
-import time
 import functools
-from typing import Any, Callable, Optional
+import time
+from collections.abc import Callable
+from typing import Any
+
 import pydantic
-import proxai.types as types
+
 import proxai.connectors.model_connector as model_connector
+import proxai.types as types
 
 
 class SamplePydanticModel(pydantic.BaseModel):
+  """Sample Pydantic model for mock testing."""
+
   name: str
   age: int
 
 
 class MockProviderModelConnector(model_connector.ProviderModelConnector):
+  """Mock connector for testing without real API calls."""
+
   def get_provider_name(self):
     return "mock_provider"
 
@@ -24,7 +31,7 @@ class MockProviderModelConnector(model_connector.ProviderModelConnector):
   def system_feature_mapping(
       self,
       query_function: Callable,
-      system_message: Optional[str] = None) -> Callable:
+      system_message: str | None = None) -> Callable:
     return functools.partial(query_function, system=system_message)
 
   def json_feature_mapping(
@@ -71,23 +78,19 @@ class MockProviderModelConnector(model_connector.ProviderModelConnector):
 
   def generate_text_proc(
       self, query_record: types.QueryRecord) -> types.Response:
-    if query_record.response_format is None:
+    fmt = query_record.response_format
+    is_text = fmt is None or fmt.type == types.ResponseFormatType.TEXT
+    is_json = (fmt and (fmt.type == types.ResponseFormatType.JSON or
+               fmt.type == types.ResponseFormatType.JSON_SCHEMA))
+    if is_text:
       return types.Response(
           value="mock response",
           type=types.ResponseType.TEXT)
-    elif query_record.response_format.type == types.ResponseFormatType.TEXT:
-      return types.Response(
-          value="mock response",
-          type=types.ResponseType.TEXT)
-    elif query_record.response_format.type == types.ResponseFormatType.JSON:
+    elif is_json:
       return types.Response(
           value={"name": "John Doe", "age": 30},
           type=types.ResponseType.JSON)
-    elif query_record.response_format.type == types.ResponseFormatType.JSON_SCHEMA:
-      return types.Response(
-          value={"name": "John Doe", "age": 30},
-          type=types.ResponseType.JSON)
-    elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
+    elif fmt and fmt.type == types.ResponseFormatType.PYDANTIC:
       return types.Response(
           value=SamplePydanticModel(name='John Doe', age=30),
           type=types.ResponseType.PYDANTIC,
@@ -96,6 +99,8 @@ class MockProviderModelConnector(model_connector.ProviderModelConnector):
 
 
 class MockFailingProviderModelConnector(model_connector.ProviderModelConnector):
+  """Mock connector that always fails for testing error handling."""
+
   def get_provider_name(self):
     return "mock_failing_provider"
 
@@ -110,6 +115,8 @@ class MockFailingProviderModelConnector(model_connector.ProviderModelConnector):
 
 
 class MockSlowProviderModelConnector(model_connector.ProviderModelConnector):
+  """Mock connector with delayed responses for testing timeouts."""
+
   def get_provider_name(self):
     return "mock_slow_provider"
 
@@ -123,23 +130,19 @@ class MockSlowProviderModelConnector(model_connector.ProviderModelConnector):
       self, query_record: types.QueryRecord) -> types.Response:
     time.sleep(120)
 
-    if query_record.response_format is None:
+    fmt = query_record.response_format
+    is_text = fmt is None or fmt.type == types.ResponseFormatType.TEXT
+    is_json = (fmt and (fmt.type == types.ResponseFormatType.JSON or
+               fmt.type == types.ResponseFormatType.JSON_SCHEMA))
+    if is_text:
       return types.Response(
           value="mock response",
           type=types.ResponseType.TEXT)
-    elif query_record.response_format.type == types.ResponseFormatType.TEXT:
-      return types.Response(
-          value="mock response",
-          type=types.ResponseType.TEXT)
-    elif query_record.response_format.type == types.ResponseFormatType.JSON:
+    elif is_json:
       return types.Response(
           value={"name": "John Doe", "age": 30},
           type=types.ResponseType.JSON)
-    elif query_record.response_format.type == types.ResponseFormatType.JSON_SCHEMA:
-      return types.Response(
-          value={"name": "John Doe", "age": 30},
-          type=types.ResponseType.JSON)
-    elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
+    elif fmt and fmt.type == types.ResponseFormatType.PYDANTIC:
       return types.Response(
           value=SamplePydanticModel(name='John Doe', age=30),
           type=types.ResponseType.PYDANTIC,
