@@ -36,16 +36,20 @@ PROVIDER_KEY_MAP: dict[str, tuple[str]] = MappingProxyType({
 
 @dataclasses.dataclass
 class ModelConfigsParams:
+  """Initialization parameters for ModelConfigs."""
+
   model_configs_schema: types.ModelConfigsSchemaType | None = None
 
 
 class ModelConfigs(state_controller.StateControlled):
+  """Manages model configuration schemas and validation."""
+
   _model_configs_schema: types.ModelConfigsSchemaType | None
   _model_configs_state: types.ModelConfigsState | None
 
   LOCAL_CONFIG_VERSION = "v1.1.2"
 
-  def __init__(
+  def __init__(  # noqa: D107
       self,
       init_from_params: ModelConfigsParams | None = None,
       init_from_state: types.ModelConfigsState | None = None
@@ -64,9 +68,11 @@ class ModelConfigs(state_controller.StateControlled):
       self.model_configs_schema = model_configs_schema
 
   def get_internal_state_property_name(self):
+    """Return the name of the internal state property."""
     return _MODEL_CONFIGS_STATE_PROPERTY
 
   def get_internal_state_type(self):
+    """Return the dataclass type used for state storage."""
     return types.ModelConfigsState
 
   @property
@@ -449,6 +455,7 @@ class ModelConfigs(state_controller.StateControlled):
   @staticmethod
   def _load_model_config_schema_from_local_files(
       version: str | None = None) -> types.ModelConfigsSchemaType:
+    """Load model config schema from bundled JSON files."""
     version = version or ModelConfigs.LOCAL_CONFIG_VERSION
 
     try:
@@ -479,6 +486,7 @@ class ModelConfigs(state_controller.StateControlled):
   def load_model_config_from_json_string(
       self,
       json_string: str):
+    """Load model config schema from a JSON string."""
     model_configs_schema = type_serializer.decode_model_configs_schema_type(
         json.loads(json_string))
     self.model_configs_schema = model_configs_schema
@@ -529,6 +537,7 @@ class ModelConfigs(state_controller.StateControlled):
       self,
       model_identifier: types.ProviderModelIdentifierType
   ) -> types.ProviderModelType:
+    """Convert a model identifier to a ProviderModelType."""
     if self._is_provider_model_tuple(model_identifier):
       return self.model_configs_schema.version_config.provider_model_configs[
           model_identifier[0]][model_identifier[1]].provider_model
@@ -539,6 +548,7 @@ class ModelConfigs(state_controller.StateControlled):
       self,
       model_identifier: types.ProviderModelIdentifierType
   ) -> types.ProviderModelType:
+    """Get the full config for a model identifier."""
     provider_model = self.get_provider_model(model_identifier)
     return self.model_configs_schema.version_config.provider_model_configs[
         provider_model.provider][provider_model.model]
@@ -549,6 +559,7 @@ class ModelConfigs(state_controller.StateControlled):
       query_token_count: int,
       response_token_count: int,
   ) -> int:
+    """Calculate the cost in micro-cents for a query."""
     provider_model = self.get_provider_model(
         provider_model_identifier)
     version_config = self.model_configs_schema.version_config
@@ -565,6 +576,7 @@ class ModelConfigs(state_controller.StateControlled):
       call_type: types.CallType | None = types.CallType.GENERATE_TEXT,
       only_featured: bool | None = True,
   ) -> list[types.ProviderModelType]:
+    """List all models matching the given filters."""
     version_config = self.model_configs_schema.version_config
     if (call_type is not None and
         call_type not in version_config.models_by_call_type):
@@ -606,6 +618,7 @@ class ModelConfigs(state_controller.StateControlled):
     return result_provider_models
 
   def get_default_model_priority_list(self) -> list[types.ProviderModelType]:
+    """Return the default model priority list for fallback selection."""
     # TODO: This operation could be optimized by caching the result and using
     # StateController to persist the result. If the configs are updated, the
     # result should be invalidated and recalculated by the StateController's

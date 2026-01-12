@@ -36,6 +36,8 @@ class _MockBeta:
 
 
 class ClaudeMock:
+  """Mock Claude API client for testing."""
+
   messages: _MockMessages
   beta: _MockBeta
 

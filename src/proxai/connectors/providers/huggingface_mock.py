@@ -1,6 +1,8 @@
 
 
 class HuggingFaceMock:
+  """Mock Hugging Face API client for testing."""
+
   def generate_content(
       self,
       messages: list[dict[str, str]],

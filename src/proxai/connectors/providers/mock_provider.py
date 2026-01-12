@@ -10,11 +10,15 @@ import proxai.types as types
 
 
 class SamplePydanticModel(pydantic.BaseModel):
+  """Sample Pydantic model for mock testing."""
+
   name: str
   age: int
 
 
 class MockProviderModelConnector(model_connector.ProviderModelConnector):
+  """Mock connector for testing without real API calls."""
+
   def get_provider_name(self):
     return "mock_provider"
 
@@ -95,6 +99,8 @@ class MockProviderModelConnector(model_connector.ProviderModelConnector):
 
 
 class MockFailingProviderModelConnector(model_connector.ProviderModelConnector):
+  """Mock connector that always fails for testing error handling."""
+
   def get_provider_name(self):
     return "mock_failing_provider"
 
@@ -109,6 +115,8 @@ class MockFailingProviderModelConnector(model_connector.ProviderModelConnector):
 
 
 class MockSlowProviderModelConnector(model_connector.ProviderModelConnector):
+  """Mock connector with delayed responses for testing timeouts."""
+
   def get_provider_name(self):
     return "mock_slow_provider"
 

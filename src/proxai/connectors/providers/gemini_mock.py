@@ -13,6 +13,8 @@ class _MockModel:
 
 
 class GeminiMock:
+  """Mock Gemini API client for testing."""
+
   models: _MockModel
 
   def __init__(self):

@@ -12,6 +12,8 @@ import proxai.types as types
 
 
 class MistralConnector(model_connector.ProviderModelConnector):
+  """Connector for Mistral AI models."""
+
   def get_provider_name(self):
     return 'mistral'
 

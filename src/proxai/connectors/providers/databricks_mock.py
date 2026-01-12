@@ -42,6 +42,8 @@ class _MockBeta:
 
 
 class DatabricksMock:
+  """Mock Databricks API client for testing."""
+
   chat: _MockChat
   beta: _MockBeta
 

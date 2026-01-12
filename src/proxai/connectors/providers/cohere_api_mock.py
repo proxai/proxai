@@ -22,6 +22,8 @@ class _MockResponse:
 
 
 class CohereMock:
+  """Mock Cohere API client for testing."""
+
   def chat(
       self,
       model: str,

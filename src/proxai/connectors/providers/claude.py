@@ -13,6 +13,8 @@ STRUCTURED_OUTPUTS_BETA = "structured-outputs-2025-11-13"
 
 
 class ClaudeConnector(model_connector.ProviderModelConnector):
+  """Connector for Anthropic Claude models."""
+
   def get_provider_name(self):
     return 'claude'
 

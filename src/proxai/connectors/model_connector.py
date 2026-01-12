@@ -24,6 +24,8 @@ _PROVIDER_MODEL_STATE_PROPERTY = '_provider_model_state'
 
 @dataclasses.dataclass
 class ProviderModelConnectorParams:
+  """Initialization parameters for ProviderModelConnector."""
+
   provider_model: types.ProviderModelType | None = None
   run_type: types.RunType | None = None
   provider_model_config: types.ProviderModelConfigType | None = None
@@ -34,6 +36,8 @@ class ProviderModelConnectorParams:
 
 
 class ProviderModelConnector(state_controller.StateControlled):
+  """Base class for provider-specific model connectors."""
+
   _provider_model: types.ProviderModelType | None
   _run_type: types.RunType | None
   _provider_model_config: types.ProviderModelConfigType | None
@@ -46,7 +50,7 @@ class ProviderModelConnector(state_controller.StateControlled):
 
   _chosen_endpoint_cached_result: dict[str, bool] | None
 
-  def __init__(
+  def __init__(  # noqa: D107
       self,
       init_from_params: ProviderModelConnectorParams | None = None,
       init_from_state: types.ProviderModelState | None = None
@@ -76,9 +80,11 @@ class ProviderModelConnector(state_controller.StateControlled):
       self.proxdash_connection = init_from_params.proxdash_connection
 
   def get_internal_state_property_name(self):
+    """Return the name of the internal state property."""
     return _PROVIDER_MODEL_STATE_PROPERTY
 
   def get_internal_state_type(self):
+    """Return the dataclass type used for state storage."""
     return types.ProviderModelState
 
   @property
@@ -138,6 +144,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       self,
       state_value: types.QueryCacheManagerState
   ) -> query_cache.QueryCacheManager:
+    """Deserialize a QueryCacheManager from its state."""
     return query_cache.QueryCacheManager(init_from_state=state_value)
 
   @property
@@ -160,6 +167,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       self,
       state_value: types.ProxDashConnectionState
   ) -> proxdash.ProxDashConnection:
+    """Deserialize a ProxDashConnection from its state."""
     return proxdash.ProxDashConnection(init_from_state=state_value)
 
   def _extract_json_from_text(self, text: str) -> dict:
@@ -493,6 +501,7 @@ class ProviderModelConnector(state_controller.StateControlled):
   def feature_check_and_sanitize(
       self,
       query_record: types.QueryRecord) -> types.QueryRecord:
+    """Check feature compatibility and sanitize the query record."""
     query_record = copy.deepcopy(query_record)
 
     chosen_endpoint = self._get_feature_check_result_endpoint(
@@ -510,6 +519,7 @@ class ProviderModelConnector(state_controller.StateControlled):
   def check_feature_compatibility(
       self,
       features: types.FeatureListType) -> bool:
+    """Check if the given features are compatible with this connector."""
     chosen_endpoint = self._get_feature_check_result_endpoint(
         provider_model=self.provider_model,
         feature_mapping_strategy=self.feature_mapping_strategy,
@@ -557,6 +567,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       self,
       query_function: Callable,
       query_record: types.QueryRecord):
+    """Compose feature mappings into the query function."""
     feature_mappings = {
         types.FeatureNameType.PROMPT: self.prompt_feature_mapping,
         types.FeatureNameType.MESSAGES: self.messages_feature_mapping,
@@ -666,6 +677,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       self,
       response: Any,
       query_record: types.QueryRecord) -> types.Response:
+    """Convert a provider response to a standardized Response object."""
     if (query_record.response_format is None or
         query_record.response_format.type == types.ResponseFormatType.TEXT):
       return types.Response(
@@ -690,6 +702,7 @@ class ProviderModelConnector(state_controller.StateControlled):
   def get_token_count_estimate(
       self,
       value: str | types.Response | types.MessagesType | None = None) -> int:
+    """Estimate the token count for a prompt, response, or messages."""
     total = 0
     def _get_token_count_estimate_from_prompt(prompt: str) -> int:
       return math.ceil(max(
@@ -727,6 +740,7 @@ class ProviderModelConnector(state_controller.StateControlled):
     return total
 
   def get_estimated_cost(self, logging_record: types.LoggingRecord):
+    """Calculate the estimated cost for a logging record."""
     query_token_count = logging_record.query_record.token_count
     if not isinstance(query_token_count, int):
       query_token_count = 0
@@ -775,6 +789,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       feature_mapping_strategy: types.FeatureMappingStrategy | None = None,
       use_cache: bool = True,
       unique_response_limit: int | None = None) -> types.LoggingRecord:
+    """Generate text from the model and return a logging record."""
     if prompt is not None and messages is not None:
       raise ValueError('prompt and messages cannot be set at the same time.')
     if messages is not None:
@@ -900,12 +915,15 @@ class ProviderModelConnector(state_controller.StateControlled):
     return logging_record
 
   def get_provider_name(self):
+    """Return the provider name for this connector."""
     raise NotImplementedError
 
   def init_model(self):
+    """Initialize the provider API client."""
     raise NotImplementedError
 
   def init_mock_model(self):
+    """Initialize a mock API client for testing."""
     raise NotImplementedError
 
   def prompt_feature_mapping(
@@ -988,4 +1006,5 @@ class ProviderModelConnector(state_controller.StateControlled):
 
   def generate_text_proc(
       self, query_record: types.QueryRecord) -> types.Response:
+    """Execute the actual text generation call to the provider."""
     raise NotImplementedError

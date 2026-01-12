@@ -14,6 +14,7 @@ Client = client.ProxAIClient
 
 
 def get_default_proxai_client() -> client.ProxAIClient:
+    """Return the global default ProxAI client, creating it if needed."""
     global _DEFAULT_CLIENT
     if _DEFAULT_CLIENT is None:
         proxai_client_params = client.ProxAIClientParams()

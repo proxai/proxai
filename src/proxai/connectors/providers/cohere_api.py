@@ -10,6 +10,8 @@ import proxai.types as types
 
 
 class CohereConnector(model_connector.ProviderModelConnector):
+  """Connector for Cohere models."""
+
   def get_provider_name(self):
     return 'cohere'
 

@@ -10,6 +10,8 @@ import proxai.types as types
 
 
 class DatabricksConnector(model_connector.ProviderModelConnector):
+  """Connector for Databricks model serving endpoints."""
+
   def get_provider_name(self):
     return 'databricks'
 
