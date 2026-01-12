@@ -4,6 +4,7 @@ from proxai.proxai import (
     CacheOptions,
     LoggingOptions,
     ProxDashOptions,
+    Client,
     ResponseFormat,
     ResponseFormatType,
     connect,

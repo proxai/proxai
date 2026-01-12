@@ -374,6 +374,17 @@ class ProxDashConnection(state_controller.StateControlled):
     else:
       stop = None
 
+    query_pydantic_class_name = None
+    query_pydantic_class_json_schema = None
+    response_pydantic_json_value = None
+    if (logging_record.query_record.response_format and
+        logging_record.query_record.response_format.type == types.ResponseFormatType.PYDANTIC and
+        logging_record.query_record.response_format.value.class_name):
+      query_pydantic_class_name = logging_record.query_record.response_format.value.class_name
+      query_pydantic_class_json_schema = logging_record.query_record.response_format.value.class_value.model_json_schema()
+      response_pydantic_json_value = logging_record.response_record.response.value.model_dump()
+
+
     data = {
       'hiddenRunKey': self.hidden_run_key,
       'experimentPath': self.experiment_path,
@@ -388,11 +399,15 @@ class ProxDashConnection(state_controller.StateControlled):
       'maxTokens': logging_record.query_record.max_tokens,
       'temperature': logging_record.query_record.temperature,
       'stop': stop,
+      'webSearch': logging_record.query_record.web_search,
+      'queryPydanticClassName': query_pydantic_class_name,
+      'queryPydanticJsonSchema': query_pydantic_class_json_schema,
       'hashValue': logging_record.query_record.hash_value,
       'queryTokens': logging_record.query_record.token_count,
       'response': response,
       'error': logging_record.response_record.error,
       'errorTraceback': logging_record.response_record.error_traceback,
+      'responsePydanticJsonValue': 'temp value',
       'startUTCDate': logging_record.response_record.start_utc_date.isoformat(),
       'endUTCDate': logging_record.response_record.end_utc_date.isoformat(),
       'localTimeOffsetMinute': (
