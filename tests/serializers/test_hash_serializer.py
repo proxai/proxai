@@ -1,9 +1,9 @@
-import proxai.types as types
-import proxai.serializers.hash_serializer as hash_serializer
-import pytest
-import proxai.connectors.model_configs as model_configs
+
 import pydantic
-from typing import List, Optional
+import pytest
+
+import proxai.serializers.hash_serializer as hash_serializer
+import proxai.types as types
 
 
 class UserModel(pydantic.BaseModel):
@@ -19,9 +19,9 @@ class AddressModel(pydantic.BaseModel):
 
 class UserWithAddressModel(pydantic.BaseModel):
   name: str
-  email: Optional[str] = None
+  email: str | None = None
   address: AddressModel
-  tags: List[str] = []
+  tags: list[str] = []
 
 
 def _get_query_record_options():

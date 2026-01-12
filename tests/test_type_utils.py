@@ -1,8 +1,8 @@
-import datetime
 import pydantic
-import proxai.types as types
-import proxai.type_utils as type_utils
 import pytest
+
+import proxai.type_utils as type_utils
+import proxai.types as types
 
 
 class SampleModel(pydantic.BaseModel):

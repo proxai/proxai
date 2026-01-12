@@ -1,17 +1,15 @@
-import os
 import copy
-from typing import Dict, Optional, List
-import proxai.types as types
-from proxai import proxai
-import pytest
 import tempfile
-import proxai.connections.available_models as available_models
+
+import pytest
+
 import proxai.caching.model_cache as model_cache
-import proxai.connectors.model_registry as model_registry
-import proxai.connectors.model_connector as model_connector
-import proxai.connectors.model_configs as model_configs
+import proxai.connections.available_models as available_models
 import proxai.connections.proxdash as proxdash
-import time
+import proxai.connectors.model_configs as model_configs
+import proxai.connectors.model_connector as model_connector
+import proxai.connectors.model_registry as model_registry
+import proxai.types as types
 
 
 @pytest.fixture(autouse=True)
@@ -24,16 +22,11 @@ def setup_test(monkeypatch):
 
 
 class TestAvailableModels:
-  cache_dir: Optional[
-      tempfile.TemporaryDirectory] = None
-  initialized_model_connectors: Optional[
-      Dict[
-          types.ProviderModelType,
-          model_connector.ProviderModelConnector]] = None
-  model_cache_manager: Optional[
-      model_cache.ModelCacheManager] = None
+  cache_dir: tempfile.TemporaryDirectory | None = None
+  initialized_model_connectors: dict[types.ProviderModelType, model_connector.ProviderModelConnector] | None = None
+  model_cache_manager: model_cache.ModelCacheManager | None = None
 
-  def _get_models_set(self, providers: List[str]):
+  def _get_models_set(self, providers: list[str]):
     models = set()
     for provider in providers:
       models.update(pytest.model_configs_instance.get_all_models(
@@ -144,13 +137,13 @@ class TestAvailableModels:
         models, call_type=types.CallType.GENERATE_TEXT)
     assert models.unprocessed_models == (
         self._get_models_set(['openai'])
-        - set([
+        - {
             pytest.model_configs_instance.get_provider_model(('openai', 'o4-mini')),
-            pytest.model_configs_instance.get_provider_model(('openai', 'gpt-5-mini'))]))
-    assert models.working_models == set([
-        pytest.model_configs_instance.get_provider_model(('openai', 'o4-mini'))])
-    assert models.failed_models == set([
-        pytest.model_configs_instance.get_provider_model(('openai', 'gpt-5-mini'))])
+            pytest.model_configs_instance.get_provider_model(('openai', 'gpt-5-mini'))})
+    assert models.working_models == {
+        pytest.model_configs_instance.get_provider_model(('openai', 'o4-mini'))}
+    assert models.failed_models == {
+        pytest.model_configs_instance.get_provider_model(('openai', 'gpt-5-mini'))}
     assert len(models.provider_queries) == 2  # Should contain both the success and error queries from cache
     assert models.provider_queries[
         pytest.model_configs_instance.get_provider_model(('openai', 'o4-mini'))
@@ -187,46 +180,46 @@ class TestAvailableModels:
     available_models_manager._filter_by_model_size(
         test_models,
         model_size=types.ModelSizeType.SMALL)
-    assert test_models.unprocessed_models == set([
+    assert test_models.unprocessed_models == {
         pytest.model_configs_instance.get_provider_model(('openai', 'gpt-5-mini')),
         pytest.model_configs_instance.get_provider_model(('claude', 'haiku-4.5')),
-    ])
+    }
 
     test_models = copy.deepcopy(models)
     available_models_manager._filter_by_model_size(
         test_models,
         model_size=types.ModelSizeType.MEDIUM)
-    assert test_models.unprocessed_models == set([
+    assert test_models.unprocessed_models == {
         pytest.model_configs_instance.get_provider_model(('openai', 'gpt-5.1')),
         pytest.model_configs_instance.get_provider_model(('claude', 'sonnet-4.5')),
-    ])
+    }
 
     test_models = copy.deepcopy(models)
     available_models_manager._filter_by_model_size(
         test_models,
         model_size=types.ModelSizeType.LARGE)
-    assert test_models.unprocessed_models == set([
+    assert test_models.unprocessed_models == {
         pytest.model_configs_instance.get_provider_model(('openai', 'gpt-5.2-pro')),
         pytest.model_configs_instance.get_provider_model(('claude', 'opus-4.5')),
-    ])
+    }
 
     test_models = copy.deepcopy(models)
     available_models_manager._filter_by_model_size(
         test_models,
         model_size=types.ModelSizeType.LARGEST)
-    assert test_models.unprocessed_models == set([
+    assert test_models.unprocessed_models == {
         pytest.model_configs_instance.get_provider_model(('openai', 'gpt-5.2-pro')),
         pytest.model_configs_instance.get_provider_model(('claude', 'opus-4.5')),
-    ])
+    }
 
     test_models = copy.deepcopy(models)
     available_models_manager._filter_by_model_size(
         test_models,
         model_size='small')
-    assert test_models.unprocessed_models == set([
+    assert test_models.unprocessed_models == {
         pytest.model_configs_instance.get_provider_model(('openai', 'gpt-5-mini')),
         pytest.model_configs_instance.get_provider_model(('claude', 'haiku-4.5')),
-    ])
+    }
 
   @pytest.mark.parametrize('allow_multiprocessing', [True, False])
   def test_test_models(self, allow_multiprocessing):
@@ -246,8 +239,8 @@ class TestAvailableModels:
 
     assert models.unprocessed_models == set()
     assert models.working_models == self._get_models_set(['openai'])
-    assert models.failed_models == set([
-        pytest.model_configs_instance.get_provider_model(('mock_failing_provider', 'mock_failing_model'))])
+    assert models.failed_models == {
+        pytest.model_configs_instance.get_provider_model(('mock_failing_provider', 'mock_failing_model'))}
 
   def test_list_models(self, monkeypatch):
     monkeypatch.setenv(
@@ -308,7 +301,7 @@ class TestAvailableModels:
         model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key')
     available_models_manager = self._get_available_models()
     models = available_models_manager.list_working_models()
-    assert models == sorted(list(self._get_models_set(['openai'])))
+    assert models == sorted(self._get_models_set(['openai']))
 
   def test_list_working_models_filters(self, monkeypatch):
     monkeypatch.setenv(
@@ -321,18 +314,17 @@ class TestAvailableModels:
 
     # Check that the failed model was filtered out
     models = available_models_manager.list_working_models()
-    assert models == sorted(list(
-        self._get_models_set(['openai', 'mock_provider'])
-        - set([pytest.model_configs_instance.get_provider_model(('openai', 'gpt-5-mini'))])))
+    assert models == sorted(self._get_models_set(['openai', 'mock_provider'])
+        - {pytest.model_configs_instance.get_provider_model(('openai', 'gpt-5-mini'))})
 
     # Check cache memory values
     models = available_models_manager._model_cache_manager.get(
         call_type=types.CallType.GENERATE_TEXT)
     assert models.working_models == (
         self._get_models_set(['openai', 'mock_provider'])
-        - set([pytest.model_configs_instance.get_provider_model(('openai', 'gpt-5-mini'))]))
-    assert models.failed_models == set([
-        pytest.model_configs_instance.get_provider_model(('openai', 'gpt-5-mini'))])
+        - {pytest.model_configs_instance.get_provider_model(('openai', 'gpt-5-mini'))})
+    assert models.failed_models == {
+        pytest.model_configs_instance.get_provider_model(('openai', 'gpt-5-mini'))}
     assert len(models.provider_queries) >= 4
 
     # Check cache file values
@@ -343,9 +335,9 @@ class TestAvailableModels:
     models = load_cache.get(call_type=types.CallType.GENERATE_TEXT)
     assert models.working_models == (
         self._get_models_set(['openai', 'mock_provider'])
-        - set([pytest.model_configs_instance.get_provider_model(('openai', 'gpt-5-mini'))]))
-    assert models.failed_models == set([
-        pytest.model_configs_instance.get_provider_model(('openai', 'gpt-5-mini'))])
+        - {pytest.model_configs_instance.get_provider_model(('openai', 'gpt-5-mini'))})
+    assert models.failed_models == {
+        pytest.model_configs_instance.get_provider_model(('openai', 'gpt-5-mini'))}
     assert len(models.provider_queries) >= 4
 
   def test_list_working_providers_without_cache(self, monkeypatch):
@@ -367,12 +359,12 @@ class TestAvailableModels:
     available_models_manager = self._get_available_models()
 
     providers = available_models_manager.list_working_providers()
-    assert set(providers) == set(['openai', 'claude'])
+    assert set(providers) == {'openai', 'claude'}
 
     monkeypatch.delenv(
         model_configs.PROVIDER_KEY_MAP['claude'][0], raising=False)
     providers = available_models_manager.list_working_providers()
-    assert set(providers) == set(['openai'])
+    assert set(providers) == {'openai'}
 
   def test_list_working_providers_invalid_call_type(self):
     available_models_manager = self._get_available_models()
@@ -385,7 +377,7 @@ class TestAvailableModels:
         model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key')
     available_models_manager = self._get_available_models()
     providers = available_models_manager.list_working_providers(verbose=True)
-    assert set(providers) == set(['openai'])
+    assert set(providers) == {'openai'}
 
   def test_list_working_provider_models_without_cache(self, monkeypatch):
     # Set only OpenAI key
@@ -418,7 +410,7 @@ class TestAvailableModels:
     # 'gpt-5-mini' saved as failed model, so it should not be included
     assert set(models) == (
         self._get_models_set(['openai'])
-        - set([pytest.model_configs_instance.get_provider_model(('openai', 'gpt-5-mini'))]))
+        - {pytest.model_configs_instance.get_provider_model(('openai', 'gpt-5-mini'))})
 
     models = available_models_manager.list_working_provider_models('claude')
     assert set(models) == set(
@@ -430,7 +422,7 @@ class TestAvailableModels:
     # 'gpt-5-mini' saved as failed model, so it should not be included
     assert set(models) == (
         self._get_models_set(['openai'])
-        - set([pytest.model_configs_instance.get_provider_model(('openai', 'gpt-5-mini'))]))
+        - {pytest.model_configs_instance.get_provider_model(('openai', 'gpt-5-mini'))})
     models = available_models_manager.list_working_provider_models('claude')
     assert set(models) == set()
 
@@ -449,7 +441,7 @@ class TestAvailableModels:
         'openai', verbose=True)
     assert set(models) == (
         self._get_models_set(['openai'])
-        - set([pytest.model_configs_instance.get_provider_model(('openai', 'gpt-5-mini'))]))
+        - {pytest.model_configs_instance.get_provider_model(('openai', 'gpt-5-mini'))})
 
   def test_get_working_model_without_cache_manager(self, monkeypatch):
     monkeypatch.setenv(
@@ -536,7 +528,7 @@ class TestAvailableModelsConstructor:
 
 
 class TestAvailableModelsState:
-  cache_dir: Optional[tempfile.TemporaryDirectory] = None
+  cache_dir: tempfile.TemporaryDirectory | None = None
 
   def _init_test_variables(self):
     if self.cache_dir is None:
@@ -588,11 +580,8 @@ class TestAvailableModelsState:
 class TestFilterByFeatures:
   """Tests for filtering models by feature compatibility."""
 
-  cache_dir: Optional[tempfile.TemporaryDirectory] = None
-  initialized_model_connectors: Optional[
-      Dict[
-          types.ProviderModelType,
-          model_connector.ProviderModelConnector]] = None
+  cache_dir: tempfile.TemporaryDirectory | None = None
+  initialized_model_connectors: dict[types.ProviderModelType, model_connector.ProviderModelConnector] | None = None
 
   def _init_test_variables(self):
     if self.cache_dir is None:

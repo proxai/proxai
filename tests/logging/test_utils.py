@@ -1,9 +1,11 @@
-import os
 import json
+import os
 import tempfile
-import proxai.types as types
-import proxai.logging.utils as logging_utils
+
 import pytest
+
+import proxai.logging.utils as logging_utils
+import proxai.types as types
 
 
 def _get_query_record_examples():
@@ -123,7 +125,7 @@ class TestLogging:
       file_path = os.path.join(temp_dir, test_filename)
       assert os.path.exists(file_path)
 
-      with open(file_path, 'r') as f:
+      with open(file_path) as f:
         content = json.loads(f.read().strip())
         assert content == test_data
 

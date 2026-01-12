@@ -1,25 +1,27 @@
-import pytest
-import proxai.state_controllers.state_controller as state_controller
 from dataclasses import dataclass
-from typing import Any, Callable, Optional, List, Tuple
+from typing import Any
+
+import pytest
+
+import proxai.state_controllers.state_controller as state_controller
 import proxai.types as types
 
 
 @dataclass
 class ExampleSubState(types.StateContainer):
-  sub_property_1: Optional[Any] = None
+  sub_property_1: Any | None = None
 
 
 @dataclass
 class ExampleSubStateParams:
-  sub_property_1: Optional[Any] = None
+  sub_property_1: Any | None = None
 
 
 class ExampleSubStateControlledClass(state_controller.StateControlled):
   def __init__(
       self,
-      init_from_params: Optional[ExampleSubStateParams] = None,
-      init_from_state: Optional[ExampleSubState] = None):
+      init_from_params: ExampleSubStateParams | None = None,
+      init_from_state: ExampleSubState | None = None):
     super().__init__(
         init_from_params=init_from_params,
         init_from_state=init_from_state)
@@ -46,24 +48,24 @@ class ExampleSubStateControlledClass(state_controller.StateControlled):
 
 @dataclass
 class ExampleState(types.StateContainer):
-  property_1: Optional[Any] = None
-  property_2: Optional[Any] = None
-  property_3: Optional[Any] = None
-  sub_state: Optional[ExampleSubState] = None
+  property_1: Any | None = None
+  property_2: Any | None = None
+  property_3: Any | None = None
+  sub_state: ExampleSubState | None = None
 
 @dataclass
 class ExampleStateParams:
-  property_1: Optional[Any] = None
-  property_2: Optional[Any] = None
-  property_3: Optional[Any] = None
-  sub_state: Optional[ExampleSubStateControlledClass] = None
+  property_1: Any | None = None
+  property_2: Any | None = None
+  property_3: Any | None = None
+  sub_state: ExampleSubStateControlledClass | None = None
 
 
 class ExampleStateControlledClass(state_controller.StateControlled):
   def __init__(
       self,
-      init_from_params: Optional[ExampleSubStateParams] = None,
-      init_from_state: Optional[ExampleSubState] = None):
+      init_from_params: ExampleSubStateParams | None = None,
+      init_from_state: ExampleSubState | None = None):
     super().__init__(
         init_from_params=init_from_params,
         init_from_state=init_from_state)
@@ -144,8 +146,8 @@ class TestStateControlled:
     example_obj.property_3_setter_called = False
 
     assert example_obj.get_property_internal_value('property_3') == 'test1'
-    assert example_obj.property_3_getter_called == False
-    assert example_obj.property_3_setter_called == False
+    assert not example_obj.property_3_getter_called
+    assert not example_obj.property_3_setter_called
 
   def test_get_property_internal_state_value(self):
     example_obj = ExampleStateControlledClass()
@@ -161,8 +163,8 @@ class TestStateControlled:
     example_obj.set_property_internal_value('property_3', 'test')
     assert example_obj._property_3 == 'test'
     assert example_obj._state.property_3 is None
-    assert example_obj.property_3_getter_called == False
-    assert example_obj.property_3_setter_called == False
+    assert not example_obj.property_3_getter_called
+    assert not example_obj.property_3_setter_called
 
   def test_set_property_internal_state_value(self):
     example_obj = ExampleStateControlledClass()
@@ -172,8 +174,8 @@ class TestStateControlled:
     example_obj.set_property_internal_state_value('property_3', 'test')
     assert example_obj._property_3 is None
     assert example_obj._state.property_3 == 'test'
-    assert example_obj.property_3_getter_called == False
-    assert example_obj.property_3_setter_called == False
+    assert not example_obj.property_3_getter_called
+    assert not example_obj.property_3_setter_called
 
   def test_get_property_value(self):
     example_obj = ExampleStateControlledClass()
@@ -184,8 +186,8 @@ class TestStateControlled:
     assert example_obj.get_property_value('property_3') == 'test1'
     assert example_obj._property_3 == 'test1'
     assert example_obj._state.property_3 == 'test1'
-    assert example_obj.property_3_getter_called == False
-    assert example_obj.property_3_setter_called == False
+    assert not example_obj.property_3_getter_called
+    assert not example_obj.property_3_setter_called
 
   def test_set_property_value(self):
     example_obj = ExampleStateControlledClass()
@@ -196,8 +198,8 @@ class TestStateControlled:
     example_obj.set_property_value('property_3', 'test2')
     assert example_obj._property_3 == 'test2'
     assert example_obj._state.property_3 == 'test2'
-    assert example_obj.property_3_getter_called == True
-    assert example_obj.property_3_setter_called == False
+    assert example_obj.property_3_getter_called
+    assert not example_obj.property_3_setter_called
 
   def test_set_property_value_without_triggering_getters(self):
     example_obj = ExampleStateControlledClass()
@@ -209,8 +211,8 @@ class TestStateControlled:
         'property_3', 'test2')
     assert example_obj._property_3 == 'test2'
     assert example_obj._state.property_3 == 'test2'
-    assert example_obj.property_3_getter_called == False
-    assert example_obj.property_3_setter_called == False
+    assert not example_obj.property_3_getter_called
+    assert not example_obj.property_3_setter_called
 
   def test_conflicting_init_args(self):
     with pytest.raises(
@@ -230,7 +232,7 @@ class TestStateControlled:
     """Test that init_state() is automatically called by parent __init__."""
     @dataclass
     class MinimalState(types.StateContainer):
-      value: Optional[str] = None
+      value: str | None = None
 
     class MinimalClass(state_controller.StateControlled):
       def __init__(self):
@@ -255,9 +257,9 @@ class TestStateControlled:
   def test_init_state(self):
     @dataclass
     class ExampleState2(ExampleState):
-      property_1: Optional[bool] = True
-      property_2: Optional[bool] = False
-      property_3: Optional[bool] = None
+      property_1: bool | None = True
+      property_2: bool | None = False
+      property_3: bool | None = None
 
     class ExampleStateControlledClass2(ExampleStateControlledClass):
       _state: ExampleState2
@@ -273,8 +275,8 @@ class TestStateControlled:
 
   def test_get_state(self):
     example_obj = ExampleStateControlledClass()
-    assert example_obj.property_3_getter_called == False
-    assert example_obj.property_3_setter_called == False
+    assert not example_obj.property_3_getter_called
+    assert not example_obj.property_3_setter_called
 
     example_obj.property_3_getter_called = False
     example_obj.property_3_setter_called = False
@@ -282,8 +284,8 @@ class TestStateControlled:
         property_1=None,
         property_2=None,
         property_3=None)
-    assert example_obj.property_3_getter_called == True
-    assert example_obj.property_3_setter_called == False
+    assert example_obj.property_3_getter_called
+    assert not example_obj.property_3_setter_called
 
     example_obj.property_3_getter_called = False
     example_obj.property_3_setter_called = False
@@ -292,8 +294,8 @@ class TestStateControlled:
         property_1=None,
         property_2=None,
         property_3='test')
-    assert example_obj.property_3_getter_called == True
-    assert example_obj.property_3_setter_called == True
+    assert example_obj.property_3_getter_called
+    assert example_obj.property_3_setter_called
 
     example_obj.property_3_getter_called = False
     example_obj.property_3_setter_called = False
@@ -303,13 +305,13 @@ class TestStateControlled:
         property_1=None,
         property_2=None,
         property_3='test_2')
-    assert example_obj.property_3_getter_called == True
-    assert example_obj.property_3_setter_called == False
+    assert example_obj.property_3_getter_called
+    assert not example_obj.property_3_setter_called
 
   def test_get_internal_state(self):
     example_obj = ExampleStateControlledClass()
-    assert example_obj.property_3_getter_called == False
-    assert example_obj.property_3_setter_called == False
+    assert not example_obj.property_3_getter_called
+    assert not example_obj.property_3_setter_called
 
     example_obj.property_3_getter_called = False
     example_obj.property_3_setter_called = False
@@ -317,8 +319,8 @@ class TestStateControlled:
         property_1=None,
         property_2=None,
         property_3=None)
-    assert example_obj.property_3_getter_called == False
-    assert example_obj.property_3_setter_called == False
+    assert not example_obj.property_3_getter_called
+    assert not example_obj.property_3_setter_called
 
     example_obj.property_3_getter_called = False
     example_obj.property_3_setter_called = False
@@ -327,8 +329,8 @@ class TestStateControlled:
         property_1=None,
         property_2=None,
         property_3='test')
-    assert example_obj.property_3_getter_called == True
-    assert example_obj.property_3_setter_called == True
+    assert example_obj.property_3_getter_called
+    assert example_obj.property_3_setter_called
 
     example_obj.property_3_getter_called = False
     example_obj.property_3_setter_called = False
@@ -338,8 +340,8 @@ class TestStateControlled:
         property_1=None,
         property_2=None,
         property_3='test_2')
-    assert example_obj.property_3_getter_called == False
-    assert example_obj.property_3_setter_called == False
+    assert not example_obj.property_3_getter_called
+    assert not example_obj.property_3_setter_called
 
   def test_load_state_incorrect_state_type(self):
     with pytest.raises(
@@ -359,8 +361,8 @@ class TestStateControlled:
         property_1='test',
         property_2='test_2',
         property_3='test_3')
-    assert example_obj.property_3_getter_called == True
-    assert example_obj.property_3_setter_called == True
+    assert example_obj.property_3_getter_called
+    assert example_obj.property_3_setter_called
 
     # Load state should not call the getters.
     example_obj_2 = ExampleStateControlledClass()
@@ -372,8 +374,8 @@ class TestStateControlled:
         property_1='test',
         property_2='test_2',
         property_3='test_3')
-    assert example_obj_2.property_3_getter_called == False
-    assert example_obj_2.property_3_setter_called == False
+    assert not example_obj_2.property_3_getter_called
+    assert not example_obj_2.property_3_setter_called
 
   def test_load_state_partial_values(self):
     example_params = ExampleStateParams(
@@ -483,7 +485,7 @@ class TestSubState:
     example_obj.set_property_value_without_triggering_getters(
         'sub_state',
         example_sub_state_obj)
-    assert example_obj.sub_state_getter_called == False
+    assert not example_obj.sub_state_getter_called
 
     assert example_obj.get_internal_state() == ExampleState(
         property_1=None,
@@ -492,7 +494,7 @@ class TestSubState:
         sub_state=ExampleSubState(
             sub_property_1='sub_property_1_value_1'))
     assert example_obj.sub_state.sub_property_1 == 'sub_property_1_value_1'
-    assert example_obj.sub_state_getter_called == True
+    assert example_obj.sub_state_getter_called
 
   def test_load_state(self):
     example_sub_state_params = ExampleSubStateParams(

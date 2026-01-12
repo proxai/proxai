@@ -1,10 +1,11 @@
 import datetime
-import proxai.types as types
-import proxai.serializers.type_serializer as type_serializer
-import proxai.serializers.hash_serializer as hash_serializer
-import pytest
+
 import pydantic
-from typing import List, Optional
+import pytest
+
+import proxai.serializers.hash_serializer as hash_serializer
+import proxai.serializers.type_serializer as type_serializer
+import proxai.types as types
 
 
 def _get_provider_model_type_options():
@@ -699,9 +700,9 @@ class _AddressModel(pydantic.BaseModel):
 
 class _UserWithAddressModel(pydantic.BaseModel):
   name: str
-  email: Optional[str] = None
+  email: str | None = None
   address: _AddressModel
-  tags: List[str] = []
+  tags: list[str] = []
 
 
 def _get_response_format_pydantic_value_options():
@@ -1145,10 +1146,10 @@ class TestTypeSerializer:
     decoded = type_serializer.decode_response_format_pydantic_value(
         record=encoded)
     assert decoded.class_name == pydantic_value.class_name
-    if pydantic_value.class_value != None:
+    if pydantic_value.class_value is not None:
       assert decoded.class_json_schema_value == (
           pydantic_value.class_value.model_json_schema())
-    elif pydantic_value.class_json_schema_value != None:
+    elif pydantic_value.class_json_schema_value is not None:
       assert decoded.class_json_schema_value == (
           pydantic_value.class_json_schema_value)
 
@@ -1213,9 +1214,7 @@ class TestTypeSerializer:
     encoded = type_serializer.encode_response(response=response)
     decoded = type_serializer.decode_response(record=encoded)
     assert decoded.type == response.type
-    if response.type == types.ResponseType.TEXT:
-      assert decoded.value == response.value
-    elif response.type == types.ResponseType.JSON:
+    if response.type == types.ResponseType.TEXT or response.type == types.ResponseType.JSON:
       assert decoded.value == response.value
     elif response.type == types.ResponseType.PYDANTIC:
       # After decode, value is None (instance not serialized)

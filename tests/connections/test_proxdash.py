@@ -1,17 +1,19 @@
-import os
-import copy
 import datetime
 import json
+import os
 import tempfile
+
 import pytest
-import proxai.types as types
-import proxai.connections.proxdash as proxdash
-import proxai.connectors.model_configs as model_configs
-from dataclasses import dataclass
-from typing import Optional, List, Dict, Tuple, Union
 import requests
 import requests_mock as requests_mock_module
-from urllib.parse import unquote
+
+import proxai.connections.proxdash as proxdash
+import proxai.connectors.model_configs as model_configs
+import proxai.types as types
+
+# Sentinel value to distinguish "not passed" from "explicitly passed as None"
+_UNSET = object()
+
 
 @pytest.fixture(autouse=True)
 def setup_test(monkeypatch, requests_mock):
@@ -39,19 +41,19 @@ def _get_path_dir(temp_path: str):
 def _create_test_logging_record(
     prompt: str = "test prompt",
     system: str = "test system",
-    messages: Optional[List[Dict[str, str]]] = [],
+    messages: list[dict[str, str]] | None | object = _UNSET,
     response: str = "test response",
-    error: Optional[str] = None,
-    error_traceback: Optional[str] = None,
-    stop: Optional[Union[str, List[str]]] = None,
+    error: str | None = None,
+    error_traceback: str | None = None,
+    stop: str | list[str] | None = None,
     hash_value: str = "test_hash"
 ) -> types.LoggingRecord:
   """Creates a test logging record with default values."""
-  if messages == []:
-      messages = [
-          {"role": "user", "content": "test user message"},
-          {"role": "assistant", "content": "test assistant message"}
-      ]
+  if messages is _UNSET:
+    messages = [
+        {"role": "user", "content": "test user message"},
+        {"role": "assistant", "content": "test assistant message"}
+    ]
 
   model_configs_instance = model_configs.ModelConfigs()
   query_record = types.QueryRecord(
@@ -89,8 +91,8 @@ def _create_connection(
     status: types.ProxDashConnectionStatus = types.ProxDashConnectionStatus.CONNECTED,
     hide_sensitive_content: bool = False,
     permission: str = "ALL",
-    temp_dir: Optional[str] = None
-) -> Tuple[proxdash.ProxDashConnection, str]:
+    temp_dir: str | None = None
+) -> tuple[proxdash.ProxDashConnection, str]:
   """Creates a ProxDashConnection."""
   if temp_dir is None:
       temp_dir, temp_dir_obj = _get_path_dir('test_upload_logging_record')
@@ -111,8 +113,8 @@ def _create_connection(
 
 def _verify_proxdash_request(
     requests_mock,
-    expected_data: Optional[Dict] = None,
-    request_id: Optional[int] = None,
+    expected_data: dict | None = None,
+    request_id: int | None = None,
     response_status: int = 201,
     response_text: str = 'success'
 ) -> None:
@@ -137,7 +139,7 @@ def _verify_proxdash_request(
     if value is None or expected_value is None:
       assert value == expected_value
       return
-    if type(value) == str and type(expected_value) == list:
+    if isinstance(value, str) and isinstance(expected_value, list):
       parsed_value = json.loads(value)
       assert parsed_value == expected_value
       return
@@ -147,18 +149,18 @@ def _verify_proxdash_request(
       assert value == expected_value
       return
 
-    assert type(value) == type(expected_value), (
+    assert type(value) is type(expected_value), (
         f"Type mismatch: {type(value)} != {type(expected_value)}")
 
     if isinstance(value, (str, bool)):
       assert value == expected_value
       return
-    if isinstance(value, List):
+    if isinstance(value, list):
       assert len(value) == len(expected_value)
-      for actual_value, exp_value in zip(value, expected_value):
+      for actual_value, exp_value in zip(value, expected_value, strict=False):
         _check_value(actual_value, exp_value)
       return
-    if isinstance(value, Dict):
+    if isinstance(value, dict):
       value_key_set = set(value.keys())
       expected_key_set = set(expected_value.keys())
       assert expected_key_set.issubset(value_key_set)
@@ -172,16 +174,16 @@ def _verify_proxdash_request(
 
 def _verify_log_messages(
     temp_dir: str,
-    expected_messages: List[Tuple[str, types.LoggingType]]
+    expected_messages: list[tuple[str, types.LoggingType]]
 ) -> None:
   """Verifies that expected log messages were written."""
   if not expected_messages:
     return
 
-  with open(os.path.join(temp_dir, 'merged.log'), 'r') as f:
+  with open(os.path.join(temp_dir, 'merged.log')) as f:
     data = [json.loads(line) for line in f]
     assert len(data) == len(expected_messages)
-    for actual, (expected_msg, expected_type) in zip(data, expected_messages):
+    for actual, (expected_msg, expected_type) in zip(data, expected_messages, strict=False):
       assert actual['message'] == expected_msg
       assert actual['logging_type'] == expected_type
 
@@ -310,10 +312,9 @@ class TestProxDashConnectionGetterSetters:
     connection = proxdash.ProxDashConnection(
         init_from_params=proxdash_connection_params)
     connection.status = types.ProxDashConnectionStatus.CONNECTED
-    assert connection.connected_experiment_path == None
+    assert connection.connected_experiment_path is None
     assert (
-        connection._proxdash_connection_state.connected_experiment_path ==
-        None)
+        connection._proxdash_connection_state.connected_experiment_path is None)
 
     connection.connected_experiment_path = 'test/path'
     assert connection.connected_experiment_path == 'test/path'
@@ -322,12 +323,11 @@ class TestProxDashConnectionGetterSetters:
         'test/path')
 
     connection.connected_experiment_path = None
-    assert connection.connected_experiment_path == None
+    assert connection.connected_experiment_path is None
     assert (
-        connection._proxdash_connection_state.connected_experiment_path ==
-        None)
+        connection._proxdash_connection_state.connected_experiment_path is None)
 
-    with open(os.path.join(temp_dir, 'merged.log'), 'r') as f:
+    with open(os.path.join(temp_dir, 'merged.log')) as f:
       data = [json.loads(line) for line in f]
       assert len(data) == 4
       assert data[0]['logging_type'] == 'ERROR'
@@ -396,7 +396,7 @@ class TestProxDashConnectionGetterSetters:
         connection._proxdash_connection_state.status ==
         types.ProxDashConnectionStatus.CONNECTED)
 
-    with open(os.path.join(temp_dir, 'merged.log'), 'r') as f:
+    with open(os.path.join(temp_dir, 'merged.log')) as f:
       data = [json.loads(line) for line in f]
       assert len(data) == 7
       assert data[0]['message'] == (
@@ -456,7 +456,7 @@ class TestProxDashConnectionInit:
             key_info_from_proxdash={'permission': 'ALL'},
             connected_experiment_path='test/path'))
 
-    with open(os.path.join(temp_dir, 'merged.log'), 'r') as f:
+    with open(os.path.join(temp_dir, 'merged.log')) as f:
       data = [json.loads(line) for line in f]
       assert len(data) == 2
       assert data[0]['message'].startswith('Connected to ProxDash at ')
@@ -502,7 +502,7 @@ class TestProxDashConnectionInit:
             key_info_from_proxdash=None,
             connected_experiment_path=None))
 
-    with open(os.path.join(temp_dir, 'merged.log'), 'r') as f:
+    with open(os.path.join(temp_dir, 'merged.log')) as f:
       data = [json.loads(line) for line in f]
       assert len(data) == 1
       assert data[0]['message'] == 'ProxDash connection disabled.'
@@ -745,8 +745,7 @@ class TestProxDashConnectionUploadLoggingRecord:
     _verify_log_messages(temp_dir, [])
 
   def test_upload_with_hide_sensitive_content(self, requests_mock):
-    """Tests that sensitive content is properly hidden when
-    proxdash_options.hide_sensitive_content is True."""
+    """Tests that sensitive content is hidden when configured."""
     connection, temp_dir, temp_dir_obj = _create_connection(
         hide_sensitive_content=True)
     logging_record = _create_test_logging_record(
@@ -1072,7 +1071,7 @@ class TestProxDashConnectionUploadLoggingRecord:
         (requests.exceptions.Timeout, "Request timed out"),
         (requests.exceptions.RequestException, "General request error"),
     ]
-    for idx, (exception_class, error_message) in enumerate(test_cases):
+    for _idx, (exception_class, error_message) in enumerate(test_cases):
       if os.path.exists(os.path.join(temp_dir, 'merged.log')):
           os.remove(os.path.join(temp_dir, 'merged.log'))
       requests_mock.post(

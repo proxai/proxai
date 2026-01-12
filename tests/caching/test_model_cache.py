@@ -1,12 +1,12 @@
 import datetime
 import os
 import re
-import proxai.types as types
-import proxai.caching.model_cache as model_cache
-import pytest
 import tempfile
-import proxai.connectors.model_configs as model_configs
-from typing import Optional
+
+import pytest
+
+import proxai.caching.model_cache as model_cache
+import proxai.types as types
 
 
 def _get_path_dir(temp_path: str):
@@ -18,8 +18,8 @@ def _get_path_dir(temp_path: str):
 
 def _get_example_logging_record(
     model: types.ProviderModelType,
-    response: Optional[str] = None,
-    error: Optional[str] = None,
+    response: str | None = None,
+    error: str | None = None,
     long: bool = False):
   end_utc_date = datetime.datetime.now(datetime.timezone.utc)
   if long:
