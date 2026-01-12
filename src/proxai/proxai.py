@@ -402,7 +402,7 @@ class DefaultModelsConnector:
       model_size: types.ModelSizeIdentifierType | None = None,
       features: types.FeatureListParam | None = None,
       call_type: types.CallType = types.CallType.GENERATE_TEXT,
-  ) -> list[types.ProviderModelType] | types.ModelStatus:
+  ) -> list[types.ProviderModelType]:
     """Lists all configured models matching the specified criteria.
 
     Returns models that are configured in the system regardless of whether
@@ -418,9 +418,8 @@ class DefaultModelsConnector:
             Defaults to GENERATE_TEXT.
 
     Returns:
-        Union[List[types.ProviderModelType], types.ModelStatus]: A list of
-            ProviderModelType objects, or a ModelStatus object if return_all
-            is True.
+        list[types.ProviderModelType]: A list of ProviderModelType objects
+            representing the matching models.
 
     Example:
         >>> import proxai as px
@@ -475,7 +474,7 @@ class DefaultModelsConnector:
       model_size: types.ModelSizeIdentifierType | None = None,
       features: types.FeatureListParam | None = None,
       call_type: types.CallType = types.CallType.GENERATE_TEXT,
-  ) -> list[types.ProviderModelType] | types.ModelStatus:
+  ) -> list[types.ProviderModelType]:
     """Lists all models available from a specific provider.
 
     Returns models for the given provider that match the specified
@@ -492,9 +491,8 @@ class DefaultModelsConnector:
             Defaults to GENERATE_TEXT.
 
     Returns:
-        Union[List[types.ProviderModelType], types.ModelStatus]: A list of
-            ProviderModelType objects, or a ModelStatus object if return_all
-            is True.
+        list[types.ProviderModelType]: A list of ProviderModelType objects
+            representing the matching models for the provider.
 
     Raises:
         ValueError: If the provider's API key is not found in environment

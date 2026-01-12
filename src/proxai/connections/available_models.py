@@ -670,7 +670,7 @@ class AvailableModels(state_controller.StateControlled):
       model_size: types.ModelSizeIdentifierType | None = None,
       features: types.FeatureListParam | None = None,
       call_type: types.CallType = types.CallType.GENERATE_TEXT
-  ) -> list[types.ProviderModelType] | types.ModelStatus:
+  ) -> list[types.ProviderModelType]:
     """List all configured models matching the filters."""
     if call_type != types.CallType.GENERATE_TEXT:
       raise ValueError(f'Call type not supported: {call_type}')
@@ -711,7 +711,7 @@ class AvailableModels(state_controller.StateControlled):
       model_size: types.ModelSizeIdentifierType | None = None,
       features: types.FeatureListParam | None = None,
       call_type: types.CallType = types.CallType.GENERATE_TEXT,
-  ) -> list[types.ProviderModelType] | types.ModelStatus:
+  ) -> list[types.ProviderModelType]:
     """List all models for a specific provider."""
     if call_type != types.CallType.GENERATE_TEXT:
       raise ValueError(f'Call type not supported: {call_type}')
