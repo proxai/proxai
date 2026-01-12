@@ -74,15 +74,19 @@ class MockProviderModelConnector(model_connector.ProviderModelConnector):
 
   def generate_text_proc(
       self, query_record: types.QueryRecord) -> types.Response:
-    if query_record.response_format is None or query_record.response_format.type == types.ResponseFormatType.TEXT:
+    fmt = query_record.response_format
+    is_text = fmt is None or fmt.type == types.ResponseFormatType.TEXT
+    is_json = (fmt and (fmt.type == types.ResponseFormatType.JSON or
+               fmt.type == types.ResponseFormatType.JSON_SCHEMA))
+    if is_text:
       return types.Response(
           value="mock response",
           type=types.ResponseType.TEXT)
-    elif query_record.response_format.type == types.ResponseFormatType.JSON or query_record.response_format.type == types.ResponseFormatType.JSON_SCHEMA:
+    elif is_json:
       return types.Response(
           value={"name": "John Doe", "age": 30},
           type=types.ResponseType.JSON)
-    elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
+    elif fmt and fmt.type == types.ResponseFormatType.PYDANTIC:
       return types.Response(
           value=SamplePydanticModel(name='John Doe', age=30),
           type=types.ResponseType.PYDANTIC,
@@ -118,15 +122,19 @@ class MockSlowProviderModelConnector(model_connector.ProviderModelConnector):
       self, query_record: types.QueryRecord) -> types.Response:
     time.sleep(120)
 
-    if query_record.response_format is None or query_record.response_format.type == types.ResponseFormatType.TEXT:
+    fmt = query_record.response_format
+    is_text = fmt is None or fmt.type == types.ResponseFormatType.TEXT
+    is_json = (fmt and (fmt.type == types.ResponseFormatType.JSON or
+               fmt.type == types.ResponseFormatType.JSON_SCHEMA))
+    if is_text:
       return types.Response(
           value="mock response",
           type=types.ResponseType.TEXT)
-    elif query_record.response_format.type == types.ResponseFormatType.JSON or query_record.response_format.type == types.ResponseFormatType.JSON_SCHEMA:
+    elif is_json:
       return types.Response(
           value={"name": "John Doe", "age": 30},
           type=types.ResponseType.JSON)
-    elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
+    elif fmt and fmt.type == types.ResponseFormatType.PYDANTIC:
       return types.Response(
           value=SamplePydanticModel(name='John Doe', age=30),
           type=types.ResponseType.PYDANTIC,

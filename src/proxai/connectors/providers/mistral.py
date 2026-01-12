@@ -132,7 +132,7 @@ class MistralConnector(model_connector.ProviderModelConnector):
       query_function: Callable,
       query_record: types.QueryRecord):
     raise Exception(
-        'Web search is not supported for Mistral. Code should never reach here.')
+        'Web search is not supported for Mistral.')
 
   def _extract_text_from_content(self, content) -> str:
     # If content is already a string, return it directly

@@ -139,7 +139,7 @@ class ClaudeConnector(model_connector.ProviderModelConnector):
   def _extract_text_from_content(self, content_blocks) -> str:
     # Extract text from content blocks
     # When web_search or other tools are used, response may contain multiple
-    # block types (ServerToolUseBlock, TextBlock, etc). We need to find TextBlocks.
+    # block types (ServerToolUseBlock, TextBlock, etc). Find TextBlocks.
     text_parts = []
     for block in content_blocks:
       if hasattr(block, 'text'):

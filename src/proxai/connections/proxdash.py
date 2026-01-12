@@ -289,9 +289,15 @@ class ProxDashConnection(state_controller.StateControlled):
   def _check_api_key_validity(
       self,
       base_url: str,
-      api_key: str) -> tuple[
-      Union[types.ProxDashConnectionStatus.API_KEY_NOT_VALID, types.ProxDashConnectionStatus.PROXDASH_INVALID_RETURN, types.ProxDashConnectionStatus.CONNECTED],  # noqa: UP007
-      dict | None]:
+      api_key: str,
+  ) -> tuple[
+      Union[  # noqa: UP007
+          types.ProxDashConnectionStatus.API_KEY_NOT_VALID,
+          types.ProxDashConnectionStatus.PROXDASH_INVALID_RETURN,
+          types.ProxDashConnectionStatus.CONNECTED,
+      ],
+      dict | None,
+  ]:
     response = requests.get(
         f'{base_url}/ingestion/verify-key',
         headers={'X-API-Key': api_key})
@@ -374,13 +380,15 @@ class ProxDashConnection(state_controller.StateControlled):
 
     query_pydantic_class_name = None
     query_pydantic_class_json_schema = None
-    response_pydantic_json_value = None
-    if (logging_record.query_record.response_format and
-        logging_record.query_record.response_format.type == types.ResponseFormatType.PYDANTIC and
-        logging_record.query_record.response_format.value.class_name):
-      query_pydantic_class_name = logging_record.query_record.response_format.value.class_name
-      query_pydantic_class_json_schema = logging_record.query_record.response_format.value.class_value.model_json_schema()
-      response_pydantic_json_value = logging_record.response_record.response.value.model_dump()
+    response_format = logging_record.query_record.response_format
+    if (response_format and
+        response_format.type == types.ResponseFormatType.PYDANTIC and
+        response_format.value.class_name):
+      query_pydantic_class_name = response_format.value.class_name
+      query_pydantic_class_json_schema = (
+          response_format.value.class_value.model_json_schema())
+      # response_pydantic_json_value is for future use
+      _ = logging_record.response_record.response.value.model_dump()
 
 
     data = {
@@ -527,8 +535,8 @@ class ProxDashConnection(state_controller.StateControlled):
           logging_options=self.logging_options,
           proxdash_options=self.proxdash_options,
           message=(
-              'Model configs schema is invalid. Please report this issue to the '
-              'https://github.com/proxai/proxai.\n'
+              'Model configs schema is invalid. Please report this '
+              'issue to the https://github.com/proxai/proxai.\n'
               'Also, please check latest stable version of ProxAI. '
               f'Request URL: {request_url}'
               f'Response: {response.text}'),

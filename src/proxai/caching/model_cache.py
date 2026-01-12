@@ -133,8 +133,8 @@ class ModelCacheManager(state_controller.StateControlled):
       try:
         data = json.load(f)
         for call_value in data:
-          self.model_status_by_call_type[
-              call_value] = type_serializer.decode_model_status(data[call_value])
+          self.model_status_by_call_type[call_value] = (
+              type_serializer.decode_model_status(data[call_value]))
       except Exception:
         error_message = (
             '_load_from_cache_path failed because of the parsing error.\n'
@@ -153,8 +153,7 @@ class ModelCacheManager(state_controller.StateControlled):
       self,
       call_type: types.CallType,
       model: types.ProviderModelType):
-    """Cleans a model from the tested models: working_models and failed_models.
-    """
+    """Cleans a model from tested models: working_models and failed_models."""
     if call_type not in self.model_status_by_call_type:
       return
     model_status = self.model_status_by_call_type[call_type]

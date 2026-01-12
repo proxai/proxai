@@ -37,7 +37,9 @@ def _get_cache_size(
 
 
 def _get_hash_value(
-    cache_record: str | types.CacheRecord | types.LightCacheRecord | types.QueryRecord
+    cache_record: (
+        str | types.CacheRecord | types.LightCacheRecord | types.QueryRecord
+    ),
 ) -> str:
   if isinstance(cache_record, str):
     return cache_record
@@ -387,7 +389,10 @@ class ShardManager:
 
   def delete_record(
       self,
-      cache_record: str | types.CacheRecord | types.LightCacheRecord | types.QueryRecord):
+      cache_record: (
+          str | types.CacheRecord | types.LightCacheRecord | types.QueryRecord
+      ),
+  ):
     hash_value = _get_hash_value(cache_record)
     if hash_value not in self._light_cache_records:
       return
@@ -582,7 +587,9 @@ class QueryCacheManager(state_controller.StateControlled):
     if cache_record is None:
       return types.CacheLookResult(
           look_fail_reason=types.CacheLookFailReason.CACHE_NOT_FOUND)
-    if not type_utils.is_query_record_equal(cache_record.query_record, query_record):
+    is_equal = type_utils.is_query_record_equal(
+        cache_record.query_record, query_record)
+    if not is_equal:
       return types.CacheLookResult(
           look_fail_reason=types.CacheLookFailReason.CACHE_NOT_MATCHED)
     if unique_response_limit is None:
