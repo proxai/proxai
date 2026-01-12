@@ -1,13 +1,14 @@
-from typing import Any, Callable, Optional
 import functools
-import json
 import os
-import re
+from collections.abc import Callable
+from typing import Any
+
 from mistralai import Mistral
-from mistralai.models import ResponseFormat, JSONSchema
-import proxai.types as types
-import proxai.connectors.providers.mistral_mock as mistral_mock
+from mistralai.models import ResponseFormat
+
 import proxai.connectors.model_connector as model_connector
+import proxai.connectors.providers.mistral_mock as mistral_mock
+import proxai.types as types
 
 
 class MistralConnector(model_connector.ProviderModelConnector):

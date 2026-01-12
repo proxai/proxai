@@ -1,11 +1,12 @@
-import anthropic
-from typing import Any, Callable, Optional
 import functools
-import json
-import re
-import proxai.types as types
-import proxai.connectors.providers.claude_mock as claude_mock
+from collections.abc import Callable
+from typing import Any
+
+import anthropic
+
 import proxai.connectors.model_connector as model_connector
+import proxai.connectors.providers.claude_mock as claude_mock
+import proxai.types as types
 
 # Beta header required for structured outputs feature
 STRUCTURED_OUTPUTS_BETA = "structured-outputs-2025-11-13"

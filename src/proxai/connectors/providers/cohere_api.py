@@ -1,10 +1,12 @@
-from typing import Any, Callable, Optional
 import functools
-import json
+from collections.abc import Callable
+from typing import Any
+
 import cohere
-import proxai.types as types
-import proxai.connectors.providers.cohere_api_mock as cohere_api_mock
+
 import proxai.connectors.model_connector as model_connector
+import proxai.connectors.providers.cohere_api_mock as cohere_api_mock
+import proxai.types as types
 
 
 class CohereConnector(model_connector.ProviderModelConnector):
@@ -143,9 +145,7 @@ class CohereConnector(model_connector.ProviderModelConnector):
     """
     for item in content_items:
       # Check if item has 'type' attribute and it's 'text', or if it has 'text' attribute
-      if hasattr(item, 'type') and item.type == 'text':
-        return item.text
-      elif hasattr(item, 'text') and not hasattr(item, 'type'):
+      if hasattr(item, 'type') and item.type == 'text' or hasattr(item, 'text') and not hasattr(item, 'type'):
         return item.text
 
     # Fallback: try to find any item with a text attribute

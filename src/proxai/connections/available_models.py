@@ -1,22 +1,22 @@
 from __future__ import annotations
 
-import dataclasses
 import copy
+import dataclasses
 import datetime
 import multiprocessing
 import os
 import traceback
-from typing import Callable, Dict, List, Optional, Set, Tuple, Union
-import proxai.types as types
+
 import proxai.caching.model_cache as model_cache
+import proxai.caching.query_cache as query_cache
 import proxai.connections.proxdash as proxdash
-import proxai.connectors.model_registry as model_registry
-import proxai.connectors.model_connector as model_connector
 import proxai.connectors.model_configs as model_configs
+import proxai.connectors.model_connector as model_connector
+import proxai.connectors.model_registry as model_registry
 import proxai.logging.utils as logging_utils
 import proxai.state_controllers.state_controller as state_controller
-import proxai.caching.query_cache as query_cache
 import proxai.type_utils as type_utils
+import proxai.types as types
 
 _AVAILABLE_MODELS_STATE_PROPERTY = '_available_models_state'
 _GENERATE_TEXT_TEST_PROMPT = 'Hello model!'
@@ -25,19 +25,19 @@ _GENERATE_TEXT_TEST_MAX_TOKENS = 1000
 
 @dataclasses.dataclass
 class AvailableModelsParams:
-  run_type: Optional[types.RunType] = None
-  feature_mapping_strategy: Optional[types.FeatureMappingStrategy] = None
-  model_configs_instance: Optional[model_configs.ModelConfigs] = None
-  model_cache_manager: Optional[model_cache.ModelCacheManager] = None
-  query_cache_manager: Optional[query_cache.QueryCacheManager] = None
-  logging_options: Optional[types.LoggingOptions] = None
-  proxdash_connection: Optional[proxdash.ProxDashConnection] = None
-  allow_multiprocessing: Optional[bool] = None
-  model_test_timeout: Optional[int] = None
+  run_type: types.RunType | None = None
+  feature_mapping_strategy: types.FeatureMappingStrategy | None = None
+  model_configs_instance: model_configs.ModelConfigs | None = None
+  model_cache_manager: model_cache.ModelCacheManager | None = None
+  query_cache_manager: query_cache.QueryCacheManager | None = None
+  logging_options: types.LoggingOptions | None = None
+  proxdash_connection: proxdash.ProxDashConnection | None = None
+  allow_multiprocessing: bool | None = None
+  model_test_timeout: int | None = None
 
 
 class AvailableModels(state_controller.StateControlled):
-  _model_cache_manager: Optional[model_cache.ModelCacheManager]
+  _model_cache_manager: model_cache.ModelCacheManager | None
   _run_type: types.RunType
   _model_configs_instance: model_configs.ModelConfigs
   _cache_options: types.CacheOptions
@@ -45,16 +45,16 @@ class AvailableModels(state_controller.StateControlled):
   _allow_multiprocessing: bool
   _model_test_timeout: int
   _proxdash_connection: proxdash.ProxDashConnection
-  _providers_with_key: Set[str]
-  _latest_model_cache_path_used_for_update: Optional[str]
+  _providers_with_key: set[str]
+  _latest_model_cache_path_used_for_update: str | None
   _available_models_state: types.AvailableModelsState
-  model_connectors: Dict[
+  model_connectors: dict[
       types.ProviderModelType, model_connector.ProviderModelConnector]
 
   def __init__(
       self,
-      init_from_params: Optional[AvailableModelsParams] = None,
-      init_from_state: Optional[types.AvailableModelsState] = None
+      init_from_params: AvailableModelsParams | None = None,
+      init_from_state: types.AvailableModelsState | None = None
   ):
     super().__init__(
         init_from_params=init_from_params,
@@ -197,20 +197,20 @@ class AvailableModels(state_controller.StateControlled):
     self.set_property_value('model_test_timeout', value)
 
   @property
-  def providers_with_key(self) -> Set[str]:
+  def providers_with_key(self) -> set[str]:
     return self.get_property_value('providers_with_key')
 
   @providers_with_key.setter
-  def providers_with_key(self, value: Set[str]):
+  def providers_with_key(self, value: set[str]):
     self.set_property_value('providers_with_key', value)
 
   @property
-  def latest_model_cache_path_used_for_update(self) -> Optional[str]:
+  def latest_model_cache_path_used_for_update(self) -> str | None:
     return self.get_property_value('latest_model_cache_path_used_for_update')
 
   @latest_model_cache_path_used_for_update.setter
   def latest_model_cache_path_used_for_update(
-      self, value: Optional[str]):
+      self, value: str | None):
     self.set_property_value('latest_model_cache_path_used_for_update', value)
 
   def _get_all_models(
@@ -223,8 +223,8 @@ class AvailableModels(state_controller.StateControlled):
 
   def _filter_by_provider_api_key(self, models: types.ModelStatus):
     def _filter_set(
-        provider_model_set: Set[types.ProviderModelType]
-    ) -> Tuple[Set[types.ProviderModelType], Set[types.ProviderModelType]]:
+        provider_model_set: set[types.ProviderModelType]
+    ) -> tuple[set[types.ProviderModelType], set[types.ProviderModelType]]:
       not_filtered_models = set()
       for provider_model in provider_model_set:
         if provider_model.provider not in self.providers_with_key:
@@ -239,12 +239,12 @@ class AvailableModels(state_controller.StateControlled):
   def _filter_by_providers(
       self,
       models: types.ModelStatus,
-      providers: Optional[Set[str]] = None):
+      providers: set[str] | None = None):
     if providers is None:
       return
     def _filter_set(
-        provider_model_set: Set[types.ProviderModelType]
-    ) -> Tuple[Set[types.ProviderModelType], Set[types.ProviderModelType]]:
+        provider_model_set: set[types.ProviderModelType]
+    ) -> tuple[set[types.ProviderModelType], set[types.ProviderModelType]]:
       not_filtered_models = set()
       for provider_model in provider_model_set:
         if provider_model.provider not in providers:
@@ -259,12 +259,12 @@ class AvailableModels(state_controller.StateControlled):
   def _filter_by_provider_models(
       self,
       models: types.ModelStatus,
-      provider_models: Optional[Set[types.ProviderModelType]] = None):
+      provider_models: set[types.ProviderModelType] | None = None):
     if provider_models is None:
       return
     def _filter_set(
-        provider_model_set: Set[types.ProviderModelType]
-    ) -> Tuple[Set[types.ProviderModelType], Set[types.ProviderModelType]]:
+        provider_model_set: set[types.ProviderModelType]
+    ) -> tuple[set[types.ProviderModelType], set[types.ProviderModelType]]:
       not_filtered_models = set()
       for provider_model in provider_model_set:
         if provider_model not in provider_models:
@@ -279,7 +279,7 @@ class AvailableModels(state_controller.StateControlled):
   def _filter_by_model_size(
       self,
       models: types.ModelStatus,
-      model_size: Optional[types.ModelSizeType] = None,
+      model_size: types.ModelSizeType | None = None,
       call_type: types.CallType = types.CallType.GENERATE_TEXT):
     if model_size is None:
       return
@@ -289,8 +289,8 @@ class AvailableModels(state_controller.StateControlled):
         model_size=model_size)
 
     def _filter_set(
-        provider_model_set: Set[types.ProviderModelType]
-    ) -> Tuple[Set[types.ProviderModelType], Set[types.ProviderModelType]]:
+        provider_model_set: set[types.ProviderModelType]
+    ) -> tuple[set[types.ProviderModelType], set[types.ProviderModelType]]:
       not_filtered_models = set()
       for provider_model in provider_model_set:
         if provider_model in allowed_models:
@@ -306,12 +306,12 @@ class AvailableModels(state_controller.StateControlled):
   def _filter_by_features(
       self,
       models: types.ModelStatus,
-      features: Optional[types.FeatureListType] = None):
+      features: types.FeatureListType | None = None):
     if features is None:
       return
     def _filter_set(
-        provider_model_set: Set[types.ProviderModelType]
-    ) -> Tuple[Set[types.ProviderModelType], Set[types.ProviderModelType]]:
+        provider_model_set: set[types.ProviderModelType]
+    ) -> tuple[set[types.ProviderModelType], set[types.ProviderModelType]]:
       not_filtered_models = set()
       for provider_model in provider_model_set:
         if self.get_model_connector(
@@ -353,9 +353,9 @@ class AvailableModels(state_controller.StateControlled):
   def _test_generate_text(
       provider_model_state: types.ProviderModelState,
       verbose: bool = False,
-      model_configs_state: Optional[types.ModelConfigsState] = None,
-      model_configs_instance: Optional[model_configs.ModelConfigs] = None
-  ) -> List[types.LoggingRecord]:
+      model_configs_state: types.ModelConfigsState | None = None,
+      model_configs_instance: model_configs.ModelConfigs | None = None
+  ) -> list[types.LoggingRecord]:
     if verbose:
       print(f'Testing {provider_model_state.provider_model}...')
     start_utc_date = datetime.datetime.now(datetime.timezone.utc)
@@ -436,7 +436,7 @@ class AvailableModels(state_controller.StateControlled):
 
   def _test_models_with_multiprocessing(
       self,
-      model_connectors: Dict[
+      model_connectors: dict[
         types.ProviderModelType, model_connector.ProviderModelConnector],
       call_type: str,
       verbose: bool = False):
@@ -477,14 +477,14 @@ class AvailableModels(state_controller.StateControlled):
     except Exception as e:
       bootstrap_error = self._get_bootstrap_error(e)
       if bootstrap_error:
-        raise bootstrap_error
+        raise bootstrap_error from e
       else:
-        raise e
+        raise
     return test_results
 
   def _test_models_sequentially(
       self,
-      model_connectors: Dict[
+      model_connectors: dict[
         types.ProviderModelType, model_connector.ProviderModelConnector],
       call_type: str,
       verbose: bool = False):
@@ -559,9 +559,9 @@ class AvailableModels(state_controller.StateControlled):
 
   def _format_set(
       self,
-      provider_model_set: Set[types.ProviderModelType]
-  ) -> List[types.ProviderModelType]:
-    return sorted(list(provider_model_set))
+      provider_model_set: set[types.ProviderModelType]
+  ) -> list[types.ProviderModelType]:
+    return sorted(provider_model_set)
 
   def _place_filtered_models_back_to_working_or_failed_models(
       self,
@@ -579,10 +579,10 @@ class AvailableModels(state_controller.StateControlled):
 
   def _fetch_all_models(
       self,
-      selected_providers: Optional[Set[str]] = None,
-      selected_provider_models: Optional[Set[types.ProviderModelType]] = None,
-      model_size: Optional[types.ModelSizeType] = None,
-      features: Optional[types.FeatureListType] = None,
+      selected_providers: set[str] | None = None,
+      selected_provider_models: set[types.ProviderModelType] | None = None,
+      model_size: types.ModelSizeType | None = None,
+      features: types.FeatureListType | None = None,
       verbose: bool = False,
       clear_model_cache: bool = False,
       raw_config_results_without_test: bool = False,
@@ -654,10 +654,10 @@ class AvailableModels(state_controller.StateControlled):
 
   def list_models(
       self,
-      model_size: Optional[types.ModelSizeIdentifierType] = None,
-      features: Optional[types.FeatureListParam] = None,
+      model_size: types.ModelSizeIdentifierType | None = None,
+      features: types.FeatureListParam | None = None,
       call_type: types.CallType = types.CallType.GENERATE_TEXT
-  ) -> Union[List[types.ProviderModelType], types.ModelStatus]:
+  ) -> list[types.ProviderModelType] | types.ModelStatus:
     if call_type != types.CallType.GENERATE_TEXT:
       raise ValueError(f'Call type not supported: {call_type}')
     if model_size is not None:
@@ -665,7 +665,7 @@ class AvailableModels(state_controller.StateControlled):
     if features is not None:
       features = type_utils.create_feature_list_type(features=features)
 
-    model_status: Optional[types.ModelStatus] = None
+    model_status: types.ModelStatus | None = None
     model_status = self._fetch_all_models(
         model_size=model_size,
         call_type=call_type,
@@ -677,26 +677,26 @@ class AvailableModels(state_controller.StateControlled):
   def list_providers(
       self,
       call_type: types.CallType = types.CallType.GENERATE_TEXT
-  ) -> List[str]:
+  ) -> list[str]:
     if call_type != types.CallType.GENERATE_TEXT:
       raise ValueError(f'Call type not supported: {call_type}')
 
     model_status = self._fetch_all_models(
         call_type=call_type,
         raw_config_results_without_test=True)
-    providers_with_key = set([
+    providers_with_key = {
         model.provider
-        for model in model_status.unprocessed_models])
+        for model in model_status.unprocessed_models}
 
-    return sorted(list(providers_with_key))
+    return sorted(providers_with_key)
 
   def list_provider_models(
       self,
       provider: str,
-      model_size: Optional[types.ModelSizeIdentifierType] = None,
-      features: Optional[types.FeatureListParam] = None,
+      model_size: types.ModelSizeIdentifierType | None = None,
+      features: types.FeatureListParam | None = None,
       call_type: types.CallType = types.CallType.GENERATE_TEXT,
-  ) -> Union[List[types.ProviderModelType], types.ModelStatus]:
+  ) -> list[types.ProviderModelType] | types.ModelStatus:
     if call_type != types.CallType.GENERATE_TEXT:
       raise ValueError(f'Call type not supported: {call_type}')
     if model_size is not None:
@@ -754,13 +754,13 @@ class AvailableModels(state_controller.StateControlled):
 
   def list_working_models(
       self,
-      model_size: Optional[types.ModelSizeIdentifierType] = None,
-      features: Optional[types.FeatureListParam] = None,
+      model_size: types.ModelSizeIdentifierType | None = None,
+      features: types.FeatureListParam | None = None,
       verbose: bool = True,
       return_all: bool = False,
       clear_model_cache: bool = False,
       call_type: types.CallType = types.CallType.GENERATE_TEXT
-  ) -> Union[List[types.ProviderModelType], types.ModelStatus]:
+  ) -> list[types.ProviderModelType] | types.ModelStatus:
     if call_type != types.CallType.GENERATE_TEXT:
       raise ValueError(f'Call type not supported: {call_type}')
     if model_size is not None:
@@ -768,7 +768,7 @@ class AvailableModels(state_controller.StateControlled):
     if features is not None:
       features = type_utils.create_feature_list_type(features=features)
 
-    model_status: Optional[types.ModelStatus] = None
+    model_status: types.ModelStatus | None = None
     if not self.model_cache_manager:
       logging_utils.log_message(
           logging_options=self.logging_options,
@@ -805,11 +805,11 @@ class AvailableModels(state_controller.StateControlled):
       verbose: bool = True,
       clear_model_cache: bool = False,
       call_type: types.CallType = types.CallType.GENERATE_TEXT
-  ) -> List[str]:
+  ) -> list[str]:
     if call_type != types.CallType.GENERATE_TEXT:
       raise ValueError(f'Call type not supported: {call_type}')
 
-    providers_with_key: Optional[Set[str]] = None
+    providers_with_key: set[str] | None = None
     if not self.model_cache_manager:
       # For performance, we only load the provider keys if the model cache is
       # not enabled instead of fetching all models.
@@ -822,29 +822,29 @@ class AvailableModels(state_controller.StateControlled):
           verbose=verbose,
           clear_model_cache=clear_model_cache,
           call_type=call_type)
-      providers_with_key = set([
+      providers_with_key = {
           model.provider
-          for model in model_status.working_models])
+          for model in model_status.working_models}
     else:
       model_status = self._fetch_all_models(
           verbose=verbose,
           call_type=call_type)
-      providers_with_key = set([
+      providers_with_key = {
           model.provider
-          for model in model_status.working_models])
+          for model in model_status.working_models}
 
-    return sorted(list(providers_with_key))
+    return sorted(providers_with_key)
 
   def list_working_provider_models(
       self,
       provider: str,
-      model_size: Optional[types.ModelSizeIdentifierType] = None,
-      features: Optional[types.FeatureListParam] = None,
+      model_size: types.ModelSizeIdentifierType | None = None,
+      features: types.FeatureListParam | None = None,
       verbose: bool = True,
       return_all: bool = False,
       clear_model_cache: bool = False,
       call_type: types.CallType = types.CallType.GENERATE_TEXT,
-  ) -> Union[List[types.ProviderModelType], types.ModelStatus]:
+  ) -> list[types.ProviderModelType] | types.ModelStatus:
     if call_type != types.CallType.GENERATE_TEXT:
       raise ValueError(f'Call type not supported: {call_type}')
     if model_size is not None:
@@ -857,7 +857,7 @@ class AvailableModels(state_controller.StateControlled):
         call_type=call_type,
         model_size=model_size)
 
-    model_status: Optional[types.ModelStatus] = None
+    model_status: types.ModelStatus | None = None
     if not self.model_cache_manager:
       self._load_provider_keys()
       if provider not in self.providers_with_key:
@@ -873,7 +873,7 @@ class AvailableModels(state_controller.StateControlled):
         clear_model_cache or
         not self._check_model_cache_path_same()):
       model_status = self._fetch_all_models(
-          selected_providers=set([provider]),
+          selected_providers={provider},
           model_size=model_size,
           features=features,
           verbose=verbose,
@@ -881,7 +881,7 @@ class AvailableModels(state_controller.StateControlled):
           call_type=call_type)
     else:
       model_status = self._fetch_all_models(
-          selected_providers=set([provider]),
+          selected_providers={provider},
           model_size=model_size,
           features=features,
           verbose=verbose,
@@ -913,7 +913,7 @@ class AvailableModels(state_controller.StateControlled):
 
     provider_model = provider_model_config.provider_model
 
-    model_status: Optional[types.ModelStatus] = None
+    model_status: types.ModelStatus | None = None
     if not self.model_cache_manager:
       # For performance, we only load the provider keys if the model cache is
       # not enabled instead of fetching all models.
@@ -929,13 +929,13 @@ class AvailableModels(state_controller.StateControlled):
         clear_model_cache or
         not self._check_model_cache_path_same()):
       model_status = self._fetch_all_models(
-          selected_provider_models=set([provider_model]),
+          selected_provider_models={provider_model},
           verbose=verbose,
           clear_model_cache=clear_model_cache,
           call_type=call_type)
     else:
       model_status = self._fetch_all_models(
-          selected_provider_models=set([provider_model]),
+          selected_provider_models={provider_model},
           verbose=verbose,
           call_type=call_type)
 

@@ -26,9 +26,10 @@ user = User()
 user.name = "Alice"  # Sets name and automatically updates internal state
 print(user._user_state)  # {'name': 'Alice'}
 """
-from typing import Any, Optional
-from abc import ABC, abstractmethod
 import dataclasses
+from abc import ABC, abstractmethod
+from typing import Any
+
 import proxai.types as types
 
 
@@ -52,8 +53,8 @@ class StateControlled(BaseStateControlled):
     # Initialize the internal state structure.
     self.init_state_with_default_values()
 
-  def _validate_init_from_state_values(self, init_from_state: Optional[Any]):
-    if type(init_from_state) != self.get_internal_state_type():
+  def _validate_init_from_state_values(self, init_from_state: Any | None):
+    if not isinstance(init_from_state, self.get_internal_state_type()):
       raise ValueError(
           f'Invalid state type.\nExpected: {self.get_internal_state_type()}\n'
           f'Actual: {type(init_from_state)}')
@@ -97,7 +98,6 @@ class StateControlled(BaseStateControlled):
       property_name: str,
       value: Any):
     """Sets the property value directly in the internal state."""
-
     setattr(
       getattr(self, self.get_internal_state_property_name()),
       property_name,
@@ -197,7 +197,7 @@ class StateControlled(BaseStateControlled):
     return getattr(self, self.get_internal_state_property_name())
 
   def load_state(self, state: Any):
-    if type(state) != self.get_internal_state_type():
+    if not isinstance(state, self.get_internal_state_type()):
       raise ValueError(
           f'Invalid state type.\nExpected: {self.get_internal_state_type()}\n'
           f'Actual: {type(state)}')

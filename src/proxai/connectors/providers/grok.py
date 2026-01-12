@@ -1,13 +1,15 @@
-from typing import Any, Callable, Optional
 import functools
-import json
 import os
+from collections.abc import Callable
+from typing import Any
+
 from xai_sdk import Client
-from xai_sdk.chat import user, system, assistant
+from xai_sdk.chat import assistant, system, user
 from xai_sdk.tools import web_search
-import proxai.types as types
-import proxai.connectors.providers.grok_mock as grok_mock
+
 import proxai.connectors.model_connector as model_connector
+import proxai.connectors.providers.grok_mock as grok_mock
+import proxai.types as types
 
 
 class GrokConnector(model_connector.ProviderModelConnector):

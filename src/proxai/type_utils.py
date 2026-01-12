@@ -1,7 +1,8 @@
 import copy
-from typing import Optional
-import proxai.types as types
+
 import pydantic
+
+import proxai.types as types
 
 
 def _raise_invalid_response_format_value_error(
@@ -26,7 +27,7 @@ def check_messages_type(messages: types.MessagesType):
       raise ValueError(
           f'Each message in messages should be a dictionary. '
           f'Invalid message: {message}')
-    if set(list(message.keys())) != {'role', 'content'}:
+    if set(message.keys()) != {'role', 'content'}:
       raise ValueError(
           f'Each message should have keys "role" and "content". '
           f'Invalid message: {message}')
@@ -48,7 +49,7 @@ def check_model_size_identifier_type(
   """Check if model size identifier is supported."""
   if isinstance(model_size_identifier, types.ModelSizeType):
     return model_size_identifier
-  elif type(model_size_identifier) == str:
+  elif isinstance(model_size_identifier, str):
     valid_values = [size.value for size in types.ModelSizeType]
     if model_size_identifier not in valid_values:
       raise ValueError(
@@ -64,7 +65,7 @@ def check_model_size_identifier_type(
 
 
 def create_response_format(
-    response_format: Optional[types.ResponseFormatParam] = None
+    response_format: types.ResponseFormatParam | None = None
 ) -> types.ResponseFormat:
   if response_format is None:
     return types.ResponseFormat(type=types.ResponseFormatType.TEXT)

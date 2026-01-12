@@ -1,12 +1,12 @@
-import dataclasses
-import os
 import copy
+import dataclasses
 import datetime
-from typing import Optional, Callable
-import proxai.types as types
-import proxai.serializers.type_serializer as type_serializer
 import json
+import os
+
+import proxai.serializers.type_serializer as type_serializer
 import proxai.state_controllers.state_controller as state_controller
+import proxai.types as types
 
 AVAILABLE_MODELS_PATH = 'available_models.json'
 _MODEL_CACHE_MANAGER_STATE_PROPERTY = '_model_cache_manager_state'
@@ -14,7 +14,7 @@ _MODEL_CACHE_MANAGER_STATE_PROPERTY = '_model_cache_manager_state'
 
 @dataclasses.dataclass
 class ModelCacheManagerParams:
-  cache_options: Optional[types.CacheOptions] = None
+  cache_options: types.CacheOptions | None = None
 
 
 class ModelCacheManager(state_controller.StateControlled):
@@ -24,8 +24,8 @@ class ModelCacheManager(state_controller.StateControlled):
 
   def __init__(
       self,
-      init_from_params: Optional[ModelCacheManagerParams] = None,
-      init_from_state: Optional[types.ModelCacheManagerState] = None
+      init_from_params: ModelCacheManagerParams | None = None,
+      init_from_state: types.ModelCacheManagerState | None = None
   ):
     super().__init__(
         init_from_params=init_from_params,
@@ -52,7 +52,7 @@ class ModelCacheManager(state_controller.StateControlled):
       self.model_status_by_call_type = None
       return
 
-    if self.cache_options.disable_model_cache == True:
+    if self.cache_options.disable_model_cache:
       self.status = types.ModelCacheManagerStatus.DISABLED
       self.model_status_by_call_type = None
       return
@@ -117,7 +117,7 @@ class ModelCacheManager(state_controller.StateControlled):
     if self.cache_path is None:
       return
     data = copy.deepcopy(self.model_status_by_call_type)
-    for call_value in data.keys():
+    for call_value in data:
       data[call_value] = type_serializer.encode_model_status(data[call_value])
     with open(self.cache_path, 'w') as f:
       json.dump(data, f)
@@ -129,13 +129,13 @@ class ModelCacheManager(state_controller.StateControlled):
     if not os.path.exists(self.cache_path):
       return
     data = {}
-    with open(self.cache_path, 'r') as f:
+    with open(self.cache_path) as f:
       try:
         data = json.load(f)
-        for call_value in data.keys():
+        for call_value in data:
           self.model_status_by_call_type[
               call_value] = type_serializer.decode_model_status(data[call_value])
-      except Exception as e:
+      except Exception:
         error_message = (
             '_load_from_cache_path failed because of the parsing error.\n'
             '* Please check cache path is correct.\n'
@@ -147,7 +147,7 @@ class ModelCacheManager(state_controller.StateControlled):
             '* If the problem persists, delete the cache file and try again:\n'
             f'    > rm {self.cache_path};\n'
             '* Open bug report at https://github.com/proxai/proxai/issues')
-        raise ValueError(error_message)
+        raise ValueError(error_message) from None
 
   def _clean_model_from_tested_models(
       self,
@@ -210,7 +210,7 @@ class ModelCacheManager(state_controller.StateControlled):
         model_status_updates.working_models |
         model_status_updates.failed_models |
         model_status_updates.filtered_models)
-    for provider_query_model in model_status_updates.provider_queries.keys():
+    for provider_query_model in model_status_updates.provider_queries:
       if provider_query_model not in all_updated_models:
         raise ValueError(
             f'Model {provider_query_model} is not in any of the unprocessed, '

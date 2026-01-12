@@ -1,12 +1,11 @@
-from typing import Optional, List, Dict
 
 
-class HuggingFaceMock(object):
+class HuggingFaceMock:
   def generate_content(
       self,
-      messages: List[Dict[str, str]],
+      messages: list[dict[str, str]],
       model: str,
-      max_tokens: Optional[int]=None,
-      temperature: Optional[float]=None,
-      stop: Optional[List[str]]=None) -> str:
+      max_tokens: int | None=None,
+      temperature: float | None=None,
+      stop: list[str] | None=None) -> str:
     return 'mock response'

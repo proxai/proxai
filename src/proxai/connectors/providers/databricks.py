@@ -1,10 +1,12 @@
-from typing import Any, Callable, Optional
 import functools
-import json
+from collections.abc import Callable
+from typing import Any
+
 from databricks.sdk import WorkspaceClient
-import proxai.types as types
-import proxai.connectors.providers.databricks_mock as databricks_mock
+
 import proxai.connectors.model_connector as model_connector
+import proxai.connectors.providers.databricks_mock as databricks_mock
+import proxai.types as types
 
 
 class DatabricksConnector(model_connector.ProviderModelConnector):
