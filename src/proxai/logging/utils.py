@@ -1,11 +1,11 @@
-import os
 import copy
-from datetime import datetime
-from typing import Dict, Optional
-import proxai.types as types
-import proxai.serializers.type_serializer as type_serializer
 import json
+import os
+from datetime import datetime
 from pprint import pprint
+
+import proxai.serializers.type_serializer as type_serializer
+import proxai.types as types
 
 QUERY_LOGGING_FILE_NAME = 'provider_queries.log'
 ERROR_LOGGING_FILE_NAME = 'errors.log'
@@ -59,7 +59,7 @@ def _hide_sensitive_content_logging_record(
 def _write_log(
     logging_options: types.LoggingOptions,
     file_name: str,
-    data: Dict):
+    data: dict):
     file_path = os.path.join(logging_options.logging_path, file_name)
     with open(file_path, 'a') as f:
       f.write(json.dumps(data) + '\n')
@@ -88,7 +88,7 @@ def log_message(
     logging_options: types.LoggingOptions,
     message: str,
     type: types.LoggingType,
-    query_record: Optional[types.QueryRecord] = None):
+    query_record: types.QueryRecord | None = None):
   if not logging_options:
     return
   result = {}
@@ -129,7 +129,7 @@ def log_proxdash_message(
     proxdash_options: types.ProxDashOptions,
     message: str,
     type: types.LoggingType,
-    query_record: Optional[types.QueryRecord] = None):
+    query_record: types.QueryRecord | None = None):
   result = {}
   result['logging_type'] = type.value.upper()
   result['message'] = message

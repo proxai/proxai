@@ -1,6 +1,6 @@
-from typing import List, Optional, Union
-import proxai.types as types
+
 import proxai.client as client
+import proxai.types as types
 
 # Re-export for backward compatibility
 CacheOptions = types.CacheOptions
@@ -9,7 +9,7 @@ ProxDashOptions = types.ProxDashOptions
 ResponseFormat = types.StructuredResponseFormat
 ResponseFormatType = types.ResponseFormatType
 
-_DEFAULT_CLIENT: Optional[client.ProxAIClient] = None
+_DEFAULT_CLIENT: client.ProxAIClient | None = None
 Client = client.ProxAIClient
 
 
@@ -23,16 +23,14 @@ def get_default_proxai_client() -> client.ProxAIClient:
 
 
 def connect(
-    experiment_path: Optional[str] = None,
-    cache_options: Optional[types.CacheOptions] = None,
-    logging_options: Optional[types.LoggingOptions] = None,
-    proxdash_options: Optional[types.ProxDashOptions] = None,
-    allow_multiprocessing: Optional[bool] = True,
-    model_test_timeout: Optional[int] = 25,
-    feature_mapping_strategy: Optional[
-        types.FeatureMappingStrategy
-    ] = types.FeatureMappingStrategy.BEST_EFFORT,
-    suppress_provider_errors: Optional[bool] = False,
+    experiment_path: str | None = None,
+    cache_options: types.CacheOptions | None = None,
+    logging_options: types.LoggingOptions | None = None,
+    proxdash_options: types.ProxDashOptions | None = None,
+    allow_multiprocessing: bool | None = True,
+    model_test_timeout: int | None = 25,
+    feature_mapping_strategy: types.FeatureMappingStrategy | None = types.FeatureMappingStrategy.BEST_EFFORT,
+    suppress_provider_errors: bool | None = False,
 ) -> None:
   """Initializes the default ProxAI client with the specified configuration.
 
@@ -87,21 +85,21 @@ def connect(
 
 
 def generate_text(
-    prompt: Optional[str] = None,
-    system: Optional[str] = None,
-    messages: Optional[types.MessagesType] = None,
-    max_tokens: Optional[int] = None,
-    temperature: Optional[float] = None,
-    stop: Optional[types.StopType] = None,
-    response_format: Optional[types.ResponseFormatParam] = None,
-    web_search: Optional[bool] = None,
-    provider_model: Optional[types.ProviderModelIdentifierType] = None,
-    feature_mapping_strategy: Optional[types.FeatureMappingStrategy] = None,
-    use_cache: Optional[bool] = None,
-    unique_response_limit: Optional[int] = None,
+    prompt: str | None = None,
+    system: str | None = None,
+    messages: types.MessagesType | None = None,
+    max_tokens: int | None = None,
+    temperature: float | None = None,
+    stop: types.StopType | None = None,
+    response_format: types.ResponseFormatParam | None = None,
+    web_search: bool | None = None,
+    provider_model: types.ProviderModelIdentifierType | None = None,
+    feature_mapping_strategy: types.FeatureMappingStrategy | None = None,
+    use_cache: bool | None = None,
+    unique_response_limit: int | None = None,
     extensive_return: bool = False,
-    suppress_provider_errors: Optional[bool] = None,
-) -> Union[str, types.LoggingRecord]:
+    suppress_provider_errors: bool | None = None,
+) -> str | types.LoggingRecord:
   """Generates text using the configured AI model.
 
   Sends a text generation request to the AI provider using either a simple
@@ -191,8 +189,8 @@ def generate_text(
 
 
 def set_model(
-    provider_model: Optional[types.ProviderModelIdentifierType] = None,
-    generate_text: Optional[types.ProviderModelIdentifierType] = None,
+    provider_model: types.ProviderModelIdentifierType | None = None,
+    generate_text: types.ProviderModelIdentifierType | None = None,
 ) -> None:
   """Sets the default model for text generation requests.
 
@@ -226,12 +224,12 @@ def set_model(
 
 
 def check_health(
-    experiment_path: Optional[str] = None,
+    experiment_path: str | None = None,
     verbose: bool = True,
     allow_multiprocessing: bool = True,
     model_test_timeout: int = 25,
     extensive_return: bool = False,
-) -> Optional[types.ModelStatus]:
+) -> types.ModelStatus | None:
   """Tests connectivity and response times for all available AI models.
 
   Performs a health check by sending test requests to each configured AI
@@ -323,7 +321,7 @@ def check_health(
 
 def get_current_options(
     json: bool = False,
-) -> Union[types.RunOptions, dict]:
+) -> types.RunOptions | dict:
   """Returns the current configuration options of the default ProxAI client.
 
   Retrieves all active configuration settings including run type, experiment
@@ -398,10 +396,10 @@ class DefaultModelsConnector:
 
   def list_models(
       self,
-      model_size: Optional[types.ModelSizeIdentifierType] = None,
-      features: Optional[types.FeatureListParam] = None,
+      model_size: types.ModelSizeIdentifierType | None = None,
+      features: types.FeatureListParam | None = None,
       call_type: types.CallType = types.CallType.GENERATE_TEXT,
-  ) -> Union[List[types.ProviderModelType], types.ModelStatus]:
+  ) -> list[types.ProviderModelType] | types.ModelStatus:
     """Lists all configured models matching the specified criteria.
 
     Returns models that are configured in the system regardless of whether
@@ -442,7 +440,7 @@ class DefaultModelsConnector:
   def list_providers(
       self,
       call_type: types.CallType = types.CallType.GENERATE_TEXT,
-  ) -> List[str]:
+  ) -> list[str]:
     """Lists all providers that have API keys configured.
 
     Returns provider names for which the required environment variables
@@ -471,10 +469,10 @@ class DefaultModelsConnector:
   def list_provider_models(
       self,
       provider: str,
-      model_size: Optional[types.ModelSizeIdentifierType] = None,
-      features: Optional[types.FeatureListParam] = None,
+      model_size: types.ModelSizeIdentifierType | None = None,
+      features: types.FeatureListParam | None = None,
       call_type: types.CallType = types.CallType.GENERATE_TEXT,
-  ) -> Union[List[types.ProviderModelType], types.ModelStatus]:
+  ) -> list[types.ProviderModelType] | types.ModelStatus:
     """Lists all models available from a specific provider.
 
     Returns models for the given provider that match the specified
@@ -555,13 +553,13 @@ class DefaultModelsConnector:
 
   def list_working_models(
       self,
-      model_size: Optional[types.ModelSizeIdentifierType] = None,
-      features: Optional[types.FeatureListParam] = None,
+      model_size: types.ModelSizeIdentifierType | None = None,
+      features: types.FeatureListParam | None = None,
       verbose: bool = True,
       return_all: bool = False,
       clear_model_cache: bool = False,
       call_type: types.CallType = types.CallType.GENERATE_TEXT,
-  ) -> Union[List[types.ProviderModelType], types.ModelStatus]:
+  ) -> list[types.ProviderModelType] | types.ModelStatus:
     """Lists models that have been verified to be working.
 
     Tests each configured model and returns only those that successfully
@@ -604,7 +602,7 @@ class DefaultModelsConnector:
       verbose: bool = True,
       clear_model_cache: bool = False,
       call_type: types.CallType = types.CallType.GENERATE_TEXT,
-  ) -> List[str]:
+  ) -> list[str]:
     """Lists providers that have at least one working model.
 
     Tests models and returns providers that have successfully responded
@@ -637,13 +635,13 @@ class DefaultModelsConnector:
   def list_working_provider_models(
       self,
       provider: str,
-      model_size: Optional[types.ModelSizeIdentifierType] = None,
-      features: Optional[types.FeatureListParam] = None,
+      model_size: types.ModelSizeIdentifierType | None = None,
+      features: types.FeatureListParam | None = None,
       verbose: bool = True,
       return_all: bool = False,
       clear_model_cache: bool = False,
       call_type: types.CallType = types.CallType.GENERATE_TEXT,
-  ) -> Union[List[types.ProviderModelType], types.ModelStatus]:
+  ) -> list[types.ProviderModelType] | types.ModelStatus:
     """Lists working models from a specific provider.
 
     Tests models from the specified provider and returns only those that

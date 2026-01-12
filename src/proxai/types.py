@@ -1,8 +1,9 @@
 import dataclasses
 import datetime
 import enum
-from typing import Dict, List, Optional, Tuple, Set, Union, Any, Type
 from abc import ABC
+from typing import Any
+
 import pydantic
 
 
@@ -58,23 +59,23 @@ class ProviderModelType:
     return str(self) >= str(other)
 
 
-ProviderModelTupleType = Tuple[ProviderNameType, ModelNameType]  # (provider, model) without model_signature
-ProviderModelIdentifierType = Union[ProviderModelType, ProviderModelTupleType]
-StopType = Union[str, List[str]]
-MessagesType = List[Dict[str, str]]
+ProviderModelTupleType = tuple[ProviderNameType, ModelNameType]  # (provider, model) without model_signature
+ProviderModelIdentifierType = ProviderModelType | ProviderModelTupleType
+StopType = str | list[str]
+MessagesType = list[dict[str, str]]
 
 
 @dataclasses.dataclass
 class ProviderModelPricingType:
-  per_response_token_cost: Optional[float] = None
-  per_query_token_cost: Optional[float] = None
+  per_response_token_cost: float | None = None
+  per_query_token_cost: float | None = None
 
 
 @dataclasses.dataclass
 class EndpointFeatureInfoType:
-  supported: List[str] = dataclasses.field(default_factory=list)
-  best_effort: List[str] = dataclasses.field(default_factory=list)
-  not_supported: List[str] = dataclasses.field(default_factory=list)
+  supported: list[str] = dataclasses.field(default_factory=list)
+  best_effort: list[str] = dataclasses.field(default_factory=list)
+  not_supported: list[str] = dataclasses.field(default_factory=list)
 
 
 class FeatureNameType(str, enum.Enum):
@@ -91,12 +92,9 @@ class FeatureNameType(str, enum.Enum):
   RESPONSE_FORMAT_PYDANTIC = 'response_format::pydantic'
 
 
-FeatureListType = List[FeatureNameType]
+FeatureListType = list[FeatureNameType]
 
-FeatureListParam = List[Union[
-    str,
-    FeatureNameType,
-]]
+FeatureListParam = list[str | FeatureNameType]
 
 
 class ModelSizeType(str, enum.Enum):
@@ -105,73 +103,73 @@ class ModelSizeType(str, enum.Enum):
   LARGE = 'large'
   LARGEST = 'largest'
 
-ModelSizeIdentifierType = Union[ModelSizeType, str]
+ModelSizeIdentifierType = ModelSizeType | str
 
 
 @dataclasses.dataclass
 class ProviderModelMetadataType:
-  call_type: Optional[CallType] = None
-  is_featured: Optional[bool] = None
-  model_size_tags: Optional[List[ModelSizeType]] = None
-  is_default_candidate: Optional[bool] = None
-  default_candidate_priority: Optional[int] = None
-  tags: Optional[List[str]] = None
+  call_type: CallType | None = None
+  is_featured: bool | None = None
+  model_size_tags: list[ModelSizeType] | None = None
+  is_default_candidate: bool | None = None
+  default_candidate_priority: int | None = None
+  tags: list[str] | None = None
 
-FeatureMappingType = Dict[FeatureNameType, EndpointFeatureInfoType]
+FeatureMappingType = dict[FeatureNameType, EndpointFeatureInfoType]
 
 
 @dataclasses.dataclass
 class ProviderModelConfigType:
-  provider_model: Optional[ProviderModelType] = None
-  pricing: Optional[ProviderModelPricingType] = None
-  features: Optional[FeatureMappingType] = None
-  metadata: Optional[ProviderModelMetadataType] = None
+  provider_model: ProviderModelType | None = None
+  pricing: ProviderModelPricingType | None = None
+  features: FeatureMappingType | None = None
+  metadata: ProviderModelMetadataType | None = None
 
 
 class ConfigOriginType(enum.Enum):
   BUILT_IN = 'BUILT_IN'
   PROXDASH = 'PROXDASH'
 
-ProviderModelsIdentifierDictType = Dict[
-    ProviderNameType, Tuple[ProviderModelIdentifierType]]
+ProviderModelsIdentifierDictType = dict[
+    ProviderNameType, tuple[ProviderModelIdentifierType]]
 
-ProviderModelConfigsType = Dict[
-    ProviderNameType, Dict[ModelNameType, ProviderModelConfigType]]
+ProviderModelConfigsType = dict[
+    ProviderNameType, dict[ModelNameType, ProviderModelConfigType]]
 FeaturedModelsType = ProviderModelsIdentifierDictType
-ModelsByCallTypeType = Dict[CallType, ProviderModelsIdentifierDictType]
-ModelsBySizeType = Dict[
-    ModelSizeType, Tuple[ProviderModelIdentifierType]]
-DefaultModelPriorityListType = Tuple[ProviderModelIdentifierType]
+ModelsByCallTypeType = dict[CallType, ProviderModelsIdentifierDictType]
+ModelsBySizeType = dict[
+    ModelSizeType, tuple[ProviderModelIdentifierType]]
+DefaultModelPriorityListType = tuple[ProviderModelIdentifierType]
 
 
 @dataclasses.dataclass
 class ModelConfigsSchemaMetadataType:
-  version: Optional[str] = None
-  released_at: Optional[datetime.datetime] = None
-  min_proxai_version: Optional[str] = None
-  config_origin: Optional[ConfigOriginType] = None
-  release_notes: Optional[str] = None
+  version: str | None = None
+  released_at: datetime.datetime | None = None
+  min_proxai_version: str | None = None
+  config_origin: ConfigOriginType | None = None
+  release_notes: str | None = None
 
 
 @dataclasses.dataclass
 class ModelConfigsSchemaVersionConfigType:
-  provider_model_configs: Optional[ProviderModelConfigsType] = None
+  provider_model_configs: ProviderModelConfigsType | None = None
 
-  featured_models: Optional[FeaturedModelsType] = None
-  models_by_call_type: Optional[ModelsByCallTypeType] = None
-  models_by_size: Optional[ModelsBySizeType] = None
-  default_model_priority_list: Optional[DefaultModelPriorityListType] = None
+  featured_models: FeaturedModelsType | None = None
+  models_by_call_type: ModelsByCallTypeType | None = None
+  models_by_size: ModelsBySizeType | None = None
+  default_model_priority_list: DefaultModelPriorityListType | None = None
 
 
 @dataclasses.dataclass
 class ModelConfigsSchemaType:
-  metadata: Optional[ModelConfigsSchemaMetadataType] = None
-  version_config: Optional[ModelConfigsSchemaVersionConfigType] = None
+  metadata: ModelConfigsSchemaMetadataType | None = None
+  version_config: ModelConfigsSchemaVersionConfigType | None = None
 
 
 @dataclasses.dataclass
 class LoggingOptions:
-  logging_path: Optional[str] = None
+  logging_path: str | None = None
   stdout: bool = False
   hide_sensitive_content: bool = False
 
@@ -185,15 +183,15 @@ class LoggingType(str, enum.Enum):
 
 @dataclasses.dataclass
 class CacheOptions:
-  cache_path: Optional[str] = None
+  cache_path: str | None = None
 
-  unique_response_limit: Optional[int] = 1
+  unique_response_limit: int | None = 1
   retry_if_error_cached: bool = False
   clear_query_cache_on_connect: bool = False
 
   disable_model_cache: bool = False
   clear_model_cache_on_connect: bool = False
-  model_cache_duration: Optional[int] = None
+  model_cache_duration: int | None = None
 
 
 @dataclasses.dataclass
@@ -201,8 +199,8 @@ class ProxDashOptions:
   stdout: bool = False
   hide_sensitive_content: bool = False
   disable_proxdash: bool = False
-  api_key: Optional[str] = None
-  base_url: Optional[str] = 'https://proxainest-production.up.railway.app'
+  api_key: str | None = None
+  base_url: str | None = 'https://proxainest-production.up.railway.app'
 
 
 @dataclasses.dataclass
@@ -217,32 +215,28 @@ class FeatureMappingStrategy(str, enum.Enum):
 
 @dataclasses.dataclass
 class RunOptions:
-  run_type: Optional[RunType] = None
-  hidden_run_key: Optional[str] = None
-  experiment_path: Optional[str] = None
-  root_logging_path: Optional[str] = None
-  default_model_cache_path: Optional[str] = None
-  logging_options: Optional[LoggingOptions] = None
-  cache_options: Optional[CacheOptions] = None
-  proxdash_options: Optional[ProxDashOptions] = None
-  allow_multiprocessing: Optional[bool] = None
-  model_test_timeout: Optional[int] = None
-  feature_mapping_strategy: Optional[FeatureMappingStrategy] = None
-  suppress_provider_errors: Optional[bool] = None
+  run_type: RunType | None = None
+  hidden_run_key: str | None = None
+  experiment_path: str | None = None
+  root_logging_path: str | None = None
+  default_model_cache_path: str | None = None
+  logging_options: LoggingOptions | None = None
+  cache_options: CacheOptions | None = None
+  proxdash_options: ProxDashOptions | None = None
+  allow_multiprocessing: bool | None = None
+  model_test_timeout: int | None = None
+  feature_mapping_strategy: FeatureMappingStrategy | None = None
+  suppress_provider_errors: bool | None = None
 
 
 @dataclasses.dataclass
 class ResponseFormatPydanticValue:
-  class_name: Optional[str] = None
-  class_value: Optional[Type[pydantic.BaseModel]] = None
-  class_json_schema_value: Optional[Dict[str, Any]] = None
+  class_name: str | None = None
+  class_value: type[pydantic.BaseModel] | None = None
+  class_json_schema_value: dict[str, Any] | None = None
 
 
-ResponseFormatValueType = Union[
-    str,
-    Dict[str, Any],
-    ResponseFormatPydanticValue
-]
+ResponseFormatValueType = str | dict[str, Any] | ResponseFormatPydanticValue
 
 
 class ResponseFormatType(str, enum.Enum):
@@ -254,56 +248,45 @@ class ResponseFormatType(str, enum.Enum):
 
 @dataclasses.dataclass
 class ResponseFormat:
-  value: Optional[ResponseFormatValueType] = None
-  type: Optional[ResponseFormatType] = None
+  value: ResponseFormatValueType | None = None
+  type: ResponseFormatType | None = None
 
 
-ResponseFormatSchema = Union[
-    str,
-    Dict[str, Any],
-    Type[pydantic.BaseModel],
-]
+ResponseFormatSchema = str | dict[str, Any] | type[pydantic.BaseModel]
 
 @dataclasses.dataclass
 class StructuredResponseFormat:
-    schema: Optional[ResponseFormatSchema] = None
-    type: Optional[ResponseFormatType] = None
+    schema: ResponseFormatSchema | None = None
+    type: ResponseFormatType | None = None
 
-ResponseFormatParam = Union[
-    ResponseFormatSchema,
-    StructuredResponseFormat,
-]
+ResponseFormatParam = ResponseFormatSchema | StructuredResponseFormat
 
 
 @dataclasses.dataclass
 class QueryRecord:
-  call_type: Optional[CallType] = None
-  provider_model: Optional[ProviderModelType] = None
-  prompt: Optional[str] = None
-  system: Optional[str] = None
-  messages: Optional[MessagesType] = None
-  max_tokens: Optional[int] = None
-  temperature: Optional[float] = None
-  stop: Optional[StopType] = None
-  token_count: Optional[int] = None
-  response_format: Optional[ResponseFormat] = None
-  web_search: Optional[bool] = None
-  feature_mapping_strategy: Optional[FeatureMappingStrategy] = None
-  chosen_endpoint: Optional[str] = None
-  hash_value: Optional[str] = None
+  call_type: CallType | None = None
+  provider_model: ProviderModelType | None = None
+  prompt: str | None = None
+  system: str | None = None
+  messages: MessagesType | None = None
+  max_tokens: int | None = None
+  temperature: float | None = None
+  stop: StopType | None = None
+  token_count: int | None = None
+  response_format: ResponseFormat | None = None
+  web_search: bool | None = None
+  feature_mapping_strategy: FeatureMappingStrategy | None = None
+  chosen_endpoint: str | None = None
+  hash_value: str | None = None
 
 
 @dataclasses.dataclass
 class PydanticMetadataType:
-  class_name: Optional[str] = None
-  instance_json_value: Optional[Dict[str, Any]] = None
+  class_name: str | None = None
+  instance_json_value: dict[str, Any] | None = None
 
 
-ResponseValue = Union[
-    str,
-    Dict[str, Any],
-    pydantic.BaseModel
-]
+ResponseValue = str | dict[str, Any] | pydantic.BaseModel
 
 
 class ResponseType(str, enum.Enum):
@@ -314,41 +297,41 @@ class ResponseType(str, enum.Enum):
 
 @dataclasses.dataclass
 class Response:
-  value: Optional[ResponseValue] = None
-  type: Optional[ResponseType] = None
-  pydantic_metadata: Optional[PydanticMetadataType] = None
+  value: ResponseValue | None = None
+  type: ResponseType | None = None
+  pydantic_metadata: PydanticMetadataType | None = None
 
 
 @dataclasses.dataclass
 class QueryResponseRecord:
-  response: Optional[Response] = None
-  error: Optional[str] = None
-  error_traceback: Optional[str] = None
-  start_utc_date: Optional[datetime.datetime] = None
-  end_utc_date: Optional[datetime.datetime] = None
-  local_time_offset_minute: Optional[int] = None
-  response_time: Optional[datetime.timedelta] = None
-  estimated_cost: Optional[int] = None
-  token_count: Optional[int] = None
+  response: Response | None = None
+  error: str | None = None
+  error_traceback: str | None = None
+  start_utc_date: datetime.datetime | None = None
+  end_utc_date: datetime.datetime | None = None
+  local_time_offset_minute: int | None = None
+  response_time: datetime.timedelta | None = None
+  estimated_cost: int | None = None
+  token_count: int | None = None
 
 
 @dataclasses.dataclass
 class CacheRecord:
-  query_record: Optional[QueryRecord] = None
-  query_responses: List[QueryResponseRecord] = dataclasses.field(
+  query_record: QueryRecord | None = None
+  query_responses: list[QueryResponseRecord] = dataclasses.field(
       default_factory=list)
-  shard_id: Optional[str] = None
-  last_access_time: Optional[datetime.datetime] = None
-  call_count: Optional[int] = None
+  shard_id: str | None = None
+  last_access_time: datetime.datetime | None = None
+  call_count: int | None = None
 
 
 @dataclasses.dataclass
 class LightCacheRecord:
-  query_record_hash: Optional[str] = None
-  query_response_count: Optional[int] = None
-  shard_id: Optional[int] = None
-  last_access_time: Optional[datetime.datetime] = None
-  call_count: Optional[int] = None
+  query_record_hash: str | None = None
+  query_response_count: int | None = None
+  shard_id: int | None = None
+  last_access_time: datetime.datetime | None = None
+  call_count: int | None = None
 
 
 class CacheLookFailReason(str, enum.Enum):
@@ -360,8 +343,8 @@ class CacheLookFailReason(str, enum.Enum):
 
 @dataclasses.dataclass
 class CacheLookResult:
-  query_response: Optional[QueryResponseRecord] = None
-  look_fail_reason: Optional[CacheLookFailReason] = None
+  query_response: QueryResponseRecord | None = None
+  look_fail_reason: CacheLookFailReason | None = None
 
 
 class ResponseSource(str, enum.Enum):
@@ -371,27 +354,27 @@ class ResponseSource(str, enum.Enum):
 
 @dataclasses.dataclass
 class LoggingRecord:
-  query_record: Optional[QueryRecord] = None
-  response_record: Optional[QueryResponseRecord] = None
-  response_source: Optional[ResponseSource] = None
-  look_fail_reason: Optional[CacheLookFailReason] = None
+  query_record: QueryRecord | None = None
+  response_record: QueryResponseRecord | None = None
+  response_source: ResponseSource | None = None
+  look_fail_reason: CacheLookFailReason | None = None
 
 
 @dataclasses.dataclass
 class ModelStatus:
-  unprocessed_models: Set[ProviderModelType] = dataclasses.field(
+  unprocessed_models: set[ProviderModelType] = dataclasses.field(
       default_factory=set)
-  working_models: Set[ProviderModelType] = dataclasses.field(
+  working_models: set[ProviderModelType] = dataclasses.field(
       default_factory=set)
-  failed_models: Set[ProviderModelType] = dataclasses.field(
+  failed_models: set[ProviderModelType] = dataclasses.field(
       default_factory=set)
-  filtered_models: Set[ProviderModelType] = dataclasses.field(
+  filtered_models: set[ProviderModelType] = dataclasses.field(
       default_factory=set)
-  provider_queries: Dict[ProviderModelType, LoggingRecord] = (
+  provider_queries: dict[ProviderModelType, LoggingRecord] = (
       dataclasses.field(default_factory=dict))
 
 
-ModelStatusByCallType = Dict[CallType, ModelStatus]
+ModelStatusByCallType = dict[CallType, ModelStatus]
 
 
 class ModelCacheManagerStatus(str, enum.Enum):
@@ -428,88 +411,86 @@ class StateContainer(ABC):
 
 @dataclasses.dataclass
 class ModelConfigsState(StateContainer):
-  model_configs_schema: Optional[ModelConfigsSchemaType] = None
+  model_configs_schema: ModelConfigsSchemaType | None = None
 
 
 @dataclasses.dataclass
 class ModelCacheManagerState(StateContainer):
-  status: Optional[ModelCacheManagerStatus] = None
-  cache_options: Optional[CacheOptions] = None
+  status: ModelCacheManagerStatus | None = None
+  cache_options: CacheOptions | None = None
 
 
 @dataclasses.dataclass
 class QueryCacheManagerState(StateContainer):
-  status: Optional[QueryCacheManagerStatus] = None
-  cache_options: Optional[CacheOptions] = None
-  shard_count: Optional[int] = 800
-  response_per_file: Optional[int] = 200
-  cache_response_size: Optional[int] = 40000
+  status: QueryCacheManagerStatus | None = None
+  cache_options: CacheOptions | None = None
+  shard_count: int | None = 800
+  response_per_file: int | None = 200
+  cache_response_size: int | None = 40000
 
 
 @dataclasses.dataclass
 class ProxDashConnectionState(StateContainer):
-  status: Optional[ProxDashConnectionStatus] = None
-  hidden_run_key: Optional[str] = None
-  experiment_path: Optional[str] = None
-  logging_options: Optional[LoggingOptions] = None
-  proxdash_options: Optional[ProxDashOptions] = None
-  key_info_from_proxdash: Optional[Dict] = None
-  connected_experiment_path: Optional[str] = None
+  status: ProxDashConnectionStatus | None = None
+  hidden_run_key: str | None = None
+  experiment_path: str | None = None
+  logging_options: LoggingOptions | None = None
+  proxdash_options: ProxDashOptions | None = None
+  key_info_from_proxdash: dict | None = None
+  connected_experiment_path: str | None = None
 
 
 @dataclasses.dataclass
 class ProviderModelState(StateContainer):
-  provider_model: Optional[ProviderModelType] = None
-  run_type: Optional[RunType] = None
-  provider_model_config: Optional[ProviderModelConfigType] = None
-  feature_mapping_strategy: Optional[FeatureMappingStrategy] = None
-  query_cache_manager: Optional[QueryCacheManagerState] = None
-  logging_options: Optional[LoggingOptions] = None
-  proxdash_connection: Optional[ProxDashConnectionState] = None
+  provider_model: ProviderModelType | None = None
+  run_type: RunType | None = None
+  provider_model_config: ProviderModelConfigType | None = None
+  feature_mapping_strategy: FeatureMappingStrategy | None = None
+  query_cache_manager: QueryCacheManagerState | None = None
+  logging_options: LoggingOptions | None = None
+  proxdash_connection: ProxDashConnectionState | None = None
 
 
 @dataclasses.dataclass
 class AvailableModelsState(StateContainer):
-  run_type: Optional[RunType] = None
-  model_configs_instance: Optional[ModelConfigsState] = None
-  model_cache_manager: Optional[ModelCacheManagerState] = None
-  logging_options: Optional[LoggingOptions] = None
-  proxdash_connection: Optional[ProxDashConnectionState] = None
-  allow_multiprocessing: Optional[bool] = None
-  model_test_timeout: Optional[int] = None
-  providers_with_key: Optional[Set[str]] = None
-  has_fetched_all_models: Optional[bool] = None
-  latest_model_cache_path_used_for_update: Optional[str] = None
+  run_type: RunType | None = None
+  model_configs_instance: ModelConfigsState | None = None
+  model_cache_manager: ModelCacheManagerState | None = None
+  logging_options: LoggingOptions | None = None
+  proxdash_connection: ProxDashConnectionState | None = None
+  allow_multiprocessing: bool | None = None
+  model_test_timeout: int | None = None
+  providers_with_key: set[str] | None = None
+  has_fetched_all_models: bool | None = None
+  latest_model_cache_path_used_for_update: str | None = None
 
 
 @dataclasses.dataclass
 class ProxAIClientState(StateContainer):
-  run_type: Optional[RunType] = None
-  hidden_run_key: Optional[str] = None
-  experiment_path: Optional[str] = None
-  root_logging_path: Optional[str] = None
-  default_model_cache_path: Optional[str] = None
-  platform_used_for_default_model_cache: Optional[bool] = None
+  run_type: RunType | None = None
+  hidden_run_key: str | None = None
+  experiment_path: str | None = None
+  root_logging_path: str | None = None
+  default_model_cache_path: str | None = None
+  platform_used_for_default_model_cache: bool | None = None
 
-  logging_options: Optional[LoggingOptions] = None
-  cache_options: Optional[CacheOptions] = None
-  proxdash_options: Optional[ProxDashOptions] = None
+  logging_options: LoggingOptions | None = None
+  cache_options: CacheOptions | None = None
+  proxdash_options: ProxDashOptions | None = None
 
-  model_configs: Optional[ModelConfigsState] = None
-  model_configs_requested_from_proxdash: Optional[bool] = None
+  model_configs: ModelConfigsState | None = None
+  model_configs_requested_from_proxdash: bool | None = None
 
-  registered_model_connectors: Optional[Dict[
-      CallType, ProviderModelState]] = None
-  model_connectors: Optional[Dict[
-      ProviderModelType, ProviderModelState]] = None
-  default_model_cache_manager: Optional[ModelCacheManagerState] = None
-  model_cache_manager: Optional[ModelCacheManagerState] = None
-  query_cache_manager: Optional[QueryCacheManagerState] = None
-  proxdash_connection: Optional[ProxDashConnectionState] = None
+  registered_model_connectors: dict[CallType, ProviderModelState] | None = None
+  model_connectors: dict[ProviderModelType, ProviderModelState] | None = None
+  default_model_cache_manager: ModelCacheManagerState | None = None
+  model_cache_manager: ModelCacheManagerState | None = None
+  query_cache_manager: QueryCacheManagerState | None = None
+  proxdash_connection: ProxDashConnectionState | None = None
 
-  feature_mapping_strategy: Optional[FeatureMappingStrategy] = None
-  suppress_provider_errors: Optional[bool] = None
-  allow_multiprocessing: Optional[bool] = None
-  model_test_timeout: Optional[int] = None
+  feature_mapping_strategy: FeatureMappingStrategy | None = None
+  suppress_provider_errors: bool | None = None
+  allow_multiprocessing: bool | None = None
+  model_test_timeout: int | None = None
 
-  available_models: Optional[AvailableModelsState] = None
+  available_models: AvailableModelsState | None = None

@@ -1,19 +1,18 @@
-from typing import Optional
 
 
-class _MockResponse(object):
+class _MockResponse:
   text: str
 
   def __init__(self):
     self.text = 'mock response'
 
 
-class _MockModel(object):
+class _MockModel:
   def generate_content(self, *args, **kwargs) -> _MockResponse:
     return _MockResponse()
 
 
-class GeminiMock(object):
+class GeminiMock:
   models: _MockModel
 
   def __init__(self):

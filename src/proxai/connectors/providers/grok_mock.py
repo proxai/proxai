@@ -1,14 +1,13 @@
-from typing import Dict, List, Optional
 
 
-class _MockResponse(object):
+class _MockResponse:
   content: str
 
   def __init__(self):
     self.content = 'mock response'
 
 
-class _MockContinuedChat(object):
+class _MockContinuedChat:
   def append(*args, **kwargs):
     pass
 
@@ -19,14 +18,14 @@ class _MockContinuedChat(object):
     return _MockResponse()
 
 
-class _MockChat(object):
+class _MockChat:
   def create(
       self,
       **kwargs) -> _MockResponse:
     return _MockContinuedChat()
 
 
-class GrokMock(object):
+class GrokMock:
   chat: _MockChat
 
   def __init__(self):

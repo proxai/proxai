@@ -1,15 +1,14 @@
-import copy
-from typing import Any, Callable, Optional
 import functools
-import json
 import os
-import re
+from collections.abc import Callable
+from typing import Any
+
 from google import genai
 from google.genai import types as genai_types
-import proxai.types as types
-import proxai.connectors.providers.gemini_mock as gemini_mock
+
 import proxai.connectors.model_connector as model_connector
-import proxai.connectors.model_configs as model_configs
+import proxai.connectors.providers.gemini_mock as gemini_mock
+import proxai.types as types
 
 
 class GeminiConnector(model_connector.ProviderModelConnector):

@@ -1,11 +1,11 @@
-from typing import Any, List, Optional
+from typing import Any
 
 
-class _MockMessage(object):
+class _MockMessage:
   content: str
 
 
-class _MockChoice(object):
+class _MockChoice:
   message: _MockMessage
 
   def __init__(self):
@@ -13,24 +13,24 @@ class _MockChoice(object):
     self.message.content = 'mock response'
 
 
-class _MockResponse(object):
-  choices: List[_MockChoice]
+class _MockResponse:
+  choices: list[_MockChoice]
 
   def __init__(self):
     self.choices = [_MockChoice()]
 
 
-class MockChat(object):
+class MockChat:
   def complete(
         self,
         model: str,
-        messages: List[Any],
-        max_tokens: Optional[int]=None,
-        temperature: Optional[float]=None,
-        stop: Optional[List[str]]=None) -> _MockResponse:
+        messages: list[Any],
+        max_tokens: int | None=None,
+        temperature: float | None=None,
+        stop: list[str] | None=None) -> _MockResponse:
       return _MockResponse()
 
-class MistralMock(object):
+class MistralMock:
   chat: MockChat
 
   def __init__(self):

@@ -1,5 +1,5 @@
-import random
 import datetime
+import random
 import string
 
 MAX_COMPONENT_LENGTH = 64
@@ -28,7 +28,7 @@ def validate_experiment_path(experiment_path: str):
     if char not in allowed_chars:
       raise ValueError(
           'Experiment path can only contain following characters:\n'
-          f'{sorted(list(allowed_chars))}')
+          f'{sorted(allowed_chars)}')
   if experiment_path.startswith('/'):
     raise ValueError('Experiment path cannot start with "/"')
   if experiment_path.endswith('/'):
