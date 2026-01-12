@@ -376,7 +376,8 @@ def encode_model_configs_schema_version_config_type(
         types.ModelConfigsSchemaVersionConfigType)
 ) -> dict[str, Any]:
   record = {}
-  if model_configs_schema_version_config_type.provider_model_configs is not None:
+  if (model_configs_schema_version_config_type.provider_model_configs
+      is not None):
     record['provider_model_configs'] = encode_provider_model_configs_type(
         model_configs_schema_version_config_type.provider_model_configs)
   if model_configs_schema_version_config_type.featured_models is not None:
@@ -388,7 +389,8 @@ def encode_model_configs_schema_version_config_type(
   if model_configs_schema_version_config_type.models_by_size is not None:
     record['models_by_size'] = encode_models_by_size_type(
         model_configs_schema_version_config_type.models_by_size)
-  if model_configs_schema_version_config_type.default_model_priority_list is not None:
+  if (model_configs_schema_version_config_type.default_model_priority_list
+      is not None):
     record['default_model_priority_list'] = (
         encode_default_model_priority_list_type(
             model_configs_schema_version_config_type.default_model_priority_list))
@@ -482,7 +484,8 @@ def encode_response_format(
   if response_format.type is not None:
     record['type'] = response_format.type.value
   if response_format.value is not None:
-    if response_format.type == types.ResponseFormatType.TEXT or response_format.type == types.ResponseFormatType.JSON:
+    if (response_format.type == types.ResponseFormatType.TEXT
+        or response_format.type == types.ResponseFormatType.JSON):
       pass
     elif response_format.type == types.ResponseFormatType.JSON_SCHEMA:
       record['value'] = json.dumps(
@@ -498,7 +501,8 @@ def decode_response_format(
   response_format = types.ResponseFormat()
   if 'type' in record:
     response_format.type = types.ResponseFormatType(record['type'])
-  if response_format.type == types.ResponseFormatType.TEXT or response_format.type == types.ResponseFormatType.JSON:
+  if (response_format.type == types.ResponseFormatType.TEXT
+      or response_format.type == types.ResponseFormatType.JSON):
     pass
   elif response_format.type == types.ResponseFormatType.JSON_SCHEMA:
     if 'value' in record:
@@ -549,7 +553,8 @@ def encode_response(
     if pydantic_metadata is None:
       pydantic_metadata = types.PydanticMetadataType()
     # If value exists (live instance), convert to JSON for serialization
-    if response.value is not None and pydantic_metadata.instance_json_value is None:
+    if (response.value is not None
+        and pydantic_metadata.instance_json_value is None):
       pydantic_metadata.instance_json_value = response.value.model_dump()
     record['pydantic_metadata'] = encode_pydantic_metadata(pydantic_metadata)
   return record
@@ -565,11 +570,11 @@ def decode_response(
   elif response.type == types.ResponseType.JSON:
     if 'value' in record:
       response.value = json.loads(record['value'])
-  elif response.type == types.ResponseType.PYDANTIC:
+  elif (response.type == types.ResponseType.PYDANTIC
+        and 'pydantic_metadata' in record):
     # For PYDANTIC: restore pydantic_metadata, value stays None until runtime
-    if 'pydantic_metadata' in record:
-      response.pydantic_metadata = decode_pydantic_metadata(
-          record['pydantic_metadata'])
+    response.pydantic_metadata = decode_pydantic_metadata(
+        record['pydantic_metadata'])
   return response
 
 

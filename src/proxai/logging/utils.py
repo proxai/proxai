@@ -34,7 +34,8 @@ def _hide_sensitive_content_query_record(
 
 
 def _hide_sensitive_content_query_response_record(
-    query_response_record: types.QueryResponseRecord) -> types.QueryResponseRecord:
+    query_response_record: types.QueryResponseRecord,
+) -> types.QueryResponseRecord:
   query_response_record = copy.deepcopy(query_response_record)
   if query_response_record.response:
     query_response_record.response = types.Response(

@@ -120,7 +120,7 @@ class CohereConnector(model_connector.ProviderModelConnector):
       query_function: Callable,
       query_record: types.QueryRecord):
     # Note: Cohere doesn't have native pydantic support like OpenAI's parse.
-    # We use json_object with schema and parse manually in format_pydantic_response.
+    # We use json_object with schema and parse manually.
     pydantic_class = query_record.response_format.value.class_value
     schema = pydantic_class.model_json_schema()
     return functools.partial(
@@ -138,14 +138,16 @@ class CohereConnector(model_connector.ProviderModelConnector):
     """Extract text from Cohere v2 API response content items.
 
     The content array can contain different types of items:
-    - TextAssistantMessageResponseContentItem (type='text') - has .text attribute
-    - ThinkingAssistantMessageResponseContentItem (type='thinking') - no .text attribute
+    - TextAssistantMessageResponseContentItem (type='text') - has .text
+    - ThinkingAssistantMessageResponseContentItem (type='thinking') - no .text
 
     We need to find the item with type='text' to get the actual response.
     """
     for item in content_items:
-      # Check if item has 'type' attribute and it's 'text', or if it has 'text' attribute
-      if hasattr(item, 'type') and item.type == 'text' or hasattr(item, 'text') and not hasattr(item, 'type'):
+      # Check if item has 'type' attribute and it's 'text'
+      has_text_type = hasattr(item, 'type') and item.type == 'text'
+      has_text_only = hasattr(item, 'text') and not hasattr(item, 'type')
+      if has_text_type or has_text_only:
         return item.text
 
     # Fallback: try to find any item with a text attribute

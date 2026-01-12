@@ -106,8 +106,9 @@ class AvailableModels(state_controller.StateControlled):
     if provider_model in self.model_connectors:
       return self.model_connectors[provider_model]
 
-    provider_model_config = self.model_configs_instance.get_provider_model_config(
-        provider_model_identifier)
+    provider_model_config = (
+        self.model_configs_instance.get_provider_model_config(
+            provider_model_identifier))
     connector = model_registry.get_model_connector(
         provider_model_config=provider_model_config)
 
@@ -134,8 +135,11 @@ class AvailableModels(state_controller.StateControlled):
     return self.get_state_controlled_property_value('model_configs_instance')
 
   @model_configs_instance.setter
-  def model_configs_instance(self, model_configs_instance: model_configs.ModelConfigs):
-    self.set_state_controlled_property_value('model_configs_instance', model_configs_instance)
+  def model_configs_instance(
+      self, model_configs_instance: model_configs.ModelConfigs
+  ):
+    self.set_state_controlled_property_value(
+        'model_configs_instance', model_configs_instance)
 
   def model_configs_instance_deserializer(
       self,
@@ -217,7 +221,8 @@ class AvailableModels(state_controller.StateControlled):
       self,
       models: types.ModelStatus,
       call_type: types.CallType):
-    provider_models = self.model_configs_instance.get_all_models(call_type=call_type)
+    provider_models = self.model_configs_instance.get_all_models(
+        call_type=call_type)
     for provider_model in provider_models:
       models.unprocessed_models.add(provider_model)
 
@@ -624,7 +629,8 @@ class AvailableModels(state_controller.StateControlled):
                   f'  {len(models.failed_models)} models are failed.')
 
     if models.unprocessed_models:
-      verbose_print(f'Running test for {len(models.unprocessed_models)} models.')
+      verbose_print(
+          f'Running test for {len(models.unprocessed_models)} models.')
       self._test_models(
           models,
           call_type=types.CallType.GENERATE_TEXT,
@@ -731,8 +737,9 @@ class AvailableModels(state_controller.StateControlled):
     if call_type != types.CallType.GENERATE_TEXT:
       raise ValueError(f'Call type not supported: {call_type}')
 
-    provider_model_config = self.model_configs_instance.get_provider_model_config(
-        (provider, model))
+    provider_model_config = (
+        self.model_configs_instance.get_provider_model_config(
+            (provider, model)))
 
     if provider_model_config.metadata.call_type != call_type:
       raise ValueError(
@@ -902,8 +909,9 @@ class AvailableModels(state_controller.StateControlled):
     if call_type != types.CallType.GENERATE_TEXT:
       raise ValueError(f'Call type not supported: {call_type}')
 
-    provider_model_config = self.model_configs_instance.get_provider_model_config(
-        (provider, model))
+    provider_model_config = (
+        self.model_configs_instance.get_provider_model_config(
+            (provider, model)))
 
     if provider_model_config.metadata.call_type != call_type:
       raise ValueError(

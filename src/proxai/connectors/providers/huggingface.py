@@ -133,7 +133,7 @@ class HuggingFaceConnector(model_connector.ProviderModelConnector):
       query_function: Callable,
       query_record: types.QueryRecord):
     raise Exception(
-        'Web search is not supported for HuggingFace. Code should never reach here.')
+        'Web search is not supported for HuggingFace.')
 
   def format_text_response_from_provider(
       self,

@@ -200,7 +200,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       except json.JSONDecodeError:
         pass
       # Strategy 4: Replace single quotes with double quotes
-      # Only try this if the candidate has no double quotes (pure Python dict style)
+      # Only try this if candidate has no double quotes (Python dict style)
       if '"' not in candidate:
         try:
           return json.loads(candidate.replace("'", '"'))
@@ -296,21 +296,21 @@ class ProviderModelConnector(state_controller.StateControlled):
             message=message)
         raise Exception(message)
     elif (feature_mapping_strategy ==
-          types.FeatureMappingStrategy.BEST_EFFORT):
-      if (len(supported_endpoints) == 0 and
-          len(best_effort_endpoints) == 0):
-        if not raise_error:
-          return False
-        message = (
-            f'For {provider_model}, it is not possible to ' +
-            'use following features all at once in BEST_EFFORT mode. ' +
-            'Please consider to remove some features.\n' +
-            f'Requested features: {", ".join(features)}.')
-        logging_utils.log_message(
-            type=types.LoggingType.ERROR,
-            logging_options=self.logging_options,
-            message=message)
-        raise Exception(message)
+          types.FeatureMappingStrategy.BEST_EFFORT
+          and len(supported_endpoints) == 0
+          and len(best_effort_endpoints) == 0):
+      if not raise_error:
+        return False
+      message = (
+          f'For {provider_model}, it is not possible to ' +
+          'use following features all at once in BEST_EFFORT mode. ' +
+          'Please consider to remove some features.\n' +
+          f'Requested features: {", ".join(features)}.')
+      logging_utils.log_message(
+          type=types.LoggingType.ERROR,
+          logging_options=self.logging_options,
+          message=message)
+      raise Exception(message)
     return True
 
   def _select_endpoint(
@@ -463,8 +463,8 @@ class ProviderModelConnector(state_controller.StateControlled):
         feature_signature in self._chosen_endpoint_cached_result):
       chosen_endpoint = self._chosen_endpoint_cached_result[feature_signature]
     else:
-      supported_endpoints, best_effort_endpoints = self._get_available_endpoints(
-          features=features)
+      supported_endpoints, best_effort_endpoints = (
+          self._get_available_endpoints(features=features))
 
       is_endpoints_usable = self._check_endpoints_usability(
           supported_endpoints=supported_endpoints,

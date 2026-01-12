@@ -27,13 +27,13 @@ user.name = "Alice"  # Sets name and automatically updates internal state
 print(user._user_state)  # {'name': 'Alice'}
 """
 import dataclasses
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import Any
 
 import proxai.types as types
 
 
-class BaseStateControlled(ABC):
+class BaseStateControlled:
   def __init__(self, **kwargs):
     pass
 
@@ -45,7 +45,8 @@ class StateControlled(BaseStateControlled):
       init_from_state=None):
     if init_from_params and init_from_state:
       raise ValueError(
-          'init_from_params and init_from_state cannot be set at the same time.')
+          'init_from_params and init_from_state cannot be set '
+          'at the same time.')
 
     if init_from_state is not None:
       self._validate_init_from_state_values(init_from_state)

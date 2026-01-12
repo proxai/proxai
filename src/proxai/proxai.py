@@ -29,7 +29,9 @@ def connect(
     proxdash_options: types.ProxDashOptions | None = None,
     allow_multiprocessing: bool | None = True,
     model_test_timeout: int | None = 25,
-    feature_mapping_strategy: types.FeatureMappingStrategy | None = types.FeatureMappingStrategy.BEST_EFFORT,
+    feature_mapping_strategy: (
+        types.FeatureMappingStrategy | None
+    ) = types.FeatureMappingStrategy.BEST_EFFORT,
     suppress_provider_errors: bool | None = False,
 ) -> None:
   """Initializes the default ProxAI client with the specified configuration.

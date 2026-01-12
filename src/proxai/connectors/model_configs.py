@@ -95,9 +95,10 @@ class ModelConfigs(state_controller.StateControlled):
 
       if not specifier_set.contains(current):
         raise ValueError(
-            f'Current proxai version ({current_version}) does not satisfy the minimum '
-            f'version requirement: {min_proxai_version}. '
-            f'Please upgrade proxai to a version that satisfies this requirement.')
+            f'Current proxai version ({current_version}) does not satisfy '
+            f'the minimum version requirement: {min_proxai_version}. '
+            f'Please upgrade proxai to a version that satisfies this '
+            f'requirement.')
     except InvalidSpecifier as e:
       raise ValueError(
           f'Model configs schema metadata min_proxai_version is invalid. '
@@ -129,7 +130,7 @@ class ModelConfigs(state_controller.StateControlled):
       self,
       provider_model_configs: types.ProviderModelConfigsType
   ) -> set[tuple[str, str]]:
-    """Get set of (provider, model) tuples for all featured models in configs."""
+    """Get (provider, model) tuples for all featured models in configs."""
     featured = set()
     for provider, models in provider_model_configs.items():
       for model_name, config in models.items():
@@ -196,7 +197,8 @@ class ModelConfigs(state_controller.StateControlled):
     """Validate pricing values are non-negative."""
     if pricing is None:
       raise ValueError(
-          f'pricing is None for provider_model_configs[{provider_key}][{model_key}]')
+          f'pricing is None for '
+          f'provider_model_configs[{provider_key}][{model_key}]')
 
     if (pricing.per_query_token_cost is not None and
         pricing.per_query_token_cost < 0):
@@ -207,8 +209,9 @@ class ModelConfigs(state_controller.StateControlled):
     if (pricing.per_response_token_cost is not None and
         pricing.per_response_token_cost < 0):
       raise ValueError(
-          f'per_response_token_cost is negative ({pricing.per_response_token_cost}) '
-          f'for provider_model_configs[{provider_key}][{model_key}]')
+          f'per_response_token_cost is negative '
+          f'({pricing.per_response_token_cost}) for '
+          f'provider_model_configs[{provider_key}][{model_key}]')
 
   def _validate_model_size_tags(
       self,
@@ -259,8 +262,8 @@ class ModelConfigs(state_controller.StateControlled):
       best_effort_not_supported = best_effort & not_supported
       if best_effort_not_supported:
         raise ValueError(
-            f'Features {best_effort_not_supported} appear in both BEST_EFFORT and '
-            'NOT_SUPPORTED for provider_model_configs for '
+            f'Features {best_effort_not_supported} appear in both '
+            'BEST_EFFORT and NOT_SUPPORTED for provider_model_configs for '
             f'({provider_key}, {model_key})\n'
             f'Feature name: {feature_name}\n'
             f'Feature config: {feature}')
@@ -295,7 +298,7 @@ class ModelConfigs(state_controller.StateControlled):
       self,
       provider_model_configs: types.ProviderModelConfigsType,
       featured_models: types.FeaturedModelsType):
-    """Validate featured_models matches is_featured in provider_model_configs."""
+    """Validate featured_models matches is_featured in configs."""
     featured_from_configs = self._get_all_featured_models_from_configs(
         provider_model_configs)
 
@@ -321,7 +324,7 @@ class ModelConfigs(state_controller.StateControlled):
       self,
       provider_model_configs: types.ProviderModelConfigsType,
       models_by_call_type: types.ModelsByCallTypeType):
-    """Validate models_by_call_type matches call_type in provider_model_configs."""
+    """Validate models_by_call_type matches call_type in configs."""
     from_configs = self._get_all_models_by_call_type_from_configs(
         provider_model_configs)
 
@@ -348,13 +351,13 @@ class ModelConfigs(state_controller.StateControlled):
       if extra_in_list:
         raise ValueError(
             f'Models in models_by_call_type[{call_type}] but not marked with '
-            f'that call_type in provider_model_configs: {sorted(extra_in_list)}')
+            f'that call_type in configs: {sorted(extra_in_list)}')
 
   def _validate_models_by_size(
       self,
       provider_model_configs: types.ProviderModelConfigsType,
       models_by_size: types.ModelsBySizeType):
-    """Validate models_by_size matches model_size_tags in provider_model_configs."""
+    """Validate models_by_size matches model_size_tags in configs."""
     from_configs = self._get_all_models_by_size_from_configs(
         provider_model_configs)
 
@@ -458,7 +461,8 @@ class ModelConfigs(state_controller.StateControlled):
       raise FileNotFoundError(
           f'Model config file "{version}.json" not found in package. '
           'Please update the proxai package to the latest version. '
-          'If updating does not resolve the issue, please contact support@proxai.co'
+          'If updating does not resolve the issue, please contact '
+          'support@proxai.co'
       ) from e
 
     try:
@@ -467,8 +471,8 @@ class ModelConfigs(state_controller.StateControlled):
       raise ValueError(
         f'Invalid JSON in config file "{version}.json". '
         'Please update the proxai package to the latest version. '
-        'If updating does not resolve the issue, please contact support@proxai.co\n'
-        f'Error: {e}') from e
+        'If updating does not resolve the issue, please contact '
+        f'support@proxai.co\nError: {e}') from e
 
     return type_serializer.decode_model_configs_schema_type(config_dict)
 
@@ -486,7 +490,8 @@ class ModelConfigs(state_controller.StateControlled):
     """Check if provider model identifier is supported."""
     if model_configs_schema is None:
       model_configs_schema = self.model_configs_schema
-    provider_model_configs = model_configs_schema.version_config.provider_model_configs
+    provider_model_configs = (
+        model_configs_schema.version_config.provider_model_configs)
     if isinstance(provider_model_identifier, types.ProviderModelType):
       provider = provider_model_identifier.provider
       model = provider_model_identifier.model
@@ -606,6 +611,8 @@ class ModelConfigs(state_controller.StateControlled):
     # result should be invalidated and recalculated by the StateController's
     # handle_changes method.
     result = []
-    for provider_model in self.model_configs_schema.version_config.default_model_priority_list:
+    default_list = (
+        self.model_configs_schema.version_config.default_model_priority_list)
+    for provider_model in default_list:
       result.append(self.get_provider_model(provider_model))
     return result

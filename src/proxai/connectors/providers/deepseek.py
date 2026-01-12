@@ -139,7 +139,7 @@ class DeepSeekConnector(model_connector.ProviderModelConnector):
       query_function: Callable,
       query_record: types.QueryRecord):
     raise Exception(
-        'Web search is not supported for DeepSeek. Code should never reach here.')
+        'Web search is not supported for DeepSeek.')
 
   def format_text_response_from_provider(
       self,

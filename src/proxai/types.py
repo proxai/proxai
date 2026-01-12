@@ -1,7 +1,6 @@
 import dataclasses
 import datetime
 import enum
-from abc import ABC
 from typing import Any
 
 import pydantic
@@ -59,7 +58,8 @@ class ProviderModelType:
     return str(self) >= str(other)
 
 
-ProviderModelTupleType = tuple[ProviderNameType, ModelNameType]  # (provider, model) without model_signature
+# (provider, model) without model_signature
+ProviderModelTupleType = tuple[ProviderNameType, ModelNameType]
 ProviderModelIdentifierType = ProviderModelType | ProviderModelTupleType
 StopType = str | list[str]
 MessagesType = list[dict[str, str]]
@@ -404,7 +404,7 @@ class ProxDashConnectionStatus(str, enum.Enum):
   CONNECTED = 'CONNECTED'
 
 
-class StateContainer(ABC):
+class StateContainer:
     """Base class for all state objects in the system."""
     pass
 

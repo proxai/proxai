@@ -1,4 +1,4 @@
-# [ContentBlock(text="Hello! It's nice to meet you. How can I assist you today?", type='text')]
+# [ContentBlock(text="Hello! How can I assist you?", type='text')]
 
 class _MockContentBlock:
   text: str

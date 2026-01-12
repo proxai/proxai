@@ -26,7 +26,8 @@ class ProxAIClientParams:
     proxdash_options: types.ProxDashOptions | None = None
     allow_multiprocessing: bool | None = True
     model_test_timeout: int | None = 25
-    feature_mapping_strategy: types.FeatureMappingStrategy | None = types.FeatureMappingStrategy.BEST_EFFORT
+    feature_mapping_strategy: types.FeatureMappingStrategy | None = (
+        types.FeatureMappingStrategy.BEST_EFFORT)
     suppress_provider_errors: bool | None = False
 
 
@@ -63,7 +64,9 @@ class ProxAIClient(state_controller.StateControlled):
       proxdash_options: types.ProxDashOptions | None = None,
       allow_multiprocessing: bool | None = True,
       model_test_timeout: int | None = 25,
-      feature_mapping_strategy: types.FeatureMappingStrategy | None = types.FeatureMappingStrategy.BEST_EFFORT,
+      feature_mapping_strategy: (
+          types.FeatureMappingStrategy | None
+      ) = types.FeatureMappingStrategy.BEST_EFFORT,
       suppress_provider_errors: bool | None = False,
       init_from_params: ProxAIClientParams | None = None,
       init_from_state: types.ProxAIClientState | None = None
@@ -515,7 +518,9 @@ class ProxAIClient(state_controller.StateControlled):
       raise ValueError(f'Call type not supported: {call_type}')
 
     if call_type not in self.registered_model_connectors:
-      for provider_model in self.model_configs_instance.get_default_model_priority_list():
+      default_models = (
+          self.model_configs_instance.get_default_model_priority_list())
+      for provider_model in default_models:
         try:
           self.available_models_instance.get_working_model(
               provider=provider_model.provider,
@@ -730,8 +735,10 @@ class ProxAIClient(state_controller.StateControlled):
       else:
         error_traceback = ''
         if logging_record.response_record.error_traceback:
-          error_traceback = logging_record.response_record.error_traceback + '\n'
-        raise Exception(error_traceback + logging_record.response_record.error)
+          error_traceback = (
+              logging_record.response_record.error_traceback + '\n')
+        raise Exception(
+            error_traceback + logging_record.response_record.error)
 
     if (logging_record.response_record.response.type ==
         types.ResponseType.PYDANTIC):
