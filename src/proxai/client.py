@@ -26,16 +26,149 @@ class ProxAIClientParams:
     proxdash_options: Optional[types.ProxDashOptions] = None
     allow_multiprocessing: Optional[bool] = True
     model_test_timeout: Optional[int] = 25
-    feature_mapping_strategy: Optional[types.FeatureMappingStrategy] = types.FeatureMappingStrategy.BEST_EFFORT
+    feature_mapping_strategy: Optional[
+        types.FeatureMappingStrategy
+    ] = types.FeatureMappingStrategy.BEST_EFFORT
     suppress_provider_errors: Optional[bool] = False
 
 
 class ProxAIClient(state_controller.StateControlled):
+  """A client for interacting with multiple AI providers through a unified API.
+
+  ProxAIClient provides a consistent interface for text generation across
+  different AI providers (OpenAI, Anthropic, Google, etc.). It handles
+  model selection, caching, logging, and error handling.
+
+  This class can be used directly for more control over client instances,
+  or accessed via the module-level functions (px.connect(), px.generate_text())
+  which use a default global client.
+
+  Example:
+      >>> import proxai as px
+      >>> # Create a custom client instance
+      >>> client = px.Client(
+      ...     cache_options=px.CacheOptions(cache_path='/tmp/cache'),
+      ...     logging_options=px.LoggingOptions(stdout=True),
+      ... )
+      >>> response = client.generate_text(prompt='Hello, world!')
+
+      >>> # Or use the simpler module-level API
+      >>> px.connect(cache_options=px.CacheOptions(cache_path='/tmp/cache'))
+      >>> response = px.generate_text(prompt='Hello, world!')
+  """
+
   def __init__(
       self,
+      experiment_path: Optional[str] = None,
+      cache_options: Optional[types.CacheOptions] = None,
+      logging_options: Optional[types.LoggingOptions] = None,
+      proxdash_options: Optional[types.ProxDashOptions] = None,
+      allow_multiprocessing: Optional[bool] = True,
+      model_test_timeout: Optional[int] = 25,
+      feature_mapping_strategy: Optional[
+          types.FeatureMappingStrategy
+      ] = types.FeatureMappingStrategy.BEST_EFFORT,
+      suppress_provider_errors: Optional[bool] = False,
       init_from_params: Optional[ProxAIClientParams] = None,
       init_from_state: Optional[types.ProxAIClientState] = None
-  ):
+  ) -> None:
+    """Initializes a new ProxAI client instance.
+
+    Creates a client with the specified configuration for caching, logging,
+    and behavior options. The client can be configured either through
+    individual parameters or by passing a ProxAIClientParams object.
+
+    Args:
+        experiment_path: Path identifier for organizing experiments. Used to
+            group related API calls and logs together under a common path.
+        cache_options: Configuration for query and model caching behavior.
+            Controls cache paths, response limits, and cache clearing options.
+            See CacheOptions for available settings.
+        logging_options: Configuration for logging behavior. Controls log file
+            paths, stdout output, and sensitive content handling.
+            See LoggingOptions for available settings.
+        proxdash_options: Configuration for ProxDash monitoring integration.
+            Controls API key, base URL, and output options.
+            See ProxDashOptions for available settings.
+        allow_multiprocessing: Whether to test models in parallel using
+            multiprocessing. Disable if you encounter process spawning errors
+            (common in Jupyter notebooks, AWS Lambda, or on Windows/macOS
+            without proper multiprocessing guards). Defaults to True.
+        model_test_timeout: Timeout in seconds for individual model tests
+            during health checks. Models that don't respond within this time
+            are marked as failed. Defaults to 25.
+        feature_mapping_strategy: Strategy for handling feature compatibility
+            between requests and model capabilities. BEST_EFFORT attempts to
+            map features even if not fully supported (e.g., simulating system
+            messages), STRICT requires exact feature support and raises errors
+            otherwise. Defaults to BEST_EFFORT.
+        suppress_provider_errors: If True, provider errors are returned as
+            error strings instead of raising exceptions. Useful for graceful
+            error handling in production. Defaults to False.
+        init_from_params: Internal parameter for initializing from a
+            ProxAIClientParams object. Cannot be used together with other
+            parameters.
+        init_from_state: Internal parameter for restoring client state.
+            Cannot be used together with other parameters.
+
+    Raises:
+        ValueError: If init_from_params or init_from_state is provided
+            together with other parameters.
+
+    Example:
+        >>> import proxai as px
+        >>> client = px.Client(
+        ...     experiment_path='my_experiment',
+        ...     cache_options=px.CacheOptions(
+        ...         cache_path='/tmp/proxai_cache',
+        ...         unique_response_limit=3,
+        ...     ),
+        ...     logging_options=px.LoggingOptions(
+        ...         logging_path='/tmp/proxai_logs',
+        ...         stdout=True,
+        ...     ),
+        ...     suppress_provider_errors=True,
+        ... )
+        >>> response = client.generate_text(
+        ...     prompt='What is the capital of France?'
+        ... )
+    """
+    if init_from_params is not None or init_from_state is not None:
+      if (experiment_path is not None or
+          cache_options is not None or
+          logging_options is not None or
+          proxdash_options is not None or
+          allow_multiprocessing != True or
+          model_test_timeout != 25 or
+          (feature_mapping_strategy !=
+           types.FeatureMappingStrategy.BEST_EFFORT) or
+          suppress_provider_errors != False):
+        raise ValueError(
+            'init_from_params or init_from_state cannot be set at with '
+            'direct arguments. Please use one of init_from_params, '
+            'init_from_state, or direct arguments.\n'
+            'experiment_path: {experiment_path}\n'
+            'cache_options: {cache_options}\n'
+            'logging_options: {logging_options}\n'
+            'proxdash_options: {proxdash_options}\n'
+            'allow_multiprocessing: {allow_multiprocessing}\n'
+            'model_test_timeout: {model_test_timeout}\n'
+            'feature_mapping_strategy: {feature_mapping_strategy}\n'
+            'suppress_provider_errors: {suppress_provider_errors}\n'
+            'init_from_params: {init_from_params}\n'
+            'init_from_state: {init_from_state}\n'
+        )
+    else:
+      init_from_params = ProxAIClientParams(
+        experiment_path=experiment_path,
+        cache_options=cache_options,
+        logging_options=logging_options,
+        proxdash_options=proxdash_options,
+        allow_multiprocessing=allow_multiprocessing,
+        model_test_timeout=model_test_timeout,
+        feature_mapping_strategy=feature_mapping_strategy,
+        suppress_provider_errors=suppress_provider_errors)
+
     super().__init__(
         init_from_params=init_from_params,
         init_from_state=init_from_state)
@@ -416,7 +549,31 @@ class ProxAIClient(state_controller.StateControlled):
   def set_model(
       self,
       provider_model: Optional[types.ProviderModelIdentifierType] = None,
-      generate_text: Optional[types.ProviderModelIdentifierType] = None):
+      generate_text: Optional[types.ProviderModelIdentifierType] = None,
+  ) -> None:
+    """Sets the default model for text generation requests.
+
+    Configures which AI provider and model should be used for subsequent
+    generate_text() calls when no explicit provider_model is specified.
+
+    Args:
+        provider_model: The provider and model to use as default. Can be
+            specified as a tuple like ('openai', 'gpt-4') or a
+            ProviderModelType instance.
+        generate_text: Alias for provider_model. Use this parameter name
+            for clarity when setting the model specifically for text
+            generation. Cannot be used together with provider_model.
+
+    Raises:
+        ValueError: If both provider_model and generate_text are provided,
+            or if neither is provided.
+
+    Example:
+        >>> client = px.Client()
+        >>> client.set_model(provider_model=('openai', 'gpt-4'))
+        >>> # Or equivalently:
+        >>> client.set_model(generate_text=('anthropic', 'claude-3-opus'))
+    """
     if provider_model and generate_text:
       raise ValueError('provider_model and generate_text cannot be set at the '
                       'same time. Please set one of them.')
@@ -448,7 +605,80 @@ class ProxAIClient(state_controller.StateControlled):
       use_cache: Optional[bool] = None,
       unique_response_limit: Optional[int] = None,
       extensive_return: bool = False,
-      suppress_provider_errors: Optional[bool] = None) -> Union[str, types.LoggingRecord]:
+      suppress_provider_errors: Optional[bool] = None,
+  ) -> Union[str, types.LoggingRecord]:
+    """Generates text using the configured AI model.
+
+    Sends a text generation request to the AI provider using either a simple
+    prompt or a structured messages format. Supports various configuration
+    options including response formatting, caching, and error handling.
+
+    Args:
+        prompt: Simple text prompt for the AI model. Cannot be used together
+            with messages parameter.
+        system: System message to set the AI's behavior and context. Provides
+            instructions that guide the model's responses.
+        messages: List of message dictionaries for multi-turn conversations.
+            Each message should have 'role' and 'content' keys. Cannot be
+            used together with prompt parameter.
+        max_tokens: Maximum number of tokens to generate in the response.
+            If not specified, uses the model's default limit.
+        temperature: Sampling temperature between 0 and 2. Higher values
+            (e.g., 0.8) make output more random, lower values (e.g., 0.2)
+            make it more deterministic.
+        stop: String or list of strings that will stop generation when
+            encountered in the output.
+        response_format: Specifies the desired response format. Can be a
+            Pydantic model class for structured output, a JSON schema dict,
+            or a StructuredResponseFormat instance.
+        web_search: Whether to enable web search capabilities for models
+            that support it.
+        provider_model: Specific provider and model to use for this request,
+            overriding the default model. Can be a tuple like
+            ('openai', 'gpt-4') or a ProviderModelType instance.
+        feature_mapping_strategy: Strategy for handling feature compatibility.
+            Overrides the client-level setting for this request.
+        use_cache: Whether to use query caching for this request. If None,
+            uses cache if available and configured.
+        unique_response_limit: Number of unique responses to collect before
+            returning from cache. Useful for generating diverse outputs.
+        extensive_return: If True, returns the full LoggingRecord with
+            metadata instead of just the response text.
+        suppress_provider_errors: If True, returns error messages as strings
+            instead of raising exceptions. Overrides client-level setting.
+
+    Returns:
+        Union[str, types.LoggingRecord]: The generated text response as a
+            string, or the full LoggingRecord if extensive_return is True.
+            If response_format specifies a Pydantic model, returns an
+            instance of that model.
+
+    Raises:
+        ValueError: If both prompt and messages are provided, or if use_cache
+            is True but cache is not configured.
+        Exception: If the provider returns an error and suppress_provider_errors
+            is False.
+
+    Example:
+        >>> client = px.Client()
+        >>> response = client.generate_text(
+        ...     prompt='What is the capital of France?'
+        ... )
+        >>> print(response)
+        'The capital of France is Paris.'
+
+        >>> # Using structured output
+        >>> from pydantic import BaseModel
+        >>> class City(BaseModel):
+        ...     name: str
+        ...     country: str
+        >>> result = client.generate_text(
+        ...     prompt='What is the capital of France?',
+        ...     response_format=City
+        ... )
+        >>> print(result.name)
+        'Paris'
+    """
     if prompt is not None and messages is not None:
       raise ValueError('prompt and messages cannot be set at the same time.')
     if messages is not None:
@@ -522,7 +752,33 @@ class ProxAIClient(state_controller.StateControlled):
 
   def get_current_options(
       self,
-      json: bool = False):
+      json: bool = False,
+  ) -> Union[types.RunOptions, dict]:
+    """Returns the current configuration options of this client.
+
+    Retrieves all active configuration settings including run type, experiment
+    path, logging options, cache options, and other runtime parameters.
+
+    Args:
+        json: If True, returns the options as a JSON-serializable dictionary.
+            If False, returns a RunOptions dataclass. Defaults to False.
+
+    Returns:
+        Union[types.RunOptions, dict]: The current configuration as either
+            a RunOptions dataclass or a dictionary depending on the json
+            parameter.
+
+    Example:
+        >>> client = px.Client(
+        ...     cache_options=px.CacheOptions(cache_path='/tmp/cache')
+        ... )
+        >>> options = client.get_current_options()
+        >>> print(options.cache_options.cache_path)
+        '/tmp/cache'
+
+        >>> # Get as JSON-serializable dict
+        >>> options_dict = client.get_current_options(json=True)
+    """
     run_options = types.RunOptions(
         run_type=self.run_type,
         hidden_run_key=self.hidden_run_key,
