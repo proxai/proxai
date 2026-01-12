@@ -1,5 +1,6 @@
-import proxai.experiment.experiment as experiment
 import pytest
+
+import proxai.experiment.experiment as experiment
 
 
 class TestExperiment:
