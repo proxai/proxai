@@ -59,6 +59,8 @@ class _MockResponses:
 
 
 class OpenAIMock:
+  """Mock OpenAI API client for testing."""
+
   chat: _MockChat
   beta: _MockBeta
   responses: _MockResponses

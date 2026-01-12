@@ -7,11 +7,15 @@ import pydantic
 
 
 class RunType(enum.Enum):
+  """Execution mode for the ProxAI client."""
+
   PRODUCTION = 'PRODUCTION'
   TEST = 'TEST'
 
 
 class CallType(str, enum.Enum):
+  """Type of API call being made to the provider."""
+
   GENERATE_TEXT = 'GENERATE_TEXT'
   OTHER = 'OTHER'
 
@@ -23,36 +27,38 @@ RawProviderModelIdentifierType = str
 
 @dataclasses.dataclass(frozen=True)
 class ProviderModelType:
+  """Immutable identifier for a specific provider and model combination."""
+
   provider: ProviderNameType
   model: ModelNameType
   provider_model_identifier: RawProviderModelIdentifierType
 
-  def __str__(self):
+  def __str__(self):  # noqa: D105
     return f'({self.provider}, {self.model})'
 
-  def __repr__(self):
+  def __repr__(self):  # noqa: D105
     return (
         'ProviderModelType('
         f'provider={self.provider}, '
         f'model={self.model}, '
         f'provider_model_identifier={self.provider_model_identifier})')
 
-  def __lt__(self, other):
+  def __lt__(self, other):  # noqa: D105
     if not isinstance(other, ProviderModelType):
       return NotImplemented
     return str(self) < str(other)
 
-  def __gt__(self, other):
+  def __gt__(self, other):  # noqa: D105
     if not isinstance(other, ProviderModelType):
       return NotImplemented
     return str(self) > str(other)
 
-  def __le__(self, other):
+  def __le__(self, other):  # noqa: D105
     if not isinstance(other, ProviderModelType):
       return NotImplemented
     return str(self) <= str(other)
 
-  def __ge__(self, other):
+  def __ge__(self, other):  # noqa: D105
     if not isinstance(other, ProviderModelType):
       return NotImplemented
     return str(self) >= str(other)
@@ -67,18 +73,24 @@ MessagesType = list[dict[str, str]]
 
 @dataclasses.dataclass
 class ProviderModelPricingType:
+  """Cost information for a model's token usage."""
+
   per_response_token_cost: float | None = None
   per_query_token_cost: float | None = None
 
 
 @dataclasses.dataclass
 class EndpointFeatureInfoType:
+  """Feature support levels for a provider endpoint."""
+
   supported: list[str] = dataclasses.field(default_factory=list)
   best_effort: list[str] = dataclasses.field(default_factory=list)
   not_supported: list[str] = dataclasses.field(default_factory=list)
 
 
 class FeatureNameType(str, enum.Enum):
+  """Available features that can be used with model queries."""
+
   PROMPT = 'prompt'
   MESSAGES = 'messages'
   SYSTEM = 'system'
@@ -98,6 +110,8 @@ FeatureListParam = list[str | FeatureNameType]
 
 
 class ModelSizeType(str, enum.Enum):
+  """Size category for AI models."""
+
   SMALL = 'small'
   MEDIUM = 'medium'
   LARGE = 'large'
@@ -108,6 +122,8 @@ ModelSizeIdentifierType = ModelSizeType | str
 
 @dataclasses.dataclass
 class ProviderModelMetadataType:
+  """Metadata describing a model's characteristics and capabilities."""
+
   call_type: CallType | None = None
   is_featured: bool | None = None
   model_size_tags: list[ModelSizeType] | None = None
@@ -120,6 +136,8 @@ FeatureMappingType = dict[FeatureNameType, EndpointFeatureInfoType]
 
 @dataclasses.dataclass
 class ProviderModelConfigType:
+  """Complete configuration for a provider model."""
+
   provider_model: ProviderModelType | None = None
   pricing: ProviderModelPricingType | None = None
   features: FeatureMappingType | None = None
@@ -127,6 +145,8 @@ class ProviderModelConfigType:
 
 
 class ConfigOriginType(enum.Enum):
+  """Source of the model configuration."""
+
   BUILT_IN = 'BUILT_IN'
   PROXDASH = 'PROXDASH'
 
@@ -144,6 +164,8 @@ DefaultModelPriorityListType = tuple[ProviderModelIdentifierType]
 
 @dataclasses.dataclass
 class ModelConfigsSchemaMetadataType:
+  """Version and release information for model configurations."""
+
   version: str | None = None
   released_at: datetime.datetime | None = None
   min_proxai_version: str | None = None
@@ -153,6 +175,8 @@ class ModelConfigsSchemaMetadataType:
 
 @dataclasses.dataclass
 class ModelConfigsSchemaVersionConfigType:
+  """Model configurations grouped by various categorizations."""
+
   provider_model_configs: ProviderModelConfigsType | None = None
 
   featured_models: FeaturedModelsType | None = None
@@ -163,18 +187,24 @@ class ModelConfigsSchemaVersionConfigType:
 
 @dataclasses.dataclass
 class ModelConfigsSchemaType:
+  """Complete schema containing all model configurations."""
+
   metadata: ModelConfigsSchemaMetadataType | None = None
   version_config: ModelConfigsSchemaVersionConfigType | None = None
 
 
 @dataclasses.dataclass
 class LoggingOptions:
+  """Configuration for logging behavior."""
+
   logging_path: str | None = None
   stdout: bool = False
   hide_sensitive_content: bool = False
 
 
 class LoggingType(str, enum.Enum):
+  """Severity level for log messages."""
+
   QUERY = 'QUERY'
   ERROR = 'ERROR'
   WARNING = 'WARNING'
@@ -183,6 +213,8 @@ class LoggingType(str, enum.Enum):
 
 @dataclasses.dataclass
 class CacheOptions:
+  """Configuration for query and model caching behavior."""
+
   cache_path: str | None = None
 
   unique_response_limit: int | None = 1
@@ -196,6 +228,8 @@ class CacheOptions:
 
 @dataclasses.dataclass
 class ProxDashOptions:
+  """Configuration for ProxDash monitoring integration."""
+
   stdout: bool = False
   hide_sensitive_content: bool = False
   disable_proxdash: bool = False
@@ -205,16 +239,22 @@ class ProxDashOptions:
 
 @dataclasses.dataclass
 class SummaryOptions:
+  """Output format options for summary reports."""
+
   json: bool = True
 
 
 class FeatureMappingStrategy(str, enum.Enum):
+  """Strategy for handling unsupported features in API calls."""
+
   BEST_EFFORT = 'BEST_EFFORT'
   STRICT = 'STRICT'
 
 
 @dataclasses.dataclass
 class RunOptions:
+  """Combined runtime configuration for a ProxAI session."""
+
   run_type: RunType | None = None
   hidden_run_key: str | None = None
   experiment_path: str | None = None
@@ -231,6 +271,8 @@ class RunOptions:
 
 @dataclasses.dataclass
 class ResponseFormatPydanticValue:
+  """Pydantic model information for structured response parsing."""
+
   class_name: str | None = None
   class_value: type[pydantic.BaseModel] | None = None
   class_json_schema_value: dict[str, Any] | None = None
@@ -240,6 +282,8 @@ ResponseFormatValueType = str | dict[str, Any] | ResponseFormatPydanticValue
 
 
 class ResponseFormatType(str, enum.Enum):
+  """Expected format of the model response."""
+
   TEXT = 'TEXT'
   JSON = 'JSON'
   JSON_SCHEMA = 'JSON_SCHEMA'
@@ -248,6 +292,8 @@ class ResponseFormatType(str, enum.Enum):
 
 @dataclasses.dataclass
 class ResponseFormat:
+  """Specification for the desired response format."""
+
   value: ResponseFormatValueType | None = None
   type: ResponseFormatType | None = None
 
@@ -256,6 +302,8 @@ ResponseFormatSchema = str | dict[str, Any] | type[pydantic.BaseModel]
 
 @dataclasses.dataclass
 class StructuredResponseFormat:
+    """User-facing structured response format specification."""
+
     schema: ResponseFormatSchema | None = None
     type: ResponseFormatType | None = None
 
@@ -264,6 +312,8 @@ ResponseFormatParam = ResponseFormatSchema | StructuredResponseFormat
 
 @dataclasses.dataclass
 class QueryRecord:
+  """Complete record of a query sent to a provider."""
+
   call_type: CallType | None = None
   provider_model: ProviderModelType | None = None
   prompt: str | None = None
@@ -282,6 +332,8 @@ class QueryRecord:
 
 @dataclasses.dataclass
 class PydanticMetadataType:
+  """Metadata for serializing and deserializing Pydantic instances."""
+
   class_name: str | None = None
   instance_json_value: dict[str, Any] | None = None
 
@@ -290,6 +342,8 @@ ResponseValue = str | dict[str, Any] | pydantic.BaseModel
 
 
 class ResponseType(str, enum.Enum):
+  """Type of the response value returned by the model."""
+
   TEXT = 'TEXT'
   JSON = 'JSON'
   PYDANTIC = 'PYDANTIC'
@@ -297,6 +351,8 @@ class ResponseType(str, enum.Enum):
 
 @dataclasses.dataclass
 class Response:
+  """Response data returned from a model query."""
+
   value: ResponseValue | None = None
   type: ResponseType | None = None
   pydantic_metadata: PydanticMetadataType | None = None
@@ -304,6 +360,8 @@ class Response:
 
 @dataclasses.dataclass
 class QueryResponseRecord:
+  """Complete response record including timing and error information."""
+
   response: Response | None = None
   error: str | None = None
   error_traceback: str | None = None
@@ -317,6 +375,8 @@ class QueryResponseRecord:
 
 @dataclasses.dataclass
 class CacheRecord:
+  """Cached query and its associated responses."""
+
   query_record: QueryRecord | None = None
   query_responses: list[QueryResponseRecord] = dataclasses.field(
       default_factory=list)
@@ -327,6 +387,8 @@ class CacheRecord:
 
 @dataclasses.dataclass
 class LightCacheRecord:
+  """Lightweight cache metadata without full response data."""
+
   query_record_hash: str | None = None
   query_response_count: int | None = None
   shard_id: int | None = None
@@ -335,6 +397,8 @@ class LightCacheRecord:
 
 
 class CacheLookFailReason(str, enum.Enum):
+  """Reason why a cache lookup did not return a result."""
+
   CACHE_NOT_FOUND = 'CACHE_NOT_FOUND'
   CACHE_NOT_MATCHED = 'CACHE_NOT_MATCHED'
   UNIQUE_RESPONSE_LIMIT_NOT_REACHED = 'UNIQUE_RESPONSE_LIMIT_NOT_REACHED'
@@ -343,17 +407,23 @@ class CacheLookFailReason(str, enum.Enum):
 
 @dataclasses.dataclass
 class CacheLookResult:
+  """Result of a cache lookup operation."""
+
   query_response: QueryResponseRecord | None = None
   look_fail_reason: CacheLookFailReason | None = None
 
 
 class ResponseSource(str, enum.Enum):
+  """Origin of the response data."""
+
   CACHE = 'CACHE'
   PROVIDER = 'PROVIDER'
 
 
 @dataclasses.dataclass
 class LoggingRecord:
+  """Complete log entry for a query and its response."""
+
   query_record: QueryRecord | None = None
   response_record: QueryResponseRecord | None = None
   response_source: ResponseSource | None = None
@@ -362,6 +432,8 @@ class LoggingRecord:
 
 @dataclasses.dataclass
 class ModelStatus:
+  """Tracking status of models during availability testing."""
+
   unprocessed_models: set[ProviderModelType] = dataclasses.field(
       default_factory=set)
   working_models: set[ProviderModelType] = dataclasses.field(
@@ -378,6 +450,8 @@ ModelStatusByCallType = dict[CallType, ModelStatus]
 
 
 class ModelCacheManagerStatus(str, enum.Enum):
+  """Current operational status of the model cache manager."""
+
   INITIALIZING = 'INITIALIZING'
   CACHE_OPTIONS_NOT_FOUND = 'CACHE_OPTIONS_NOT_FOUND'
   CACHE_PATH_NOT_FOUND = 'CACHE_PATH_NOT_FOUND'
@@ -387,6 +461,8 @@ class ModelCacheManagerStatus(str, enum.Enum):
 
 
 class QueryCacheManagerStatus(str, enum.Enum):
+  """Current operational status of the query cache manager."""
+
   INITIALIZING = 'INITIALIZING'
   CACHE_OPTIONS_NOT_FOUND = 'CACHE_OPTIONS_NOT_FOUND'
   CACHE_PATH_NOT_FOUND = 'CACHE_PATH_NOT_FOUND'
@@ -396,6 +472,8 @@ class QueryCacheManagerStatus(str, enum.Enum):
 
 
 class ProxDashConnectionStatus(str, enum.Enum):
+  """Current connection status with the ProxDash service."""
+
   INITIALIZING = 'INITIALIZING'
   DISABLED = 'DISABLED'
   API_KEY_NOT_FOUND = 'API_KEY_NOT_FOUND'
@@ -411,17 +489,23 @@ class StateContainer:
 
 @dataclasses.dataclass
 class ModelConfigsState(StateContainer):
+  """Persisted state for model configuration data."""
+
   model_configs_schema: ModelConfigsSchemaType | None = None
 
 
 @dataclasses.dataclass
 class ModelCacheManagerState(StateContainer):
+  """Persisted state for the model cache manager."""
+
   status: ModelCacheManagerStatus | None = None
   cache_options: CacheOptions | None = None
 
 
 @dataclasses.dataclass
 class QueryCacheManagerState(StateContainer):
+  """Persisted state for the query cache manager."""
+
   status: QueryCacheManagerStatus | None = None
   cache_options: CacheOptions | None = None
   shard_count: int | None = 800
@@ -431,6 +515,8 @@ class QueryCacheManagerState(StateContainer):
 
 @dataclasses.dataclass
 class ProxDashConnectionState(StateContainer):
+  """Persisted state for ProxDash connection."""
+
   status: ProxDashConnectionStatus | None = None
   hidden_run_key: str | None = None
   experiment_path: str | None = None
@@ -442,6 +528,8 @@ class ProxDashConnectionState(StateContainer):
 
 @dataclasses.dataclass
 class ProviderModelState(StateContainer):
+  """Persisted state for a specific provider model connector."""
+
   provider_model: ProviderModelType | None = None
   run_type: RunType | None = None
   provider_model_config: ProviderModelConfigType | None = None
@@ -453,6 +541,8 @@ class ProviderModelState(StateContainer):
 
 @dataclasses.dataclass
 class AvailableModelsState(StateContainer):
+  """Persisted state for available models discovery."""
+
   run_type: RunType | None = None
   model_configs_instance: ModelConfigsState | None = None
   model_cache_manager: ModelCacheManagerState | None = None
@@ -467,6 +557,8 @@ class AvailableModelsState(StateContainer):
 
 @dataclasses.dataclass
 class ProxAIClientState(StateContainer):
+  """Complete persisted state for a ProxAI client instance."""
+
   run_type: RunType | None = None
   hidden_run_key: str | None = None
   experiment_path: str | None = None

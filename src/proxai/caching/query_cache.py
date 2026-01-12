@@ -21,6 +21,7 @@ _QUERY_CACHE_MANAGER_STATE_PROPERTY = '_query_cache_manager_state'
 
 
 def _to_light_cache_record(cache_record: types.CacheRecord):
+  """Convert a full CacheRecord to a lightweight version."""
   return types.LightCacheRecord(
       query_record_hash=cache_record.query_record.hash_value,
       query_response_count=len(cache_record.query_responses),
@@ -31,6 +32,7 @@ def _to_light_cache_record(cache_record: types.CacheRecord):
 
 def _get_cache_size(
     cache_record: types.CacheRecord | types.LightCacheRecord) -> int:
+  """Calculate the storage size of a cache record."""
   if isinstance(cache_record, types.LightCacheRecord):
     return cache_record.query_response_count + 1
   return len(cache_record.query_responses) + 1
@@ -41,6 +43,7 @@ def _get_hash_value(
         str | types.CacheRecord | types.LightCacheRecord | types.QueryRecord
     ),
 ) -> str:
+  """Extract or compute the hash value from a cache-related object."""
   if isinstance(cache_record, str):
     return cache_record
   if isinstance(cache_record, types.CacheRecord):
@@ -67,6 +70,8 @@ def _get_hash_value(
 
 
 class HeapManager:
+  """Priority queue with lazy deletion and optional size tracking."""
+
   _heap: list[tuple[int, int | str]]
   _active_values: dict[int | str, int]
   _record_size_map: dict[int | str, int]
@@ -86,6 +91,7 @@ class HeapManager:
       key: int | str,
       value: int,
       record_size: int = None):
+    """Add or update an entry in the heap."""
     if not self._with_size and record_size:
       raise ValueError('Cannot push record size without with_size=True')
     if self._with_size and not record_size:
@@ -99,6 +105,7 @@ class HeapManager:
     heapq.heappush(self._heap, (value, key))
 
   def pop(self) -> tuple[int, int | str] | None:
+    """Remove and return the entry with the smallest value."""
     while self._heap:
       value, key = heapq.heappop(self._heap)
       if key in self._active_values and self._active_values[key] == value:
@@ -110,6 +117,7 @@ class HeapManager:
     return None, None
 
   def top(self) -> tuple[int, int | str] | None:
+    """Peek at the entry with the smallest value without removing it."""
     while self._heap:
       value, key = self._heap[0]
       if key in self._active_values and self._active_values[key] == value:
@@ -124,6 +132,8 @@ class HeapManager:
 
 
 class ShardManager:
+  """Manages sharded file storage for cache records."""
+
   _path: str
   _shard_count: int
   _response_per_file: int
@@ -376,6 +386,7 @@ class ShardManager:
 
   def get_cache_record(
       self, query_record: types.QueryRecord | str) -> types.CacheRecord | None:
+    """Retrieve a cache record by query record or hash value."""
     hash_value = _get_hash_value(query_record)
     if hash_value not in self._light_cache_records:
       return None
@@ -393,6 +404,7 @@ class ShardManager:
           str | types.CacheRecord | types.LightCacheRecord | types.QueryRecord
       ),
   ):
+    """Remove a record from the cache storage."""
     hash_value = _get_hash_value(cache_record)
     if hash_value not in self._light_cache_records:
       return
@@ -401,6 +413,7 @@ class ShardManager:
     self._update_cache_record(light_cache_records, delete_only=True)
 
   def save_record(self, cache_record: types.CacheRecord):
+    """Save a cache record to sharded storage."""
     hash_value = _get_hash_value(cache_record)
     self.delete_record(hash_value)
 
@@ -418,6 +431,8 @@ class ShardManager:
 
 @dataclasses.dataclass
 class QueryCacheManagerParams:
+  """Initialization parameters for QueryCacheManager."""
+
   cache_options: types.CacheOptions | None = None
   get_cache_options: Callable[[], types.CacheOptions] | None = None
   shard_count: int | None = None
@@ -426,6 +441,8 @@ class QueryCacheManagerParams:
 
 
 class QueryCacheManager(state_controller.StateControlled):
+  """Manages caching of query responses with sharded file storage."""
+
   _cache_options: types.CacheOptions
   _shard_count: int
   _response_per_file: int
@@ -462,13 +479,15 @@ class QueryCacheManager(state_controller.StateControlled):
     self.init_status()
 
   def get_internal_state_property_name(self):
+    """Return the name of the internal state property."""
     return _QUERY_CACHE_MANAGER_STATE_PROPERTY
 
   def get_internal_state_type(self):
+    """Return the dataclass type used for state storage."""
     return types.QueryCacheManagerState
 
-  def init_status(
-      self):
+  def init_status(self):
+    """Initialize the cache manager status based on configuration."""
     if self.cache_options is None:
       self.status = types.QueryCacheManagerStatus.CACHE_OPTIONS_NOT_FOUND
       return
@@ -486,6 +505,7 @@ class QueryCacheManager(state_controller.StateControlled):
     self.status = types.QueryCacheManagerStatus.WORKING
 
   def clear_cache(self):
+    """Remove all cached query responses."""
     if (
         self.status == types.QueryCacheManagerStatus.INITIALIZING or
         self.status == types.QueryCacheManagerStatus.CACHE_OPTIONS_NOT_FOUND or
@@ -578,6 +598,7 @@ class QueryCacheManager(state_controller.StateControlled):
       update: bool = True,
       unique_response_limit: int | None = None,
   ) -> types.CacheLookResult:
+    """Look up a cached response for a query record."""
     if self.status != types.QueryCacheManagerStatus.WORKING:
       raise ValueError(f'QueryCacheManager status is {self.status}')
 
@@ -621,6 +642,7 @@ class QueryCacheManager(state_controller.StateControlled):
       query_record: types.QueryRecord,
       response_record: types.QueryResponseRecord,
       unique_response_limit: int | None = None):
+    """Store a query response in the cache."""
     if self.status != types.QueryCacheManagerStatus.WORKING:
       raise ValueError(f'QueryCacheManager status is {self.status}')
 

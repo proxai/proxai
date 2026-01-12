@@ -20,6 +20,8 @@ _PROXAI_CLIENT_STATE_PROPERTY = '_proxai_client_state'
 
 @dataclasses.dataclass
 class ProxAIClientParams:
+    """Initialization parameters for ProxAIClient."""
+
     experiment_path: str | None = None
     cache_options: types.CacheOptions | None = None
     logging_options: types.LoggingOptions | None = None
@@ -212,9 +214,11 @@ class ProxAIClient(state_controller.StateControlled):
           init_from_params=available_models_params)
 
   def get_internal_state_property_name(self):
+    """Return the name of the internal state property."""
     return _PROXAI_CLIENT_STATE_PROPERTY
 
   def get_internal_state_type(self):
+    """Return the dataclass type used for state storage."""
     return types.ProxAIClientState
 
   def _init_default_model_cache_manager(self):
@@ -514,6 +518,7 @@ class ProxAIClient(state_controller.StateControlled):
       self,
       call_type: types.CallType
   ):
+    """Get or create a connector for the default model of a call type."""
     if call_type != types.CallType.GENERATE_TEXT:
       raise ValueError(f'Call type not supported: {call_type}')
 

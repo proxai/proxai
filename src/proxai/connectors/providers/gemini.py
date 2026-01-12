@@ -12,6 +12,8 @@ import proxai.types as types
 
 
 class GeminiConnector(model_connector.ProviderModelConnector):
+  """Connector for Google Gemini models."""
+
   def get_provider_name(self):
     return 'gemini'
 

@@ -11,6 +11,8 @@ import proxai.types as types
 
 
 class DeepSeekConnector(model_connector.ProviderModelConnector):
+  """Connector for DeepSeek models."""
+
   def get_provider_name(self):
     return 'deepseek'
 

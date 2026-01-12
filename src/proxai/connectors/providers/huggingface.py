@@ -11,6 +11,8 @@ import proxai.types as types
 
 
 class HuggingFaceConnector(model_connector.ProviderModelConnector):
+  """Connector for Hugging Face Inference API models."""
+
   def get_provider_name(self):
     return 'huggingface'
 

@@ -63,7 +63,9 @@ select = [
 ignore = [
     "D100",   # Missing docstring in public module
     "D104",   # Missing docstring in public package
+    "D105",   # Missing docstring in magic method
     "D107",   # Missing docstring in __init__
+    "D102",   # Missing docstring in public method (mostly property getters)
 ]
 
 [tool.ruff.lint.pydocstyle]

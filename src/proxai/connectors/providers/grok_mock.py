@@ -26,6 +26,8 @@ class _MockChat:
 
 
 class GrokMock:
+  """Mock Grok API client for testing."""
+
   chat: _MockChat
 
   def __init__(self):

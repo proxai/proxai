@@ -19,6 +19,8 @@ _NOT_SET_EXPERIMENT_PATH_VALUE = '(not set)'
 
 @dataclasses.dataclass
 class ProxDashConnectionParams:
+  """Initialization parameters for ProxDashConnection."""
+
   hidden_run_key: str | None = None
   experiment_path: str | None = None
   logging_options: types.LoggingOptions | None = None
@@ -26,6 +28,8 @@ class ProxDashConnectionParams:
 
 
 class ProxDashConnection(state_controller.StateControlled):
+  """Manages connection and data upload to the ProxDash service."""
+
   _status: types.ProxDashConnectionStatus | None
   _hidden_run_key: str | None
   _experiment_path: str | None
@@ -57,9 +61,11 @@ class ProxDashConnection(state_controller.StateControlled):
       self._init_connection()
 
   def get_internal_state_property_name(self):
+    """Return the name of the internal state property."""
     return _PROXDASH_STATE_PROPERTY
 
   def get_internal_state_type(cls):
+    """Return the dataclass type used for state storage."""
     return types.ProxDashConnectionState
 
   @property
@@ -338,6 +344,7 @@ class ProxDashConnection(state_controller.StateControlled):
     return logging_record
 
   def upload_logging_record(self, logging_record: types.LoggingRecord):
+    """Upload a logging record to ProxDash."""
     if self.status != types.ProxDashConnectionStatus.CONNECTED:
       return
     if ((self.proxdash_options and
@@ -475,6 +482,7 @@ class ProxDashConnection(state_controller.StateControlled):
   def get_model_configs_schema(
       self,
   ) -> types.ModelConfigsSchemaType | None:
+    """Fetch the latest model configurations from ProxDash."""
     current_version = version("proxai")
     request_url = (
         f'{self.proxdash_options.base_url}' +

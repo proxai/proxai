@@ -11,11 +11,13 @@ RESERVED_NAMES = {
 }
 
 def get_hidden_run_key() -> str:
+  """Generate a random run key for identifying unique sessions."""
   random.seed(datetime.datetime.now().timestamp())
   return str(random.randint(1, 1000000))
 
 
 def validate_experiment_path(experiment_path: str):
+  """Validate an experiment path for safe filesystem usage."""
   if not experiment_path:
     raise ValueError('Experiment path cannot be empty')
 

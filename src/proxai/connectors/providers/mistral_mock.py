@@ -21,6 +21,8 @@ class _MockResponse:
 
 
 class MockChat:
+  """Mock chat completion handler."""
+
   def complete(
         self,
         model: str,
@@ -31,6 +33,8 @@ class MockChat:
       return _MockResponse()
 
 class MistralMock:
+  """Mock Mistral API client for testing."""
+
   chat: MockChat
 
   def __init__(self):

@@ -10,6 +10,8 @@ import proxai.types as types
 
 
 class OpenAIConnector(model_connector.ProviderModelConnector):
+  """Connector for OpenAI models."""
+
   def get_provider_name(self):
     return 'openai'
 

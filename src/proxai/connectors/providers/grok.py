@@ -13,6 +13,8 @@ import proxai.types as types
 
 
 class GrokConnector(model_connector.ProviderModelConnector):
+  """Connector for xAI Grok models."""
+
   def get_provider_name(self):
     return 'grok'
 

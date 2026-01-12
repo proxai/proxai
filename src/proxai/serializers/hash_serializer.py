@@ -40,6 +40,7 @@ def _get_response_format_signature(
 
 
 def get_query_record_hash(query_record: types.QueryRecord) -> str:
+  """Generate a unique hash for a query record for cache lookup."""
   signature_str = ''
   if query_record.call_type is not None:
     signature_str += query_record.call_type + _SEPARATOR_CHAR

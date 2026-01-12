@@ -14,10 +14,14 @@ _MODEL_CACHE_MANAGER_STATE_PROPERTY = '_model_cache_manager_state'
 
 @dataclasses.dataclass
 class ModelCacheManagerParams:
+  """Initialization parameters for ModelCacheManager."""
+
   cache_options: types.CacheOptions | None = None
 
 
 class ModelCacheManager(state_controller.StateControlled):
+  """Manages caching of model availability status by call type."""
+
   _cache_options: types.CacheOptions
   _model_status_by_call_type: types.ModelStatusByCallType
   _model_cache_manager_state: types.ModelCacheManagerState
@@ -41,12 +45,15 @@ class ModelCacheManager(state_controller.StateControlled):
     self.init_status()
 
   def get_internal_state_property_name(self):
+    """Return the name of the internal state property."""
     return _MODEL_CACHE_MANAGER_STATE_PROPERTY
 
   def get_internal_state_type(self):
+    """Return the dataclass type used for state storage."""
     return types.ModelCacheManagerState
 
   def init_status(self):
+    """Initialize the cache manager status based on configuration."""
     if self.cache_options is None:
       self.status = types.ModelCacheManagerStatus.CACHE_OPTIONS_NOT_FOUND
       self.model_status_by_call_type = None
@@ -107,6 +114,7 @@ class ModelCacheManager(state_controller.StateControlled):
     self._model_status_by_call_type = value
 
   def clear_cache(self):
+    """Remove all cached model status data."""
     self.model_status_by_call_type = None
     if self.cache_path is None:
       return
@@ -177,6 +185,7 @@ class ModelCacheManager(state_controller.StateControlled):
     model_status.provider_queries.pop(model, None)
 
   def get(self, call_type: types.CallType) -> types.ModelStatus:
+    """Retrieve cached model status for a call type."""
     result = types.ModelStatus()
     if call_type not in self.model_status_by_call_type:
       return result
@@ -202,6 +211,7 @@ class ModelCacheManager(state_controller.StateControlled):
       self,
       model_status_updates: types.ModelStatus,
       call_type: types.CallType):
+    """Apply incremental updates to cached model status."""
     if call_type not in self.model_status_by_call_type:
       self.model_status_by_call_type[call_type] = types.ModelStatus()
     all_updated_models = (
@@ -237,5 +247,6 @@ class ModelCacheManager(state_controller.StateControlled):
       self,
       model_status: types.ModelStatus,
       call_type: types.CallType):
+    """Replace cached model status for a call type."""
     self.model_status_by_call_type[call_type] = copy.deepcopy(model_status)
     self._save_to_cache_path()

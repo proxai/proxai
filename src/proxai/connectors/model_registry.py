@@ -34,6 +34,7 @@ def get_model_connector(
     provider_model_config: types.ProviderModelConfigsType,
     without_additional_args: bool = False
 ) -> Callable[[], model_connector.ProviderModelConnector]:
+  """Return a connector factory for the given provider model config."""
   provider_model = provider_model_config.provider_model
   if provider_model.provider not in _MODEL_CONNECTOR_MAP:
     raise ValueError(f'Provider not supported. {provider_model.provider}')
