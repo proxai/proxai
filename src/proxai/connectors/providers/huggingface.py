@@ -1,14 +1,18 @@
-from typing import Any, Callable
 import functools
-import json
 import os
+from collections.abc import Callable
+from typing import Any
+
 from huggingface_hub import InferenceClient
-import proxai.types as types
-import proxai.connectors.providers.openai_mock as openai_mock
+
 import proxai.connectors.model_connector as model_connector
+import proxai.connectors.providers.openai_mock as openai_mock
+import proxai.types as types
 
 
 class HuggingFaceConnector(model_connector.ProviderModelConnector):
+  """Connector for Hugging Face Inference API models."""
+
   def get_provider_name(self):
     return 'huggingface'
 
@@ -131,7 +135,7 @@ class HuggingFaceConnector(model_connector.ProviderModelConnector):
       query_function: Callable,
       query_record: types.QueryRecord):
     raise Exception(
-        'Web search is not supported for HuggingFace. Code should never reach here.')
+        'Web search is not supported for HuggingFace.')
 
   def format_text_response_from_provider(
       self,

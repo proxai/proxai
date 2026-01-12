@@ -1,17 +1,20 @@
-import anthropic
-from typing import Any, Callable, Optional
 import functools
-import json
-import re
-import proxai.types as types
-import proxai.connectors.providers.claude_mock as claude_mock
+from collections.abc import Callable
+from typing import Any
+
+import anthropic
+
 import proxai.connectors.model_connector as model_connector
+import proxai.connectors.providers.claude_mock as claude_mock
+import proxai.types as types
 
 # Beta header required for structured outputs feature
 STRUCTURED_OUTPUTS_BETA = "structured-outputs-2025-11-13"
 
 
 class ClaudeConnector(model_connector.ProviderModelConnector):
+  """Connector for Anthropic Claude models."""
+
   def get_provider_name(self):
     return 'claude'
 
@@ -138,7 +141,7 @@ class ClaudeConnector(model_connector.ProviderModelConnector):
   def _extract_text_from_content(self, content_blocks) -> str:
     # Extract text from content blocks
     # When web_search or other tools are used, response may contain multiple
-    # block types (ServerToolUseBlock, TextBlock, etc). We need to find TextBlocks.
+    # block types (ServerToolUseBlock, TextBlock, etc). Find TextBlocks.
     text_parts = []
     for block in content_blocks:
       if hasattr(block, 'text'):

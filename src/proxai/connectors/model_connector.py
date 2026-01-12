@@ -1,53 +1,59 @@
 from __future__ import annotations
 
-import dataclasses
 import copy
+import dataclasses
 import datetime
-import re
-import json
-import traceback
 import functools
-from functools import reduce
+import json
 import math
-from typing import Any, Callable, Dict, List, Optional, Union
-import proxai.types as types
-import proxai.logging.utils as logging_utils
+import re
+import traceback
+from collections.abc import Callable
+from functools import reduce
+from typing import Any
+
 import proxai.caching.query_cache as query_cache
-import proxai.type_utils as type_utils
 import proxai.connections.proxdash as proxdash
+import proxai.logging.utils as logging_utils
 import proxai.state_controllers.state_controller as state_controller
+import proxai.type_utils as type_utils
+import proxai.types as types
 
 _PROVIDER_MODEL_STATE_PROPERTY = '_provider_model_state'
 
 
 @dataclasses.dataclass
 class ProviderModelConnectorParams:
-  provider_model: Optional[types.ProviderModelType] = None
-  run_type: Optional[types.RunType] = None
-  provider_model_config: Optional[types.ProviderModelConfigType] = None
-  feature_mapping_strategy: Optional[types.FeatureMappingStrategy] = None
-  query_cache_manager: Optional[types.QueryCacheManagerState] = None
-  logging_options: Optional[types.LoggingOptions] = None
-  proxdash_connection: Optional[proxdash.ProxDashConnection] = None
+  """Initialization parameters for ProviderModelConnector."""
+
+  provider_model: types.ProviderModelType | None = None
+  run_type: types.RunType | None = None
+  provider_model_config: types.ProviderModelConfigType | None = None
+  feature_mapping_strategy: types.FeatureMappingStrategy | None = None
+  query_cache_manager: types.QueryCacheManagerState | None = None
+  logging_options: types.LoggingOptions | None = None
+  proxdash_connection: proxdash.ProxDashConnection | None = None
 
 
 class ProviderModelConnector(state_controller.StateControlled):
-  _provider_model: Optional[types.ProviderModelType]
-  _run_type: Optional[types.RunType]
-  _provider_model_config: Optional[types.ProviderModelConfigType]
-  _feature_mapping_strategy: Optional[types.FeatureMappingStrategy]
-  _query_cache_manager: Optional[query_cache.QueryCacheManager]
-  _api: Optional[Any]
-  _logging_options: Optional[types.LoggingOptions]
-  _proxdash_connection: Optional[proxdash.ProxDashConnection]
-  _provider_model_state: Optional[types.ProviderModelState]
+  """Base class for provider-specific model connectors."""
 
-  _chosen_endpoint_cached_result: Optional[Dict[str, bool]]
+  _provider_model: types.ProviderModelType | None
+  _run_type: types.RunType | None
+  _provider_model_config: types.ProviderModelConfigType | None
+  _feature_mapping_strategy: types.FeatureMappingStrategy | None
+  _query_cache_manager: query_cache.QueryCacheManager | None
+  _api: Any | None
+  _logging_options: types.LoggingOptions | None
+  _proxdash_connection: proxdash.ProxDashConnection | None
+  _provider_model_state: types.ProviderModelState | None
 
-  def __init__(
+  _chosen_endpoint_cached_result: dict[str, bool] | None
+
+  def __init__(  # noqa: D107
       self,
-      init_from_params: Optional[ProviderModelConnectorParams] = None,
-      init_from_state: Optional[types.ProviderModelState] = None
+      init_from_params: ProviderModelConnectorParams | None = None,
+      init_from_state: types.ProviderModelState | None = None
   ):
     super().__init__(
         init_from_params=init_from_params,
@@ -74,9 +80,11 @@ class ProviderModelConnector(state_controller.StateControlled):
       self.proxdash_connection = init_from_params.proxdash_connection
 
   def get_internal_state_property_name(self):
+    """Return the name of the internal state property."""
     return _PROVIDER_MODEL_STATE_PROPERTY
 
   def get_internal_state_type(self):
+    """Return the dataclass type used for state storage."""
     return types.ProviderModelState
 
   @property
@@ -136,6 +144,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       self,
       state_value: types.QueryCacheManagerState
   ) -> query_cache.QueryCacheManager:
+    """Deserialize a QueryCacheManager from its state."""
     return query_cache.QueryCacheManager(init_from_state=state_value)
 
   @property
@@ -158,6 +167,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       self,
       state_value: types.ProxDashConnectionState
   ) -> proxdash.ProxDashConnection:
+    """Deserialize a ProxDashConnection from its state."""
     return proxdash.ProxDashConnection(init_from_state=state_value)
 
   def _extract_json_from_text(self, text: str) -> dict:
@@ -198,7 +208,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       except json.JSONDecodeError:
         pass
       # Strategy 4: Replace single quotes with double quotes
-      # Only try this if the candidate has no double quotes (pure Python dict style)
+      # Only try this if candidate has no double quotes (Python dict style)
       if '"' not in candidate:
         try:
           return json.loads(candidate.replace("'", '"'))
@@ -206,7 +216,7 @@ class ProviderModelConnector(state_controller.StateControlled):
           pass
 
     raise json.JSONDecodeError(
-        f"Could not extract valid JSON from response",
+        "Could not extract valid JSON from response",
         text,
         0)
 
@@ -248,7 +258,7 @@ class ProviderModelConnector(state_controller.StateControlled):
 
   def _get_available_endpoints(
       self,
-      features: types.FeatureListType) -> List[str]:
+      features: types.FeatureListType) -> list[str]:
     supported_endpoints = []
     best_effort_endpoints = []
     for feature in features:
@@ -270,8 +280,8 @@ class ProviderModelConnector(state_controller.StateControlled):
 
   def _check_endpoints_usability(
       self,
-      supported_endpoints: List[str],
-      best_effort_endpoints: List[str],
+      supported_endpoints: list[str],
+      best_effort_endpoints: list[str],
       provider_model: types.ProviderModelType,
       feature_mapping_strategy: types.FeatureMappingStrategy,
       features: types.FeatureListType,
@@ -294,27 +304,27 @@ class ProviderModelConnector(state_controller.StateControlled):
             message=message)
         raise Exception(message)
     elif (feature_mapping_strategy ==
-          types.FeatureMappingStrategy.BEST_EFFORT):
-      if (len(supported_endpoints) == 0 and
-          len(best_effort_endpoints) == 0):
-        if not raise_error:
-          return False
-        message = (
-            f'For {provider_model}, it is not possible to ' +
-            'use following features all at once in BEST_EFFORT mode. ' +
-            'Please consider to remove some features.\n' +
-            f'Requested features: {", ".join(features)}.')
-        logging_utils.log_message(
-            type=types.LoggingType.ERROR,
-            logging_options=self.logging_options,
-            message=message)
-        raise Exception(message)
+          types.FeatureMappingStrategy.BEST_EFFORT
+          and len(supported_endpoints) == 0
+          and len(best_effort_endpoints) == 0):
+      if not raise_error:
+        return False
+      message = (
+          f'For {provider_model}, it is not possible to ' +
+          'use following features all at once in BEST_EFFORT mode. ' +
+          'Please consider to remove some features.\n' +
+          f'Requested features: {", ".join(features)}.')
+      logging_utils.log_message(
+          type=types.LoggingType.ERROR,
+          logging_options=self.logging_options,
+          message=message)
+      raise Exception(message)
     return True
 
   def _select_endpoint(
       self,
-      supported_endpoints: List[str],
-      best_effort_endpoints: List[str]) -> str:
+      supported_endpoints: list[str],
+      best_effort_endpoints: list[str]) -> str:
     if len(supported_endpoints) != 0:
       return sorted(supported_endpoints)[0]
     elif len(best_effort_endpoints) != 0:
@@ -461,8 +471,8 @@ class ProviderModelConnector(state_controller.StateControlled):
         feature_signature in self._chosen_endpoint_cached_result):
       chosen_endpoint = self._chosen_endpoint_cached_result[feature_signature]
     else:
-      supported_endpoints, best_effort_endpoints = self._get_available_endpoints(
-          features=features)
+      supported_endpoints, best_effort_endpoints = (
+          self._get_available_endpoints(features=features))
 
       is_endpoints_usable = self._check_endpoints_usability(
           supported_endpoints=supported_endpoints,
@@ -491,6 +501,7 @@ class ProviderModelConnector(state_controller.StateControlled):
   def feature_check_and_sanitize(
       self,
       query_record: types.QueryRecord) -> types.QueryRecord:
+    """Check feature compatibility and sanitize the query record."""
     query_record = copy.deepcopy(query_record)
 
     chosen_endpoint = self._get_feature_check_result_endpoint(
@@ -508,16 +519,14 @@ class ProviderModelConnector(state_controller.StateControlled):
   def check_feature_compatibility(
       self,
       features: types.FeatureListType) -> bool:
+    """Check if the given features are compatible with this connector."""
     chosen_endpoint = self._get_feature_check_result_endpoint(
         provider_model=self.provider_model,
         feature_mapping_strategy=self.feature_mapping_strategy,
         features=features,
         raise_error=False)
 
-    if chosen_endpoint:
-      return True
-    else:
-      return False
+    return bool(chosen_endpoint)
 
   def _get_system_content_with_schema_guidance(
       self,
@@ -558,6 +567,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       self,
       query_function: Callable,
       query_record: types.QueryRecord):
+    """Compose feature mappings into the query function."""
     feature_mappings = {
         types.FeatureNameType.PROMPT: self.prompt_feature_mapping,
         types.FeatureNameType.MESSAGES: self.messages_feature_mapping,
@@ -567,7 +577,7 @@ class ProviderModelConnector(state_controller.StateControlled):
         types.FeatureNameType.STOP: self.stop_feature_mapping,
         types.FeatureNameType.WEB_SEARCH: self.web_search_feature_mapping,
     }
-    for feature_name in feature_mappings.keys():
+    for feature_name in feature_mappings:
       if not self._check_feature_exists(
           feature_name=feature_name.value,
           query_record=query_record):
@@ -667,6 +677,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       self,
       response: Any,
       query_record: types.QueryRecord) -> types.Response:
+    """Convert a provider response to a standardized Response object."""
     if (query_record.response_format is None or
         query_record.response_format.type == types.ResponseFormatType.TEXT):
       return types.Response(
@@ -690,10 +701,8 @@ class ProviderModelConnector(state_controller.StateControlled):
 
   def get_token_count_estimate(
       self,
-      value: Optional[Union[
-          str,
-          types.Response,
-          types.MessagesType]] = None) -> int:
+      value: str | types.Response | types.MessagesType | None = None) -> int:
+    """Estimate the token count for a prompt, response, or messages."""
     total = 0
     def _get_token_count_estimate_from_prompt(prompt: str) -> int:
       return math.ceil(max(
@@ -731,11 +740,12 @@ class ProviderModelConnector(state_controller.StateControlled):
     return total
 
   def get_estimated_cost(self, logging_record: types.LoggingRecord):
+    """Calculate the estimated cost for a logging record."""
     query_token_count = logging_record.query_record.token_count
-    if type(query_token_count) != int:
+    if not isinstance(query_token_count, int):
       query_token_count = 0
     response_token_count = logging_record.response_record.token_count
-    if type(response_token_count) != int:
+    if not isinstance(response_token_count, int):
       response_token_count = 0
     model_pricing_config = self.provider_model_config.pricing
 
@@ -767,21 +777,22 @@ class ProviderModelConnector(state_controller.StateControlled):
 
   def generate_text(
       self,
-      prompt: Optional[str] = None,
-      system: Optional[str] = None,
-      messages: Optional[types.MessagesType] = None,
-      max_tokens: Optional[int] = None,
-      temperature: Optional[float] = None,
-      stop: Optional[types.StopType] = None,
-      response_format: Optional[types.ResponseFormat] = None,
-      web_search: Optional[bool] = None,
-      provider_model: Optional[types.ProviderModelIdentifierType] = None,
-      feature_mapping_strategy: Optional[types.FeatureMappingStrategy] = None,
+      prompt: str | None = None,
+      system: str | None = None,
+      messages: types.MessagesType | None = None,
+      max_tokens: int | None = None,
+      temperature: float | None = None,
+      stop: types.StopType | None = None,
+      response_format: types.ResponseFormat | None = None,
+      web_search: bool | None = None,
+      provider_model: types.ProviderModelIdentifierType | None = None,
+      feature_mapping_strategy: types.FeatureMappingStrategy | None = None,
       use_cache: bool = True,
-      unique_response_limit: Optional[int] = None) -> types.LoggingRecord:
-    if prompt != None and messages != None:
+      unique_response_limit: int | None = None) -> types.LoggingRecord:
+    """Generate text from the model and return a logging record."""
+    if prompt is not None and messages is not None:
       raise ValueError('prompt and messages cannot be set at the same time.')
-    if messages != None:
+    if messages is not None:
       type_utils.check_messages_type(messages)
 
     if response_format is None:
@@ -789,7 +800,7 @@ class ProviderModelConnector(state_controller.StateControlled):
           type=types.ResponseFormatType.TEXT)
 
     if provider_model is not None:
-      if type(provider_model) == types.ProviderModelTupleType:
+      if isinstance(provider_model, tuple):
         provider_model = self.provider_model_config.provider_model
       if provider_model != self.provider_model:
         raise ValueError(
@@ -828,7 +839,7 @@ class ProviderModelConnector(state_controller.StateControlled):
             unique_response_limit=unique_response_limit)
         if cache_look_result.query_response:
           response_record = cache_look_result.query_response
-      except Exception as e:
+      except Exception:
         pass
       if response_record:
         response_record.end_utc_date = datetime.datetime.now(
@@ -865,7 +876,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       error_traceback = traceback.format_exc()
       error = e
 
-    if response != None:
+    if response is not None:
       query_response_record = functools.partial(
           types.QueryResponseRecord,
           response=response,
@@ -904,12 +915,15 @@ class ProviderModelConnector(state_controller.StateControlled):
     return logging_record
 
   def get_provider_name(self):
+    """Return the provider name for this connector."""
     raise NotImplementedError
 
   def init_model(self):
+    """Initialize the provider API client."""
     raise NotImplementedError
 
   def init_mock_model(self):
+    """Initialize a mock API client for testing."""
     raise NotImplementedError
 
   def prompt_feature_mapping(
@@ -992,4 +1006,5 @@ class ProviderModelConnector(state_controller.StateControlled):
 
   def generate_text_proc(
       self, query_record: types.QueryRecord) -> types.Response:
+    """Execute the actual text generation call to the provider."""
     raise NotImplementedError

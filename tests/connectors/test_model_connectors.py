@@ -1,17 +1,15 @@
-import pytest
 import json
-import datetime
 import tempfile
-import copy
-import functools
-from typing import Dict, Optional, Callable
+
 import pydantic
-import proxai.types as types
+import pytest
+
 import proxai.caching.query_cache as query_cache
 import proxai.connections.proxdash as proxdash
-import proxai.connectors.providers.mock_provider as mock_provider
-import proxai.connectors.model_connector as model_connector
 import proxai.connectors.model_configs as model_configs
+import proxai.connectors.model_connector as model_connector
+import proxai.connectors.providers.mock_provider as mock_provider
+import proxai.types as types
 
 
 @pytest.fixture(autouse=True)
@@ -32,7 +30,7 @@ def setup_test(monkeypatch, requests_mock):
 # Test Helpers
 # =============================================================================
 
-def _create_endpoint_features(feature_endpoint_map: Dict[str, Dict[str, list]]):
+def _create_endpoint_features(feature_endpoint_map: dict[str, dict[str, list]]):
   """Create a FeatureMappingType for testing.
 
   Args:
@@ -54,7 +52,7 @@ def _create_endpoint_features(feature_endpoint_map: Dict[str, Dict[str, list]]):
   return features
 
 
-def _create_config_with_features(feature_endpoint_map: Dict[str, Dict[str, list]]):
+def _create_config_with_features(feature_endpoint_map: dict[str, dict[str, list]]):
   """Create a ProviderModelConfigType with specified feature endpoints.
 
   Args:
@@ -91,9 +89,9 @@ def _get_default_mock_features():
 
 
 def get_mock_provider_model_connector(
-    feature_mapping_strategy: Optional[types.FeatureMappingStrategy] = None,
-    provider_model_config: Optional[types.ProviderModelConfigType] = None,
-    query_cache_manager: Optional[query_cache.QueryCacheManager] = None,
+    feature_mapping_strategy: types.FeatureMappingStrategy | None = None,
+    provider_model_config: types.ProviderModelConfigType | None = None,
+    query_cache_manager: query_cache.QueryCacheManager | None = None,
 ):
   if provider_model_config is None:
     base_config = pytest.model_configs_instance.get_provider_model_config(
@@ -200,7 +198,7 @@ class TestModelConnectorInit:
     assert connector.provider_model == pytest.model_configs_instance.get_provider_model(('mock_provider', 'mock_model'))
     assert connector.run_type == types.RunType.TEST
     assert connector.feature_mapping_strategy == types.FeatureMappingStrategy.STRICT
-    assert connector.logging_options.stdout == True
+    assert connector.logging_options.stdout
     assert (
         connector.proxdash_connection.status ==
         types.ProxDashConnectionStatus.CONNECTED)
@@ -249,8 +247,8 @@ class TestModelConnectorInit:
       assert connector.provider_model == pytest.model_configs_instance.get_provider_model(('mock_provider', 'mock_model'))
       assert connector.run_type == types.RunType.TEST
       assert connector.feature_mapping_strategy == types.FeatureMappingStrategy.STRICT
-      assert connector.logging_options.stdout == True
-      assert connector.logging_options.hide_sensitive_content == True
+      assert connector.logging_options.stdout
+      assert connector.logging_options.hide_sensitive_content
       assert connector.logging_options.logging_path == temp_dir
       assert (
           connector.proxdash_connection.status ==
@@ -293,8 +291,8 @@ class TestModelConnectorInit:
       assert init_state.provider_model == pytest.model_configs_instance.get_provider_model(('mock_provider', 'mock_model'))
       assert init_state.run_type == types.RunType.TEST
       assert init_state.feature_mapping_strategy == types.FeatureMappingStrategy.STRICT
-      assert init_state.logging_options.stdout == True
-      assert init_state.logging_options.hide_sensitive_content == True
+      assert init_state.logging_options.stdout
+      assert init_state.logging_options.hide_sensitive_content
       assert init_state.logging_options.logging_path == temp_dir
       assert (
           init_state.proxdash_connection.status ==
@@ -611,7 +609,7 @@ class TestGetFeatureCheckResultEndpoint:
     connector = get_mock_provider_model_connector(provider_model_config=config)
 
     # First call
-    result1 = connector._get_feature_check_result_endpoint(
+    connector._get_feature_check_result_endpoint(
         provider_model=connector.provider_model,
         feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
         features=[types.FeatureNameType.PROMPT])

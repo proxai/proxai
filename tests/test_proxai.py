@@ -1,14 +1,16 @@
-"""Tests for user-facing proxai API (px.*)
+"""Tests for user-facing proxai API (px.*).
 
 These tests focus on user workflows and use cases, testing the public API
 that users interact with (px.connect, px.generate_text, px.set_model, etc.).
 """
 import os
 import tempfile
+
 import pytest
+
 import proxai as px
-import proxai.types as types
 import proxai.connectors.model_configs as model_configs
+import proxai.types as types
 
 
 @pytest.fixture(autouse=True)
@@ -375,7 +377,7 @@ class TestGetCurrentOptions:
     options = px.get_current_options()
 
     assert options.cache_options.cache_path == cache_path
-    assert options.allow_multiprocessing == False
+    assert not options.allow_multiprocessing
     assert options.model_test_timeout == 30
 
   def test_get_current_options_json_format(self):

@@ -1,7 +1,8 @@
 import copy
-from typing import Optional
-import proxai.types as types
+
 import pydantic
+
+import proxai.types as types
 
 
 def _raise_invalid_response_format_value_error(
@@ -26,7 +27,7 @@ def check_messages_type(messages: types.MessagesType):
       raise ValueError(
           f'Each message in messages should be a dictionary. '
           f'Invalid message: {message}')
-    if set(list(message.keys())) != {'role', 'content'}:
+    if set(message.keys()) != {'role', 'content'}:
       raise ValueError(
           f'Each message should have keys "role" and "content". '
           f'Invalid message: {message}')
@@ -48,7 +49,7 @@ def check_model_size_identifier_type(
   """Check if model size identifier is supported."""
   if isinstance(model_size_identifier, types.ModelSizeType):
     return model_size_identifier
-  elif type(model_size_identifier) == str:
+  elif isinstance(model_size_identifier, str):
     valid_values = [size.value for size in types.ModelSizeType]
     if model_size_identifier not in valid_values:
       raise ValueError(
@@ -64,8 +65,9 @@ def check_model_size_identifier_type(
 
 
 def create_response_format(
-    response_format: Optional[types.ResponseFormatParam] = None
+    response_format: types.ResponseFormatParam | None = None
 ) -> types.ResponseFormat:
+  """Convert various input formats to a standardized ResponseFormat."""
   if response_format is None:
     return types.ResponseFormat(type=types.ResponseFormatType.TEXT)
   elif isinstance(response_format, str):
@@ -109,6 +111,7 @@ def create_response_format(
 def is_query_record_equal(
     query_record_1: types.QueryRecord,
     query_record_2: types.QueryRecord) -> bool:
+  """Compare two query records, handling Pydantic schemas specially."""
   if (query_record_1.response_format is not None and
       query_record_1.response_format.type == types.ResponseFormatType.PYDANTIC):
     pydantic_value_1 = query_record_1.response_format.value
@@ -159,6 +162,7 @@ def create_pydantic_instance_from_response(
 def create_feature_list_type(
     features: types.FeatureListParam
 ) -> types.FeatureListType:
+  """Convert a list of feature strings or enums to FeatureListType."""
   result_features = []
   for feature in features:
     if isinstance(feature, str):

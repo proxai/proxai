@@ -1,5 +1,5 @@
-import random
 import datetime
+import random
 import string
 
 MAX_COMPONENT_LENGTH = 64
@@ -11,11 +11,13 @@ RESERVED_NAMES = {
 }
 
 def get_hidden_run_key() -> str:
+  """Generate a random run key for identifying unique sessions."""
   random.seed(datetime.datetime.now().timestamp())
   return str(random.randint(1, 1000000))
 
 
 def validate_experiment_path(experiment_path: str):
+  """Validate an experiment path for safe filesystem usage."""
   if not experiment_path:
     raise ValueError('Experiment path cannot be empty')
 
@@ -28,7 +30,7 @@ def validate_experiment_path(experiment_path: str):
     if char not in allowed_chars:
       raise ValueError(
           'Experiment path can only contain following characters:\n'
-          f'{sorted(list(allowed_chars))}')
+          f'{sorted(allowed_chars)}')
   if experiment_path.startswith('/'):
     raise ValueError('Experiment path cannot start with "/"')
   if experiment_path.endswith('/'):

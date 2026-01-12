@@ -1,7 +1,6 @@
-from typing import Dict, List, Optional
-# [ContentBlock(text="Hello! It's nice to meet you. How can I assist you today?", type='text')]
+# [ContentBlock(text="Hello! How can I assist you?", type='text')]
 
-class _MockContentBlock(object):
+class _MockContentBlock:
   text: str
   type: str
 
@@ -10,14 +9,14 @@ class _MockContentBlock(object):
     self.type = 'text'
 
 
-class _MockResponse(object):
-  content: List[_MockContentBlock]
+class _MockResponse:
+  content: list[_MockContentBlock]
 
   def __init__(self):
     self.content = [_MockContentBlock()]
 
 
-class _MockMessages(object):
+class _MockMessages:
   def create(
       self,
       **kwargs) -> _MockResponse:
@@ -29,14 +28,16 @@ class _MockMessages(object):
     return _MockResponse()
 
 
-class _MockBeta(object):
+class _MockBeta:
   messages: _MockMessages
 
   def __init__(self):
     self.messages = _MockMessages()
 
 
-class ClaudeMock(object):
+class ClaudeMock:
+  """Mock Claude API client for testing."""
+
   messages: _MockMessages
   beta: _MockBeta
 

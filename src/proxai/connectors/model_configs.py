@@ -3,51 +3,56 @@ from __future__ import annotations
 import dataclasses
 import json
 import math
-from typing import List, Set
 from importlib import resources
 from importlib.metadata import version
 from types import MappingProxyType
-from typing import Any, Dict, Optional, Tuple
-from packaging.specifiers import SpecifierSet, InvalidSpecifier
-from packaging.version import Version, InvalidVersion
-import proxai.types as types
+from typing import Any
+
+from packaging.specifiers import InvalidSpecifier, SpecifierSet
+from packaging.version import InvalidVersion, Version
+
 import proxai.serializers.type_serializer as type_serializer
 import proxai.state_controllers.state_controller as state_controller
+import proxai.types as types
 
 _MODEL_CONFIGS_STATE_PROPERTY = '_model_configs_state'
 
-PROVIDER_KEY_MAP: Dict[str, Tuple[str]] = MappingProxyType({
-    'claude': tuple(['ANTHROPIC_API_KEY']),
-    'cohere': tuple(['CO_API_KEY']),
-    'databricks': tuple(['DATABRICKS_TOKEN', 'DATABRICKS_HOST']),
-    'deepseek': tuple(['DEEPSEEK_API_KEY']),
-    'gemini': tuple(['GEMINI_API_KEY']),
-    'grok': tuple(['XAI_API_KEY']),
-    'huggingface': tuple(['HF_TOKEN']),
-    'mistral': tuple(['MISTRAL_API_KEY']),
-    'openai': tuple(['OPENAI_API_KEY']),
+PROVIDER_KEY_MAP: dict[str, tuple[str]] = MappingProxyType({
+    'claude': ('ANTHROPIC_API_KEY',),
+    'cohere': ('CO_API_KEY',),
+    'databricks': ('DATABRICKS_TOKEN', 'DATABRICKS_HOST'),
+    'deepseek': ('DEEPSEEK_API_KEY',),
+    'gemini': ('GEMINI_API_KEY',),
+    'grok': ('XAI_API_KEY',),
+    'huggingface': ('HF_TOKEN',),
+    'mistral': ('MISTRAL_API_KEY',),
+    'openai': ('OPENAI_API_KEY',),
 
-    'mock_provider': tuple(['MOCK_PROVIDER_API_KEY']),
-    'mock_failing_provider': tuple(['MOCK_FAILING_PROVIDER']),
-    'mock_slow_provider': tuple(['MOCK_SLOW_PROVIDER']),
+    'mock_provider': ('MOCK_PROVIDER_API_KEY',),
+    'mock_failing_provider': ('MOCK_FAILING_PROVIDER',),
+    'mock_slow_provider': ('MOCK_SLOW_PROVIDER',),
 })
 
 
 @dataclasses.dataclass
 class ModelConfigsParams:
-  model_configs_schema: Optional[types.ModelConfigsSchemaType] = None
+  """Initialization parameters for ModelConfigs."""
+
+  model_configs_schema: types.ModelConfigsSchemaType | None = None
 
 
 class ModelConfigs(state_controller.StateControlled):
-  _model_configs_schema: Optional[types.ModelConfigsSchemaType]
-  _model_configs_state: Optional[types.ModelConfigsState]
+  """Manages model configuration schemas and validation."""
+
+  _model_configs_schema: types.ModelConfigsSchemaType | None
+  _model_configs_state: types.ModelConfigsState | None
 
   LOCAL_CONFIG_VERSION = "v1.1.2"
 
-  def __init__(
+  def __init__(  # noqa: D107
       self,
-      init_from_params: Optional[ModelConfigsParams] = None,
-      init_from_state: Optional[types.ModelConfigsState] = None
+      init_from_params: ModelConfigsParams | None = None,
+      init_from_state: types.ModelConfigsState | None = None
   ):
     super().__init__(
         init_from_params=init_from_params,
@@ -63,9 +68,11 @@ class ModelConfigs(state_controller.StateControlled):
       self.model_configs_schema = model_configs_schema
 
   def get_internal_state_property_name(self):
+    """Return the name of the internal state property."""
     return _MODEL_CONFIGS_STATE_PROPERTY
 
   def get_internal_state_type(self):
+    """Return the dataclass type used for state storage."""
     return types.ModelConfigsState
 
   @property
@@ -82,7 +89,7 @@ class ModelConfigs(state_controller.StateControlled):
 
   def _validate_min_proxai_version(
       self,
-      min_proxai_version: Optional[str]):
+      min_proxai_version: str | None):
     if min_proxai_version is None:
       return
 
@@ -94,18 +101,19 @@ class ModelConfigs(state_controller.StateControlled):
 
       if not specifier_set.contains(current):
         raise ValueError(
-            f'Current proxai version ({current_version}) does not satisfy the minimum '
-            f'version requirement: {min_proxai_version}. '
-            f'Please upgrade proxai to a version that satisfies this requirement.')
+            f'Current proxai version ({current_version}) does not satisfy '
+            f'the minimum version requirement: {min_proxai_version}. '
+            f'Please upgrade proxai to a version that satisfies this '
+            f'requirement.')
     except InvalidSpecifier as e:
       raise ValueError(
           f'Model configs schema metadata min_proxai_version is invalid. '
           f'Min proxai version specifier: {min_proxai_version}. '
-          f'Error: {e}')
+          f'Error: {e}') from e
     except InvalidVersion as e:
       raise ValueError(
           f'Current proxai version ({current_version}) is invalid. '
-          f'Error: {e}')
+          f'Error: {e}') from e
 
   def _validate_model_configs_schema_metadata(
       self,
@@ -116,7 +124,7 @@ class ModelConfigs(state_controller.StateControlled):
   def _get_provider_model_key(
       self,
       provider_model: types.ProviderModelIdentifierType
-  ) -> Tuple[str, str]:
+  ) -> tuple[str, str]:
     """Extract (provider, model) tuple from any provider model identifier."""
     if isinstance(provider_model, types.ProviderModelType):
       return (provider_model.provider, provider_model.model)
@@ -127,8 +135,8 @@ class ModelConfigs(state_controller.StateControlled):
   def _get_all_featured_models_from_configs(
       self,
       provider_model_configs: types.ProviderModelConfigsType
-  ) -> Set[Tuple[str, str]]:
-    """Get set of (provider, model) tuples for all featured models in configs."""
+  ) -> set[tuple[str, str]]:
+    """Get (provider, model) tuples for all featured models in configs."""
     featured = set()
     for provider, models in provider_model_configs.items():
       for model_name, config in models.items():
@@ -139,9 +147,9 @@ class ModelConfigs(state_controller.StateControlled):
   def _get_all_models_by_call_type_from_configs(
       self,
       provider_model_configs: types.ProviderModelConfigsType
-  ) -> Dict[types.CallType, Set[Tuple[str, str]]]:
+  ) -> dict[types.CallType, set[tuple[str, str]]]:
     """Get models grouped by call_type from configs."""
-    by_call_type: Dict[types.CallType, Set[Tuple[str, str]]] = {}
+    by_call_type: dict[types.CallType, set[tuple[str, str]]] = {}
     for provider, models in provider_model_configs.items():
       for model_name, config in models.items():
         if config.metadata and config.metadata.call_type:
@@ -154,9 +162,9 @@ class ModelConfigs(state_controller.StateControlled):
   def _get_all_models_by_size_from_configs(
       self,
       provider_model_configs: types.ProviderModelConfigsType
-  ) -> Dict[types.ModelSizeType, Set[Tuple[str, str]]]:
+  ) -> dict[types.ModelSizeType, set[tuple[str, str]]]:
     """Get models grouped by size from configs."""
-    by_size: Dict[types.ModelSizeType, Set[Tuple[str, str]]] = {}
+    by_size: dict[types.ModelSizeType, set[tuple[str, str]]] = {}
     for provider, models in provider_model_configs.items():
       for model_name, config in models.items():
         if config.metadata and config.metadata.model_size_tags:
@@ -195,7 +203,8 @@ class ModelConfigs(state_controller.StateControlled):
     """Validate pricing values are non-negative."""
     if pricing is None:
       raise ValueError(
-          f'pricing is None for provider_model_configs[{provider_key}][{model_key}]')
+          f'pricing is None for '
+          f'provider_model_configs[{provider_key}][{model_key}]')
 
     if (pricing.per_query_token_cost is not None and
         pricing.per_query_token_cost < 0):
@@ -206,16 +215,17 @@ class ModelConfigs(state_controller.StateControlled):
     if (pricing.per_response_token_cost is not None and
         pricing.per_response_token_cost < 0):
       raise ValueError(
-          f'per_response_token_cost is negative ({pricing.per_response_token_cost}) '
-          f'for provider_model_configs[{provider_key}][{model_key}]')
+          f'per_response_token_cost is negative '
+          f'({pricing.per_response_token_cost}) for '
+          f'provider_model_configs[{provider_key}][{model_key}]')
 
   def _validate_model_size_tags(
       self,
       provider_key: str,
       model_key: str,
-      model_size_tags: List[types.ModelSizeType]):
+      model_size_tags: list[types.ModelSizeType]):
     """Validate model_size_tags contains only valid ModelSizeType values."""
-    valid_sizes = {size for size in types.ModelSizeType}
+    valid_sizes = set(types.ModelSizeType)
     for tag in model_size_tags:
       if tag not in valid_sizes:
         raise ValueError(
@@ -258,8 +268,8 @@ class ModelConfigs(state_controller.StateControlled):
       best_effort_not_supported = best_effort & not_supported
       if best_effort_not_supported:
         raise ValueError(
-            f'Features {best_effort_not_supported} appear in both BEST_EFFORT and '
-            'NOT_SUPPORTED for provider_model_configs for '
+            f'Features {best_effort_not_supported} appear in both '
+            'BEST_EFFORT and NOT_SUPPORTED for provider_model_configs for '
             f'({provider_key}, {model_key})\n'
             f'Feature name: {feature_name}\n'
             f'Feature config: {feature}')
@@ -294,12 +304,12 @@ class ModelConfigs(state_controller.StateControlled):
       self,
       provider_model_configs: types.ProviderModelConfigsType,
       featured_models: types.FeaturedModelsType):
-    """Validate featured_models matches is_featured in provider_model_configs."""
+    """Validate featured_models matches is_featured in configs."""
     featured_from_configs = self._get_all_featured_models_from_configs(
         provider_model_configs)
 
-    featured_from_list: Set[Tuple[str, str]] = set()
-    for provider, models in featured_models.items():
+    featured_from_list: set[tuple[str, str]] = set()
+    for _provider, models in featured_models.items():
       for model in models:
         key = self._get_provider_model_key(model)
         featured_from_list.add(key)
@@ -320,14 +330,14 @@ class ModelConfigs(state_controller.StateControlled):
       self,
       provider_model_configs: types.ProviderModelConfigsType,
       models_by_call_type: types.ModelsByCallTypeType):
-    """Validate models_by_call_type matches call_type in provider_model_configs."""
+    """Validate models_by_call_type matches call_type in configs."""
     from_configs = self._get_all_models_by_call_type_from_configs(
         provider_model_configs)
 
-    from_list: Dict[types.CallType, Set[Tuple[str, str]]] = {}
+    from_list: dict[types.CallType, set[tuple[str, str]]] = {}
     for call_type, providers in models_by_call_type.items():
       from_list[call_type] = set()
-      for provider, models in providers.items():
+      for _provider, models in providers.items():
         for model in models:
           key = self._get_provider_model_key(model)
           from_list[call_type].add(key)
@@ -347,17 +357,17 @@ class ModelConfigs(state_controller.StateControlled):
       if extra_in_list:
         raise ValueError(
             f'Models in models_by_call_type[{call_type}] but not marked with '
-            f'that call_type in provider_model_configs: {sorted(extra_in_list)}')
+            f'that call_type in configs: {sorted(extra_in_list)}')
 
   def _validate_models_by_size(
       self,
       provider_model_configs: types.ProviderModelConfigsType,
       models_by_size: types.ModelsBySizeType):
-    """Validate models_by_size matches model_size_tags in provider_model_configs."""
+    """Validate models_by_size matches model_size_tags in configs."""
     from_configs = self._get_all_models_by_size_from_configs(
         provider_model_configs)
 
-    from_list: Dict[types.ModelSizeType, Set[Tuple[str, str]]] = {}
+    from_list: dict[types.ModelSizeType, set[tuple[str, str]]] = {}
     for size, models in models_by_size.items():
       from_list[size] = set()
       for model in models:
@@ -437,14 +447,15 @@ class ModelConfigs(state_controller.StateControlled):
 
   def _is_provider_model_tuple(self, value: Any) -> bool:
     return (
-        type(value) == tuple
+        isinstance(value, tuple)
         and len(value) == 2
-        and type(value[0]) == str
-        and type(value[1]) == str)
+        and isinstance(value[0], str)
+        and isinstance(value[1], str))
 
   @staticmethod
   def _load_model_config_schema_from_local_files(
-      version: Optional[str] = None) -> types.ModelConfigsSchemaType:
+      version: str | None = None) -> types.ModelConfigsSchemaType:
+    """Load model config schema from bundled JSON files."""
     version = version or ModelConfigs.LOCAL_CONFIG_VERSION
 
     try:
@@ -453,12 +464,13 @@ class ModelConfigs(state_controller.StateControlled):
           .joinpath(f"{version}.json")
           .read_text(encoding="utf-8")
       )
-    except FileNotFoundError:
+    except FileNotFoundError as e:
       raise FileNotFoundError(
           f'Model config file "{version}.json" not found in package. '
           'Please update the proxai package to the latest version. '
-          'If updating does not resolve the issue, please contact support@proxai.co'
-      )
+          'If updating does not resolve the issue, please contact '
+          'support@proxai.co'
+      ) from e
 
     try:
       config_dict = json.loads(config_data)
@@ -466,14 +478,15 @@ class ModelConfigs(state_controller.StateControlled):
       raise ValueError(
         f'Invalid JSON in config file "{version}.json". '
         'Please update the proxai package to the latest version. '
-        'If updating does not resolve the issue, please contact support@proxai.co\n'
-        f'Error: {e}')
+        'If updating does not resolve the issue, please contact '
+        f'support@proxai.co\nError: {e}') from e
 
     return type_serializer.decode_model_configs_schema_type(config_dict)
 
   def load_model_config_from_json_string(
       self,
       json_string: str):
+    """Load model config schema from a JSON string."""
     model_configs_schema = type_serializer.decode_model_configs_schema_type(
         json.loads(json_string))
     self.model_configs_schema = model_configs_schema
@@ -481,11 +494,12 @@ class ModelConfigs(state_controller.StateControlled):
   def check_provider_model_identifier_type(
       self,
       provider_model_identifier: types.ProviderModelIdentifierType,
-      model_configs_schema: Optional[types.ModelConfigsSchemaType] = None):
+      model_configs_schema: types.ModelConfigsSchemaType | None = None):
     """Check if provider model identifier is supported."""
     if model_configs_schema is None:
       model_configs_schema = self.model_configs_schema
-    provider_model_configs = model_configs_schema.version_config.provider_model_configs
+    provider_model_configs = (
+        model_configs_schema.version_config.provider_model_configs)
     if isinstance(provider_model_identifier, types.ProviderModelType):
       provider = provider_model_identifier.provider
       model = provider_model_identifier.model
@@ -523,6 +537,7 @@ class ModelConfigs(state_controller.StateControlled):
       self,
       model_identifier: types.ProviderModelIdentifierType
   ) -> types.ProviderModelType:
+    """Convert a model identifier to a ProviderModelType."""
     if self._is_provider_model_tuple(model_identifier):
       return self.model_configs_schema.version_config.provider_model_configs[
           model_identifier[0]][model_identifier[1]].provider_model
@@ -533,6 +548,7 @@ class ModelConfigs(state_controller.StateControlled):
       self,
       model_identifier: types.ProviderModelIdentifierType
   ) -> types.ProviderModelType:
+    """Get the full config for a model identifier."""
     provider_model = self.get_provider_model(model_identifier)
     return self.model_configs_schema.version_config.provider_model_configs[
         provider_model.provider][provider_model.model]
@@ -543,6 +559,7 @@ class ModelConfigs(state_controller.StateControlled):
       query_token_count: int,
       response_token_count: int,
   ) -> int:
+    """Calculate the cost in micro-cents for a query."""
     provider_model = self.get_provider_model(
         provider_model_identifier)
     version_config = self.model_configs_schema.version_config
@@ -554,11 +571,12 @@ class ModelConfigs(state_controller.StateControlled):
 
   def get_all_models(
       self,
-      provider: Optional[types.ProviderNameType] = None,
-      model_size: Optional[types.ModelSizeType] = None,
-      call_type: Optional[types.CallType] = types.CallType.GENERATE_TEXT,
-      only_featured: Optional[bool] = True,
-  ) -> List[types.ProviderModelType]:
+      provider: types.ProviderNameType | None = None,
+      model_size: types.ModelSizeType | None = None,
+      call_type: types.CallType | None = types.CallType.GENERATE_TEXT,
+      only_featured: bool | None = True,
+  ) -> list[types.ProviderModelType]:
+    """List all models matching the given filters."""
     version_config = self.model_configs_schema.version_config
     if (call_type is not None and
         call_type not in version_config.models_by_call_type):
@@ -599,12 +617,15 @@ class ModelConfigs(state_controller.StateControlled):
 
     return result_provider_models
 
-  def get_default_model_priority_list(self) -> List[types.ProviderModelType]:
+  def get_default_model_priority_list(self) -> list[types.ProviderModelType]:
+    """Return the default model priority list for fallback selection."""
     # TODO: This operation could be optimized by caching the result and using
     # StateController to persist the result. If the configs are updated, the
     # result should be invalidated and recalculated by the StateController's
     # handle_changes method.
     result = []
-    for provider_model in self.model_configs_schema.version_config.default_model_priority_list:
+    default_list = (
+        self.model_configs_schema.version_config.default_model_priority_list)
+    for provider_model in default_list:
       result.append(self.get_provider_model(provider_model))
     return result

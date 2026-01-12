@@ -1,7 +1,7 @@
 import pytest
-import proxai.types as types
-import proxai.connectors.model_configs as model_configs
 
+import proxai.connectors.model_configs as model_configs
+import proxai.types as types
 
 # =============================================================================
 # Test Helpers

@@ -1,13 +1,14 @@
-from pathlib import Path
-import proxai as px
 import random
 import time
-from pprint import pprint
 from dataclasses import asdict
+from pathlib import Path
+from pprint import pprint
+
+import proxai as px
 
 
 def simple_model_test():
-  random_int = random.randint(1, 1000000)
+  random.randint(1, 1000000)
   result = px.generate_text(
       'When is the first galatasaray and fenerbahce?',
       provider_model=('cohere', 'command-a'),
@@ -34,15 +35,15 @@ def simple_cache_test():
     return result
 
   print('1:')
-  result = _test_function()
+  _test_function()
   time.sleep(1)
 
   print('2:')
-  result = _test_function()
+  _test_function()
   time.sleep(1)
 
   print('3:')
-  result = _test_function()
+  _test_function()
   time.sleep(1)
 
 
