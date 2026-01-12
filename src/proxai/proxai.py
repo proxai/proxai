@@ -10,6 +10,7 @@ ResponseFormat = types.StructuredResponseFormat
 ResponseFormatType = types.ResponseFormatType
 
 _DEFAULT_CLIENT: Optional[client.ProxAIClient] = None
+Client = client.ProxAIClient
 
 
 def get_default_proxai_client() -> client.ProxAIClient:

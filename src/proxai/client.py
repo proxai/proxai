@@ -26,16 +26,64 @@ class ProxAIClientParams:
     proxdash_options: Optional[types.ProxDashOptions] = None
     allow_multiprocessing: Optional[bool] = True
     model_test_timeout: Optional[int] = 25
-    feature_mapping_strategy: Optional[types.FeatureMappingStrategy] = types.FeatureMappingStrategy.BEST_EFFORT
+    feature_mapping_strategy: Optional[
+        types.FeatureMappingStrategy
+    ] = types.FeatureMappingStrategy.BEST_EFFORT
     suppress_provider_errors: Optional[bool] = False
 
 
 class ProxAIClient(state_controller.StateControlled):
   def __init__(
       self,
+      experiment_path: Optional[str] = None,
+      cache_options: Optional[types.CacheOptions] = None,
+      logging_options: Optional[types.LoggingOptions] = None,
+      proxdash_options: Optional[types.ProxDashOptions] = None,
+      allow_multiprocessing: Optional[bool] = True,
+      model_test_timeout: Optional[int] = 25,
+      feature_mapping_strategy: Optional[
+          types.FeatureMappingStrategy
+      ] = types.FeatureMappingStrategy.BEST_EFFORT,
+      suppress_provider_errors: Optional[bool] = False,
       init_from_params: Optional[ProxAIClientParams] = None,
       init_from_state: Optional[types.ProxAIClientState] = None
   ):
+    if init_from_params is not None or init_from_state is not None:
+      if (experiment_path is not None or
+          cache_options is not None or
+          logging_options is not None or
+          proxdash_options is not None or
+          allow_multiprocessing != True or
+          model_test_timeout != 25 or
+          (feature_mapping_strategy !=
+           types.FeatureMappingStrategy.BEST_EFFORT) or
+          suppress_provider_errors != False):
+        raise ValueError(
+            'init_from_params or init_from_state cannot be set at with '
+            'direct arguments. Please use one of init_from_params, '
+            'init_from_state, or direct arguments.\n'
+            'experiment_path: {experiment_path}\n'
+            'cache_options: {cache_options}\n'
+            'logging_options: {logging_options}\n'
+            'proxdash_options: {proxdash_options}\n'
+            'allow_multiprocessing: {allow_multiprocessing}\n'
+            'model_test_timeout: {model_test_timeout}\n'
+            'feature_mapping_strategy: {feature_mapping_strategy}\n'
+            'suppress_provider_errors: {suppress_provider_errors}\n'
+            'init_from_params: {init_from_params}\n'
+            'init_from_state: {init_from_state}\n'
+        )
+    else:
+      init_from_params = ProxAIClientParams(
+        experiment_path=experiment_path,
+        cache_options=cache_options,
+        logging_options=logging_options,
+        proxdash_options=proxdash_options,
+        allow_multiprocessing=allow_multiprocessing,
+        model_test_timeout=model_test_timeout,
+        feature_mapping_strategy=feature_mapping_strategy,
+        suppress_provider_errors=suppress_provider_errors)
+
     super().__init__(
         init_from_params=init_from_params,
         init_from_state=init_from_state)
