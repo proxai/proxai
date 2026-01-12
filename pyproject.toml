@@ -77,6 +77,14 @@ ignore = [
     "D103",   # Missing docstring in public function
     "E501",   # Line too long (tests benefit from longer lines for readability)
 ]
+"integration_tests/**/*.py" = [
+    "D101",   # Missing docstring in public class
+    "D103",   # Missing docstring in public function
+    "E501",   # Line too long (tests benefit from longer lines for readability)
+]
+"examples/**/*.py" = [
+    "D103",   # Missing docstring in public function (examples are self-explanatory)
+]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
