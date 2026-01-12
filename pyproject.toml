@@ -83,6 +83,16 @@ ignore = [
 "examples/**/*.py" = [
     "D103",   # Missing docstring in public function (examples are self-explanatory)
 ]
+"docs/**/*" = [
+    "D100",   # Missing docstring in public module
+    "D101",   # Missing docstring in public class
+    "D103",   # Missing docstring in public function
+    "E501",   # Line too long
+    "F401",   # Imported but unused
+    "I001",   # Import sorting
+    "UP015",  # Unnecessary mode argument
+    "UP025",  # Unicode literals
+]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
