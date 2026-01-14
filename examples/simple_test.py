@@ -8,7 +8,6 @@ import proxai as px
 
 
 def simple_model_test():
-  random.randint(1, 1000000)
   result = px.generate_text(
       'When is the first galatasaray and fenerbahce?',
       provider_model=('cohere', 'command-a'),
@@ -56,7 +55,6 @@ def list_models():
       model_size='small',
       verbose=True,
       return_all=True)
-  from pprint import pprint
   pprint(model_status.working_models)
   pprint(model_status.failed_models)
 

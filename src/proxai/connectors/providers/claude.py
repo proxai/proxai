@@ -18,8 +18,13 @@ class ClaudeConnector(model_connector.ProviderModelConnector):
   def get_provider_name(self):
     return 'claude'
 
+  def get_required_provider_token_names(self) -> list[str]:
+    return ['ANTHROPIC_API_KEY']
+
   def init_model(self):
-    return anthropic.Anthropic()
+    return anthropic.Anthropic(
+        api_key=self.provider_token_value_map['ANTHROPIC_API_KEY']
+    )
 
   def init_mock_model(self):
     return claude_mock.ClaudeMock()

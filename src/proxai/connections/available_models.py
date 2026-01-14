@@ -49,7 +49,9 @@ class AvailableModels(state_controller.StateControlled):
   _allow_multiprocessing: bool
   _model_test_timeout: int
   _proxdash_connection: proxdash.ProxDashConnection
-  _providers_with_key: set[str]
+  _proxdash_provider_api_keys: types.ProviderTokenValueMap | None
+  _providers_with_key: dict[
+      types.ProviderNameType, types.ProviderTokenValueMap] | None
   _latest_model_cache_path_used_for_update: str | None
   _available_models_state: types.AvailableModelsState
   model_connectors: dict[
@@ -79,8 +81,11 @@ class AvailableModels(state_controller.StateControlled):
       self.proxdash_connection = init_from_params.proxdash_connection
       self.allow_multiprocessing = init_from_params.allow_multiprocessing
       self.model_test_timeout = init_from_params.model_test_timeout
+      self.proxdash_provider_api_keys = (
+          self.proxdash_connection.get_provider_api_keys()
+          if self.proxdash_connection else {})
 
-      self.providers_with_key = set()
+      self.providers_with_key = {}
       self.latest_model_cache_path_used_for_update = None
       self._load_provider_keys()
 
@@ -93,15 +98,18 @@ class AvailableModels(state_controller.StateControlled):
     return types.AvailableModelsState
 
   def _load_provider_keys(self):
-    self.providers_with_key = set()
-    for provider, provider_key_name in model_configs.PROVIDER_KEY_MAP.items():
-      provider_flag = True
-      for key_name in provider_key_name:
-        if key_name not in os.environ:
-          provider_flag = False
-          break
-      if provider_flag:
-        self.providers_with_key.add(provider)
+    self.providers_with_key = {}
+    for provider, provider_key_names in model_configs.PROVIDER_KEY_MAP.items():
+      for key_name in provider_key_names:
+        if key_name in self.proxdash_provider_api_keys:
+          if provider not in self.providers_with_key:
+            self.providers_with_key[provider] = {}
+          self.providers_with_key[
+              provider][key_name] = self.proxdash_provider_api_keys[key_name]
+        elif key_name in os.environ:
+          if provider not in self.providers_with_key:
+            self.providers_with_key[provider] = {}
+          self.providers_with_key[provider][key_name] = os.environ[key_name]
 
   def get_model_connector(
       self,
@@ -125,6 +133,8 @@ class AvailableModels(state_controller.StateControlled):
     init_from_params.query_cache_manager = self.query_cache_manager
     init_from_params.logging_options = self.logging_options
     init_from_params.proxdash_connection = self.proxdash_connection
+    init_from_params.provider_token_value_map = self.providers_with_key.get(
+        provider_model.provider, {})
 
     self.model_connectors[provider_model] = connector()
     return self.model_connectors[provider_model]
@@ -185,6 +195,15 @@ class AvailableModels(state_controller.StateControlled):
   def proxdash_connection(self, value: proxdash.ProxDashConnection):
     self.set_state_controlled_property_value('proxdash_connection', value)
 
+  @property
+  def proxdash_provider_api_keys(self) -> types.ProviderTokenValueMap:
+    return self.get_property_value('proxdash_provider_api_keys')
+
+  @proxdash_provider_api_keys.setter
+  def proxdash_provider_api_keys(
+      self, value: types.ProviderTokenValueMap | None):
+    self.set_property_value('proxdash_provider_api_keys', value)
+
   def proxdash_connection_deserializer(
       self,
       state_value: types.ProxDashConnectionState
@@ -208,11 +227,14 @@ class AvailableModels(state_controller.StateControlled):
     self.set_property_value('model_test_timeout', value)
 
   @property
-  def providers_with_key(self) -> set[str]:
+  def providers_with_key(self) -> dict[
+      types.ProviderNameType, types.ProviderTokenValueMap]:
     return self.get_property_value('providers_with_key')
 
   @providers_with_key.setter
-  def providers_with_key(self, value: set[str]):
+  def providers_with_key(
+      self, value: dict[
+          types.ProviderNameType, types.ProviderTokenValueMap]):
     self.set_property_value('providers_with_key', value)
 
   @property
@@ -834,7 +856,7 @@ class AvailableModels(state_controller.StateControlled):
       # For performance, we only load the provider keys if the model cache is
       # not enabled instead of fetching all models.
       self._load_provider_keys()
-      providers_with_key = self.providers_with_key
+      providers_with_key = set(self.providers_with_key.keys())
     elif (
         clear_model_cache or
         not self._check_model_cache_path_same()):
