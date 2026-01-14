@@ -22,6 +22,9 @@ class MockProviderModelConnector(model_connector.ProviderModelConnector):
   def get_provider_name(self):
     return "mock_provider"
 
+  def get_required_provider_token_names(self) -> list[str]:
+    return []
+
   def init_model(self):
     return None
 
@@ -104,6 +107,9 @@ class MockFailingProviderModelConnector(model_connector.ProviderModelConnector):
   def get_provider_name(self):
     return "mock_failing_provider"
 
+  def get_required_provider_token_names(self) -> list[str]:
+    return []
+
   def init_model(self):
     return None
 
@@ -119,6 +125,9 @@ class MockSlowProviderModelConnector(model_connector.ProviderModelConnector):
 
   def get_provider_name(self):
     return "mock_slow_provider"
+
+  def get_required_provider_token_names(self) -> list[str]:
+    return []
 
   def init_model(self):
     return None

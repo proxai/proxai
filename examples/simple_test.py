@@ -1,5 +1,6 @@
 import random
 import time
+from dataclasses import asdict
 from pathlib import Path
 from pprint import pprint
 
@@ -7,30 +8,11 @@ import proxai as px
 
 
 def simple_model_test():
-  px.connect(
-      proxdash_options=px.types.ProxDashOptions(
-          base_url='http://localhost:3001',
-          api_key='j1nunfz-mkdc55du-oahqqwt5al8',
-          stdout=True,
-      ),
-  )
-  for provider in px.models.list_providers():
-    print(provider)
-  # pprint(px.get_default_proxai_client().available_models_instance.providers_with_key)
-  # for model in px.models.list_working_models(
-  #     model_size='small',
-  #     verbose=True):
-  #   print(model)
-  # print(px.generate_text(
-  #     'What is the capital of France?',
-  #     provider_model=('gemini', 'gemini-3-flash'),
-  #     extensive_return=True))
-  # random.randint(1, 1000000)
-  # result = px.generate_text(
-  #     'When is the first galatasaray and fenerbahce?',
-  #     provider_model=('cohere', 'command-a'),
-  #     extensive_return=True)
-  # pprint(asdict(result))
+  result = px.generate_text(
+      'When is the first galatasaray and fenerbahce?',
+      provider_model=('cohere', 'command-a'),
+      extensive_return=True)
+  pprint(asdict(result))
 
 
 def simple_cache_test():
