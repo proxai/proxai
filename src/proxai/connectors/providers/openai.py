@@ -15,8 +15,13 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
   def get_provider_name(self):
     return 'openai'
 
+  def get_required_provider_token_names(self) -> list[str]:
+    return ['OPENAI_API_KEY']
+
   def init_model(self):
-    return OpenAI()
+    return OpenAI(
+        api_key=self.provider_token_value_map['OPENAI_API_KEY']
+    )
 
   def init_mock_model(self):
     return openai_mock.OpenAIMock()

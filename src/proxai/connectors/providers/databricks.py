@@ -15,8 +15,14 @@ class DatabricksConnector(model_connector.ProviderModelConnector):
   def get_provider_name(self):
     return 'databricks'
 
+  def get_required_provider_token_names(self) -> list[str]:
+    return ['DATABRICKS_TOKEN', 'DATABRICKS_HOST']
+
   def init_model(self):
-    w = WorkspaceClient()
+    w = WorkspaceClient(
+        token=self.provider_token_value_map['DATABRICKS_TOKEN'],
+        host=self.provider_token_value_map['DATABRICKS_HOST']
+    )
     return w.serving_endpoints.get_open_ai_client()
 
   def init_mock_model(self):

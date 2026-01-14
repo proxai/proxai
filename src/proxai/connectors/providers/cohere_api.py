@@ -15,8 +15,13 @@ class CohereConnector(model_connector.ProviderModelConnector):
   def get_provider_name(self):
     return 'cohere'
 
+  def get_required_provider_token_names(self) -> list[str]:
+    return ['CO_API_KEY']
+
   def init_model(self):
-    return cohere.ClientV2()
+    return cohere.ClientV2(
+        api_key=self.provider_token_value_map['CO_API_KEY']
+    )
 
   def init_mock_model(self):
     return cohere_api_mock.CohereMock()
