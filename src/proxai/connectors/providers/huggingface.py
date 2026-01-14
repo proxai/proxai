@@ -1,5 +1,4 @@
 import functools
-import os
 from collections.abc import Callable
 from typing import Any
 
@@ -16,10 +15,13 @@ class HuggingFaceConnector(model_connector.ProviderModelConnector):
   def get_provider_name(self):
     return 'huggingface'
 
+  def get_required_provider_token_names(self) -> list[str]:
+    return ['HF_TOKEN']
+
   def init_model(self):
     return InferenceClient(
         provider="auto",
-        token=os.getenv("HF_TOKEN"))
+        token=self.provider_token_value_map['HF_TOKEN'])
 
   def init_mock_model(self):
     return openai_mock.OpenAIMock()

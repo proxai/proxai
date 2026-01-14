@@ -560,3 +560,45 @@ class ProxDashConnection(state_controller.StateControlled):
         type=types.LoggingType.INFO)
 
     return model_configs_schema
+
+  def get_provider_api_keys(self) -> types.ProviderTokenValueMap:
+    if self.status != types.ProxDashConnectionStatus.CONNECTED:
+      return {}
+
+    request_url = (
+        f'{self.proxdash_options.base_url}' +
+        '/ingestion/provider-connection-keys')
+    response = requests.get(
+        request_url,
+        headers={'X-API-Key': self.proxdash_options.api_key})
+
+    if response.status_code != 200:
+      logging_utils.log_proxdash_message(
+          logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
+          message=(
+              'Failed to get provider API keys from ProxDash.\n'
+              f'Status code: {response.status_code}\n'
+              f'Response: {response.text}'),
+          type=types.LoggingType.ERROR)
+      return {}
+
+    data = json.loads(response.text)
+    if not data['success']:
+      logging_utils.log_proxdash_message(
+          logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
+          message=(
+              'Failed to get provider API keys from ProxDash.\n'
+              f'Response: {response.text}'),
+          type=types.LoggingType.ERROR)
+      return {}
+
+    logging_utils.log_proxdash_message(
+        logging_options=self.logging_options,
+        proxdash_options=self.proxdash_options,
+        message=(
+            'Provider API keys fetched from ProxDash.'),
+        type=types.LoggingType.INFO)
+
+    return data['data']

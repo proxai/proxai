@@ -33,6 +33,7 @@ class ProviderModelConnectorParams:
   query_cache_manager: types.QueryCacheManagerState | None = None
   logging_options: types.LoggingOptions | None = None
   proxdash_connection: proxdash.ProxDashConnection | None = None
+  provider_token_value_map: types.ProviderTokenValueMap | None = None
 
 
 class ProviderModelConnector(state_controller.StateControlled):
@@ -78,6 +79,8 @@ class ProviderModelConnector(state_controller.StateControlled):
       self.query_cache_manager = init_from_params.query_cache_manager
       self.logging_options = init_from_params.logging_options
       self.proxdash_connection = init_from_params.proxdash_connection
+      self.provider_token_value_map = init_from_params.provider_token_value_map
+      self._validate_provider_token_value_map()
 
   def get_internal_state_property_name(self):
     """Return the name of the internal state property."""
@@ -86,6 +89,15 @@ class ProviderModelConnector(state_controller.StateControlled):
   def get_internal_state_type(self):
     """Return the dataclass type used for state storage."""
     return types.ProviderModelState
+
+  def _validate_provider_token_value_map(self):
+    if self.provider_token_value_map is None:
+      raise ValueError('provider_token_value_map needs to be set.')
+    for token_name in self.get_required_provider_token_names():
+      if token_name not in self.provider_token_value_map:
+        raise ValueError(
+            f'provider_token_value_map needs to contain {token_name}.\n'
+            f'Available token names: {self.provider_token_value_map.keys()}')
 
   @property
   def api(self):
@@ -169,6 +181,14 @@ class ProviderModelConnector(state_controller.StateControlled):
   ) -> proxdash.ProxDashConnection:
     """Deserialize a ProxDashConnection from its state."""
     return proxdash.ProxDashConnection(init_from_state=state_value)
+
+  @property
+  def provider_token_value_map(self):
+    return self.get_property_value('provider_token_value_map')
+
+  @provider_token_value_map.setter
+  def provider_token_value_map(self, value):
+    self.set_property_value('provider_token_value_map', value)
 
   def _extract_json_from_text(self, text: str) -> dict:
     """Helper function for extracting JSON from text.
@@ -916,6 +936,10 @@ class ProviderModelConnector(state_controller.StateControlled):
 
   def get_provider_name(self):
     """Return the provider name for this connector."""
+    raise NotImplementedError
+
+  def get_required_provider_token_names(self) -> list[str]:
+    """Return the required provider token names for this connector."""
     raise NotImplementedError
 
   def init_model(self):

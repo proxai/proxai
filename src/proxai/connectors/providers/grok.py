@@ -1,5 +1,4 @@
 import functools
-import os
 from collections.abc import Callable
 from typing import Any
 
@@ -18,8 +17,11 @@ class GrokConnector(model_connector.ProviderModelConnector):
   def get_provider_name(self):
     return 'grok'
 
+  def get_required_provider_token_names(self) -> list[str]:
+    return ['XAI_API_KEY']
+
   def init_model(self):
-    return Client(api_key=os.getenv("XAI_API_KEY"))
+    return Client(api_key=self.provider_token_value_map['XAI_API_KEY'])
 
   def init_mock_model(self):
     return grok_mock.GrokMock()
