@@ -1,5 +1,4 @@
 import functools
-import os
 from collections.abc import Callable
 from typing import Any
 
@@ -17,8 +16,11 @@ class MistralConnector(model_connector.ProviderModelConnector):
   def get_provider_name(self):
     return 'mistral'
 
+  def get_required_provider_token_names(self) -> list[str]:
+    return ['MISTRAL_API_KEY']
+
   def init_model(self):
-    return Mistral(api_key=os.environ.get('MISTRAL_API_KEY'))
+    return Mistral(api_key=self.provider_token_value_map['MISTRAL_API_KEY'])
 
   def init_mock_model(self):
     return mistral_mock.MistralMock()

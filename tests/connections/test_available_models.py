@@ -115,9 +115,9 @@ class TestAvailableModels:
 
   def test_filter_by_key(self):
     available_models_manager = self._get_available_models()
-    available_models_manager.providers_with_key = [
-        'openai',
-        'claude']
+    available_models_manager.providers_with_key = {
+        'openai': {'OPENAI_API_KEY': 'test_api_key'},
+        'claude': {'ANTHROPIC_API_KEY': 'test_api_key'}}
     models = types.ModelStatus()
     available_models_manager._get_all_models(
         models, call_type=types.CallType.GENERATE_TEXT)
@@ -128,7 +128,8 @@ class TestAvailableModels:
   def test_filter_by_cache(self):
     self._save_temp_cache_state()
     available_models_manager = self._get_available_models()
-    available_models_manager.providers_with_key = ['openai']
+    available_models_manager.providers_with_key = {
+        'openai': {'OPENAI_API_KEY': 'test_api_key'}}
     models = types.ModelStatus()
     available_models_manager._get_all_models(
         models, call_type=types.CallType.GENERATE_TEXT)
@@ -225,7 +226,8 @@ class TestAvailableModels:
   def test_test_models(self, allow_multiprocessing):
     available_models_manager = self._get_available_models(
         allow_multiprocessing=allow_multiprocessing)
-    available_models_manager.providers_with_key = ['openai']
+    available_models_manager.providers_with_key = {
+        'openai': {'OPENAI_API_KEY': 'test_api_key'}}
     models = types.ModelStatus()
     available_models_manager._get_all_models(
         models, call_type=types.CallType.GENERATE_TEXT)
@@ -552,7 +554,9 @@ class TestAvailableModelsState:
   def test_get_state_and_init_from_state(self):
     """Test state serialization and deserialization round-trip."""
     original = self._create_available_models()
-    original.providers_with_key = {'openai', 'claude'}
+    original.providers_with_key = {
+        'openai': {'OPENAI_API_KEY': 'test_api_key'},
+        'claude': {'ANTHROPIC_API_KEY': 'test_api_key'}}
 
     state = original.get_state()
     restored = available_models.AvailableModels(init_from_state=state)
@@ -633,6 +637,9 @@ class TestFilterByFeatures:
   def test_filter_by_features_basic_prompt(self):
     """All models should support the basic 'prompt' feature."""
     available_models_manager = self._get_available_models()
+    available_models_manager.providers_with_key = {
+        'openai': {'OPENAI_API_KEY': 'test_api_key'},
+        'claude': {'ANTHROPIC_API_KEY': 'test_api_key'}}
     models = types.ModelStatus()
     models.unprocessed_models.add(
         pytest.model_configs_instance.get_provider_model(('openai', 'o4-mini')))
@@ -649,6 +656,9 @@ class TestFilterByFeatures:
   def test_filter_by_features_filters_working_and_failed_models(self):
     """Features filter should apply to working and failed models too."""
     available_models_manager = self._get_available_models()
+    available_models_manager.providers_with_key = {
+        'openai': {'OPENAI_API_KEY': 'test_api_key'},
+        'claude': {'ANTHROPIC_API_KEY': 'test_api_key'}}
     models = types.ModelStatus()
 
     openai_model = pytest.model_configs_instance.get_provider_model(

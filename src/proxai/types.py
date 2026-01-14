@@ -482,6 +482,9 @@ class ProxDashConnectionStatus(str, enum.Enum):
   CONNECTED = 'CONNECTED'
 
 
+ProviderTokenValueMap = dict[str, str]
+
+
 class StateContainer:
     """Base class for all state objects in the system."""
     pass
@@ -537,6 +540,7 @@ class ProviderModelState(StateContainer):
   query_cache_manager: QueryCacheManagerState | None = None
   logging_options: LoggingOptions | None = None
   proxdash_connection: ProxDashConnectionState | None = None
+  provider_token_value_map: ProviderTokenValueMap | None = None
 
 
 @dataclasses.dataclass
@@ -548,9 +552,11 @@ class AvailableModelsState(StateContainer):
   model_cache_manager: ModelCacheManagerState | None = None
   logging_options: LoggingOptions | None = None
   proxdash_connection: ProxDashConnectionState | None = None
+  proxdash_provider_api_keys: ProviderTokenValueMap | None = None
   allow_multiprocessing: bool | None = None
   model_test_timeout: int | None = None
-  providers_with_key: set[str] | None = None
+  providers_with_key: dict[
+      ProviderNameType, ProviderTokenValueMap] | None = None
   has_fetched_all_models: bool | None = None
   latest_model_cache_path_used_for_update: str | None = None
 

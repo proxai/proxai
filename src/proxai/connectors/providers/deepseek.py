@@ -1,5 +1,4 @@
 import functools
-import os
 from collections.abc import Callable
 from typing import Any
 
@@ -16,9 +15,12 @@ class DeepSeekConnector(model_connector.ProviderModelConnector):
   def get_provider_name(self):
     return 'deepseek'
 
+  def get_required_provider_token_names(self) -> list[str]:
+    return ['DEEPSEEK_API_KEY']
+
   def init_model(self):
     return OpenAI(
-        api_key=os.getenv("DEEPSEEK_API_KEY"),
+        api_key=self.provider_token_value_map['DEEPSEEK_API_KEY'],
         base_url="https://api.deepseek.com")
 
   def init_mock_model(self):
