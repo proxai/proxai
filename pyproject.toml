@@ -46,6 +46,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
 line-length = 80
+indent-width = 2
 target-version = "py310"
 src = ["src"]
 
@@ -101,4 +102,5 @@ convention = "google"
 known-first-party = ["proxai"]
 
 [tool.ruff.format]
+indent-style = "space"
 docstring-code-format = true
