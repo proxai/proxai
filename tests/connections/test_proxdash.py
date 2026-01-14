@@ -1234,3 +1234,99 @@ class TestProxDashConnectionGetModelConfigsSchema:
     result = connection.get_model_configs_schema()
 
     assert result is None
+
+
+class TestProxDashConnectionGetProviderApiKeys:
+  @pytest.fixture(autouse=True)
+  def setup_get_provider_api_keys(self, monkeypatch):
+    monkeypatch.delenv('PROXDASH_API_KEY', raising=False)
+    self.base_url = 'https://proxainest-production.up.railway.app'
+    yield
+
+  def _create_connection(
+      self,
+      connected: bool = True,
+      requests_mock=None
+  ) -> proxdash.ProxDashConnection:
+    if connected and requests_mock:
+      requests_mock.get(
+          f'{self.base_url}/ingestion/verify-key',
+          text='{"success": true, "data": {"permission": "ALL"}}',
+          status_code=200)
+    connection_params = proxdash.ProxDashConnectionParams(
+        logging_options=types.LoggingOptions(),
+        proxdash_options=types.ProxDashOptions(
+            api_key='test_api_key' if connected else None,
+            disable_proxdash=not connected))
+    return proxdash.ProxDashConnection(
+        init_from_params=connection_params)
+
+  def test_returns_empty_dict_when_not_connected(self, requests_mock):
+    """Tests that empty dict is returned when connection status is not CONNECTED."""
+    connection = self._create_connection(connected=False)
+
+    result = connection.get_provider_api_keys()
+
+    assert result == {}
+
+  def test_successful_fetch_returns_provider_keys(self, requests_mock):
+    """Tests successful fetch returns provider API keys."""
+    connection = self._create_connection(connected=True, requests_mock=requests_mock)
+
+    expected_keys = {
+        'OPENAI_API_KEY': 'sk-test-openai-key',
+        'ANTHROPIC_API_KEY': 'sk-test-anthropic-key'
+    }
+    requests_mock.get(
+        f'{self.base_url}/ingestion/provider-connection-keys',
+        text=json.dumps({'success': True, 'data': expected_keys}),
+        status_code=200)
+
+    result = connection.get_provider_api_keys()
+
+    assert result == expected_keys
+
+  def test_returns_empty_dict_on_non_200_status(self, requests_mock):
+    """Tests that empty dict is returned when API returns non-200 status."""
+    connection = self._create_connection(connected=True, requests_mock=requests_mock)
+
+    requests_mock.get(
+        f'{self.base_url}/ingestion/provider-connection-keys',
+        text='Server Error',
+        status_code=500)
+
+    result = connection.get_provider_api_keys()
+
+    assert result == {}
+
+  def test_returns_empty_dict_on_unsuccessful_response(self, requests_mock):
+    """Tests that empty dict is returned when success is false."""
+    connection = self._create_connection(connected=True, requests_mock=requests_mock)
+
+    requests_mock.get(
+        f'{self.base_url}/ingestion/provider-connection-keys',
+        text='{"success": false, "error": "Some error"}',
+        status_code=200)
+
+    result = connection.get_provider_api_keys()
+
+    assert result == {}
+
+  def test_request_includes_api_key_header(self, requests_mock):
+    """Tests that API key is included in request header."""
+    connection = self._create_connection(connected=True, requests_mock=requests_mock)
+
+    requests_mock.get(
+        f'{self.base_url}/ingestion/provider-connection-keys',
+        text='{"success": true, "data": {}}',
+        status_code=200)
+
+    connection.get_provider_api_keys()
+
+    # Find the request to provider-connection-keys
+    provider_key_requests = [
+        req for req in requests_mock.request_history
+        if 'provider-connection-keys' in req.url
+    ]
+    assert len(provider_key_requests) == 1
+    assert provider_key_requests[0].headers['X-API-Key'] == 'test_api_key'

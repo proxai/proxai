@@ -119,7 +119,8 @@ def get_mock_provider_model_connector(
                   api_key='test_api_key',
               ),
               key_info_from_proxdash={'permission': 'ALL'},
-              connected_experiment_path='test/path')))
+              connected_experiment_path='test/path')),
+      provider_token_value_map={})
   connector = mock_provider.MockProviderModelConnector(
       init_from_params=mock_provider_model_params)
   return connector
@@ -282,7 +283,8 @@ class TestModelConnectorInit:
           run_type=types.RunType.TEST,
           feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
           logging_options=base_logging_options,
-          proxdash_connection=proxdash_connection)
+          proxdash_connection=proxdash_connection,
+          provider_token_value_map={})
 
       connector = mock_provider.MockProviderModelConnector(
           init_from_params=model_connector_params)
@@ -339,6 +341,28 @@ class TestModelConnectorInit:
       connector.generate_text(
           prompt="Hello",
           provider_model=pytest.model_configs_instance.get_provider_model(('claude', 'opus-4')))
+
+
+class TestValidateProviderTokenValueMap:
+  """Tests for _validate_provider_token_value_map method."""
+
+  def test_raises_error_when_none(self):
+    connector = get_mock_provider_model_connector()
+    connector.provider_token_value_map = None
+    with pytest.raises(ValueError, match='provider_token_value_map needs to be set.'):
+      connector._validate_provider_token_value_map()
+
+  def test_raises_error_when_required_token_missing(self):
+    connector = get_mock_provider_model_connector()
+    connector.get_required_provider_token_names = lambda: ['REQUIRED_TOKEN']
+    with pytest.raises(ValueError, match='provider_token_value_map needs to contain REQUIRED_TOKEN.'):
+      connector._validate_provider_token_value_map()
+
+  def test_passes_when_all_required_tokens_present(self):
+    connector = get_mock_provider_model_connector()
+    connector.get_required_provider_token_names = lambda: ['TOKEN_A', 'TOKEN_B']
+    connector.provider_token_value_map = {'TOKEN_A': 'value_a', 'TOKEN_B': 'value_b'}
+    connector._validate_provider_token_value_map()  # Should not raise
 
 
 class TestCheckFeatureExists:

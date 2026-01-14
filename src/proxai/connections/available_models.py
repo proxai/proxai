@@ -82,7 +82,8 @@ class AvailableModels(state_controller.StateControlled):
       self.allow_multiprocessing = init_from_params.allow_multiprocessing
       self.model_test_timeout = init_from_params.model_test_timeout
       self.proxdash_provider_api_keys = (
-          self.proxdash_connection.get_provider_api_keys())
+          self.proxdash_connection.get_provider_api_keys()
+          if self.proxdash_connection else {})
 
       self.providers_with_key = {}
       self.latest_model_cache_path_used_for_update = None
@@ -133,7 +134,7 @@ class AvailableModels(state_controller.StateControlled):
     init_from_params.logging_options = self.logging_options
     init_from_params.proxdash_connection = self.proxdash_connection
     init_from_params.provider_token_value_map = self.providers_with_key.get(
-        provider_model.provider, None)
+        provider_model.provider, {})
 
     self.model_connectors[provider_model] = connector()
     return self.model_connectors[provider_model]
