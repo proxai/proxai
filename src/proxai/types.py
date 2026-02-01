@@ -29,8 +29,9 @@ RawProviderModelIdentifierType = str
 class ProviderModelType:
   """Immutable identifier for a specific provider and model combination.
 
-  This type is returned by model discovery functions like px.models.list_models()
-  and px.models.get_model(). It uniquely identifies a model by its provider,
+  This type is returned by model discovery functions like
+  px.models.list_models() and px.models.get_model(). It uniquely identifies
+  a model by its provider,
   model name, and the provider's internal identifier.
 
   Attributes:
