@@ -4,6 +4,7 @@ import proxai.experiment.experiment as experiment
 
 
 class TestExperiment:
+
   def test_invalid_empty_path(self):
     with pytest.raises(ValueError):
       experiment.validate_experiment_path('')
@@ -56,7 +57,8 @@ class TestExperiment:
     experiment.validate_experiment_path('root/dir')
     experiment.validate_experiment_path('(root)/dir')
     experiment.validate_experiment_path(
-        'root/dir/dir-2/dir_3/dir.dir/dir:3/(dir)(dir)/dir')
+        'root/dir/dir-2/dir_3/dir.dir/dir:3/(dir)(dir)/dir'
+    )
 
   def test_invalid_none_path(self):
     with pytest.raises(ValueError):

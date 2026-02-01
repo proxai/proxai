@@ -29,9 +29,8 @@ def setup_test(monkeypatch):
 
 def _set_test_mode():
   """Set RunType.TEST on available_models_instance to use mock providers."""
-  px.get_default_proxai_client()._available_models_instance.run_type = (
-    types.RunType.TEST
-  )
+  px.get_default_proxai_client(
+  )._available_models_instance.run_type = (types.RunType.TEST)
 
 
 def _get_temp_dir(name: str):
@@ -54,13 +53,13 @@ class TestGenerateText:
 
   def test_generate_text_with_system_prompt(self):
     response = px.generate_text(
-      prompt="hello", system="You are a helpful assistant."
+        prompt="hello", system="You are a helpful assistant."
     )
     assert response == "mock response"
 
   def test_generate_text_with_provider_model(self):
     response = px.generate_text(
-      prompt="hello", provider_model=("mock_provider", "mock_model")
+        prompt="hello", provider_model=("mock_provider", "mock_model")
     )
     assert response == "mock response"
 
@@ -73,15 +72,15 @@ class TestGenerateText:
   def test_generate_text_error_raises_exception(self):
     with pytest.raises(Exception, match="Temp Error"):
       px.generate_text(
-        prompt="hello",
-        provider_model=("mock_failing_provider", "mock_failing_model"),
+          prompt="hello",
+          provider_model=("mock_failing_provider", "mock_failing_model"),
       )
 
   def test_generate_text_with_suppress_provider_errors(self):
     response = px.generate_text(
-      prompt="hello",
-      provider_model=("mock_failing_provider", "mock_failing_model"),
-      suppress_provider_errors=True,
+        prompt="hello",
+        provider_model=("mock_failing_provider", "mock_failing_model"),
+        suppress_provider_errors=True,
     )
     assert response == "Temp Error"
 
@@ -119,7 +118,7 @@ class TestSetModel:
 
     px.set_model(("mock_failing_provider", "mock_failing_model"))
     response2 = px.generate_text(
-      "hello", suppress_provider_errors=True, extensive_return=True
+        "hello", suppress_provider_errors=True, extensive_return=True
     )
     assert response2.query_record.provider_model.model == "mock_failing_model"
 
@@ -130,9 +129,8 @@ class TestConnect:
   def test_connect_with_cache_options_enables_caching(self):
     cache_path, _ = _get_temp_dir("cache")
     px.connect(cache_options=types.CacheOptions(cache_path=cache_path))
-    px.get_default_proxai_client()._available_models_instance.run_type = (
-      types.RunType.TEST
-    )
+    px.get_default_proxai_client(
+    )._available_models_instance.run_type = (types.RunType.TEST)
     px.set_model(("mock_provider", "mock_model"))
 
     response1 = px.generate_text("hello", extensive_return=True)
@@ -144,14 +142,14 @@ class TestConnect:
   def test_connect_with_experiment_path(self):
     logging_path, _ = _get_temp_dir("logs")
     px.connect(
-      experiment_path="my/experiment",
-      logging_options=types.LoggingOptions(logging_path=logging_path),
+        experiment_path="my/experiment",
+        logging_options=types.LoggingOptions(logging_path=logging_path),
     )
 
     options = px.get_current_options()
     assert options.experiment_path == "my/experiment"
     assert options.logging_options.logging_path == os.path.join(
-      logging_path, "my/experiment"
+        logging_path, "my/experiment"
     )
 
   def test_connect_resets_previous_configuration(self):
@@ -168,13 +166,12 @@ class TestConnect:
 
   def test_connect_with_suppress_provider_errors(self):
     px.connect(suppress_provider_errors=True)
-    px.get_default_proxai_client()._available_models_instance.run_type = (
-      types.RunType.TEST
-    )
+    px.get_default_proxai_client(
+    )._available_models_instance.run_type = (types.RunType.TEST)
 
     response = px.generate_text(
-      prompt="hello",
-      provider_model=("mock_failing_provider", "mock_failing_model"),
+        prompt="hello",
+        provider_model=("mock_failing_provider", "mock_failing_model"),
     )
     assert response == "Temp Error"
 
@@ -182,7 +179,7 @@ class TestConnect:
     px.connect(feature_mapping_strategy=types.FeatureMappingStrategy.STRICT)
     options = px.get_current_options()
     assert (
-      options.feature_mapping_strategy == types.FeatureMappingStrategy.STRICT
+        options.feature_mapping_strategy == types.FeatureMappingStrategy.STRICT
     )
 
 
@@ -267,7 +264,7 @@ class TestModelsApiListWorkingModels:
     # Verify get_working_model works for a known working model
     first_model = list(result.working_models)[0]
     model = px.models.get_working_model(
-      provider=first_model.provider, model=first_model.model
+        provider=first_model.provider, model=first_model.model
     )
     assert model.provider == first_model.provider
     assert model.model == first_model.model
@@ -288,7 +285,7 @@ class TestModelsApiListWorkingModels:
     if len(providers) > 0:
       provider = providers[0]
       small_models = px.models.list_working_provider_models(
-        provider, model_size="small"
+          provider, model_size="small"
       )
       # Just verify it returns a list (may be empty for some providers)
       assert isinstance(small_models, list)
@@ -300,9 +297,8 @@ class TestQueryCache:
   def test_cache_hit_on_second_call(self):
     cache_path, _ = _get_temp_dir("cache")
     px.connect(cache_options=types.CacheOptions(cache_path=cache_path))
-    px.get_default_proxai_client()._available_models_instance.run_type = (
-      types.RunType.TEST
-    )
+    px.get_default_proxai_client(
+    )._available_models_instance.run_type = (types.RunType.TEST)
     px.set_model(("mock_provider", "mock_model"))
 
     response1 = px.generate_text("hello", extensive_return=True)
@@ -314,14 +310,13 @@ class TestQueryCache:
   def test_use_cache_false_skips_cache(self):
     cache_path, _ = _get_temp_dir("cache")
     px.connect(cache_options=types.CacheOptions(cache_path=cache_path))
-    px.get_default_proxai_client()._available_models_instance.run_type = (
-      types.RunType.TEST
-    )
+    px.get_default_proxai_client(
+    )._available_models_instance.run_type = (types.RunType.TEST)
     px.set_model(("mock_provider", "mock_model"))
 
     response1 = px.generate_text("hello", extensive_return=True)
     response2 = px.generate_text(
-      "hello", use_cache=False, extensive_return=True
+        "hello", use_cache=False, extensive_return=True
     )
 
     assert response1.response_source == types.ResponseSource.PROVIDER
@@ -330,13 +325,11 @@ class TestQueryCache:
   def test_unique_response_limit_controls_cache(self):
     cache_path, _ = _get_temp_dir("cache")
     px.connect(
-      cache_options=types.CacheOptions(
-        cache_path=cache_path, unique_response_limit=2
-      )
+        cache_options=types.
+        CacheOptions(cache_path=cache_path, unique_response_limit=2)
     )
-    px.get_default_proxai_client()._available_models_instance.run_type = (
-      types.RunType.TEST
-    )
+    px.get_default_proxai_client(
+    )._available_models_instance.run_type = (types.RunType.TEST)
     px.set_model(("mock_provider", "mock_model"))
 
     r1 = px.generate_text("hello", extensive_return=True)
@@ -349,28 +342,27 @@ class TestQueryCache:
 
   def test_use_cache_true_without_cache_raises_error(self):
     with pytest.raises(
-      ValueError, match="use_cache is True but query cache is not working"
+        ValueError, match="use_cache is True but query cache is not working"
     ):
       px.generate_text("hello", use_cache=True)
 
   def test_retry_if_error_cached_false_returns_cached_error(self):
     cache_path, _ = _get_temp_dir("cache")
     px.connect(cache_options=types.CacheOptions(cache_path=cache_path))
-    px.get_default_proxai_client()._available_models_instance.run_type = (
-      types.RunType.TEST
-    )
+    px.get_default_proxai_client(
+    )._available_models_instance.run_type = (types.RunType.TEST)
 
     r1 = px.generate_text(
-      "hello",
-      provider_model=("mock_failing_provider", "mock_failing_model"),
-      suppress_provider_errors=True,
-      extensive_return=True,
+        "hello",
+        provider_model=("mock_failing_provider", "mock_failing_model"),
+        suppress_provider_errors=True,
+        extensive_return=True,
     )
     r2 = px.generate_text(
-      "hello",
-      provider_model=("mock_failing_provider", "mock_failing_model"),
-      suppress_provider_errors=True,
-      extensive_return=True,
+        "hello",
+        provider_model=("mock_failing_provider", "mock_failing_model"),
+        suppress_provider_errors=True,
+        extensive_return=True,
     )
 
     assert r1.response_source == types.ResponseSource.PROVIDER
@@ -381,25 +373,23 @@ class TestQueryCache:
   def test_retry_if_error_cached_true_retries_from_provider(self):
     cache_path, _ = _get_temp_dir("cache")
     px.connect(
-      cache_options=types.CacheOptions(
-        cache_path=cache_path, retry_if_error_cached=True
-      )
+        cache_options=types.
+        CacheOptions(cache_path=cache_path, retry_if_error_cached=True)
     )
-    px.get_default_proxai_client()._available_models_instance.run_type = (
-      types.RunType.TEST
-    )
+    px.get_default_proxai_client(
+    )._available_models_instance.run_type = (types.RunType.TEST)
 
     r1 = px.generate_text(
-      "hello",
-      provider_model=("mock_failing_provider", "mock_failing_model"),
-      suppress_provider_errors=True,
-      extensive_return=True,
+        "hello",
+        provider_model=("mock_failing_provider", "mock_failing_model"),
+        suppress_provider_errors=True,
+        extensive_return=True,
     )
     r2 = px.generate_text(
-      "hello",
-      provider_model=("mock_failing_provider", "mock_failing_model"),
-      suppress_provider_errors=True,
-      extensive_return=True,
+        "hello",
+        provider_model=("mock_failing_provider", "mock_failing_model"),
+        suppress_provider_errors=True,
+        extensive_return=True,
     )
 
     assert r1.response_source == types.ResponseSource.PROVIDER
@@ -418,9 +408,9 @@ class TestGetCurrentOptions:
   def test_get_current_options_reflects_connect_settings(self):
     cache_path, _ = _get_temp_dir("cache")
     px.connect(
-      cache_options=types.CacheOptions(cache_path=cache_path),
-      allow_multiprocessing=False,
-      model_test_timeout=30,
+        cache_options=types.CacheOptions(cache_path=cache_path),
+        allow_multiprocessing=False,
+        model_test_timeout=30,
     )
 
     options = px.get_current_options()
@@ -455,9 +445,8 @@ class TestResetState:
 
     cache_path2, _ = _get_temp_dir("cache2")
     px.connect(cache_options=types.CacheOptions(cache_path=cache_path2))
-    px.get_default_proxai_client()._available_models_instance.run_type = (
-      types.RunType.TEST
-    )
+    px.get_default_proxai_client(
+    )._available_models_instance.run_type = (types.RunType.TEST)
     options2 = px.get_current_options()
 
     assert options1.cache_options.cache_path == cache_path1

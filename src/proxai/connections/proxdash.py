@@ -41,13 +41,12 @@ class ProxDashConnection(state_controller.StateControlled):
   _proxdash_connection_state: types.ProxDashConnectionState | None
 
   def __init__(
-      self,
-      init_from_params: ProxDashConnectionParams | None = None,
+      self, init_from_params: ProxDashConnectionParams | None = None,
       init_from_state: types.ProxDashConnectionState | None = None
   ):
     super().__init__(
-        init_from_params=init_from_params,
-        init_from_state=init_from_state)
+        init_from_params=init_from_params, init_from_state=init_from_state
+    )
 
     if init_from_state:
       self.load_state(init_from_state)
@@ -108,18 +107,20 @@ class ProxDashConnection(state_controller.StateControlled):
   @property
   def experiment_path(self) -> str:
     internal_experiment_path = self.get_property_internal_value(
-        'experiment_path')
+        'experiment_path'
+    )
 
     experiment_path = None
-    if (internal_experiment_path is not None and
-        internal_experiment_path != _NOT_SET_EXPERIMENT_PATH_VALUE):
+    if (
+        internal_experiment_path is not None and
+        internal_experiment_path != _NOT_SET_EXPERIMENT_PATH_VALUE
+    ):
       experiment_path = internal_experiment_path
 
     if experiment_path is None:
       experiment_path = _NOT_SET_EXPERIMENT_PATH_VALUE
 
-    self.set_property_internal_state_value(
-        'experiment_path', experiment_path)
+    self.set_property_internal_state_value('experiment_path', experiment_path)
     return experiment_path
 
   @experiment_path.setter
@@ -141,13 +142,16 @@ class ProxDashConnection(state_controller.StateControlled):
       if connected_experiment_path is not None:
         raise ValueError(
             'Connected experiment path can only be set if the ProxDash '
-            'connection is connected.')
+            'connection is connected.'
+        )
       self.set_property_value_without_triggering_getters(
-          'connected_experiment_path', None)
+          'connected_experiment_path', None
+      )
       return
 
     previous_experiment_path = self.get_property_internal_value(
-        'connected_experiment_path')
+        'connected_experiment_path'
+    )
     if previous_experiment_path is None:
       previous_experiment_path = _NOT_SET_EXPERIMENT_PATH_VALUE
 
@@ -158,14 +162,15 @@ class ProxDashConnection(state_controller.StateControlled):
     if previous_experiment_path != new_experiment_path:
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
-          proxdash_options=self.proxdash_options,
-          message=(
+          proxdash_options=self.proxdash_options, message=(
               'Connected to ProxDash experiment: '
-              f'{new_experiment_path}'),
-          type=types.LoggingType.INFO)
+              f'{new_experiment_path}'
+          ), type=types.LoggingType.INFO
+      )
 
     self.set_property_value(
-        'connected_experiment_path', connected_experiment_path)
+        'connected_experiment_path', connected_experiment_path
+    )
 
   @property
   def status(self) -> types.ProxDashConnectionStatus:
@@ -179,46 +184,47 @@ class ProxDashConnection(state_controller.StateControlled):
           logging_options=self.logging_options,
           proxdash_options=self.proxdash_options,
           message='ProxDash connection initializing.',
-          type=types.LoggingType.INFO)
+          type=types.LoggingType.INFO
+      )
     elif status == types.ProxDashConnectionStatus.DISABLED:
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
           proxdash_options=self.proxdash_options,
-          message='ProxDash connection disabled.',
-          type=types.LoggingType.INFO)
+          message='ProxDash connection disabled.', type=types.LoggingType.INFO
+      )
     elif status == types.ProxDashConnectionStatus.API_KEY_NOT_FOUND:
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
-          proxdash_options=self.proxdash_options,
-          message=(
+          proxdash_options=self.proxdash_options, message=(
               'ProxDash connection disabled. Please provide a valid API key '
-              'either as an argument or as an environment variable.'),
-          type=types.LoggingType.ERROR)
+              'either as an argument or as an environment variable.'
+          ), type=types.LoggingType.ERROR
+      )
     elif status == types.ProxDashConnectionStatus.API_KEY_NOT_VALID:
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
-          proxdash_options=self.proxdash_options,
-          message=(
+          proxdash_options=self.proxdash_options, message=(
               'ProxDash API key not valid. Please provide a valid API key.\n'
               'Check proxai.co/dashboard/api-keys page to get your API '
-              'key.'),
-          type=types.LoggingType.ERROR)
+              'key.'
+          ), type=types.LoggingType.ERROR
+      )
     elif status == types.ProxDashConnectionStatus.PROXDASH_INVALID_RETURN:
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
-          proxdash_options=self.proxdash_options,
-          message=(
+          proxdash_options=self.proxdash_options, message=(
               'ProxDash returned an invalid response.\nPlease report this '
               'issue to the https://github.com/proxai/proxai.\n'
-              'Also, please check latest stable version of ProxAI.'),
-          type=types.LoggingType.ERROR)
+              'Also, please check latest stable version of ProxAI.'
+          ), type=types.LoggingType.ERROR
+      )
     elif status == types.ProxDashConnectionStatus.CONNECTED:
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
-          proxdash_options=self.proxdash_options,
-          message=(
-              f'Connected to ProxDash at {self.proxdash_options.base_url}'),
-          type=types.LoggingType.INFO)
+          proxdash_options=self.proxdash_options, message=(
+              f'Connected to ProxDash at {self.proxdash_options.base_url}'
+          ), type=types.LoggingType.INFO
+      )
 
   def _init_connection(self):
     proxdash_disabled = self.proxdash_options.disable_proxdash
@@ -229,7 +235,8 @@ class ProxDashConnection(state_controller.StateControlled):
       # shouldn't be logged, so, self.connected_experiment_path setter should
       # not be used here.
       self.set_property_value_without_triggering_getters(
-          'connected_experiment_path', None)
+          'connected_experiment_path', None
+      )
       return
 
     if self.proxdash_options.api_key is None:
@@ -240,7 +247,8 @@ class ProxDashConnection(state_controller.StateControlled):
         # shouldn't be logged, so, self.connected_experiment_path setter should
         # not be used here.
         self.set_property_value_without_triggering_getters(
-            'connected_experiment_path', None)
+            'connected_experiment_path', None
+        )
         return
       else:
         # Note: Setting api_key from environment variable.
@@ -248,14 +256,16 @@ class ProxDashConnection(state_controller.StateControlled):
 
     validation_status, key_info_from_proxdash = self._check_api_key_validity(
         base_url=self.proxdash_options.base_url,
-        api_key=self.proxdash_options.api_key)
+        api_key=self.proxdash_options.api_key
+    )
     self.status = validation_status
     self.key_info_from_proxdash = key_info_from_proxdash
 
     if self.status == types.ProxDashConnectionStatus.API_KEY_NOT_VALID:
       self.key_info_from_proxdash = None
       self.set_property_value_without_triggering_getters(
-          'connected_experiment_path', None)
+          'connected_experiment_path', None
+      )
       raise ValueError(
           'ProxDash API key not valid. Please provide a valid API key.\n'
           f'base_url: {self.proxdash_options.base_url}\n'
@@ -270,25 +280,30 @@ class ProxDashConnection(state_controller.StateControlled):
           '4. If you don\'t want to use ProxDash, make sure PROXDASH_API_KEY '
           'is not set in your environment variables\n'
           'For more information, see: '
-          'https://www.proxai.co/proxai-docs/advanced/proxdash-connection')
+          'https://www.proxai.co/proxai-docs/advanced/proxdash-connection'
+      )
 
     if self.status == types.ProxDashConnectionStatus.PROXDASH_INVALID_RETURN:
       self.key_info_from_proxdash = None
       self.set_property_value_without_triggering_getters(
-          'connected_experiment_path', None)
+          'connected_experiment_path', None
+      )
       raise ValueError(
           'ProxDash returned an invalid response.\nPlease report this '
           'issue to the https://github.com/proxai/proxai.\n'
-          'Also, please check latest stable version of ProxAI.')
+          'Also, please check latest stable version of ProxAI.'
+      )
 
     if self.status != types.ProxDashConnectionStatus.CONNECTED:
       self.set_property_value_without_triggering_getters(
-          'connected_experiment_path', None)
+          'connected_experiment_path', None
+      )
       raise ValueError(
           'Unknown ProxDash connection status.\n'
           f'self.status: {self.status}\n'
           'result_state.key_info_from_proxdash: '
-          f'{self.key_info_from_proxdash}')
+          f'{self.key_info_from_proxdash}'
+      )
 
     if self.connected_experiment_path != self.experiment_path:
       self.connected_experiment_path = self.experiment_path
@@ -306,8 +321,8 @@ class ProxDashConnection(state_controller.StateControlled):
       dict | None,
   ]:
     response = requests.get(
-        f'{base_url}/ingestion/verify-key',
-        headers={'X-API-Key': api_key})
+        f'{base_url}/ingestion/verify-key', headers={'X-API-Key': api_key}
+    )
     if response.status_code != 200 or response.text == 'false':
       return types.ProxDashConnectionStatus.API_KEY_NOT_VALID, None
     try:
@@ -323,23 +338,25 @@ class ProxDashConnection(state_controller.StateControlled):
       return types.ProxDashConnectionStatus.PROXDASH_INVALID_RETURN, None
 
   def _hide_sensitive_content_logging_record(
-      self, logging_record: types.LoggingRecord) -> types.LoggingRecord:
+      self, logging_record: types.LoggingRecord
+  ) -> types.LoggingRecord:
     logging_record = copy.deepcopy(logging_record)
     if logging_record.query_record and logging_record.query_record.prompt:
       logging_record.query_record.prompt = _SENSITIVE_CONTENT_HIDDEN_STRING
     if logging_record.query_record and logging_record.query_record.system:
       logging_record.query_record.system = _SENSITIVE_CONTENT_HIDDEN_STRING
     if logging_record.query_record and logging_record.query_record.messages:
-      logging_record.query_record.messages = [
-        {
+      logging_record.query_record.messages = [{
           'role': 'assistant',
           'content': _SENSITIVE_CONTENT_HIDDEN_STRING
-        }
-      ]
-    if (logging_record.response_record and
-        logging_record.response_record.response):
+      }]
+    if (
+        logging_record.response_record and
+        logging_record.response_record.response
+    ):
       logging_record.response_record.response.value = (
-          _SENSITIVE_CONTENT_HIDDEN_STRING)
+          _SENSITIVE_CONTENT_HIDDEN_STRING
+      )
 
     return logging_record
 
@@ -347,9 +364,8 @@ class ProxDashConnection(state_controller.StateControlled):
     if not logging_record.query_record.messages:
       return None
     return json.dumps(
-        logging_record.query_record.messages,
-        indent=2,
-        sort_keys=True)
+        logging_record.query_record.messages, indent=2, sort_keys=True
+    )
 
   def _format_stop(self, logging_record: types.LoggingRecord) -> str:
     if logging_record.query_record.stop is not None:
@@ -369,7 +385,8 @@ class ProxDashConnection(state_controller.StateControlled):
 
     if (
         logging_record.response_record.response.value ==
-        _SENSITIVE_CONTENT_HIDDEN_STRING):
+        _SENSITIVE_CONTENT_HIDDEN_STRING
+    ):
       return _SENSITIVE_CONTENT_HIDDEN_STRING
 
     if response_type == types.ResponseType.TEXT:
@@ -378,17 +395,18 @@ class ProxDashConnection(state_controller.StateControlled):
     if response_type == types.ResponseType.JSON:
       try:
         return json.dumps(
-            logging_record.response_record.response.value,
-            indent=2, sort_keys=True)
+            logging_record.response_record.response.value, indent=2,
+            sort_keys=True
+        )
       except Exception:
         logging_utils.log_proxdash_message(
             logging_options=self.logging_options,
-            proxdash_options=self.proxdash_options,
-            message=(
+            proxdash_options=self.proxdash_options, message=(
                 'Response is not a JSON object. Please create an issue at '
                 'https://github.com/proxai/proxai/issues.\n'
-                f'Response: {logging_record.response_record.response}'),
-            type=types.LoggingType.WARNING)
+                f'Response: {logging_record.response_record.response}'
+            ), type=types.LoggingType.WARNING
+        )
         return None
 
     if response_type == types.ResponseType.PYDANTIC:
@@ -396,105 +414,112 @@ class ProxDashConnection(state_controller.StateControlled):
 
     logging_utils.log_proxdash_message(
         logging_options=self.logging_options,
-        proxdash_options=self.proxdash_options,
-        message=(
+        proxdash_options=self.proxdash_options, message=(
             'Unknown response type. Please create an issue at '
             'https://github.com/proxai/proxai/issues.\n'
-            f'Response: {logging_record.response_record.response}'),
-        type=types.LoggingType.WARNING)
+            f'Response: {logging_record.response_record.response}'
+        ), type=types.LoggingType.WARNING
+    )
     return None
 
   def _format_response_pydantic_json_value(
-      self, logging_record: types.LoggingRecord) -> str:
+      self, logging_record: types.LoggingRecord
+  ) -> str:
     if logging_record.response_record.response is None:
       return None
-    if (logging_record.response_record.response.type !=
-        types.ResponseType.PYDANTIC):
+    if (
+        logging_record.response_record.response.type
+        != types.ResponseType.PYDANTIC
+    ):
       return None
     if (
         logging_record.response_record.response.value ==
-        _SENSITIVE_CONTENT_HIDDEN_STRING):
+        _SENSITIVE_CONTENT_HIDDEN_STRING
+    ):
       return _SENSITIVE_CONTENT_HIDDEN_STRING
 
     if logging_record.response_record.response.pydantic_metadata is not None:
       instance_json_value = (
-          logging_record.response_record.response
-          .pydantic_metadata.instance_json_value)
+          logging_record.response_record.response.pydantic_metadata.
+          instance_json_value
+      )
     elif logging_record.response_record.response.value is not None:
       try:
         instance_json_value = (
-            logging_record.response_record.response.value.model_dump())
+            logging_record.response_record.response.value.model_dump()
+        )
       except Exception:
         logging_utils.log_proxdash_message(
             logging_options=self.logging_options,
-            proxdash_options=self.proxdash_options,
-            message=(
+            proxdash_options=self.proxdash_options, message=(
                 'Response value is not a pydantic instance. Please report '
                 'this issue to the https://github.com/proxai/proxai/issues.\n'
-                f'Response: {logging_record.response_record.response}'),
-                type=types.LoggingType.WARNING)
+                f'Response: {logging_record.response_record.response}'
+            ), type=types.LoggingType.WARNING
+        )
         return None
     else:
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
-          proxdash_options=self.proxdash_options,
-          message=(
+          proxdash_options=self.proxdash_options, message=(
               'Response has no pydantic_metadata or value. Please report '
               'this issue to the https://github.com/proxai/proxai/issues.\n'
-              f'Response: {logging_record.response_record.response}'),
-          type=types.LoggingType.WARNING)
+              f'Response: {logging_record.response_record.response}'
+          ), type=types.LoggingType.WARNING
+      )
       return None
 
     try:
-      return json.dumps(
-          instance_json_value,
-          indent=2, sort_keys=True)
+      return json.dumps(instance_json_value, indent=2, sort_keys=True)
     except Exception:
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
-          proxdash_options=self.proxdash_options,
-          message=(
+          proxdash_options=self.proxdash_options, message=(
               'Response pydantic_metadata.instance_json_value is not a JSON '
               'object. Please report this issue to the '
               'https://github.com/proxai/proxai/issues.\n'
-              f'Response: {instance_json_value}'),
-          type=types.LoggingType.WARNING)
+              f'Response: {instance_json_value}'
+          ), type=types.LoggingType.WARNING
+      )
       return None
 
   def _get_formatted_query_pydantic_values(
       self, logging_record: types.LoggingRecord
   ) -> tuple[str | None, str | None]:
     response_format = logging_record.query_record.response_format
-    if (response_format and
+    if (
+        response_format and
         response_format.type == types.ResponseFormatType.PYDANTIC and
-        response_format.value.class_name):
+        response_format.value.class_name
+    ):
       query_pydantic_class_name = response_format.value.class_name
       try:
         query_pydantic_class_json_schema = (
-            response_format.value.class_value.model_json_schema())
+            response_format.value.class_value.model_json_schema()
+        )
         return query_pydantic_class_name, query_pydantic_class_json_schema
       except Exception:
         logging_utils.log_proxdash_message(
             logging_options=self.logging_options,
-            proxdash_options=self.proxdash_options,
-            message=(
+            proxdash_options=self.proxdash_options, message=(
                 'Failed to get formatted query pydantic values. Please create '
                 'an issue at https://github.com/proxai/proxai/issues.\n'
-                f'Response: {logging_record.query_record.response_format}'),
-            type=types.LoggingType.WARNING)
-        return query_pydantic_class_name, str(
-            response_format.value.class_value)
+                f'Response: {logging_record.query_record.response_format}'
+            ), type=types.LoggingType.WARNING
+        )
+        return query_pydantic_class_name, str(response_format.value.class_value)
     return None, None
 
   def upload_logging_record(self, logging_record: types.LoggingRecord):
     """Upload a logging record to ProxDash."""
     if self.status != types.ProxDashConnectionStatus.CONNECTED:
       return
-    if ((self.proxdash_options and
-         self.proxdash_options.hide_sensitive_content) or
-        self._key_info_from_proxdash['permission'] == 'NO_PROMPT'):
+    if ((
+        self.proxdash_options and self.proxdash_options.hide_sensitive_content
+    ) or self._key_info_from_proxdash['permission'] == 'NO_PROMPT'):
       logging_record = self._hide_sensitive_content_logging_record(
-        logging_record)
+          logging_record
+      )
 
     messages = self._format_messages(logging_record)
     response = self._format_response(logging_record)
@@ -502,72 +527,81 @@ class ProxDashConnection(state_controller.StateControlled):
     query_pydantic_class_name = None
     query_pydantic_class_json_schema = None
     response_pydantic_json_value = None
-    if (logging_record.query_record.response_format and
-        logging_record.query_record.response_format.type ==
-        types.ResponseFormatType.PYDANTIC):
+    if (
+        logging_record.query_record.response_format and
+        logging_record.query_record.response_format.type
+        == types.ResponseFormatType.PYDANTIC
+    ):
       query_pydantic_class_name, query_pydantic_class_json_schema = (
-          self._get_formatted_query_pydantic_values(logging_record))
+          self._get_formatted_query_pydantic_values(logging_record)
+      )
       response_pydantic_json_value = (
-          self._format_response_pydantic_json_value(logging_record))
+          self._format_response_pydantic_json_value(logging_record)
+      )
 
     data = {
-      'hiddenRunKey': self.hidden_run_key,
-      'experimentPath': self.experiment_path,
-      'callType': logging_record.query_record.call_type,
-      'provider': logging_record.query_record.provider_model.provider,
-      'model': logging_record.query_record.provider_model.model,
-      'providerModelIdentifier': (
-          logging_record.query_record.provider_model.provider_model_identifier),
-      'prompt': logging_record.query_record.prompt,
-      'system': logging_record.query_record.system,
-      'messages': messages,
-      'maxTokens': logging_record.query_record.max_tokens,
-      'temperature': logging_record.query_record.temperature,
-      'stop': stop,
-      'webSearch': logging_record.query_record.web_search,
-      'queryPydanticClassName': query_pydantic_class_name,
-      'queryPydanticJsonSchema': query_pydantic_class_json_schema,
-      'hashValue': logging_record.query_record.hash_value,
-      'queryTokens': logging_record.query_record.token_count,
-      'response': response,
-      'error': logging_record.response_record.error,
-      'errorTraceback': logging_record.response_record.error_traceback,
-      'responsePydanticJsonValue': response_pydantic_json_value,
-      'startUTCDate': logging_record.response_record.start_utc_date.isoformat(),
-      'endUTCDate': logging_record.response_record.end_utc_date.isoformat(),
-      'localTimeOffsetMinute': (
-          logging_record.response_record.local_time_offset_minute),
-      'responseTime': (int(
-          logging_record.response_record.response_time.total_seconds() * 1000)),
-      'estimatedCost': logging_record.response_record.estimated_cost,
-      'responseTokens': logging_record.response_record.token_count,
-      'responseSource': logging_record.response_source,
-      'lookFailReason': logging_record.look_fail_reason,
+        'hiddenRunKey': self.hidden_run_key,
+        'experimentPath': self.experiment_path,
+        'callType': logging_record.query_record.call_type,
+        'provider': logging_record.query_record.provider_model.provider,
+        'model': logging_record.query_record.provider_model.model,
+        'providerModelIdentifier': (
+            logging_record.query_record.provider_model.provider_model_identifier
+        ),
+        'prompt': logging_record.query_record.prompt,
+        'system': logging_record.query_record.system,
+        'messages': messages,
+        'maxTokens': logging_record.query_record.max_tokens,
+        'temperature': logging_record.query_record.temperature,
+        'stop': stop,
+        'webSearch': logging_record.query_record.web_search,
+        'queryPydanticClassName': query_pydantic_class_name,
+        'queryPydanticJsonSchema': query_pydantic_class_json_schema,
+        'hashValue': logging_record.query_record.hash_value,
+        'queryTokens': logging_record.query_record.token_count,
+        'response': response,
+        'error': logging_record.response_record.error,
+        'errorTraceback': logging_record.response_record.error_traceback,
+        'responsePydanticJsonValue': response_pydantic_json_value,
+        'startUTCDate':
+            logging_record.response_record.start_utc_date.isoformat(),
+        'endUTCDate': logging_record.response_record.end_utc_date.isoformat(),
+        'localTimeOffsetMinute':
+            (logging_record.response_record.local_time_offset_minute),
+        'responseTime': (
+            int(
+                logging_record.response_record.response_time.total_seconds() *
+                1000
+            )
+        ),
+        'estimatedCost': logging_record.response_record.estimated_cost,
+        'responseTokens': logging_record.response_record.token_count,
+        'responseSource': logging_record.response_source,
+        'lookFailReason': logging_record.look_fail_reason,
     }
 
     try:
       response = requests.post(
           f'{self.proxdash_options.base_url}/ingestion/logging-records',
-          json=data,
-          headers={'X-API-Key': self.proxdash_options.api_key})
+          json=data, headers={'X-API-Key': self.proxdash_options.api_key}
+      )
     except Exception as e:
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
           proxdash_options=self.proxdash_options,
-          message=(
-              'ProxDash could not log the record. Error: '
-              f'{str(e)}'),
-          type=types.LoggingType.ERROR)
+          message=('ProxDash could not log the record. Error: '
+                   f'{str(e)}'), type=types.LoggingType.ERROR
+      )
       return
 
     if response.status_code != 201:
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
-          proxdash_options=self.proxdash_options,
-          message=(
+          proxdash_options=self.proxdash_options, message=(
               'ProxDash could not log the record. Status code: '
-              f'{response.status_code}, Response: {response.text}'),
-          type=types.LoggingType.ERROR)
+              f'{response.status_code}, Response: {response.text}'
+          ), type=types.LoggingType.ERROR
+      )
       return
 
     try:
@@ -575,101 +609,103 @@ class ProxDashConnection(state_controller.StateControlled):
     except Exception:
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
-          proxdash_options=self.proxdash_options,
-          message=(
+          proxdash_options=self.proxdash_options, message=(
               'ProxDash could not log the record. Invalid JSON response: '
-              f'{response.text}'),
-          type=types.LoggingType.ERROR)
+              f'{response.text}'
+          ), type=types.LoggingType.ERROR
+      )
       return
 
     if not api_response.get('success'):
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
-          proxdash_options=self.proxdash_options,
-          message=(
+          proxdash_options=self.proxdash_options, message=(
               'ProxDash could not log the record. Response: '
-              f'{response.text}'),
-          type=types.LoggingType.ERROR)
+              f'{response.text}'
+          ), type=types.LoggingType.ERROR
+      )
 
-  def get_model_configs_schema(
-      self,
-  ) -> types.ModelConfigsSchemaType | None:
+  def get_model_configs_schema(self,) -> types.ModelConfigsSchemaType | None:
     """Fetch the latest model configurations from ProxDash."""
     current_version = version("proxai")
     request_url = (
         f'{self.proxdash_options.base_url}' +
-        f'/models/configs?proxaiVersion={current_version}')
+        f'/models/configs?proxaiVersion={current_version}'
+    )
     if self.status == types.ProxDashConnectionStatus.CONNECTED:
       response = requests.get(
-          request_url,
-          headers={'X-API-Key': self.proxdash_options.api_key})
+          request_url, headers={'X-API-Key': self.proxdash_options.api_key}
+      )
     else:
       response = requests.get(request_url)
 
     if response.status_code != 200:
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
-          proxdash_options=self.proxdash_options,
-          message=(
+          proxdash_options=self.proxdash_options, message=(
               'Failed to get model configs from ProxDash.\n'
               f'ProxAI version: {current_version}\n'
               f'Status code: {response.status_code}\n'
-              f'Response: {response.text}'),
-          type=types.LoggingType.ERROR)
+              f'Response: {response.text}'
+          ), type=types.LoggingType.ERROR
+      )
       return None
 
     response_data = json.loads(response.text)
     if not response_data['success']:
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
-          proxdash_options=self.proxdash_options,
-          message=(
+          proxdash_options=self.proxdash_options, message=(
               'Failed to get model configs from ProxDash.\n'
               f'ProxAI version: {current_version}\n'
-              f'Response: {response.text}'),
-          type=types.LoggingType.ERROR)
+              f'Response: {response.text}'
+          ), type=types.LoggingType.ERROR
+      )
       return None
 
     try:
       model_configs_schema = type_serializer.decode_model_configs_schema_type(
-          response_data['data'])
+          response_data['data']
+      )
     except Exception as e:
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
-          proxdash_options=self.proxdash_options,
-          message=(
+          proxdash_options=self.proxdash_options, message=(
               'Failed to decode model configs from ProxDash response.\n'
               'Please report this issue to the '
               'https://github.com/proxai/proxai.\n'
               'Also, please check latest stable version of ProxAI.\n'
               f'ProxAI version: {current_version}\n'
-              f'Error: {str(e)}'),
-          type=types.LoggingType.ERROR)
+              f'Error: {str(e)}'
+          ), type=types.LoggingType.ERROR
+      )
       return None
 
-    if (model_configs_schema.metadata is None or
+    if (
+        model_configs_schema.metadata is None or
         model_configs_schema.version_config is None or
         model_configs_schema.version_config.provider_model_configs is None or
-        len(model_configs_schema.version_config.provider_model_configs) < 2):
+        len(model_configs_schema.version_config.provider_model_configs) < 2
+    ):
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
-          proxdash_options=self.proxdash_options,
-          message=(
+          proxdash_options=self.proxdash_options, message=(
               'Model configs schema is invalid. Please report this '
               'issue to the https://github.com/proxai/proxai.\n'
               'Also, please check latest stable version of ProxAI. '
               f'Request URL: {request_url}'
-              f'Response: {response.text}'),
-          type=types.LoggingType.ERROR)
+              f'Response: {response.text}'
+          ), type=types.LoggingType.ERROR
+      )
       return None
 
     logging_utils.log_proxdash_message(
         logging_options=self.logging_options,
-        proxdash_options=self.proxdash_options,
-        message=(
+        proxdash_options=self.proxdash_options, message=(
             f'Model configs schema (v{model_configs_schema.metadata.version}) '
-            'fetched from ProxDash.'),
-        type=types.LoggingType.INFO)
+            'fetched from ProxDash.'
+        ), type=types.LoggingType.INFO
+    )
 
     return model_configs_schema
 
@@ -679,38 +715,39 @@ class ProxDashConnection(state_controller.StateControlled):
 
     request_url = (
         f'{self.proxdash_options.base_url}' +
-        '/ingestion/provider-connection-keys')
+        '/ingestion/provider-connection-keys'
+    )
     response = requests.get(
-        request_url,
-        headers={'X-API-Key': self.proxdash_options.api_key})
+        request_url, headers={'X-API-Key': self.proxdash_options.api_key}
+    )
 
     if response.status_code != 200:
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
-          proxdash_options=self.proxdash_options,
-          message=(
+          proxdash_options=self.proxdash_options, message=(
               'Failed to get provider API keys from ProxDash.\n'
               f'Status code: {response.status_code}\n'
-              f'Response: {response.text}'),
-          type=types.LoggingType.ERROR)
+              f'Response: {response.text}'
+          ), type=types.LoggingType.ERROR
+      )
       return {}
 
     data = json.loads(response.text)
     if not data['success']:
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
-          proxdash_options=self.proxdash_options,
-          message=(
+          proxdash_options=self.proxdash_options, message=(
               'Failed to get provider API keys from ProxDash.\n'
-              f'Response: {response.text}'),
-          type=types.LoggingType.ERROR)
+              f'Response: {response.text}'
+          ), type=types.LoggingType.ERROR
+      )
       return {}
 
     logging_utils.log_proxdash_message(
         logging_options=self.logging_options,
         proxdash_options=self.proxdash_options,
-        message=(
-            'Provider API keys fetched from ProxDash.'),
-        type=types.LoggingType.INFO)
+        message=('Provider API keys fetched from ProxDash.'),
+        type=types.LoggingType.INFO
+    )
 
     return data['data']

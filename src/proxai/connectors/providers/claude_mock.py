@@ -1,5 +1,6 @@
 # [ContentBlock(text="Hello! How can I assist you?", type='text')]
 
+
 class _MockContentBlock:
   text: str
   type: str
@@ -17,14 +18,11 @@ class _MockResponse:
 
 
 class _MockMessages:
-  def create(
-      self,
-      **kwargs) -> _MockResponse:
+
+  def create(self, **kwargs) -> _MockResponse:
     return _MockResponse()
 
-  def parse(
-      self,
-      **kwargs) -> _MockResponse:
+  def parse(self, **kwargs) -> _MockResponse:
     return _MockResponse()
 
 

@@ -55,8 +55,8 @@ class TestProxAIClientParams:
     assert params.allow_multiprocessing
     assert params.model_test_timeout == 25
     assert (
-      params.feature_mapping_strategy
-      == types.FeatureMappingStrategy.BEST_EFFORT
+        params.feature_mapping_strategy ==
+        types.FeatureMappingStrategy.BEST_EFFORT
     )
     assert not params.suppress_provider_errors
 
@@ -64,19 +64,19 @@ class TestProxAIClientParams:
     cache_path, _ = _get_path_dir("test_cache")
     cache_options = types.CacheOptions(cache_path=cache_path)
     params = client.ProxAIClientParams(
-      experiment_path="test/experiment",
-      cache_options=cache_options,
-      allow_multiprocessing=False,
-      model_test_timeout=30,
-      feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
-      suppress_provider_errors=True,
+        experiment_path="test/experiment",
+        cache_options=cache_options,
+        allow_multiprocessing=False,
+        model_test_timeout=30,
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
+        suppress_provider_errors=True,
     )
     assert params.experiment_path == "test/experiment"
     assert params.cache_options == cache_options
     assert not params.allow_multiprocessing
     assert params.model_test_timeout == 30
     assert (
-      params.feature_mapping_strategy == types.FeatureMappingStrategy.STRICT
+        params.feature_mapping_strategy == types.FeatureMappingStrategy.STRICT
     )
     assert params.suppress_provider_errors
 
@@ -90,8 +90,8 @@ class TestProxAIClientInit:
     assert px_client.allow_multiprocessing
     assert px_client.model_test_timeout == 25
     assert (
-      px_client.feature_mapping_strategy
-      == types.FeatureMappingStrategy.BEST_EFFORT
+        px_client.feature_mapping_strategy ==
+        types.FeatureMappingStrategy.BEST_EFFORT
     )
     assert not px_client.suppress_provider_errors
 
@@ -114,35 +114,36 @@ class TestProxAIClientInit:
     px_client = _create_client_from_params(proxdash_options=proxdash_options)
     assert px_client.proxdash_options.disable_proxdash
     assert (
-      px_client.proxdash_connection.status
-      == types.ProxDashConnectionStatus.DISABLED
+        px_client.proxdash_connection.status ==
+        types.ProxDashConnectionStatus.DISABLED
     )
 
   def test_init_from_params_with_experiment_path(self):
     logging_path, _ = _get_path_dir("test_logging")
     logging_options = types.LoggingOptions(logging_path=logging_path)
     px_client = _create_client_from_params(
-      experiment_path="my/experiment", logging_options=logging_options
+        experiment_path="my/experiment", logging_options=logging_options
     )
     assert px_client.experiment_path == "my/experiment"
     assert px_client.logging_options.logging_path == os.path.join(
-      logging_path, "my/experiment"
+        logging_path, "my/experiment"
     )
 
   def test_init_conflicting_args_raises_error(self):
     with pytest.raises(
-      ValueError,
-      match="init_from_params and init_from_state cannot be set at the same time.",
+        ValueError,
+        match=
+        "init_from_params and init_from_state cannot be set at the same time.",
     ):
       client.ProxAIClient(
-        init_from_params=client.ProxAIClientParams(),
-        init_from_state=types.ProxAIClientState(),
+          init_from_params=client.ProxAIClientParams(),
+          init_from_state=types.ProxAIClientState(),
       )
 
   def test_clear_model_cache_on_connect(self):
     cache_path, _ = _get_path_dir("test_cache")
     cache_options = types.CacheOptions(
-      cache_path=cache_path, clear_model_cache_on_connect=True
+        cache_path=cache_path, clear_model_cache_on_connect=True
     )
     px_client = _create_client_from_params(cache_options=cache_options)
     assert px_client.cache_options.clear_model_cache_on_connect
@@ -150,7 +151,7 @@ class TestProxAIClientInit:
   def test_clear_query_cache_on_connect(self):
     cache_path, _ = _get_path_dir("test_cache")
     cache_options = types.CacheOptions(
-      cache_path=cache_path, clear_query_cache_on_connect=True
+        cache_path=cache_path, clear_query_cache_on_connect=True
     )
     px_client = _create_client_from_params(cache_options=cache_options)
     assert px_client.cache_options.clear_query_cache_on_connect
@@ -202,10 +203,10 @@ class TestProxAIClientPropertyGettersSetters:
     logging_path, _ = _get_path_dir("test_logging")
     logging_options = types.LoggingOptions(logging_path=logging_path)
     px_client = _create_client_from_params(
-      experiment_path="test/exp", logging_options=logging_options
+        experiment_path="test/exp", logging_options=logging_options
     )
     assert px_client.logging_options.logging_path == os.path.join(
-      logging_path, "test/exp"
+        logging_path, "test/exp"
     )
 
   def test_logging_options_creates_directory_if_not_exists(self):
@@ -245,19 +246,20 @@ class TestProxAIClientPropertyGettersSetters:
   def test_model_test_timeout_invalid_raises_error(self):
     px_client = _create_client_from_params()
     with pytest.raises(
-      ValueError, match="model_test_timeout must be greater than 0"
+        ValueError, match="model_test_timeout must be greater than 0"
     ):
       px_client.model_test_timeout = 0
 
   def test_feature_mapping_strategy(self):
     px_client = _create_client_from_params()
     assert (
-      px_client.feature_mapping_strategy
-      == types.FeatureMappingStrategy.BEST_EFFORT
+        px_client.feature_mapping_strategy ==
+        types.FeatureMappingStrategy.BEST_EFFORT
     )
     px_client.feature_mapping_strategy = types.FeatureMappingStrategy.STRICT
     assert (
-      px_client.feature_mapping_strategy == types.FeatureMappingStrategy.STRICT
+        px_client.feature_mapping_strategy ==
+        types.FeatureMappingStrategy.STRICT
     )
 
   def test_suppress_provider_errors(self):
@@ -278,7 +280,7 @@ class TestProxAIClientCacheManagers:
   def test_model_cache_manager_uses_default_when_no_options(self):
     px_client = _create_client_from_params()
     assert (
-      px_client.model_cache_manager == px_client.default_model_cache_manager
+        px_client.model_cache_manager == px_client.default_model_cache_manager
     )
 
   def test_model_cache_manager_with_cache_options(self):
@@ -287,7 +289,7 @@ class TestProxAIClientCacheManagers:
     px_client = _create_client_from_params(cache_options=cache_options)
     assert px_client.model_cache_manager is not None
     assert (
-      px_client.model_cache_manager != px_client.default_model_cache_manager
+        px_client.model_cache_manager != px_client.default_model_cache_manager
     )
 
   def test_query_cache_manager_none_without_cache_options(self):
@@ -300,8 +302,8 @@ class TestProxAIClientCacheManagers:
     px_client = _create_client_from_params(cache_options=cache_options)
     assert px_client.query_cache_manager is not None
     assert (
-      px_client.query_cache_manager.status
-      == types.QueryCacheManagerStatus.WORKING
+        px_client.query_cache_manager.status ==
+        types.QueryCacheManagerStatus.WORKING
     )
 
 
@@ -313,8 +315,7 @@ class TestProxAIClientSetModel:
     px_client._available_models_instance.run_type = types.RunType.TEST
     px_client.set_model(provider_model=("mock_provider", "mock_model"))
     connector = px_client.registered_model_connectors[
-      types.CallType.GENERATE_TEXT
-    ]
+        types.CallType.GENERATE_TEXT]
     assert connector.provider_model.provider == "mock_provider"
     assert connector.provider_model.model == "mock_model"
 
@@ -323,8 +324,7 @@ class TestProxAIClientSetModel:
     px_client._available_models_instance.run_type = types.RunType.TEST
     px_client.set_model(generate_text=("mock_provider", "mock_model"))
     connector = px_client.registered_model_connectors[
-      types.CallType.GENERATE_TEXT
-    ]
+        types.CallType.GENERATE_TEXT]
     assert connector.provider_model.provider == "mock_provider"
     assert connector.provider_model.model == "mock_model"
 
@@ -333,26 +333,25 @@ class TestProxAIClientSetModel:
     px_client._available_models_instance.run_type = types.RunType.TEST
     px_client.set_model(("mock_provider", "mock_model"))
     connector = px_client.registered_model_connectors[
-      types.CallType.GENERATE_TEXT
-    ]
+        types.CallType.GENERATE_TEXT]
     assert connector.provider_model.provider == "mock_provider"
     assert connector.provider_model.model == "mock_model"
 
   def test_set_model_both_params_raises_error(self):
     px_client = _create_client_from_params()
     with pytest.raises(
-      ValueError,
-      match="provider_model and generate_text cannot be set at the same time",
+        ValueError,
+        match="provider_model and generate_text cannot be set at the same time",
     ):
       px_client.set_model(
-        provider_model=("openai", "gpt-4"),
-        generate_text=("claude", "haiku-4.5"),
+          provider_model=("openai", "gpt-4"),
+          generate_text=("claude", "haiku-4.5"),
       )
 
   def test_set_model_no_params_raises_error(self):
     px_client = _create_client_from_params()
     with pytest.raises(
-      ValueError, match="provider_model or generate_text must be set"
+        ValueError, match="provider_model or generate_text must be set"
     ):
       px_client.set_model()
 
@@ -362,8 +361,7 @@ class TestProxAIClientSetModel:
     px_client.set_model(("mock_provider", "mock_model"))
     px_client.set_model(("mock_failing_provider", "mock_failing_model"))
     connector = px_client.registered_model_connectors[
-      types.CallType.GENERATE_TEXT
-    ]
+        types.CallType.GENERATE_TEXT]
     assert connector.provider_model.provider == "mock_failing_provider"
     assert connector.provider_model.model == "mock_failing_model"
 
@@ -379,24 +377,30 @@ class TestProxAIClientGenerateText:
   def test_generate_text_with_messages(self):
     px_client = _create_test_client()
     response = px_client.generate_text(
-      messages=[{"role": "user", "content": "hello"}]
+        messages=[{
+            "role": "user",
+            "content": "hello"
+        }]
     )
     assert response == "mock response"
 
   def test_generate_text_prompt_and_messages_raises_error(self):
     px_client = _create_client_from_params()
     with pytest.raises(
-      ValueError, match="prompt and messages cannot be set at the same time"
+        ValueError, match="prompt and messages cannot be set at the same time"
     ):
       px_client.generate_text(
-        prompt="hello", messages=[{"role": "user", "content": "hello"}]
+          prompt="hello", messages=[{
+              "role": "user",
+              "content": "hello"
+          }]
       )
 
   def test_generate_text_with_provider_model(self):
     px_client = _create_client_from_params()
     px_client._available_models_instance.run_type = types.RunType.TEST
     response = px_client.generate_text(
-      prompt="hello", provider_model=("mock_provider", "mock_model")
+        prompt="hello", provider_model=("mock_provider", "mock_model")
     )
     assert response == "mock response"
 
@@ -410,9 +414,9 @@ class TestProxAIClientGenerateText:
     px_client = _create_client_from_params()
     px_client._available_models_instance.run_type = types.RunType.TEST
     response = px_client.generate_text(
-      prompt="hello",
-      provider_model=("mock_failing_provider", "mock_failing_model"),
-      suppress_provider_errors=True,
+        prompt="hello",
+        provider_model=("mock_failing_provider", "mock_failing_model"),
+        suppress_provider_errors=True,
     )
     assert response == "Temp Error"
 
@@ -421,23 +425,23 @@ class TestProxAIClientGenerateText:
     px_client._available_models_instance.run_type = types.RunType.TEST
     with pytest.raises(Exception, match="Temp Error"):
       px_client.generate_text(
-        prompt="hello",
-        provider_model=("mock_failing_provider", "mock_failing_model"),
+          prompt="hello",
+          provider_model=("mock_failing_provider", "mock_failing_model"),
       )
 
   def test_generate_text_uses_client_level_suppress_provider_errors(self):
     px_client = _create_client_from_params(suppress_provider_errors=True)
     px_client._available_models_instance.run_type = types.RunType.TEST
     response = px_client.generate_text(
-      prompt="hello",
-      provider_model=("mock_failing_provider", "mock_failing_model"),
+        prompt="hello",
+        provider_model=("mock_failing_provider", "mock_failing_model"),
     )
     assert response == "Temp Error"
 
   def test_generate_text_use_cache_without_cache_manager_raises_error(self):
     px_client = _create_client_from_params()
     with pytest.raises(
-      ValueError, match="use_cache is True but query cache is not working"
+        ValueError, match="use_cache is True but query cache is not working"
     ):
       px_client.generate_text(prompt="hello", use_cache=True)
 
@@ -465,20 +469,20 @@ class TestProxAIClientGenerateText:
 
     # First call with cache disabled
     response1 = px_client.generate_text(
-      prompt="hello", use_cache=False, extensive_return=True
+        prompt="hello", use_cache=False, extensive_return=True
     )
     assert response1.response_source == types.ResponseSource.PROVIDER
 
     # Second call with cache disabled - still from provider
     response2 = px_client.generate_text(
-      prompt="hello", use_cache=False, extensive_return=True
+        prompt="hello", use_cache=False, extensive_return=True
     )
     assert response2.response_source == types.ResponseSource.PROVIDER
 
   def test_generate_text_with_system_prompt(self):
     px_client = _create_test_client()
     response = px_client.generate_text(
-      prompt="hello", system="You are a helpful assistant."
+        prompt="hello", system="You are a helpful assistant."
     )
     assert response == "mock response"
 
@@ -490,9 +494,9 @@ class TestProxAIClientGetCurrentOptions:
     cache_path, _ = _get_path_dir("test_cache")
     cache_options = types.CacheOptions(cache_path=cache_path)
     px_client = _create_client_from_params(
-      cache_options=cache_options,
-      allow_multiprocessing=False,
-      model_test_timeout=30,
+        cache_options=cache_options,
+        allow_multiprocessing=False,
+        model_test_timeout=30,
     )
 
     options = px_client.get_current_options()
@@ -519,14 +523,14 @@ class TestProxAIClientGetRegisteredModelConnector:
   def test_get_registered_model_connector_returns_set_model(self):
     px_client = _create_test_client()
     connector = px_client.get_registered_model_connector(
-      types.CallType.GENERATE_TEXT
+        types.CallType.GENERATE_TEXT
     )
     assert connector is not None
     assert connector.provider_model.provider == "mock_provider"
     assert connector.provider_model.model == "mock_model"
 
   def test_get_registered_model_connector_unsupported_call_type_raises_error(
-    self,
+      self,
   ):
     px_client = _create_client_from_params()
     with pytest.raises(ValueError, match="Call type not supported"):
@@ -538,9 +542,9 @@ class TestProxAIClientState:
 
   def test_get_state_returns_client_state(self):
     px_client = _create_client_from_params(
-      experiment_path="test/exp",
-      allow_multiprocessing=False,
-      model_test_timeout=30,
+        experiment_path="test/exp",
+        allow_multiprocessing=False,
+        model_test_timeout=30,
     )
     state = px_client.get_state()
     assert isinstance(state, types.ProxAIClientState)

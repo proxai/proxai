@@ -62,10 +62,10 @@ class ProviderModelType:
 
   def __repr__(self):  # noqa: D105
     return (
-      "ProviderModelType("
-      f"provider={self.provider}, "
-      f"model={self.model}, "
-      f"provider_model_identifier={self.provider_model_identifier})"
+        "ProviderModelType("
+        f"provider={self.provider}, "
+        f"model={self.model}, "
+        f"provider_model_identifier={self.provider_model_identifier})"
     )
 
   def __lt__(self, other):  # noqa: D105
@@ -178,13 +178,11 @@ class ConfigOriginType(enum.Enum):
   PROXDASH = "PROXDASH"
 
 
-ProviderModelsIdentifierDictType = dict[
-  ProviderNameType, tuple[ProviderModelIdentifierType]
-]
+ProviderModelsIdentifierDictType = dict[ProviderNameType,
+                                        tuple[ProviderModelIdentifierType]]
 
-ProviderModelConfigsType = dict[
-  ProviderNameType, dict[ModelNameType, ProviderModelConfigType]
-]
+ProviderModelConfigsType = dict[ProviderNameType, dict[ModelNameType,
+                                                       ProviderModelConfigType]]
 FeaturedModelsType = ProviderModelsIdentifierDictType
 ModelsByCallTypeType = dict[CallType, ProviderModelsIdentifierDictType]
 ModelsBySizeType = dict[ModelSizeType, tuple[ProviderModelIdentifierType]]
@@ -533,7 +531,7 @@ class CacheRecord:
 
   query_record: QueryRecord | None = None
   query_responses: list[QueryResponseRecord] = dataclasses.field(
-    default_factory=list
+      default_factory=list
   )
   shard_id: str | None = None
   last_access_time: datetime.datetime | None = None
@@ -590,17 +588,17 @@ class ModelStatus:
   """Tracking status of models during availability testing."""
 
   unprocessed_models: set[ProviderModelType] = dataclasses.field(
-    default_factory=set
+      default_factory=set
   )
   working_models: set[ProviderModelType] = dataclasses.field(
-    default_factory=set
+      default_factory=set
   )
   failed_models: set[ProviderModelType] = dataclasses.field(default_factory=set)
   filtered_models: set[ProviderModelType] = dataclasses.field(
-    default_factory=set
+      default_factory=set
   )
   provider_queries: dict[ProviderModelType, LoggingRecord] = dataclasses.field(
-    default_factory=dict
+      default_factory=dict
   )
 
 
@@ -714,9 +712,8 @@ class AvailableModelsState(StateContainer):
   proxdash_provider_api_keys: ProviderTokenValueMap | None = None
   allow_multiprocessing: bool | None = None
   model_test_timeout: int | None = None
-  providers_with_key: dict[ProviderNameType, ProviderTokenValueMap] | None = (
-    None
-  )
+  providers_with_key: dict[ProviderNameType,
+                           ProviderTokenValueMap] | None = (None)
   has_fetched_all_models: bool | None = None
   latest_model_cache_path_used_for_update: str | None = None
 

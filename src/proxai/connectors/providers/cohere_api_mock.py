@@ -1,5 +1,3 @@
-
-
 class _MockContentItem:
   text: str
 
@@ -25,11 +23,9 @@ class CohereMock:
   """Mock Cohere API client for testing."""
 
   def chat(
-      self,
-      model: str,
-      messages: list[dict] | None=None,
-      max_tokens: int | None=None,
-      temperature: float | None=None,
-      stop_sequences: list[str] | None=None,
-      response_format: dict | None=None) -> _MockResponse:
+      self, model: str, messages: list[dict] | None = None,
+      max_tokens: int | None = None, temperature: float | None = None,
+      stop_sequences: list[str] | None = None,
+      response_format: dict | None = None
+  ) -> _MockResponse:
     return _MockResponse()

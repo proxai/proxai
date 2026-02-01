@@ -25,16 +25,15 @@ def get_default_proxai_client() -> client.ProxAIClient:
 
 
 def connect(
-  experiment_path: str | None = None,
-  cache_options: types.CacheOptions | None = None,
-  logging_options: types.LoggingOptions | None = None,
-  proxdash_options: types.ProxDashOptions | None = None,
-  allow_multiprocessing: bool | None = True,
-  model_test_timeout: int | None = 25,
-  feature_mapping_strategy: (
-    types.FeatureMappingStrategy | None
-  ) = types.FeatureMappingStrategy.BEST_EFFORT,
-  suppress_provider_errors: bool | None = False,
+    experiment_path: str | None = None,
+    cache_options: types.CacheOptions | None = None,
+    logging_options: types.LoggingOptions | None = None,
+    proxdash_options: types.ProxDashOptions | None = None,
+    allow_multiprocessing: bool | None = True,
+    model_test_timeout: int | None = 25,
+    feature_mapping_strategy: (types.FeatureMappingStrategy |
+                               None) = types.FeatureMappingStrategy.BEST_EFFORT,
+    suppress_provider_errors: bool | None = False,
 ) -> None:
   """Initializes the default ProxAI client with the specified configuration.
 
@@ -76,33 +75,33 @@ def connect(
   """
   global _DEFAULT_CLIENT
   proxai_client_params = client.ProxAIClientParams(
-    experiment_path=experiment_path,
-    cache_options=cache_options,
-    logging_options=logging_options,
-    proxdash_options=proxdash_options,
-    allow_multiprocessing=allow_multiprocessing,
-    model_test_timeout=model_test_timeout,
-    feature_mapping_strategy=feature_mapping_strategy,
-    suppress_provider_errors=suppress_provider_errors,
+      experiment_path=experiment_path,
+      cache_options=cache_options,
+      logging_options=logging_options,
+      proxdash_options=proxdash_options,
+      allow_multiprocessing=allow_multiprocessing,
+      model_test_timeout=model_test_timeout,
+      feature_mapping_strategy=feature_mapping_strategy,
+      suppress_provider_errors=suppress_provider_errors,
   )
   _DEFAULT_CLIENT = client.ProxAIClient(init_from_params=proxai_client_params)
 
 
 def generate_text(
-  prompt: str | None = None,
-  system: str | None = None,
-  messages: types.MessagesType | None = None,
-  max_tokens: int | None = None,
-  temperature: float | None = None,
-  stop: types.StopType | None = None,
-  response_format: types.ResponseFormatParam | None = None,
-  web_search: bool | None = None,
-  provider_model: types.ProviderModelIdentifierType | None = None,
-  feature_mapping_strategy: types.FeatureMappingStrategy | None = None,
-  use_cache: bool | None = None,
-  unique_response_limit: int | None = None,
-  extensive_return: bool = False,
-  suppress_provider_errors: bool | None = None,
+    prompt: str | None = None,
+    system: str | None = None,
+    messages: types.MessagesType | None = None,
+    max_tokens: int | None = None,
+    temperature: float | None = None,
+    stop: types.StopType | None = None,
+    response_format: types.ResponseFormatParam | None = None,
+    web_search: bool | None = None,
+    provider_model: types.ProviderModelIdentifierType | None = None,
+    feature_mapping_strategy: types.FeatureMappingStrategy | None = None,
+    use_cache: bool | None = None,
+    unique_response_limit: int | None = None,
+    extensive_return: bool = False,
+    suppress_provider_errors: bool | None = None,
 ) -> str | types.LoggingRecord:
   """Generates text using the configured AI model.
 
@@ -174,26 +173,26 @@ def generate_text(
       'Paris'
   """
   return get_default_proxai_client().generate_text(
-    prompt=prompt,
-    system=system,
-    messages=messages,
-    max_tokens=max_tokens,
-    temperature=temperature,
-    stop=stop,
-    response_format=response_format,
-    web_search=web_search,
-    provider_model=provider_model,
-    feature_mapping_strategy=feature_mapping_strategy,
-    use_cache=use_cache,
-    unique_response_limit=unique_response_limit,
-    extensive_return=extensive_return,
-    suppress_provider_errors=suppress_provider_errors,
+      prompt=prompt,
+      system=system,
+      messages=messages,
+      max_tokens=max_tokens,
+      temperature=temperature,
+      stop=stop,
+      response_format=response_format,
+      web_search=web_search,
+      provider_model=provider_model,
+      feature_mapping_strategy=feature_mapping_strategy,
+      use_cache=use_cache,
+      unique_response_limit=unique_response_limit,
+      extensive_return=extensive_return,
+      suppress_provider_errors=suppress_provider_errors,
   )
 
 
 def set_model(
-  provider_model: types.ProviderModelIdentifierType | None = None,
-  generate_text: types.ProviderModelIdentifierType | None = None,
+    provider_model: types.ProviderModelIdentifierType | None = None,
+    generate_text: types.ProviderModelIdentifierType | None = None,
 ) -> None:
   """Sets the default model for text generation requests.
 
@@ -222,16 +221,16 @@ def set_model(
       >>> px.set_model(generate_text=("anthropic", "claude-3-opus"))
   """
   get_default_proxai_client().set_model(
-    provider_model=provider_model, generate_text=generate_text
+      provider_model=provider_model, generate_text=generate_text
   )
 
 
 def check_health(
-  experiment_path: str | None = None,
-  verbose: bool = True,
-  allow_multiprocessing: bool = True,
-  model_test_timeout: int = 25,
-  extensive_return: bool = False,
+    experiment_path: str | None = None,
+    verbose: bool = True,
+    allow_multiprocessing: bool = True,
+    model_test_timeout: int = 25,
+    extensive_return: bool = False,
 ) -> types.ModelStatus | None:
   """Tests connectivity and response times for all available AI models.
 
@@ -279,59 +278,56 @@ def check_health(
       5
   """
   px_client_params = client.ProxAIClientParams(
-    experiment_path=experiment_path,
-    allow_multiprocessing=allow_multiprocessing,
-    model_test_timeout=model_test_timeout,
+      experiment_path=experiment_path,
+      allow_multiprocessing=allow_multiprocessing,
+      model_test_timeout=model_test_timeout,
   )
   px_client = client.ProxAIClient(init_from_params=px_client_params)
   if verbose:
     print("> Starting to test each model...")
   model_status = px_client.available_models_instance.list_working_models(
-    clear_model_cache=True, verbose=verbose, return_all=True
+      clear_model_cache=True, verbose=verbose, return_all=True
   )
   if verbose:
-    providers = set(
-      [model.provider for model in model_status.working_models]
-      + [model.provider for model in model_status.failed_models]
-    )
+    providers = set([model.provider for model in model_status.working_models] +
+                    [model.provider for model in model_status.failed_models])
     result_table = {
-      provider: {"working": [], "failed": []} for provider in providers
+        provider: {
+            "working": [],
+            "failed": []
+        } for provider in providers
     }
     for model in model_status.working_models:
       result_table[model.provider]["working"].append(model.model)
     for model in model_status.failed_models:
       result_table[model.provider]["failed"].append(model.model)
     print(
-      "> Finished testing.\n"
-      f"   Registered Providers: {len(providers)}\n"
-      f"   Succeeded Models: {len(model_status.working_models)}\n"
-      f"   Failed Models: {len(model_status.failed_models)}"
+        "> Finished testing.\n"
+        f"   Registered Providers: {len(providers)}\n"
+        f"   Succeeded Models: {len(model_status.working_models)}\n"
+        f"   Failed Models: {len(model_status.failed_models)}"
     )
     for provider in sorted(providers):
       print(f"> {provider}:")
       for model in sorted(result_table[provider]["working"]):
         provider_model = px_client.model_configs_instance.get_provider_model(
-          (provider, model)
+            (provider, model)
         )
-        duration = model_status.provider_queries[
-          provider_model
-        ].response_record.response_time
+        duration = model_status.provider_queries[provider_model
+                                                ].response_record.response_time
         print(f"   [ WORKING | {duration.total_seconds():6.2f}s ]: {model}")
       for model in sorted(result_table[provider]["failed"]):
         provider_model = px_client.model_configs_instance.get_provider_model(
-          (provider, model)
+            (provider, model)
         )
-        duration = model_status.provider_queries[
-          provider_model
-        ].response_record.response_time
+        duration = model_status.provider_queries[provider_model
+                                                ].response_record.response_time
         print(f"   [ FAILED  | {duration.total_seconds():6.2f}s ]: {model}")
   if extensive_return:
     return model_status
 
 
-def get_current_options(
-  json: bool = False,
-) -> types.RunOptions | dict:
+def get_current_options(json: bool = False,) -> types.RunOptions | dict:
   """Returns the current configuration options of the default ProxAI client.
 
   Retrieves all active configuration settings including run type, experiment
