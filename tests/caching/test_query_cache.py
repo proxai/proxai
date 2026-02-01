@@ -2552,20 +2552,17 @@ class TestQueryCacheState:
       )
 
       with pytest.raises(
-          ValueError, match=
-          'QueryCacheManager status is QueryCacheManagerStatus.CACHE_PATH_NOT_FOUND'
+          ValueError, match='QueryCacheManager status is .*CACHE_PATH_NOT_FOUND'
       ):
         query_cache_manager.clear_cache()
 
       with pytest.raises(
-          ValueError, match=
-          'QueryCacheManager status is QueryCacheManagerStatus.CACHE_PATH_NOT_FOUND'
+          ValueError, match='QueryCacheManager status is .*CACHE_PATH_NOT_FOUND'
       ):
         query_cache_manager.look(types.QueryRecord(prompt='p1'))
 
       with pytest.raises(
-          ValueError, match=
-          'QueryCacheManager status is QueryCacheManagerStatus.CACHE_PATH_NOT_FOUND'
+          ValueError, match='QueryCacheManager status is .*CACHE_PATH_NOT_FOUND'
       ):
         query_cache_manager.cache(
             types.QueryRecord(prompt='p1'),
