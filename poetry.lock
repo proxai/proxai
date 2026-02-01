@@ -5410,6 +5410,22 @@ telemetry-grpc = ["opentelemetry-exporter-otlp-proto-grpc (>=1.36.0,<2)"]
 telemetry-http = ["opentelemetry-exporter-otlp-proto-http (>=1.36.0,<2)"]
 
 [[package]]
+name = "yapf"
+version = "0.43.0"
+description = "A formatter for Python code"
+optional = false
+python-versions = ">=3.7"
+groups = ["dev"]
+files = [
+    {file = "yapf-0.43.0-py3-none-any.whl", hash = "sha256:224faffbc39c428cb095818cf6ef5511fdab6f7430a10783fdfb292ccf2852ca"},
+    {file = "yapf-0.43.0.tar.gz", hash = "sha256:00d3aa24bfedff9420b2e0d5d9f5ab6d9d4268e72afbf59bb3fa542781d5218e"},
+]
+
+[package.dependencies]
+platformdirs = ">=3.5.1"
+tomli = {version = ">=2.0.1", markers = "python_version < \"3.11\""}
+
+[[package]]
 name = "yarl"
 version = "1.22.0"
 description = "Yet another URL library"
@@ -5689,4 +5705,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "278ee02ab16b422c57ee7b529685380eba71e1ce26b2f60fdb6238684e34bbe5"
+content-hash = "6a79b69b7ac09737f400ba3215a8144d880b5fe314296ffc576f3b463aed7077"

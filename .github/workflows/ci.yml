@@ -41,8 +41,8 @@ jobs:
       - name: Run ruff linter
         run: poetry run ruff check src/ tests/
 
-      - name: Run ruff formatter check
-        run: poetry run ruff format --check src/ tests/
+      - name: Run yapf formatter check
+        run: poetry run yapf --diff --recursive src/ tests/
 
   test:
     name: Test (Python ${{ matrix.python-version }})

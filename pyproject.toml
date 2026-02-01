@@ -39,6 +39,7 @@ sphinx-rtd-theme = "^2.0.0"
 jupyter = "^1.0.0"
 requests-mock = "^1.12.1"
 ruff = "^0.14.11"
+yapf = "^0.43.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -68,18 +69,17 @@ ignore = [
     "D105",   # Missing docstring in magic method
     "D107",   # Missing docstring in __init__
     "D102",   # Missing docstring in public method (mostly property getters)
+    "E501",   # Line too long (yapf handles formatting)
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = [
     "D101",   # Missing docstring in public class
     "D103",   # Missing docstring in public function
-    "E501",   # Line too long (tests benefit from longer lines for readability)
 ]
 "integration_tests/**/*.py" = [
     "D101",   # Missing docstring in public class
     "D103",   # Missing docstring in public function
-    "E501",   # Line too long (tests benefit from longer lines for readability)
 ]
 "examples/**/*.py" = [
     "D103",   # Missing docstring in public function (examples are self-explanatory)
@@ -88,7 +88,6 @@ ignore = [
     "D100",   # Missing docstring in public module
     "D101",   # Missing docstring in public class
     "D103",   # Missing docstring in public function
-    "E501",   # Line too long
     "F401",   # Imported but unused
     "I001",   # Import sorting
     "UP015",  # Unnecessary mode argument
@@ -101,6 +100,12 @@ convention = "google"
 [tool.ruff.lint.isort]
 known-first-party = ["proxai"]
 
-[tool.ruff.format]
-indent-style = "space"
-docstring-code-format = true
+[tool.yapf]
+based_on_style = "google"
+column_limit = 80
+indent_width = 2
+continuation_indent_width = 4
+dedent_closing_brackets = true
+coalesce_brackets = true
+split_before_named_assigns = false
+allow_split_before_dict_value = false
