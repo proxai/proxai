@@ -43,14 +43,12 @@ class BaseStateControlled:
 class StateControlled(BaseStateControlled):
   """Mixin providing automatic state serialization for class properties."""
 
-  def __init__(
-      self,
-      init_from_params=None,
-      init_from_state=None):
+  def __init__(self, init_from_params=None, init_from_state=None):
     if init_from_params and init_from_state:
       raise ValueError(
           'init_from_params and init_from_state cannot be set '
-          'at the same time.')
+          'at the same time.'
+      )
 
     if init_from_state is not None:
       self._validate_init_from_state_values(init_from_state)
@@ -62,7 +60,8 @@ class StateControlled(BaseStateControlled):
     if not isinstance(init_from_state, self.get_internal_state_type()):
       raise ValueError(
           f'Invalid state type.\nExpected: {self.get_internal_state_type()}\n'
-          f'Actual: {type(init_from_state)}')
+          f'Actual: {type(init_from_state)}'
+      )
 
   @abstractmethod
   def get_internal_state_property_name(self):
@@ -91,26 +90,20 @@ class StateControlled(BaseStateControlled):
   def get_property_internal_state_value(self, property_name: str) -> Any:
     """Direct internal state value getter."""
     return getattr(
-        getattr(self, self.get_internal_state_property_name()),
-        property_name,
-        None)
+        getattr(self, self.get_internal_state_property_name()), property_name,
+        None
+    )
 
-  def set_property_internal_value(
-      self,
-      property_name: str,
-      value: Any):
+  def set_property_internal_value(self, property_name: str, value: Any):
     """Direct internal value setter."""
     setattr(self, self.get_property_internal_name(property_name), value)
 
-  def set_property_internal_state_value(
-      self,
-      property_name: str,
-      value: Any):
+  def set_property_internal_state_value(self, property_name: str, value: Any):
     """Sets the property value directly in the internal state."""
     setattr(
-      getattr(self, self.get_internal_state_property_name()),
-      property_name,
-      value)
+        getattr(self, self.get_internal_state_property_name()), property_name,
+        value
+    )
 
   def get_property_value(self, property_name: str) -> Any:
     """Get a property value and sync it to internal state."""
@@ -136,15 +129,13 @@ class StateControlled(BaseStateControlled):
     if not isinstance(result, BaseStateControlled):
       raise ValueError(
           f'Invalid property value. Expected a StateControlled object. '
-          f'Got: {type(result)}')
+          f'Got: {type(result)}'
+      )
 
     self.set_property_internal_state_value(property_name, result.get_state())
     return result
 
-  def set_state_controlled_property_value(
-      self,
-      property_name: str,
-      value: Any):
+  def set_state_controlled_property_value(self, property_name: str, value: Any):
     """Set a nested StateControlled property from value or state."""
     if value is None:
       self.set_property_internal_value(property_name, None)
@@ -152,13 +143,14 @@ class StateControlled(BaseStateControlled):
       self.set_property_internal_value(property_name, value)
     elif isinstance(value, types.StateContainer):
       value = getattr(
-          self,
-          self.get_state_controlled_deserializer_name(property_name))(value)
+          self, self.get_state_controlled_deserializer_name(property_name)
+      )(value)
       self.set_property_internal_value(property_name, value)
     else:
       raise ValueError(
           f'Invalid property value. Expected a StateControlled object. '
-          f'Got: {type(value)}')
+          f'Got: {type(value)}'
+      )
 
     # Call actual getter to get the updated state value:
     updated_value = getattr(self, property_name)
@@ -170,15 +162,16 @@ class StateControlled(BaseStateControlled):
     if not isinstance(updated_value, BaseStateControlled):
       raise ValueError(
           f'Invalid property value. Expected a StateControlled object. '
-          f'Got: {type(updated_value)}')
+          f'Got: {type(updated_value)}'
+      )
 
     self.set_property_internal_state_value(
-        property_name, updated_value.get_state())
+        property_name, updated_value.get_state()
+    )
 
   def set_property_value_without_triggering_getters(
-      self,
-      property_name: str,
-      value: Any):
+      self, property_name: str, value: Any
+  ):
     """Set a property value directly without invoking computed getters."""
     self.set_property_internal_value(property_name, value)
     if isinstance(value, BaseStateControlled):
@@ -188,13 +181,14 @@ class StateControlled(BaseStateControlled):
   def init_state_with_default_values(self):
     """Initialize the internal state with default field values."""
     setattr(
-      self,
-      self.get_internal_state_property_name(),
-      self.get_internal_state_type()())
+        self, self.get_internal_state_property_name(),
+        self.get_internal_state_type()()
+    )
 
     for field in dataclasses.fields(self.get_internal_state_type()):
       self.set_property_value_without_triggering_getters(
-          field.name, field.default)
+          field.name, field.default
+      )
 
     return self.get_state()
 
@@ -218,7 +212,8 @@ class StateControlled(BaseStateControlled):
     if not isinstance(state, self.get_internal_state_type()):
       raise ValueError(
           f'Invalid state type.\nExpected: {self.get_internal_state_type()}\n'
-          f'Actual: {type(state)}')
+          f'Actual: {type(state)}'
+      )
 
     for field in dataclasses.fields(self.get_internal_state_type()):
       value = getattr(state, field.name, None)
@@ -226,6 +221,6 @@ class StateControlled(BaseStateControlled):
         continue
       if isinstance(value, types.StateContainer):
         value = getattr(
-            self,
-            self.get_state_controlled_deserializer_name(field.name))(value)
+            self, self.get_state_controlled_deserializer_name(field.name)
+        )(value)
       self.set_property_value_without_triggering_getters(field.name, value)

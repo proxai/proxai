@@ -27,11 +27,13 @@ def _to_light_cache_record(cache_record: types.CacheRecord):
       query_response_count=len(cache_record.query_responses),
       shard_id=cache_record.shard_id,
       last_access_time=cache_record.last_access_time,
-      call_count=cache_record.call_count)
+      call_count=cache_record.call_count
+  )
 
 
 def _get_cache_size(
-    cache_record: types.CacheRecord | types.LightCacheRecord) -> int:
+    cache_record: types.CacheRecord | types.LightCacheRecord
+) -> int:
   """Calculate the storage size of a cache record."""
   if isinstance(cache_record, types.LightCacheRecord):
     return cache_record.query_response_count + 1
@@ -51,8 +53,8 @@ def _get_hash_value(
       return cache_record.query_record.hash_value
     else:
       cache_record.query_record.hash_value = (
-          hash_serializer.get_query_record_hash(
-              cache_record.query_record))
+          hash_serializer.get_query_record_hash(cache_record.query_record)
+      )
       return cache_record.query_record.hash_value
   if isinstance(cache_record, types.LightCacheRecord):
     if cache_record.query_record_hash:
@@ -65,7 +67,8 @@ def _get_hash_value(
       return query_record.hash_value
     else:
       query_record.hash_value = hash_serializer.get_query_record_hash(
-          query_record)
+          query_record
+      )
       return query_record.hash_value
 
 
@@ -86,11 +89,7 @@ class HeapManager:
     if with_size:
       self._total_size = 0
 
-  def push(
-      self,
-      key: int | str,
-      value: int,
-      record_size: int = None):
+  def push(self, key: int | str, value: int, record_size: int = None):
     """Add or update an entry in the heap."""
     if not self._with_size and record_size:
       raise ValueError('Cannot push record size without with_size=True')
@@ -146,11 +145,7 @@ class ShardManager:
   _light_cache_records: dict[str, types.LightCacheRecord]
   _map_shard_to_cache: dict[str | int, set[str]]
 
-  def __init__(
-      self,
-      path: str,
-      shard_count: int,
-      response_per_file: int):
+  def __init__(self, path: str, shard_count: int, response_per_file: int):
     if shard_count < 1 or shard_count > 99999:
       raise ValueError('shard_count should be between 1 and 99999')
     if response_per_file < 1:
@@ -169,7 +164,8 @@ class ShardManager:
     if self._backlog_shard_path:
       return self._backlog_shard_path
     self._backlog_shard_path = os.path.join(
-        self._path, f'shard_backlog_{self._shard_count:05}.jsonl')
+        self._path, f'shard_backlog_{self._shard_count:05}.jsonl'
+    )
     return self._backlog_shard_path
 
   @property
@@ -179,7 +175,8 @@ class ShardManager:
     self._shard_paths = {}
     for i in range(self._shard_count):
       self._shard_paths[i] = os.path.join(
-          self._path, f'shard_{i:05}-of-{self._shard_count:05}.jsonl')
+          self._path, f'shard_{i:05}-of-{self._shard_count:05}.jsonl'
+      )
     self._shard_paths['backlog'] = self.backlog_shard_path
     return self._shard_paths
 
@@ -188,7 +185,8 @@ class ShardManager:
     if self._light_cache_records_path:
       return self._light_cache_records_path
     self._light_cache_records_path = os.path.join(
-        self._path, f'light_cache_records_{self._shard_count:05}.json')
+        self._path, f'light_cache_records_{self._shard_count:05}.json'
+    )
     return self._light_cache_records_path
 
   def _check_shard_id(self, shard_id: int | str):
@@ -196,10 +194,9 @@ class ShardManager:
       raise ValueError('Invalid shard_id')
 
   def _update_cache_record(
-      self,
-      cache_record: types.CacheRecord | types.LightCacheRecord,
-      delete_only: bool = False,
-      write_to_file: bool = True):
+      self, cache_record: types.CacheRecord | types.LightCacheRecord,
+      delete_only: bool = False, write_to_file: bool = True
+  ):
     hash_value = _get_hash_value(cache_record)
     shard_id = cache_record.shard_id
     if isinstance(cache_record, types.CacheRecord):
@@ -212,10 +209,12 @@ class ShardManager:
       old_shard_id = self._light_cache_records[hash_value].shard_id
       self._map_shard_to_cache[old_shard_id].remove(hash_value)
       self._shard_active_count[old_shard_id] -= _get_cache_size(
-          self._light_cache_records[hash_value])
+          self._light_cache_records[hash_value]
+      )
       if old_shard_id != 'backlog':
         self._shard_heap.push(
-            key=old_shard_id, value=self._shard_active_count[old_shard_id])
+            key=old_shard_id, value=self._shard_active_count[old_shard_id]
+        )
       if hash_value in self._loaded_cache_records:
         del self._loaded_cache_records[hash_value]
       del self._light_cache_records[hash_value]
@@ -229,30 +228,37 @@ class ShardManager:
     # Insert new values
     self._light_cache_records[hash_value] = light_cache_record
     self._map_shard_to_cache[shard_id].add(hash_value)
-    self._shard_active_count[shard_id] += _get_cache_size(
-        light_cache_record)
+    self._shard_active_count[shard_id] += _get_cache_size(light_cache_record)
     if shard_id != 'backlog':
       self._shard_heap.push(
-          key=shard_id, value=self._shard_active_count[shard_id])
+          key=shard_id, value=self._shard_active_count[shard_id]
+      )
     if isinstance(cache_record, types.CacheRecord):
       self._loaded_cache_records[hash_value] = cache_record
     if write_to_file:
       with open(self._light_cache_records_path, 'a') as f:
-        f.write(json.dumps(
-            {hash_value: type_serializer.encode_light_cache_record(
-              light_cache_record)}))
+        f.write(
+            json.dumps({
+                hash_value:
+                    type_serializer.
+                    encode_light_cache_record(light_cache_record)
+            })
+        )
         f.write('\n')
 
   def _save_light_cache_records(self):
     data = {}
     for query_record_hash, light_cache_record in (
-        self._light_cache_records.items()):
+        self._light_cache_records.items()
+    ):
       data[query_record_hash] = type_serializer.encode_light_cache_record(
-          light_cache_record)
+          light_cache_record
+      )
     with contextlib.suppress(OSError):
       os.rename(
           self._light_cache_records_path,
-          self._light_cache_records_path + '_backup')
+          self._light_cache_records_path + '_backup'
+      )
 
     with open(self._light_cache_records_path, 'w') as f:
       f.write(json.dumps(data))
@@ -283,6 +289,7 @@ class ShardManager:
           for hash_value, record in record_data.items():
             data[hash_value] = record
       return data
+
     try:
       data = load_data(self.light_cache_records_path)
     except Exception:
@@ -301,33 +308,37 @@ class ShardManager:
         continue
       if query_record_hash != light_cache_record.query_record_hash:
         continue
-      if (isinstance(light_cache_record.shard_id, str)
-          and light_cache_record.shard_id != 'backlog'):
+      if (
+          isinstance(light_cache_record.shard_id, str) and
+          light_cache_record.shard_id != 'backlog'
+      ):
         continue
-      if (isinstance(light_cache_record.shard_id, int)
-          and (light_cache_record.shard_id < 0
-            or light_cache_record.shard_id >= self._shard_count)):
+      if (
+          isinstance(light_cache_record.shard_id, int) and (
+              light_cache_record.shard_id < 0 or
+              light_cache_record.shard_id >= self._shard_count
+          )
+      ):
         continue
       light_cache_record.call_count = 0
       self._update_cache_record(light_cache_record, write_to_file=False)
     self._save_light_cache_records()
 
   def _check_cache_record_is_up_to_date(
-      self, cache_record: types.CacheRecord) -> bool:
+      self, cache_record: types.CacheRecord
+  ) -> bool:
     hash_value = _get_hash_value(cache_record)
     if hash_value not in self._light_cache_records:
       return False
-    light_cache_record = copy.deepcopy(
-        self._light_cache_records[hash_value])
+    light_cache_record = copy.deepcopy(self._light_cache_records[hash_value])
     comparison_light_cache_record = copy.deepcopy(
-        _to_light_cache_record(
-            cache_record))
+        _to_light_cache_record(cache_record)
+    )
     light_cache_record.call_count = None
     comparison_light_cache_record.call_count = None
     return light_cache_record == comparison_light_cache_record
 
-  def _load_shard(
-      self, shard_id: int | str) ->  list[str]:
+  def _load_shard(self, shard_id: int | str) -> list[str]:
     result = []
     try:
       with open(self.shard_paths[shard_id]) as f:
@@ -346,8 +357,7 @@ class ShardManager:
       pass
     for hash_value in list(self._map_shard_to_cache[shard_id]):
       if hash_value not in result:
-        light_cache_value = copy.deepcopy(
-            self._light_cache_records[hash_value])
+        light_cache_value = copy.deepcopy(self._light_cache_records[hash_value])
         self._update_cache_record(light_cache_value, delete_only=True)
     return result
 
@@ -371,8 +381,8 @@ class ShardManager:
         except Exception:
           continue
     os.rename(
-        self.shard_paths[shard_id] + '_backup',
-        self.shard_paths[shard_id])
+        self.shard_paths[shard_id] + '_backup', self.shard_paths[shard_id]
+    )
     with contextlib.suppress(OSError):
       os.remove(self.shard_paths['backlog'])
 
@@ -385,7 +395,8 @@ class ShardManager:
       f.write('\n')
 
   def get_cache_record(
-      self, query_record: types.QueryRecord | str) -> types.CacheRecord | None:
+      self, query_record: types.QueryRecord | str
+  ) -> types.CacheRecord | None:
     """Retrieve a cache record by query record or hash value."""
     hash_value = _get_hash_value(query_record)
     if hash_value not in self._light_cache_records:
@@ -408,8 +419,7 @@ class ShardManager:
     hash_value = _get_hash_value(cache_record)
     if hash_value not in self._light_cache_records:
       return
-    light_cache_records = copy.deepcopy(
-        self._light_cache_records[hash_value])
+    light_cache_records = copy.deepcopy(self._light_cache_records[hash_value])
     self._update_cache_record(light_cache_records, delete_only=True)
 
   def save_record(self, cache_record: types.CacheRecord):
@@ -420,8 +430,10 @@ class ShardManager:
     backlog_size = self._shard_active_count['backlog']
     record_size = _get_cache_size(cache_record)
     lowest_shard_value, lowest_shard_key = self._shard_heap.top()
-    if (backlog_size + record_size
-        > self._response_per_file - lowest_shard_value):
+    if (
+        backlog_size + record_size
+        > self._response_per_file - lowest_shard_value
+    ):
       self._move_backlog_to_shard(shard_id=lowest_shard_key)
       self._add_to_backlog(cache_record)
       self._save_light_cache_records()
@@ -452,16 +464,16 @@ class QueryCacheManager(state_controller.StateControlled):
   _record_heap: HeapManager
 
   def __init__(
-      self,
-      init_from_params: QueryCacheManagerParams | None = None,
+      self, init_from_params: QueryCacheManagerParams | None = None,
       init_from_state: types.QueryCacheManagerState | None = None
   ):
     super().__init__(
-        init_from_params=init_from_params,
-        init_from_state=init_from_state)
+        init_from_params=init_from_params, init_from_state=init_from_state
+    )
 
     self.set_property_value(
-        'status', types.QueryCacheManagerStatus.INITIALIZING)
+        'status', types.QueryCacheManagerStatus.INITIALIZING
+    )
 
     if init_from_state:
       self.load_state(init_from_state)
@@ -510,7 +522,8 @@ class QueryCacheManager(state_controller.StateControlled):
         self.status == types.QueryCacheManagerStatus.INITIALIZING or
         self.status == types.QueryCacheManagerStatus.CACHE_OPTIONS_NOT_FOUND or
         self.status == types.QueryCacheManagerStatus.CACHE_PATH_NOT_FOUND or
-        self.status == types.QueryCacheManagerStatus.CACHE_PATH_NOT_WRITABLE):
+        self.status == types.QueryCacheManagerStatus.CACHE_PATH_NOT_WRITABLE
+    ):
       raise ValueError(f'QueryCacheManager status is {self.status}')
     cache_dir = self._get_cache_dir(self.cache_options.cache_path)
     if os.path.exists(cache_dir):
@@ -522,16 +535,16 @@ class QueryCacheManager(state_controller.StateControlled):
     if self.cache_options.cache_path is None:
       return
     os.makedirs(
-        self._get_cache_dir(self.cache_options.cache_path),
-        exist_ok=True)
+        self._get_cache_dir(self.cache_options.cache_path), exist_ok=True
+    )
 
   def _init_managers(self):
     if self.cache_options.cache_path is None:
       return
     self._shard_manager = ShardManager(
         path=self._get_cache_dir(self.cache_options.cache_path),
-        shard_count=self.shard_count,
-        response_per_file=self.response_per_file)
+        shard_count=self.shard_count, response_per_file=self.response_per_file
+    )
     self._record_heap = HeapManager(with_size=True)
     for record in self._shard_manager._light_cache_records.values():
       self._push_record_heap(record)
@@ -581,13 +594,14 @@ class QueryCacheManager(state_controller.StateControlled):
     self.set_property_value('cache_response_size', value)
 
   def _push_record_heap(
-      self, cache_record: types.CacheRecord | types.LightCacheRecord):
+      self, cache_record: types.CacheRecord | types.LightCacheRecord
+  ):
     hash_value = _get_hash_value(cache_record)
     last_access_time = cache_record.last_access_time.timestamp()
     self._record_heap.push(
-        key=hash_value,
-        value=last_access_time,
-        record_size=_get_cache_size(cache_record))
+        key=hash_value, value=last_access_time,
+        record_size=_get_cache_size(cache_record)
+    )
     while len(self._record_heap) > self.cache_response_size:
       _, hash_value = self._record_heap.pop()
       self._shard_manager.delete_record(hash_value)
@@ -607,29 +621,35 @@ class QueryCacheManager(state_controller.StateControlled):
     cache_record = self._shard_manager.get_cache_record(query_record)
     if cache_record is None:
       return types.CacheLookResult(
-          look_fail_reason=types.CacheLookFailReason.CACHE_NOT_FOUND)
+          look_fail_reason=types.CacheLookFailReason.CACHE_NOT_FOUND
+      )
     is_equal = type_utils.is_query_record_equal(
-        cache_record.query_record, query_record)
+        cache_record.query_record, query_record
+    )
     if not is_equal:
       return types.CacheLookResult(
-          look_fail_reason=types.CacheLookFailReason.CACHE_NOT_MATCHED)
+          look_fail_reason=types.CacheLookFailReason.CACHE_NOT_MATCHED
+      )
     if unique_response_limit is None:
       unique_response_limit = self.cache_options.unique_response_limit
     if len(cache_record.query_responses) < unique_response_limit:
       return types.CacheLookResult(
-          look_fail_reason=
-          types.CacheLookFailReason.UNIQUE_RESPONSE_LIMIT_NOT_REACHED)
+          look_fail_reason=types.CacheLookFailReason.
+          UNIQUE_RESPONSE_LIMIT_NOT_REACHED
+      )
     query_response: types.QueryResponseRecord = cache_record.query_responses[
         cache_record.call_count % len(cache_record.query_responses)]
-    if (query_response.error
-        and self.cache_options.retry_if_error_cached
-        and cache_record.call_count < len(cache_record.query_responses)):
+    if (
+        query_response.error and self.cache_options.retry_if_error_cached and
+        cache_record.call_count < len(cache_record.query_responses)
+    ):
       cache_record.last_access_time = datetime.datetime.now()
       cache_record.call_count += 1
       self._shard_manager.save_record(cache_record=cache_record)
       self._push_record_heap(cache_record)
       return types.CacheLookResult(
-          look_fail_reason=types.CacheLookFailReason.PROVIDER_ERROR_CACHED)
+          look_fail_reason=types.CacheLookFailReason.PROVIDER_ERROR_CACHED
+      )
     if update:
       cache_record.last_access_time = datetime.datetime.now()
       cache_record.call_count += 1
@@ -638,10 +658,10 @@ class QueryCacheManager(state_controller.StateControlled):
     return types.CacheLookResult(query_response=query_response)
 
   def cache(
-      self,
-      query_record: types.QueryRecord,
+      self, query_record: types.QueryRecord,
       response_record: types.QueryResponseRecord,
-      unique_response_limit: int | None = None):
+      unique_response_limit: int | None = None
+  ):
     """Store a query response in the cache."""
     if self.status != types.QueryCacheManagerStatus.WORKING:
       raise ValueError(f'QueryCacheManager status is {self.status}')
@@ -650,12 +670,12 @@ class QueryCacheManager(state_controller.StateControlled):
     cache_record = self._shard_manager.get_cache_record(query_record)
     if not cache_record:
       query_record.hash_value = hash_serializer.get_query_record_hash(
-          query_record)
+          query_record
+      )
       cache_record = types.CacheRecord(
-          query_record=query_record,
-          query_responses=[response_record],
-          last_access_time=current_time,
-          call_count=0)
+          query_record=query_record, query_responses=[response_record],
+          last_access_time=current_time, call_count=0
+      )
       self._shard_manager.save_record(cache_record=cache_record)
       self._push_record_heap(cache_record)
       return
@@ -667,8 +687,10 @@ class QueryCacheManager(state_controller.StateControlled):
       self._shard_manager.save_record(cache_record=cache_record)
       self._push_record_heap(cache_record)
       return
-    if (self.cache_options.retry_if_error_cached
-        and response_record.error is None):
+    if (
+        self.cache_options.retry_if_error_cached and
+        response_record.error is None
+    ):
       for idx, previous_response in enumerate(cache_record.query_responses):
         if previous_response.error:
           cache_record.query_responses[idx] = response_record

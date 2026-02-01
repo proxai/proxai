@@ -1,5 +1,3 @@
-
-
 class _MockMessage:
   content: str
 
@@ -20,6 +18,7 @@ class _MockResponse:
 
 
 class _MockCompletions:
+
   def create(self, *args, **kwargs) -> _MockResponse:
     return _MockResponse()
 

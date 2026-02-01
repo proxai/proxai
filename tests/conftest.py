@@ -7,6 +7,7 @@ import proxai.connectors.model_configs as model_configs
 # Store original value globally
 _ORIGINAL_API_KEY = None
 
+
 def pytest_configure(config):
   """Configure pytest before any imports happen."""
   global _ORIGINAL_API_KEY
