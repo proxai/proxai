@@ -24,13 +24,11 @@ class MockChat:
   """Mock chat completion handler."""
 
   def complete(
-        self,
-        model: str,
-        messages: list[Any],
-        max_tokens: int | None=None,
-        temperature: float | None=None,
-        stop: list[str] | None=None) -> _MockResponse:
-      return _MockResponse()
+      self, model: str, messages: list[Any], max_tokens: int | None = None,
+      temperature: float | None = None, stop: list[str] | None = None
+  ) -> _MockResponse:
+    return _MockResponse()
+
 
 class MistralMock:
   """Mock Mistral API client for testing."""

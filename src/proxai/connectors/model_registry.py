@@ -15,18 +15,18 @@ import proxai.connectors.providers.openai as openai_provider
 import proxai.types as types
 
 _MODEL_CONNECTOR_MAP = {
-  'openai': openai_provider.OpenAIConnector,
-  'claude': claude_provider.ClaudeConnector,
-  'gemini': gemini_provider.GeminiConnector,
-  'cohere': cohere_api_provider.CohereConnector,
-  'databricks': databricks_provider.DatabricksConnector,
-  'mistral': mistral_provider.MistralConnector,
-  'huggingface': huggingface_provider.HuggingFaceConnector,
-  'deepseek': deepseek_provider.DeepSeekConnector,
-  'grok': grok_provider.GrokConnector,
-  'mock_provider': mock_provider.MockProviderModelConnector,
-  'mock_failing_provider': mock_provider.MockFailingProviderModelConnector,
-  'mock_slow_provider': mock_provider.MockSlowProviderModelConnector,
+    'openai': openai_provider.OpenAIConnector,
+    'claude': claude_provider.ClaudeConnector,
+    'gemini': gemini_provider.GeminiConnector,
+    'cohere': cohere_api_provider.CohereConnector,
+    'databricks': databricks_provider.DatabricksConnector,
+    'mistral': mistral_provider.MistralConnector,
+    'huggingface': huggingface_provider.HuggingFaceConnector,
+    'deepseek': deepseek_provider.DeepSeekConnector,
+    'grok': grok_provider.GrokConnector,
+    'mock_provider': mock_provider.MockProviderModelConnector,
+    'mock_failing_provider': mock_provider.MockFailingProviderModelConnector,
+    'mock_slow_provider': mock_provider.MockSlowProviderModelConnector,
 }
 
 
@@ -42,7 +42,8 @@ def get_model_connector(
   if without_additional_args:
     return connector
   return functools.partial(
-      connector,
-      init_from_params=model_connector.ProviderModelConnectorParams(
+      connector, init_from_params=model_connector.ProviderModelConnectorParams(
           provider_model=provider_model,
-          provider_model_config=provider_model_config))
+          provider_model_config=provider_model_config
+      )
+  )

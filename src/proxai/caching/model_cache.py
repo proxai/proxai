@@ -27,16 +27,16 @@ class ModelCacheManager(state_controller.StateControlled):
   _model_cache_manager_state: types.ModelCacheManagerState
 
   def __init__(
-      self,
-      init_from_params: ModelCacheManagerParams | None = None,
+      self, init_from_params: ModelCacheManagerParams | None = None,
       init_from_state: types.ModelCacheManagerState | None = None
   ):
     super().__init__(
-        init_from_params=init_from_params,
-        init_from_state=init_from_state)
+        init_from_params=init_from_params, init_from_state=init_from_state
+    )
 
     self.set_property_value(
-        'status', types.ModelCacheManagerStatus.INITIALIZING)
+        'status', types.ModelCacheManagerStatus.INITIALIZING
+    )
 
     if init_from_state:
       self.load_state(init_from_state)
@@ -142,7 +142,8 @@ class ModelCacheManager(state_controller.StateControlled):
         data = json.load(f)
         for call_value in data:
           self.model_status_by_call_type[call_value] = (
-              type_serializer.decode_model_status(data[call_value]))
+              type_serializer.decode_model_status(data[call_value])
+          )
       except Exception:
         error_message = (
             '_load_from_cache_path failed because of the parsing error.\n'
@@ -154,13 +155,13 @@ class ModelCacheManager(state_controller.StateControlled):
             '    >        clear_model_cache_on_connect=True))\n'
             '* If the problem persists, delete the cache file and try again:\n'
             f'    > rm {self.cache_path};\n'
-            '* Open bug report at https://github.com/proxai/proxai/issues')
+            '* Open bug report at https://github.com/proxai/proxai/issues'
+        )
         raise ValueError(error_message) from None
 
   def _clean_model_from_tested_models(
-      self,
-      call_type: types.CallType,
-      model: types.ProviderModelType):
+      self, call_type: types.CallType, model: types.ProviderModelType
+  ):
     """Cleans a model from tested models: working_models and failed_models."""
     if call_type not in self.model_status_by_call_type:
       return
@@ -172,9 +173,8 @@ class ModelCacheManager(state_controller.StateControlled):
     model_status.provider_queries.pop(model, None)
 
   def _clean_model_from_model_status(
-      self,
-      call_type: types.CallType,
-      model: types.ProviderModelType):
+      self, call_type: types.CallType, model: types.ProviderModelType
+  ):
     if call_type not in self.model_status_by_call_type:
       return
     model_status = self.model_status_by_call_type[call_type]
@@ -198,9 +198,10 @@ class ModelCacheManager(state_controller.StateControlled):
       if model not in model_status.provider_queries:
         continue
       provider_query = model_status.provider_queries[model]
-      time_since_response = (datetime.datetime.now(datetime.timezone.utc)
-                             - provider_query.response_record.end_utc_date
-                             ).total_seconds()
+      time_since_response = (
+          datetime.datetime.now(datetime.timezone.utc) -
+          provider_query.response_record.end_utc_date
+      ).total_seconds()
       if time_since_response > self.cache_options.model_cache_duration:
         self._clean_model_from_tested_models(call_type=call_type, model=model)
 
@@ -208,9 +209,8 @@ class ModelCacheManager(state_controller.StateControlled):
     return model_status
 
   def update(
-      self,
-      model_status_updates: types.ModelStatus,
-      call_type: types.CallType):
+      self, model_status_updates: types.ModelStatus, call_type: types.CallType
+  ):
     """Apply incremental updates to cached model status."""
     if call_type not in self.model_status_by_call_type:
       self.model_status_by_call_type[call_type] = types.ModelStatus()
@@ -218,13 +218,15 @@ class ModelCacheManager(state_controller.StateControlled):
         model_status_updates.unprocessed_models |
         model_status_updates.working_models |
         model_status_updates.failed_models |
-        model_status_updates.filtered_models)
+        model_status_updates.filtered_models
+    )
     for provider_query_model in model_status_updates.provider_queries:
       if provider_query_model not in all_updated_models:
         raise ValueError(
             f'Model {provider_query_model} is not in any of the unprocessed, '
             'working, failed, or filtered models. Please provide the provider '
-            'model in one of the sets when updating provider_queries.')
+            'model in one of the sets when updating provider_queries.'
+        )
 
     for model in all_updated_models:
       self._clean_model_from_model_status(call_type=call_type, model=model)
@@ -239,14 +241,12 @@ class ModelCacheManager(state_controller.StateControlled):
     for model in model_status_updates.filtered_models:
       model_status.filtered_models.add(model)
     for provider_model, provider_query in (
-        model_status_updates.provider_queries.items()):
+        model_status_updates.provider_queries.items()
+    ):
       model_status.provider_queries[provider_model] = provider_query
     self._save_to_cache_path()
 
-  def save(
-      self,
-      model_status: types.ModelStatus,
-      call_type: types.CallType):
+  def save(self, model_status: types.ModelStatus, call_type: types.CallType):
     """Replace cached model status for a call type."""
     self.model_status_by_call_type[call_type] = copy.deepcopy(model_status)
     self._save_to_cache_path()

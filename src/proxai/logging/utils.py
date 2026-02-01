@@ -17,7 +17,8 @@ _SENSITIVE_CONTENT_HIDDEN_STRING = '<sensitive content hidden>'
 
 
 def _hide_sensitive_content_query_record(
-    query_record: types.QueryRecord) -> types.QueryRecord:
+    query_record: types.QueryRecord
+) -> types.QueryRecord:
   """Replace sensitive fields in a query record with placeholder text."""
   query_record = copy.deepcopy(query_record)
   if query_record.system:
@@ -25,12 +26,10 @@ def _hide_sensitive_content_query_record(
   if query_record.prompt:
     query_record.prompt = _SENSITIVE_CONTENT_HIDDEN_STRING
   if query_record.messages:
-    query_record.messages = [
-      {
+    query_record.messages = [{
         'role': 'assistant',
         'content': _SENSITIVE_CONTENT_HIDDEN_STRING
-      }
-    ]
+    }]
   return query_record
 
 
@@ -42,28 +41,32 @@ def _hide_sensitive_content_query_response_record(
   if query_response_record.response:
     query_response_record.response = types.Response(
         type=query_response_record.response.type,
-        value=_SENSITIVE_CONTENT_HIDDEN_STRING)
+        value=_SENSITIVE_CONTENT_HIDDEN_STRING
+    )
   return query_response_record
 
 
 def _hide_sensitive_content_logging_record(
-    logging_record: types.LoggingRecord) -> types.LoggingRecord:
+    logging_record: types.LoggingRecord
+) -> types.LoggingRecord:
   """Replace sensitive fields in a logging record with placeholder text."""
   logging_record = copy.deepcopy(logging_record)
   if logging_record.query_record:
     logging_record.query_record = _hide_sensitive_content_query_record(
-        logging_record.query_record)
+        logging_record.query_record
+    )
   if logging_record.response_record:
     logging_record.response_record = (
         _hide_sensitive_content_query_response_record(
-            logging_record.response_record))
+            logging_record.response_record
+        )
+    )
   return logging_record
 
 
 def _write_log(
-    logging_options: types.LoggingOptions,
-    file_name: str,
-    data: dict):
+    logging_options: types.LoggingOptions, file_name: str, data: dict
+):
   """Append a JSON record to a log file."""
   file_path = os.path.join(logging_options.logging_path, file_name)
   with open(file_path, 'a') as f:
@@ -72,8 +75,8 @@ def _write_log(
 
 
 def log_logging_record(
-    logging_options: types.LoggingOptions,
-    logging_record: types.LoggingRecord):
+    logging_options: types.LoggingOptions, logging_record: types.LoggingRecord
+):
   """Write a query logging record to the log file."""
   if not logging_options:
     return
@@ -85,16 +88,15 @@ def log_logging_record(
   if not logging_options.logging_path:
     return
   _write_log(
-      logging_options=logging_options,
-      file_name=QUERY_LOGGING_FILE_NAME,
-      data=result)
+      logging_options=logging_options, file_name=QUERY_LOGGING_FILE_NAME,
+      data=result
+  )
 
 
 def log_message(
-    logging_options: types.LoggingOptions,
-    message: str,
-    type: types.LoggingType,
-    query_record: types.QueryRecord | None = None):
+    logging_options: types.LoggingOptions, message: str,
+    type: types.LoggingType, query_record: types.QueryRecord | None = None
+):
   """Write a message to the appropriate log file based on type."""
   if not logging_options:
     return
@@ -112,31 +114,30 @@ def log_message(
     return
   if type == types.LoggingType.ERROR:
     _write_log(
-        logging_options=logging_options,
-        file_name=ERROR_LOGGING_FILE_NAME,
-        data=result)
+        logging_options=logging_options, file_name=ERROR_LOGGING_FILE_NAME,
+        data=result
+    )
   elif type == types.LoggingType.WARNING:
     _write_log(
-        logging_options=logging_options,
-        file_name=WARNING_LOGGING_FILE_NAME,
-        data=result)
+        logging_options=logging_options, file_name=WARNING_LOGGING_FILE_NAME,
+        data=result
+    )
   else:
     _write_log(
-        logging_options=logging_options,
-        file_name=INFO_LOGGING_FILE_NAME,
-        data=result)
+        logging_options=logging_options, file_name=INFO_LOGGING_FILE_NAME,
+        data=result
+    )
   _write_log(
-      logging_options=logging_options,
-      file_name=MERGED_LOGGING_FILE_NAME,
-      data=result)
+      logging_options=logging_options, file_name=MERGED_LOGGING_FILE_NAME,
+      data=result
+  )
 
 
 def log_proxdash_message(
     logging_options: types.LoggingOptions,
-    proxdash_options: types.ProxDashOptions,
-    message: str,
-    type: types.LoggingType,
-    query_record: types.QueryRecord | None = None):
+    proxdash_options: types.ProxDashOptions, message: str,
+    type: types.LoggingType, query_record: types.QueryRecord | None = None
+):
   """Write a ProxDash-related message to the log files."""
   result = {}
   result['logging_type'] = type.value.upper()
@@ -152,19 +153,19 @@ def log_proxdash_message(
     return
   if type == types.LoggingType.ERROR:
     _write_log(
-        logging_options=logging_options,
-        file_name=ERROR_LOGGING_FILE_NAME,
-        data=result)
+        logging_options=logging_options, file_name=ERROR_LOGGING_FILE_NAME,
+        data=result
+    )
   elif type == types.LoggingType.WARNING:
     _write_log(
-        logging_options=logging_options,
-        file_name=WARNING_LOGGING_FILE_NAME,
-        data=result)
+        logging_options=logging_options, file_name=WARNING_LOGGING_FILE_NAME,
+        data=result
+    )
   _write_log(
-      logging_options=logging_options,
-      file_name=PROXDASH_LOGGING_FILE_NAME,
-      data=result)
+      logging_options=logging_options, file_name=PROXDASH_LOGGING_FILE_NAME,
+      data=result
+  )
   _write_log(
-      logging_options=logging_options,
-      file_name=MERGED_LOGGING_FILE_NAME,
-      data=result)
+      logging_options=logging_options, file_name=MERGED_LOGGING_FILE_NAME,
+      data=result
+  )

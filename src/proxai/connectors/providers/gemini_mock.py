@@ -1,5 +1,3 @@
-
-
 class _MockResponse:
   text: str
 
@@ -8,6 +6,7 @@ class _MockResponse:
 
 
 class _MockModel:
+
   def generate_content(self, *args, **kwargs) -> _MockResponse:
     return _MockResponse()
 

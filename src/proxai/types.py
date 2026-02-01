@@ -9,15 +9,15 @@ import pydantic
 class RunType(enum.Enum):
   """Execution mode for the ProxAI client."""
 
-  PRODUCTION = 'PRODUCTION'
-  TEST = 'TEST'
+  PRODUCTION = "PRODUCTION"
+  TEST = "TEST"
 
 
 class CallType(str, enum.Enum):
   """Type of API call being made to the provider."""
 
-  GENERATE_TEXT = 'GENERATE_TEXT'
-  OTHER = 'OTHER'
+  GENERATE_TEXT = "GENERATE_TEXT"
+  OTHER = "OTHER"
 
 
 ProviderNameType = str
@@ -27,21 +27,46 @@ RawProviderModelIdentifierType = str
 
 @dataclasses.dataclass(frozen=True)
 class ProviderModelType:
-  """Immutable identifier for a specific provider and model combination."""
+  """Immutable identifier for a specific provider and model combination.
+
+  This type is returned by model discovery functions like
+  px.models.list_models() and px.models.get_model(). It uniquely identifies
+  a model by its provider,
+  model name, and the provider's internal identifier.
+
+  Attributes:
+    provider: The AI provider name (e.g., 'openai', 'anthropic', 'google').
+    model: The model name (e.g., 'gpt-4', 'claude-3-opus', 'gemini-pro').
+    provider_model_identifier: The provider's internal model identifier,
+      which may differ from the model name.
+
+  Example:
+    >>> import proxai as px
+    >>> models = px.models.list_models()
+    >>> for model in models:
+    ...   print(f"{model.provider}: {model.model}")
+    openai: gpt-4
+    anthropic: claude-3-opus
+    >>> # Type checking
+    >>> model = px.models.get_model("openai", "gpt-4")
+    >>> isinstance(model, px.ProviderModelType)
+    True
+  """
 
   provider: ProviderNameType
   model: ModelNameType
   provider_model_identifier: RawProviderModelIdentifierType
 
   def __str__(self):  # noqa: D105
-    return f'({self.provider}, {self.model})'
+    return f"({self.provider}, {self.model})"
 
   def __repr__(self):  # noqa: D105
     return (
-        'ProviderModelType('
-        f'provider={self.provider}, '
-        f'model={self.model}, '
-        f'provider_model_identifier={self.provider_model_identifier})')
+        "ProviderModelType("
+        f"provider={self.provider}, "
+        f"model={self.model}, "
+        f"provider_model_identifier={self.provider_model_identifier})"
+    )
 
   def __lt__(self, other):  # noqa: D105
     if not isinstance(other, ProviderModelType):
@@ -91,17 +116,17 @@ class EndpointFeatureInfoType:
 class FeatureNameType(str, enum.Enum):
   """Available features that can be used with model queries."""
 
-  PROMPT = 'prompt'
-  MESSAGES = 'messages'
-  SYSTEM = 'system'
-  MAX_TOKENS = 'max_tokens'
-  TEMPERATURE = 'temperature'
-  STOP = 'stop'
-  WEB_SEARCH = 'web_search'
-  RESPONSE_FORMAT_TEXT = 'response_format::text'
-  RESPONSE_FORMAT_JSON = 'response_format::json'
-  RESPONSE_FORMAT_JSON_SCHEMA = 'response_format::json_schema'
-  RESPONSE_FORMAT_PYDANTIC = 'response_format::pydantic'
+  PROMPT = "prompt"
+  MESSAGES = "messages"
+  SYSTEM = "system"
+  MAX_TOKENS = "max_tokens"
+  TEMPERATURE = "temperature"
+  STOP = "stop"
+  WEB_SEARCH = "web_search"
+  RESPONSE_FORMAT_TEXT = "response_format::text"
+  RESPONSE_FORMAT_JSON = "response_format::json"
+  RESPONSE_FORMAT_JSON_SCHEMA = "response_format::json_schema"
+  RESPONSE_FORMAT_PYDANTIC = "response_format::pydantic"
 
 
 FeatureListType = list[FeatureNameType]
@@ -112,10 +137,11 @@ FeatureListParam = list[str | FeatureNameType]
 class ModelSizeType(str, enum.Enum):
   """Size category for AI models."""
 
-  SMALL = 'small'
-  MEDIUM = 'medium'
-  LARGE = 'large'
-  LARGEST = 'largest'
+  SMALL = "small"
+  MEDIUM = "medium"
+  LARGE = "large"
+  LARGEST = "largest"
+
 
 ModelSizeIdentifierType = ModelSizeType | str
 
@@ -130,6 +156,7 @@ class ProviderModelMetadataType:
   is_default_candidate: bool | None = None
   default_candidate_priority: int | None = None
   tags: list[str] | None = None
+
 
 FeatureMappingType = dict[FeatureNameType, EndpointFeatureInfoType]
 
@@ -147,18 +174,18 @@ class ProviderModelConfigType:
 class ConfigOriginType(enum.Enum):
   """Source of the model configuration."""
 
-  BUILT_IN = 'BUILT_IN'
-  PROXDASH = 'PROXDASH'
+  BUILT_IN = "BUILT_IN"
+  PROXDASH = "PROXDASH"
 
-ProviderModelsIdentifierDictType = dict[
-    ProviderNameType, tuple[ProviderModelIdentifierType]]
 
-ProviderModelConfigsType = dict[
-    ProviderNameType, dict[ModelNameType, ProviderModelConfigType]]
+ProviderModelsIdentifierDictType = dict[ProviderNameType,
+                                        tuple[ProviderModelIdentifierType]]
+
+ProviderModelConfigsType = dict[ProviderNameType, dict[ModelNameType,
+                                                       ProviderModelConfigType]]
 FeaturedModelsType = ProviderModelsIdentifierDictType
 ModelsByCallTypeType = dict[CallType, ProviderModelsIdentifierDictType]
-ModelsBySizeType = dict[
-    ModelSizeType, tuple[ProviderModelIdentifierType]]
+ModelsBySizeType = dict[ModelSizeType, tuple[ProviderModelIdentifierType]]
 DefaultModelPriorityListType = tuple[ProviderModelIdentifierType]
 
 
@@ -195,7 +222,20 @@ class ModelConfigsSchemaType:
 
 @dataclasses.dataclass
 class LoggingOptions:
-  """Configuration for logging behavior."""
+  """Configuration for logging behavior.
+
+  Args:
+    logging_path: Directory path where log files will be written.
+      If None, file logging is disabled.
+    stdout: If True, logs are also printed to standard output.
+      Defaults to False.
+    hide_sensitive_content: If True, sensitive information like prompts
+      and responses are redacted in logs. Defaults to False.
+
+  Example:
+    >>> import proxai as px
+    >>> logging_opts = px.LoggingOptions(logging_path="/tmp/logs", stdout=True)
+  """
 
   logging_path: str | None = None
   stdout: bool = False
@@ -205,15 +245,42 @@ class LoggingOptions:
 class LoggingType(str, enum.Enum):
   """Severity level for log messages."""
 
-  QUERY = 'QUERY'
-  ERROR = 'ERROR'
-  WARNING = 'WARNING'
-  INFO = 'INFO'
+  QUERY = "QUERY"
+  ERROR = "ERROR"
+  WARNING = "WARNING"
+  INFO = "INFO"
 
 
 @dataclasses.dataclass
 class CacheOptions:
-  """Configuration for query and model caching behavior."""
+  """Configuration for query and model caching behavior.
+
+  Controls how ProxAI caches query responses and model availability data
+  to reduce API calls and improve performance.
+
+  Args:
+    cache_path: Directory path where cache files will be stored.
+      If None, caching is disabled.
+    unique_response_limit: Number of unique responses to collect for
+      the same query before returning from cache. Useful for getting
+      diverse outputs. Defaults to 1.
+    retry_if_error_cached: If True, retries the API call when the
+      cached response was an error. Defaults to False.
+    clear_query_cache_on_connect: If True, clears the query cache
+      when connect() is called. Defaults to False.
+    disable_model_cache: If True, disables caching of model availability
+      data. Defaults to False.
+    clear_model_cache_on_connect: If True, clears the model cache
+      when connect() is called. Defaults to False.
+    model_cache_duration: Duration in seconds for which model cache
+      entries remain valid. If None, uses the default duration.
+
+  Example:
+    >>> import proxai as px
+    >>> cache_opts = px.CacheOptions(
+    ...   cache_path="/tmp/proxai_cache", unique_response_limit=3
+    ... )
+  """
 
   cache_path: str | None = None
 
@@ -228,13 +295,32 @@ class CacheOptions:
 
 @dataclasses.dataclass
 class ProxDashOptions:
-  """Configuration for ProxDash monitoring integration."""
+  """Configuration for ProxDash monitoring integration.
+
+  ProxDash is a monitoring platform that tracks API usage, costs,
+  and performance metrics for your ProxAI queries.
+
+  Args:
+    stdout: If True, prints ProxDash status messages to standard
+      output. Defaults to False.
+    hide_sensitive_content: If True, sensitive information like prompts
+      and responses are not sent to ProxDash. Defaults to False.
+    disable_proxdash: If True, completely disables ProxDash integration
+      even if an API key is configured. Defaults to False.
+    api_key: Your ProxDash API key. If None, looks for the
+      PROXDASH_API_KEY environment variable.
+    base_url: ProxDash server URL. Defaults to the production server.
+
+  Example:
+    >>> import proxai as px
+    >>> proxdash_opts = px.ProxDashOptions(api_key="your-api-key", stdout=True)
+  """
 
   stdout: bool = False
   hide_sensitive_content: bool = False
   disable_proxdash: bool = False
   api_key: str | None = None
-  base_url: str | None = 'https://proxainest-production.up.railway.app'
+  base_url: str | None = "https://proxainest-production.up.railway.app"
 
 
 @dataclasses.dataclass
@@ -245,10 +331,31 @@ class SummaryOptions:
 
 
 class FeatureMappingStrategy(str, enum.Enum):
-  """Strategy for handling unsupported features in API calls."""
+  """Strategy for handling feature compatibility between requests and models.
 
-  BEST_EFFORT = 'BEST_EFFORT'
-  STRICT = 'STRICT'
+  When a request includes features that a model doesn't fully support,
+  this strategy determines how ProxAI should handle the incompatibility.
+
+  Attributes:
+    BEST_EFFORT: Attempts to map features even if not fully supported.
+      For example, if a model doesn't support system messages natively,
+      ProxAI may prepend it to the user prompt. This is the default.
+    STRICT: Requires exact feature support. Raises an error if the
+      requested features are not fully supported by the model.
+
+  Example:
+    >>> import proxai as px
+    >>> # Use strict mode to ensure full feature support
+    >>> px.connect(feature_mapping_strategy=px.FeatureMappingStrategy.STRICT)
+    >>> # Or per-request
+    >>> px.generate_text(
+    ...   prompt="Hello",
+    ...   feature_mapping_strategy=px.FeatureMappingStrategy.STRICT,
+    ... )
+  """
+
+  BEST_EFFORT = "BEST_EFFORT"
+  STRICT = "STRICT"
 
 
 @dataclasses.dataclass
@@ -282,12 +389,29 @@ ResponseFormatValueType = str | dict[str, Any] | ResponseFormatPydanticValue
 
 
 class ResponseFormatType(str, enum.Enum):
-  """Expected format of the model response."""
+  """Expected format of the model response.
 
-  TEXT = 'TEXT'
-  JSON = 'JSON'
-  JSON_SCHEMA = 'JSON_SCHEMA'
-  PYDANTIC = 'PYDANTIC'
+  Specifies how the AI model's response should be formatted
+  and parsed.
+
+  Attributes:
+    TEXT: Plain text response (default).
+    JSON: Response parsed as JSON object.
+    JSON_SCHEMA: Response validated against a JSON schema.
+    PYDANTIC: Response parsed into a Pydantic model instance.
+
+  Example:
+    >>> import proxai as px
+    >>> # Usually inferred automatically, but can be explicit:
+    >>> fmt = px.ResponseFormat(
+    ...   schema={"type": "object"}, type=px.ResponseFormatType.JSON_SCHEMA
+    ... )
+  """
+
+  TEXT = "TEXT"
+  JSON = "JSON"
+  JSON_SCHEMA = "JSON_SCHEMA"
+  PYDANTIC = "PYDANTIC"
 
 
 @dataclasses.dataclass
@@ -300,12 +424,40 @@ class ResponseFormat:
 
 ResponseFormatSchema = str | dict[str, Any] | type[pydantic.BaseModel]
 
+
 @dataclasses.dataclass
 class StructuredResponseFormat:
-    """User-facing structured response format specification."""
+  """User-facing structured response format specification.
 
-    schema: ResponseFormatSchema | None = None
-    type: ResponseFormatType | None = None
+  Defines the expected format for structured model responses,
+  enabling automatic parsing into JSON or Pydantic models.
+
+  Args:
+    schema: The response schema. Can be a JSON schema dict,
+      a JSON schema string, or a Pydantic model class.
+    type: The response format type (TEXT, JSON, JSON_SCHEMA,
+      or PYDANTIC). Usually inferred from the schema.
+
+  Example:
+    >>> from pydantic import BaseModel
+    >>> import proxai as px
+    >>>
+    >>> class Person(BaseModel):
+    ...   name: str
+    ...   age: int
+    >>>
+    >>> # Using Pydantic model directly (preferred)
+    >>> response = px.generate_text(
+    ...   prompt="Generate a person", response_format=Person
+    ... )
+    >>>
+    >>> # Using StructuredResponseFormat explicitly
+    >>> fmt = px.ResponseFormat(schema=Person)
+  """
+
+  schema: ResponseFormatSchema | None = None
+  type: ResponseFormatType | None = None
+
 
 ResponseFormatParam = ResponseFormatSchema | StructuredResponseFormat
 
@@ -344,9 +496,9 @@ ResponseValue = str | dict[str, Any] | pydantic.BaseModel
 class ResponseType(str, enum.Enum):
   """Type of the response value returned by the model."""
 
-  TEXT = 'TEXT'
-  JSON = 'JSON'
-  PYDANTIC = 'PYDANTIC'
+  TEXT = "TEXT"
+  JSON = "JSON"
+  PYDANTIC = "PYDANTIC"
 
 
 @dataclasses.dataclass
@@ -379,7 +531,8 @@ class CacheRecord:
 
   query_record: QueryRecord | None = None
   query_responses: list[QueryResponseRecord] = dataclasses.field(
-      default_factory=list)
+      default_factory=list
+  )
   shard_id: str | None = None
   last_access_time: datetime.datetime | None = None
   call_count: int | None = None
@@ -399,10 +552,10 @@ class LightCacheRecord:
 class CacheLookFailReason(str, enum.Enum):
   """Reason why a cache lookup did not return a result."""
 
-  CACHE_NOT_FOUND = 'CACHE_NOT_FOUND'
-  CACHE_NOT_MATCHED = 'CACHE_NOT_MATCHED'
-  UNIQUE_RESPONSE_LIMIT_NOT_REACHED = 'UNIQUE_RESPONSE_LIMIT_NOT_REACHED'
-  PROVIDER_ERROR_CACHED = 'PROVIDER_ERROR_CACHED'
+  CACHE_NOT_FOUND = "CACHE_NOT_FOUND"
+  CACHE_NOT_MATCHED = "CACHE_NOT_MATCHED"
+  UNIQUE_RESPONSE_LIMIT_NOT_REACHED = "UNIQUE_RESPONSE_LIMIT_NOT_REACHED"
+  PROVIDER_ERROR_CACHED = "PROVIDER_ERROR_CACHED"
 
 
 @dataclasses.dataclass
@@ -416,8 +569,8 @@ class CacheLookResult:
 class ResponseSource(str, enum.Enum):
   """Origin of the response data."""
 
-  CACHE = 'CACHE'
-  PROVIDER = 'PROVIDER'
+  CACHE = "CACHE"
+  PROVIDER = "PROVIDER"
 
 
 @dataclasses.dataclass
@@ -435,15 +588,18 @@ class ModelStatus:
   """Tracking status of models during availability testing."""
 
   unprocessed_models: set[ProviderModelType] = dataclasses.field(
-      default_factory=set)
+      default_factory=set
+  )
   working_models: set[ProviderModelType] = dataclasses.field(
-      default_factory=set)
-  failed_models: set[ProviderModelType] = dataclasses.field(
-      default_factory=set)
+      default_factory=set
+  )
+  failed_models: set[ProviderModelType] = dataclasses.field(default_factory=set)
   filtered_models: set[ProviderModelType] = dataclasses.field(
-      default_factory=set)
-  provider_queries: dict[ProviderModelType, LoggingRecord] = (
-      dataclasses.field(default_factory=dict))
+      default_factory=set
+  )
+  provider_queries: dict[ProviderModelType, LoggingRecord] = dataclasses.field(
+      default_factory=dict
+  )
 
 
 ModelStatusByCallType = dict[CallType, ModelStatus]
@@ -452,42 +608,43 @@ ModelStatusByCallType = dict[CallType, ModelStatus]
 class ModelCacheManagerStatus(str, enum.Enum):
   """Current operational status of the model cache manager."""
 
-  INITIALIZING = 'INITIALIZING'
-  CACHE_OPTIONS_NOT_FOUND = 'CACHE_OPTIONS_NOT_FOUND'
-  CACHE_PATH_NOT_FOUND = 'CACHE_PATH_NOT_FOUND'
-  CACHE_PATH_NOT_WRITABLE = 'CACHE_PATH_NOT_WRITABLE'
-  DISABLED = 'DISABLED'
-  WORKING = 'WORKING'
+  INITIALIZING = "INITIALIZING"
+  CACHE_OPTIONS_NOT_FOUND = "CACHE_OPTIONS_NOT_FOUND"
+  CACHE_PATH_NOT_FOUND = "CACHE_PATH_NOT_FOUND"
+  CACHE_PATH_NOT_WRITABLE = "CACHE_PATH_NOT_WRITABLE"
+  DISABLED = "DISABLED"
+  WORKING = "WORKING"
 
 
 class QueryCacheManagerStatus(str, enum.Enum):
   """Current operational status of the query cache manager."""
 
-  INITIALIZING = 'INITIALIZING'
-  CACHE_OPTIONS_NOT_FOUND = 'CACHE_OPTIONS_NOT_FOUND'
-  CACHE_PATH_NOT_FOUND = 'CACHE_PATH_NOT_FOUND'
-  CACHE_PATH_NOT_WRITABLE = 'CACHE_PATH_NOT_WRITABLE'
-  DISABLED = 'DISABLED'
-  WORKING = 'WORKING'
+  INITIALIZING = "INITIALIZING"
+  CACHE_OPTIONS_NOT_FOUND = "CACHE_OPTIONS_NOT_FOUND"
+  CACHE_PATH_NOT_FOUND = "CACHE_PATH_NOT_FOUND"
+  CACHE_PATH_NOT_WRITABLE = "CACHE_PATH_NOT_WRITABLE"
+  DISABLED = "DISABLED"
+  WORKING = "WORKING"
 
 
 class ProxDashConnectionStatus(str, enum.Enum):
   """Current connection status with the ProxDash service."""
 
-  INITIALIZING = 'INITIALIZING'
-  DISABLED = 'DISABLED'
-  API_KEY_NOT_FOUND = 'API_KEY_NOT_FOUND'
-  API_KEY_NOT_VALID = 'API_KEY_NOT_VALID'
-  PROXDASH_INVALID_RETURN = 'PROXDASH_INVALID_RETURN'
-  CONNECTED = 'CONNECTED'
+  INITIALIZING = "INITIALIZING"
+  DISABLED = "DISABLED"
+  API_KEY_NOT_FOUND = "API_KEY_NOT_FOUND"
+  API_KEY_NOT_VALID = "API_KEY_NOT_VALID"
+  PROXDASH_INVALID_RETURN = "PROXDASH_INVALID_RETURN"
+  CONNECTED = "CONNECTED"
 
 
 ProviderTokenValueMap = dict[str, str]
 
 
 class StateContainer:
-    """Base class for all state objects in the system."""
-    pass
+  """Base class for all state objects in the system."""
+
+  pass
 
 
 @dataclasses.dataclass
@@ -555,8 +712,8 @@ class AvailableModelsState(StateContainer):
   proxdash_provider_api_keys: ProviderTokenValueMap | None = None
   allow_multiprocessing: bool | None = None
   model_test_timeout: int | None = None
-  providers_with_key: dict[
-      ProviderNameType, ProviderTokenValueMap] | None = None
+  providers_with_key: dict[ProviderNameType,
+                           ProviderTokenValueMap] | None = (None)
   has_fetched_all_models: bool | None = None
   latest_model_cache_path_used_for_update: str | None = None
 

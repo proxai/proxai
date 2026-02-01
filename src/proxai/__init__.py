@@ -1,11 +1,14 @@
 # read version from installed package
 from importlib.metadata import version
 
+from proxai.client import ModelConnector
 from proxai.proxai import (
     CacheOptions,
     Client,
     DefaultModelsConnector,
+    FeatureMappingStrategy,
     LoggingOptions,
+    ProviderModelType,
     ProxDashOptions,
     ResponseFormat,
     ResponseFormatType,
@@ -22,8 +25,11 @@ __all__ = [
     "CacheOptions",
     "Client",
     "DefaultModelsConnector",
+    "FeatureMappingStrategy",
     "LoggingOptions",
+    "ModelConnector",
     "ProxDashOptions",
+    "ProviderModelType",
     "ResponseFormat",
     "ResponseFormatType",
     "check_health",

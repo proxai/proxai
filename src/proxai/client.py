@@ -1,6 +1,7 @@
 import dataclasses
 import os
 import tempfile
+from collections.abc import Callable
 
 import platformdirs
 
@@ -15,22 +16,412 @@ import proxai.state_controllers.state_controller as state_controller
 import proxai.type_utils as type_utils
 import proxai.types as types
 
-_PROXAI_CLIENT_STATE_PROPERTY = '_proxai_client_state'
+_PROXAI_CLIENT_STATE_PROPERTY = "_proxai_client_state"
+
+
+class ModelConnector:
+  """Provides access to model discovery and availability information.
+
+  This class offers methods to list available models, providers, and check
+  which models are currently working. It can be accessed via the ``px.models``
+  singleton for the default client, or via ``client.models`` for a specific
+  client instance.
+
+  Example:
+      >>> import proxai as px
+      >>> # Using the default client singleton
+      >>> models = px.models.list_models()
+      >>> # Using a specific client instance
+      >>> client = px.Client()
+      >>> models = client.models.list_models()
+  """
+
+  def __init__(
+      self,
+      client_getter: Callable[[], "ProxAIClient"],
+  ) -> None:
+    """Initializes the ModelConnector with a client getter function.
+
+    Args:
+        client_getter: A callable that returns the ProxAIClient instance
+            to use for model operations. This allows the connector to work
+            with both the default global client and specific client instances.
+    """
+    self._client_getter = client_getter
+
+  def list_models(
+      self,
+      model_size: types.ModelSizeIdentifierType | None = None,
+      features: types.FeatureListParam | None = None,
+      call_type: types.CallType = types.CallType.GENERATE_TEXT,
+  ) -> list[types.ProviderModelType]:
+    """Lists all configured models matching the specified criteria.
+
+    Returns models that are configured in the system regardless of whether
+    they are currently accessible or working. Use list_working_models()
+    to get only models that have been verified to work.
+
+    Args:
+        model_size: Filter by model size category. Can be a ModelSizeType
+            enum value ('small', 'medium', 'large', 'largest') or a string.
+        features: Filter by required features. List of feature names that
+            models must support (e.g., ['system', 'temperature']).
+        call_type: The type of API call to filter models for.
+            Defaults to GENERATE_TEXT.
+
+    Returns:
+        list[types.ProviderModelType]: A list of ProviderModelType objects
+            representing the matching models.
+
+    Example:
+        >>> import proxai as px
+        >>> # List all models
+        >>> models = px.models.list_models()
+        >>> print(models[0])
+        (openai, gpt-4)
+
+        >>> # Filter by size
+        >>> large_models = px.models.list_models(model_size="large")
+
+        >>> # Using a specific client
+        >>> client = px.Client()
+        >>> models = client.models.list_models()
+    """
+    return self._client_getter().available_models_instance.list_models(
+        model_size=model_size,
+        features=features,
+        call_type=call_type,
+    )
+
+  def list_providers(
+      self,
+      call_type: types.CallType = types.CallType.GENERATE_TEXT,
+  ) -> list[str]:
+    """Lists all providers that have API keys configured.
+
+    Returns provider names for which the required environment variables
+    are set, indicating the provider can potentially be used.
+
+    Args:
+        call_type: The type of API call to filter providers for.
+            Defaults to GENERATE_TEXT.
+
+    Returns:
+        List[str]: A sorted list of provider names (e.g., ['anthropic',
+            'openai']).
+
+    Example:
+        >>> import proxai as px
+        >>> providers = px.models.list_providers()
+        >>> print(providers)
+        ['anthropic', 'google', 'openai']
+
+        >>> # Using a specific client
+        >>> client = px.Client()
+        >>> providers = client.models.list_providers()
+    """
+    return self._client_getter().available_models_instance.list_providers(
+        call_type=call_type,
+    )
+
+  def list_provider_models(
+      self,
+      provider: str,
+      model_size: types.ModelSizeIdentifierType | None = None,
+      features: types.FeatureListParam | None = None,
+      call_type: types.CallType = types.CallType.GENERATE_TEXT,
+  ) -> list[types.ProviderModelType]:
+    """Lists all models available from a specific provider.
+
+    Returns models for the given provider that match the specified
+    filtering criteria.
+
+    Args:
+        provider: The provider name to list models for (e.g., 'openai',
+            'anthropic').
+        model_size: Filter by model size category. Can be a ModelSizeType
+            enum value or a string.
+        features: Filter by required features. List of feature names that
+            models must support.
+        call_type: The type of API call to filter models for.
+            Defaults to GENERATE_TEXT.
+
+    Returns:
+        list[types.ProviderModelType]: A list of ProviderModelType objects
+            representing the matching models for the provider.
+
+    Raises:
+        ValueError: If the provider's API key is not found in environment
+            variables.
+
+    Example:
+        >>> import proxai as px
+        >>> openai_models = px.models.list_provider_models("openai")
+        >>> print(openai_models)
+        [(openai, gpt-4), (openai, gpt-3.5-turbo), ...]
+
+        >>> # Using a specific client
+        >>> client = px.Client()
+        >>> openai_models = client.models.list_provider_models("openai")
+    """
+    return self._client_getter().available_models_instance.list_provider_models(
+        provider=provider,
+        model_size=model_size,
+        features=features,
+        call_type=call_type,
+    )
+
+  def get_model(
+      self,
+      provider: str,
+      model: str,
+      call_type: types.CallType = types.CallType.GENERATE_TEXT,
+  ) -> types.ProviderModelType:
+    """Gets a specific model by provider and model name.
+
+    Returns the ProviderModelType for the specified provider and model
+    combination if it exists and the provider's API key is configured.
+
+    Args:
+        provider: The provider name (e.g., 'openai', 'anthropic').
+        model: The model name (e.g., 'gpt-4', 'claude-3-opus').
+        call_type: The type of API call the model should support.
+            Defaults to GENERATE_TEXT.
+
+    Returns:
+        types.ProviderModelType: The model information including provider,
+            model name, and provider-specific identifier.
+
+    Raises:
+        ValueError: If the provider's API key is not found, or if the
+            model doesn't exist or doesn't support the specified call_type.
+
+    Example:
+        >>> import proxai as px
+        >>> model = px.models.get_model("openai", "gpt-4")
+        >>> print(model)
+        (openai, gpt-4)
+
+        >>> # Using a specific client
+        >>> client = px.Client()
+        >>> model = client.models.get_model("openai", "gpt-4")
+    """
+    return self._client_getter().available_models_instance.get_model(
+        provider=provider,
+        model=model,
+        call_type=call_type,
+    )
+
+  def list_working_models(
+      self,
+      model_size: types.ModelSizeIdentifierType | None = None,
+      features: types.FeatureListParam | None = None,
+      verbose: bool = True,
+      return_all: bool = False,
+      clear_model_cache: bool = False,
+      call_type: types.CallType = types.CallType.GENERATE_TEXT,
+  ) -> list[types.ProviderModelType] | types.ModelStatus:
+    """Lists models that have been verified to be working.
+
+    Tests each configured model and returns only those that successfully
+    respond. Results are cached to avoid repeated testing.
+
+    Args:
+        model_size: Filter by model size category.
+        features: Filter by required features.
+        verbose: If True, prints progress information during testing.
+            Defaults to True.
+        return_all: If True, returns a ModelStatus object with working,
+            failed, and filtered models. Defaults to False.
+        clear_model_cache: If True, clears the model cache and retests
+            all models. Defaults to False.
+        call_type: The type of API call to test. Defaults to GENERATE_TEXT.
+
+    Returns:
+        Union[List[types.ProviderModelType], types.ModelStatus]: A list of
+            working ProviderModelType objects, or a ModelStatus object if
+            return_all is True.
+
+    Example:
+        >>> import proxai as px
+        >>> working_models = px.models.list_working_models(verbose=False)
+        >>> print(f"Found {len(working_models)} working models")
+
+        >>> # Using a specific client
+        >>> client = px.Client()
+        >>> working_models = client.models.list_working_models(verbose=False)
+    """
+    return self._client_getter().available_models_instance.list_working_models(
+        model_size=model_size,
+        features=features,
+        verbose=verbose,
+        return_all=return_all,
+        clear_model_cache=clear_model_cache,
+        call_type=call_type,
+    )
+
+  def list_working_providers(
+      self,
+      verbose: bool = True,
+      clear_model_cache: bool = False,
+      call_type: types.CallType = types.CallType.GENERATE_TEXT,
+  ) -> list[str]:
+    """Lists providers that have at least one working model.
+
+    Tests models and returns providers that have successfully responded
+    to at least one test request.
+
+    Args:
+        verbose: If True, prints progress information during testing.
+            Defaults to True.
+        clear_model_cache: If True, clears the model cache and retests
+            all models. Defaults to False.
+        call_type: The type of API call to test. Defaults to GENERATE_TEXT.
+
+    Returns:
+        List[str]: A sorted list of provider names with working models.
+
+    Example:
+        >>> import proxai as px
+        >>> providers = px.models.list_working_providers(verbose=False)
+        >>> print(providers)
+        ['anthropic', 'openai']
+
+        >>> # Using a specific client
+        >>> client = px.Client()
+        >>> providers = client.models.list_working_providers(verbose=False)
+    """
+    return (
+        self._client_getter().available_models_instance.list_working_providers(
+            verbose=verbose,
+            clear_model_cache=clear_model_cache,
+            call_type=call_type,
+        )
+    )
+
+  def list_working_provider_models(
+      self,
+      provider: str,
+      model_size: types.ModelSizeIdentifierType | None = None,
+      features: types.FeatureListParam | None = None,
+      verbose: bool = True,
+      return_all: bool = False,
+      clear_model_cache: bool = False,
+      call_type: types.CallType = types.CallType.GENERATE_TEXT,
+  ) -> list[types.ProviderModelType] | types.ModelStatus:
+    """Lists working models from a specific provider.
+
+    Tests models from the specified provider and returns only those that
+    successfully respond.
+
+    Args:
+        provider: The provider name to list models for.
+        model_size: Filter by model size category.
+        features: Filter by required features.
+        verbose: If True, prints progress information during testing.
+            Defaults to True.
+        return_all: If True, returns a ModelStatus object with detailed
+            results. Defaults to False.
+        clear_model_cache: If True, clears the model cache and retests
+            models. Defaults to False.
+        call_type: The type of API call to test. Defaults to GENERATE_TEXT.
+
+    Returns:
+        Union[List[types.ProviderModelType], types.ModelStatus]: A list of
+            working ProviderModelType objects from the provider, or a
+            ModelStatus object if return_all is True.
+
+    Raises:
+        ValueError: If the provider's API key is not found.
+
+    Example:
+        >>> import proxai as px
+        >>> openai_working = px.models.list_working_provider_models(
+        ...   "openai", verbose=False
+        ... )
+        >>> print(openai_working)
+        [(openai, gpt-4), (openai, gpt-3.5-turbo)]
+
+        >>> # Using a specific client
+        >>> client = px.Client()
+        >>> openai_working = client.models.list_working_provider_models(
+        ...   "openai", verbose=False
+        ... )
+    """
+    available_models = self._client_getter().available_models_instance
+    return available_models.list_working_provider_models(
+        provider=provider,
+        model_size=model_size,
+        features=features,
+        verbose=verbose,
+        return_all=return_all,
+        clear_model_cache=clear_model_cache,
+        call_type=call_type,
+    )
+
+  def get_working_model(
+      self,
+      provider: str,
+      model: str,
+      verbose: bool = False,
+      clear_model_cache: bool = False,
+      call_type: types.CallType = types.CallType.GENERATE_TEXT,
+  ) -> types.ProviderModelType:
+    """Verifies and returns a specific model if it's working.
+
+    Tests the specified model and returns it only if it successfully
+    responds. Results are cached.
+
+    Args:
+        provider: The provider name (e.g., 'openai', 'anthropic').
+        model: The model name (e.g., 'gpt-4', 'claude-3-opus').
+        verbose: If True, prints progress information during testing.
+            Defaults to False.
+        clear_model_cache: If True, clears the model cache and retests
+            the model. Defaults to False.
+        call_type: The type of API call to test. Defaults to GENERATE_TEXT.
+
+    Returns:
+        types.ProviderModelType: The model information if the model is
+            working.
+
+    Raises:
+        ValueError: If the provider's API key is not found, the model
+            doesn't exist, or the model failed the health check.
+
+    Example:
+        >>> import proxai as px
+        >>> model = px.models.get_working_model("openai", "gpt-4")
+        >>> print(model)
+        (openai, gpt-4)
+
+        >>> # Using a specific client
+        >>> client = px.Client()
+        >>> model = client.models.get_working_model("openai", "gpt-4")
+    """
+    return self._client_getter().available_models_instance.get_working_model(
+        provider=provider,
+        model=model,
+        verbose=verbose,
+        clear_model_cache=clear_model_cache,
+        call_type=call_type,
+    )
 
 
 @dataclasses.dataclass
 class ProxAIClientParams:
-    """Initialization parameters for ProxAIClient."""
+  """Initialization parameters for ProxAIClient."""
 
-    experiment_path: str | None = None
-    cache_options: types.CacheOptions | None = None
-    logging_options: types.LoggingOptions | None = None
-    proxdash_options: types.ProxDashOptions | None = None
-    allow_multiprocessing: bool | None = True
-    model_test_timeout: int | None = 25
-    feature_mapping_strategy: types.FeatureMappingStrategy | None = (
-        types.FeatureMappingStrategy.BEST_EFFORT)
-    suppress_provider_errors: bool | None = False
+  experiment_path: str | None = None
+  cache_options: types.CacheOptions | None = None
+  logging_options: types.LoggingOptions | None = None
+  proxdash_options: types.ProxDashOptions | None = None
+  allow_multiprocessing: bool | None = True
+  model_test_timeout: int | None = 25
+  feature_mapping_strategy: types.FeatureMappingStrategy | None = (
+      types.FeatureMappingStrategy.BEST_EFFORT
+  )
+  suppress_provider_errors: bool | None = False
 
 
 class ProxAIClient(state_controller.StateControlled):
@@ -48,14 +439,14 @@ class ProxAIClient(state_controller.StateControlled):
       >>> import proxai as px
       >>> # Create a custom client instance
       >>> client = px.Client(
-      ...     cache_options=px.CacheOptions(cache_path='/tmp/cache'),
-      ...     logging_options=px.LoggingOptions(stdout=True),
+      ...   cache_options=px.CacheOptions(cache_path="/tmp/cache"),
+      ...   logging_options=px.LoggingOptions(stdout=True),
       ... )
-      >>> response = client.generate_text(prompt='Hello, world!')
+      >>> response = client.generate_text(prompt="Hello, world!")
 
       >>> # Or use the simpler module-level API
-      >>> px.connect(cache_options=px.CacheOptions(cache_path='/tmp/cache'))
-      >>> response = px.generate_text(prompt='Hello, world!')
+      >>> px.connect(cache_options=px.CacheOptions(cache_path="/tmp/cache"))
+      >>> response = px.generate_text(prompt="Hello, world!")
   """
 
   def __init__(
@@ -66,12 +457,11 @@ class ProxAIClient(state_controller.StateControlled):
       proxdash_options: types.ProxDashOptions | None = None,
       allow_multiprocessing: bool | None = True,
       model_test_timeout: int | None = 25,
-      feature_mapping_strategy: (
-          types.FeatureMappingStrategy | None
-      ) = types.FeatureMappingStrategy.BEST_EFFORT,
+      feature_mapping_strategy: (types.FeatureMappingStrategy | None
+                                ) = types.FeatureMappingStrategy.BEST_EFFORT,
       suppress_provider_errors: bool | None = False,
       init_from_params: ProxAIClientParams | None = None,
-      init_from_state: types.ProxAIClientState | None = None
+      init_from_state: types.ProxAIClientState | None = None,
   ) -> None:
     """Initializes a new ProxAI client instance.
 
@@ -119,60 +509,60 @@ class ProxAIClient(state_controller.StateControlled):
     Example:
         >>> import proxai as px
         >>> client = px.Client(
-        ...     experiment_path='my_experiment',
-        ...     cache_options=px.CacheOptions(
-        ...         cache_path='/tmp/proxai_cache',
-        ...         unique_response_limit=3,
-        ...     ),
-        ...     logging_options=px.LoggingOptions(
-        ...         logging_path='/tmp/proxai_logs',
-        ...         stdout=True,
-        ...     ),
-        ...     suppress_provider_errors=True,
+        ...   experiment_path="my_experiment",
+        ...   cache_options=px.CacheOptions(
+        ...     cache_path="/tmp/proxai_cache",
+        ...     unique_response_limit=3,
+        ...   ),
+        ...   logging_options=px.LoggingOptions(
+        ...     logging_path="/tmp/proxai_logs",
+        ...     stdout=True,
+        ...   ),
+        ...   suppress_provider_errors=True,
         ... )
         >>> response = client.generate_text(
-        ...     prompt='What is the capital of France?'
+        ...   prompt="What is the capital of France?"
         ... )
     """
     if init_from_params is not None or init_from_state is not None:
-      if (experiment_path is not None or
-          cache_options is not None or
-          logging_options is not None or
-          proxdash_options is not None or
-          not allow_multiprocessing or
-          model_test_timeout != 25 or
-          (feature_mapping_strategy !=
-           types.FeatureMappingStrategy.BEST_EFFORT) or
-          suppress_provider_errors):
+      if (
+          experiment_path is not None or cache_options is not None or
+          logging_options is not None or proxdash_options is not None or
+          not allow_multiprocessing or model_test_timeout != 25 or (
+              feature_mapping_strategy
+              != types.FeatureMappingStrategy.BEST_EFFORT
+          ) or suppress_provider_errors
+      ):
         raise ValueError(
-            'init_from_params or init_from_state cannot be set at with '
-            'direct arguments. Please use one of init_from_params, '
-            'init_from_state, or direct arguments.\n'
-            'experiment_path: {experiment_path}\n'
-            'cache_options: {cache_options}\n'
-            'logging_options: {logging_options}\n'
-            'proxdash_options: {proxdash_options}\n'
-            'allow_multiprocessing: {allow_multiprocessing}\n'
-            'model_test_timeout: {model_test_timeout}\n'
-            'feature_mapping_strategy: {feature_mapping_strategy}\n'
-            'suppress_provider_errors: {suppress_provider_errors}\n'
-            'init_from_params: {init_from_params}\n'
-            'init_from_state: {init_from_state}\n'
+            "init_from_params or init_from_state cannot be set at with "
+            "direct arguments. Please use one of init_from_params, "
+            "init_from_state, or direct arguments.\n"
+            "experiment_path: {experiment_path}\n"
+            "cache_options: {cache_options}\n"
+            "logging_options: {logging_options}\n"
+            "proxdash_options: {proxdash_options}\n"
+            "allow_multiprocessing: {allow_multiprocessing}\n"
+            "model_test_timeout: {model_test_timeout}\n"
+            "feature_mapping_strategy: {feature_mapping_strategy}\n"
+            "suppress_provider_errors: {suppress_provider_errors}\n"
+            "init_from_params: {init_from_params}\n"
+            "init_from_state: {init_from_state}\n"
         )
     else:
       init_from_params = ProxAIClientParams(
-        experiment_path=experiment_path,
-        cache_options=cache_options,
-        logging_options=logging_options,
-        proxdash_options=proxdash_options,
-        allow_multiprocessing=allow_multiprocessing,
-        model_test_timeout=model_test_timeout,
-        feature_mapping_strategy=feature_mapping_strategy,
-        suppress_provider_errors=suppress_provider_errors)
+          experiment_path=experiment_path,
+          cache_options=cache_options,
+          logging_options=logging_options,
+          proxdash_options=proxdash_options,
+          allow_multiprocessing=allow_multiprocessing,
+          model_test_timeout=model_test_timeout,
+          feature_mapping_strategy=feature_mapping_strategy,
+          suppress_provider_errors=suppress_provider_errors,
+      )
 
     super().__init__(
-        init_from_params=init_from_params,
-        init_from_state=init_from_state)
+        init_from_params=init_from_params, init_from_state=init_from_state
+    )
 
     if init_from_state is not None:
       self.load_state(init_from_state)
@@ -192,11 +582,9 @@ class ProxAIClient(state_controller.StateControlled):
       _ = self.query_cache_manager
       self._init_proxdash_connection()
 
-      if (self.cache_options and
-          self.cache_options.clear_model_cache_on_connect):
+      if self.cache_options and self.cache_options.clear_model_cache_on_connect:
         self.model_cache_manager.clear_cache()
-      if (self.cache_options and
-          self.cache_options.clear_query_cache_on_connect):
+      if self.cache_options and self.cache_options.clear_query_cache_on_connect:
         self.query_cache_manager.clear_cache()
 
       available_models_params = available_models.AvailableModelsParams(
@@ -211,7 +599,8 @@ class ProxAIClient(state_controller.StateControlled):
           model_test_timeout=self.model_test_timeout,
       )
       self._available_models_instance = available_models.AvailableModels(
-          init_from_params=available_models_params)
+          init_from_params=available_models_params
+      )
 
   def get_internal_state_property_name(self):
     """Return the name of the internal state property."""
@@ -224,24 +613,30 @@ class ProxAIClient(state_controller.StateControlled):
   def _init_default_model_cache_manager(self):
     try:
       app_dirs = platformdirs.PlatformDirs(appname="proxai", appauthor="proxai")
-      self.default_model_cache_path =  app_dirs.user_cache_dir
+      self.default_model_cache_path = app_dirs.user_cache_dir
       os.makedirs(self.default_model_cache_path, exist_ok=True)
       # 4 hours cache duration makes sense for local development if proxai is
       # using platform app cache directory
       model_cache_manager_params = model_cache.ModelCacheManagerParams(
           cache_options=types.CacheOptions(
               cache_path=self.default_model_cache_path,
-              model_cache_duration=60 * 60 * 4))
+              model_cache_duration=60 * 60 * 4,
+          )
+      )
       self.default_model_cache_manager = model_cache.ModelCacheManager(
-          init_from_params=model_cache_manager_params)
+          init_from_params=model_cache_manager_params
+      )
       self.platform_used_for_default_model_cache = True
     except Exception:
       self.default_model_cache_path = tempfile.TemporaryDirectory()
       model_cache_manager_params = model_cache.ModelCacheManagerParams(
           cache_options=types.CacheOptions(
-              cache_path=self.default_model_cache_path.name))
+              cache_path=self.default_model_cache_path.name
+          )
+      )
       self.default_model_cache_manager = model_cache.ModelCacheManager(
-          init_from_params=model_cache_manager_params)
+          init_from_params=model_cache_manager_params
+      )
       self.platform_used_for_default_model_cache = False
 
   def _set_default_values(self):
@@ -273,52 +668,51 @@ class ProxAIClient(state_controller.StateControlled):
 
   @property
   def run_type(self) -> types.RunType:
-    return self.get_property_value('run_type')
+    return self.get_property_value("run_type")
 
   @run_type.setter
   def run_type(self, value: types.RunType):
-    self.set_property_value('run_type', value)
+    self.set_property_value("run_type", value)
 
   @property
   def hidden_run_key(self) -> str:
-    return self.get_property_value('hidden_run_key')
+    return self.get_property_value("hidden_run_key")
 
   @hidden_run_key.setter
   def hidden_run_key(self, value: str):
-    self.set_property_value('hidden_run_key', value)
+    self.set_property_value("hidden_run_key", value)
 
   @property
   def experiment_path(self) -> str | None:
-    return self.get_property_value('experiment_path')
+    return self.get_property_value("experiment_path")
 
   @experiment_path.setter
   def experiment_path(self, value: str | None):
     if value is not None:
       experiment.validate_experiment_path(value)
-    self.set_property_value('experiment_path', value)
+    self.set_property_value("experiment_path", value)
 
   @property
   def default_model_cache_path(self) -> str | None:
-    return self.get_property_value('default_model_cache_path')
+    return self.get_property_value("default_model_cache_path")
 
   @default_model_cache_path.setter
   def default_model_cache_path(self, value: str | None):
-    self.set_property_value('default_model_cache_path', value)
+    self.set_property_value("default_model_cache_path", value)
 
   @property
   def root_logging_path(self) -> str | None:
-    return self.get_property_value('root_logging_path')
+    return self.get_property_value("root_logging_path")
 
   @root_logging_path.setter
   def root_logging_path(self, value: str | None):
     if value and not os.path.exists(value):
-      raise ValueError(
-          f'Root logging path does not exist: {value}')
-    self.set_property_value('root_logging_path', value)
+      raise ValueError(f"Root logging path does not exist: {value}")
+    self.set_property_value("root_logging_path", value)
 
   @property
   def logging_options(self) -> types.LoggingOptions:
-    return self.get_property_value('logging_options')
+    return self.get_property_value("logging_options")
 
   @logging_options.setter
   def logging_options(self, value: types.LoggingOptions | None):
@@ -332,7 +726,8 @@ class ProxAIClient(state_controller.StateControlled):
     if root_logging_path is not None:
       if self.experiment_path is not None:
         result_logging_options.logging_path = os.path.join(
-            root_logging_path, self.experiment_path)
+            root_logging_path, self.experiment_path
+        )
       else:
         result_logging_options.logging_path = root_logging_path
       if not os.path.exists(result_logging_options.logging_path):
@@ -343,43 +738,42 @@ class ProxAIClient(state_controller.StateControlled):
     if value is not None:
       result_logging_options.stdout = value.stdout
       result_logging_options.hide_sensitive_content = (
-          value.hide_sensitive_content)
+          value.hide_sensitive_content
+      )
 
-    self.set_property_value('logging_options', result_logging_options)
+    self.set_property_value("logging_options", result_logging_options)
 
   @property
   def cache_options(self) -> types.CacheOptions:
-    return self.get_property_value('cache_options')
+    return self.get_property_value("cache_options")
 
   @cache_options.setter
   def cache_options(self, value: types.CacheOptions | None):
     result_cache_options = None
     if value is not None:
       if not value.cache_path and not value.disable_model_cache:
-        raise ValueError('cache_path is required while setting cache_options')
+        raise ValueError("cache_path is required while setting cache_options")
       result_cache_options = types.CacheOptions()
 
       result_cache_options.cache_path = value.cache_path
 
-      result_cache_options.unique_response_limit = (
-          value.unique_response_limit)
-      result_cache_options.retry_if_error_cached = (
-          value.retry_if_error_cached)
+      result_cache_options.unique_response_limit = value.unique_response_limit
+      result_cache_options.retry_if_error_cached = value.retry_if_error_cached
       result_cache_options.clear_query_cache_on_connect = (
-          value.clear_query_cache_on_connect)
+          value.clear_query_cache_on_connect
+      )
 
-      result_cache_options.disable_model_cache = (
-          value.disable_model_cache)
+      result_cache_options.disable_model_cache = value.disable_model_cache
       result_cache_options.clear_model_cache_on_connect = (
-          value.clear_model_cache_on_connect)
-      result_cache_options.model_cache_duration = (
-          value.model_cache_duration)
+          value.clear_model_cache_on_connect
+      )
+      result_cache_options.model_cache_duration = value.model_cache_duration
 
-    self.set_property_value('cache_options', result_cache_options)
+    self.set_property_value("cache_options", result_cache_options)
 
   @property
   def proxdash_options(self) -> types.ProxDashOptions:
-    return self.get_property_value('proxdash_options')
+    return self.get_property_value("proxdash_options")
 
   @proxdash_options.setter
   def proxdash_options(self, value: types.ProxDashOptions | None):
@@ -387,76 +781,79 @@ class ProxAIClient(state_controller.StateControlled):
     if value is not None:
       result_proxdash_options.stdout = value.stdout
       result_proxdash_options.hide_sensitive_content = (
-          value.hide_sensitive_content)
+          value.hide_sensitive_content
+      )
       result_proxdash_options.disable_proxdash = value.disable_proxdash
       result_proxdash_options.api_key = value.api_key
       result_proxdash_options.base_url = value.base_url
 
-    self.set_property_value('proxdash_options', result_proxdash_options)
+    self.set_property_value("proxdash_options", result_proxdash_options)
 
   @property
   def model_configs_requested_from_proxdash(self) -> bool:
-    return self.get_property_value('model_configs_requested_from_proxdash')
+    return self.get_property_value("model_configs_requested_from_proxdash")
 
   @model_configs_requested_from_proxdash.setter
   def model_configs_requested_from_proxdash(self, value: bool):
-    self.set_property_value('model_configs_requested_from_proxdash', value)
+    self.set_property_value("model_configs_requested_from_proxdash", value)
 
   @property
   def allow_multiprocessing(self) -> bool:
-    return self.get_property_value('allow_multiprocessing')
+    return self.get_property_value("allow_multiprocessing")
 
   @allow_multiprocessing.setter
   def allow_multiprocessing(self, value: bool):
-    self.set_property_value('allow_multiprocessing', value)
+    self.set_property_value("allow_multiprocessing", value)
 
   @property
   def model_test_timeout(self) -> int:
-    return self.get_property_value('model_test_timeout')
+    return self.get_property_value("model_test_timeout")
 
   @model_test_timeout.setter
   def model_test_timeout(self, value: int):
     if value < 1:
-      raise ValueError('model_test_timeout must be greater than 0.')
-    self.set_property_value('model_test_timeout', value)
+      raise ValueError("model_test_timeout must be greater than 0.")
+    self.set_property_value("model_test_timeout", value)
 
   @property
   def feature_mapping_strategy(self) -> types.FeatureMappingStrategy:
-    return self.get_property_value('feature_mapping_strategy')
+    return self.get_property_value("feature_mapping_strategy")
 
   @feature_mapping_strategy.setter
   def feature_mapping_strategy(self, value: types.FeatureMappingStrategy):
-    self.set_property_value('feature_mapping_strategy', value)
+    self.set_property_value("feature_mapping_strategy", value)
 
   @property
   def suppress_provider_errors(self) -> bool:
-    return self.get_property_value('suppress_provider_errors')
+    return self.get_property_value("suppress_provider_errors")
 
   @suppress_provider_errors.setter
   def suppress_provider_errors(self, value: bool):
-    self.set_property_value('suppress_provider_errors', value)
+    self.set_property_value("suppress_provider_errors", value)
 
   @property
   def model_configs_instance(self) -> model_configs.ModelConfigs:
-    if (not self.model_configs_requested_from_proxdash and
-        self.proxdash_connection):
+    if (
+        not self.model_configs_requested_from_proxdash and
+        self.proxdash_connection
+    ):
       model_configs_schema = self.proxdash_connection.get_model_configs_schema()
       if model_configs_schema is not None:
         self._model_configs_instance.model_configs_schema = model_configs_schema
       self.model_configs_requested_from_proxdash = True
-    return self.get_property_value('model_configs_instance')
+    return self.get_property_value("model_configs_instance")
 
   @model_configs_instance.setter
   def model_configs_instance(self, value: model_configs.ModelConfigs):
-    self.set_property_value('model_configs_instance', value)
+    self.set_property_value("model_configs_instance", value)
 
   @property
   def default_model_cache_manager(self) -> model_cache.ModelCacheManager:
-    return self.get_property_value('default_model_cache_manager')
+    return self.get_property_value("default_model_cache_manager")
 
   @default_model_cache_manager.setter
   def default_model_cache_manager(self, value: model_cache.ModelCacheManager):
-    self.set_property_value('default_model_cache_manager', value)
+    self.set_property_value("default_model_cache_manager", value)
 
   @property
   def model_cache_manager(self) -> model_cache.ModelCacheManager:
@@ -465,44 +862,71 @@ class ProxAIClient(state_controller.StateControlled):
 
     if self._model_cache_manager is None:
       model_cache_manager_params = model_cache.ModelCacheManagerParams(
-          cache_options=self.cache_options)
+          cache_options=self.cache_options
+      )
       self._model_cache_manager = model_cache.ModelCacheManager(
-          init_from_params=model_cache_manager_params)
-    return self.get_property_value('model_cache_manager')
+          init_from_params=model_cache_manager_params
+      )
+    return self.get_property_value("model_cache_manager")
 
   @model_cache_manager.setter
   def model_cache_manager(self, value: model_cache.ModelCacheManager):
-    self.set_property_value('model_cache_manager', value)
+    self.set_property_value("model_cache_manager", value)
 
   @property
   def query_cache_manager(self) -> query_cache.QueryCacheManager:
-    if (self._query_cache_manager is None and
-        self.cache_options is not None):
+    if self._query_cache_manager is None and self.cache_options is not None:
       query_cache_manager_params = query_cache.QueryCacheManagerParams(
-          cache_options=self.cache_options)
+          cache_options=self.cache_options
+      )
       self._query_cache_manager = query_cache.QueryCacheManager(
-          init_from_params=query_cache_manager_params)
-    return self.get_property_value('query_cache_manager')
+          init_from_params=query_cache_manager_params
+      )
+    return self.get_property_value("query_cache_manager")
 
   @query_cache_manager.setter
   def query_cache_manager(self, value: query_cache.QueryCacheManager):
-    self.set_property_value('query_cache_manager', value)
+    self.set_property_value("query_cache_manager", value)
 
   @property
   def proxdash_connection(self) -> proxdash.ProxDashConnection:
-    return self.get_property_value('proxdash_connection')
+    return self.get_property_value("proxdash_connection")
 
   @proxdash_connection.setter
   def proxdash_connection(self, value: proxdash.ProxDashConnection):
-    self.set_property_value('proxdash_connection', value)
+    self.set_property_value("proxdash_connection", value)
 
   @property
   def available_models_instance(self) -> available_models.AvailableModels:
-    return self.get_state_controlled_property_value('available_models_instance')
+    return self.get_state_controlled_property_value("available_models_instance")
 
   @available_models_instance.setter
   def available_models_instance(self, value: available_models.AvailableModels):
-    self.set_state_controlled_property_value('available_models_instance', value)
+    self.set_state_controlled_property_value("available_models_instance", value)
+
+  @property
+  def models(self) -> ModelConnector:
+    """Access model discovery and availability information.
+
+    Provides an interface for querying available models, providers, and
+    checking which models are currently working. This property returns a
+    ModelConnector instance bound to this client.
+
+    Returns:
+        ModelConnector: Interface for querying available models.
+
+    Example:
+        >>> client = px.Client()
+        >>> # List all available models
+        >>> all_models = client.models.list_models()
+        >>> # List working models only
+        >>> working = client.models.list_working_models(verbose=False)
+        >>> # Get a specific model
+        >>> model = client.models.get_model("openai", "gpt-4")
+    """
+    if not hasattr(self, "_models_connector") or self._models_connector is None:
+      self._models_connector = ModelConnector(lambda: self)
+    return self._models_connector
 
   def _init_proxdash_connection(self):
     if self._proxdash_connection is None:
@@ -510,29 +934,30 @@ class ProxAIClient(state_controller.StateControlled):
           hidden_run_key=self.hidden_run_key,
           experiment_path=self.experiment_path,
           logging_options=self.logging_options,
-          proxdash_options=self.proxdash_options)
+          proxdash_options=self.proxdash_options,
+      )
       self._proxdash_connection = proxdash.ProxDashConnection(
-          init_from_params=proxdash_connection_params)
+          init_from_params=proxdash_connection_params
+      )
 
-  def get_registered_model_connector(
-      self,
-      call_type: types.CallType
-  ):
+  def get_registered_model_connector(self, call_type: types.CallType):
     """Get or create a connector for the default model of a call type."""
     if call_type != types.CallType.GENERATE_TEXT:
-      raise ValueError(f'Call type not supported: {call_type}')
+      raise ValueError(f"Call type not supported: {call_type}")
 
     if call_type not in self.registered_model_connectors:
       default_models = (
-          self.model_configs_instance.get_default_model_priority_list())
+          self.model_configs_instance.get_default_model_priority_list()
+      )
       for provider_model in default_models:
         try:
           self.available_models_instance.get_working_model(
-              provider=provider_model.provider,
-              model=provider_model.model)
-          self.registered_model_connectors[
-              call_type] = self.available_models_instance.get_model_connector(
-                  provider_model)
+              provider=provider_model.provider, model=provider_model.model
+          )
+          self.registered_model_connectors[call_type] = (
+              self.available_models_instance.
+              get_model_connector(provider_model)
+          )
           break
         except ValueError:
           continue
@@ -540,15 +965,18 @@ class ProxAIClient(state_controller.StateControlled):
       if call_type not in self.registered_model_connectors:
         models = self.available_models_instance.list_working_models()
         if len(models.working_models) > 0:
-          self.registered_model_connectors[
-              call_type] = self.available_models_instance.get_model_connector(
-                  models.working_models.pop())
+          self.registered_model_connectors[call_type] = (
+              self.available_models_instance.get_model_connector(
+                  models.working_models.pop()
+              )
+          )
         else:
           raise ValueError(
-              'No working models found in current environment:\n'
-              '* Please check your environment variables and try again.\n'
-              '* You can use px.check_health() method as instructed in '
-              'https://www.proxai.co/proxai-docs/check-health')
+              "No working models found in current environment:\n"
+              "* Please check your environment variables and try again.\n"
+              "* You can use px.check_health() method as instructed in "
+              "https://www.proxai.co/proxai-docs/check-health"
+          )
 
     return self.registered_model_connectors[call_type]
 
@@ -576,25 +1004,29 @@ class ProxAIClient(state_controller.StateControlled):
 
     Example:
         >>> client = px.Client()
-        >>> client.set_model(provider_model=('openai', 'gpt-4'))
+        >>> client.set_model(provider_model=("openai", "gpt-4"))
         >>> # Or equivalently:
-        >>> client.set_model(generate_text=('anthropic', 'claude-3-opus'))
+        >>> client.set_model(generate_text=("anthropic", "claude-3-opus"))
     """
     if provider_model and generate_text:
-      raise ValueError('provider_model and generate_text cannot be set at the '
-                      'same time. Please set one of them.')
+      raise ValueError(
+          "provider_model and generate_text cannot be set at the "
+          "same time. Please set one of them."
+      )
 
     if provider_model is None and generate_text is None:
-      raise ValueError('provider_model or generate_text must be set.')
+      raise ValueError("provider_model or generate_text must be set.")
 
     if generate_text:
       provider_model = generate_text
 
-    self.model_configs_instance.check_provider_model_identifier_type(provider_model)
+    self.model_configs_instance.check_provider_model_identifier_type(
+        provider_model
+    )
 
     self.registered_model_connectors[
         types.CallType.GENERATE_TEXT
-    ] = self.available_models_instance.get_model_connector(provider_model)
+    ] = (self.available_models_instance.get_model_connector(provider_model))
 
   def generate_text(
       self,
@@ -668,7 +1100,7 @@ class ProxAIClient(state_controller.StateControlled):
     Example:
         >>> client = px.Client()
         >>> response = client.generate_text(
-        ...     prompt='What is the capital of France?'
+        ...   prompt="What is the capital of France?"
         ... )
         >>> print(response)
         'The capital of France is Paris.'
@@ -676,48 +1108,55 @@ class ProxAIClient(state_controller.StateControlled):
         >>> # Using structured output
         >>> from pydantic import BaseModel
         >>> class City(BaseModel):
-        ...     name: str
-        ...     country: str
+        ...   name: str
+        ...   country: str
         >>> result = client.generate_text(
-        ...     prompt='What is the capital of France?',
-        ...     response_format=City
+        ...   prompt="What is the capital of France?", response_format=City
         ... )
         >>> print(result.name)
         'Paris'
     """
     if prompt is not None and messages is not None:
-      raise ValueError('prompt and messages cannot be set at the same time.')
+      raise ValueError("prompt and messages cannot be set at the same time.")
     if messages is not None:
       type_utils.check_messages_type(messages)
 
     if use_cache:
       if self.query_cache_manager is None:
         raise ValueError(
-            'use_cache is True but query cache is not working.\n'
-            'Please set query cache options to enable query cache.')
-      if (self.query_cache_manager.status !=
-          types.QueryCacheManagerStatus.WORKING):
+            "use_cache is True but query cache is not working.\n"
+            "Please set query cache options to enable query cache."
+        )
+      if (
+          self.query_cache_manager.status
+          != types.QueryCacheManagerStatus.WORKING
+      ):
         raise ValueError(
-            'use_cache is True but query cache is not working.\n'
-            f'Query Cache Manager Status: {self.query_cache_manager.status}')
+            "use_cache is True but query cache is not working.\n"
+            f"Query Cache Manager Status: {self.query_cache_manager.status}"
+        )
     elif use_cache is None:
       use_cache = (
           self.query_cache_manager is not None and
-          self.query_cache_manager.status ==
-          types.QueryCacheManagerStatus.WORKING)
+          self.query_cache_manager.status
+          == types.QueryCacheManagerStatus.WORKING
+      )
 
     if provider_model is not None:
       model_connector = self.available_models_instance.get_model_connector(
-          provider_model_identifier=provider_model)
+          provider_model_identifier=provider_model
+      )
     else:
       model_connector = self.get_registered_model_connector(
-          call_type=types.CallType.GENERATE_TEXT)
+          call_type=types.CallType.GENERATE_TEXT
+      )
 
     if suppress_provider_errors is None:
       suppress_provider_errors = self.suppress_provider_errors
 
     response_format: types.ResponseFormat = type_utils.create_response_format(
-        response_format)
+        response_format
+    )
 
     logging_record: types.LoggingRecord = model_connector.generate_text(
         prompt=prompt,
@@ -730,27 +1169,33 @@ class ProxAIClient(state_controller.StateControlled):
         web_search=web_search,
         feature_mapping_strategy=feature_mapping_strategy,
         use_cache=use_cache,
-        unique_response_limit=unique_response_limit)
-    if (logging_record.response_record.error or
-        logging_record.response_record.error_traceback):
+        unique_response_limit=unique_response_limit,
+    )
+    if (
+        logging_record.response_record.error or
+        logging_record.response_record.error_traceback
+    ):
       if suppress_provider_errors:
         if extensive_return:
           return logging_record
         return logging_record.response_record.error
       else:
-        error_traceback = ''
+        error_traceback = ""
         if logging_record.response_record.error_traceback:
           error_traceback = (
-              logging_record.response_record.error_traceback + '\n')
-        raise Exception(
-            error_traceback + logging_record.response_record.error)
+              logging_record.response_record.error_traceback + "\n"
+          )
+        raise Exception(error_traceback + logging_record.response_record.error)
 
-    if (logging_record.response_record.response.type ==
-        types.ResponseType.PYDANTIC):
+    if (
+        logging_record.response_record.response.type ==
+        types.ResponseType.PYDANTIC
+    ):
       # Recreate instance from pydantic_metadata if value is None (from cache)
       instance = type_utils.create_pydantic_instance_from_response(
           response_format=response_format,
-          response=logging_record.response_record.response)
+          response=logging_record.response_record.response,
+      )
       logging_record.response_record.response.value = instance
 
     if extensive_return:
@@ -778,7 +1223,7 @@ class ProxAIClient(state_controller.StateControlled):
 
     Example:
         >>> client = px.Client(
-        ...     cache_options=px.CacheOptions(cache_path='/tmp/cache')
+        ...   cache_options=px.CacheOptions(cache_path="/tmp/cache")
         ... )
         >>> options = client.get_current_options()
         >>> print(options.cache_options.cache_path)
@@ -799,7 +1244,8 @@ class ProxAIClient(state_controller.StateControlled):
         feature_mapping_strategy=self.feature_mapping_strategy,
         suppress_provider_errors=self.suppress_provider_errors,
         allow_multiprocessing=self.allow_multiprocessing,
-        model_test_timeout=self.model_test_timeout)
+        model_test_timeout=self.model_test_timeout,
+    )
     if json:
       return type_serializer.encode_run_options(run_options=run_options)
     return run_options
