@@ -27,7 +27,30 @@ RawProviderModelIdentifierType = str
 
 @dataclasses.dataclass(frozen=True)
 class ProviderModelType:
-  """Immutable identifier for a specific provider and model combination."""
+  """Immutable identifier for a specific provider and model combination.
+
+  This type is returned by model discovery functions like px.models.list_models()
+  and px.models.get_model(). It uniquely identifies a model by its provider,
+  model name, and the provider's internal identifier.
+
+  Attributes:
+    provider: The AI provider name (e.g., 'openai', 'anthropic', 'google').
+    model: The model name (e.g., 'gpt-4', 'claude-3-opus', 'gemini-pro').
+    provider_model_identifier: The provider's internal model identifier,
+      which may differ from the model name.
+
+  Example:
+    >>> import proxai as px
+    >>> models = px.models.list_models()
+    >>> for model in models:
+    ...   print(f"{model.provider}: {model.model}")
+    openai: gpt-4
+    anthropic: claude-3-opus
+    >>> # Type checking
+    >>> model = px.models.get_model("openai", "gpt-4")
+    >>> isinstance(model, px.ProviderModelType)
+    True
+  """
 
   provider: ProviderNameType
   model: ModelNameType
@@ -309,7 +332,28 @@ class SummaryOptions:
 
 
 class FeatureMappingStrategy(str, enum.Enum):
-  """Strategy for handling unsupported features in API calls."""
+  """Strategy for handling feature compatibility between requests and models.
+
+  When a request includes features that a model doesn't fully support,
+  this strategy determines how ProxAI should handle the incompatibility.
+
+  Attributes:
+    BEST_EFFORT: Attempts to map features even if not fully supported.
+      For example, if a model doesn't support system messages natively,
+      ProxAI may prepend it to the user prompt. This is the default.
+    STRICT: Requires exact feature support. Raises an error if the
+      requested features are not fully supported by the model.
+
+  Example:
+    >>> import proxai as px
+    >>> # Use strict mode to ensure full feature support
+    >>> px.connect(feature_mapping_strategy=px.FeatureMappingStrategy.STRICT)
+    >>> # Or per-request
+    >>> px.generate_text(
+    ...   prompt="Hello",
+    ...   feature_mapping_strategy=px.FeatureMappingStrategy.STRICT,
+    ... )
+  """
 
   BEST_EFFORT = "BEST_EFFORT"
   STRICT = "STRICT"
