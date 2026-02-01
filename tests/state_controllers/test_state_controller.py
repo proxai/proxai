@@ -18,13 +18,14 @@ class ExampleSubStateParams:
 
 
 class ExampleSubStateControlledClass(state_controller.StateControlled):
+
   def __init__(
-      self,
-      init_from_params: ExampleSubStateParams | None = None,
-      init_from_state: ExampleSubState | None = None):
+      self, init_from_params: ExampleSubStateParams | None = None,
+      init_from_state: ExampleSubState | None = None
+  ):
     super().__init__(
-        init_from_params=init_from_params,
-        init_from_state=init_from_state)
+        init_from_params=init_from_params, init_from_state=init_from_state
+    )
 
     if init_from_state:
       self.load_state(init_from_state)
@@ -53,6 +54,7 @@ class ExampleState(types.StateContainer):
   property_3: Any | None = None
   sub_state: ExampleSubState | None = None
 
+
 @dataclass
 class ExampleStateParams:
   property_1: Any | None = None
@@ -62,13 +64,14 @@ class ExampleStateParams:
 
 
 class ExampleStateControlledClass(state_controller.StateControlled):
+
   def __init__(
-      self,
-      init_from_params: ExampleSubStateParams | None = None,
-      init_from_state: ExampleSubState | None = None):
+      self, init_from_params: ExampleSubStateParams | None = None,
+      init_from_state: ExampleSubState | None = None
+  ):
     super().__init__(
-        init_from_params=init_from_params,
-        init_from_state=init_from_state)
+        init_from_params=init_from_params, init_from_state=init_from_state
+    )
     self.property_3_getter_called = False
     self.property_3_setter_called = False
     self.sub_state_getter_called = False
@@ -123,21 +126,22 @@ class ExampleStateControlledClass(state_controller.StateControlled):
   def sub_state(self, value):
     self.set_state_controlled_property_value('sub_state', value)
 
-  def sub_state_deserializer(
-      self,
-      state_value: ExampleSubState):
+  def sub_state_deserializer(self, state_value: ExampleSubState):
     return ExampleSubStateControlledClass(
         init_from_params=ExampleSubStateParams(
-            sub_property_1=state_value.sub_property_1))
+            sub_property_1=state_value.sub_property_1
+        )
+    )
 
 
 class TestStateControlled:
+
   def test_get_property_func_conversions(self):
     example_obj = ExampleStateControlledClass()
-    assert example_obj.get_property_internal_name(
-        'property_1') == '_property_1'
+    assert example_obj.get_property_internal_name('property_1') == '_property_1'
     assert example_obj.get_state_controlled_deserializer_name(
-        'property_1') == 'property_1_deserializer'
+        'property_1'
+    ) == 'property_1_deserializer'
 
   def test_get_property_internal_value(self):
     example_obj = ExampleStateControlledClass()
@@ -208,7 +212,8 @@ class TestStateControlled:
     example_obj.property_3_setter_called = False
 
     example_obj.set_property_value_without_triggering_getters(
-        'property_3', 'test2')
+        'property_3', 'test2'
+    )
     assert example_obj._property_3 == 'test2'
     assert example_obj._state.property_3 == 'test2'
     assert not example_obj.property_3_getter_called
@@ -216,25 +221,26 @@ class TestStateControlled:
 
   def test_conflicting_init_args(self):
     with pytest.raises(
-        ValueError,
-        match='init_from_params and init_from_state cannot be set at the same time.'):
+        ValueError, match=
+        'init_from_params and init_from_state cannot be set at the same time.'
+    ):
       ExampleStateControlledClass(
           init_from_params=ExampleStateParams(
-              property_1='test',
-              property_2='test_2',
-              property_3='test_3'),
-          init_from_state=ExampleState(
-              property_1='test',
-              property_2='test_2',
-              property_3='test_3'))
+              property_1='test', property_2='test_2', property_3='test_3'
+          ), init_from_state=ExampleState(
+              property_1='test', property_2='test_2', property_3='test_3'
+          )
+      )
 
   def test_auto_init_state_called(self):
     """Test that init_state() is automatically called by parent __init__."""
+
     @dataclass
     class MinimalState(types.StateContainer):
       value: str | None = None
 
     class MinimalClass(state_controller.StateControlled):
+
       def __init__(self):
         # Don't call init_state() - rely on parent to call it
         super().__init__()
@@ -255,6 +261,7 @@ class TestStateControlled:
     assert isinstance(obj._minimal_state, MinimalState)
 
   def test_init_state(self):
+
     @dataclass
     class ExampleState2(ExampleState):
       property_1: bool | None = True
@@ -269,9 +276,8 @@ class TestStateControlled:
 
     example_obj = ExampleStateControlledClass2()
     assert example_obj.get_internal_state() == ExampleState2(
-        property_1=True,
-        property_2=False,
-        property_3=None)
+        property_1=True, property_2=False, property_3=None
+    )
 
   def test_get_state(self):
     example_obj = ExampleStateControlledClass()
@@ -281,9 +287,8 @@ class TestStateControlled:
     example_obj.property_3_getter_called = False
     example_obj.property_3_setter_called = False
     assert example_obj.get_state() == ExampleState(
-        property_1=None,
-        property_2=None,
-        property_3=None)
+        property_1=None, property_2=None, property_3=None
+    )
     assert example_obj.property_3_getter_called
     assert not example_obj.property_3_setter_called
 
@@ -291,20 +296,19 @@ class TestStateControlled:
     example_obj.property_3_setter_called = False
     example_obj.property_3 = 'test'
     assert example_obj.get_state() == ExampleState(
-        property_1=None,
-        property_2=None,
-        property_3='test')
+        property_1=None, property_2=None, property_3='test'
+    )
     assert example_obj.property_3_getter_called
     assert example_obj.property_3_setter_called
 
     example_obj.property_3_getter_called = False
     example_obj.property_3_setter_called = False
     example_obj.set_property_value_without_triggering_getters(
-        'property_3', 'test_2')
+        'property_3', 'test_2'
+    )
     assert example_obj.get_state() == ExampleState(
-        property_1=None,
-        property_2=None,
-        property_3='test_2')
+        property_1=None, property_2=None, property_3='test_2'
+    )
     assert example_obj.property_3_getter_called
     assert not example_obj.property_3_setter_called
 
@@ -316,9 +320,8 @@ class TestStateControlled:
     example_obj.property_3_getter_called = False
     example_obj.property_3_setter_called = False
     assert example_obj.get_internal_state() == ExampleState(
-        property_1=None,
-        property_2=None,
-        property_3=None)
+        property_1=None, property_2=None, property_3=None
+    )
     assert not example_obj.property_3_getter_called
     assert not example_obj.property_3_setter_called
 
@@ -326,41 +329,37 @@ class TestStateControlled:
     example_obj.property_3_setter_called = False
     example_obj.property_3 = 'test'
     assert example_obj.get_internal_state() == ExampleState(
-        property_1=None,
-        property_2=None,
-        property_3='test')
+        property_1=None, property_2=None, property_3='test'
+    )
     assert example_obj.property_3_getter_called
     assert example_obj.property_3_setter_called
 
     example_obj.property_3_getter_called = False
     example_obj.property_3_setter_called = False
     example_obj.set_property_value_without_triggering_getters(
-        'property_3', 'test_2')
+        'property_3', 'test_2'
+    )
     assert example_obj.get_internal_state() == ExampleState(
-        property_1=None,
-        property_2=None,
-        property_3='test_2')
+        property_1=None, property_2=None, property_3='test_2'
+    )
     assert not example_obj.property_3_getter_called
     assert not example_obj.property_3_setter_called
 
   def test_load_state_incorrect_state_type(self):
     with pytest.raises(
-        ValueError,
-        match='Invalid state type.\nExpected: <class'):
+        ValueError, match='Invalid state type.\nExpected: <class'
+    ):
       ExampleStateControlledClass().load_state('test')
 
   def test_load_state(self):
     example_params = ExampleStateParams(
-        property_1='test',
-        property_2='test_2',
-        property_3='test_3')
-    example_obj = ExampleStateControlledClass(
-        init_from_params=example_params)
+        property_1='test', property_2='test_2', property_3='test_3'
+    )
+    example_obj = ExampleStateControlledClass(init_from_params=example_params)
     current_state = example_obj.get_state()
     assert current_state == ExampleState(
-        property_1='test',
-        property_2='test_2',
-        property_3='test_3')
+        property_1='test', property_2='test_2', property_3='test_3'
+    )
     assert example_obj.property_3_getter_called
     assert example_obj.property_3_setter_called
 
@@ -371,36 +370,30 @@ class TestStateControlled:
     example_obj_2.property_3_setter_called = False
     example_obj_2.load_state(current_state)
     assert example_obj_2.get_internal_state() == ExampleState(
-        property_1='test',
-        property_2='test_2',
-        property_3='test_3')
+        property_1='test', property_2='test_2', property_3='test_3'
+    )
     assert not example_obj_2.property_3_getter_called
     assert not example_obj_2.property_3_setter_called
 
   def test_load_state_partial_values(self):
-    example_params = ExampleStateParams(
-        property_2='test_2')
-    example_obj = ExampleStateControlledClass(
-        init_from_params=example_params)
+    example_params = ExampleStateParams(property_2='test_2')
+    example_obj = ExampleStateControlledClass(init_from_params=example_params)
     current_state = example_obj.get_state()
     assert current_state == ExampleState(
-        property_1=None,
-        property_2='test_2',
-        property_3=None)
+        property_1=None, property_2='test_2', property_3=None
+    )
 
     example_obj_2 = ExampleStateControlledClass()
     example_obj_2.load_state(current_state)
     assert example_obj_2.get_internal_state() == ExampleState(
-        property_1=None,
-        property_2='test_2',
-        property_3=None)
+        property_1=None, property_2='test_2', property_3=None
+    )
 
   def test_property_setter(self):
     example_obj = ExampleStateControlledClass()
     assert example_obj.get_internal_state() == ExampleState(
-        property_1=None,
-        property_2=None,
-        property_3=None)
+        property_1=None, property_2=None, property_3=None
+    )
 
     # These setters should update the internal state.
     example_obj.property_1 = 'test'
@@ -409,9 +402,8 @@ class TestStateControlled:
 
     # Internal state should be updated.
     assert example_obj.get_internal_state() == ExampleState(
-        property_1='test',
-        property_2='test_2',
-        property_3='test_3')
+        property_1='test', property_2='test_2', property_3='test_3'
+    )
 
   def test_property_getter(self):
     example_obj = ExampleStateControlledClass()
@@ -421,39 +413,35 @@ class TestStateControlled:
 
     # Internal state not changed yet.
     assert example_obj.get_internal_state() == ExampleState(
-        property_1=None,
-        property_2=None,
-        property_3=None)
+        property_1=None, property_2=None, property_3=None
+    )
 
     # This should update the internal state also.
     assert example_obj.get_state() == ExampleState(
-        property_1='test',
-        property_2='test_2',
-        property_3='test_3')
+        property_1='test', property_2='test_2', property_3='test_3'
+    )
 
     # Internal state should be updated after get_state is called.
     assert example_obj.get_internal_state() == ExampleState(
-        property_1='test',
-        property_2='test_2',
-        property_3='test_3')
+        property_1='test', property_2='test_2', property_3='test_3'
+    )
 
 
 class TestSubState:
+
   def test_sub_state_literal(self):
     example_sub_state_params = ExampleSubStateParams(
-        sub_property_1='sub_property_1_value_1')
+        sub_property_1='sub_property_1_value_1'
+    )
     example_sub_state_obj = ExampleSubStateControlledClass(
-        init_from_params=example_sub_state_params)
-    example_params = ExampleStateParams(
-        sub_state=example_sub_state_obj)
-    example_obj = ExampleStateControlledClass(
-        init_from_params=example_params)
+        init_from_params=example_sub_state_params
+    )
+    example_params = ExampleStateParams(sub_state=example_sub_state_obj)
+    example_obj = ExampleStateControlledClass(init_from_params=example_params)
     assert example_obj.get_internal_state() == ExampleState(
-        property_1=None,
-        property_2=None,
-        property_3=None,
-        sub_state=ExampleSubState(
-            sub_property_1='sub_property_1_value_1'))
+        property_1=None, property_2=None, property_3=None,
+        sub_state=ExampleSubState(sub_property_1='sub_property_1_value_1')
+    )
     assert example_obj.sub_state.sub_property_1 == 'sub_property_1_value_1'
 
   def test_sub_state_setter(self):
@@ -461,62 +449,60 @@ class TestSubState:
     assert example_obj.sub_state is None
 
     example_sub_state_params = ExampleSubStateParams(
-        sub_property_1='sub_property_1_value_1')
+        sub_property_1='sub_property_1_value_1'
+    )
     example_sub_state_obj = ExampleSubStateControlledClass(
-        init_from_params=example_sub_state_params)
+        init_from_params=example_sub_state_params
+    )
     example_obj.sub_state = example_sub_state_obj
     assert example_obj.sub_state is not None
     assert example_obj.sub_state.sub_property_1 == 'sub_property_1_value_1'
     assert example_obj.get_internal_state() == ExampleState(
-        property_1=None,
-        property_2=None,
-        property_3=None,
-        sub_state=ExampleSubState(
-            sub_property_1='sub_property_1_value_1'))
+        property_1=None, property_2=None, property_3=None,
+        sub_state=ExampleSubState(sub_property_1='sub_property_1_value_1')
+    )
 
   def test_set_property_value_without_triggering_getters(self):
     example_obj = ExampleStateControlledClass()
     example_obj.sub_state_getter_called = False
 
     example_sub_state_params = ExampleSubStateParams(
-        sub_property_1='sub_property_1_value_1')
+        sub_property_1='sub_property_1_value_1'
+    )
     example_sub_state_obj = ExampleSubStateControlledClass(
-        init_from_params=example_sub_state_params)
+        init_from_params=example_sub_state_params
+    )
     example_obj.set_property_value_without_triggering_getters(
-        'sub_state',
-        example_sub_state_obj)
+        'sub_state', example_sub_state_obj
+    )
     assert not example_obj.sub_state_getter_called
 
     assert example_obj.get_internal_state() == ExampleState(
-        property_1=None,
-        property_2=None,
-        property_3=None,
-        sub_state=ExampleSubState(
-            sub_property_1='sub_property_1_value_1'))
+        property_1=None, property_2=None, property_3=None,
+        sub_state=ExampleSubState(sub_property_1='sub_property_1_value_1')
+    )
     assert example_obj.sub_state.sub_property_1 == 'sub_property_1_value_1'
     assert example_obj.sub_state_getter_called
 
   def test_load_state(self):
     example_sub_state_params = ExampleSubStateParams(
-        sub_property_1='sub_property_1_value_1')
+        sub_property_1='sub_property_1_value_1'
+    )
     example_sub_state_obj = ExampleSubStateControlledClass(
-        init_from_params=example_sub_state_params)
+        init_from_params=example_sub_state_params
+    )
     example_obj = ExampleStateControlledClass(
-        init_from_params=ExampleStateParams(
-            sub_state=example_sub_state_obj))
+        init_from_params=ExampleStateParams(sub_state=example_sub_state_obj)
+    )
     assert example_obj.get_internal_state() == ExampleState(
-        property_1=None,
-        property_2=None,
-        property_3=None,
-        sub_state=ExampleSubState(
-            sub_property_1='sub_property_1_value_1'))
+        property_1=None, property_2=None, property_3=None,
+        sub_state=ExampleSubState(sub_property_1='sub_property_1_value_1')
+    )
 
     example_obj_2 = ExampleStateControlledClass()
     example_obj_2.load_state(example_obj.get_state())
     assert example_obj_2.get_internal_state() == ExampleState(
-        property_1=None,
-        property_2=None,
-        property_3=None,
-        sub_state=ExampleSubState(
-            sub_property_1='sub_property_1_value_1'))
+        property_1=None, property_2=None, property_3=None,
+        sub_state=ExampleSubState(sub_property_1='sub_property_1_value_1')
+    )
     assert example_obj_2.sub_state.sub_property_1 == 'sub_property_1_value_1'

@@ -20,57 +20,52 @@ class GeminiConnector(model_connector.ProviderModelConnector):
     return ['GEMINI_API_KEY']
 
   def init_model(self):
-    return genai.Client(
-      api_key=self.provider_token_value_map['GEMINI_API_KEY']
-    )
+    return genai.Client(api_key=self.provider_token_value_map['GEMINI_API_KEY'])
 
   def init_mock_model(self):
     return gemini_mock.GeminiMock()
 
-  def _get_api_call_function(
-      self,
-      chosen_endpoint: str) -> Callable:
+  def _get_api_call_function(self, chosen_endpoint: str) -> Callable:
     if chosen_endpoint == 'models.generate_content':
       return functools.partial(self.api.models.generate_content)
     else:
       raise Exception(f'Invalid endpoint: {chosen_endpoint}')
 
   def prompt_feature_mapping(
-      self,
-      query_function: Callable,
-      query_record: types.QueryRecord) -> Callable:
+      self, query_function: Callable, query_record: types.QueryRecord
+  ) -> Callable:
     contents = [
         genai_types.Content(
-              parts=[genai_types.Part(text=query_record.prompt)], role='user')]
-    return functools.partial(
-        query_function,
-        contents=contents)
+            parts=[genai_types.Part(text=query_record.prompt)], role='user'
+        )
+    ]
+    return functools.partial(query_function, contents=contents)
 
   def messages_feature_mapping(
-      self,
-      query_function: Callable,
-      query_record: types.QueryRecord) -> Callable:
+      self, query_function: Callable, query_record: types.QueryRecord
+  ) -> Callable:
     contents = query_function.keywords.get('contents')
     if contents is None:
       contents = []
 
     for message in query_record.messages:
       if message['role'] == 'assistant':
-        contents.append(genai_types.Content(
-            parts=[genai_types.Part(text=message['content'])],
-            role='model'))
+        contents.append(
+            genai_types.Content(
+                parts=[genai_types.Part(text=message['content'])], role='model'
+            )
+        )
       if message['role'] == 'user':
-        contents.append(genai_types.Content(
-            parts=[genai_types.Part(text=message['content'])],
-            role='user'))
-    return functools.partial(
-        query_function,
-        contents=contents)
+        contents.append(
+            genai_types.Content(
+                parts=[genai_types.Part(text=message['content'])], role='user'
+            )
+        )
+    return functools.partial(query_function, contents=contents)
 
   def system_feature_mapping(
-      self,
-      query_function: Callable,
-      query_record: types.QueryRecord) -> Callable:
+      self, query_function: Callable, query_record: types.QueryRecord
+  ) -> Callable:
     config = query_function.keywords.get('config')
     if config is None:
       config = genai_types.GenerateContentConfig()
@@ -78,9 +73,8 @@ class GeminiConnector(model_connector.ProviderModelConnector):
     return functools.partial(query_function, config=config)
 
   def max_tokens_feature_mapping(
-      self,
-      query_function: Callable,
-      query_record: types.QueryRecord) -> Callable:
+      self, query_function: Callable, query_record: types.QueryRecord
+  ) -> Callable:
     config = query_function.keywords.get('config')
     if config is None:
       config = genai_types.GenerateContentConfig()
@@ -88,9 +82,8 @@ class GeminiConnector(model_connector.ProviderModelConnector):
     return functools.partial(query_function, config=config)
 
   def temperature_feature_mapping(
-      self,
-      query_function: Callable,
-      query_record: types.QueryRecord) -> Callable:
+      self, query_function: Callable, query_record: types.QueryRecord
+  ) -> Callable:
     config = query_function.keywords.get('config')
     if config is None:
       config = genai_types.GenerateContentConfig()
@@ -98,9 +91,8 @@ class GeminiConnector(model_connector.ProviderModelConnector):
     return functools.partial(query_function, config=config)
 
   def stop_feature_mapping(
-      self,
-      query_function: Callable,
-      query_record: types.QueryRecord) -> Callable:
+      self, query_function: Callable, query_record: types.QueryRecord
+  ) -> Callable:
     config = query_function.keywords.get('config')
     if config is None:
       config = genai_types.GenerateContentConfig()
@@ -144,9 +136,8 @@ class GeminiConnector(model_connector.ProviderModelConnector):
     return cleaned
 
   def json_feature_mapping(
-      self,
-      query_function: Callable,
-      query_record: types.QueryRecord):
+      self, query_function: Callable, query_record: types.QueryRecord
+  ):
     config = genai_types.GenerateContentConfig()
     if config is None:
       config = genai_types.GenerateContentConfig()
@@ -154,9 +145,8 @@ class GeminiConnector(model_connector.ProviderModelConnector):
     return functools.partial(query_function, config=config)
 
   def json_schema_feature_mapping(
-      self,
-      query_function: Callable,
-      query_record: types.QueryRecord):
+      self, query_function: Callable, query_record: types.QueryRecord
+  ):
     config = query_function.keywords.get('config')
     if config is None:
       config = genai_types.GenerateContentConfig()
@@ -168,9 +158,8 @@ class GeminiConnector(model_connector.ProviderModelConnector):
     return functools.partial(query_function, config=config)
 
   def pydantic_feature_mapping(
-      self,
-      query_function: Callable,
-      query_record: types.QueryRecord):
+      self, query_function: Callable, query_record: types.QueryRecord
+  ):
     config = query_function.keywords.get('config')
     if config is None:
       config = genai_types.GenerateContentConfig()
@@ -179,49 +168,44 @@ class GeminiConnector(model_connector.ProviderModelConnector):
     return functools.partial(query_function, config=config)
 
   def web_search_feature_mapping(
-      self,
-      query_function: Callable,
-      query_record: types.QueryRecord):
+      self, query_function: Callable, query_record: types.QueryRecord
+  ):
     config = query_function.keywords.get('config')
     if config is None:
       config = genai_types.GenerateContentConfig()
-    config.tools = [genai_types.Tool(
-          google_search=genai_types.GoogleSearch())]
+    config.tools = [genai_types.Tool(google_search=genai_types.GoogleSearch())]
     return functools.partial(query_function, config=config)
 
   def format_text_response_from_provider(
-      self,
-      response: Any,
-      query_record: types.QueryRecord) -> str:
+      self, response: Any, query_record: types.QueryRecord
+  ) -> str:
     return response.text
 
   def format_json_response_from_provider(
-      self,
-      response: Any,
-      query_record: types.QueryRecord) -> dict:
+      self, response: Any, query_record: types.QueryRecord
+  ) -> dict:
     return self._extract_json_from_text(response.text)
 
   def format_json_schema_response_from_provider(
-      self,
-      response: Any,
-      query_record: types.QueryRecord) -> dict:
+      self, response: Any, query_record: types.QueryRecord
+  ) -> dict:
     return self._extract_json_from_text(response.text)
 
   def format_pydantic_response_from_provider(
-      self,
-      response: Any,
-      query_record: types.QueryRecord) -> Any:
+      self, response: Any, query_record: types.QueryRecord
+  ) -> Any:
     pydantic_class = query_record.response_format.value.class_value
     return pydantic_class.model_validate_json(response.text)
 
   def generate_text_proc(
-      self,
-      query_record: types.QueryRecord) -> types.Response:
+      self, query_record: types.QueryRecord
+  ) -> types.Response:
     create = self._get_api_call_function(query_record.chosen_endpoint)
 
     provider_model = query_record.provider_model
     create = functools.partial(
-        create, model=provider_model.provider_model_identifier)
+        create, model=provider_model.provider_model_identifier
+    )
 
     create = self.add_features_to_query_function(create, query_record)
 

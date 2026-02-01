@@ -1,5 +1,3 @@
-
-
 class _MockResponse:
   content: str
 
@@ -8,6 +6,7 @@ class _MockResponse:
 
 
 class _MockContinuedChat:
+
   def append(*args, **kwargs):
     pass
 
@@ -19,9 +18,8 @@ class _MockContinuedChat:
 
 
 class _MockChat:
-  def create(
-      self,
-      **kwargs) -> _MockResponse:
+
+  def create(self, **kwargs) -> _MockResponse:
     return _MockContinuedChat()
 
 
