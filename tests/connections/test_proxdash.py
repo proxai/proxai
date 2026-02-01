@@ -3,6 +3,7 @@ import json
 import os
 import tempfile
 
+import pydantic
 import pytest
 import requests
 import requests_mock as requests_mock_module
@@ -10,6 +11,13 @@ import requests_mock as requests_mock_module
 import proxai.connections.proxdash as proxdash
 import proxai.connectors.model_configs as model_configs
 import proxai.types as types
+
+
+class SamplePydanticModel(pydantic.BaseModel):
+  """Sample pydantic model for unit tests."""
+  name: str
+  value: int
+  active: bool = True
 
 # Sentinel value to distinguish "not passed" from "explicitly passed as None"
 _UNSET = object()
@@ -42,7 +50,9 @@ def _create_test_logging_record(
     prompt: str = "test prompt",
     system: str = "test system",
     messages: list[dict[str, str]] | None | object = _UNSET,
-    response: str = "test response",
+    response: str | dict | pydantic.BaseModel = "test response",
+    response_type: types.ResponseType = types.ResponseType.TEXT,
+    response_format: types.ResponseFormat | None = None,
     error: str | None = None,
     error_traceback: str | None = None,
     stop: str | list[str] | None = None,
@@ -65,11 +75,12 @@ def _create_test_logging_record(
       max_tokens=100,
       temperature=0.7,
       stop=stop,
-      hash_value=hash_value
+      hash_value=hash_value,
+      response_format=response_format
   )
 
   response_record = types.QueryResponseRecord(
-      response=types.Response(value=response, type=types.ResponseType.TEXT),
+      response=types.Response(value=response, type=response_type),
       error=error,
       error_traceback=error_traceback,
       start_utc_date=datetime.datetime(2024, 1, 1, 12, 0),
@@ -139,7 +150,8 @@ def _verify_proxdash_request(
     if value is None or expected_value is None:
       assert value == expected_value
       return
-    if isinstance(value, str) and isinstance(expected_value, list):
+    # Handle JSON string vs list/dict comparison
+    if isinstance(value, str) and isinstance(expected_value, (list, dict)):
       parsed_value = json.loads(value)
       assert parsed_value == expected_value
       return
@@ -676,15 +688,14 @@ class TestProxDashConnectionHideSensitiveContent:
     assert logging_record.response_record.response.value == "sensitive response"
 
     # Hidden record should have sensitive content replaced
-    assert hidden_record.query_record.prompt == "<sensitive content hidden>"
-    assert hidden_record.query_record.system == "<sensitive content hidden>"
+    hidden_str = proxdash._SENSITIVE_CONTENT_HIDDEN_STRING
+    assert hidden_record.query_record.prompt == hidden_str
+    assert hidden_record.query_record.system == hidden_str
     assert hidden_record.query_record.messages == [{
         "role": "assistant",
-        "content": "<sensitive content hidden>"
+        "content": hidden_str
     }]
-    assert (
-        hidden_record.response_record.response.value ==
-        "<sensitive content hidden>")
+    assert hidden_record.response_record.response.value == hidden_str
 
     # Non-sensitive fields should remain unchanged
     assert (
@@ -763,13 +774,13 @@ class TestProxDashConnectionUploadLoggingRecord:
         status_code=201
     )
     connection.upload_logging_record(logging_record)
+    hidden_str = proxdash._SENSITIVE_CONTENT_HIDDEN_STRING
     _verify_proxdash_request(
         requests_mock, {
-            'prompt': '<sensitive content hidden>',
-            'system': '<sensitive content hidden>',
-            'messages': [{"role": "assistant",
-                          "content": "<sensitive content hidden>"}],
-            'response': '<sensitive content hidden>'})
+            'prompt': hidden_str,
+            'system': hidden_str,
+            'messages': [{"role": "assistant", "content": hidden_str}],
+            'response': hidden_str})
     _verify_log_messages(temp_dir, [])
 
   def test_upload_without_hide_sensitive_content(self, requests_mock):
@@ -877,13 +888,13 @@ class TestProxDashConnectionUploadLoggingRecord:
         status_code=201
     )
     connection.upload_logging_record(logging_record)
+    hidden_str = proxdash._SENSITIVE_CONTENT_HIDDEN_STRING
     _verify_proxdash_request(
         requests_mock, {
-            'prompt': '<sensitive content hidden>',
-            'system': '<sensitive content hidden>',
-            'messages': [{"role": "assistant",
-                          "content": "<sensitive content hidden>"}],
-            'response': '<sensitive content hidden>'})
+            'prompt': hidden_str,
+            'system': hidden_str,
+            'messages': [{"role": "assistant", "content": hidden_str}],
+            'response': hidden_str})
     _verify_log_messages(temp_dir, [])
 
   def test_upload_failed_response(self, requests_mock):
@@ -1330,3 +1341,404 @@ class TestProxDashConnectionGetProviderApiKeys:
     ]
     assert len(provider_key_requests) == 1
     assert provider_key_requests[0].headers['X-API-Key'] == 'test_api_key'
+
+
+class TestProxDashConnectionFormatMessages:
+  """Tests for _format_messages method."""
+
+  def test_format_messages_with_valid_messages(self):
+    """Tests that messages are formatted as JSON string."""
+    connection, _, _ = _create_connection()
+    logging_record = _create_test_logging_record(
+        messages=[
+            {"role": "user", "content": "hello"},
+            {"role": "assistant", "content": "hi"}
+        ]
+    )
+    result = connection._format_messages(logging_record)
+
+    assert result is not None
+    parsed = json.loads(result)
+    assert len(parsed) == 2
+    assert parsed[0]["role"] == "user"
+    assert parsed[0]["content"] == "hello"
+    assert parsed[1]["role"] == "assistant"
+    assert parsed[1]["content"] == "hi"
+
+  def test_format_messages_with_none_messages(self):
+    """Tests that None is returned when messages is None."""
+    connection, _, _ = _create_connection()
+    logging_record = _create_test_logging_record(messages=None)
+    result = connection._format_messages(logging_record)
+
+    assert result is None
+
+  def test_format_messages_with_empty_messages(self):
+    """Tests that None is returned when messages is empty list."""
+    connection, _, _ = _create_connection()
+    logging_record = _create_test_logging_record(messages=[])
+    result = connection._format_messages(logging_record)
+
+    assert result is None
+
+
+class TestProxDashConnectionFormatStop:
+  """Tests for _format_stop method."""
+
+  def test_format_stop_with_string(self):
+    """Tests that string stop is converted to JSON list."""
+    connection, _, _ = _create_connection()
+    logging_record = _create_test_logging_record(stop="STOP")
+    result = connection._format_stop(logging_record)
+
+    assert result is not None
+    parsed = json.loads(result)
+    assert parsed == ["STOP"]
+
+  def test_format_stop_with_list(self):
+    """Tests that list stop is converted to JSON."""
+    connection, _, _ = _create_connection()
+    logging_record = _create_test_logging_record(stop=["STOP1", "STOP2"])
+    result = connection._format_stop(logging_record)
+
+    assert result is not None
+    parsed = json.loads(result)
+    assert parsed == ["STOP1", "STOP2"]
+
+  def test_format_stop_with_none(self):
+    """Tests that None is returned when stop is None."""
+    connection, _, _ = _create_connection()
+    logging_record = _create_test_logging_record(stop=None)
+    result = connection._format_stop(logging_record)
+
+    assert result is None
+
+
+class TestProxDashConnectionFormatResponse:
+  """Tests for _format_response method."""
+
+  def test_format_response_text_type(self):
+    """Tests formatting of TEXT response type."""
+    connection, _, _ = _create_connection()
+    logging_record = _create_test_logging_record(
+        response="test text response",
+        response_type=types.ResponseType.TEXT
+    )
+    result = connection._format_response(logging_record)
+
+    assert result == "test text response"
+
+  def test_format_response_json_type(self):
+    """Tests formatting of JSON response type."""
+    connection, _, _ = _create_connection()
+    json_response = {"key": "value", "number": 42}
+    logging_record = _create_test_logging_record(
+        response=json_response,
+        response_type=types.ResponseType.JSON
+    )
+    result = connection._format_response(logging_record)
+
+    assert result is not None
+    parsed = json.loads(result)
+    assert parsed == json_response
+
+  def test_format_response_pydantic_type(self):
+    """Tests formatting of PYDANTIC response type."""
+    connection, _, _ = _create_connection()
+    pydantic_response = SamplePydanticModel(name="test", value=123, active=True)
+    logging_record = _create_test_logging_record(
+        response=pydantic_response,
+        response_type=types.ResponseType.PYDANTIC
+    )
+    result = connection._format_response(logging_record)
+
+    assert result is not None
+    parsed = json.loads(result)
+    assert parsed["name"] == "test"
+    assert parsed["value"] == 123
+    assert parsed["active"] is True
+
+  def test_format_response_with_none_response(self):
+    """Tests that None is returned when response is None."""
+    connection, _, _ = _create_connection()
+    logging_record = _create_test_logging_record(response="dummy")
+    logging_record.response_record.response = None
+    result = connection._format_response(logging_record)
+
+    assert result is None
+
+  def test_format_response_with_hidden_sensitive_content(self):
+    """Tests that hidden content string is returned as-is."""
+    connection, _, _ = _create_connection()
+    logging_record = _create_test_logging_record(
+        response=proxdash._SENSITIVE_CONTENT_HIDDEN_STRING,
+        response_type=types.ResponseType.TEXT
+    )
+    result = connection._format_response(logging_record)
+
+    assert result == proxdash._SENSITIVE_CONTENT_HIDDEN_STRING
+
+
+class TestProxDashConnectionFormatResponsePydanticJsonValue:
+  """Tests for _format_response_pydantic_json_value method."""
+
+  def test_format_pydantic_json_value_with_pydantic_response(self):
+    """Tests that pydantic response is converted to JSON."""
+    connection, _, _ = _create_connection()
+    pydantic_response = SamplePydanticModel(name="test", value=456)
+    logging_record = _create_test_logging_record(
+        response=pydantic_response,
+        response_type=types.ResponseType.PYDANTIC
+    )
+    result = connection._format_response_pydantic_json_value(logging_record)
+
+    assert result is not None
+    parsed = json.loads(result)
+    assert parsed["name"] == "test"
+    assert parsed["value"] == 456
+
+  def test_format_pydantic_json_value_with_non_pydantic_response(self):
+    """Tests that None is returned for non-pydantic response types."""
+    connection, _, _ = _create_connection()
+    logging_record = _create_test_logging_record(
+        response="text response",
+        response_type=types.ResponseType.TEXT
+    )
+    result = connection._format_response_pydantic_json_value(logging_record)
+
+    assert result is None
+
+  def test_format_pydantic_json_value_with_json_response(self):
+    """Tests that None is returned for JSON response type."""
+    connection, _, _ = _create_connection()
+    logging_record = _create_test_logging_record(
+        response={"key": "value"},
+        response_type=types.ResponseType.JSON
+    )
+    result = connection._format_response_pydantic_json_value(logging_record)
+
+    assert result is None
+
+  def test_format_pydantic_json_value_with_none_response(self):
+    """Tests that None is returned when response is None."""
+    connection, _, _ = _create_connection()
+    logging_record = _create_test_logging_record(response="dummy")
+    logging_record.response_record.response = None
+    result = connection._format_response_pydantic_json_value(logging_record)
+
+    assert result is None
+
+  def test_format_pydantic_json_value_with_hidden_content(self):
+    """Tests that hidden content is returned for pydantic type with hidden value."""
+    connection, _, _ = _create_connection()
+    logging_record = _create_test_logging_record(
+        response=proxdash._SENSITIVE_CONTENT_HIDDEN_STRING,
+        response_type=types.ResponseType.PYDANTIC
+    )
+    result = connection._format_response_pydantic_json_value(logging_record)
+
+    assert result == proxdash._SENSITIVE_CONTENT_HIDDEN_STRING
+
+
+class TestProxDashConnectionGetFormattedQueryPydanticValues:
+  """Tests for _get_formatted_query_pydantic_values method."""
+
+  def test_get_pydantic_values_with_pydantic_format(self):
+    """Tests extraction of pydantic class name and schema."""
+    connection, _, _ = _create_connection()
+    response_format = types.ResponseFormat(
+        type=types.ResponseFormatType.PYDANTIC,
+        value=types.ResponseFormatPydanticValue(
+            class_name="SamplePydanticModel",
+            class_value=SamplePydanticModel
+        )
+    )
+    logging_record = _create_test_logging_record(response_format=response_format)
+    class_name, json_schema = connection._get_formatted_query_pydantic_values(
+        logging_record)
+
+    assert class_name == "SamplePydanticModel"
+    assert json_schema is not None
+    assert "properties" in json_schema
+    assert "name" in json_schema["properties"]
+    assert "value" in json_schema["properties"]
+
+  def test_get_pydantic_values_with_non_pydantic_format(self):
+    """Tests that None is returned for non-pydantic response format."""
+    connection, _, _ = _create_connection()
+    response_format = types.ResponseFormat(
+        type=types.ResponseFormatType.JSON,
+        value=None
+    )
+    logging_record = _create_test_logging_record(response_format=response_format)
+    class_name, json_schema = connection._get_formatted_query_pydantic_values(
+        logging_record)
+
+    assert class_name is None
+    assert json_schema is None
+
+  def test_get_pydantic_values_with_no_response_format(self):
+    """Tests that None is returned when response_format is None."""
+    connection, _, _ = _create_connection()
+    logging_record = _create_test_logging_record(response_format=None)
+    class_name, json_schema = connection._get_formatted_query_pydantic_values(
+        logging_record)
+
+    assert class_name is None
+    assert json_schema is None
+
+  def test_get_pydantic_values_with_no_class_name(self):
+    """Tests that None is returned when class_name is None."""
+    connection, _, _ = _create_connection()
+    response_format = types.ResponseFormat(
+        type=types.ResponseFormatType.PYDANTIC,
+        value=types.ResponseFormatPydanticValue(
+            class_name=None,
+            class_value=SamplePydanticModel
+        )
+    )
+    logging_record = _create_test_logging_record(response_format=response_format)
+    class_name, json_schema = connection._get_formatted_query_pydantic_values(
+        logging_record)
+
+    assert class_name is None
+    assert json_schema is None
+
+
+class TestProxDashConnectionUploadLoggingRecordResponseTypes:
+  """Tests for upload_logging_record with different response types."""
+
+  def test_upload_with_json_response_type(self, requests_mock):
+    """Tests upload with JSON response type."""
+    connection, temp_dir, _ = _create_connection()
+    json_response = {"result": "success", "count": 5}
+    logging_record = _create_test_logging_record(
+        response=json_response,
+        response_type=types.ResponseType.JSON
+    )
+    requests_mock.post(
+        'https://proxainest-production.up.railway.app/ingestion/logging-records',
+        text='{"success": true}',
+        status_code=201
+    )
+    connection.upload_logging_record(logging_record)
+    _verify_proxdash_request(
+        requests_mock,
+        {'response': json_response}
+    )
+
+  def test_upload_with_pydantic_response_type(self, requests_mock):
+    """Tests upload with PYDANTIC response type."""
+    connection, temp_dir, _ = _create_connection()
+    pydantic_response = SamplePydanticModel(name="test_name", value=789)
+    logging_record = _create_test_logging_record(
+        response=pydantic_response,
+        response_type=types.ResponseType.PYDANTIC
+    )
+    requests_mock.post(
+        'https://proxainest-production.up.railway.app/ingestion/logging-records',
+        text='{"success": true}',
+        status_code=201
+    )
+    connection.upload_logging_record(logging_record)
+    _verify_proxdash_request(
+        requests_mock,
+        {
+            'response': {"name": "test_name", "value": 789, "active": True},
+            'responsePydanticJsonValue': None
+        }
+    )
+
+  def test_upload_with_pydantic_query_format_and_response(self, requests_mock):
+    """Tests upload with pydantic response_format and pydantic response."""
+    connection, temp_dir, _ = _create_connection()
+    pydantic_response = SamplePydanticModel(name="result", value=100)
+    response_format = types.ResponseFormat(
+        type=types.ResponseFormatType.PYDANTIC,
+        value=types.ResponseFormatPydanticValue(
+            class_name="SamplePydanticModel",
+            class_value=SamplePydanticModel
+        )
+    )
+    logging_record = _create_test_logging_record(
+        response=pydantic_response,
+        response_type=types.ResponseType.PYDANTIC,
+        response_format=response_format
+    )
+    requests_mock.post(
+        'https://proxainest-production.up.railway.app/ingestion/logging-records',
+        text='{"success": true}',
+        status_code=201
+    )
+    connection.upload_logging_record(logging_record)
+    _verify_proxdash_request(
+        requests_mock,
+        {
+            'queryPydanticClassName': 'SamplePydanticModel',
+            'response': {"name": "result", "value": 100, "active": True},
+            'responsePydanticJsonValue': {"name": "result", "value": 100, "active": True}
+        }
+    )
+
+  def test_upload_with_pydantic_format_hidden_content(self, requests_mock):
+    """Tests upload with pydantic format when sensitive content is hidden."""
+    connection, temp_dir, _ = _create_connection(hide_sensitive_content=True)
+    pydantic_response = SamplePydanticModel(name="secret", value=999)
+    response_format = types.ResponseFormat(
+        type=types.ResponseFormatType.PYDANTIC,
+        value=types.ResponseFormatPydanticValue(
+            class_name="SamplePydanticModel",
+            class_value=SamplePydanticModel
+        )
+    )
+    logging_record = _create_test_logging_record(
+        response=pydantic_response,
+        response_type=types.ResponseType.PYDANTIC,
+        response_format=response_format
+    )
+    requests_mock.post(
+        'https://proxainest-production.up.railway.app/ingestion/logging-records',
+        text='{"success": true}',
+        status_code=201
+    )
+    connection.upload_logging_record(logging_record)
+    hidden_str = proxdash._SENSITIVE_CONTENT_HIDDEN_STRING
+    _verify_proxdash_request(
+        requests_mock,
+        {
+            'prompt': hidden_str,
+            'system': hidden_str,
+            'response': hidden_str,
+            'responsePydanticJsonValue': hidden_str,
+            'queryPydanticClassName': 'SamplePydanticModel'
+        }
+    )
+
+  def test_upload_with_json_response_format(self, requests_mock):
+    """Tests upload with JSON response_format (not pydantic)."""
+    connection, temp_dir, _ = _create_connection()
+    json_response = {"data": "value"}
+    response_format = types.ResponseFormat(
+        type=types.ResponseFormatType.JSON,
+        value=None
+    )
+    logging_record = _create_test_logging_record(
+        response=json_response,
+        response_type=types.ResponseType.JSON,
+        response_format=response_format
+    )
+    requests_mock.post(
+        'https://proxainest-production.up.railway.app/ingestion/logging-records',
+        text='{"success": true}',
+        status_code=201
+    )
+    connection.upload_logging_record(logging_record)
+    _verify_proxdash_request(
+        requests_mock,
+        {
+            'response': json_response,
+            'queryPydanticClassName': None,
+            'queryPydanticJsonSchema': None,
+            'responsePydanticJsonValue': None
+        }
+    )
