@@ -340,7 +340,7 @@ class ProxDashConnection(state_controller.StateControlled):
         logging_record.response_record.response):
       logging_record.response_record.response.value = (
           _SENSITIVE_CONTENT_HIDDEN_STRING)
-        
+
     return logging_record
 
   def _format_messages(self, logging_record: types.LoggingRecord) -> str:
@@ -368,13 +368,13 @@ class ProxDashConnection(state_controller.StateControlled):
       return None
 
     if (
-        logging_record.response_record.response.value == 
+        logging_record.response_record.response.value ==
         _SENSITIVE_CONTENT_HIDDEN_STRING):
       return _SENSITIVE_CONTENT_HIDDEN_STRING
-    
+
     if response_type == types.ResponseType.TEXT:
       return str(logging_record.response_record.response.value)
-    
+
     if response_type == types.ResponseType.JSON:
       try:
         return json.dumps(
@@ -389,24 +389,10 @@ class ProxDashConnection(state_controller.StateControlled):
                 'https://github.com/proxai/proxai/issues.\n'
                 f'Response: {logging_record.response_record.response}'),
             type=types.LoggingType.WARNING)
-        return str(logging_record.response_record.response.value)
-      
+        return None
+
     if response_type == types.ResponseType.PYDANTIC:
-      try:
-        return json.dumps(
-            logging_record.response_record.response.value.model_dump(),
-            indent=2, sort_keys=True)
-      except Exception:
-        logging_utils.log_proxdash_message(
-            logging_options=self.logging_options,
-            proxdash_options=self.proxdash_options,
-            message=(
-                'Response is not a pydantic serializable instance. '
-                'Please report this issue to the '
-                'https://github.com/proxai/proxai/issues.\n'
-                f'Response: {logging_record.response_record.response}'),
-            type=types.LoggingType.WARNING)
-        return str(logging_record.response_record.response.value)
+      return None
 
     logging_utils.log_proxdash_message(
         logging_options=self.logging_options,
@@ -416,8 +402,8 @@ class ProxDashConnection(state_controller.StateControlled):
             'https://github.com/proxai/proxai/issues.\n'
             f'Response: {logging_record.response_record.response}'),
         type=types.LoggingType.WARNING)
-    return str(logging_record.response_record.response.value)
-  
+    return None
+
   def _format_response_pydantic_json_value(
       self, logging_record: types.LoggingRecord) -> str:
     if logging_record.response_record.response is None:
@@ -426,28 +412,58 @@ class ProxDashConnection(state_controller.StateControlled):
         types.ResponseType.PYDANTIC):
       return None
     if (
-        logging_record.response_record.response.value == 
+        logging_record.response_record.response.value ==
         _SENSITIVE_CONTENT_HIDDEN_STRING):
       return _SENSITIVE_CONTENT_HIDDEN_STRING
-    
+
+    if logging_record.response_record.response.pydantic_metadata is not None:
+      instance_json_value = (
+          logging_record.response_record.response
+          .pydantic_metadata.instance_json_value)
+    elif logging_record.response_record.response.value is not None:
+      try:
+        instance_json_value = (
+            logging_record.response_record.response.value.model_dump())
+      except Exception:
+        logging_utils.log_proxdash_message(
+            logging_options=self.logging_options,
+            proxdash_options=self.proxdash_options,
+            message=(
+                'Response value is not a pydantic instance. Please report '
+                'this issue to the https://github.com/proxai/proxai/issues.\n'
+                f'Response: {logging_record.response_record.response}'),
+                type=types.LoggingType.WARNING)
+        return None
+    else:
+      logging_utils.log_proxdash_message(
+          logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
+          message=(
+              'Response has no pydantic_metadata or value. Please report '
+              'this issue to the https://github.com/proxai/proxai/issues.\n'
+              f'Response: {logging_record.response_record.response}'),
+          type=types.LoggingType.WARNING)
+      return None
+
     try:
       return json.dumps(
-          logging_record.response_record.response.value.model_dump(),
+          instance_json_value,
           indent=2, sort_keys=True)
     except Exception:
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
           proxdash_options=self.proxdash_options,
           message=(
-              'Response is not a pydantic serializable instance. '
-              'Please report this issue to the '
+              'Response pydantic_metadata.instance_json_value is not a JSON '
+              'object. Please report this issue to the '
               'https://github.com/proxai/proxai/issues.\n'
-              f'Response: {logging_record.response_record.response}'),
+              f'Response: {instance_json_value}'),
           type=types.LoggingType.WARNING)
       return None
 
   def _get_formatted_query_pydantic_values(
-      self, logging_record: types.LoggingRecord) -> tuple[str | None, str | None]:
+      self, logging_record: types.LoggingRecord
+  ) -> tuple[str | None, str | None]:
     response_format = logging_record.query_record.response_format
     if (response_format and
         response_format.type == types.ResponseFormatType.PYDANTIC and
@@ -462,8 +478,8 @@ class ProxDashConnection(state_controller.StateControlled):
             logging_options=self.logging_options,
             proxdash_options=self.proxdash_options,
             message=(
-                'Failed to get formatted query pydantic values. Please create an issue at '
-                'https://github.com/proxai/proxai/issues.\n'
+                'Failed to get formatted query pydantic values. Please create '
+                'an issue at https://github.com/proxai/proxai/issues.\n'
                 f'Response: {logging_record.query_record.response_format}'),
             type=types.LoggingType.WARNING)
         return query_pydantic_class_name, str(

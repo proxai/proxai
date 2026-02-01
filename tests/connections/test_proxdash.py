@@ -1443,7 +1443,11 @@ class TestProxDashConnectionFormatResponse:
     assert parsed == json_response
 
   def test_format_response_pydantic_type(self):
-    """Tests formatting of PYDANTIC response type."""
+    """Tests formatting of PYDANTIC response type returns None.
+
+    For PYDANTIC type, _format_response returns None because the JSON
+    representation is handled separately by _format_response_pydantic_json_value.
+    """
     connection, _, _ = _create_connection()
     pydantic_response = SamplePydanticModel(name="test", value=123, active=True)
     logging_record = _create_test_logging_record(
@@ -1452,11 +1456,7 @@ class TestProxDashConnectionFormatResponse:
     )
     result = connection._format_response(logging_record)
 
-    assert result is not None
-    parsed = json.loads(result)
-    assert parsed["name"] == "test"
-    assert parsed["value"] == 123
-    assert parsed["active"] is True
+    assert result is None
 
   def test_format_response_with_none_response(self):
     """Tests that None is returned when response is None."""
@@ -1628,7 +1628,12 @@ class TestProxDashConnectionUploadLoggingRecordResponseTypes:
     )
 
   def test_upload_with_pydantic_response_type(self, requests_mock):
-    """Tests upload with PYDANTIC response type."""
+    """Tests upload with PYDANTIC response type.
+
+    When response_type is PYDANTIC but no response_format is set,
+    both response and responsePydanticJsonValue are None because
+    _format_response returns None for PYDANTIC type.
+    """
     connection, temp_dir, _ = _create_connection()
     pydantic_response = SamplePydanticModel(name="test_name", value=789)
     logging_record = _create_test_logging_record(
@@ -1644,13 +1649,18 @@ class TestProxDashConnectionUploadLoggingRecordResponseTypes:
     _verify_proxdash_request(
         requests_mock,
         {
-            'response': {"name": "test_name", "value": 789, "active": True},
+            'response': None,
             'responsePydanticJsonValue': None
         }
     )
 
   def test_upload_with_pydantic_query_format_and_response(self, requests_mock):
-    """Tests upload with pydantic response_format and pydantic response."""
+    """Tests upload with pydantic response_format and pydantic response.
+
+    When response_format.type is PYDANTIC, the response field is None
+    (because _format_response returns None for PYDANTIC type), but
+    responsePydanticJsonValue contains the JSON representation.
+    """
     connection, temp_dir, _ = _create_connection()
     pydantic_response = SamplePydanticModel(name="result", value=100)
     response_format = types.ResponseFormat(
@@ -1675,7 +1685,7 @@ class TestProxDashConnectionUploadLoggingRecordResponseTypes:
         requests_mock,
         {
             'queryPydanticClassName': 'SamplePydanticModel',
-            'response': {"name": "result", "value": 100, "active": True},
+            'response': None,
             'responsePydanticJsonValue': {"name": "result", "value": 100, "active": True}
         }
     )
