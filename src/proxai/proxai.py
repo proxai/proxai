@@ -2,12 +2,14 @@ import proxai.client as client
 import proxai.types as types
 from proxai.client import ModelConnector
 
-# Re-export for backward compatibility
+# Re-export for easy access
 CacheOptions = types.CacheOptions
 LoggingOptions = types.LoggingOptions
 ProxDashOptions = types.ProxDashOptions
 ResponseFormat = types.StructuredResponseFormat
 ResponseFormatType = types.ResponseFormatType
+FeatureMappingStrategy = types.FeatureMappingStrategy
+ProviderModelType = types.ProviderModelType
 
 _DEFAULT_CLIENT: client.ProxAIClient | None = None
 Client = client.ProxAIClient
