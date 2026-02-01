@@ -1,7 +1,7 @@
 import dataclasses
 import os
 import tempfile
-from typing import Callable
+from collections.abc import Callable
 
 import platformdirs
 
@@ -348,7 +348,8 @@ class ModelConnector:
         ...   "openai", verbose=False
         ... )
     """
-    return self._client_getter().available_models_instance.list_working_provider_models(
+    available_models = self._client_getter().available_models_instance
+    return available_models.list_working_provider_models(
       provider=provider,
       model_size=model_size,
       features=features,
