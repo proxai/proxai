@@ -1,6 +1,9 @@
 # read version from installed package
 from importlib.metadata import version
 
+from proxai.chat import Chat
+from proxai.chat import Message
+from proxai.chat import MessageContent
 from proxai.client import ModelConnector
 from proxai.proxai import (
     CacheOptions,
@@ -20,13 +23,18 @@ from proxai.proxai import (
     reset_state,
     set_model,
 )
+from proxai.types import MessageRoleType
 
 __all__ = [
     "CacheOptions",
+    "Chat",
     "Client",
     "DefaultModelsConnector",
     "FeatureMappingStrategy",
     "LoggingOptions",
+    "Message",
+    "MessageContent",
+    "MessageRoleType",
     "ModelConnector",
     "ProxDashOptions",
     "ProviderModelType",

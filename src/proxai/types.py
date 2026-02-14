@@ -20,6 +20,38 @@ class CallType(str, enum.Enum):
   OTHER = "OTHER"
 
 
+class MessageRoleType(str, enum.Enum):
+  """Role of the message sender in a conversation.
+
+  Attributes:
+    USER: Message from the user.
+    ASSISTANT: Message from the AI assistant.
+  """
+
+  USER = "user"
+  ASSISTANT = "assistant"
+
+
+class ContentType(str, enum.Enum):
+  """Type of content in a message block.
+
+  Attributes:
+    TEXT: Plain text content.
+    THINKING: Model thinking/reasoning text content.
+    IMAGE: Image content (URL, base64, or file path).
+    DOCUMENT: Document content (PDF, DOCX, etc.).
+    AUDIO: Audio content (MP3, WAV, etc.).
+    VIDEO: Video content (MP4, WebM, etc.).
+  """
+
+  TEXT = "text"
+  THINKING = "thinking"
+  IMAGE = "image"
+  DOCUMENT = "document"
+  AUDIO = "audio"
+  VIDEO = "video"
+
+
 ProviderNameType = str
 ModelNameType = str
 RawProviderModelIdentifierType = str
