@@ -32,7 +32,7 @@ class TestAvailableModels:
     for provider in providers:
       models.update(
           pytest.model_configs_instance.get_all_models(
-              call_type=types.CallType.GENERATE_TEXT, provider=provider
+              call_type=types.CallType.TEXT, provider=provider
           )
       )
     return models
@@ -127,7 +127,7 @@ class TestAvailableModels:
         ), response_record=types.QueryResponseRecord(error='error1')
     )
     save_cache.update(
-        model_status_updates=data, call_type=types.CallType.GENERATE_TEXT
+        model_status_updates=data, call_type=types.CallType.TEXT
     )
 
   def test_filter_by_key(self):
@@ -142,7 +142,7 @@ class TestAvailableModels:
     }
     models = types.ModelStatus()
     available_models_manager._get_all_models(
-        models, call_type=types.CallType.GENERATE_TEXT
+        models, call_type=types.CallType.TEXT
     )
     available_models_manager._filter_by_provider_api_key(models)
     assert models.unprocessed_models == self._get_models_set([
@@ -161,11 +161,11 @@ class TestAvailableModels:
     }
     models = types.ModelStatus()
     available_models_manager._get_all_models(
-        models, call_type=types.CallType.GENERATE_TEXT
+        models, call_type=types.CallType.TEXT
     )
     available_models_manager._filter_by_provider_api_key(models)
     available_models_manager._filter_by_cache(
-        models, call_type=types.CallType.GENERATE_TEXT
+        models, call_type=types.CallType.TEXT
     )
     assert models.unprocessed_models == (
         self._get_models_set(['openai']) - {
@@ -309,7 +309,7 @@ class TestAvailableModels:
     }
     models = types.ModelStatus()
     available_models_manager._get_all_models(
-        models, call_type=types.CallType.GENERATE_TEXT
+        models, call_type=types.CallType.TEXT
     )
     available_models_manager._filter_by_provider_api_key(models)
     models.unprocessed_models.add(
@@ -319,7 +319,7 @@ class TestAvailableModels:
     )
 
     available_models_manager._test_models(
-        models, call_type=types.CallType.GENERATE_TEXT
+        models, call_type=types.CallType.TEXT
     )
 
     assert models.unprocessed_models == set()
@@ -423,7 +423,7 @@ class TestAvailableModels:
 
     # Check cache memory values
     models = available_models_manager._model_cache_manager.get(
-        call_type=types.CallType.GENERATE_TEXT
+        call_type=types.CallType.TEXT
     )
     assert models.working_models == (
         self._get_models_set(['openai', 'mock_provider']) - {
@@ -446,7 +446,7 @@ class TestAvailableModels:
     load_cache = model_cache.ModelCacheManager(
         init_from_params=model_cache_manager_params
     )
-    models = load_cache.get(call_type=types.CallType.GENERATE_TEXT)
+    models = load_cache.get(call_type=types.CallType.TEXT)
     assert models.working_models == (
         self._get_models_set(['openai', 'mock_provider']) - {
             pytest.model_configs_instance.get_provider_model(
@@ -520,7 +520,7 @@ class TestAvailableModels:
     models = available_models_manager.list_working_provider_models('openai')
     assert set(models) == set(
         pytest.model_configs_instance.get_all_models(
-            call_type=types.CallType.GENERATE_TEXT, provider='openai'
+            call_type=types.CallType.TEXT, provider='openai'
         )
     )
 
@@ -555,7 +555,7 @@ class TestAvailableModels:
     models = available_models_manager.list_working_provider_models('claude')
     assert set(models) == set(
         pytest.model_configs_instance.get_all_models(
-            call_type=types.CallType.GENERATE_TEXT, provider='claude'
+            call_type=types.CallType.TEXT, provider='claude'
         )
     )
 
@@ -750,10 +750,10 @@ class TestAvailableModelsState:
 
     assert restored.model_configs_instance is not None
     original_models = original.model_configs_instance.get_all_models(
-        call_type=types.CallType.GENERATE_TEXT
+        call_type=types.CallType.TEXT
     )
     restored_models = restored.model_configs_instance.get_all_models(
-        call_type=types.CallType.GENERATE_TEXT
+        call_type=types.CallType.TEXT
     )
     assert set(original_models) == set(restored_models)
 

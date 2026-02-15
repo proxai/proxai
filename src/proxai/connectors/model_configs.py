@@ -603,7 +603,7 @@ class ModelConfigs(state_controller.StateControlled):
       self,
       provider: types.ProviderNameType | None = None,
       model_size: types.ModelSizeType | None = None,
-      call_type: types.CallType | None = types.CallType.GENERATE_TEXT,
+      call_type: types.CallType | None = types.CallType.TEXT,
       only_featured: bool | None = True,
   ) -> list[types.ProviderModelType]:
     """List all models matching the given filters."""

@@ -319,7 +319,7 @@ class AvailableModels(state_controller.StateControlled):
   def _filter_by_model_size(
       self, models: types.ModelStatus,
       model_size: types.ModelSizeType | None = None,
-      call_type: types.CallType = types.CallType.GENERATE_TEXT
+      call_type: types.CallType = types.CallType.TEXT
   ):
     if model_size is None:
       return
@@ -420,7 +420,7 @@ class AvailableModels(state_controller.StateControlled):
     except Exception as e:
       return types.LoggingRecord(
           query_record=types.QueryRecord(
-              call_type=types.CallType.GENERATE_TEXT,
+              call_type=types.CallType.TEXT,
               provider_model=provider_model_state.provider_model,
               prompt=_GENERATE_TEXT_TEST_PROMPT,
               max_tokens=_GENERATE_TEXT_TEST_MAX_TOKENS
@@ -443,7 +443,7 @@ class AvailableModels(state_controller.StateControlled):
     )
     return types.LoggingRecord(
         query_record=types.QueryRecord(
-            call_type=types.CallType.GENERATE_TEXT,
+            call_type=types.CallType.TEXT,
             provider_model=provider_model, prompt=_GENERATE_TEXT_TEST_PROMPT,
             max_tokens=_GENERATE_TEXT_TEST_MAX_TOKENS
         ), response_record=types.QueryResponseRecord(
@@ -486,7 +486,7 @@ class AvailableModels(state_controller.StateControlled):
   ):
     process_count = max(1, multiprocessing.cpu_count() - 1)
     test_func = None
-    if call_type == types.CallType.GENERATE_TEXT:
+    if call_type == types.CallType.TEXT:
       test_func = self._test_generate_text
     else:
       raise ValueError(f'Call type not supported: {call_type}')
@@ -536,7 +536,7 @@ class AvailableModels(state_controller.StateControlled):
     on timeout handling without multiprocessing/threading.
     """
     test_func = None
-    if call_type == types.CallType.GENERATE_TEXT:
+    if call_type == types.CallType.TEXT:
       test_func = self._test_generate_text
     else:
       raise ValueError(f'Call type not supported: {call_type}')
@@ -627,9 +627,9 @@ class AvailableModels(state_controller.StateControlled):
       features: types.FeatureListType | None = None, verbose: bool = False,
       clear_model_cache: bool = False,
       raw_config_results_without_test: bool = False,
-      call_type: types.CallType = types.CallType.GENERATE_TEXT
+      call_type: types.CallType = types.CallType.TEXT
   ) -> types.ModelStatus:
-    if call_type != types.CallType.GENERATE_TEXT:
+    if call_type != types.CallType.TEXT:
       raise ValueError(f'Call type not supported: {call_type}')
 
     if self.model_cache_manager and clear_model_cache:
@@ -657,7 +657,7 @@ class AvailableModels(state_controller.StateControlled):
     if raw_config_results_without_test:
       return models
 
-    self._filter_by_cache(models, call_type=types.CallType.GENERATE_TEXT)
+    self._filter_by_cache(models, call_type=types.CallType.TEXT)
 
     print_flag = bool(verbose and models.unprocessed_models)
     verbose_print = print if print_flag else lambda *args, **kwargs: None
@@ -673,7 +673,7 @@ class AvailableModels(state_controller.StateControlled):
           f'Running test for {len(models.unprocessed_models)} models.'
       )
       self._test_models(
-          models, call_type=types.CallType.GENERATE_TEXT, verbose=verbose
+          models, call_type=types.CallType.TEXT, verbose=verbose
       )
       verbose_print(
           f'After test;\n'
@@ -704,10 +704,10 @@ class AvailableModels(state_controller.StateControlled):
   def list_models(
       self, model_size: types.ModelSizeIdentifierType | None = None,
       features: types.FeatureListParam | None = None,
-      call_type: types.CallType = types.CallType.GENERATE_TEXT
+      call_type: types.CallType = types.CallType.TEXT
   ) -> list[types.ProviderModelType]:
     """List all configured models matching the filters."""
-    if call_type != types.CallType.GENERATE_TEXT:
+    if call_type != types.CallType.TEXT:
       raise ValueError(f'Call type not supported: {call_type}')
     if model_size is not None:
       model_size = type_utils.check_model_size_identifier_type(model_size)
@@ -723,10 +723,10 @@ class AvailableModels(state_controller.StateControlled):
     return self._format_set(model_status.unprocessed_models)
 
   def list_providers(
-      self, call_type: types.CallType = types.CallType.GENERATE_TEXT
+      self, call_type: types.CallType = types.CallType.TEXT
   ) -> list[str]:
     """List all providers with available API keys."""
-    if call_type != types.CallType.GENERATE_TEXT:
+    if call_type != types.CallType.TEXT:
       raise ValueError(f'Call type not supported: {call_type}')
 
     model_status = self._fetch_all_models(
@@ -743,10 +743,10 @@ class AvailableModels(state_controller.StateControlled):
       provider: str,
       model_size: types.ModelSizeIdentifierType | None = None,
       features: types.FeatureListParam | None = None,
-      call_type: types.CallType = types.CallType.GENERATE_TEXT,
+      call_type: types.CallType = types.CallType.TEXT,
   ) -> list[types.ProviderModelType]:
     """List all models for a specific provider."""
-    if call_type != types.CallType.GENERATE_TEXT:
+    if call_type != types.CallType.TEXT:
       raise ValueError(f'Call type not supported: {call_type}')
     if model_size is not None:
       model_size = type_utils.check_model_size_identifier_type(model_size)
@@ -773,10 +773,10 @@ class AvailableModels(state_controller.StateControlled):
 
   def get_model(
       self, provider: str, model: str,
-      call_type: types.CallType = types.CallType.GENERATE_TEXT
+      call_type: types.CallType = types.CallType.TEXT
   ) -> types.ProviderModelType:
     """Get a specific model by provider and model name."""
-    if call_type != types.CallType.GENERATE_TEXT:
+    if call_type != types.CallType.TEXT:
       raise ValueError(f'Call type not supported: {call_type}')
 
     provider_model_config = (
@@ -807,10 +807,10 @@ class AvailableModels(state_controller.StateControlled):
       self, model_size: types.ModelSizeIdentifierType | None = None,
       features: types.FeatureListParam | None = None, verbose: bool = True,
       return_all: bool = False, clear_model_cache: bool = False,
-      call_type: types.CallType = types.CallType.GENERATE_TEXT
+      call_type: types.CallType = types.CallType.TEXT
   ) -> list[types.ProviderModelType] | types.ModelStatus:
     """List models verified to be working through API tests."""
-    if call_type != types.CallType.GENERATE_TEXT:
+    if call_type != types.CallType.TEXT:
       raise ValueError(f'Call type not supported: {call_type}')
     if model_size is not None:
       model_size = type_utils.check_model_size_identifier_type(model_size)
@@ -846,10 +846,10 @@ class AvailableModels(state_controller.StateControlled):
 
   def list_working_providers(
       self, verbose: bool = True, clear_model_cache: bool = False,
-      call_type: types.CallType = types.CallType.GENERATE_TEXT
+      call_type: types.CallType = types.CallType.TEXT
   ) -> list[str]:
     """List providers with at least one working model."""
-    if call_type != types.CallType.GENERATE_TEXT:
+    if call_type != types.CallType.TEXT:
       raise ValueError(f'Call type not supported: {call_type}')
 
     providers_with_key: set[str] | None = None
@@ -884,10 +884,10 @@ class AvailableModels(state_controller.StateControlled):
       verbose: bool = True,
       return_all: bool = False,
       clear_model_cache: bool = False,
-      call_type: types.CallType = types.CallType.GENERATE_TEXT,
+      call_type: types.CallType = types.CallType.TEXT,
   ) -> list[types.ProviderModelType] | types.ModelStatus:
     """List working models for a specific provider."""
-    if call_type != types.CallType.GENERATE_TEXT:
+    if call_type != types.CallType.TEXT:
       raise ValueError(f'Call type not supported: {call_type}')
     if model_size is not None:
       model_size = type_utils.check_model_size_identifier_type(model_size)
@@ -930,10 +930,10 @@ class AvailableModels(state_controller.StateControlled):
   def get_working_model(
       self, provider: str, model: str, verbose: bool = False,
       clear_model_cache: bool = False,
-      call_type: types.CallType = types.CallType.GENERATE_TEXT
+      call_type: types.CallType = types.CallType.TEXT
   ) -> types.ProviderModelType:
     """Get a specific model after verifying it works."""
-    if call_type != types.CallType.GENERATE_TEXT:
+    if call_type != types.CallType.TEXT:
       raise ValueError(f'Call type not supported: {call_type}')
 
     provider_model_config = (

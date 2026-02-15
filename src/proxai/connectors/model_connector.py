@@ -848,7 +848,7 @@ class ProviderModelConnector(state_controller.StateControlled):
 
     start_utc_date = datetime.datetime.now(datetime.timezone.utc)
     query_record = types.QueryRecord(
-        call_type=types.CallType.GENERATE_TEXT,
+        call_type=types.CallType.TEXT,
         provider_model=self.provider_model, prompt=prompt, system=system,
         messages=messages, max_tokens=max_tokens, temperature=temperature,
         stop=stop, response_format=response_format, web_search=web_search,
