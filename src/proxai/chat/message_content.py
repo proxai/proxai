@@ -2,8 +2,10 @@
 
 import copy
 import dataclasses
+import enum
+from typing import Any
 
-from proxai import types
+import pydantic
 
 SUPPORTED_MEDIA_TYPES = frozenset({
     # Image
@@ -37,6 +39,50 @@ SUPPORTED_MEDIA_TYPES = frozenset({
 })
 
 
+class MessageRoleType(str, enum.Enum):
+  """Role of the message sender in a conversation.
+
+  Attributes:
+    USER: Message from the user.
+    ASSISTANT: Message from the AI assistant.
+  """
+
+  USER = "user"
+  ASSISTANT = "assistant"
+
+
+class ContentType(str, enum.Enum):
+  """Type of content in a message block.
+
+  Attributes:
+    TEXT: Plain text content.
+    THINKING: Model thinking/reasoning text content.
+    IMAGE: Image content (URL, base64, or file path).
+    DOCUMENT: Document content (PDF, DOCX, etc.).
+    AUDIO: Audio content (MP3, WAV, etc.).
+    VIDEO: Video content (MP4, WebM, etc.).
+  """
+
+  TEXT = "text"
+  THINKING = "thinking"
+  IMAGE = "image"
+  DOCUMENT = "document"
+  AUDIO = "audio"
+  VIDEO = "video"
+  JSON = "json"
+  PYDANTIC_INSTANCE = "pydantic_instance"
+
+
+@dataclasses.dataclass
+class PydanticContent:
+  """Pydantic model information for structured response parsing."""
+
+  class_name: str | None = None
+  class_value: type[pydantic.BaseModel] | None = None
+  instance_value: pydantic.BaseModel | None = None
+  instance_json_value: dict[str, Any] | None = None
+
+
 @dataclasses.dataclass
 class MessageContent:
   """A single content block within a message.
@@ -63,25 +109,28 @@ class MessageContent:
     >>> px.MessageContent(type=px.MessageContent.Type.IMAGE, path="./photo.png")
   """
 
-  type: types.ContentType | str
+  type: ContentType | str
+
   text: str | None = None
+
+  json: dict[str, Any] | None = None
+  pydantic_content: PydanticContent | None = None
+  
   source: str | None = None
   data: str | None = None
   path: str | None = None
   media_type: str | None = None
 
-  Type = types.ContentType
-
   def __post_init__(self):
     if isinstance(self.type, str):
       try:
-        self.type = types.ContentType(self.type)
+        self.type = ContentType(self.type)
       except ValueError:
         raise ValueError(
             f"Invalid content type: {self.type!r}. "
-            f"Must be one of: {[t.value for t in types.ContentType]}"
+            f"Must be one of: {[t.value for t in ContentType]}"
         )
-    if self.type in (types.ContentType.TEXT, types.ContentType.THINKING):
+    if self.type in (ContentType.TEXT, ContentType.THINKING):
       if self.text is None:
         raise ValueError(
             f"'text' field is required when type is '{self.type.value}'."
@@ -100,6 +149,17 @@ class MessageContent:
             f"{', '.join(invalid_fields)} cannot be set "
             f"when type is '{self.type.value}'."
         )
+    elif self.type == ContentType.JSON:
+      if self.json is None:
+        raise ValueError(
+            "'json' field is required when type is 'json'."
+        )
+    elif self.type == ContentType.PYDANTIC_INSTANCE:
+      if self.pydantic_content is None:
+        raise ValueError(
+            "'pydantic_content' field is required when type is "
+            "'pydantic_instance'."
+        )
     else:
       if self.source is None and self.data is None and self.path is None:
         raise ValueError(
@@ -115,7 +175,7 @@ class MessageContent:
     if media_type not in SUPPORTED_MEDIA_TYPES:
       raise ValueError(
           f"Unsupported media_type: {media_type!r}. "
-          f"Supported types: {sorted(SUPPORTED_MEDIA_TYPES)}."
+          f"Supported  {sorted(SUPPORTED_MEDIA_TYPES)}."
       )
 
   def to_dict(self) -> dict:

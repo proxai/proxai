@@ -2,12 +2,13 @@
 
 import copy
 import json
+import dataclasses
 
-from proxai import types
 from proxai.chat.message import Message
-from proxai.chat.message_content import MessageContent
+from proxai.chat.message_content import MessageContent, ContentType, MessageRoleType
 
 
+@dataclasses.dataclass(init=False)
 class Chat:
   """A conversation session containing a sequence of messages.
 
@@ -27,6 +28,9 @@ class Chat:
     >>> print(chat[0])  # Message(role='user', content='Hello!')
   """
 
+  system_prompt: str | None = None
+  messages: list[Message] = dataclasses.field(default_factory=list)
+
   def __init__(self, messages=None, system_prompt=None):
     """Initialize a Chat session.
 
@@ -34,25 +38,11 @@ class Chat:
       messages: Optional list of Message objects or dicts to initialize with.
       system_prompt: Optional system prompt string.
     """
-    self._system_prompt = system_prompt
-    self._messages = []
+    self.system_prompt = system_prompt
+    self.messages = []
     if messages is not None:
       for msg in messages:
-        self._messages.append(self._validate_message(msg))
-
-  @property
-  def system_prompt(self) -> str | None:
-    """Get the system prompt."""
-    return self._system_prompt
-
-  @system_prompt.setter
-  def system_prompt(self, value: str | None):
-    """Set the system prompt."""
-    if value is not None and not isinstance(value, str):
-      raise TypeError(
-          f"system_prompt must be a string or None, got {type(value).__name__}."
-      )
-    self._system_prompt = value
+        self.messages.append(self._validate_message(msg))
 
   def _validate_message(self, msg) -> Message:
     """Validate and return a Message object."""
@@ -66,24 +56,24 @@ class Chat:
 
   def append(self, msg) -> None:
     """Append a message to the conversation."""
-    self._messages.append(self._validate_message(msg))
+    self.messages.append(self._validate_message(msg))
 
   def extend(self, msgs) -> None:
     """Extend the conversation with multiple messages."""
     for msg in msgs:
-      self._messages.append(self._validate_message(msg))
+      self.messages.append(self._validate_message(msg))
 
   def insert(self, index: int, msg) -> None:
     """Insert a message at the given index."""
-    self._messages.insert(index, self._validate_message(msg))
+    self.messages.insert(index, self._validate_message(msg))
 
   def pop(self, index: int = -1) -> Message:
     """Remove and return the message at the given index."""
-    return self._messages.pop(index)
+    return self.messages.pop(index)
 
   def clear(self) -> None:
     """Remove all messages from the conversation."""
-    self._messages.clear()
+    self.messages.clear()
 
   def copy(self) -> "Chat":
     """Return a deep copy of this Chat."""
@@ -91,62 +81,62 @@ class Chat:
 
   def __getitem__(self, index):
     if isinstance(index, slice):
-      new_chat = Chat(system_prompt=self._system_prompt)
-      new_chat._messages = self._messages[index]
+      new_chat = Chat(system_prompt=self.system_prompt)
+      new_chat.messages = self.messages[index]
       return new_chat
-    return self._messages[index]
+    return self.messages[index]
 
   def __setitem__(self, index, msg):
-    self._messages[index] = self._validate_message(msg)
+    self.messages[index] = self._validate_message(msg)
 
   def __delitem__(self, index):
-    del self._messages[index]
+    del self.messages[index]
 
   def __len__(self) -> int:
-    return len(self._messages)
+    return len(self.messages)
 
   def __iter__(self):
-    return iter(self._messages)
+    return iter(self.messages)
 
   def __add__(self, other):
     if not isinstance(other, Chat):
       return NotImplemented
     new_chat = self.copy()
-    new_chat._messages.extend(other._messages)
+    new_chat.messages.extend(other.messages)
     return new_chat
 
   def __iadd__(self, other):
     if not isinstance(other, Chat):
       return NotImplemented
-    self._messages.extend(other._messages)
+    self.messages.extend(other.messages)
     return self
 
   def __eq__(self, other):
     if not isinstance(other, Chat):
       return NotImplemented
     return (
-        self._system_prompt == other._system_prompt
-        and self._messages == other._messages
+        self.system_prompt == other.system_prompt
+        and self.messages == other.messages
     )
 
   def __repr__(self) -> str:
-    count = len(self._messages)
+    count = len(self.messages)
     suffix = "message" if count == 1 else "messages"
     return f"Chat({count} {suffix})"
 
   def to_dict(self) -> dict:
     """Serialize to a dictionary."""
     result = {}
-    if self._system_prompt is not None:
-      result["system_prompt"] = self._system_prompt
-    result["messages"] = [msg.to_dict() for msg in self._messages]
+    if self.system_prompt is not None:
+      result["system_prompt"] = self.system_prompt
+    result["messages"] = [msg.to_dict() for msg in self.messages]
     return result
 
   def export(
       self,
       merge_consecutive_roles: bool = True,
       omit_thinking: bool = True,
-      allowed_types: list[types.ContentType | str] | None = None,
+      allowed_types: list[ContentType | str] | None = None,
       add_json_guidance_to_system: bool = False,
       add_json_schema_guidance_to_system: dict | str | None = None,
       add_json_guidance_to_user_prompt: bool = False,
@@ -215,13 +205,13 @@ class Chat:
 
     # 2. Build system prompt with JSON guidance.
     system_prompt = self._build_system_prompt(
-        self._system_prompt,
+        self.system_prompt,
         add_json_guidance_to_system,
         add_json_schema_guidance_to_system,
     )
 
     # 3. Deep copy messages.
-    messages = [msg.copy() for msg in self._messages]
+    messages = [msg.copy() for msg in self.messages]
 
     # 4. Place system prompt into messages if requested.
     if system_prompt is not None and add_system_to_first_user_message:
@@ -328,10 +318,10 @@ class Chat:
     if suffix is None:
       return
     for msg in reversed(messages):
-      if msg.role == types.MessageRoleType.USER:
+      if msg.role == MessageRoleType.USER:
         if isinstance(msg.content, str):
           msg.content = f"{msg.content}\n\n{suffix}"
-        elif msg.content and msg.content[-1].type == types.ContentType.TEXT:
+        elif msg.content and msg.content[-1].type == ContentType.TEXT:
           msg.content[-1].text = f"{msg.content[-1].text}\n\n{suffix}"
         else:
           msg.content.append(MessageContent(type="text", text=suffix))
@@ -344,10 +334,10 @@ class Chat:
   ):
     """Prepend system prompt text to the first user message."""
     for msg in messages:
-      if msg.role == types.MessageRoleType.USER:
+      if msg.role == MessageRoleType.USER:
         if isinstance(msg.content, str):
           msg.content = f"{system_prompt}\n\n{msg.content}"
-        elif msg.content and msg.content[0].type == types.ContentType.TEXT:
+        elif msg.content and msg.content[0].type == ContentType.TEXT:
           msg.content[0].text = (
               f"{system_prompt}\n\n{msg.content[0].text}"
           )
@@ -366,7 +356,7 @@ class Chat:
       if isinstance(msg.content, list):
         msg.content = [
             c for c in msg.content
-            if c.type != types.ContentType.THINKING
+            if c.type != ContentType.THINKING
         ]
         if msg.content:
           filtered.append(msg)
@@ -376,16 +366,16 @@ class Chat:
 
   @staticmethod
   def _normalize_allowed_types(
-      allowed_types: list[types.ContentType | str] | None,
-  ) -> set[types.ContentType] | None:
+      allowed_types: list[ContentType | str] | None,
+  ) -> set[ContentType] | None:
     """Normalize allowed_types to a ContentType set, or None."""
     if allowed_types is None:
       return None
     allowed_set = set()
     for t in allowed_types:
       if isinstance(t, str):
-        allowed_set.add(types.ContentType(t))
-      elif isinstance(t, types.ContentType):
+        allowed_set.add(ContentType(t))
+      elif isinstance(t, ContentType):
         allowed_set.add(t)
       else:
         raise TypeError(
@@ -397,12 +387,12 @@ class Chat:
   @staticmethod
   def _validate_allowed_types(
       messages: list[Message],
-      allowed_set: set[types.ContentType],
+      allowed_set: set[ContentType],
   ):
     """Raise ValueError if any content type is not in allowed_set."""
     for msg in messages:
       if isinstance(msg.content, str):
-        if types.ContentType.TEXT not in allowed_set:
+        if ContentType.TEXT not in allowed_set:
           raise ValueError(
               f"Content type 'text' is not in allowed_types."
           )
