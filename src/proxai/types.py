@@ -16,20 +16,12 @@ class RunType(enum.Enum):
 class CallType(str, enum.Enum):
   """Type of API call being made to the provider."""
 
-  GENERATE_TEXT = "GENERATE_TEXT"
+  TEXT = "TEXT"
+  IMAGE = "IMAGE"
+  AUDIO = "AUDIO"
+  VIDEO = "VIDEO"
+  MULTI_MODAL = "MULTI_MODAL"
   OTHER = "OTHER"
-
-
-class MessageRoleType(str, enum.Enum):
-  """Role of the message sender in a conversation.
-
-  Attributes:
-    USER: Message from the user.
-    ASSISTANT: Message from the AI assistant.
-  """
-
-  USER = "user"
-  ASSISTANT = "assistant"
 
 
 class ContentType(str, enum.Enum):
@@ -50,6 +42,8 @@ class ContentType(str, enum.Enum):
   DOCUMENT = "document"
   AUDIO = "audio"
   VIDEO = "video"
+  JSON = "json"
+  PYDANTIC_INSTANCE = "pydantic_instance"
 
 
 ProviderNameType = str
@@ -125,7 +119,6 @@ class ProviderModelType:
 ProviderModelTupleType = tuple[ProviderNameType, ModelNameType]
 ProviderModelIdentifierType = ProviderModelType | ProviderModelTupleType
 StopType = str | list[str]
-MessagesType = list[dict[str, str]]
 
 
 @dataclasses.dataclass
@@ -134,6 +127,57 @@ class ProviderModelPricingType:
 
   per_response_token_cost: float | None = None
   per_query_token_cost: float | None = None
+
+
+class FeatureSupportType(str, enum.Enum):
+  """Support level for a feature."""
+
+  SUPPORTED = "SUPPORTED"
+  BEST_EFFORT = "BEST_EFFORT"
+  NOT_SUPPORTED = "NOT_SUPPORTED"
+
+
+@dataclasses.dataclass
+class ParameterConfigType:
+  """Parameter configuration for a provider endpoint."""
+
+  temperature: FeatureSupportType | None = None
+  max_tokens: FeatureSupportType | None = None
+  stop: FeatureSupportType | None = None
+  n: FeatureSupportType | None = None
+  thinking: FeatureSupportType | None = None
+
+
+@dataclasses.dataclass
+class ToolConfigType:
+  """Tool configuration for a provider endpoint."""
+
+  web_search: FeatureSupportType | None = None
+
+
+@dataclasses.dataclass
+class ResponseFormatConfigType:
+  """Response format configuration for a provider endpoint."""
+
+  text: FeatureSupportType | None = None
+  image: FeatureSupportType | None = None
+  audio: FeatureSupportType | None = None
+  video: FeatureSupportType | None = None
+  json: FeatureSupportType | None = None
+  pydantic: FeatureSupportType | None = None
+  multi_modal: FeatureSupportType | None = None
+
+
+@dataclasses.dataclass
+class FeatureConfigType:
+  """Feature configuration for a provider endpoint."""
+
+  prompt: FeatureSupportType | None = None
+  messages: FeatureSupportType | None = None
+  system_prompt: FeatureSupportType | None = None
+  parameters: ParameterConfigType | None = None
+  tools: ToolConfigType | None = None
+  response_format: ResponseFormatConfigType | None = None
 
 
 @dataclasses.dataclass
@@ -150,14 +194,13 @@ class FeatureNameType(str, enum.Enum):
 
   PROMPT = "prompt"
   MESSAGES = "messages"
-  SYSTEM = "system"
+  SYSTEM_PROMPT = "system_prompt"
   MAX_TOKENS = "max_tokens"
   TEMPERATURE = "temperature"
   STOP = "stop"
   WEB_SEARCH = "web_search"
   RESPONSE_FORMAT_TEXT = "response_format::text"
   RESPONSE_FORMAT_JSON = "response_format::json"
-  RESPONSE_FORMAT_JSON_SCHEMA = "response_format::json_schema"
   RESPONSE_FORMAT_PYDANTIC = "response_format::pydantic"
 
 
@@ -408,16 +451,110 @@ class RunOptions:
   suppress_provider_errors: bool | None = None
 
 
+class MessageRoleType(str, enum.Enum):
+  """Role of the message sender in a conversation.
+
+  Attributes:
+    USER: Message from the user.
+    ASSISTANT: Message from the AI assistant.
+  """
+
+  USER = "user"
+  ASSISTANT = "assistant"
+
+
+SUPPORTED_MEDIA_TYPES = frozenset({
+    # Image
+    "image/png",
+    "image/jpeg",
+    "image/gif",
+    "image/webp",
+    "image/heic",
+    "image/heif",
+    # Document
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "text/csv",
+    "text/plain",
+    "text/markdown",
+    # Audio
+    "audio/mpeg",
+    "audio/wav",
+    "audio/flac",
+    "audio/aac",
+    "audio/ogg",
+    "audio/aiff",
+    # Video
+    "video/mp4",
+    "video/webm",
+    "video/quicktime",
+    "video/x-msvideo",
+    "video/mpeg",
+    "video/x-matroska",
+})
+
+
 @dataclasses.dataclass
-class ResponseFormatPydanticValue:
+class PydanticContent:
   """Pydantic model information for structured response parsing."""
 
   class_name: str | None = None
   class_value: type[pydantic.BaseModel] | None = None
-  class_json_schema_value: dict[str, Any] | None = None
+  instance_value: pydantic.BaseModel | None = None
+  instance_json_value: dict[str, Any] | None = None
 
 
-ResponseFormatValueType = str | dict[str, Any] | ResponseFormatPydanticValue
+@dataclasses.dataclass
+class MessageContent:
+  """A single content block within a message.
+
+  Attributes:
+    type: The content type ("text", "image", "document", "audio", "video").
+    text: The text content. Required when type is TEXT.
+    source: URL for media content.
+    data: Base64-encoded inline data for media content.
+    path: Local file path for media content.
+    media_type: MIME type string (e.g., "image/png", "application/pdf").
+  """
+
+  type: ContentType | str
+
+  text: str | None = None
+
+  json: dict[str, Any] | None = None
+  pydantic_content: PydanticContent | None = None
+
+  source: str | None = None
+  data: str | None = None
+  path: str | None = None
+  media_type: str | None = None
+
+
+@dataclasses.dataclass
+class Message:
+  """A single message in a conversation.
+
+  Attributes:
+    role: The message sender role ("user" or "assistant").
+    content: Message content as a string or list of MessageContent blocks.
+  """
+
+  role: MessageRoleType | str
+  content: str | list[MessageContent | str]
+
+
+@dataclasses.dataclass
+class Chat:
+  """A conversation session containing a sequence of messages.
+
+  Attributes:
+    system_prompt: Optional system prompt string for the conversation.
+    messages: List of Message objects in the conversation.
+  """
+
+  system_prompt: str | None = None
+  messages: list[Message] = dataclasses.field(default_factory=list)
 
 
 class ResponseFormatType(str, enum.Enum):
@@ -428,157 +565,146 @@ class ResponseFormatType(str, enum.Enum):
 
   Attributes:
     TEXT: Plain text response (default).
+    IMAGE: Image response.
+    AUDIO: Audio response.
+    VIDEO: Video response.
     JSON: Response parsed as JSON object.
-    JSON_SCHEMA: Response validated against a JSON schema.
     PYDANTIC: Response parsed into a Pydantic model instance.
-
-  Example:
-    >>> import proxai as px
-    >>> # Usually inferred automatically, but can be explicit:
-    >>> fmt = px.ResponseFormat(
-    ...   schema={"type": "object"}, type=px.ResponseFormatType.JSON_SCHEMA
-    ... )
+    MULTI_MODAL: Multi-modal response.
   """
 
   TEXT = "TEXT"
+  IMAGE = "IMAGE"
+  AUDIO = "AUDIO"
+  VIDEO = "VIDEO"
   JSON = "JSON"
-  JSON_SCHEMA = "JSON_SCHEMA"
   PYDANTIC = "PYDANTIC"
+  MULTI_MODAL = "MULTI_MODAL"
 
 
 @dataclasses.dataclass
 class ResponseFormat:
   """Specification for the desired response format."""
 
-  value: ResponseFormatValueType | None = None
   type: ResponseFormatType | None = None
+  pydantic_schema: dict[str, Any] | None = None
 
 
-ResponseFormatSchema = str | dict[str, Any] | type[pydantic.BaseModel]
+class ThinkingType(str, enum.Enum):
+  """Type of thinking for a query to a provider."""
+
+  LOW = "LOW"
+  MEDIUM = "MEDIUM"
+  HIGH = "HIGH"
 
 
 @dataclasses.dataclass
-class StructuredResponseFormat:
-  """User-facing structured response format specification.
+class ParameterType:
+  """Parameters for a query to a provider."""
 
-  Defines the expected format for structured model responses,
-  enabling automatic parsing into JSON or Pydantic models.
-
-  Args:
-    schema: The response schema. Can be a JSON schema dict,
-      a JSON schema string, or a Pydantic model class.
-    type: The response format type (TEXT, JSON, JSON_SCHEMA,
-      or PYDANTIC). Usually inferred from the schema.
-
-  Example:
-    >>> from pydantic import BaseModel
-    >>> import proxai as px
-    >>>
-    >>> class Person(BaseModel):
-    ...   name: str
-    ...   age: int
-    >>>
-    >>> # Using Pydantic model directly (preferred)
-    >>> response = px.generate_text(
-    ...   prompt="Generate a person", response_format=Person
-    ... )
-    >>>
-    >>> # Using StructuredResponseFormat explicitly
-    >>> fmt = px.ResponseFormat(schema=Person)
-  """
-
-  schema: ResponseFormatSchema | None = None
-  type: ResponseFormatType | None = None
+  temperature: float | None = None
+  max_tokens: int | None = None
+  stop: StopType | None = None
+  n: int | None = None
+  thinking: ThinkingType | None = None
 
 
-ResponseFormatParam = ResponseFormatSchema | StructuredResponseFormat
+class Tools(enum.Enum):
+  """Tools for a query to a provider."""
+
+  WEB_SEARCH = "WEB_SEARCH"
+
+
+@dataclasses.dataclass
+class ConnectionOptions:
+  """Connection options for a query to a provider."""
+
+  provider_model: ProviderModelType | None = None
+  feature_mapping_strategy: FeatureMappingStrategy | None = None
+  chosen_endpoint: str | None = None
 
 
 @dataclasses.dataclass
 class QueryRecord:
   """Complete record of a query sent to a provider."""
 
-  call_type: CallType | None = None
-  provider_model: ProviderModelType | None = None
   prompt: str | None = None
-  system: str | None = None
-  messages: MessagesType | None = None
-  max_tokens: int | None = None
-  temperature: float | None = None
-  stop: StopType | None = None
-  token_count: int | None = None
+  chat: Chat | None = None
+  system_prompt: str | None = None
+  parameters: ParameterType | None = None
+  tools: list[Tools] | None = None
   response_format: ResponseFormat | None = None
-  web_search: bool | None = None
-  feature_mapping_strategy: FeatureMappingStrategy | None = None
-  chosen_endpoint: str | None = None
+  connection_options: ConnectionOptions | None = None
   hash_value: str | None = None
 
 
-@dataclasses.dataclass
-class PydanticMetadataType:
-  """Metadata for serializing and deserializing Pydantic instances."""
+class ResultStatusType(str, enum.Enum):
+  """Status of a query to a provider."""
 
-  class_name: str | None = None
-  instance_json_value: dict[str, Any] | None = None
-
-
-ResponseValue = str | dict[str, Any] | pydantic.BaseModel
-
-
-class ResponseType(str, enum.Enum):
-  """Type of the response value returned by the model."""
-
-  TEXT = "TEXT"
-  JSON = "JSON"
-  PYDANTIC = "PYDANTIC"
+  SUCCESS = "SUCCESS"
+  FAILED = "FAILED"
 
 
 @dataclasses.dataclass
-class Response:
-  """Response data returned from a model query."""
+class ChoiceType:
+  """Choice of a query to a provider."""
 
-  value: ResponseValue | None = None
-  type: ResponseType | None = None
-  pydantic_metadata: PydanticMetadataType | None = None
+  content: str | list[MessageContent | str] | None = None
 
 
 @dataclasses.dataclass
-class QueryResponseRecord:
-  """Complete response record including timing and error information."""
+class UsageType:
+  """Usage of a query to a provider."""
 
-  response: Response | None = None
-  error: str | None = None
-  error_traceback: str | None = None
+  input_tokens: int | None = None
+  output_tokens: int | None = None
+  total_tokens: int | None = None
+  estimated_cost: int | None = None
+
+
+@dataclasses.dataclass
+class ToolUsageType:
+  """Usage of a tool for a query to a provider."""
+
+  web_search_count: int | None = None
+  web_search_citations: list[str] | None = None
+
+
+@dataclasses.dataclass
+class TimeStampType:
+  """Timestamp information for a query to a provider."""
+
   start_utc_date: datetime.datetime | None = None
   end_utc_date: datetime.datetime | None = None
   local_time_offset_minute: int | None = None
   response_time: datetime.timedelta | None = None
-  estimated_cost: int | None = None
-  token_count: int | None = None
+  cache_response_time: datetime.timedelta | None = None
 
 
 @dataclasses.dataclass
-class CacheRecord:
-  """Cached query and its associated responses."""
+class ResultRecord:
+  """Result of a query to a provider."""
 
-  query_record: QueryRecord | None = None
-  query_responses: list[QueryResponseRecord] = dataclasses.field(
-      default_factory=list
-  )
-  shard_id: str | None = None
-  last_access_time: datetime.datetime | None = None
-  call_count: int | None = None
+  status: ResultStatusType | None = None
+
+  role: MessageRoleType | None = None
+
+  content: str | list[MessageContent | str] | None = None
+  choices: list[ChoiceType] | None = None
+
+  error: str | None = None
+  error_traceback: str | None = None
+
+  usage: UsageType | None = None
+  tool_usage: ToolUsageType | None = None
+  timestamp: TimeStampType | None = None
 
 
-@dataclasses.dataclass
-class LightCacheRecord:
-  """Lightweight cache metadata without full response data."""
+class ResultSource(str, enum.Enum):
+  """Origin of the response data."""
 
-  query_record_hash: str | None = None
-  query_response_count: int | None = None
-  shard_id: int | None = None
-  last_access_time: datetime.datetime | None = None
-  call_count: int | None = None
+  CACHE = "CACHE"
+  PROVIDER = "PROVIDER"
 
 
 class CacheLookFailReason(str, enum.Enum):
@@ -591,28 +717,53 @@ class CacheLookFailReason(str, enum.Enum):
 
 
 @dataclasses.dataclass
-class CacheLookResult:
-  """Result of a cache lookup operation."""
+class CacheMetadata:
+  """Metadata for a cached query."""
 
-  query_response: QueryResponseRecord | None = None
-  look_fail_reason: CacheLookFailReason | None = None
-
-
-class ResponseSource(str, enum.Enum):
-  """Origin of the response data."""
-
-  CACHE = "CACHE"
-  PROVIDER = "PROVIDER"
+  cache_hit: bool | None = None
+  result_source: ResultSource | None = None
+  cache_look_fail_reason: CacheLookFailReason | None = None
 
 
 @dataclasses.dataclass
-class LoggingRecord:
-  """Complete log entry for a query and its response."""
+class CallRecord:
+  """Complete record of a call to a provider."""
 
-  query_record: QueryRecord | None = None
-  response_record: QueryResponseRecord | None = None
-  response_source: ResponseSource | None = None
-  look_fail_reason: CacheLookFailReason | None = None
+  query: QueryRecord | None = None
+  result: ResultRecord | None = None
+  cache: CacheMetadata | None = None
+
+
+@dataclasses.dataclass
+class CacheRecord:
+  """Cached query and its associated responses."""
+
+  query: QueryRecord | None = None
+  results: list[ResultRecord] = dataclasses.field(
+      default_factory=list
+  )
+  shard_id: str | None = None
+  last_access_time: datetime.datetime | None = None
+  call_count: int | None = None
+
+
+@dataclasses.dataclass
+class LightCacheRecord:
+  """Lightweight cache metadata without full response data."""
+
+  query_hash: str | None = None
+  results_count: int | None = None
+  shard_id: int | None = None
+  last_access_time: datetime.datetime | None = None
+  call_count: int | None = None
+
+
+@dataclasses.dataclass
+class CacheLookResult:
+  """Result of a cache lookup operation."""
+
+  result: ResultRecord | None = None
+  cache_look_fail_reason: CacheLookFailReason | None = None
 
 
 @dataclasses.dataclass
@@ -629,7 +780,7 @@ class ModelStatus:
   filtered_models: set[ProviderModelType] = dataclasses.field(
       default_factory=set
   )
-  provider_queries: dict[ProviderModelType, LoggingRecord] = dataclasses.field(
+  provider_queries: dict[ProviderModelType, CallRecord] = dataclasses.field(
       default_factory=dict
   )
 
