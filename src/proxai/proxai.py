@@ -6,7 +6,6 @@ from proxai.client import ModelConnector
 CacheOptions = types.CacheOptions
 LoggingOptions = types.LoggingOptions
 ProxDashOptions = types.ProxDashOptions
-ResponseFormat = types.StructuredResponseFormat
 ResponseFormatType = types.ResponseFormatType
 FeatureMappingStrategy = types.FeatureMappingStrategy
 ProviderModelType = types.ProviderModelType
