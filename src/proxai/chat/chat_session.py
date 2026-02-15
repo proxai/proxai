@@ -28,8 +28,18 @@ class Chat:
     >>> print(chat[0])  # Message(role='user', content='Hello!')
   """
 
-  system_prompt: str | None = None
+  _system_prompt: str | None = dataclasses.field(default=None, repr=False)
   messages: list[Message] = dataclasses.field(default_factory=list)
+
+  @property
+  def system_prompt(self) -> str | None:
+    return self._system_prompt
+
+  @system_prompt.setter
+  def system_prompt(self, value):
+    if value is not None and not isinstance(value, str):
+      raise TypeError("system_prompt must be a string.")
+    self._system_prompt = value
 
   def __init__(self, messages=None, system_prompt=None):
     """Initialize a Chat session.
