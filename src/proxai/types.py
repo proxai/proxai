@@ -3,7 +3,17 @@ import datetime
 import enum
 from typing import Any
 
-import pydantic
+import proxai.chat.message_content as message_content
+import proxai.chat.message as message
+import proxai.chat.chat_session as chat_session
+
+ContentType = message_content.ContentType
+MessageRoleType = message_content.MessageRoleType
+PydanticContent = message_content.PydanticContent
+MessageContent = message_content.MessageContent
+Message = message.Message
+Chat = chat_session.Chat
+SUPPORTED_MEDIA_TYPES = message_content.SUPPORTED_MEDIA_TYPES
 
 
 class RunType(enum.Enum):
@@ -22,28 +32,6 @@ class CallType(str, enum.Enum):
   VIDEO = "VIDEO"
   MULTI_MODAL = "MULTI_MODAL"
   OTHER = "OTHER"
-
-
-class ContentType(str, enum.Enum):
-  """Type of content in a message block.
-
-  Attributes:
-    TEXT: Plain text content.
-    THINKING: Model thinking/reasoning text content.
-    IMAGE: Image content (URL, base64, or file path).
-    DOCUMENT: Document content (PDF, DOCX, etc.).
-    AUDIO: Audio content (MP3, WAV, etc.).
-    VIDEO: Video content (MP4, WebM, etc.).
-  """
-
-  TEXT = "text"
-  THINKING = "thinking"
-  IMAGE = "image"
-  DOCUMENT = "document"
-  AUDIO = "audio"
-  VIDEO = "video"
-  JSON = "json"
-  PYDANTIC_INSTANCE = "pydantic_instance"
 
 
 ProviderNameType = str
@@ -449,112 +437,6 @@ class RunOptions:
   model_test_timeout: int | None = None
   feature_mapping_strategy: FeatureMappingStrategy | None = None
   suppress_provider_errors: bool | None = None
-
-
-class MessageRoleType(str, enum.Enum):
-  """Role of the message sender in a conversation.
-
-  Attributes:
-    USER: Message from the user.
-    ASSISTANT: Message from the AI assistant.
-  """
-
-  USER = "user"
-  ASSISTANT = "assistant"
-
-
-SUPPORTED_MEDIA_TYPES = frozenset({
-    # Image
-    "image/png",
-    "image/jpeg",
-    "image/gif",
-    "image/webp",
-    "image/heic",
-    "image/heif",
-    # Document
-    "application/pdf",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    "text/csv",
-    "text/plain",
-    "text/markdown",
-    # Audio
-    "audio/mpeg",
-    "audio/wav",
-    "audio/flac",
-    "audio/aac",
-    "audio/ogg",
-    "audio/aiff",
-    # Video
-    "video/mp4",
-    "video/webm",
-    "video/quicktime",
-    "video/x-msvideo",
-    "video/mpeg",
-    "video/x-matroska",
-})
-
-
-@dataclasses.dataclass
-class PydanticContent:
-  """Pydantic model information for structured response parsing."""
-
-  class_name: str | None = None
-  class_value: type[pydantic.BaseModel] | None = None
-  instance_value: pydantic.BaseModel | None = None
-  instance_json_value: dict[str, Any] | None = None
-
-
-@dataclasses.dataclass
-class MessageContent:
-  """A single content block within a message.
-
-  Attributes:
-    type: The content type ("text", "image", "document", "audio", "video").
-    text: The text content. Required when type is TEXT.
-    source: URL for media content.
-    data: Base64-encoded inline data for media content.
-    path: Local file path for media content.
-    media_type: MIME type string (e.g., "image/png", "application/pdf").
-  """
-
-  type: ContentType | str
-
-  text: str | None = None
-
-  json: dict[str, Any] | None = None
-  pydantic_content: PydanticContent | None = None
-
-  source: str | None = None
-  data: str | None = None
-  path: str | None = None
-  media_type: str | None = None
-
-
-@dataclasses.dataclass
-class Message:
-  """A single message in a conversation.
-
-  Attributes:
-    role: The message sender role ("user" or "assistant").
-    content: Message content as a string or list of MessageContent blocks.
-  """
-
-  role: MessageRoleType | str
-  content: str | list[MessageContent | str]
-
-
-@dataclasses.dataclass
-class Chat:
-  """A conversation session containing a sequence of messages.
-
-  Attributes:
-    system_prompt: Optional system prompt string for the conversation.
-    messages: List of Message objects in the conversation.
-  """
-
-  system_prompt: str | None = None
-  messages: list[Message] = dataclasses.field(default_factory=list)
 
 
 class ResponseFormatType(str, enum.Enum):

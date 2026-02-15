@@ -3,8 +3,7 @@
 import copy
 import dataclasses
 
-from proxai import types
-from proxai.chat.message_content import MessageContent
+from proxai.chat.message_content import MessageContent, MessageRoleType
 
 
 @dataclasses.dataclass
@@ -30,17 +29,17 @@ class Message:
     ... ])
   """
 
-  role: types.MessageRoleType | str
+  role: MessageRoleType | str
   content: str | list[MessageContent | str]
 
   def __post_init__(self):
     if isinstance(self.role, str):
       try:
-        self.role = types.MessageRoleType(self.role)
+        self.role = MessageRoleType(self.role)
       except ValueError:
         raise ValueError(
             f"Invalid role: {self.role!r}. "
-            f"Must be one of: {[r.value for r in types.MessageRoleType]}"
+            f"Must be one of: {[r.value for r in MessageRoleType]}"
         )
     if isinstance(self.content, list):
       normalized = []
