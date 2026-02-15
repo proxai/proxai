@@ -320,7 +320,7 @@ def _print_state(shard_manager: query_cache.ShardManager, records):
 class TestBaseQueryCache:
 
   def test_to_light_cache_record(self):
-    query_record = types.QueryRecord(call_type=types.CallType.GENERATE_TEXT)
+    query_record = types.QueryRecord(call_type=types.CallType.TEXT)
     query_record.hash_value = (
         hash_serializer.get_query_record_hash(query_record=query_record)
     )
@@ -354,7 +354,7 @@ class TestBaseQueryCache:
 
   def test_get_cache_size(self):
     cache_record = types.CacheRecord(
-        query_record=types.QueryRecord(call_type=types.CallType.GENERATE_TEXT)
+        query_record=types.QueryRecord(call_type=types.CallType.TEXT)
     )
     light_cache_record = query_cache._to_light_cache_record(
         cache_record=cache_record
@@ -364,7 +364,7 @@ class TestBaseQueryCache:
     assert cache_record_size == light_cache_record_size == 1
 
     cache_record = types.CacheRecord(
-        query_record=types.QueryRecord(call_type=types.CallType.GENERATE_TEXT),
+        query_record=types.QueryRecord(call_type=types.CallType.TEXT),
         query_responses=[
             types.QueryResponseRecord(
                 response=types.Response(

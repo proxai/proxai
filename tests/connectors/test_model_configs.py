@@ -10,7 +10,7 @@ import proxai.types as types
 
 def create_provider_model_config(
     provider: str, model: str, is_featured: bool = True,
-    call_type: types.CallType = types.CallType.GENERATE_TEXT,
+    call_type: types.CallType = types.CallType.TEXT,
     model_size_tags: list = None, features: dict = None
 ) -> types.ProviderModelConfigType:
   """Create a ProviderModelConfigType for testing."""
@@ -183,14 +183,14 @@ class TestGetAllModelsByCallTypeFromConfigs:
         'openai': {
             'gpt-4':
                 create_provider_model_config(
-                    'openai', 'gpt-4', call_type=types.CallType.GENERATE_TEXT
+                    'openai', 'gpt-4', call_type=types.CallType.TEXT
                 ),
         }
     }
     result = model_configs_instance._get_all_models_by_call_type_from_configs(
         configs
     )
-    assert result[types.CallType.GENERATE_TEXT] == {('openai', 'gpt-4')}
+    assert result[types.CallType.TEXT] == {('openai', 'gpt-4')}
 
 
 class TestGetAllModelsBySizeFromConfigs:
@@ -401,12 +401,12 @@ class TestValidateModelsByCallType:
         'openai': {
             'gpt-4':
                 create_provider_model_config(
-                    'openai', 'gpt-4', call_type=types.CallType.GENERATE_TEXT
+                    'openai', 'gpt-4', call_type=types.CallType.TEXT
                 )
         }
     }
     by_call_type = {
-        types.CallType.GENERATE_TEXT: {
+        types.CallType.TEXT: {
             'openai': [
                 types.ProviderModelType(
                     provider='openai', model='gpt-4',
@@ -422,7 +422,7 @@ class TestValidateModelsByCallType:
         'openai': {
             'gpt-4':
                 create_provider_model_config(
-                    'openai', 'gpt-4', call_type=types.CallType.GENERATE_TEXT
+                    'openai', 'gpt-4', call_type=types.CallType.TEXT
                 )
         }
     }
@@ -533,14 +533,14 @@ class TestValidateVersionConfig:
             'gpt-4':
                 create_provider_model_config(
                     'openai', 'gpt-4', is_featured=True,
-                    call_type=types.CallType.GENERATE_TEXT,
+                    call_type=types.CallType.TEXT,
                     model_size_tags=[types.ModelSizeType.LARGE]
                 )
         }
     }
     version_config = create_version_config(
         provider_model_configs=configs, featured_models={'openai': [pm]},
-        models_by_call_type={types.CallType.GENERATE_TEXT: {
+        models_by_call_type={types.CallType.TEXT: {
             'openai': [pm]
         }}, models_by_size={types.ModelSizeType.LARGE: [pm]},
         default_model_priority_list=[pm]
@@ -662,13 +662,13 @@ class TestGetAllModels:
             'featured':
                 create_provider_model_config(
                     'test', 'featured', is_featured=True,
-                    call_type=types.CallType.GENERATE_TEXT,
+                    call_type=types.CallType.TEXT,
                     model_size_tags=[types.ModelSizeType.LARGE]
                 ),
             'not_featured':
                 create_provider_model_config(
                     'test', 'not_featured', is_featured=False,
-                    call_type=types.CallType.GENERATE_TEXT,
+                    call_type=types.CallType.TEXT,
                     model_size_tags=[types.ModelSizeType.SMALL]
                 ),
         }
@@ -676,7 +676,7 @@ class TestGetAllModels:
     version_config = create_version_config(
         provider_model_configs=configs, featured_models={'test': [pm_featured]},
         models_by_call_type={
-            types.CallType.GENERATE_TEXT: {
+            types.CallType.TEXT: {
                 'test': [pm_featured, pm_not_featured]
             }
         }, models_by_size={

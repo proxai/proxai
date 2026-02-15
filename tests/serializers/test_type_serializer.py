@@ -140,7 +140,7 @@ def _get_provider_model_metadata_type_options():
   return [
       {},
       {
-          'call_type': types.CallType.GENERATE_TEXT
+          'call_type': types.CallType.TEXT
       },
       {
           'is_featured': True
@@ -195,7 +195,7 @@ def _get_provider_model_metadata_type_options():
           'tags': ['tag1', 'tag2', 'tag3']
       },
       {
-          'call_type': types.CallType.GENERATE_TEXT,
+          'call_type': types.CallType.TEXT,
           'is_featured': True,
           'model_size_tags': [types.ModelSizeType.LARGE],
           'is_default_candidate': True,
@@ -229,7 +229,7 @@ def _get_provider_model_config_type_options():
       {
           'metadata':
               types.ProviderModelMetadataType(
-                  call_type=types.CallType.GENERATE_TEXT, is_featured=True
+                  call_type=types.CallType.TEXT, is_featured=True
               )
       },
       {
@@ -249,7 +249,7 @@ def _get_provider_model_config_type_options():
           },
           'metadata':
               types.ProviderModelMetadataType(
-                  call_type=types.CallType.GENERATE_TEXT, is_featured=True,
+                  call_type=types.CallType.TEXT, is_featured=True,
                   model_size_tags=[types.ModelSizeType.LARGEST],
                   is_default_candidate=True, default_candidate_priority=10,
                   tags=['production', 'recommended']
@@ -349,7 +349,7 @@ def _get_model_configs_schema_version_config_type_options():
       }
   }, {
       'models_by_call_type': {
-          types.CallType.GENERATE_TEXT: {
+          types.CallType.TEXT: {
               'openai': [
                   pytest.model_configs_instance.get_provider_model(
                       ('openai', 'gpt-4')
@@ -388,7 +388,7 @@ def _get_model_configs_schema_version_config_type_options():
                                   not_supported=['feature1']
                               )
                       }, metadata=types.ProviderModelMetadataType(
-                          call_type=types.CallType.GENERATE_TEXT,
+                          call_type=types.CallType.TEXT,
                           is_featured=True,
                           model_size_tags=[types.ModelSizeType.LARGE]
                       )
@@ -425,7 +425,7 @@ def _get_model_configs_schema_version_config_type_options():
           'claude': [('claude', 'opus-4')]
       },
       'models_by_call_type': {
-          types.CallType.GENERATE_TEXT: {
+          types.CallType.TEXT: {
               'openai': [
                   pytest.model_configs_instance.get_provider_model(
                       ('openai', 'gpt-4')
@@ -527,7 +527,7 @@ def _get_model_configs_schema_type_options():
                                           not_supported=['feature1']
                                       )
                               }, metadata=types.ProviderModelMetadataType(
-                                  call_type=types.CallType.GENERATE_TEXT,
+                                  call_type=types.CallType.TEXT,
                                   is_featured=True,
                                   model_size_tags=[types.ModelSizeType.LARGE]
                               )
@@ -562,7 +562,7 @@ def _get_model_configs_schema_type_options():
                   ],
                   'claude': [('claude', 'opus-4')]
               }, models_by_call_type={
-                  types.CallType.GENERATE_TEXT: {
+                  types.CallType.TEXT: {
                       'openai': [
                           pytest.model_configs_instance.get_provider_model(
                               ('openai', 'gpt-4')
@@ -589,7 +589,7 @@ def _get_model_configs_schema_type_options():
 def _get_query_record_options():
   return [
       {
-          'call_type': types.CallType.GENERATE_TEXT
+          'call_type': types.CallType.TEXT
       },
       {
           'provider_model':
@@ -661,7 +661,7 @@ def _get_query_record_options():
               )
       },
       {
-          'call_type': types.CallType.GENERATE_TEXT,
+          'call_type': types.CallType.TEXT,
           'provider_model':
               pytest.model_configs_instance.get_provider_model(
                   ('openai', 'gpt-4')
@@ -754,7 +754,7 @@ def _get_cache_record_options():
   return [
       {
           'query_record':
-              types.QueryRecord(call_type=types.CallType.GENERATE_TEXT)
+              types.QueryRecord(call_type=types.CallType.TEXT)
       },
       {
           'query_responses': [
@@ -778,7 +778,7 @@ def _get_cache_record_options():
       },
       {
           'query_record':
-              types.QueryRecord(call_type=types.CallType.GENERATE_TEXT),
+              types.QueryRecord(call_type=types.CallType.TEXT),
           'query_responses': [
               types.QueryResponseRecord(
                   response=types.
@@ -823,7 +823,7 @@ def _get_logging_record_options():
   return [
       {
           'query_record':
-              types.QueryRecord(call_type=types.CallType.GENERATE_TEXT)
+              types.QueryRecord(call_type=types.CallType.TEXT)
       },
       {
           'response_record':
@@ -840,7 +840,7 @@ def _get_logging_record_options():
       },
       {
           'query_record':
-              types.QueryRecord(call_type=types.CallType.GENERATE_TEXT),
+              types.QueryRecord(call_type=types.CallType.TEXT),
           'response_record':
               types.QueryResponseRecord(
                   response=types.
@@ -1041,7 +1041,7 @@ def _get_model_status_options():
           model_1:
               types.LoggingRecord(
                   query_record=types.QueryRecord(
-                      call_type=types.CallType.GENERATE_TEXT,
+                      call_type=types.CallType.TEXT,
                       provider_model=model_1
                   ), response_record=types.QueryResponseRecord(
                       response=types.Response(
@@ -1064,7 +1064,7 @@ def _get_model_status_options():
           model_1:
               types.LoggingRecord(
                   query_record=types.QueryRecord(
-                      call_type=types.CallType.GENERATE_TEXT,
+                      call_type=types.CallType.TEXT,
                       provider_model=model_1
                   ), response_record=types.QueryResponseRecord(
                       response=types.Response(
@@ -1137,7 +1137,7 @@ def _get_featured_models_type_options():
 
 def _get_models_by_call_type_type_options():
   return [{
-      types.CallType.GENERATE_TEXT: {
+      types.CallType.TEXT: {
           'openai': [
               pytest.model_configs_instance.get_provider_model(
                   ('openai', 'gpt-4')
@@ -1145,7 +1145,7 @@ def _get_models_by_call_type_type_options():
           ]
       }
   }, {
-      types.CallType.GENERATE_TEXT: {
+      types.CallType.TEXT: {
           'openai': [
               pytest.model_configs_instance.get_provider_model(
                   ('openai', 'gpt-4')
@@ -1154,7 +1154,7 @@ def _get_models_by_call_type_type_options():
           'claude': [('claude', 'sonnet-4')]
       }
   }, {
-      types.CallType.GENERATE_TEXT: {
+      types.CallType.TEXT: {
           'openai': [
               pytest.model_configs_instance.get_provider_model(
                   ('openai', 'gpt-4')

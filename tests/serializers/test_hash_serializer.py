@@ -25,7 +25,7 @@ class UserWithAddressModel(pydantic.BaseModel):
 
 def _get_query_record_options():
   return [{
-      'call_type': types.CallType.GENERATE_TEXT
+      'call_type': types.CallType.TEXT
   }, {
       'provider_model':
           pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4'))
@@ -71,7 +71,7 @@ def _get_query_record_options():
   }, {
       'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT
   }, {
-      'call_type': types.CallType.GENERATE_TEXT,
+      'call_type': types.CallType.TEXT,
       'provider_model':
           pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4')),
       'prompt': 'Hello, world!',

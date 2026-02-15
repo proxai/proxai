@@ -72,7 +72,7 @@ def _create_test_logging_record(
       prompt=prompt, system=system, messages=messages,
       provider_model=model_configs_instance.get_provider_model(
           ('mock_provider', 'mock_model')
-      ), call_type=types.CallType.GENERATE_TEXT, max_tokens=100,
+      ), call_type=types.CallType.TEXT, max_tokens=100,
       temperature=0.7, stop=stop, hash_value=hash_value,
       response_format=response_format
   )
@@ -1067,7 +1067,7 @@ class TestProxDashConnectionUploadLoggingRecord:
                 "content": "test assistant message"
             }], provider_model=model_configs_instance.get_provider_model(
                 ('mock_provider', 'mock_model')
-            ), call_type=types.CallType.GENERATE_TEXT, max_tokens=100,
+            ), call_type=types.CallType.TEXT, max_tokens=100,
             temperature=0.7, stop=["stop1", "stop2"], hash_value="test_hash"
         ),
         response_record=types.QueryResponseRecord(

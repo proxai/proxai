@@ -53,7 +53,7 @@ class ModelConnector:
       self,
       model_size: types.ModelSizeIdentifierType | None = None,
       features: types.FeatureListParam | None = None,
-      call_type: types.CallType = types.CallType.GENERATE_TEXT,
+      call_type: types.CallType = types.CallType.TEXT,
   ) -> list[types.ProviderModelType]:
     """Lists all configured models matching the specified criteria.
 
@@ -95,7 +95,7 @@ class ModelConnector:
 
   def list_providers(
       self,
-      call_type: types.CallType = types.CallType.GENERATE_TEXT,
+      call_type: types.CallType = types.CallType.TEXT,
   ) -> list[str]:
     """Lists all providers that have API keys configured.
 
@@ -129,7 +129,7 @@ class ModelConnector:
       provider: str,
       model_size: types.ModelSizeIdentifierType | None = None,
       features: types.FeatureListParam | None = None,
-      call_type: types.CallType = types.CallType.GENERATE_TEXT,
+      call_type: types.CallType = types.CallType.TEXT,
   ) -> list[types.ProviderModelType]:
     """Lists all models available from a specific provider.
 
@@ -175,7 +175,7 @@ class ModelConnector:
       self,
       provider: str,
       model: str,
-      call_type: types.CallType = types.CallType.GENERATE_TEXT,
+      call_type: types.CallType = types.CallType.TEXT,
   ) -> types.ProviderModelType:
     """Gets a specific model by provider and model name.
 
@@ -219,7 +219,7 @@ class ModelConnector:
       verbose: bool = True,
       return_all: bool = False,
       clear_model_cache: bool = False,
-      call_type: types.CallType = types.CallType.GENERATE_TEXT,
+      call_type: types.CallType = types.CallType.TEXT,
   ) -> list[types.ProviderModelType] | types.ModelStatus:
     """Lists models that have been verified to be working.
 
@@ -264,7 +264,7 @@ class ModelConnector:
       self,
       verbose: bool = True,
       clear_model_cache: bool = False,
-      call_type: types.CallType = types.CallType.GENERATE_TEXT,
+      call_type: types.CallType = types.CallType.TEXT,
   ) -> list[str]:
     """Lists providers that have at least one working model.
 
@@ -307,7 +307,7 @@ class ModelConnector:
       verbose: bool = True,
       return_all: bool = False,
       clear_model_cache: bool = False,
-      call_type: types.CallType = types.CallType.GENERATE_TEXT,
+      call_type: types.CallType = types.CallType.TEXT,
   ) -> list[types.ProviderModelType] | types.ModelStatus:
     """Lists working models from a specific provider.
 
@@ -365,7 +365,7 @@ class ModelConnector:
       model: str,
       verbose: bool = False,
       clear_model_cache: bool = False,
-      call_type: types.CallType = types.CallType.GENERATE_TEXT,
+      call_type: types.CallType = types.CallType.TEXT,
   ) -> types.ProviderModelType:
     """Verifies and returns a specific model if it's working.
 
@@ -942,7 +942,7 @@ class ProxAIClient(state_controller.StateControlled):
 
   def get_registered_model_connector(self, call_type: types.CallType):
     """Get or create a connector for the default model of a call type."""
-    if call_type != types.CallType.GENERATE_TEXT:
+    if call_type != types.CallType.TEXT:
       raise ValueError(f"Call type not supported: {call_type}")
 
     if call_type not in self.registered_model_connectors:
@@ -1025,7 +1025,7 @@ class ProxAIClient(state_controller.StateControlled):
     )
 
     self.registered_model_connectors[
-        types.CallType.GENERATE_TEXT
+        types.CallType.TEXT
     ] = (self.available_models_instance.get_model_connector(provider_model))
 
   def generate_text(
@@ -1148,7 +1148,7 @@ class ProxAIClient(state_controller.StateControlled):
       )
     else:
       model_connector = self.get_registered_model_connector(
-          call_type=types.CallType.GENERATE_TEXT
+          call_type=types.CallType.TEXT
       )
 
     if suppress_provider_errors is None:
