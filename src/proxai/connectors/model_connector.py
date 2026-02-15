@@ -18,6 +18,8 @@ import proxai.logging.utils as logging_utils
 import proxai.state_controllers.state_controller as state_controller
 import proxai.type_utils as type_utils
 import proxai.types as types
+import proxai.chat.chat_session as chat_session
+import proxai.connectors.feature_adapter as feature_adapter
 
 _PROVIDER_MODEL_STATE_PROPERTY = '_provider_model_state'
 
@@ -51,6 +53,11 @@ class ProviderModelConnector(state_controller.StateControlled):
 
   _chosen_endpoint_cached_result: dict[str, bool] | None
 
+  PROVIDER_NAME: str
+  PROVIDER_API_KEYS: list[str]
+  ENDPOINT_CONFIG: dict[str, types.FeatureConfigType]
+  ENDPOINT_EXECUTORS: dict[str, Callable | None]
+
   def __init__(  # noqa: D107
       self,
       init_from_params: ProviderModelConnectorParams | None = None,
@@ -82,6 +89,18 @@ class ProviderModelConnector(state_controller.StateControlled):
       self.proxdash_connection = init_from_params.proxdash_connection
       self.provider_token_value_map = init_from_params.provider_token_value_map
       self._validate_provider_token_value_map()
+
+  def __init_subclass__(cls, **kwargs):
+    super().__init_subclass__(**kwargs)
+    for attr in (
+        'PROVIDER_NAME',
+        'PROVIDER_API_KEYS',
+        'ENDPOINT_CONFIG',
+        'ENDPOINT_EXECUTORS',
+    ):
+      if attr not in cls.__dict__:
+        raise TypeError(
+          f"{cls.__name__} must define {attr}")
 
   def get_internal_state_property_name(self):
     """Return the name of the internal state property."""
@@ -239,500 +258,6 @@ class ProviderModelConnector(state_controller.StateControlled):
         "Could not extract valid JSON from response", text, 0
     )
 
-  def _check_feature_exists(
-      self, feature_name: types.FeatureNameType, query_record: types.QueryRecord
-  ) -> Any:
-    if feature_name.startswith('response_format::'):
-      response_format_type = feature_name.split('::')[1]
-      return (
-          query_record.response_format is not None and
-          query_record.response_format.type
-          == types.ResponseFormatType(response_format_type.upper())
-      )
-    else:
-      return getattr(query_record, feature_name, None) is not None
-
-  def _get_features_from_query_record(
-      self, query_record: types.QueryRecord
-  ) -> types.FeatureListType:
-    features = []
-    for feature in types.FeatureNameType.__members__.values():
-      if self._check_feature_exists(feature.value, query_record):
-        features.append(feature)
-    return features
-
-  def _get_feature_signature(
-      self, provider_model: types.ProviderModelType,
-      feature_mapping_strategy: types.FeatureMappingStrategy,
-      features: types.FeatureListType
-  ) -> str:
-    feature_signature = [
-        str(provider_model),
-        str(feature_mapping_strategy),
-    ]
-    for feature in features:
-      feature_signature.append(feature.value)
-    return ':::'.join(feature_signature)
-
-  def _get_available_endpoints(self,
-                               features: types.FeatureListType) -> list[str]:
-    supported_endpoints = []
-    best_effort_endpoints = []
-    for feature in features:
-      supported_endpoints.append(
-          set(self.provider_model_config.features[feature.value].supported)
-      )
-      best_effort_endpoints.append(
-          set(
-              self.provider_model_config.features[feature.value].supported +
-              self.provider_model_config.features[feature.value].best_effort
-          )
-      )
-
-    if supported_endpoints:
-      supported_endpoints = list(reduce(set.intersection, supported_endpoints))
-
-    if best_effort_endpoints:
-      best_effort_endpoints = list(
-          reduce(set.intersection, best_effort_endpoints)
-      )
-
-    return supported_endpoints, best_effort_endpoints
-
-  def _check_endpoints_usability(
-      self, supported_endpoints: list[str], best_effort_endpoints: list[str],
-      provider_model: types.ProviderModelType,
-      feature_mapping_strategy: types.FeatureMappingStrategy,
-      features: types.FeatureListType, raise_error: bool = True
-  ):
-
-    if (feature_mapping_strategy == types.FeatureMappingStrategy.STRICT):
-      if len(supported_endpoints) == 0:
-        if not raise_error:
-          return False
-        message = (
-            f'For {provider_model}, it is not possible to ' +
-            'use following features all at once in STRICT mode. ' +
-            'Please consider to use BEST_EFFORT mode or remove some '
-            'features.\n' + f'Requested features: {", ".join(features)}.'
-        )
-        logging_utils.log_message(
-            type=types.LoggingType.ERROR, logging_options=self.logging_options,
-            message=message
-        )
-        raise Exception(message)
-    elif (
-        feature_mapping_strategy == types.FeatureMappingStrategy.BEST_EFFORT and
-        len(supported_endpoints) == 0 and len(best_effort_endpoints) == 0
-    ):
-      if not raise_error:
-        return False
-      message = (
-          f'For {provider_model}, it is not possible to ' +
-          'use following features all at once in BEST_EFFORT mode. ' +
-          'Please consider to remove some features.\n' +
-          f'Requested features: {", ".join(features)}.'
-      )
-      logging_utils.log_message(
-          type=types.LoggingType.ERROR, logging_options=self.logging_options,
-          message=message
-      )
-      raise Exception(message)
-    return True
-
-  def _select_endpoint(
-      self, supported_endpoints: list[str], best_effort_endpoints: list[str]
-  ) -> str:
-    if len(supported_endpoints) != 0:
-      return sorted(supported_endpoints)[0]
-    elif len(best_effort_endpoints) != 0:
-      return sorted(best_effort_endpoints)[0]
-
-  def _sanitize_system_feature(self, query_record: types.QueryRecord):
-    if query_record.chosen_endpoint in self.provider_model_config.features[
-        'system'].supported:
-      return query_record
-    query_record.prompt = f'{query_record.system}\n\n{query_record.prompt}'
-    query_record.system = None
-    return query_record
-
-  def _sanitize_messages_feature(self, query_record: types.QueryRecord):
-    if query_record.chosen_endpoint in self.provider_model_config.features[
-        'messages'].supported:
-      return query_record
-    prompt = query_record.prompt
-    result_prompt = '\n'.join(
-        f'{message["role"].upper()}: {message["content"]}'
-        for message in query_record.messages
-    )
-    if prompt is not None:
-      result_prompt = f'{result_prompt}\n\nUSER: {prompt}'
-    query_record.prompt = result_prompt
-    query_record.messages = None
-    return query_record
-
-  def _sanitize_web_search_feature(self, query_record: types.QueryRecord):
-    if not query_record.web_search:
-      query_record.web_search = None
-    return query_record
-
-  def _omit_best_effort_feature(
-      self, feature_name: types.FeatureNameType, query_record: types.QueryRecord
-  ):
-    if query_record.chosen_endpoint not in self.provider_model_config.features[
-        feature_name].supported:
-      message = (
-          f'{self.provider_model.model} does not support {feature_name} '
-          'in BEST_EFFORT mode. Omitting this feature.'
-          f'Model endpoint: {query_record.chosen_endpoint}'
-      )
-      logging_utils.log_message(
-          type=types.LoggingType.WARNING, logging_options=self.logging_options,
-          query_record=query_record, message=message
-      )
-      setattr(query_record, feature_name, None)
-    return query_record
-
-  def _get_schema_guidance(self, query_record: types.QueryRecord) -> str:
-    schema_guidance = ''
-    if query_record.response_format.type == types.ResponseFormatType.JSON:
-      schema_guidance = 'You must respond with valid JSON.'
-    elif (
-        query_record.response_format.type ==
-        types.ResponseFormatType.JSON_SCHEMA
-    ):
-      schema_value = query_record.response_format.value
-      json_schema_obj = schema_value['json_schema']
-      raw_schema = json_schema_obj.get('schema', json_schema_obj)
-      schema_guidance = (
-          'You must respond with valid JSON that follows this schema:\n'
-          f'{json.dumps(raw_schema, indent=2)}'
-      )
-    elif (
-        query_record.response_format.type == types.ResponseFormatType.PYDANTIC
-    ):
-      pydantic_class = query_record.response_format.value.class_value
-      schema = pydantic_class.model_json_schema()
-      schema_guidance = (
-          'You must respond with valid JSON that follows this schema:\n'
-          f'{json.dumps(schema, indent=2)}'
-      )
-    return schema_guidance
-
-  def _sanitize_response_format_feature(self, query_record: types.QueryRecord):
-    schema_guidance = self._get_schema_guidance(query_record)
-
-    if query_record.prompt is not None:
-      query_record.prompt = (f'{query_record.prompt}\n\n{schema_guidance}')
-    else:
-      query_record.prompt = schema_guidance
-    return query_record
-
-  def _sanitize_query_record(self, query_record: types.QueryRecord):
-
-    if (
-        query_record.feature_mapping_strategy ==
-        types.FeatureMappingStrategy.STRICT
-    ):
-      return query_record
-
-    if self._check_feature_exists(
-        feature_name='messages', query_record=query_record
-    ):
-      query_record = self._sanitize_messages_feature(query_record=query_record)
-
-    if self._check_feature_exists(
-        feature_name='system', query_record=query_record
-    ):
-      query_record = self._sanitize_system_feature(query_record=query_record)
-
-    for feature_name in ['stop', 'temperature', 'max_tokens']:
-      if self._check_feature_exists(
-          feature_name=feature_name, query_record=query_record
-      ):
-        query_record = self._omit_best_effort_feature(
-            feature_name=feature_name, query_record=query_record
-        )
-
-    if self._check_feature_exists(
-        feature_name='web_search', query_record=query_record
-    ):
-      query_record = self._sanitize_web_search_feature(
-          query_record=query_record
-      )
-
-    for feature_name in [
-        'response_format::json',
-        'response_format::json_schema',
-        'response_format::pydantic',
-    ]:
-      if self._check_feature_exists(
-          feature_name=feature_name, query_record=query_record
-      ):
-        query_record = self._sanitize_response_format_feature(
-            query_record=query_record
-        )
-
-    return query_record
-
-  def _get_feature_check_result_endpoint(
-      self, provider_model: types.ProviderModelType,
-      feature_mapping_strategy: types.FeatureMappingStrategy,
-      features: types.FeatureListType, raise_error: bool = True
-  ) -> str:
-    feature_signature = self._get_feature_signature(
-        provider_model=provider_model,
-        feature_mapping_strategy=feature_mapping_strategy, features=features
-    )
-
-    if (
-        self._chosen_endpoint_cached_result is not None and
-        feature_signature in self._chosen_endpoint_cached_result
-    ):
-      chosen_endpoint = self._chosen_endpoint_cached_result[feature_signature]
-    else:
-      supported_endpoints, best_effort_endpoints = (
-          self._get_available_endpoints(features=features)
-      )
-
-      is_endpoints_usable = self._check_endpoints_usability(
-          supported_endpoints=supported_endpoints,
-          best_effort_endpoints=best_effort_endpoints,
-          provider_model=provider_model,
-          feature_mapping_strategy=feature_mapping_strategy, features=features,
-          raise_error=raise_error
-      )
-
-      if not is_endpoints_usable:
-        # Note: This set to False to indicate that the endpoints are not usable.
-        # Cache is checking if the value is None or not. If value set to False,
-        # cache will return False instead of retrying.
-        chosen_endpoint = False
-      else:
-        self._chosen_endpoint_cached_result[
-            feature_signature] = self._select_endpoint(
-                supported_endpoints=supported_endpoints,
-                best_effort_endpoints=best_effort_endpoints
-            )
-
-        chosen_endpoint = self._chosen_endpoint_cached_result[feature_signature]
-
-    return chosen_endpoint
-
-  def feature_check_and_sanitize(
-      self, query_record: types.QueryRecord
-  ) -> types.QueryRecord:
-    """Check feature compatibility and sanitize the query record."""
-    query_record = copy.deepcopy(query_record)
-
-    chosen_endpoint = self._get_feature_check_result_endpoint(
-        provider_model=query_record.provider_model,
-        feature_mapping_strategy=query_record.feature_mapping_strategy,
-        features=self._get_features_from_query_record(query_record),
-        raise_error=True
-    )
-
-    query_record.chosen_endpoint = chosen_endpoint
-
-    query_record = self._sanitize_query_record(query_record=query_record)
-
-    return query_record
-
-  def check_feature_compatibility(
-      self, features: types.FeatureListType
-  ) -> bool:
-    """Check if the given features are compatible with this connector."""
-    chosen_endpoint = self._get_feature_check_result_endpoint(
-        provider_model=self.provider_model,
-        feature_mapping_strategy=self.feature_mapping_strategy,
-        features=features, raise_error=False
-    )
-
-    return bool(chosen_endpoint)
-
-  def _get_system_content_with_schema_guidance(
-      self, query_record: types.QueryRecord
-  ) -> str:
-    if (query_record.response_format.type == types.ResponseFormatType.JSON):
-      schema_guidance = 'You must respond with valid JSON.'
-    elif (
-        query_record.response_format.type ==
-        types.ResponseFormatType.JSON_SCHEMA
-    ):
-      schema_value = query_record.response_format.value
-      json_schema_obj = schema_value['json_schema']
-      raw_schema = json_schema_obj.get('schema', json_schema_obj)
-      schema_guidance = (
-          'You must respond with valid JSON that follows this schema:\n'
-          f'{json.dumps(raw_schema, indent=2)}'
-      )
-    elif (
-        query_record.response_format.type == types.ResponseFormatType.PYDANTIC
-    ):
-      pydantic_class = query_record.response_format.value.class_value
-      schema = pydantic_class.model_json_schema()
-      schema_guidance = (
-          'You must respond with valid JSON that follows this schema:\n'
-          f'{json.dumps(schema, indent=2)}'
-      )
-
-    if query_record.system is not None:
-      return f"{query_record.system}\n\n{schema_guidance}"
-    else:
-      return schema_guidance
-
-  def _temp_response_format_text_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ):
-    # Almost always, nothing done here. Because of that, this function does
-    # not delegated to inherited classes.
-    return query_function
-
-  def add_features_to_query_function(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ):
-    """Compose feature mappings into the query function."""
-    feature_mappings = {
-        types.FeatureNameType.PROMPT: self.prompt_feature_mapping,
-        types.FeatureNameType.MESSAGES: self.messages_feature_mapping,
-        types.FeatureNameType.SYSTEM: self.system_feature_mapping,
-        types.FeatureNameType.MAX_TOKENS: self.max_tokens_feature_mapping,
-        types.FeatureNameType.TEMPERATURE: self.temperature_feature_mapping,
-        types.FeatureNameType.STOP: self.stop_feature_mapping,
-        types.FeatureNameType.WEB_SEARCH: self.web_search_feature_mapping,
-    }
-    for feature_name in feature_mappings:
-      if not self._check_feature_exists(
-          feature_name=feature_name.value, query_record=query_record
-      ):
-        continue
-      query_function = feature_mappings[feature_name](
-          query_record=query_record, query_function=query_function
-      )
-
-    response_format_feature_mappings = {
-        types.FeatureNameType.RESPONSE_FORMAT_TEXT:
-            (self._temp_response_format_text_feature_mapping),
-        types.FeatureNameType.RESPONSE_FORMAT_JSON: self.json_feature_mapping,
-        types.FeatureNameType.RESPONSE_FORMAT_JSON_SCHEMA:
-            (self.json_schema_feature_mapping),
-        types.FeatureNameType.RESPONSE_FORMAT_PYDANTIC:
-            (self.pydantic_feature_mapping),
-    }
-    response_format = query_record.response_format
-    if response_format is not None:
-      response_format_str = (
-          f'response_format::{response_format.type.value.lower()}'
-      )
-      if query_record.chosen_endpoint in self.provider_model_config.features[
-          response_format_str].supported:
-        query_function = response_format_feature_mappings[response_format_str](
-            query_record=query_record, query_function=query_function
-        )
-    return query_function
-
-  def _handle_json_response_format(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> types.Response:
-    if (
-        query_record.chosen_endpoint in
-        self.provider_model_config.features['response_format::json'].supported
-    ):
-      return types.Response(
-          value=self.format_json_response_from_provider(
-              response=response, query_record=query_record
-          ), type=types.ResponseType.JSON
-      )
-    else:
-      return types.Response(
-          value=self._extract_json_from_text(
-              self.format_text_response_from_provider(
-                  response=response, query_record=query_record
-              )
-          ), type=types.ResponseType.JSON
-      )
-
-  def _handle_json_schema_response_format(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> types.Response:
-    if (
-        query_record.chosen_endpoint in self.provider_model_config.
-        features['response_format::json_schema'].supported
-    ):
-      return types.Response(
-          value=self.format_json_schema_response_from_provider(
-              response=response, query_record=query_record
-          ), type=types.ResponseType.JSON
-      )
-    else:
-      return types.Response(
-          value=self._extract_json_from_text(
-              self.format_text_response_from_provider(
-                  response=response, query_record=query_record
-              )
-          ), type=types.ResponseType.JSON
-      )
-
-  def _handle_pydantic_response_format(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> types.Response:
-    if (
-        query_record.chosen_endpoint in self.provider_model_config.
-        features['response_format::pydantic'].supported
-    ):
-      instance = self.format_pydantic_response_from_provider(
-          response=response, query_record=query_record
-      )
-      return types.Response(
-          value=instance, type=types.ResponseType.PYDANTIC,
-          pydantic_metadata=types.PydanticMetadataType(
-              class_name=query_record.response_format.value.class_name
-          )
-      )
-    else:
-      json_value = self._extract_json_from_text(
-          self.format_text_response_from_provider(
-              response=response, query_record=query_record
-          )
-      )
-      pydantic_class = query_record.response_format.value.class_value
-      instance = pydantic_class.model_validate(json_value)
-      return types.Response(
-          value=instance, type=types.ResponseType.PYDANTIC,
-          pydantic_metadata=types.PydanticMetadataType(
-              class_name=query_record.response_format.value.class_name
-          )
-      )
-
-  def format_response_from_providers(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> types.Response:
-    """Convert a provider response to a standardized Response object."""
-    if (
-        query_record.response_format is None or
-        query_record.response_format.type == types.ResponseFormatType.TEXT
-    ):
-      return types.Response(
-          value=self.format_text_response_from_provider(
-              response=response, query_record=query_record
-          ), type=types.ResponseType.TEXT
-      )
-    elif query_record.response_format.type == types.ResponseFormatType.JSON:
-      return self._handle_json_response_format(
-          response=response, query_record=query_record
-      )
-    elif (
-        query_record.response_format.type ==
-        types.ResponseFormatType.JSON_SCHEMA
-    ):
-      return self._handle_json_schema_response_format(
-          response=response, query_record=query_record
-      )
-    elif query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
-      return self._handle_pydantic_response_format(
-          response=response, query_record=query_record
-      )
-
   def get_token_count_estimate(
       self, value: str | types.Response | types.MessagesType | None = None
   ) -> int:
@@ -814,6 +339,33 @@ class ProviderModelConnector(state_controller.StateControlled):
           ), type=types.LoggingType.ERROR
       )
 
+  def find_compatible_endpoint(self, query_record: types.QueryRecord):
+    """Find a compatible endpoint for the query record."""
+    best_effort_endpoints = []
+    for endpoint in sorted(self.ENDPOINT_CONFIG.keys()):
+      feature_config = self.ENDPOINT_CONFIG[endpoint]
+      adapter = feature_adapter.FeatureAdapter(
+          endpoint=endpoint,
+          feature_config=feature_config,
+      )
+      support_level = adapter.get_support_level(query_record=query_record)
+      if support_level == types.FeatureSupportType.SUPPORTED:
+        return endpoint
+      elif support_level == types.FeatureSupportType.BEST_EFFORT:
+        best_effort_endpoints.append(endpoint)
+    
+    if (
+        len(best_effort_endpoints) > 0 and
+        self.feature_mapping_strategy == types.FeatureMappingStrategy.BEST_EFFORT
+    ):
+      return sorted(best_effort_endpoints)[0]
+    else:
+      raise ValueError(
+          'No compatible endpoint found for the query record.'
+          f'query_record: {query_record}\n'
+          'Try to reduce the number of features.'
+      )
+
   def generate_text(
       self, prompt: str | None = None, system: str | None = None,
       messages: types.MessagesType | None = None, max_tokens: int | None = None,
@@ -847,118 +399,110 @@ class ProviderModelConnector(state_controller.StateControlled):
       feature_mapping_strategy = self.feature_mapping_strategy
 
     start_utc_date = datetime.datetime.now(datetime.timezone.utc)
+
+    system_prompt = None
+    chat = None
+    if messages is not None:
+      chat = chat_session.Chat(messages=messages, system_prompt=system)
+    else:
+      system_prompt = system
+
     query_record = types.QueryRecord(
-        call_type=types.CallType.TEXT,
-        provider_model=self.provider_model, prompt=prompt, system=system,
-        messages=messages, max_tokens=max_tokens, temperature=temperature,
-        stop=stop, response_format=response_format, web_search=web_search,
-        feature_mapping_strategy=feature_mapping_strategy,
-        token_count=self.get_token_count_estimate(
-            value=prompt if prompt is not None else messages
-        )
+        prompt=prompt,
+        system_prompt=system_prompt,
+        chat=chat,
+        parameters=types.ParameterType(
+            max_tokens=max_tokens,
+            temperature=temperature,
+            stop=stop,
+        ),
+        tools=[types.Tools.WEB_SEARCH] if web_search else None,
+        response_format=response_format,
+        connection_options=types.ConnectionOptions(
+            provider_model=self.provider_model,
+            feature_mapping_strategy=feature_mapping_strategy,
+            chosen_endpoint=None,
+        ),
     )
 
-    query_record = self.feature_check_and_sanitize(query_record=query_record)
+    chosen_endpoint = self.find_compatible_endpoint(query_record=query_record)
+    query_record.connection_options.chosen_endpoint = chosen_endpoint
 
-    look_fail_reason = None
-    if self.query_cache_manager and use_cache:
-      cache_look_result = None
-      response_record = None
-      try:
-        cache_look_result = self.query_cache_manager.look(
-            query_record, unique_response_limit=unique_response_limit
-        )
-        if cache_look_result.query_response:
-          response_record = cache_look_result.query_response
-      except Exception:
-        pass
-      if response_record:
-        response_record.end_utc_date = datetime.datetime.now(
-            datetime.timezone.utc
-        )
-        response_record.start_utc_date = (
-            response_record.end_utc_date - response_record.response_time
-        )
-        response_record.local_time_offset_minute = (
-            datetime.datetime.now().astimezone().utcoffset().total_seconds() //
-            60
-        ) * -1
-        logging_record = types.LoggingRecord(
-            query_record=query_record, response_record=response_record,
-            response_source=types.ResponseSource.CACHE
-        )
-        logging_record.response_record.estimated_cost = (
-            self.get_estimated_cost(logging_record=logging_record)
-        )
-        logging_utils.log_logging_record(
-            logging_options=self.logging_options, logging_record=logging_record
-        )
-        self._update_proxdash(logging_record=logging_record)
-        return logging_record
-      look_fail_reason = cache_look_result.look_fail_reason
-      logging_record = types.LoggingRecord(
-          query_record=query_record, look_fail_reason=look_fail_reason,
-          response_source=types.ResponseSource.CACHE
-      )
-      logging_utils.log_logging_record(
-          logging_options=self.logging_options, logging_record=logging_record
-      )
-
+    chosen_adapter = feature_adapter.FeatureAdapter(
+        endpoint=chosen_endpoint,
+        feature_config=self.ENDPOINT_CONFIG[chosen_endpoint],
+    )
+    modified_query_record = chosen_adapter.adapt_query_record(
+        query_record=query_record)
+    chosen_executor = self.ENDPOINT_EXECUTORS[chosen_endpoint]
+    
     response, error, error_traceback = None, None, None
     try:
-      response = self.generate_text_proc(query_record=query_record)
+      response = chosen_executor(query_record=modified_query_record)
     except Exception as e:
       error_traceback = traceback.format_exc()
       error = e
 
+    if query_record.prompt is not None:
+      input_tokens = self.get_token_count_estimate(value=query_record.prompt)
+    else:
+      input_tokens = self.get_token_count_estimate(value=query_record.chat)
     if response is not None:
-      query_response_record = functools.partial(
-          types.QueryResponseRecord, response=response,
-          token_count=self.get_token_count_estimate(value=response)
+      output_tokens = self.get_token_count_estimate(value=response)
+    else:
+      output_tokens = 0
+    end_utc_date=datetime.datetime.now(datetime.timezone.utc)
+    local_time_offset_minute = (
+        datetime.datetime.now().astimezone().utcoffset().total_seconds() //
+        60
+    ) * -1
+
+    if response is not None:
+      result_record = types.ResultRecord(
+          status=types.ResultStatusType.SUCCESS,
+          role=types.MessageRoleType.ASSISTANT,
+          content=response,
+          usage=types.UsageType(
+              input_tokens=input_tokens,
+              output_tokens=output_tokens,
+              total_tokens=input_tokens + output_tokens,
+          ),
+          timestamp=types.TimeStampType(
+              start_utc_date=start_utc_date,
+              end_utc_date=end_utc_date,
+              local_time_offset_minute=local_time_offset_minute,
+              response_time=end_utc_date - start_utc_date
+          )
       )
     else:
-      query_response_record = functools.partial(
-          types.QueryResponseRecord, error=str(error),
-          error_traceback=error_traceback
+      result_record = types.ResultRecord(
+          status=types.ResultStatusType.SUCCESS,
+          role=types.MessageRoleType.ASSISTANT,
+          error=str(error),
+          error_traceback=error_traceback,
+          usage=types.UsageType(
+              input_tokens=input_tokens,
+              output_tokens=output_tokens,
+              total_tokens=input_tokens + output_tokens,
+          ),
+          timestamp=types.TimeStampType(
+              start_utc_date=start_utc_date,
+              end_utc_date=end_utc_date,
+              local_time_offset_minute=local_time_offset_minute,
+              response_time=end_utc_date - start_utc_date
+          )
       )
-    response_record = query_response_record(
-        start_utc_date=start_utc_date,
-        end_utc_date=datetime.datetime.now(datetime.timezone.utc),
-        local_time_offset_minute=(
-            datetime.datetime.now().astimezone().utcoffset().total_seconds() //
-            60
-        ) * -1, response_time=(
-            datetime.datetime.now(datetime.timezone.utc) - start_utc_date
+
+    call_record = types.CallRecord(
+        query=query_record,
+        result=result_record,
+        cache=types.CacheMetadata(
+            cache_hit=False,
+            response_source=types.ResponseSource.PROVIDER,
+            cache_look_fail_reason=None
         )
     )
-
-    if self.query_cache_manager and use_cache:
-      self.query_cache_manager.cache(
-          query_record=query_record, response_record=response_record,
-          unique_response_limit=unique_response_limit
-      )
-
-    logging_record = types.LoggingRecord(
-        query_record=query_record, response_record=response_record,
-        look_fail_reason=look_fail_reason,
-        response_source=types.ResponseSource.PROVIDER
-    )
-    logging_record.response_record.estimated_cost = (
-        self.get_estimated_cost(logging_record=logging_record)
-    )
-    logging_utils.log_logging_record(
-        logging_options=self.logging_options, logging_record=logging_record
-    )
-    self._update_proxdash(logging_record=logging_record)
-    return logging_record
-
-  def get_provider_name(self):
-    """Return the provider name for this connector."""
-    raise NotImplementedError
-
-  def get_required_provider_token_names(self) -> list[str]:
-    """Return the required provider token names for this connector."""
-    raise NotImplementedError
+    return call_record
 
   def init_model(self):
     """Initialize the provider API client."""
@@ -966,75 +510,4 @@ class ProviderModelConnector(state_controller.StateControlled):
 
   def init_mock_model(self):
     """Initialize a mock API client for testing."""
-    raise NotImplementedError
-
-  def prompt_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    raise NotImplementedError
-
-  def messages_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    raise NotImplementedError
-
-  def max_tokens_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    raise NotImplementedError
-
-  def temperature_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    raise NotImplementedError
-
-  def stop_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    raise NotImplementedError
-
-  def json_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ):
-    raise NotImplementedError
-
-  def json_schema_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ):
-    raise NotImplementedError
-
-  def pydantic_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ):
-    raise NotImplementedError
-
-  def web_search_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ):
-    raise NotImplementedError
-
-  def format_text_response_from_provider(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> types.Response:
-    raise NotImplementedError
-
-  def format_json_response_from_provider(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> types.Response:
-    raise NotImplementedError
-
-  def format_json_schema_response_from_provider(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> types.Response:
-    raise NotImplementedError
-
-  def format_pydantic_response_from_provider(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> types.Response:
-    raise NotImplementedError
-
-  def generate_text_proc(
-      self, query_record: types.QueryRecord
-  ) -> types.Response:
-    """Execute the actual text generation call to the provider."""
     raise NotImplementedError
