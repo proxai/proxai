@@ -183,6 +183,22 @@ class MessageContent:
     result = {"type": self.type.value}
     if self.text is not None:
       result["text"] = self.text
+    if self.json is not None:
+      result["json"] = self.json
+    if self.pydantic_content is not None:
+      pydantic_dict = {}
+      if self.pydantic_content.class_name is not None:
+        pydantic_dict["class_name"] = self.pydantic_content.class_name
+      if self.pydantic_content.instance_json_value is not None:
+        pydantic_dict["instance_json_value"] = (
+            self.pydantic_content.instance_json_value
+        )
+      elif self.pydantic_content.instance_value is not None:
+        pydantic_dict["instance_json_value"] = (
+            self.pydantic_content.instance_value.model_dump()
+        )
+      if pydantic_dict:
+        result["pydantic_content"] = pydantic_dict
     if self.source is not None:
       result["source"] = self.source
     if self.data is not None:
@@ -196,9 +212,14 @@ class MessageContent:
   @classmethod
   def from_dict(cls, data: dict) -> "MessageContent":
     """Create a MessageContent from a dictionary."""
+    pydantic_content = None
+    if data.get("pydantic_content") is not None:
+      pydantic_content = PydanticContent(**data["pydantic_content"])
     return cls(
         type=data["type"],
         text=data.get("text"),
+        json=data.get("json"),
+        pydantic_content=pydantic_content,
         source=data.get("source"),
         data=data.get("data"),
         path=data.get("path"),
