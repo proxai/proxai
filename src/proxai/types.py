@@ -3,6 +3,8 @@ import datetime
 import enum
 from typing import Any
 
+import pydantic
+
 import proxai.chat.message_content as message_content
 import proxai.chat.message as message
 import proxai.chat.chat_session as chat_session
@@ -469,7 +471,7 @@ class ResponseFormat:
   """Specification for the desired response format."""
 
   type: ResponseFormatType | None = None
-  pydantic_schema: dict[str, Any] | None = None
+  pydantic_class: type[pydantic.BaseModel] | None = None
 
 
 class ThinkingType(str, enum.Enum):
