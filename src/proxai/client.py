@@ -567,7 +567,7 @@ class ProxAIClient(state_controller.StateControlled):
     if init_from_state is not None:
       self.load_state(init_from_state)
     else:
-      self._set_default_values()
+      # self._set_default_values()
 
       self.experiment_path = init_from_params.experiment_path
       self.cache_options = init_from_params.cache_options
@@ -580,27 +580,32 @@ class ProxAIClient(state_controller.StateControlled):
 
       _ = self.model_cache_manager
       _ = self.query_cache_manager
-      self._init_proxdash_connection()
+      # BEGIN: Refactoring: Revert this after testing
+      # self._init_proxdash_connection()
+      # END: Refactoring
+
 
       if self.cache_options and self.cache_options.clear_model_cache_on_connect:
         self.model_cache_manager.clear_cache()
       if self.cache_options and self.cache_options.clear_query_cache_on_connect:
         self.query_cache_manager.clear_cache()
 
-      available_models_params = available_models.AvailableModelsParams(
-          run_type=self.run_type,
-          feature_mapping_strategy=self.feature_mapping_strategy,
-          model_configs_instance=self.model_configs_instance,
-          model_cache_manager=self.model_cache_manager,
-          query_cache_manager=self.query_cache_manager,
-          logging_options=self.logging_options,
-          proxdash_connection=self.proxdash_connection,
-          allow_multiprocessing=self.allow_multiprocessing,
-          model_test_timeout=self.model_test_timeout,
-      )
-      self._available_models_instance = available_models.AvailableModels(
-          init_from_params=available_models_params
-      )
+      # BEGIN: Refactoring: Revert this after testing
+      # available_models_params = available_models.AvailableModelsParams(
+      #     run_type=self.run_type,
+      #     feature_mapping_strategy=self.feature_mapping_strategy,
+      #     model_configs_instance=self.model_configs_instance,
+      #     model_cache_manager=self.model_cache_manager,
+      #     query_cache_manager=self.query_cache_manager,
+      #     logging_options=self.logging_options,
+      #     proxdash_connection=self.proxdash_connection,
+      #     allow_multiprocessing=self.allow_multiprocessing,
+      #     model_test_timeout=self.model_test_timeout,
+      # )
+      # self._available_models_instance = available_models.AvailableModels(
+      #     init_from_params=available_models_params
+      # )
+      # END: Refactoring
 
   def get_internal_state_property_name(self):
     """Return the name of the internal state property."""
@@ -1142,23 +1147,21 @@ class ProxAIClient(state_controller.StateControlled):
           == types.QueryCacheManagerStatus.WORKING
       )
 
-    if provider_model is not None:
-      model_connector = self.available_models_instance.get_model_connector(
-          provider_model_identifier=provider_model
-      )
-    else:
-      model_connector = self.get_registered_model_connector(
-          call_type=types.CallType.TEXT
-      )
-
-    if suppress_provider_errors is None:
-      suppress_provider_errors = self.suppress_provider_errors
-
-    response_format: types.ResponseFormat = type_utils.create_response_format(
-        response_format
+    # BEGIN: Refactoring: Remove this after testing
+    import proxai.connectors.model_connector as model_connector
+    import proxai.connectors.providers.openai as openai_provider
+    model_connector = openai_provider.OpenAIConnector(
+        init_from_params=model_connector.ProviderModelConnectorParams(
+            provider_model=types.ProviderModelType(
+                provider='openai', model='gpt-5.2', provider_model_identifier='gpt-5.2'
+            ),
+            run_type=types.RunType.PRODUCTION,
+            provider_token_value_map={
+                'OPENAI_API_KEY': os.environ['OPENAI_API_KEY'],
+            },
+        )
     )
-
-    logging_record: types.LoggingRecord = model_connector.generate_text(
+    return model_connector.generate_text(
         prompt=prompt,
         system=system,
         messages=messages,
@@ -1171,37 +1174,70 @@ class ProxAIClient(state_controller.StateControlled):
         use_cache=use_cache,
         unique_response_limit=unique_response_limit,
     )
-    if (
-        logging_record.response_record.error or
-        logging_record.response_record.error_traceback
-    ):
-      if suppress_provider_errors:
-        if extensive_return:
-          return logging_record
-        return logging_record.response_record.error
-      else:
-        error_traceback = ""
-        if logging_record.response_record.error_traceback:
-          error_traceback = (
-              logging_record.response_record.error_traceback + "\n"
-          )
-        raise Exception(error_traceback + logging_record.response_record.error)
+    # END: Refactoring
 
-    if (
-        logging_record.response_record.response.type ==
-        types.ResponseType.PYDANTIC
-    ):
-      # Recreate instance from pydantic_metadata if value is None (from cache)
-      instance = type_utils.create_pydantic_instance_from_response(
-          response_format=response_format,
-          response=logging_record.response_record.response,
-      )
-      logging_record.response_record.response.value = instance
+    # BEGIN: Refactoring: Revert this after testing
+    # if provider_model is not None:
+    #   model_connector = self.available_models_instance.get_model_connector(
+    #       provider_model_identifier=provider_model
+    #   )
+    # else:
+    #   model_connector = self.get_registered_model_connector(
+    #       call_type=types.CallType.TEXT
+    #   )
 
-    if extensive_return:
-      return logging_record
+    # if suppress_provider_errors is None:
+    #   suppress_provider_errors = self.suppress_provider_errors
 
-    return logging_record.response_record.response.value
+    # response_format: types.ResponseFormat = type_utils.create_response_format(
+    #     response_format
+    # )
+
+    # logging_record: types.LoggingRecord = model_connector.generate_text(
+    #     prompt=prompt,
+    #     system=system,
+    #     messages=messages,
+    #     max_tokens=max_tokens,
+    #     temperature=temperature,
+    #     stop=stop,
+    #     response_format=response_format,
+    #     web_search=web_search,
+    #     feature_mapping_strategy=feature_mapping_strategy,
+    #     use_cache=use_cache,
+    #     unique_response_limit=unique_response_limit,
+    # )
+    # if (
+    #     logging_record.response_record.error or
+    #     logging_record.response_record.error_traceback
+    # ):
+    #   if suppress_provider_errors:
+    #     if extensive_return:
+    #       return logging_record
+    #     return logging_record.response_record.error
+    #   else:
+    #     error_traceback = ""
+    #     if logging_record.response_record.error_traceback:
+    #       error_traceback = (
+    #           logging_record.response_record.error_traceback + "\n"
+    #       )
+    #     raise Exception(error_traceback + logging_record.response_record.error)
+
+    # if (
+    #     logging_record.response_record.response.type ==
+    #     types.ResponseType.PYDANTIC
+    # ):
+    #   # Recreate instance from pydantic_metadata if value is None (from cache)
+    #   instance = type_utils.create_pydantic_instance_from_response(
+    #       response_format=response_format,
+    #       response=logging_record.response_record.response,
+    #   )
+    #   logging_record.response_record.response.value = instance
+
+    # if extensive_return:
+    #   return logging_record
+
+    # return logging_record.response_record.response.value
+    # END: Refactoring
 
   def get_current_options(
       self,

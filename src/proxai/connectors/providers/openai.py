@@ -28,6 +28,12 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
 
   PROVIDER_API_KEYS = ['OPENAI_API_KEY']
 
+  ENDPOINT_PRIORITY = [
+    'chat.completions.create',
+    'beta.chat.completions.parse',
+    'responses.create',
+  ]
+
   ENDPOINT_CONFIG = {
       'chat.completions.create': FeatureConfigType(
           prompt=FeatureSupportType.SUPPORTED,
@@ -99,19 +105,20 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
           create, messages=[
               {'role': 'user', 'content': query_record.prompt}])
 
-    if query_record.messages is not None:
+    if query_record.chat is not None:
       create = functools.partial(create, messages=query_record.chat)
 
-    if query_record.parameters.max_tokens is not None:
-      create = functools.partial(
-          create, max_completion_tokens=query_record.parameters.max_tokens)
+    if query_record.parameters is not None:
+      if query_record.parameters.max_tokens is not None:
+        create = functools.partial(
+            create, max_completion_tokens=query_record.parameters.max_tokens)
 
-    if query_record.parameters.temperature is not None:
-      create = functools.partial(
-          create, temperature=query_record.parameters.temperature)
+      if query_record.parameters.temperature is not None:
+        create = functools.partial(
+            create, temperature=query_record.parameters.temperature)
 
-    if query_record.parameters.stop is not None:
-      create = functools.partial(create, stop=query_record.parameters.stop)
+      if query_record.parameters.stop is not None:
+        create = functools.partial(create, stop=query_record.parameters.stop)
 
     if query_record.response_format.type == types.ResponseFormatType.JSON:
       create = functools.partial(
@@ -125,7 +132,7 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
     return response.choices[0].message.content
 
   ENDPOINT_EXECUTORS = {
-    'chat.completions.create': _chat_completions_create_executor,
+    'chat.completions.create': '_chat_completions_create_executor',
     'beta.chat.completions.parse': None,
     'responses.create': None,
   }
