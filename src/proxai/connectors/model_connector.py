@@ -106,6 +106,25 @@ class ProviderModelConnector(state_controller.StateControlled):
       if attr not in cls.__dict__:
         raise TypeError(
           f"{cls.__name__} must define {attr}")
+    priority_keys = set(cls.__dict__['ENDPOINT_PRIORITY'])
+    config_keys = set(cls.__dict__['ENDPOINT_CONFIG'])
+    executor_keys = set(cls.__dict__['ENDPOINT_EXECUTORS'])
+    if priority_keys != config_keys:
+      missing_in_config = priority_keys - config_keys
+      extra_in_config = config_keys - priority_keys
+      raise ValueError(
+          f'{cls.__name__}: ENDPOINT_PRIORITY and ENDPOINT_CONFIG keys '
+          f'do not match.\n'
+          f'  Missing in ENDPOINT_CONFIG: {missing_in_config or "none"}\n'
+          f'  Extra in ENDPOINT_CONFIG: {extra_in_config or "none"}')
+    if priority_keys != executor_keys:
+      missing_in_executors = priority_keys - executor_keys
+      extra_in_executors = executor_keys - priority_keys
+      raise ValueError(
+          f'{cls.__name__}: ENDPOINT_PRIORITY and ENDPOINT_EXECUTORS keys '
+          f'do not match.\n'
+          f'  Missing in ENDPOINT_EXECUTORS: {missing_in_executors or "none"}\n'
+          f'  Extra in ENDPOINT_EXECUTORS: {extra_in_executors or "none"}')
 
   def get_internal_state_property_name(self):
     """Return the name of the internal state property."""
