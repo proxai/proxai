@@ -472,6 +472,8 @@ class ResponseFormat:
 
   type: ResponseFormatType | None = None
   pydantic_class: type[pydantic.BaseModel] | None = None
+  pydantic_class_name: str | None = None
+  pydantic_class_json_schema: dict | None = None
 
 
 class ThinkingType(str, enum.Enum):

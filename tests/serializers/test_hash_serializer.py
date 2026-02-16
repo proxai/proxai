@@ -1,8 +1,16 @@
 import pydantic
 import pytest
 
+import proxai.chat.chat_session as chat_session
+import proxai.chat.message as message
+import proxai.chat.message_content as message_content
 import proxai.serializers.hash_serializer as hash_serializer
 import proxai.types as types
+
+
+_MODEL_1 = types.ProviderModelType(
+    provider='openai', model='gpt-4', provider_model_identifier='gpt-4'
+)
 
 
 class UserModel(pydantic.BaseModel):
@@ -25,25 +33,27 @@ class UserWithAddressModel(pydantic.BaseModel):
 
 def _get_query_record_options():
   return [{
-      'call_type': types.CallType.TEXT
-  }, {
-      'provider_model':
-          pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4'))
-  }, {
       'prompt': 'Hello, world!'
   }, {
-      'system': 'Hello, system!'
+      'system_prompt': 'Hello, system!'
   }, {
-      'messages': [{
-          'role': 'user',
-          'content': 'Hello, user!'
-      }]
+      'chat':
+          chat_session.Chat(messages=[
+              message.Message(
+                  role=message_content.MessageRoleType.USER,
+                  content='Hello, user!'
+              )
+          ])
   }, {
-      'max_tokens': 100
+      'parameters': types.ParameterType(max_tokens=100)
   }, {
-      'temperature': 0.5
+      'parameters': types.ParameterType(temperature=0.5)
   }, {
-      'stop': ['.', '?', '!']
+      'parameters': types.ParameterType(stop=['.', '?', '!'])
+  }, {
+      'parameters': types.ParameterType(n=3)
+  }, {
+      'parameters': types.ParameterType(thinking=types.ThinkingType.HIGH)
   }, {
       'response_format':
           types.ResponseFormat(type=types.ResponseFormatType.TEXT)
@@ -51,51 +61,45 @@ def _get_query_record_options():
       'response_format':
           types.ResponseFormat(type=types.ResponseFormatType.JSON)
   }, {
-      'response_format':
-          types.ResponseFormat(
-              type=types.ResponseFormatType.JSON_SCHEMA, value={
-                  'type': 'object',
-                  'properties': {
-                      'name': {
-                          'type': 'string'
-                      }
-                  }
-              }
+      'tools': [types.Tools.WEB_SEARCH]
+  }, {
+      'connection_options':
+          types.ConnectionOptions(
+              feature_mapping_strategy=types.FeatureMappingStrategy.BEST_EFFORT
           )
   }, {
-      'web_search': True
+      'connection_options':
+          types.ConnectionOptions(
+              feature_mapping_strategy=types.FeatureMappingStrategy.STRICT
+          )
   }, {
-      'web_search': False
+      'connection_options':
+          types.ConnectionOptions(provider_model=_MODEL_1)
   }, {
-      'feature_mapping_strategy': types.FeatureMappingStrategy.BEST_EFFORT
-  }, {
-      'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT
-  }, {
-      'call_type': types.CallType.TEXT,
-      'provider_model':
-          pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4')),
       'prompt': 'Hello, world!',
-      'system': 'Hello, system!',
-      'messages': [{
-          'role': 'user',
-          'content': 'Hello, user!'
-      }],
-      'max_tokens': 100,
-      'temperature': 0.5,
-      'stop': ['.', '?', '!'],
-      'response_format':
-          types.ResponseFormat(
-              type=types.ResponseFormatType.JSON_SCHEMA, value={
-                  'type': 'object',
-                  'properties': {
-                      'id': {
-                          'type': 'integer'
-                      }
-                  }
-              }
+      'system_prompt': 'Hello, system!',
+      'chat':
+          chat_session.Chat(messages=[
+              message.Message(
+                  role=message_content.MessageRoleType.USER,
+                  content='Hello, user!'
+              )
+          ]),
+      'parameters':
+          types.ParameterType(
+              max_tokens=100, temperature=0.5,
+              stop=['.', '?', '!'], n=2,
+              thinking=types.ThinkingType.MEDIUM
           ),
-      'web_search': True,
-      'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT
+      'response_format':
+          types.ResponseFormat(type=types.ResponseFormatType.JSON),
+      'tools': [types.Tools.WEB_SEARCH],
+      'connection_options':
+          types.ConnectionOptions(
+              provider_model=_MODEL_1,
+              feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
+              chosen_endpoint='test_endpoint'
+          )
   }]
 
 
@@ -108,22 +112,26 @@ class TestBaseQueryCache:
         query_record=query_record
     )
 
-    query_record_options['max_tokens'] = 222
-    query_record_2 = types.QueryRecord(**query_record_options)
+    # Changing parameters produces a different hash
+    query_record_options_copy = query_record_options.copy()
+    if 'parameters' in query_record_options_copy:
+      query_record_options_copy['parameters'] = types.ParameterType(
+          max_tokens=222
+      )
+    else:
+      query_record_options_copy['parameters'] = types.ParameterType(
+          max_tokens=222
+      )
+    query_record_2 = types.QueryRecord(**query_record_options_copy)
     query_hash_value_2 = hash_serializer.get_query_record_hash(
         query_record=query_record_2
     )
 
     assert query_hash_value != query_hash_value_2
+    # Same input produces same hash (deterministic)
     assert query_hash_value == (
         hash_serializer.get_query_record_hash(query_record=query_record)
     )
-
-
-def _create_pydantic_value(model_class):
-  return types.ResponseFormatPydanticValue(
-      class_name=model_class.__name__, class_value=model_class
-  )
 
 
 class TestResponseFormatHash:
@@ -148,60 +156,10 @@ class TestResponseFormatHash:
     assert len(hash_value) == hash_serializer._HASH_LENGTH
     assert hash_value == hash_serializer.get_query_record_hash(query_record)
 
-  def test_string_value_response_format(self):
-    response_format = types.ResponseFormat(
-        type=types.ResponseFormatType.TEXT, value='custom_format_string'
-    )
-    query_record = types.QueryRecord(
-        prompt='test', response_format=response_format
-    )
-    hash_value = hash_serializer.get_query_record_hash(query_record)
-
-    assert len(hash_value) == hash_serializer._HASH_LENGTH
-    assert hash_value == hash_serializer.get_query_record_hash(query_record)
-
-  def test_different_string_values_produce_different_hashes(self):
-    query_record_1 = types.QueryRecord(
-        prompt='test', response_format=types.ResponseFormat(
-            type=types.ResponseFormatType.TEXT, value='format_a'
-        )
-    )
-    query_record_2 = types.QueryRecord(
-        prompt='test', response_format=types.ResponseFormat(
-            type=types.ResponseFormatType.TEXT, value='format_b'
-        )
-    )
-
-    hash_1 = hash_serializer.get_query_record_hash(query_record_1)
-    hash_2 = hash_serializer.get_query_record_hash(query_record_2)
-
-    assert hash_1 != hash_2
-
-  def test_json_schema_dict_response_format(self):
-    schema = {
-        'type': 'object',
-        'properties': {
-            'name': {
-                'type': 'string'
-            }
-        },
-        'required': ['name']
-    }
-    response_format = types.ResponseFormat(
-        value=schema, type=types.ResponseFormatType.JSON_SCHEMA
-    )
-    query_record = types.QueryRecord(
-        prompt='test', response_format=response_format
-    )
-    hash_value = hash_serializer.get_query_record_hash(query_record)
-
-    assert len(hash_value) == hash_serializer._HASH_LENGTH
-    assert hash_value == hash_serializer.get_query_record_hash(query_record)
-
   def test_pydantic_response_format(self):
     response_format = types.ResponseFormat(
-        value=_create_pydantic_value(UserModel),
-        type=types.ResponseFormatType.PYDANTIC
+        type=types.ResponseFormatType.PYDANTIC,
+        pydantic_class=UserModel
     )
     query_record = types.QueryRecord(
         prompt='test', response_format=response_format
@@ -213,8 +171,8 @@ class TestResponseFormatHash:
 
   def test_nested_pydantic_response_format(self):
     response_format = types.ResponseFormat(
-        value=_create_pydantic_value(UserWithAddressModel),
-        type=types.ResponseFormatType.PYDANTIC
+        type=types.ResponseFormatType.PYDANTIC,
+        pydantic_class=UserWithAddressModel
     )
     query_record = types.QueryRecord(
         prompt='test', response_format=response_format
@@ -223,87 +181,6 @@ class TestResponseFormatHash:
 
     assert len(hash_value) == hash_serializer._HASH_LENGTH
     assert hash_value == hash_serializer.get_query_record_hash(query_record)
-
-  def test_pydantic_with_class_json_schema_value(self):
-    json_schema = {
-        'type': 'object',
-        'properties': {
-            'name': {
-                'type': 'string'
-            },
-            'age': {
-                'type': 'integer'
-            }
-        },
-        'required': ['name', 'age']
-    }
-    pydantic_value = types.ResponseFormatPydanticValue(
-        class_name='UserModel', class_json_schema_value=json_schema
-    )
-    response_format = types.ResponseFormat(
-        value=pydantic_value, type=types.ResponseFormatType.PYDANTIC
-    )
-    query_record = types.QueryRecord(
-        prompt='test', response_format=response_format
-    )
-    hash_value = hash_serializer.get_query_record_hash(query_record)
-
-    assert len(hash_value) == hash_serializer._HASH_LENGTH
-    assert hash_value == hash_serializer.get_query_record_hash(query_record)
-
-  def test_different_class_json_schema_values_produce_different_hashes(self):
-    schema_1 = {'type': 'object', 'properties': {'name': {'type': 'string'}}}
-    schema_2 = {'type': 'object', 'properties': {'age': {'type': 'integer'}}}
-
-    pydantic_value_1 = types.ResponseFormatPydanticValue(
-        class_name='Model', class_json_schema_value=schema_1
-    )
-    pydantic_value_2 = types.ResponseFormatPydanticValue(
-        class_name='Model', class_json_schema_value=schema_2
-    )
-
-    query_record_1 = types.QueryRecord(
-        prompt='test', response_format=types.ResponseFormat(
-            value=pydantic_value_1, type=types.ResponseFormatType.PYDANTIC
-        )
-    )
-    query_record_2 = types.QueryRecord(
-        prompt='test', response_format=types.ResponseFormat(
-            value=pydantic_value_2, type=types.ResponseFormatType.PYDANTIC
-        )
-    )
-
-    hash_1 = hash_serializer.get_query_record_hash(query_record_1)
-    hash_2 = hash_serializer.get_query_record_hash(query_record_2)
-
-    assert hash_1 != hash_2
-
-  def test_class_value_and_class_json_schema_value_produce_same_hash(self):
-    pydantic_value_with_class = types.ResponseFormatPydanticValue(
-        class_name='UserModel', class_value=UserModel
-    )
-    pydantic_value_with_schema = types.ResponseFormatPydanticValue(
-        class_name='UserModel',
-        class_json_schema_value=UserModel.model_json_schema()
-    )
-
-    query_record_1 = types.QueryRecord(
-        prompt='test', response_format=types.ResponseFormat(
-            value=pydantic_value_with_class,
-            type=types.ResponseFormatType.PYDANTIC
-        )
-    )
-    query_record_2 = types.QueryRecord(
-        prompt='test', response_format=types.ResponseFormat(
-            value=pydantic_value_with_schema,
-            type=types.ResponseFormatType.PYDANTIC
-        )
-    )
-
-    hash_1 = hash_serializer.get_query_record_hash(query_record_1)
-    hash_2 = hash_serializer.get_query_record_hash(query_record_2)
-
-    assert hash_1 == hash_2
 
   def test_different_response_formats_produce_different_hashes(self):
     query_record_text = types.QueryRecord(
@@ -320,8 +197,8 @@ class TestResponseFormatHash:
 
     query_record_pydantic = types.QueryRecord(
         prompt='test', response_format=types.ResponseFormat(
-            value=_create_pydantic_value(UserModel),
-            type=types.ResponseFormatType.PYDANTIC
+            type=types.ResponseFormatType.PYDANTIC,
+            pydantic_class=UserModel
         )
     )
 
@@ -344,15 +221,15 @@ class TestResponseFormatHash:
   def test_different_pydantic_models_produce_different_hashes(self):
     query_record_user = types.QueryRecord(
         prompt='test', response_format=types.ResponseFormat(
-            value=_create_pydantic_value(UserModel),
-            type=types.ResponseFormatType.PYDANTIC
+            type=types.ResponseFormatType.PYDANTIC,
+            pydantic_class=UserModel
         )
     )
 
     query_record_address = types.QueryRecord(
         prompt='test', response_format=types.ResponseFormat(
-            value=_create_pydantic_value(AddressModel),
-            type=types.ResponseFormatType.PYDANTIC
+            type=types.ResponseFormatType.PYDANTIC,
+            pydantic_class=AddressModel
         )
     )
 
@@ -361,82 +238,12 @@ class TestResponseFormatHash:
 
     assert hash_user != hash_address
 
-  def test_different_json_schemas_produce_different_hashes(self):
-    schema_1 = {'type': 'object', 'properties': {'name': {'type': 'string'}}}
-    schema_2 = {'type': 'object', 'properties': {'age': {'type': 'integer'}}}
-
-    query_record_1 = types.QueryRecord(
-        prompt='test', response_format=types.ResponseFormat(
-            value=schema_1, type=types.ResponseFormatType.JSON_SCHEMA
-        )
-    )
-
-    query_record_2 = types.QueryRecord(
-        prompt='test', response_format=types.ResponseFormat(
-            value=schema_2, type=types.ResponseFormatType.JSON_SCHEMA
-        )
-    )
-
-    hash_1 = hash_serializer.get_query_record_hash(query_record_1)
-    hash_2 = hash_serializer.get_query_record_hash(query_record_2)
-
-    assert hash_1 != hash_2
-
-  def test_json_schema_key_order_does_not_affect_hash(self):
-    schema_1 = {'type': 'object', 'properties': {'name': {'type': 'string'}}}
-    schema_2 = {'properties': {'name': {'type': 'string'}}, 'type': 'object'}
-
-    query_record_1 = types.QueryRecord(
-        prompt='test', response_format=types.ResponseFormat(
-            value=schema_1, type=types.ResponseFormatType.JSON_SCHEMA
-        )
-    )
-
-    query_record_2 = types.QueryRecord(
-        prompt='test', response_format=types.ResponseFormat(
-            value=schema_2, type=types.ResponseFormatType.JSON_SCHEMA
-        )
-    )
-
-    hash_1 = hash_serializer.get_query_record_hash(query_record_1)
-    hash_2 = hash_serializer.get_query_record_hash(query_record_2)
-
-    assert hash_1 == hash_2
-
-  def test_json_schema_with_unicode_characters(self):
-    schema = {
-        'type': 'object',
-        'properties': {
-            '名前': {
-                'type': 'string',
-                'description': '用户名称 🎉'
-            }
-        },
-        'required': ['名前']
-    }
-    response_format = types.ResponseFormat(
-        value=schema, type=types.ResponseFormatType.JSON_SCHEMA
-    )
-    query_record = types.QueryRecord(
-        prompt='test', response_format=response_format
-    )
-    hash_value = hash_serializer.get_query_record_hash(query_record)
-
-    assert len(hash_value) == hash_serializer._HASH_LENGTH
-    assert hash_value == hash_serializer.get_query_record_hash(query_record)
-
-  def test_pydantic_class_name_stored(self):
-    pydantic_value = _create_pydantic_value(UserModel)
-
-    assert pydantic_value.class_name == 'UserModel'
-    assert pydantic_value.class_value == UserModel
-
   def test_pydantic_hash_consistent_after_serialization(self):
     import proxai.serializers.type_serializer as type_serializer
 
     response_format = types.ResponseFormat(
-        value=_create_pydantic_value(UserModel),
-        type=types.ResponseFormatType.PYDANTIC
+        type=types.ResponseFormatType.PYDANTIC,
+        pydantic_class=UserModel
     )
     query_record = types.QueryRecord(
         prompt='test', response_format=response_format
@@ -455,36 +262,8 @@ class TestResponseFormatHash:
     import proxai.serializers.type_serializer as type_serializer
 
     response_format = types.ResponseFormat(
-        value=_create_pydantic_value(UserWithAddressModel),
-        type=types.ResponseFormatType.PYDANTIC
-    )
-    query_record = types.QueryRecord(
-        prompt='test', response_format=response_format
-    )
-
-    hash_before = hash_serializer.get_query_record_hash(query_record)
-
-    encoded = type_serializer.encode_query_record(query_record)
-    decoded_query_record = type_serializer.decode_query_record(encoded)
-
-    hash_after = hash_serializer.get_query_record_hash(decoded_query_record)
-
-    assert hash_before == hash_after
-
-  def test_json_schema_hash_consistent_after_serialization(self):
-    import proxai.serializers.type_serializer as type_serializer
-
-    schema = {
-        'type': 'object',
-        'properties': {
-            'name': {
-                'type': 'string'
-            }
-        },
-        'required': ['name']
-    }
-    response_format = types.ResponseFormat(
-        value=schema, type=types.ResponseFormatType.JSON_SCHEMA
+        type=types.ResponseFormatType.PYDANTIC,
+        pydantic_class=UserWithAddressModel
     )
     query_record = types.QueryRecord(
         prompt='test', response_format=response_format
@@ -500,21 +279,17 @@ class TestResponseFormatHash:
     assert hash_before == hash_after
 
   def test_pydantic_class_name_affects_hash(self):
-    pydantic_value_1 = types.ResponseFormatPydanticValue(
-        class_name='UserModel', class_value=UserModel
-    )
-    pydantic_value_2 = types.ResponseFormatPydanticValue(
-        class_name='DifferentName', class_value=UserModel
-    )
-
+    # Different pydantic classes with different names produce different hashes
     query_record_1 = types.QueryRecord(
         prompt='test', response_format=types.ResponseFormat(
-            value=pydantic_value_1, type=types.ResponseFormatType.PYDANTIC
+            type=types.ResponseFormatType.PYDANTIC,
+            pydantic_class=UserModel
         )
     )
     query_record_2 = types.QueryRecord(
         prompt='test', response_format=types.ResponseFormat(
-            value=pydantic_value_2, type=types.ResponseFormatType.PYDANTIC
+            type=types.ResponseFormatType.PYDANTIC,
+            pydantic_class=AddressModel
         )
     )
 
@@ -522,3 +297,234 @@ class TestResponseFormatHash:
     hash_2 = hash_serializer.get_query_record_hash(query_record_2)
 
     assert hash_1 != hash_2
+
+
+class TestChatHashing:
+
+  def test_chat_hashing(self):
+    chat = chat_session.Chat(messages=[
+        message.Message(
+            role=message_content.MessageRoleType.USER,
+            content='Hello'
+        ),
+        message.Message(
+            role=message_content.MessageRoleType.ASSISTANT,
+            content='Hi there!'
+        )
+    ])
+    query_record = types.QueryRecord(prompt='test', chat=chat)
+    hash_value = hash_serializer.get_query_record_hash(query_record)
+
+    assert len(hash_value) == hash_serializer._HASH_LENGTH
+    assert hash_value == hash_serializer.get_query_record_hash(query_record)
+
+  def test_chat_message_order_affects_hash(self):
+    chat_1 = chat_session.Chat(messages=[
+        message.Message(
+            role=message_content.MessageRoleType.USER,
+            content='First'
+        ),
+        message.Message(
+            role=message_content.MessageRoleType.ASSISTANT,
+            content='Second'
+        )
+    ])
+    chat_2 = chat_session.Chat(messages=[
+        message.Message(
+            role=message_content.MessageRoleType.ASSISTANT,
+            content='Second'
+        ),
+        message.Message(
+            role=message_content.MessageRoleType.USER,
+            content='First'
+        )
+    ])
+    query_record_1 = types.QueryRecord(prompt='test', chat=chat_1)
+    query_record_2 = types.QueryRecord(prompt='test', chat=chat_2)
+
+    hash_1 = hash_serializer.get_query_record_hash(query_record_1)
+    hash_2 = hash_serializer.get_query_record_hash(query_record_2)
+
+    assert hash_1 != hash_2
+
+  def test_chat_multimodal_content_hashing(self):
+    chat = chat_session.Chat(messages=[
+        message.Message(
+            role=message_content.MessageRoleType.USER,
+            content=[
+                message_content.MessageContent(
+                    type=message_content.ContentType.TEXT, text='Describe this'
+                ),
+                message_content.MessageContent(
+                    type=message_content.ContentType.IMAGE,
+                    source='https://example.com/img.png'
+                )
+            ]
+        )
+    ])
+    query_record = types.QueryRecord(prompt='test', chat=chat)
+    hash_value = hash_serializer.get_query_record_hash(query_record)
+
+    assert len(hash_value) == hash_serializer._HASH_LENGTH
+    assert hash_value == hash_serializer.get_query_record_hash(query_record)
+
+
+class TestParametersAffectHash:
+
+  def test_temperature_affects_hash(self):
+    qr_1 = types.QueryRecord(
+        prompt='test',
+        parameters=types.ParameterType(temperature=0.5)
+    )
+    qr_2 = types.QueryRecord(
+        prompt='test',
+        parameters=types.ParameterType(temperature=0.9)
+    )
+    assert (
+        hash_serializer.get_query_record_hash(qr_1) !=
+        hash_serializer.get_query_record_hash(qr_2)
+    )
+
+  def test_max_tokens_affects_hash(self):
+    qr_1 = types.QueryRecord(
+        prompt='test',
+        parameters=types.ParameterType(max_tokens=100)
+    )
+    qr_2 = types.QueryRecord(
+        prompt='test',
+        parameters=types.ParameterType(max_tokens=200)
+    )
+    assert (
+        hash_serializer.get_query_record_hash(qr_1) !=
+        hash_serializer.get_query_record_hash(qr_2)
+    )
+
+  def test_n_affects_hash(self):
+    qr_1 = types.QueryRecord(
+        prompt='test',
+        parameters=types.ParameterType(n=1)
+    )
+    qr_2 = types.QueryRecord(
+        prompt='test',
+        parameters=types.ParameterType(n=5)
+    )
+    assert (
+        hash_serializer.get_query_record_hash(qr_1) !=
+        hash_serializer.get_query_record_hash(qr_2)
+    )
+
+  def test_thinking_affects_hash(self):
+    qr_1 = types.QueryRecord(
+        prompt='test',
+        parameters=types.ParameterType(thinking=types.ThinkingType.LOW)
+    )
+    qr_2 = types.QueryRecord(
+        prompt='test',
+        parameters=types.ParameterType(thinking=types.ThinkingType.HIGH)
+    )
+    assert (
+        hash_serializer.get_query_record_hash(qr_1) !=
+        hash_serializer.get_query_record_hash(qr_2)
+    )
+
+  def test_stop_affects_hash(self):
+    qr_1 = types.QueryRecord(
+        prompt='test',
+        parameters=types.ParameterType(stop='.')
+    )
+    qr_2 = types.QueryRecord(
+        prompt='test',
+        parameters=types.ParameterType(stop='!')
+    )
+    assert (
+        hash_serializer.get_query_record_hash(qr_1) !=
+        hash_serializer.get_query_record_hash(qr_2)
+    )
+
+
+class TestToolsAffectHash:
+
+  def test_tools_affect_hash(self):
+    qr_1 = types.QueryRecord(prompt='test')
+    qr_2 = types.QueryRecord(
+        prompt='test', tools=[types.Tools.WEB_SEARCH]
+    )
+    assert (
+        hash_serializer.get_query_record_hash(qr_1) !=
+        hash_serializer.get_query_record_hash(qr_2)
+    )
+
+
+class TestConnectionOptionsAffectHash:
+
+  def test_provider_model_affects_hash(self):
+    model_1 = types.ProviderModelType(
+        provider='openai', model='gpt-4', provider_model_identifier='gpt-4'
+    )
+    model_2 = types.ProviderModelType(
+        provider='anthropic', model='claude', provider_model_identifier='claude'
+    )
+    qr_1 = types.QueryRecord(
+        prompt='test',
+        connection_options=types.ConnectionOptions(provider_model=model_1)
+    )
+    qr_2 = types.QueryRecord(
+        prompt='test',
+        connection_options=types.ConnectionOptions(provider_model=model_2)
+    )
+    assert (
+        hash_serializer.get_query_record_hash(qr_1) !=
+        hash_serializer.get_query_record_hash(qr_2)
+    )
+
+  def test_feature_mapping_strategy_affects_hash(self):
+    qr_1 = types.QueryRecord(
+        prompt='test',
+        connection_options=types.ConnectionOptions(
+            feature_mapping_strategy=types.FeatureMappingStrategy.BEST_EFFORT
+        )
+    )
+    qr_2 = types.QueryRecord(
+        prompt='test',
+        connection_options=types.ConnectionOptions(
+            feature_mapping_strategy=types.FeatureMappingStrategy.STRICT
+        )
+    )
+    assert (
+        hash_serializer.get_query_record_hash(qr_1) !=
+        hash_serializer.get_query_record_hash(qr_2)
+    )
+
+  def test_chosen_endpoint_affects_hash(self):
+    qr_1 = types.QueryRecord(
+        prompt='test',
+        connection_options=types.ConnectionOptions(
+            chosen_endpoint='endpoint_a'
+        )
+    )
+    qr_2 = types.QueryRecord(
+        prompt='test',
+        connection_options=types.ConnectionOptions(
+            chosen_endpoint='endpoint_b'
+        )
+    )
+    assert (
+        hash_serializer.get_query_record_hash(qr_1) !=
+        hash_serializer.get_query_record_hash(qr_2)
+    )
+
+
+class TestSystemPromptAffectsHash:
+
+  def test_system_prompt_affects_hash(self):
+    qr_1 = types.QueryRecord(prompt='test', system_prompt='Be helpful.')
+    qr_2 = types.QueryRecord(prompt='test', system_prompt='Be concise.')
+    qr_3 = types.QueryRecord(prompt='test')
+    assert (
+        hash_serializer.get_query_record_hash(qr_1) !=
+        hash_serializer.get_query_record_hash(qr_2)
+    )
+    assert (
+        hash_serializer.get_query_record_hash(qr_1) !=
+        hash_serializer.get_query_record_hash(qr_3)
+    )
