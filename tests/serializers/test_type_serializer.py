@@ -1697,6 +1697,13 @@ class TestTypeSerializer:
           response_format.pydantic_class.__name__
       )
       assert 'pydantic_class_json_schema' in encoded
+      # Verify metadata survives round-trip
+      assert decoded.pydantic_class_name == (
+          response_format.pydantic_class.__name__
+      )
+      assert decoded.pydantic_class_json_schema == (
+          response_format.pydantic_class.model_json_schema()
+      )
 
   @pytest.mark.parametrize('choice_type_options', _get_choice_type_options())
   def test_encode_decode_choice_type(self, choice_type_options):

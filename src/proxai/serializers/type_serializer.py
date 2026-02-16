@@ -634,10 +634,19 @@ def encode_response_format(
   record = {}
   if response_format.type is not None:
     record['type'] = response_format.type.value
+  # Extract from live class if available, else use stored metadata
+  pydantic_class_name = response_format.pydantic_class_name
+  pydantic_class_json_schema = response_format.pydantic_class_json_schema
   if response_format.pydantic_class is not None:
-    record['pydantic_class_name'] = response_format.pydantic_class.__name__
+    pydantic_class_name = response_format.pydantic_class.__name__
+    pydantic_class_json_schema = (
+        response_format.pydantic_class.model_json_schema()
+    )
+  if pydantic_class_name is not None:
+    record['pydantic_class_name'] = pydantic_class_name
+  if pydantic_class_json_schema is not None:
     record['pydantic_class_json_schema'] = json.dumps(
-        response_format.pydantic_class.model_json_schema(), sort_keys=True
+        pydantic_class_json_schema, sort_keys=True
     )
   return record
 
@@ -647,6 +656,12 @@ def decode_response_format(record: dict[str, Any]) -> types.ResponseFormat:
   response_format = types.ResponseFormat()
   if 'type' in record:
     response_format.type = types.ResponseFormatType(record['type'])
+  if 'pydantic_class_name' in record:
+    response_format.pydantic_class_name = record['pydantic_class_name']
+  if 'pydantic_class_json_schema' in record:
+    response_format.pydantic_class_json_schema = json.loads(
+        record['pydantic_class_json_schema']
+    )
   return response_format
 
 
