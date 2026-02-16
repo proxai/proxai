@@ -55,6 +55,7 @@ class ProviderModelConnector(state_controller.StateControlled):
 
   PROVIDER_NAME: str
   PROVIDER_API_KEYS: list[str]
+  ENDPOINT_PRIORITY: list[str]
   ENDPOINT_CONFIG: dict[str, types.FeatureConfigType]
   ENDPOINT_EXECUTORS: dict[str, Callable | None]
 
@@ -88,13 +89,17 @@ class ProviderModelConnector(state_controller.StateControlled):
       self.logging_options = init_from_params.logging_options
       self.proxdash_connection = init_from_params.proxdash_connection
       self.provider_token_value_map = init_from_params.provider_token_value_map
-      self._validate_provider_token_value_map()
+
+      # BEGIN: Refactoring: Remove this after testing
+      # self._validate_provider_token_value_map()
+      # END: Refactoring
 
   def __init_subclass__(cls, **kwargs):
     super().__init_subclass__(**kwargs)
     for attr in (
         'PROVIDER_NAME',
         'PROVIDER_API_KEYS',
+        'ENDPOINT_PRIORITY',
         'ENDPOINT_CONFIG',
         'ENDPOINT_EXECUTORS',
     ):
@@ -342,13 +347,14 @@ class ProviderModelConnector(state_controller.StateControlled):
   def find_compatible_endpoint(self, query_record: types.QueryRecord):
     """Find a compatible endpoint for the query record."""
     best_effort_endpoints = []
-    for endpoint in sorted(self.ENDPOINT_CONFIG.keys()):
+    for endpoint in self.ENDPOINT_PRIORITY:
       feature_config = self.ENDPOINT_CONFIG[endpoint]
       adapter = feature_adapter.FeatureAdapter(
           endpoint=endpoint,
           feature_config=feature_config,
       )
       support_level = adapter.get_support_level(query_record=query_record)
+      print(f'endpoint: {endpoint}, support_level: {support_level}')
       if support_level == types.FeatureSupportType.SUPPORTED:
         return endpoint
       elif support_level == types.FeatureSupportType.BEST_EFFORT:
@@ -358,7 +364,7 @@ class ProviderModelConnector(state_controller.StateControlled):
         len(best_effort_endpoints) > 0 and
         self.feature_mapping_strategy == types.FeatureMappingStrategy.BEST_EFFORT
     ):
-      return sorted(best_effort_endpoints)[0]
+      return best_effort_endpoints[0]
     else:
       raise ValueError(
           'No compatible endpoint found for the query record.'
@@ -385,15 +391,17 @@ class ProviderModelConnector(state_controller.StateControlled):
     if response_format is None:
       response_format = types.ResponseFormat(type=types.ResponseFormatType.TEXT)
 
-    if provider_model is not None:
-      if isinstance(provider_model, tuple):
-        provider_model = self.provider_model_config.provider_model
-      if provider_model != self.provider_model:
-        raise ValueError(
-            'provider_model does not match the connector provider_model.'
-            f'provider_model: {provider_model}\n'
-            f'connector provider_model: {self.provider_model}'
-        )
+    # BEGIN: Refactoring: Remove this after testing
+    # if provider_model is not None:
+    #   if isinstance(provider_model, tuple):
+    #     provider_model = self.provider_model_config.provider_model
+    #   if provider_model != self.provider_model:
+    #     raise ValueError(
+    #         'provider_model does not match the connector provider_model.'
+    #         f'provider_model: {provider_model}\n'
+    #         f'connector provider_model: {self.provider_model}'
+    #     )
+    # END: Refactoring
 
     if feature_mapping_strategy is None:
       feature_mapping_strategy = self.feature_mapping_strategy
@@ -438,7 +446,8 @@ class ProviderModelConnector(state_controller.StateControlled):
     
     response, error, error_traceback = None, None, None
     try:
-      response = chosen_executor(query_record=modified_query_record)
+      executor = getattr(self, chosen_executor)
+      response = executor(query_record=modified_query_record)
     except Exception as e:
       error_traceback = traceback.format_exc()
       error = e
@@ -498,7 +507,7 @@ class ProviderModelConnector(state_controller.StateControlled):
         result=result_record,
         cache=types.CacheMetadata(
             cache_hit=False,
-            response_source=types.ResponseSource.PROVIDER,
+            result_source=types.ResultSource.PROVIDER,
             cache_look_fail_reason=None
         )
     )

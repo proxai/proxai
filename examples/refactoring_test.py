@@ -7,8 +7,10 @@ import proxai as px
 def simple_model_test():
   result = px.generate_text(
       'When is the first galatasaray and fenerbahce?',
-      provider_model=('openai', 'gpt-5.1'))
+      provider_model=('openai', 'gpt-5.2'))
   pprint(result)
+  print(result.result.error)
+  print(result.result.error_traceback)
 
 
 def main():
