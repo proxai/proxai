@@ -2,9 +2,11 @@ import dataclasses
 import os
 import tempfile
 from collections.abc import Callable
+from typing import Dict, Any, List
 
 import platformdirs
 
+import proxai.chat.chat_session as chat_session
 import proxai.caching.model_cache as model_cache
 import proxai.caching.query_cache as query_cache
 import proxai.connections.available_models as available_models
@@ -1033,6 +1035,75 @@ class ProxAIClient(state_controller.StateControlled):
         types.CallType.TEXT
     ] = (self.available_models_instance.get_model_connector(provider_model))
 
+  def generate(
+      self,
+      prompt: str | None = None,
+      messages: types.MessagesParam | None = None,
+      system_prompt: str | None = None,
+      provider_model: types.ProviderModelParam | None = None,
+      parameters: types.ParameterType | None = None,
+      tools: List[types.ToolType] | None = None,
+      response_format: types.ResponseFormatParam | None = None,
+  ) -> types.CallRecord:
+    if prompt is not None and messages is not None:
+      raise ValueError('prompt and messages cannot be used together')
+    if system_prompt is not None and messages is not None:
+      raise ValueError(
+          'system_prompt and messages cannot be used together. '
+          'Please use "system" message in messages to set the system prompt.\n'
+          'px.generate(\n'
+          '    messages=[\n'
+          '        {"role": "system",\n'
+          '         "content": "You are a helpful assistant."},\n'
+          '        ...])')
+
+    # BEGIN: Refactoring: Revert this after testing
+    if type(provider_model) == tuple and provider_model[0] != 'openai':
+      raise ValueError(
+          f'{provider_model} is not a valid provider model in refactoring')
+    if (type(provider_model) == types.ProviderModelType and
+        provider_model.provider != 'openai'):
+      raise ValueError(
+          f'{provider_model} is not a valid provider model in refactoring')
+    
+    if type(messages) == list:
+      messages = chat_session.Chat(messages=messages)
+
+    if type(provider_model) == tuple:
+      provider_model = types.ProviderModelType(
+          provider='openai',
+          model=provider_model[1],
+          provider_model_identifier=provider_model[1]
+      )
+    if type(provider_model) == types.ProviderModelType:
+      provider_model = types.ProviderModelType(
+          provider=provider_model.provider,
+          model=provider_model.model,
+          provider_model_identifier=provider_model.provider_model_identifier
+      )
+
+    import proxai.connectors.model_connector as model_connector
+    import proxai.connectors.providers.openai as openai_provider
+    model_connector = openai_provider.OpenAIConnector(
+        init_from_params=model_connector.ProviderModelConnectorParams(
+            provider_model=provider_model,
+            run_type=types.RunType.PRODUCTION,
+            provider_token_value_map={
+                'OPENAI_API_KEY': os.environ['OPENAI_API_KEY'],
+            },
+        )
+    )
+    return model_connector.generate(
+        prompt=prompt,
+        messages=messages,
+        system_prompt=system_prompt,
+        provider_model=provider_model,
+        parameters=parameters,
+        tools=tools,
+        response_format=response_format,
+    )
+    # END: Refactoring: Revert this after testing
+
   def generate_text(
       self,
       prompt: str | None = None,
@@ -1147,21 +1218,23 @@ class ProxAIClient(state_controller.StateControlled):
           == types.QueryCacheManagerStatus.WORKING
       )
 
-    # BEGIN: Refactoring: Remove this after testing
-    import proxai.connectors.model_connector as model_connector
-    import proxai.connectors.providers.openai as openai_provider
-    model_connector = openai_provider.OpenAIConnector(
-        init_from_params=model_connector.ProviderModelConnectorParams(
-            provider_model=types.ProviderModelType(
-                provider='openai', model='gpt-5.2', provider_model_identifier='gpt-5.2'
-            ),
-            run_type=types.RunType.PRODUCTION,
-            provider_token_value_map={
-                'OPENAI_API_KEY': os.environ['OPENAI_API_KEY'],
-            },
-        )
+    if provider_model is not None:
+      model_connector = self.available_models_instance.get_model_connector(
+          provider_model_identifier=provider_model
+      )
+    else:
+      model_connector = self.get_registered_model_connector(
+          call_type=types.CallType.GENERATE_TEXT
+      )
+
+    if suppress_provider_errors is None:
+      suppress_provider_errors = self.suppress_provider_errors
+
+    response_format: types.ResponseFormat = type_utils.create_response_format(
+        response_format
     )
-    return model_connector.generate_text(
+
+    logging_record: types.LoggingRecord = model_connector.generate_text(
         prompt=prompt,
         system=system,
         messages=messages,
@@ -1174,70 +1247,37 @@ class ProxAIClient(state_controller.StateControlled):
         use_cache=use_cache,
         unique_response_limit=unique_response_limit,
     )
-    # END: Refactoring
+    if (
+        logging_record.response_record.error or
+        logging_record.response_record.error_traceback
+    ):
+      if suppress_provider_errors:
+        if extensive_return:
+          return logging_record
+        return logging_record.response_record.error
+      else:
+        error_traceback = ""
+        if logging_record.response_record.error_traceback:
+          error_traceback = (
+              logging_record.response_record.error_traceback + "\n"
+          )
+        raise Exception(error_traceback + logging_record.response_record.error)
 
-    # BEGIN: Refactoring: Revert this after testing
-    # if provider_model is not None:
-    #   model_connector = self.available_models_instance.get_model_connector(
-    #       provider_model_identifier=provider_model
-    #   )
-    # else:
-    #   model_connector = self.get_registered_model_connector(
-    #       call_type=types.CallType.TEXT
-    #   )
+    if (
+        logging_record.response_record.response.type ==
+        types.ResponseType.PYDANTIC
+    ):
+      # Recreate instance from pydantic_metadata if value is None (from cache)
+      instance = type_utils.create_pydantic_instance_from_response(
+          response_format=response_format,
+          response=logging_record.response_record.response,
+      )
+      logging_record.response_record.response.value = instance
 
-    # if suppress_provider_errors is None:
-    #   suppress_provider_errors = self.suppress_provider_errors
+    if extensive_return:
+      return logging_record
 
-    # response_format: types.ResponseFormat = type_utils.create_response_format(
-    #     response_format
-    # )
-
-    # logging_record: types.LoggingRecord = model_connector.generate_text(
-    #     prompt=prompt,
-    #     system=system,
-    #     messages=messages,
-    #     max_tokens=max_tokens,
-    #     temperature=temperature,
-    #     stop=stop,
-    #     response_format=response_format,
-    #     web_search=web_search,
-    #     feature_mapping_strategy=feature_mapping_strategy,
-    #     use_cache=use_cache,
-    #     unique_response_limit=unique_response_limit,
-    # )
-    # if (
-    #     logging_record.response_record.error or
-    #     logging_record.response_record.error_traceback
-    # ):
-    #   if suppress_provider_errors:
-    #     if extensive_return:
-    #       return logging_record
-    #     return logging_record.response_record.error
-    #   else:
-    #     error_traceback = ""
-    #     if logging_record.response_record.error_traceback:
-    #       error_traceback = (
-    #           logging_record.response_record.error_traceback + "\n"
-    #       )
-    #     raise Exception(error_traceback + logging_record.response_record.error)
-
-    # if (
-    #     logging_record.response_record.response.type ==
-    #     types.ResponseType.PYDANTIC
-    # ):
-    #   # Recreate instance from pydantic_metadata if value is None (from cache)
-    #   instance = type_utils.create_pydantic_instance_from_response(
-    #       response_format=response_format,
-    #       response=logging_record.response_record.response,
-    #   )
-    #   logging_record.response_record.response.value = instance
-
-    # if extensive_return:
-    #   return logging_record
-
-    # return logging_record.response_record.response.value
-    # END: Refactoring
+    return logging_record.response_record.response.value
 
   def get_current_options(
       self,

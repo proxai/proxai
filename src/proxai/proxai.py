@@ -1,3 +1,5 @@
+from typing import Dict, Any, List
+import proxai.chat.chat_session as chat_session
 import proxai.client as client
 import proxai.types as types
 from proxai.client import ModelConnector
@@ -6,9 +8,14 @@ from proxai.client import ModelConnector
 CacheOptions = types.CacheOptions
 LoggingOptions = types.LoggingOptions
 ProxDashOptions = types.ProxDashOptions
-ResponseFormatType = types.ResponseFormatType
 FeatureMappingStrategy = types.FeatureMappingStrategy
+
+Chat = chat_session.Chat
 ProviderModelType = types.ProviderModelType
+ParameterType = types.ParameterType
+Tools = types.Tools
+ResponseFormatType = types.ResponseFormatType
+
 
 _DEFAULT_CLIENT: client.ProxAIClient | None = None
 Client = client.ProxAIClient
@@ -84,6 +91,26 @@ def connect(
       suppress_provider_errors=suppress_provider_errors,
   )
   _DEFAULT_CLIENT = client.ProxAIClient(init_from_params=proxai_client_params)
+
+
+def generate(
+    prompt: str | None = None,
+    messages: types.MessagesParam | None = None,
+    system_prompt: str | None = None,
+    provider_model: types.ProviderModelParam | None = None,
+    parameters: types.ParameterType | None = None,
+    tools: List[types.ToolType] | None = None,
+    response_format: types.ResponseFormatParam | None = None,
+) -> types.CallRecord:
+  return get_default_proxai_client().generate(
+      prompt=prompt,
+      messages=messages,
+      system_prompt=system_prompt,
+      provider_model=provider_model,
+      parameters=parameters,
+      tools=tools,
+      response_format=response_format,
+  )
 
 
 def generate_text(

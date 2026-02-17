@@ -60,6 +60,10 @@ class Chat:
       return msg
     if isinstance(msg, dict):
       return Message.from_dict(msg)
+    if isinstance(msg, str):
+      # NOTE: Default to assistant role if message is a string because
+      # it is convinient to append call_record.result.content to the chat.
+      return Message(role=MessageRoleType.ASSISTANT, content=msg)
     raise TypeError(
         f"Expected Message or dict, got {type(msg).__name__}."
     )
