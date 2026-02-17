@@ -149,15 +149,20 @@ class FeatureAdapter:
     """Adapt chat, system_prompt, and response format guidance for chat."""
     # Resolve system_prompt support for chat.
     system_best_effort = False
+    add_system_to_messages = False
     if query_record.chat.system_prompt is not None:
       level = self._resolve(self.feature_config.system_prompt)
-      if level == types.FeatureSupportType.BEST_EFFORT:
+      if level == types.FeatureSupportType.SUPPORTED:
+        if self.feature_config.add_system_to_messages:
+          add_system_to_messages = True
+      elif level == types.FeatureSupportType.BEST_EFFORT:
         system_best_effort = True
       elif level == types.FeatureSupportType.NOT_SUPPORTED:
         raise ValueError(
             f"Feature 'system_prompt' is not supported "
             f"by endpoint '{self.endpoint}'."
         )
+      
 
     # Resolve messages support and export.
     messages_best_effort = False
@@ -172,6 +177,7 @@ class FeatureAdapter:
 
     exported_chat = query_record.chat.export(
         add_system_to_first_user_message=system_best_effort,
+        add_system_to_messages=add_system_to_messages,
         add_json_guidance_to_system=json_guidance,
         add_json_guidance_to_user_prompt=json_guidance,
         add_json_schema_guidance_to_system=pydantic_schema,

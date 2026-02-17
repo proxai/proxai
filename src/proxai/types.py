@@ -165,6 +165,7 @@ class FeatureConfigType:
   prompt: FeatureSupportType | None = None
   messages: FeatureSupportType | None = None
   system_prompt: FeatureSupportType | None = None
+  add_system_to_messages: bool | None = None
   parameters: ParameterConfigType | None = None
   tools: ToolConfigType | None = None
   response_format: ResponseFormatConfigType | None = None
