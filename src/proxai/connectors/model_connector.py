@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import Dict, Any, List
 import copy
 import dataclasses
 import datetime
@@ -283,40 +284,53 @@ class ProviderModelConnector(state_controller.StateControlled):
     )
 
   def get_token_count_estimate(
-      self, value: str | types.Response | types.MessagesType | None = None
+      self, value: str | dict | list | chat_session.Chat | None = None
   ) -> int:
     """Estimate the token count for a prompt, response, or messages."""
+    if not value:
+      return 0
+
     total = 0
 
-    def _get_token_count_estimate_from_prompt(prompt: str) -> int:
-      return math.ceil(max(len(prompt) / 4, len(prompt.strip().split()) * 1.3))
+    def _get_token_count_estimate_from_str(input: str) -> int:
+      return math.ceil(max(len(input) / 4, len(input.strip().split()) * 1.3))
 
     if isinstance(value, str):
-      total += _get_token_count_estimate_from_prompt(value)
-    elif isinstance(value, types.Response):
-      if value.type == types.ResponseType.TEXT:
-        total += _get_token_count_estimate_from_prompt(value.value)
-      elif value.type == types.ResponseType.JSON:
-        total += _get_token_count_estimate_from_prompt(json.dumps(value.value))
-      elif value.type == types.ResponseType.PYDANTIC:
-        # Try pydantic_metadata.instance_json_value first, then value (instance)
-        if (
-            value.pydantic_metadata is not None and
-            value.pydantic_metadata.instance_json_value is not None
-        ):
-          total += _get_token_count_estimate_from_prompt(
-              json.dumps(value.pydantic_metadata.instance_json_value)
-          )
-        elif value.value is not None:
-          total += _get_token_count_estimate_from_prompt(
-              json.dumps(value.value.model_dump())
-          )
-      else:
-        raise ValueError(f'Invalid response type: {value.type}')
+      total += _get_token_count_estimate_from_str(value)
+    # BEGIN: Refactoring: Remove this after testing
+    # elif isinstance(value, types.Response):
+    #   if value.type == types.ResponseType.TEXT:
+    #     total += _get_token_count_estimate_from_str(value.value)
+    #   elif value.type == types.ResponseType.JSON:
+    #     total += _get_token_count_estimate_from_str(json.dumps(value.value))
+    #   elif value.type == types.ResponseType.PYDANTIC:
+    #     # Try pydantic_metadata.instance_json_value first, then value (instance)
+    #     if (
+    #         value.pydantic_metadata is not None and
+    #         value.pydantic_metadata.instance_json_value is not None
+    #     ):
+    #       total += _get_token_count_estimate_from_str(
+    #           json.dumps(value.pydantic_metadata.instance_json_value)
+    #       )
+    #     elif value.value is not None:
+    #       total += _get_token_count_estimate_from_str(
+    #           json.dumps(value.value.model_dump())
+    #       )
+    #   else:
+    #     raise ValueError(f'Invalid response type: {value.type}')
+    # elif isinstance(value, list):
+    #   total += 2
+    #   for message in value:
+    #     total += _get_token_count_estimate_from_str(json.dumps(message)) + 4
+    # END: Refactoring: Remove this after testing
+    elif isinstance(value, chat_session.Chat):
+      total += _get_token_count_estimate_from_str(str(value.to_json()))
+    elif isinstance(value, dict):
+      total += _get_token_count_estimate_from_str(str(value))
     elif isinstance(value, list):
       total += 2
       for message in value:
-        total += _get_token_count_estimate_from_prompt(json.dumps(message)) + 4
+        total += _get_token_count_estimate_from_str(json.dumps(message)) + 4
     else:
       raise ValueError(
           'Invalid value type. Please provide a string, a response value, or a '
@@ -373,7 +387,6 @@ class ProviderModelConnector(state_controller.StateControlled):
           feature_config=feature_config,
       )
       support_level = adapter.get_support_level(query_record=query_record)
-      print(f'endpoint: {endpoint}, support_level: {support_level}')
       if support_level == types.FeatureSupportType.SUPPORTED:
         return endpoint
       elif support_level == types.FeatureSupportType.BEST_EFFORT:
@@ -391,86 +404,53 @@ class ProviderModelConnector(state_controller.StateControlled):
           'Try to reduce the number of features.'
       )
 
-  def generate_text(
-      self, prompt: str | None = None, system: str | None = None,
-      messages: types.MessagesType | None = None, max_tokens: int | None = None,
-      temperature: float | None = None, stop: types.StopType | None = None,
-      response_format: types.ResponseFormat | None = None,
-      web_search: bool | None = None,
-      provider_model: types.ProviderModelIdentifierType | None = None,
-      feature_mapping_strategy: types.FeatureMappingStrategy | None = None,
-      use_cache: bool = True, unique_response_limit: int | None = None
-  ) -> types.LoggingRecord:
-    """Generate text from the model and return a logging record."""
-    if prompt is not None and messages is not None:
-      raise ValueError('prompt and messages cannot be set at the same time.')
-    if messages is not None:
-      type_utils.check_messages_type(messages)
-
-    if response_format is None:
-      response_format = types.ResponseFormat(type=types.ResponseFormatType.TEXT)
-
-    # BEGIN: Refactoring: Remove this after testing
-    # if provider_model is not None:
-    #   if isinstance(provider_model, tuple):
-    #     provider_model = self.provider_model_config.provider_model
-    #   if provider_model != self.provider_model:
-    #     raise ValueError(
-    #         'provider_model does not match the connector provider_model.'
-    #         f'provider_model: {provider_model}\n'
-    #         f'connector provider_model: {self.provider_model}'
-    #     )
-    # END: Refactoring
-
-    if feature_mapping_strategy is None:
-      feature_mapping_strategy = self.feature_mapping_strategy
-
-    start_utc_date = datetime.datetime.now(datetime.timezone.utc)
-
-    system_prompt = None
-    chat = None
-    if messages is not None:
-      chat = chat_session.Chat(messages=messages, system_prompt=system)
-    else:
-      system_prompt = system
-
-    query_record = types.QueryRecord(
-        prompt=prompt,
-        system_prompt=system_prompt,
-        chat=chat,
-        parameters=types.ParameterType(
-            max_tokens=max_tokens,
-            temperature=temperature,
-            stop=stop,
-        ),
-        tools=[types.Tools.WEB_SEARCH] if web_search else None,
-        response_format=response_format,
-        connection_options=types.ConnectionOptions(
-            provider_model=self.provider_model,
-            feature_mapping_strategy=feature_mapping_strategy,
-            chosen_endpoint=None,
-        ),
-    )
-
+  def _prepare_execution(
+      self,
+      query_record: types.QueryRecord
+  ) -> tuple[Callable, types.QueryRecord]:
     chosen_endpoint = self.find_compatible_endpoint(query_record=query_record)
-    query_record.connection_options.chosen_endpoint = chosen_endpoint
-
     chosen_adapter = feature_adapter.FeatureAdapter(
         endpoint=chosen_endpoint,
         feature_config=self.ENDPOINT_CONFIG[chosen_endpoint],
     )
+    executor_name = self.ENDPOINT_EXECUTORS[chosen_endpoint]
+    chosen_executor = getattr(self, executor_name)
+
     modified_query_record = chosen_adapter.adapt_query_record(
         query_record=query_record)
-    chosen_executor = self.ENDPOINT_EXECUTORS[chosen_endpoint]
+    modified_query_record.connection_options.chosen_endpoint = chosen_endpoint
     
+    return chosen_executor, modified_query_record
+
+  def _execute_call(
+      self,
+      chosen_executor: Callable,
+      modified_query_record: types.QueryRecord,
+  ):
     response, error, error_traceback = None, None, None
     try:
-      executor = getattr(self, chosen_executor)
-      response = executor(query_record=modified_query_record)
+      response = chosen_executor(query_record=modified_query_record)
     except Exception as e:
       error_traceback = traceback.format_exc()
       error = e
 
+    if response is not None:
+      return types.ResultRecord(
+          status=types.ResultStatusType.SUCCESS,
+          role=types.MessageRoleType.ASSISTANT,
+          content=response)
+    else:
+      return types.ResultRecord(
+          status=types.ResultStatusType.FAILED,
+          role=types.MessageRoleType.ASSISTANT,
+          error=str(error),
+          error_traceback=error_traceback)
+
+  def _compute_usage(
+      self,
+      query_record: types.CallRecord,
+      response: str | None = None,
+  ) -> types.UsageType:
     if query_record.prompt is not None:
       input_tokens = self.get_token_count_estimate(value=query_record.prompt)
     else:
@@ -479,47 +459,92 @@ class ProviderModelConnector(state_controller.StateControlled):
       output_tokens = self.get_token_count_estimate(value=response)
     else:
       output_tokens = 0
+    return types.UsageType(
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        total_tokens=input_tokens + output_tokens,
+    )
+
+  def _compute_timestamp(
+      self,
+      start_utc_date: datetime.datetime
+  ) -> types.TimeStampType:
     end_utc_date=datetime.datetime.now(datetime.timezone.utc)
     local_time_offset_minute = (
         datetime.datetime.now().astimezone().utcoffset().total_seconds() //
         60
     ) * -1
+    return types.TimeStampType(
+        start_utc_date=start_utc_date,
+        end_utc_date=end_utc_date,
+        local_time_offset_minute=local_time_offset_minute,
+        response_time=end_utc_date - start_utc_date
+    )
 
-    if response is not None:
-      result_record = types.ResultRecord(
-          status=types.ResultStatusType.SUCCESS,
-          role=types.MessageRoleType.ASSISTANT,
-          content=response,
-          usage=types.UsageType(
-              input_tokens=input_tokens,
-              output_tokens=output_tokens,
-              total_tokens=input_tokens + output_tokens,
-          ),
-          timestamp=types.TimeStampType(
-              start_utc_date=start_utc_date,
-              end_utc_date=end_utc_date,
-              local_time_offset_minute=local_time_offset_minute,
-              response_time=end_utc_date - start_utc_date
-          )
-      )
-    else:
-      result_record = types.ResultRecord(
-          status=types.ResultStatusType.SUCCESS,
-          role=types.MessageRoleType.ASSISTANT,
-          error=str(error),
-          error_traceback=error_traceback,
-          usage=types.UsageType(
-              input_tokens=input_tokens,
-              output_tokens=output_tokens,
-              total_tokens=input_tokens + output_tokens,
-          ),
-          timestamp=types.TimeStampType(
-              start_utc_date=start_utc_date,
-              end_utc_date=end_utc_date,
-              local_time_offset_minute=local_time_offset_minute,
-              response_time=end_utc_date - start_utc_date
-          )
-      )
+  def generate(
+      self,
+      prompt: str | None = None,
+      messages: chat_session.Chat | None = None,
+      system_prompt: str | None = None,
+      provider_model: types.ProviderModelType | None = None,
+      parameters: types.ParameterType | None = None,
+      tools: List[types.ToolType] | None = None,
+      response_format: types.ResponseFormatType | None = None,
+  ) -> types.LoggingRecord:
+    """Generate text from the model and return a logging record."""
+    if prompt is not None and messages is not None:
+      raise ValueError('prompt and messages cannot be used together')
+    if system_prompt is not None and messages is not None:
+      raise ValueError(
+          'system_prompt and messages cannot be used together. '
+          'Please use "system" message in messages to set the system prompt.\n'
+          'px.generate(\n'
+          '    messages=[\n'
+          '        {"role": "system",\n'
+          '         "content": "You are a helpful assistant."},\n'
+          '        ...])')
+
+    if response_format is None:
+      response_format = types.ResponseFormat(type=types.ResponseFormatType.TEXT)
+
+    # BEGIN: Refactoring: Remove this after testing
+    # if provider_model.provider != self.provider:
+    #   raise ValueError(
+    #       'provider_model does not match the connector provider.'
+    #       f'provider_model: {provider_model}\n'
+    #       f'connector provider: {self.provider}'
+    #   )
+    # END: Refactoring: Remove this after testing
+
+    start_utc_date = datetime.datetime.now(datetime.timezone.utc)
+
+    query_record = types.QueryRecord(
+        prompt=prompt,
+        chat=messages,
+        system_prompt=system_prompt,
+        parameters=parameters,
+        tools=tools,
+        response_format=response_format,
+        connection_options=types.ConnectionOptions(
+            provider_model=provider_model,
+            feature_mapping_strategy=self.feature_mapping_strategy,
+            chosen_endpoint=None,
+        ),
+    )
+
+    chosen_executor, modified_query_record = self._prepare_execution(
+        query_record=query_record)
+    
+    result_record = self._execute_call(
+        chosen_executor=chosen_executor,
+        modified_query_record=modified_query_record,
+    )
+    result_record.usage = self._compute_usage(
+        query_record=modified_query_record,
+        response=result_record.content)
+    result_record.timestamp = self._compute_timestamp(
+        start_utc_date=start_utc_date)
+
 
     call_record = types.CallRecord(
         query=query_record,

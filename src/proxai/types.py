@@ -1,7 +1,7 @@
 import dataclasses
 import datetime
 import enum
-from typing import Any
+from typing import Any, Dict, List
 
 import pydantic
 
@@ -105,9 +105,6 @@ class ProviderModelType:
     return str(self) >= str(other)
 
 
-# (provider, model) without model_signature
-ProviderModelTupleType = tuple[ProviderNameType, ModelNameType]
-ProviderModelIdentifierType = ProviderModelType | ProviderModelTupleType
 StopType = str | list[str]
 
 
@@ -244,15 +241,20 @@ class ConfigOriginType(enum.Enum):
   PROXDASH = "PROXDASH"
 
 
+# (provider, model) without model_signature
+ProviderModelTupleParam = tuple[ProviderNameType, ModelNameType]
+ProviderModelParam = ProviderModelTupleParam | ProviderModelType
+MessagesParam = List[Dict[str, Any]] | chat_session.Chat
+
 ProviderModelsIdentifierDictType = dict[ProviderNameType,
-                                        tuple[ProviderModelIdentifierType]]
+                                        tuple[ProviderModelType]]
 
 ProviderModelConfigsType = dict[ProviderNameType, dict[ModelNameType,
                                                        ProviderModelConfigType]]
 FeaturedModelsType = ProviderModelsIdentifierDictType
 ModelsByCallTypeType = dict[CallType, ProviderModelsIdentifierDictType]
-ModelsBySizeType = dict[ModelSizeType, tuple[ProviderModelIdentifierType]]
-DefaultModelPriorityListType = tuple[ProviderModelIdentifierType]
+ModelsBySizeType = dict[ModelSizeType, tuple[ProviderModelType]]
+DefaultModelPriorityListType = tuple[ProviderModelType]
 
 
 @dataclasses.dataclass
@@ -475,6 +477,9 @@ class ResponseFormat:
   pydantic_class: type[pydantic.BaseModel] | None = None
   pydantic_class_name: str | None = None
   pydantic_class_json_schema: dict | None = None
+
+
+ResponseFormatParam = str | type[pydantic.BaseModel] | ResponseFormat
 
 
 class ThinkingType(str, enum.Enum):

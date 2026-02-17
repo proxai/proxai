@@ -108,7 +108,7 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
               {'role': 'user', 'content': query_record.prompt}])
 
     if query_record.chat is not None:
-      create = functools.partial(create, messages=query_record.chat)
+      create = functools.partial(create, messages=query_record.chat['messages'])
 
     if query_record.parameters is not None:
       if query_record.parameters.max_tokens is not None:
@@ -148,7 +148,7 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
               {'role': 'user', 'content': query_record.prompt}])
 
     if query_record.chat is not None:
-      create = functools.partial(create, messages=query_record.chat)
+      create = functools.partial(create, messages=query_record.chat['messages'])
 
     if query_record.parameters is not None:
       if query_record.parameters.max_tokens is not None:
