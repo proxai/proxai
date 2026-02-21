@@ -1,6 +1,7 @@
 import dataclasses
 import copy
 import os
+import pydantic
 import tempfile
 from collections.abc import Callable
 from typing import Dict, Any, List
@@ -1134,10 +1135,25 @@ class ProxAIClient(state_controller.StateControlled):
     
     if type(messages) == list:
       messages = chat_session.Chat(messages=messages)
+    
+    if type(response_format) == str:
+      if response_format == 'text':
+        response_format = types.ResponseFormat(
+            type=types.ResponseFormatType.TEXT)
+      elif response_format == 'json':
+        response_format = types.ResponseFormat(
+            type=types.ResponseFormatType.JSON)
+      else:
+        raise ValueError(f'Invalid response format: {response_format}')
+    elif type(response_format) == pydantic.BaseModel:
+      response_format = types.ResponseFormat(
+          type=types.ResponseFormatType.PYDANTIC,
+          pydantic_class=response_format)
 
     provider_models = [provider_model]
     
-    if connection_options.fallback_models is not None:
+    if (connection_options and
+        connection_options.fallback_models):
       for fallback_model in connection_options.fallback_models:
         provider_models.append(fallback_model)
       connection_options.suppress_provider_errors = True
@@ -1162,7 +1178,7 @@ class ProxAIClient(state_controller.StateControlled):
       if idx == 0:
         connection_metadata.failed_fallback_models = []
       connection_metadata.failed_fallback_models.append(provider_model)
-    return None
+    return result_record
 
   def generate_text(
       self,
