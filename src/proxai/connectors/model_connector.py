@@ -436,7 +436,6 @@ class ProviderModelConnector(state_controller.StateControlled):
   def _prepare_execution(
       self,
       query_record: types.QueryRecord,
-      connection_metadata: types.ConnectionMetadata | None = None,
   ) -> tuple[Callable, types.QueryRecord]:
     if (query_record.connection_options and
         query_record.connection_options.endpoint is not None):
@@ -460,9 +459,8 @@ class ProviderModelConnector(state_controller.StateControlled):
 
     modified_query_record = chosen_adapter.adapt_query_record(
         query_record=query_record)
-    connection_metadata.chosen_endpoint = chosen_endpoint
 
-    return chosen_executor, modified_query_record
+    return chosen_executor, chosen_endpoint, modified_query_record
 
   def _safe_provider_query(
       self,
@@ -492,7 +490,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       return types.ResultRecord(
           status=types.ResultStatusType.FAILED,
           role=types.MessageRoleType.ASSISTANT,
-          error=str(error),
+          error=error,
           error_traceback=error_traceback)
 
   def _compute_usage(
@@ -584,9 +582,9 @@ class ProviderModelConnector(state_controller.StateControlled):
         connection_options=connection_options,
     )
 
-    chosen_executor, modified_query_record = self._prepare_execution(
-        query_record=query_record,
-        connection_metadata=connection_metadata)
+    (chosen_executor,
+     chosen_endpoint,
+     modified_query_record) = self._prepare_execution(query_record=query_record)
     
     result_record = self._execute_call(
         chosen_executor=chosen_executor,
@@ -598,6 +596,7 @@ class ProviderModelConnector(state_controller.StateControlled):
     result_record.timestamp = self._compute_timestamp(
         start_utc_date=start_utc_date)
 
+    connection_metadata.endpoint_used = chosen_endpoint
     connection_metadata.cache_hit = False
     connection_metadata.result_source = types.ResultSource.PROVIDER
     connection_metadata.cache_look_fail_reason = None
@@ -610,8 +609,7 @@ class ProviderModelConnector(state_controller.StateControlled):
     if call_record.result.status == types.ResultStatusType.FAILED:
       if (not connection_options or
           not connection_options.suppress_provider_errors):
-        raise call_record.result.error.with_traceback(
-            call_record.result.error_traceback)
+        raise call_record.result.error
       else:
         call_record.result.error = str(call_record.result.error)
 

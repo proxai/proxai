@@ -138,8 +138,7 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
       query_record: types.QueryRecord) -> types.Response:
     create = functools.partial(self.api.beta.chat.completions.create)
     create = functools.partial(create, model=(
-        query_record.connection_options
-        .provider_model.provider_model_identifier
+        query_record.provider_model.provider_model_identifier
     ))
 
     if query_record.prompt is not None:
@@ -175,8 +174,7 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
       query_record: types.QueryRecord) -> types.Response:
     create = functools.partial(self.api.responses.create)
     create = functools.partial(create, model=(
-        query_record.connection_options
-        .provider_model.provider_model_identifier
+        query_record.provider_model.provider_model_identifier
     ))
 
     if query_record.prompt is not None:
