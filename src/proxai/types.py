@@ -511,9 +511,11 @@ class Tools(enum.Enum):
 class ConnectionOptions:
   """Connection options for a query to a provider."""
 
-  provider_model: ProviderModelType | None = None
-  feature_mapping_strategy: FeatureMappingStrategy | None = None
-  chosen_endpoint: str | None = None
+  fallback_models: list[ProviderModelType] | None = None
+  suppress_provider_errors: bool | None = None
+  endpoint: str | None = None
+  skip_cache: bool | None = None
+  override_cache_value: bool | None = None
 
 
 @dataclasses.dataclass
@@ -523,6 +525,7 @@ class QueryRecord:
   prompt: str | None = None
   chat: Chat | None = None
   system_prompt: str | None = None
+  provider_model: ProviderModelType | None = None
   parameters: ParameterType | None = None
   tools: list[Tools] | None = None
   response_format: ResponseFormat | None = None
@@ -609,12 +612,15 @@ class CacheLookFailReason(str, enum.Enum):
 
 
 @dataclasses.dataclass
-class CacheMetadata:
+class ConnectionMetadata:
   """Metadata for a cached query."""
 
-  cache_hit: bool | None = None
   result_source: ResultSource | None = None
+  cache_hit: bool | None = None
   cache_look_fail_reason: CacheLookFailReason | None = None
+  endpoint_used: str | None = None
+  failed_fallback_models: list[ProviderModelType] | None = None
+  feature_mapping_strategy: FeatureMappingStrategy | None = None
 
 
 @dataclasses.dataclass
@@ -623,7 +629,7 @@ class CallRecord:
 
   query: QueryRecord | None = None
   result: ResultRecord | None = None
-  cache: CacheMetadata | None = None
+  connection: ConnectionMetadata | None = None
 
 
 @dataclasses.dataclass
@@ -631,9 +637,7 @@ class CacheRecord:
   """Cached query and its associated responses."""
 
   query: QueryRecord | None = None
-  results: list[ResultRecord] = dataclasses.field(
-      default_factory=list
-  )
+  results: list[ResultRecord] = dataclasses.field(default_factory=list)
   shard_id: str | None = None
   last_access_time: datetime.datetime | None = None
   call_count: int | None = None

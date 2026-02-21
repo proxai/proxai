@@ -1,4 +1,5 @@
 import dataclasses
+import copy
 import os
 import tempfile
 from collections.abc import Callable
@@ -1035,7 +1036,7 @@ class ProxAIClient(state_controller.StateControlled):
         types.CallType.TEXT
     ] = (self.available_models_instance.get_model_connector(provider_model))
 
-  def generate(
+  def _excute_model_connector_call(
       self,
       prompt: str | None = None,
       messages: types.MessagesParam | None = None,
@@ -1044,19 +1045,9 @@ class ProxAIClient(state_controller.StateControlled):
       parameters: types.ParameterType | None = None,
       tools: List[types.ToolType] | None = None,
       response_format: types.ResponseFormatParam | None = None,
+      connection_options: types.ConnectionOptions | None = None,
+      connection_metadata: types.ConnectionMetadata | None = None,
   ) -> types.CallRecord:
-    if prompt is not None and messages is not None:
-      raise ValueError('prompt and messages cannot be used together')
-    if system_prompt is not None and messages is not None:
-      raise ValueError(
-          'system_prompt and messages cannot be used together. '
-          'Please use "system" message in messages to set the system prompt.\n'
-          'px.generate(\n'
-          '    messages=[\n'
-          '        {"role": "system",\n'
-          '         "content": "You are a helpful assistant."},\n'
-          '        ...])')
-
     # BEGIN: Refactoring: Revert this after testing
     if type(provider_model) == tuple and provider_model[0] != 'openai':
       raise ValueError(
@@ -1065,9 +1056,6 @@ class ProxAIClient(state_controller.StateControlled):
         provider_model.provider != 'openai'):
       raise ValueError(
           f'{provider_model} is not a valid provider model in refactoring')
-    
-    if type(messages) == list:
-      messages = chat_session.Chat(messages=messages)
 
     if type(provider_model) == tuple:
       provider_model = types.ProviderModelType(
@@ -1101,8 +1089,80 @@ class ProxAIClient(state_controller.StateControlled):
         parameters=parameters,
         tools=tools,
         response_format=response_format,
+        connection_options=connection_options,
+        connection_metadata=connection_metadata,
     )
     # END: Refactoring: Revert this after testing
+
+  def generate(
+      self,
+      prompt: str | None = None,
+      messages: types.MessagesParam | None = None,
+      system_prompt: str | None = None,
+      provider_model: types.ProviderModelParam | None = None,
+      parameters: types.ParameterType | None = None,
+      tools: List[types.ToolType] | None = None,
+      response_format: types.ResponseFormatParam | None = None,
+      connection_options: types.ConnectionOptions | None = None,
+  ) -> types.CallRecord:
+    if prompt is not None and messages is not None:
+      raise ValueError('prompt and messages cannot be used together')
+    if system_prompt is not None and messages is not None:
+      raise ValueError(
+          'system_prompt and messages cannot be used together. '
+          'Please use "system" message in messages to set the system prompt.\n'
+          'px.generate(\n'
+          '    messages=[\n'
+          '        {"role": "system",\n'
+          '         "content": "You are a helpful assistant."},\n'
+          '        ...])')
+
+    if (connection_options and
+        connection_options.fallback_models and
+        connection_options.suppress_provider_errors):
+      raise ValueError(
+          'suppress_provider_errors and fallback_models cannot be '
+          'used together.\n'
+          f'connection_options: {connection_options}')
+
+    if (connection_options and
+        connection_options.endpoint and
+        connection_options.fallback_models):
+      raise ValueError(
+          'endpoint and fallback_models cannot be used together.\n'
+          f'connection_options: {connection_options}')
+    
+    if type(messages) == list:
+      messages = chat_session.Chat(messages=messages)
+
+    provider_models = [provider_model]
+    
+    if connection_options.fallback_models is not None:
+      for fallback_model in connection_options.fallback_models:
+        provider_models.append(fallback_model)
+      connection_options.suppress_provider_errors = True
+      connection_options.fallback_models = None
+
+    connection_metadata = types.ConnectionMetadata(
+        feature_mapping_strategy=self.feature_mapping_strategy)
+    for idx, provider_model in enumerate(provider_models):
+      result_record = self._excute_model_connector_call(
+          prompt=prompt,
+          messages=messages,
+          system_prompt=system_prompt,
+          provider_model=provider_model,
+          parameters=parameters,
+          tools=tools,
+          response_format=response_format,
+          connection_options=connection_options,
+          connection_metadata=connection_metadata,
+      )
+      if result_record.result.status == types.ResultStatusType.SUCCESS:
+        return result_record
+      if idx == 0:
+        connection_metadata.failed_fallback_models = []
+      connection_metadata.failed_fallback_models.append(provider_model)
+    return None
 
   def generate_text(
       self,

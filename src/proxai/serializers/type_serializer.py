@@ -597,16 +597,22 @@ def encode_connection_options(
 ) -> dict[str, Any]:
   """Serialize ConnectionOptions to a dictionary."""
   record = {}
-  if connection_options.provider_model is not None:
-    record['provider_model'] = encode_provider_model_type(
-        connection_options.provider_model
+  if connection_options.fallback_models is not None:
+    record['fallback_models'] = []
+    for provider_model in connection_options.fallback_models:
+      record['fallback_models'].append(
+          encode_provider_model_type(provider_model)
+      )
+  if connection_options.suppress_provider_errors is not None:
+    record['suppress_provider_errors'] = (
+        connection_options.suppress_provider_errors
     )
-  if connection_options.feature_mapping_strategy is not None:
-    record['feature_mapping_strategy'] = (
-        connection_options.feature_mapping_strategy.value
-    )
-  if connection_options.chosen_endpoint is not None:
-    record['chosen_endpoint'] = connection_options.chosen_endpoint
+  if connection_options.endpoint is not None:
+    record['endpoint'] = connection_options.endpoint
+  if connection_options.skip_cache is not None:
+    record['skip_cache'] = connection_options.skip_cache
+  if connection_options.override_cache_value is not None:
+    record['override_cache_value'] = connection_options.override_cache_value
   return record
 
 
@@ -615,15 +621,21 @@ def decode_connection_options(
 ) -> types.ConnectionOptions:
   """Deserialize ConnectionOptions from a dictionary."""
   connection_options = types.ConnectionOptions()
-  if 'provider_model' in record:
-    connection_options.provider_model = decode_provider_model_type(
-        record['provider_model']
+  if 'fallback_models' in record:
+    connection_options.fallback_models = []
+    for provider_model_record in record['fallback_models']:
+      connection_options.fallback_models.append(
+          decode_provider_model_type(provider_model_record)
+      )
+  if 'suppress_provider_errors' in record:
+    connection_options.suppress_provider_errors = (
+        record['suppress_provider_errors']
     )
-  if 'feature_mapping_strategy' in record:
-    connection_options.feature_mapping_strategy = (
-        types.FeatureMappingStrategy(record['feature_mapping_strategy'])
-    )
-  connection_options.chosen_endpoint = record.get('chosen_endpoint')
+  connection_options.endpoint = record.get('endpoint')
+  if 'skip_cache' in record:
+    connection_options.skip_cache = record['skip_cache']
+  if 'override_cache_value' in record:
+    connection_options.override_cache_value = record['override_cache_value']
   return connection_options
 
 
@@ -887,6 +899,10 @@ def encode_query_record(query_record: types.QueryRecord) -> dict[str, Any]:
     record['chat'] = query_record.chat.to_dict()
   if query_record.system_prompt is not None:
     record['system_prompt'] = query_record.system_prompt
+  if query_record.provider_model is not None:
+    record['provider_model'] = encode_provider_model_type(
+        query_record.provider_model
+    )
   if query_record.parameters is not None:
     record['parameters'] = encode_parameter_type(query_record.parameters)
   if query_record.tools is not None:
@@ -911,6 +927,10 @@ def decode_query_record(record: dict[str, Any]) -> types.QueryRecord:
   if 'chat' in record:
     query_record.chat = chat_session.Chat.from_dict(record['chat'])
   query_record.system_prompt = record.get('system_prompt')
+  if 'provider_model' in record:
+    query_record.provider_model = decode_provider_model_type(
+        record['provider_model']
+    )
   if 'parameters' in record:
     query_record.parameters = decode_parameter_type(record['parameters'])
   if 'tools' in record:
@@ -929,38 +949,61 @@ def decode_query_record(record: dict[str, Any]) -> types.QueryRecord:
   return query_record
 
 
-def encode_cache_metadata(
-    cache_metadata: types.CacheMetadata
+def encode_connection_metadata(
+    connection_metadata: types.ConnectionMetadata
 ) -> dict[str, Any]:
-  """Serialize CacheMetadata to a dictionary."""
+  """Serialize ConnectionMetadata to a dictionary."""
   record = {}
-  if cache_metadata.cache_hit is not None:
-    record['cache_hit'] = cache_metadata.cache_hit
-  if cache_metadata.result_source is not None:
-    record['result_source'] = cache_metadata.result_source.value
-  if cache_metadata.cache_look_fail_reason is not None:
+  if connection_metadata.result_source is not None:
+    record['result_source'] = connection_metadata.result_source.value
+  if connection_metadata.cache_hit is not None:
+    record['cache_hit'] = connection_metadata.cache_hit
+  if connection_metadata.cache_look_fail_reason is not None:
     record['cache_look_fail_reason'] = (
-        cache_metadata.cache_look_fail_reason.value
+        connection_metadata.cache_look_fail_reason.value
+    )
+  if connection_metadata.endpoint_used is not None:
+    record['endpoint_used'] = connection_metadata.endpoint_used
+  if connection_metadata.failed_fallback_models is not None:
+    record['failed_fallback_models'] = []
+    for provider_model in connection_metadata.failed_fallback_models:
+      record['failed_fallback_models'].append(
+          encode_provider_model_type(provider_model)
+      )
+  if connection_metadata.feature_mapping_strategy is not None:
+    record['feature_mapping_strategy'] = (
+        connection_metadata.feature_mapping_strategy.value
     )
   return record
 
 
-def decode_cache_metadata(
+def decode_connection_metadata(
     record: dict[str, Any]
-) -> types.CacheMetadata:
-  """Deserialize CacheMetadata from a dictionary."""
-  cache_metadata = types.CacheMetadata()
-  if 'cache_hit' in record:
-    cache_metadata.cache_hit = record['cache_hit']
+) -> types.ConnectionMetadata:
+  """Deserialize ConnectionMetadata from a dictionary."""
+  connection_metadata = types.ConnectionMetadata()
   if 'result_source' in record:
-    cache_metadata.result_source = (
+    connection_metadata.result_source = (
         types.ResultSource(record['result_source'])
     )
+  if 'cache_hit' in record:
+    connection_metadata.cache_hit = record['cache_hit']
   if 'cache_look_fail_reason' in record:
-    cache_metadata.cache_look_fail_reason = (
+    connection_metadata.cache_look_fail_reason = (
         types.CacheLookFailReason(record['cache_look_fail_reason'])
     )
-  return cache_metadata
+  connection_metadata.endpoint_used = record.get('endpoint_used')
+  if 'failed_fallback_models' in record:
+    connection_metadata.failed_fallback_models = []
+    for provider_model_record in record['failed_fallback_models']:
+      connection_metadata.failed_fallback_models.append(
+          decode_provider_model_type(provider_model_record)
+      )
+  if 'feature_mapping_strategy' in record:
+    connection_metadata.feature_mapping_strategy = (
+        types.FeatureMappingStrategy(record['feature_mapping_strategy'])
+    )
+  return connection_metadata
 
 
 def encode_call_record(
@@ -972,8 +1015,8 @@ def encode_call_record(
     record['query'] = encode_query_record(call_record.query)
   if call_record.result is not None:
     record['result'] = encode_result_record(call_record.result)
-  if call_record.cache is not None:
-    record['cache'] = encode_cache_metadata(call_record.cache)
+  if call_record.connection is not None:
+    record['connection'] = encode_connection_metadata(call_record.connection)
   return record
 
 
@@ -986,8 +1029,8 @@ def decode_call_record(
     call_record.query = decode_query_record(record['query'])
   if 'result' in record:
     call_record.result = decode_result_record(record['result'])
-  if 'cache' in record:
-    call_record.cache = decode_cache_metadata(record['cache'])
+  if 'connection' in record:
+    call_record.connection = decode_connection_metadata(record['connection'])
   return call_record
 
 

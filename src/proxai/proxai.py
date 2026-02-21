@@ -15,6 +15,7 @@ ProviderModelType = types.ProviderModelType
 ParameterType = types.ParameterType
 Tools = types.Tools
 ResponseFormatType = types.ResponseFormatType
+ConnectionOptions = types.ConnectionOptions
 
 
 _DEFAULT_CLIENT: client.ProxAIClient | None = None
@@ -101,6 +102,7 @@ def generate(
     parameters: types.ParameterType | None = None,
     tools: List[types.ToolType] | None = None,
     response_format: types.ResponseFormatParam | None = None,
+    connection_options: types.ConnectionOptions | None = None,
 ) -> types.CallRecord:
   return get_default_proxai_client().generate(
       prompt=prompt,
@@ -110,6 +112,7 @@ def generate(
       parameters=parameters,
       tools=tools,
       response_format=response_format,
+      connection_options=connection_options,
   )
 
 
