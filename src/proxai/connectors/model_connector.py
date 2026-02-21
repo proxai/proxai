@@ -377,16 +377,45 @@ class ProviderModelConnector(state_controller.StateControlled):
           ), type=types.LoggingType.ERROR
       )
 
+  def _get_endpoint_support_level(
+      self,
+      endpoint: str,
+      query_record: types.QueryRecord,
+  ) -> types.FeatureSupportType:
+    if endpoint not in self.ENDPOINT_CONFIG:
+      raise ValueError(
+          f'endpoint {endpoint} is not a valid endpoint.\n'
+          f'Valid endpoints: {self.ENDPOINT_CONFIG.keys()}')
+    feature_config = self.ENDPOINT_CONFIG[endpoint]
+    adapter = feature_adapter.FeatureAdapter(
+        endpoint=endpoint,
+        feature_config=feature_config,
+    )
+    return adapter.get_support_level(query_record=query_record)
+
+  def _check_endpoint_support_compatibility(
+      self,
+      endpoint: str,
+      support_level: types.FeatureSupportType,
+      query_record: types.QueryRecord,
+  ) -> None:
+    if support_level == types.FeatureSupportType.NOT_SUPPORTED:
+      raise ValueError(
+          f'endpoint {endpoint} is not supported.\n'
+          f'query_record: {query_record}')
+    elif support_level == types.FeatureSupportType.BEST_EFFORT:
+      if self.feature_mapping_strategy == types.FeatureMappingStrategy.STRICT:
+        raise ValueError(
+            f'endpoint {endpoint} is not supported in STRICT mode.\n'
+            f'query_record: {query_record}')
+
   def find_compatible_endpoint(self, query_record: types.QueryRecord):
     """Find a compatible endpoint for the query record."""
     best_effort_endpoints = []
     for endpoint in self.ENDPOINT_PRIORITY:
-      feature_config = self.ENDPOINT_CONFIG[endpoint]
-      adapter = feature_adapter.FeatureAdapter(
+      support_level = self._get_endpoint_support_level(
           endpoint=endpoint,
-          feature_config=feature_config,
-      )
-      support_level = adapter.get_support_level(query_record=query_record)
+          query_record=query_record)
       if support_level == types.FeatureSupportType.SUPPORTED:
         return endpoint
       elif support_level == types.FeatureSupportType.BEST_EFFORT:
@@ -406,9 +435,22 @@ class ProviderModelConnector(state_controller.StateControlled):
 
   def _prepare_execution(
       self,
-      query_record: types.QueryRecord
+      query_record: types.QueryRecord,
+      connection_metadata: types.ConnectionMetadata | None = None,
   ) -> tuple[Callable, types.QueryRecord]:
-    chosen_endpoint = self.find_compatible_endpoint(query_record=query_record)
+    if (query_record.connection_options and
+        query_record.connection_options.endpoint is not None):
+      chosen_endpoint = query_record.connection_options.endpoint
+      support_level = self._get_endpoint_support_level(
+          endpoint=chosen_endpoint,
+          query_record=query_record)
+      self._check_endpoint_support_compatibility(
+          endpoint=chosen_endpoint,
+          support_level=support_level,
+          query_record=query_record)
+    else:
+      chosen_endpoint = self.find_compatible_endpoint(query_record=query_record)
+
     chosen_adapter = feature_adapter.FeatureAdapter(
         endpoint=chosen_endpoint,
         feature_config=self.ENDPOINT_CONFIG[chosen_endpoint],
@@ -418,21 +460,28 @@ class ProviderModelConnector(state_controller.StateControlled):
 
     modified_query_record = chosen_adapter.adapt_query_record(
         query_record=query_record)
-    modified_query_record.connection_options.chosen_endpoint = chosen_endpoint
-    
+    connection_metadata.chosen_endpoint = chosen_endpoint
+
     return chosen_executor, modified_query_record
+
+  def _safe_provider_query(
+      self,
+      execution_function: Callable,
+      response_mapping: Callable,
+  ) -> tuple[Any, Exception | None, str | None]:
+    try:
+      response = execution_function()
+      return response_mapping(response), None, None
+    except Exception as e:
+      return None, e, traceback.format_exc()
 
   def _execute_call(
       self,
       chosen_executor: Callable,
       modified_query_record: types.QueryRecord,
   ):
-    response, error, error_traceback = None, None, None
-    try:
-      response = chosen_executor(query_record=modified_query_record)
-    except Exception as e:
-      error_traceback = traceback.format_exc()
-      error = e
+    response, error, error_traceback = chosen_executor(
+        query_record=modified_query_record)
 
     if response is not None:
       return types.ResultRecord(
@@ -449,14 +498,14 @@ class ProviderModelConnector(state_controller.StateControlled):
   def _compute_usage(
       self,
       query_record: types.CallRecord,
-      response: str | None = None,
+      result_record: types.ResultRecord,
   ) -> types.UsageType:
     if query_record.prompt is not None:
       input_tokens = self.get_token_count_estimate(value=query_record.prompt)
     else:
       input_tokens = self.get_token_count_estimate(value=query_record.chat)
-    if response is not None:
-      output_tokens = self.get_token_count_estimate(value=response)
+    if result_record.content is not None:
+      output_tokens = self.get_token_count_estimate(value=result_record.content)
     else:
       output_tokens = 0
     return types.UsageType(
@@ -490,10 +539,13 @@ class ProviderModelConnector(state_controller.StateControlled):
       parameters: types.ParameterType | None = None,
       tools: List[types.ToolType] | None = None,
       response_format: types.ResponseFormatType | None = None,
+      connection_options: types.ConnectionOptions | None = None,
+      connection_metadata: types.ConnectionMetadata | None = None,
   ) -> types.LoggingRecord:
     """Generate text from the model and return a logging record."""
     if prompt is not None and messages is not None:
       raise ValueError('prompt and messages cannot be used together')
+
     if system_prompt is not None and messages is not None:
       raise ValueError(
           'system_prompt and messages cannot be used together. '
@@ -506,6 +558,9 @@ class ProviderModelConnector(state_controller.StateControlled):
 
     if response_format is None:
       response_format = types.ResponseFormat(type=types.ResponseFormatType.TEXT)
+    
+    if connection_metadata is None:
+      connection_metadata = types.ConnectionMetadata()
 
     # BEGIN: Refactoring: Remove this after testing
     # if provider_model.provider != self.provider:
@@ -522,18 +577,16 @@ class ProviderModelConnector(state_controller.StateControlled):
         prompt=prompt,
         chat=messages,
         system_prompt=system_prompt,
+        provider_model=provider_model,
         parameters=parameters,
         tools=tools,
         response_format=response_format,
-        connection_options=types.ConnectionOptions(
-            provider_model=provider_model,
-            feature_mapping_strategy=self.feature_mapping_strategy,
-            chosen_endpoint=None,
-        ),
+        connection_options=connection_options,
     )
 
     chosen_executor, modified_query_record = self._prepare_execution(
-        query_record=query_record)
+        query_record=query_record,
+        connection_metadata=connection_metadata)
     
     result_record = self._execute_call(
         chosen_executor=chosen_executor,
@@ -541,20 +594,27 @@ class ProviderModelConnector(state_controller.StateControlled):
     )
     result_record.usage = self._compute_usage(
         query_record=modified_query_record,
-        response=result_record.content)
+        result_record=result_record)
     result_record.timestamp = self._compute_timestamp(
         start_utc_date=start_utc_date)
 
-
+    connection_metadata.cache_hit = False
+    connection_metadata.result_source = types.ResultSource.PROVIDER
+    connection_metadata.cache_look_fail_reason = None
     call_record = types.CallRecord(
         query=query_record,
         result=result_record,
-        cache=types.CacheMetadata(
-            cache_hit=False,
-            result_source=types.ResultSource.PROVIDER,
-            cache_look_fail_reason=None
-        )
+        connection=connection_metadata,
     )
+
+    if call_record.result.status == types.ResultStatusType.FAILED:
+      if (not connection_options or
+          not connection_options.suppress_provider_errors):
+        raise call_record.result.error.with_traceback(
+            call_record.result.error_traceback)
+      else:
+        call_record.result.error = str(call_record.result.error)
+
     return call_record
 
   def init_model(self):

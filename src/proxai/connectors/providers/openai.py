@@ -98,8 +98,7 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
       query_record: types.QueryRecord) -> types.Response:
     create = functools.partial(self.api.chat.completions.create)
     create = functools.partial(create, model=(
-        query_record.connection_options
-        .provider_model.provider_model_identifier
+        query_record.provider_model.provider_model_identifier
     ))
 
     if query_record.prompt is not None:
@@ -130,8 +129,9 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
       create = functools.partial(
           create, response_format={'type': 'json_object'})
 
-    response = create()
-    return response.choices[0].message.content
+    return self._safe_provider_query(
+        create,
+        response_mapping=lambda response: response.choices[0].message.content)
 
   def _beta_chat_completions_parse_executor(
       self,
@@ -166,9 +166,9 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
       create = functools.partial(
           create, response_format=query_record.response_format.pydantic_class)
 
-    response = create()
-
-    return response.choices[0].message.parsed
+    return self._safe_provider_query(
+        create,
+        response_mapping=lambda response: response.choices[0].message.parsed)
 
   def _responses_create_executor(
       self,
@@ -211,10 +211,10 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
               'type': 'json_object'
           }})
     
-    response = create()
+    return self._safe_provider_query(
+        create,
+        response_mapping=lambda response: response.output_text)
    
-    return response.output_text
-
   ENDPOINT_EXECUTORS = {
     'chat.completions.create': '_chat_completions_create_executor',
     'beta.chat.completions.parse': '_beta_chat_completions_parse_executor',

@@ -574,21 +574,32 @@ def _get_connection_options_options():
   return [
       {},
       {
-          'provider_model': _MODEL_1
+          'fallback_models': [_MODEL_1]
       },
       {
-          'feature_mapping_strategy': types.FeatureMappingStrategy.BEST_EFFORT
+          'fallback_models': [_MODEL_1, _MODEL_3]
       },
       {
-          'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT
+          'suppress_provider_errors': True
       },
       {
-          'chosen_endpoint': 'some_endpoint'
+          'suppress_provider_errors': False
       },
       {
-          'provider_model': _MODEL_3,
-          'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT,
-          'chosen_endpoint': 'test_endpoint'
+          'endpoint': 'some_endpoint'
+      },
+      {
+          'skip_cache': True
+      },
+      {
+          'override_cache_value': True
+      },
+      {
+          'fallback_models': [_MODEL_1, _MODEL_2],
+          'suppress_provider_errors': True,
+          'endpoint': 'test_endpoint',
+          'skip_cache': True,
+          'override_cache_value': False
       },
   ]
 
@@ -828,6 +839,12 @@ def _get_query_record_options():
           'system_prompt': 'You are a helpful assistant.'
       },
       {
+          'provider_model': _MODEL_1
+      },
+      {
+          'provider_model': _MODEL_3
+      },
+      {
           'parameters': types.ParameterType(temperature=0.5)
       },
       {
@@ -851,10 +868,9 @@ def _get_query_record_options():
       {
           'connection_options':
               types.ConnectionOptions(
-                  provider_model=_MODEL_1,
-                  feature_mapping_strategy=(
-                      types.FeatureMappingStrategy.BEST_EFFORT
-                  )
+                  fallback_models=[_MODEL_1],
+                  suppress_provider_errors=True,
+                  endpoint='some_endpoint'
               )
       },
       {
@@ -874,6 +890,7 @@ def _get_query_record_options():
                   )
               ]),
           'system_prompt': 'Be helpful.',
+          'provider_model': _MODEL_1,
           'parameters':
               types.ParameterType(
                   temperature=0.7, max_tokens=200, stop=['stop1'], n=2
@@ -883,31 +900,31 @@ def _get_query_record_options():
               types.ResponseFormat(type=types.ResponseFormatType.TEXT),
           'connection_options':
               types.ConnectionOptions(
-                  provider_model=_MODEL_1,
-                  feature_mapping_strategy=(
-                      types.FeatureMappingStrategy.STRICT
-                  ),
-                  chosen_endpoint='test_endpoint'
+                  fallback_models=[_MODEL_1, _MODEL_2],
+                  suppress_provider_errors=True,
+                  endpoint='test_endpoint',
+                  skip_cache=False,
+                  override_cache_value=True
               ),
           'hash_value': 'test_hash'
       },
   ]
 
 
-def _get_cache_metadata_options():
+def _get_connection_metadata_options():
   return [
       {},
-      {
-          'cache_hit': True
-      },
-      {
-          'cache_hit': False
-      },
       {
           'result_source': types.ResultSource.CACHE
       },
       {
           'result_source': types.ResultSource.PROVIDER
+      },
+      {
+          'cache_hit': True
+      },
+      {
+          'cache_hit': False
       },
       {
           'cache_look_fail_reason':
@@ -918,14 +935,32 @@ def _get_cache_metadata_options():
               types.CacheLookFailReason.UNIQUE_RESPONSE_LIMIT_NOT_REACHED
       },
       {
-          'cache_hit': True,
-          'result_source': types.ResultSource.CACHE
+          'endpoint_used': 'some_endpoint'
       },
       {
-          'cache_hit': False,
+          'failed_fallback_models': [_MODEL_1]
+      },
+      {
+          'failed_fallback_models': [_MODEL_1, _MODEL_3]
+      },
+      {
+          'feature_mapping_strategy': types.FeatureMappingStrategy.BEST_EFFORT
+      },
+      {
+          'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT
+      },
+      {
+          'result_source': types.ResultSource.CACHE,
+          'cache_hit': True
+      },
+      {
           'result_source': types.ResultSource.PROVIDER,
+          'cache_hit': False,
           'cache_look_fail_reason':
-              types.CacheLookFailReason.CACHE_NOT_MATCHED
+              types.CacheLookFailReason.CACHE_NOT_MATCHED,
+          'endpoint_used': 'test_endpoint',
+          'failed_fallback_models': [_MODEL_2, _MODEL_4],
+          'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT
       },
   ]
 
@@ -943,9 +978,21 @@ def _get_call_record_options():
               )
       },
       {
-          'cache':
-              types.CacheMetadata(
-                  cache_hit=True, result_source=types.ResultSource.CACHE
+          'connection':
+              types.ConnectionMetadata(
+                  result_source=types.ResultSource.CACHE, cache_hit=True
+              )
+      },
+      {
+          'connection':
+              types.ConnectionMetadata(
+                  result_source=types.ResultSource.PROVIDER,
+                  cache_hit=False,
+                  endpoint_used='test_endpoint',
+                  failed_fallback_models=[_MODEL_2],
+                  feature_mapping_strategy=(
+                      types.FeatureMappingStrategy.BEST_EFFORT
+                  )
               )
       },
       {
@@ -955,9 +1002,9 @@ def _get_call_record_options():
                   status=types.ResultStatusType.SUCCESS,
                   content='Hello'
               ),
-          'cache':
-              types.CacheMetadata(
-                  cache_hit=True, result_source=types.ResultSource.CACHE
+          'connection':
+              types.ConnectionMetadata(
+                  result_source=types.ResultSource.CACHE, cache_hit=True
               )
       },
   ]
@@ -1778,17 +1825,25 @@ class TestTypeSerializer:
     assert query_record == decoded_query_record
 
   @pytest.mark.parametrize(
-      'cache_metadata_options', _get_cache_metadata_options()
+      'connection_metadata_options', _get_connection_metadata_options()
   )
-  def test_encode_decode_cache_metadata(self, cache_metadata_options):
-    cache_metadata = types.CacheMetadata(**cache_metadata_options)
-    encoded_cache_metadata = type_serializer.encode_cache_metadata(
-        cache_metadata=cache_metadata
+  def test_encode_decode_connection_metadata(
+      self, connection_metadata_options
+  ):
+    connection_metadata = types.ConnectionMetadata(
+        **connection_metadata_options
     )
-    decoded_cache_metadata = type_serializer.decode_cache_metadata(
-        record=encoded_cache_metadata
+    encoded_connection_metadata = (
+        type_serializer.encode_connection_metadata(
+            connection_metadata=connection_metadata
+        )
     )
-    assert cache_metadata == decoded_cache_metadata
+    decoded_connection_metadata = (
+        type_serializer.decode_connection_metadata(
+            record=encoded_connection_metadata
+        )
+    )
+    assert connection_metadata == decoded_connection_metadata
 
   @pytest.mark.parametrize('call_record_options', _get_call_record_options())
   def test_encode_decode_call_record(self, call_record_options):
