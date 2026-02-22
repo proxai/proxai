@@ -129,11 +129,12 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
       create = functools.partial(
           create, response_format={'type': 'json_object'})
 
-    response, error, error_traceback = self._safe_provider_query(create)
-    if error is not None:
-      return None, error, error_traceback
-
-    return response.choices[0].message.content, None, None
+    raw_return = self._safe_provider_query(create)
+    if raw_return.error is not None:
+      return raw_return
+    
+    raw_return.value = raw_return.value.choices[0].message.content
+    return raw_return
 
   def _beta_chat_completions_parse_executor(
       self,
@@ -167,11 +168,12 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
       create = functools.partial(
           create, response_format=query_record.response_format.pydantic_class)
 
-    response, error, error_traceback = self._safe_provider_query(create)
-    if error is not None:
-      return None, error, error_traceback
-
-    return response.choices[0].message.parsed, None, None
+    raw_return = self._safe_provider_query(create)
+    if raw_return.error is not None:
+      return raw_return
+    
+    raw_return.value = raw_return.value.choices[0].message.parsed
+    return raw_return
 
   def _responses_create_executor(
       self,
@@ -213,11 +215,19 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
               'type': 'json_object'
           }})
     
-    response, error, error_traceback = self._safe_provider_query(create)
-    if error is not None:
-      return None, error, error_traceback
+    raw_return = self._safe_provider_query(create)
+    if raw_return.error is not None:
+      return raw_return
 
-    return response.output_text, None, None
+    result_list = []
+    for output in raw_return.value.output:
+      if output.type != 'message':
+        continue
+      for content in output.content:
+        result_list.append(content.text)
+    raw_return.value = result_list
+
+    return raw_return
    
   ENDPOINT_EXECUTORS = {
     'chat.completions.create': '_chat_completions_create_executor',

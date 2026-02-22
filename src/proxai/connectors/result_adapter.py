@@ -101,11 +101,14 @@ class ResultAdapter:
 
   def _adapt_text(self, content) -> List[MessageContent]:
     """Adapt content for TEXT response format."""
-    if not isinstance(content, str):
-      raise ValueError(
-          f"Expected str content for TEXT response format, "
-          f"got {type(content).__name__}.")
-    return [MessageContent(type=ContentType.TEXT, text=content)]
+    if isinstance(content, str):
+      return [MessageContent(type=ContentType.TEXT, text=content)]
+    elif isinstance(content, list):
+      return [
+          MessageContent(type=ContentType.TEXT, text=item) for item in content]
+    raise ValueError(
+        f"Expected str or list content for TEXT response format, "
+        f"got {type(content).__name__}.")
 
   def _adapt_media(
       self,
