@@ -532,6 +532,14 @@ class ConnectionOptions:
 
 
 @dataclasses.dataclass
+class RawProviderModelReturn:
+  """Raw return from a provider model."""
+  value: str | dict | pydantic.BaseModel | bytes | list | None = None
+  error: Exception | None = None
+  error_traceback: str | None = None
+
+
+@dataclasses.dataclass
 class QueryRecord:
   """Complete record of a query sent to a provider."""
 

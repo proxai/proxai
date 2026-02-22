@@ -448,12 +448,15 @@ class ProviderModelConnector(state_controller.StateControlled):
   def _safe_provider_query(
       self,
       execution_function: Callable,
-  ) -> tuple[Any, Exception | None, str | None]:
+  ) -> types.RawProviderModelReturn:
     try:
       response = execution_function()
-      return response, None, None
+      return types.RawProviderModelReturn(
+          value=response)
     except Exception as e:
-      return None, e, traceback.format_exc()
+      return types.RawProviderModelReturn(
+          error=e,
+          error_traceback=traceback.format_exc())
 
   def _execute_call(
       self,
@@ -461,10 +464,10 @@ class ProviderModelConnector(state_controller.StateControlled):
       chosen_endpoint: str,
       query_record: types.QueryRecord,
   ):
-    response, error, error_traceback = chosen_executor(
+    raw_return = chosen_executor(
         query_record=query_record)
 
-    if response is not None:
+    if not raw_return.error:
       chosen_result_adapter = result_adapter.ResultAdapter(
           endpoint=chosen_endpoint,
           feature_config=self.ENDPOINT_CONFIG[chosen_endpoint],
@@ -474,14 +477,14 @@ class ProviderModelConnector(state_controller.StateControlled):
           role=types.MessageRoleType.ASSISTANT,
           content=chosen_result_adapter.adapt_result_content(
               query_record=query_record,
-              content=response,
+              content=raw_return.value,
           ))
     else:
       return types.ResultRecord(
           status=types.ResultStatusType.FAILED,
           role=types.MessageRoleType.ASSISTANT,
-          error=error,
-          error_traceback=error_traceback)
+          error=raw_return.error,
+          error_traceback=raw_return.error_traceback)
 
   def _compute_usage(
       self,
