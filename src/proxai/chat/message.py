@@ -3,7 +3,7 @@
 import copy
 import dataclasses
 
-from proxai.chat.message_content import MessageContent, MessageRoleType
+from proxai.chat.message_content import MessageContent, MessageRoleType, ContentType
 
 
 @dataclasses.dataclass
@@ -68,7 +68,9 @@ class Message:
   def from_dict(cls, data: dict) -> "Message":
     """Create a Message from a dictionary."""
     content = data["content"]
-    if isinstance(content, list):
+    if isinstance(content, str):
+      content = [MessageContent(type=ContentType.TEXT, text=content)]
+    elif isinstance(content, list):
       content = [MessageContent.from_dict(item) for item in content]
     return cls(role=data["role"], content=content)
 

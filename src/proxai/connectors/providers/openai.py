@@ -129,14 +129,16 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
       create = functools.partial(
           create, response_format={'type': 'json_object'})
 
-    return self._safe_provider_query(
-        create,
-        response_mapping=lambda response: response.choices[0].message.content)
+    response, error, error_traceback = self._safe_provider_query(create)
+    if error is not None:
+      return None, error, error_traceback
+
+    return response.choices[0].message.content, None, None
 
   def _beta_chat_completions_parse_executor(
       self,
       query_record: types.QueryRecord) -> types.Response:
-    create = functools.partial(self.api.beta.chat.completions.create)
+    create = functools.partial(self.api.beta.chat.completions.parse)
     create = functools.partial(create, model=(
         query_record.provider_model.provider_model_identifier
     ))
@@ -165,9 +167,11 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
       create = functools.partial(
           create, response_format=query_record.response_format.pydantic_class)
 
-    return self._safe_provider_query(
-        create,
-        response_mapping=lambda response: response.choices[0].message.parsed)
+    response, error, error_traceback = self._safe_provider_query(create)
+    if error is not None:
+      return None, error, error_traceback
+
+    return response.choices[0].message.parsed, None, None
 
   def _responses_create_executor(
       self,
@@ -209,9 +213,11 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
               'type': 'json_object'
           }})
     
-    return self._safe_provider_query(
-        create,
-        response_mapping=lambda response: response.output_text)
+    response, error, error_traceback = self._safe_provider_query(create)
+    if error is not None:
+      return None, error, error_traceback
+
+    return response.output_text, None, None
    
   ENDPOINT_EXECUTORS = {
     'chat.completions.create': '_chat_completions_create_executor',

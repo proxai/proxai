@@ -60,10 +60,29 @@ class Chat:
       return msg
     if isinstance(msg, dict):
       return Message.from_dict(msg)
+    # NOTE: Following validations are only for convenience. It lets users
+    # to do followings, while adding ASSISTANT role by default.
+    # str: chat.append('Hello, world!')
+    # list[MessageContent]: chat.append(
+    #     [MessageContent(type=ContentType.TEXT, text='Hello, world!')])
     if isinstance(msg, str):
-      # NOTE: Default to assistant role if message is a string because
-      # it is convinient to append call_record.result.content to the chat.
-      return Message(role=MessageRoleType.ASSISTANT, content=msg)
+      return Message(
+          role=MessageRoleType.ASSISTANT,
+          content=[MessageContent(type=ContentType.TEXT, text=msg)])
+    if isinstance(msg, list):
+      content = []
+      for item in msg:
+        if isinstance(item, MessageContent):
+          content.append(item)
+        elif isinstance(item, dict):
+          content.append(MessageContent.from_dict(item))
+        elif isinstance(item, str):
+          content.append(MessageContent(type=ContentType.TEXT, text=item))
+        else:
+          raise TypeError(
+            f"Expected MessageContent, dict, or str, "
+            "got {type(item).__name__}.")
+      return Message(role=MessageRoleType.ASSISTANT, content=content)
     raise TypeError(
         f"Expected Message or dict, got {type(msg).__name__}."
     )

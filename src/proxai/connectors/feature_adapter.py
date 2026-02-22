@@ -63,10 +63,11 @@ class FeatureAdapter:
     if query_record.tools:
       self._collect_tool_levels(query_record.tools, levels)
 
-    if (query_record.response_format is not None
-        and query_record.response_format.type is not None):
-      self._collect_response_format_level(
-          query_record.response_format, levels)
+    if (query_record.response_format is None
+        or query_record.response_format.type is None):
+      raise ValueError("'response_format.type' must be set.")
+    self._collect_response_format_level(
+        query_record.response_format, levels)
 
     if not levels:
       return types.FeatureSupportType.SUPPORTED
