@@ -1,5 +1,5 @@
 from pprint import pprint
-
+import os
 import pydantic
 
 import proxai as px
@@ -41,6 +41,17 @@ def assert_pydantic_content(result: types.CallRecord):
   """Assert content is a valid Pydantic object."""
   _assert_success(result)
   assert isinstance(result.result.output_pydantic, pydantic.BaseModel)
+
+
+def assert_image_content(result: types.CallRecord):
+  """Assert content is a valid image content."""
+  assert result.result.status == types.ResultStatusType.SUCCESS
+  assert result.result.usage.input_tokens is not None
+  assert result.result.usage.input_tokens > 0
+
+  assert result.result.output_image is not None
+  assert result.result.output_image.source is not None
+  assert len(result.result.output_image.source) > 10
 
 
 def prompt_test():
@@ -365,6 +376,39 @@ def full_options_test():
   assert result.connection.result_source == types.ResultSource.PROVIDER
 
 
+def images_generate_test():
+  print('> images_generate_test')
+  result = px.generate(
+      prompt='Generate an image of a cat.',
+      provider_model=('openai', 'dall-e-3'),
+      response_format='image')
+  assert_image_content(result)
+
+def audio_generate_test():
+  print('> audio_generate_test')
+  result = px.generate(
+      prompt='Hello! This is a test of ProxAI\'s text to speech API.',
+      provider_model=('openai', 'tts-1'),
+      response_format='audio')
+  assert result.result.status == types.ResultStatusType.SUCCESS
+  assert result.result.output_audio is not None
+  assert result.result.output_audio.data is not None
+  assert len(result.result.output_audio.data) > 10
+  audio_path = os.path.expanduser('~/temp/audio.wav')
+  if os.path.exists(audio_path):
+    os.remove(audio_path)
+  with open(audio_path, 'wb') as f:
+    f.write(result.result.output_audio.data)
+
+def video_generate_test():
+  print('> video_generate_test')
+  result = px.generate(
+      prompt='Generate a video of a cat.',
+      provider_model=('openai', 'sora-2'),
+      response_format='video')
+  pprint(result)
+
+
 def main():
   prompt_test()
   messages_test()
@@ -386,6 +430,9 @@ def main():
   # # connection_options_skip_cache_test()
   # # connection_options_override_cache_value_test()
   # # full_options_test()
+  images_generate_test()
+  audio_generate_test()
+  video_generate_test()
 
 if __name__ == '__main__':
   main()

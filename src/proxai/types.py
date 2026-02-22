@@ -558,9 +558,9 @@ class ChoiceType:
   """Choice of a query to a provider."""
 
   output_text: str | None = None
-  output_image: bytes | None = None
-  output_audio: bytes | None = None
-  output_video: bytes | None = None
+  output_image: message_content.MessageContent | None = None
+  output_audio: message_content.MessageContent | None = None
+  output_video: message_content.MessageContent | None = None
   output_json: dict | None = None
   output_pydantic: pydantic.BaseModel | None = None
 

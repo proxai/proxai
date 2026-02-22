@@ -1,5 +1,6 @@
 """MessageContent dataclass for multi-modal message content blocks."""
 
+import base64
 import copy
 import dataclasses
 import enum
@@ -139,7 +140,7 @@ class MessageContent:
   tool_content: ToolContent | None = None
   
   source: str | None = None
-  data: str | None = None
+  data: bytes | None = None
   path: str | None = None
   media_type: str | None = None
 
@@ -234,7 +235,7 @@ class MessageContent:
     if self.source is not None:
       result["source"] = self.source
     if self.data is not None:
-      result["data"] = self.data
+      result["data"] = base64.b64encode(self.data).decode('utf-8')
     if self.path is not None:
       result["path"] = self.path
     if self.media_type is not None:
@@ -253,7 +254,7 @@ class MessageContent:
         json=data.get("json"),
         pydantic_content=pydantic_content,
         source=data.get("source"),
-        data=data.get("data"),
+        data=base64.b64decode(data.get("data")),
         path=data.get("path"),
         media_type=data.get("media_type"),
     )
@@ -270,7 +271,10 @@ class MessageContent:
     if self.source is not None:
       parts.append(f"source='{self.source}'")
     if self.data is not None:
-      preview = self.data[:20] + "..." if len(self.data) > 20 else self.data
+      preview = (
+          base64.b64encode(self.data[:20]).decode('utf-8') + "..."
+          if len(self.data) > 20
+          else base64.b64encode(self.data).decode('utf-8'))
       parts.append(f"data='{preview}'")
     if self.path is not None:
       parts.append(f"path='{self.path}'")
