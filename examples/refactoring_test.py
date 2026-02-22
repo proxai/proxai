@@ -406,7 +406,11 @@ def video_generate_test():
       prompt='Generate a video of a cat.',
       provider_model=('openai', 'sora-2'),
       response_format='video')
-  pprint(result)
+  video_path = os.path.expanduser('~/temp/video.mp4')
+  if os.path.exists(video_path):
+    os.remove(video_path)
+  with open(video_path, 'wb') as f:
+    f.write(result.result.output_video.data)
 
 
 def main():
