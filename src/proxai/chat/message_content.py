@@ -71,6 +71,7 @@ class ContentType(str, enum.Enum):
   VIDEO = "video"
   JSON = "json"
   PYDANTIC_INSTANCE = "pydantic_instance"
+  TOOL = "tool"
 
 
 @dataclasses.dataclass
@@ -81,6 +82,26 @@ class PydanticContent:
   class_value: type[pydantic.BaseModel] | None = None
   instance_value: pydantic.BaseModel | None = None
   instance_json_value: dict[str, Any] | None = None
+
+
+class ToolKind(str, enum.Enum):
+  CALL = "CALL"
+  RESULT = "RESULT"
+
+
+@dataclasses.dataclass
+class Citation:
+  title: str | None = None
+  url: str | None = None
+    
+
+@dataclasses.dataclass
+class ToolContent:
+  """Tool content for structured response parsing."""
+
+  name: str | None = None
+  kind: ToolKind | None = None
+  citations: list[Citation] | None = None
 
 
 @dataclasses.dataclass
@@ -115,6 +136,7 @@ class MessageContent:
 
   json: dict[str, Any] | None = None
   pydantic_content: PydanticContent | None = None
+  tool_content: ToolContent | None = None
   
   source: str | None = None
   data: str | None = None
@@ -160,7 +182,17 @@ class MessageContent:
             "'pydantic_content' field is required when type is "
             "'pydantic_instance'."
         )
-    else:
+    elif self.type == ContentType.TOOL:
+      if self.tool_content is None:
+        raise ValueError(
+            "'tool_content' field is required when type is 'tool'."
+        )
+    elif self.type in (
+        ContentType.IMAGE,
+        ContentType.DOCUMENT,
+        ContentType.AUDIO,
+        ContentType.VIDEO,
+    ):
       if self.source is None and self.data is None and self.path is None:
         raise ValueError(
             f"At least one of 'source', 'data', or 'path' is required "

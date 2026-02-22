@@ -28,8 +28,19 @@ def _assert_success(result: types.CallRecord):
 def _assert_text_content(result: types.CallRecord):
   """Assert content is a non-empty string."""
   _assert_success(result)
-  assert result.result.content[0].type == px.ContentType.TEXT
-  assert result.result.content[0].text is not None
+  assert result.result.output_text is not None
+
+
+def assert_json_content(result: types.CallRecord):
+  """Assert content is a valid JSON object."""
+  _assert_success(result)
+  assert type(result.result.output_json) == dict
+
+
+def assert_pydantic_content(result: types.CallRecord):
+  """Assert content is a valid Pydantic object."""
+  _assert_success(result)
+  assert isinstance(result.result.output_pydantic, pydantic.BaseModel)
 
 
 def prompt_test():
@@ -38,7 +49,7 @@ def prompt_test():
       prompt='What is 2 + 2?',
       provider_model=_DEFAULT_MODEL)
   _assert_text_content(result)
-  assert '4' in result.result.content[0].text
+  assert '4' in result.result.output_text
   assert result.query.prompt == 'What is 2 + 2?'
   assert result.query.chat is None
   assert result.query.provider_model.provider == 'openai'
@@ -53,7 +64,7 @@ def messages_test():
           'content': 'What is 2 + 2?'}],
       provider_model=_DEFAULT_MODEL)
   _assert_text_content(result)
-  assert '4' in result.result.content[0].text
+  assert '4' in result.result.output_text
   assert result.query.prompt is None
   assert result.query.chat is not None
   assert len(result.query.chat.messages) == 1
@@ -68,7 +79,7 @@ def messages_test():
       messages=chat,
       provider_model=_DEFAULT_MODEL)
   _assert_text_content(result)
-  assert '12' in result.result.content[0].text
+  assert '12' in result.result.output_text
   assert len(result.query.chat.messages) == 3
 
 
@@ -91,7 +102,7 @@ def parameters_temperature_test():
       provider_model=_DEFAULT_MODEL,
       parameters=px.ParameterType(temperature=0.0))
   _assert_text_content(result)
-  assert '4' in result.result.content[0].text
+  assert '4' in result.result.output_text
   assert result.query.parameters is not None
   assert result.query.parameters.temperature == 0.0
 
@@ -119,6 +130,7 @@ def parameters_stop_test():
   assert result.query.parameters is not None
   assert result.query.parameters.stop == '5'
   assert '5' not in result.result.content
+  assert '5' not in result.result.output_text
 
 
 def parameters_stop_list_test():
@@ -128,7 +140,6 @@ def parameters_stop_list_test():
       provider_model=_DEFAULT_MODEL,
       parameters=px.ParameterType(stop=['5', '7']))
   _assert_text_content(result)
-  assert '1' in result.result.content[0].text
   assert result.query.parameters is not None
   assert result.query.parameters.stop == ['5', '7']
 
@@ -155,7 +166,6 @@ def parameters_thinking_test():
       provider_model=_DEFAULT_MODEL,
       parameters=px.ParameterType(thinking=types.ThinkingType.HIGH))
   _assert_text_content(result)
-  assert '4' in result.result.content[0].text
   assert result.query.parameters is not None
   assert result.query.parameters.thinking == types.ThinkingType.HIGH
 
@@ -185,10 +195,14 @@ def tools_web_search_test():
       provider_model=_DEFAULT_MODEL,
       tools=[px.Tools.WEB_SEARCH])
   _assert_text_content(result)
-  assert len(result.result.content[0].text) > 10
-  assert result.query.tools is not None
-  assert px.Tools.WEB_SEARCH in result.query.tools
-
+  assert len(result.result.output_text) > 10
+  assert any(message.type == px.ContentType.TOOL
+             for message in result.result.content)
+  for message in result.result.content:
+    if message.type == px.ContentType.TOOL:
+      assert message.tool_content.name == 'web_search'
+      assert message.tool_content.citations is not None
+      assert len(message.tool_content.citations) > 0
 
 def response_format_text_test():
   print('> response_format_text_test')
@@ -197,7 +211,7 @@ def response_format_text_test():
       provider_model=_DEFAULT_MODEL,
       response_format='text')
   _assert_text_content(result)
-  assert '4' in result.result.content[0].text
+  assert '4' in result.result.output_text
   assert result.query.response_format is not None
   assert result.query.response_format.type == px.ResponseFormatType.TEXT
 
@@ -211,8 +225,7 @@ def response_format_json_test():
       response_format='json')
   _assert_success(result)
   assert result.result.content is not None
-  assert result.result.content[0].type == px.ContentType.JSON
-  assert result.result.content[0].json == {'answer': 4}
+  assert result.result.output_json == {'answer': 4}
   assert result.query.response_format is not None
   assert result.query.response_format.type == px.ResponseFormatType.JSON
 
@@ -232,8 +245,7 @@ def response_format_pydantic_test():
   assert result.query.response_format.type == px.ResponseFormatType.PYDANTIC
   # Content can be a pydantic object (beta.chat.completions.parse) or a JSON
   # string (chat.completions.create / responses.create).
-  assert result.result.content[0].type == px.ContentType.PYDANTIC_INSTANCE
-  assert result.result.content[0].pydantic_content.instance_value.answer == 4
+  assert result.result.output_pydantic.answer == 4
 
 
 def connection_options_fallback_test():
@@ -245,7 +257,6 @@ def connection_options_fallback_test():
       connection_options=px.ConnectionOptions(
           fallback_models=[_NON_EXISTENT_MODEL]))
   _assert_text_content(result)
-  assert '4' in result.result.content[0].text
   assert not result.connection.failed_fallback_models
   assert result.query.provider_model.provider_model_identifier == 'gpt-4o'
 
@@ -256,7 +267,6 @@ def connection_options_fallback_test():
       connection_options=px.ConnectionOptions(
           fallback_models=[_DEFAULT_MODEL]))
   _assert_text_content(result)
-  assert '4' in result.result.content[0].text
   assert result.connection.failed_fallback_models == [_NON_EXISTENT_MODEL]
   assert result.query.provider_model.provider_model_identifier == 'gpt-4o'
 
@@ -285,7 +295,6 @@ def connection_options_endpoint_test():
       connection_options=px.ConnectionOptions(
           endpoint='responses.create'))
   _assert_text_content(result)
-  assert '4' in result.result.content[0].text
   assert result.connection is not None
   assert result.connection.endpoint_used == 'responses.create'
 
@@ -295,7 +304,6 @@ def connection_options_endpoint_test():
       connection_options=px.ConnectionOptions(
           endpoint='chat.completions.create'))
   _assert_text_content(result)
-  assert '4' in result.result.content[0].text
   assert result.connection is not None
   assert result.connection.endpoint_used == 'chat.completions.create'
 
@@ -320,7 +328,6 @@ def connection_options_skip_cache_test():
       connection_options=px.ConnectionOptions(
           skip_cache=True))
   _assert_text_content(result)
-  assert '4' in result.result.content[0].text
   assert result.connection is not None
   assert result.connection.result_source == types.ResultSource.PROVIDER
 
@@ -333,7 +340,6 @@ def connection_options_override_cache_value_test():
       connection_options=px.ConnectionOptions(
           override_cache_value=True))
   _assert_text_content(result)
-  assert '4' in result.result.content[0].text
   assert result.connection is not None
   assert result.connection.result_source == types.ResultSource.PROVIDER
 

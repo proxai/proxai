@@ -1,12 +1,11 @@
 import functools
-from collections.abc import Callable
-from typing import Any
 
 from openai import OpenAI
 
 import proxai.connectors.model_connector as model_connector
 import proxai.connectors.providers.openai_mock as openai_mock
 import proxai.types as types
+import proxai.chat.message_content as message_content
 
 FeatureConfigType = types.FeatureConfigType
 FeatureSupportType = types.FeatureSupportType
@@ -129,12 +128,17 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
       create = functools.partial(
           create, response_format={'type': 'json_object'})
 
-    raw_return = self._safe_provider_query(create)
-    if raw_return.error is not None:
-      return raw_return
+    response, result_record = self._safe_provider_query(create)
+    if result_record.error is not None:
+      return result_record
     
-    raw_return.value = raw_return.value.choices[0].message.content
-    return raw_return
+    result_record.content = [
+        message_content.MessageContent(
+            type=message_content.ContentType.TEXT,
+            text=response.choices[0].message.content,
+        )
+    ]
+    return result_record
 
   def _beta_chat_completions_parse_executor(
       self,
@@ -168,12 +172,21 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
       create = functools.partial(
           create, response_format=query_record.response_format.pydantic_class)
 
-    raw_return = self._safe_provider_query(create)
-    if raw_return.error is not None:
-      return raw_return
+    response, result_record = self._safe_provider_query(create)
+    if result_record.error is not None:
+      return result_record
     
-    raw_return.value = raw_return.value.choices[0].message.parsed
-    return raw_return
+    result_record.content = [
+        message_content.MessageContent(
+            type=message_content.ContentType.PYDANTIC_INSTANCE,
+            pydantic_content=message_content.PydanticContent(
+                class_name=query_record.response_format.pydantic_class.__name__,
+                class_value=query_record.response_format.pydantic_class,
+                instance_value=response.choices[0].message.parsed,
+            ),
+        )
+    ]
+    return result_record
 
   def _responses_create_executor(
       self,
@@ -214,20 +227,39 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
           create, text={'format': {
               'type': 'json_object'
           }})
-    
-    raw_return = self._safe_provider_query(create)
-    if raw_return.error is not None:
-      return raw_return
 
-    result_list = []
-    for output in raw_return.value.output:
+    response, result_record = self._safe_provider_query(create)
+    if result_record.error is not None:
+      return result_record
+    
+    parsed_response = []
+    for output in response.output:
       if output.type != 'message':
         continue
       for content in output.content:
-        result_list.append(content.text)
-    raw_return.value = result_list
+        if content.annotations and len(content.annotations) > 0:
+          tool_message = message_content.MessageContent(
+              type=message_content.ContentType.TOOL,
+              tool_content=message_content.ToolContent(
+                  name='web_search',
+                  kind=message_content.ToolKind.RESULT,
+                  citations=[],
+              ),
+          )
+          for annotation in content.annotations:
+            tool_message.tool_content.citations.append(message_content.Citation(
+                title=annotation.title,
+                url=annotation.url,
+            ))
+          parsed_response.append(tool_message)
+        
+        parsed_response.append(message_content.MessageContent(
+            type=message_content.ContentType.TEXT,
+            text=content.text,
+        ))
 
-    return raw_return
+    result_record.content = parsed_response
+    return result_record
    
   ENDPOINT_EXECUTORS = {
     'chat.completions.create': '_chat_completions_create_executor',

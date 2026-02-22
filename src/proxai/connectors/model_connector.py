@@ -318,6 +318,8 @@ class ProviderModelConnector(state_controller.StateControlled):
         total += _get_token_count_estimate_from_str(message.data)
       elif message.type == message_content.ContentType.VIDEO:
         total += _get_token_count_estimate_from_str(message.data)
+      elif message.type == message_content.ContentType.TOOL:
+        pass
       else:
         raise ValueError(f'Invalid message type: {message.type}')
 
@@ -448,14 +450,17 @@ class ProviderModelConnector(state_controller.StateControlled):
   def _safe_provider_query(
       self,
       execution_function: Callable,
-  ) -> types.RawProviderModelReturn:
+  ) -> tuple[Any, types.ResultRecord]:
     try:
       response = execution_function()
-      return types.RawProviderModelReturn(
-          value=response)
+      return response, types.ResultRecord(
+          status=types.ResultStatusType.SUCCESS,
+          role=types.MessageRoleType.ASSISTANT)
     except Exception as e:
-      return types.RawProviderModelReturn(
-          error=e,
+      return None, types.ResultRecord(
+          status=types.ResultStatusType.FAILED,
+          role=types.MessageRoleType.ASSISTANT,
+          error=str(e),
           error_traceback=traceback.format_exc())
 
   def _execute_call(
@@ -464,27 +469,20 @@ class ProviderModelConnector(state_controller.StateControlled):
       chosen_endpoint: str,
       query_record: types.QueryRecord,
   ):
-    raw_return = chosen_executor(
+    result_record = chosen_executor(
         query_record=query_record)
 
-    if not raw_return.error:
+    if not result_record.error:
       chosen_result_adapter = result_adapter.ResultAdapter(
           endpoint=chosen_endpoint,
           feature_config=self.ENDPOINT_CONFIG[chosen_endpoint],
       )
-      return types.ResultRecord(
-          status=types.ResultStatusType.SUCCESS,
-          role=types.MessageRoleType.ASSISTANT,
-          content=chosen_result_adapter.adapt_result_content(
-              query_record=query_record,
-              content=raw_return.value,
-          ))
+      chosen_result_adapter.adapt_result_record(
+          query_record=query_record,
+          result_record=result_record)
+      return result_record
     else:
-      return types.ResultRecord(
-          status=types.ResultStatusType.FAILED,
-          role=types.MessageRoleType.ASSISTANT,
-          error=raw_return.error,
-          error_traceback=raw_return.error_traceback)
+      return result_record
 
   def _compute_usage(
       self,
