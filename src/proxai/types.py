@@ -244,7 +244,7 @@ class ConfigOriginType(enum.Enum):
 # (provider, model) without model_signature
 ProviderModelTupleParam = tuple[ProviderNameType, ModelNameType]
 ProviderModelParam = ProviderModelTupleParam | ProviderModelType
-MessagesParam = List[Dict[str, Any]] | chat_session.Chat
+MessagesParam = Dict[str, Any] | List[Dict[str, Any]] | chat_session.Chat
 
 ProviderModelsIdentifierDictType = dict[ProviderNameType,
                                         tuple[ProviderModelType]]
@@ -482,6 +482,19 @@ class ResponseFormat:
 ResponseFormatParam = str | type[pydantic.BaseModel] | ResponseFormat
 
 
+@dataclasses.dataclass
+class ResultMediaContentType:
+  """Media content returned by a provider in a result.
+
+  Attributes:
+    data: Raw media bytes.
+    media_type: MIME type (e.g., "image/png", "audio/wav").
+  """
+
+  data: bytes
+  media_type: str
+
+
 class ThinkingType(str, enum.Enum):
   """Type of thinking for a query to a provider."""
 
@@ -584,7 +597,7 @@ class ResultRecord:
 
   role: MessageRoleType | None = None
 
-  content: str | list[MessageContent | str] | None = None
+  content: list[MessageContent] | None = None
   choices: list[ChoiceType] | None = None
 
   error: str | None = None

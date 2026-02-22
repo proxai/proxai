@@ -21,6 +21,8 @@ import proxai.type_utils as type_utils
 import proxai.types as types
 import proxai.chat.chat_session as chat_session
 import proxai.connectors.feature_adapter as feature_adapter
+import proxai.connectors.result_adapter as result_adapter
+import proxai.chat.message_content as message_content
 
 _PROVIDER_MODEL_STATE_PROPERTY = '_provider_model_state'
 
@@ -284,60 +286,41 @@ class ProviderModelConnector(state_controller.StateControlled):
     )
 
   def get_token_count_estimate(
-      self, value: str | dict | list | chat_session.Chat | None = None
+      self,
+      messages: Dict | chat_session.Chat | List[
+          message_content.MessageContent] | None = None
   ) -> int:
     """Estimate the token count for a prompt, response, or messages."""
-    if not value:
+    if not messages:
       return 0
 
     total = 0
 
     def _get_token_count_estimate_from_str(input: str) -> int:
       return math.ceil(max(len(input) / 4, len(input.strip().split()) * 1.3))
+    
+    if isinstance(messages, dict):
+      return _get_token_count_estimate_from_str(json.dumps(messages))
+      
+    for message in messages:
+      if message.type == message_content.ContentType.TEXT:
+        total += _get_token_count_estimate_from_str(message.text)
+      elif message.type == message_content.ContentType.THINKING:
+        total += _get_token_count_estimate_from_str(message.text)
+      elif message.type == message_content.ContentType.JSON:
+        total += _get_token_count_estimate_from_str(json.dumps(message.json))
+      elif message.type == message_content.ContentType.PYDANTIC_INSTANCE:
+        total += _get_token_count_estimate_from_str(
+            json.dumps(message.pydantic_content.instance_json_value))
+      elif message.type == message_content.ContentType.IMAGE:
+        total += _get_token_count_estimate_from_str(message.data)
+      elif message.type == message_content.ContentType.AUDIO:
+        total += _get_token_count_estimate_from_str(message.data)
+      elif message.type == message_content.ContentType.VIDEO:
+        total += _get_token_count_estimate_from_str(message.data)
+      else:
+        raise ValueError(f'Invalid message type: {message.type}')
 
-    if isinstance(value, str):
-      total += _get_token_count_estimate_from_str(value)
-    # BEGIN: Refactoring: Remove this after testing
-    # elif isinstance(value, types.Response):
-    #   if value.type == types.ResponseType.TEXT:
-    #     total += _get_token_count_estimate_from_str(value.value)
-    #   elif value.type == types.ResponseType.JSON:
-    #     total += _get_token_count_estimate_from_str(json.dumps(value.value))
-    #   elif value.type == types.ResponseType.PYDANTIC:
-    #     # Try pydantic_metadata.instance_json_value first, then value (instance)
-    #     if (
-    #         value.pydantic_metadata is not None and
-    #         value.pydantic_metadata.instance_json_value is not None
-    #     ):
-    #       total += _get_token_count_estimate_from_str(
-    #           json.dumps(value.pydantic_metadata.instance_json_value)
-    #       )
-    #     elif value.value is not None:
-    #       total += _get_token_count_estimate_from_str(
-    #           json.dumps(value.value.model_dump())
-    #       )
-    #   else:
-    #     raise ValueError(f'Invalid response type: {value.type}')
-    # elif isinstance(value, list):
-    #   total += 2
-    #   for message in value:
-    #     total += _get_token_count_estimate_from_str(json.dumps(message)) + 4
-    # END: Refactoring: Remove this after testing
-    elif isinstance(value, chat_session.Chat):
-      total += _get_token_count_estimate_from_str(str(value.to_json()))
-    elif isinstance(value, dict):
-      total += _get_token_count_estimate_from_str(str(value))
-    elif isinstance(value, list):
-      total += 2
-      for message in value:
-        total += _get_token_count_estimate_from_str(json.dumps(message)) + 4
-    else:
-      raise ValueError(
-          'Invalid value type. Please provide a string, a response value, or a '
-          'messages type.\n'
-          f'Value type: {type(value)}\n'
-          f'Value: {value}'
-      )
     return total
 
   def get_estimated_cost(self, logging_record: types.LoggingRecord):
@@ -409,7 +392,7 @@ class ProviderModelConnector(state_controller.StateControlled):
             f'endpoint {endpoint} is not supported in STRICT mode.\n'
             f'query_record: {query_record}')
 
-  def find_compatible_endpoint(self, query_record: types.QueryRecord):
+  def _find_compatible_endpoint(self, query_record: types.QueryRecord):
     """Find a compatible endpoint for the query record."""
     best_effort_endpoints = []
     for endpoint in self.ENDPOINT_PRIORITY:
@@ -448,16 +431,16 @@ class ProviderModelConnector(state_controller.StateControlled):
           support_level=support_level,
           query_record=query_record)
     else:
-      chosen_endpoint = self.find_compatible_endpoint(query_record=query_record)
+      chosen_endpoint = self._find_compatible_endpoint(query_record=query_record)
 
-    chosen_adapter = feature_adapter.FeatureAdapter(
+    chosen_feature_adapter = feature_adapter.FeatureAdapter(
         endpoint=chosen_endpoint,
         feature_config=self.ENDPOINT_CONFIG[chosen_endpoint],
     )
     executor_name = self.ENDPOINT_EXECUTORS[chosen_endpoint]
     chosen_executor = getattr(self, executor_name)
 
-    modified_query_record = chosen_adapter.adapt_query_record(
+    modified_query_record = chosen_feature_adapter.adapt_query_record(
         query_record=query_record)
 
     return chosen_executor, chosen_endpoint, modified_query_record
@@ -465,27 +448,34 @@ class ProviderModelConnector(state_controller.StateControlled):
   def _safe_provider_query(
       self,
       execution_function: Callable,
-      response_mapping: Callable,
   ) -> tuple[Any, Exception | None, str | None]:
     try:
       response = execution_function()
-      return response_mapping(response), None, None
+      return response, None, None
     except Exception as e:
       return None, e, traceback.format_exc()
 
   def _execute_call(
       self,
       chosen_executor: Callable,
-      modified_query_record: types.QueryRecord,
+      chosen_endpoint: str,
+      query_record: types.QueryRecord,
   ):
     response, error, error_traceback = chosen_executor(
-        query_record=modified_query_record)
+        query_record=query_record)
 
     if response is not None:
+      chosen_result_adapter = result_adapter.ResultAdapter(
+          endpoint=chosen_endpoint,
+          feature_config=self.ENDPOINT_CONFIG[chosen_endpoint],
+      )
       return types.ResultRecord(
           status=types.ResultStatusType.SUCCESS,
           role=types.MessageRoleType.ASSISTANT,
-          content=response)
+          content=chosen_result_adapter.adapt_result_content(
+              query_record=query_record,
+              content=response,
+          ))
     else:
       return types.ResultRecord(
           status=types.ResultStatusType.FAILED,
@@ -497,13 +487,17 @@ class ProviderModelConnector(state_controller.StateControlled):
       self,
       query_record: types.CallRecord,
       result_record: types.ResultRecord,
-  ) -> types.UsageType:
+) -> types.UsageType:
     if query_record.prompt is not None:
-      input_tokens = self.get_token_count_estimate(value=query_record.prompt)
+      input_tokens = self.get_token_count_estimate(
+          messages=[message_content.MessageContent(
+              type=message_content.ContentType.TEXT,
+              text=query_record.prompt)])
     else:
-      input_tokens = self.get_token_count_estimate(value=query_record.chat)
+      input_tokens = self.get_token_count_estimate(messages=query_record.chat)
     if result_record.content is not None:
-      output_tokens = self.get_token_count_estimate(value=result_record.content)
+      output_tokens = self.get_token_count_estimate(
+          messages=result_record.content)
     else:
       output_tokens = 0
     return types.UsageType(
@@ -588,7 +582,8 @@ class ProviderModelConnector(state_controller.StateControlled):
     
     result_record = self._execute_call(
         chosen_executor=chosen_executor,
-        modified_query_record=modified_query_record,
+        chosen_endpoint=chosen_endpoint,
+        query_record=modified_query_record,
     )
     result_record.usage = self._compute_usage(
         query_record=modified_query_record,

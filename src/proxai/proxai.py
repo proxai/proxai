@@ -16,6 +16,8 @@ ParameterType = types.ParameterType
 Tools = types.Tools
 ResponseFormatType = types.ResponseFormatType
 ConnectionOptions = types.ConnectionOptions
+MessageRoleType = types.MessageRoleType
+ContentType = types.ContentType
 
 
 _DEFAULT_CLIENT: client.ProxAIClient | None = None
