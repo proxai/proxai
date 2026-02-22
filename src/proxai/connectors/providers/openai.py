@@ -1,4 +1,5 @@
 import functools
+import time
 
 from openai import OpenAI
 
@@ -31,6 +32,9 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
     'chat.completions.create',
     'beta.chat.completions.parse',
     'responses.create',
+    'images.generate',
+    'audio.speech.create',
+    'videos.create',
   ]
 
   ENDPOINT_CONFIG = {
@@ -88,6 +92,24 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
               text=FeatureSupportType.SUPPORTED,
               json=FeatureSupportType.SUPPORTED,
               pydantic=FeatureSupportType.BEST_EFFORT,
+          ),
+      ),
+      'images.generate': FeatureConfigType(
+          prompt=FeatureSupportType.SUPPORTED,
+          response_format=ResponseFormatConfigType(
+              image=FeatureSupportType.SUPPORTED,
+          ),
+      ),
+      'audio.speech.create': FeatureConfigType(
+          prompt=FeatureSupportType.SUPPORTED,
+          response_format=ResponseFormatConfigType(
+              audio=FeatureSupportType.SUPPORTED,
+          ),
+      ),
+      'videos.create': FeatureConfigType(
+          prompt=FeatureSupportType.SUPPORTED,
+          response_format=ResponseFormatConfigType(
+              video=FeatureSupportType.SUPPORTED,
           ),
       ),
   }
@@ -260,9 +282,109 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
 
     result_record.content = parsed_response
     return result_record
-   
+
+  def _images_generate_executor(
+      self,
+      query_record: types.QueryRecord) -> types.Response:
+    generate = functools.partial(self.api.images.generate)
+    generate = functools.partial(generate, model=(
+        query_record.provider_model.provider_model_identifier
+    ))
+
+    if query_record.prompt is not None:
+      generate = functools.partial(generate, prompt=query_record.prompt)
+
+    # TODO: Add support for other image sizes and qualities
+    generate = functools.partial(
+        generate,
+        size="1024x1024",
+        quality="standard",
+        n=1)
+    
+    response, result_record = self._safe_provider_query(generate)
+    if result_record.error is not None:
+      return result_record
+
+    result_record.content = [
+        message_content.MessageContent(
+            type=message_content.ContentType.IMAGE,
+            source=response.data[0].url,
+        )
+    ]
+    return result_record
+
+  def _audio_speech_create_executor(
+      self,
+      query_record: types.QueryRecord) -> types.Response:
+    create = functools.partial(self.api.audio.speech.create)
+    create = functools.partial(create, model=(
+        query_record.provider_model.provider_model_identifier
+    ))
+    
+    if query_record.prompt is not None:
+      create = functools.partial(create, input=query_record.prompt)
+
+    # TODO: Add support for other voices
+    create = functools.partial(create, voice='alloy')
+
+    response, result_record = self._safe_provider_query(create)
+    if result_record.error is not None:
+      return result_record
+
+    result_record.content = [
+        message_content.MessageContent(
+            type=message_content.ContentType.AUDIO,
+            data=response.content,
+        )
+    ]
+    
+    return result_record
+
+  def _videos_create_executor(
+      self,
+      query_record: types.QueryRecord) -> types.Response:
+    create = functools.partial(self.api.videos.create)
+    create = functools.partial(create, model=(
+        query_record.provider_model.provider_model_identifier
+    ))
+    
+    if query_record.prompt is not None:
+      create = functools.partial(create, prompt=query_record.prompt)
+    
+    response, result_record = self._safe_provider_query(create)
+    if result_record.error is not None:
+      return result_record
+    
+    tick_count = 0
+    while response.status not in ("completed", "failed"):
+      time.sleep(2)
+      tick_count += 1
+      response = self.api.videos.retrieve(response.id)
+      print(f"Status: {response.status}, progress: {response.progress}%")
+      if tick_count % 10 == 0:
+        print(f"Video generation progress: {response.progress}% "
+              f"after {tick_count*2} seconds")
+    
+    if response.status == "completed":
+      download = self.api.videos.download(response.id)
+      result_record.content = [
+        message_content.MessageContent(
+            type=message_content.ContentType.VIDEO,
+            source=download.url,
+        )
+      ]
+    else:
+      result_record.error = Exception(
+          f"Video generation failed: {response.error}")
+
+    return result_record
+
+
   ENDPOINT_EXECUTORS = {
     'chat.completions.create': '_chat_completions_create_executor',
     'beta.chat.completions.parse': '_beta_chat_completions_parse_executor',
     'responses.create': '_responses_create_executor',
+    'images.generate': '_images_generate_executor',
+    'audio.speech.create': '_audio_speech_create_executor',
+    'videos.create': '_videos_create_executor',
   }

@@ -160,11 +160,11 @@ class ResultAdapter:
         result_obj.output_pydantic = (
             message_content.pydantic_content.instance_value)
       elif message_content.type == ContentType.IMAGE:
-        result_obj.output_image = message_content.image
+        result_obj.output_image = message_content
       elif message_content.type == ContentType.AUDIO:
-        result_obj.output_audio = message_content.audio
+        result_obj.output_audio = message_content
       elif message_content.type == ContentType.VIDEO:
-        result_obj.output_video = message_content.video
+        result_obj.output_video = message_content
 
   @staticmethod
   def _resolve(

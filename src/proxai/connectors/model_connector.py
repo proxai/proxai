@@ -313,11 +313,11 @@ class ProviderModelConnector(state_controller.StateControlled):
         total += _get_token_count_estimate_from_str(
             json.dumps(message.pydantic_content.instance_json_value))
       elif message.type == message_content.ContentType.IMAGE:
-        total += _get_token_count_estimate_from_str(message.data)
+        pass
       elif message.type == message_content.ContentType.AUDIO:
-        total += _get_token_count_estimate_from_str(message.data)
+        pass
       elif message.type == message_content.ContentType.VIDEO:
-        total += _get_token_count_estimate_from_str(message.data)
+        pass
       elif message.type == message_content.ContentType.TOOL:
         pass
       else:
@@ -460,7 +460,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       return None, types.ResultRecord(
           status=types.ResultStatusType.FAILED,
           role=types.MessageRoleType.ASSISTANT,
-          error=str(e),
+          error=e,
           error_traceback=traceback.format_exc())
 
   def _execute_call(
