@@ -532,14 +532,6 @@ class ConnectionOptions:
 
 
 @dataclasses.dataclass
-class RawProviderModelReturn:
-  """Raw return from a provider model."""
-  value: str | dict | pydantic.BaseModel | bytes | list | None = None
-  error: Exception | None = None
-  error_traceback: str | None = None
-
-
-@dataclasses.dataclass
 class QueryRecord:
   """Complete record of a query sent to a provider."""
 
@@ -565,7 +557,14 @@ class ResultStatusType(str, enum.Enum):
 class ChoiceType:
   """Choice of a query to a provider."""
 
-  content: str | list[MessageContent | str] | None = None
+  output_text: str | None = None
+  output_image: bytes | None = None
+  output_audio: bytes | None = None
+  output_video: bytes | None = None
+  output_json: dict | None = None
+  output_pydantic: pydantic.BaseModel | None = None
+
+  content: list[MessageContent] | None = None
 
 
 @dataclasses.dataclass
@@ -604,6 +603,13 @@ class ResultRecord:
   status: ResultStatusType | None = None
 
   role: MessageRoleType | None = None
+
+  output_text: str | None = None
+  output_image: bytes | None = None
+  output_audio: bytes | None = None
+  output_video: bytes | None = None
+  output_json: dict | None = None
+  output_pydantic: pydantic.BaseModel | None = None
 
   content: list[MessageContent] | None = None
   choices: list[ChoiceType] | None = None

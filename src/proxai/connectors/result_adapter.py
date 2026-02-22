@@ -65,157 +65,106 @@ class ResultAdapter:
       return self._resolve(getattr(rf_config, field_name, None))
     return types.FeatureSupportType.NOT_SUPPORTED
 
-  def adapt_result_content(
+  def adapt_result_record(
       self,
       query_record: types.QueryRecord,
-      content: (
-          str | bytes | dict | list
-          | pydantic.BaseModel | types.ResultMediaContentType),
-  ) -> List[MessageContent]:
-    """Adapt raw provider content to the expected response format.
+      result_record: types.ResultRecord,
+  ):
+    if result_record.content:
+      result_record.content = self._adapt_content(
+          query_record=query_record,
+          content=result_record.content)
+      self._adapt_output_values(result_obj=result_record)
+    if result_record.choices:
+      for choice in result_record.choices:
+        choice.content = self._adapt_content(
+            query_record=query_record,
+            content=choice.content)
+        self._adapt_output_values(result_obj=choice)
 
-    Dispatches to format-specific handlers that validate the content type
-    and convert it to a list of MessageContent.
-
-    Args:
-      query_record: The query record with response_format info.
-      content: Raw content from the provider (str, bytes, dict, list,
-          or pydantic.BaseModel).
-
-    Returns:
-      List[MessageContent] for all response format types.
-    """
-    rf_type = query_record.response_format.type
-
-    if rf_type == types.ResponseFormatType.TEXT:
-      return self._adapt_text(content)
-    if rf_type in _RESPONSE_FORMAT_TO_CONTENT_TYPE:
-      return self._adapt_media(rf_type, content)
-    if rf_type == types.ResponseFormatType.JSON:
-      return self._adapt_json(content)
-    if rf_type == types.ResponseFormatType.PYDANTIC:
-      return self._adapt_pydantic(query_record, content)
-    if rf_type == types.ResponseFormatType.MULTI_MODAL:
-      return self._adapt_multi_modal(content)
-    return content
-
-  def _adapt_text(self, content) -> List[MessageContent]:
-    """Adapt content for TEXT response format."""
-    if isinstance(content, str):
-      return [MessageContent(type=ContentType.TEXT, text=content)]
-    elif isinstance(content, list):
-      return [
-          MessageContent(type=ContentType.TEXT, text=item) for item in content]
-    raise ValueError(
-        f"Expected str or list content for TEXT response format, "
-        f"got {type(content).__name__}.")
-
-  def _adapt_media(
-      self,
-      rf_type: types.ResponseFormatType,
-      content,
-  ) -> List[MessageContent]:
-    """Adapt content for IMAGE, AUDIO, or VIDEO response format."""
-    if not isinstance(content, bytes):
-      raise ValueError(
-          f"Expected bytes content for {rf_type.value} response format, "
-          f"got {type(content).__name__}.")
-    content_type = _RESPONSE_FORMAT_TO_CONTENT_TYPE[rf_type]
-    data = base64.b64encode(content).decode("utf-8")
-    return [MessageContent(type=content_type, data=data)]
-
-  def _adapt_json(
-      self,
-      content,
-  ) -> List[MessageContent]:
-    """Adapt content for JSON response format."""
-    if isinstance(content, str):
-      content = json.loads(content)
-    elif not isinstance(content, dict):
-      raise ValueError(
-          f"Expected str or dict content for JSON response format, "
-          f"got {type(content).__name__}.")
-    return [MessageContent(type=ContentType.JSON, json=content)]
-
-  def _adapt_pydantic(
+  def _adapt_content(
       self,
       query_record: types.QueryRecord,
-      content,
-  ) -> List[MessageContent]:
-    """Adapt content for PYDANTIC response format."""
-    pydantic_class = query_record.response_format.pydantic_class
-    if type(content) == str:
-      content = json.loads(content)
-    if isinstance(content, dict):
-      content = pydantic_class.model_validate(content)
-    if not isinstance(content, pydantic.BaseModel):
-      raise ValueError(
-          f"Expected pydantic.BaseModel content for PYDANTIC response "
-          f"format, got {type(content).__name__}.")
-    return [MessageContent(
-        type=ContentType.PYDANTIC_INSTANCE,
-        pydantic_content=PydanticContent(
-            class_name=pydantic_class.__name__,
-            class_value=pydantic_class,
-            instance_value=content,
-            instance_json_value=content.model_dump(),
-        )
-    )]
-
-  def _adapt_multi_modal(self, content) -> List[MessageContent]:
-    """Adapt content for MULTI_MODAL response format."""
-    if not isinstance(content, list):
-      raise ValueError(
-          f"Expected list content for MULTI_MODAL response format, "
-          f"got {type(content).__name__}.")
+      content: list[MessageContent],
+  ) -> list[MessageContent]:
     result = []
-    for item in content:
-      if isinstance(item, str):
-        result.append(MessageContent(type=ContentType.TEXT, text=item))
-      elif isinstance(item, types.ResultMediaContentType):
-        result.append(self._adapt_multi_modal_media(item))
-      elif isinstance(item, dict):
-        result.append(MessageContent(type=ContentType.JSON, json=item))
-      elif isinstance(item, pydantic.BaseModel):
-        result.append(MessageContent(
-            type=ContentType.PYDANTIC_INSTANCE,
-            pydantic_content=PydanticContent(
-                class_name=type(item).__name__,
-                class_value=type(item),
-                instance_value=item,
-                instance_json_value=item.model_dump(),
-            )
-        ))
-      else:
-        raise ValueError(
-            f"Expected str, ResultMediaContentType, dict, or "
-            f"pydantic.BaseModel elements for MULTI_MODAL response "
-            f"format, got {type(item).__name__}.")
+    for message_content in content:
+      result.append(self._adapt_message_content(query_record, message_content))
     return result
 
-  _MIME_PREFIX_TO_CONTENT_TYPE = {
-      "image": ContentType.IMAGE,
-      "audio": ContentType.AUDIO,
-      "video": ContentType.VIDEO,
-  }
-
-  def _adapt_multi_modal_media(
-      self, item: types.ResultMediaContentType,
+  def _adapt_message_content(
+      self,
+      query_record: types.QueryRecord,
+      message_content: MessageContent,
   ) -> MessageContent:
-    """Adapt a ResultMediaContentType element in a MULTI_MODAL list."""
-    prefix = item.media_type.split("/")[0]
-    content_type = self._MIME_PREFIX_TO_CONTENT_TYPE.get(prefix)
-    if content_type is None:
-      raise ValueError(
-          f"Unsupported media type '{item.media_type}' in MULTI_MODAL "
-          f"element. Expected MIME type starting with: "
-          f"{list(self._MIME_PREFIX_TO_CONTENT_TYPE.keys())}.")
-    data = base64.b64encode(item.data).decode("utf-8")
-    return MessageContent(
-        type=content_type,
-        data=data,
-        media_type=item.media_type,
-    )
+    """Adapt content value to the expected response format."""
+    response_format = query_record.response_format
+    if message_content.type in [
+        ContentType.THINKING,
+        ContentType.IMAGE,
+        ContentType.DOCUMENT,
+        ContentType.AUDIO,
+        ContentType.VIDEO,
+        ContentType.TOOL,
+    ]:
+      return message_content
+
+    if message_content.type == ContentType.TEXT:
+      if response_format.type == types.ResponseFormatType.TEXT:
+        return message_content
+      if response_format.type == types.ResponseFormatType.JSON:
+        return MessageContent(
+            type=ContentType.JSON,
+            json=json.loads(message_content.text))
+      if response_format.type == types.ResponseFormatType.PYDANTIC:
+        json_value = json.loads(message_content.text)
+        pydantic_content = PydanticContent(
+            class_name=response_format.pydantic_class.__name__,
+            class_value=response_format.pydantic_class,
+            instance_value=response_format.pydantic_class.model_validate(
+                json_value),
+            instance_json_value=json_value,
+        )
+        return MessageContent(
+            type=ContentType.PYDANTIC_INSTANCE,
+            pydantic_content=pydantic_content)
+
+    if message_content.type == ContentType.JSON:
+      if response_format.type == types.ResponseFormatType.JSON:
+        return message_content
+      if response_format.type == types.ResponseFormatType.PYDANTIC:
+        json_value = message_content.json
+        pydantic_content = PydanticContent(
+            class_name=response_format.pydantic_class.__name__,
+            class_value=response_format.pydantic_class,
+            instance_value=response_format.pydantic_class.model_validate(
+                json_value),
+            instance_json_value=json_value,
+        )
+        return MessageContent(
+            type=ContentType.PYDANTIC_INSTANCE,
+            pydantic_content=pydantic_content)
+        
+    return message_content
+
+  def _adapt_output_values(
+      self,
+      result_obj: types.ResultRecord,
+  ):
+    for message_content in reversed(result_obj.content):
+      if message_content.type == ContentType.TEXT:
+        result_obj.output_text = message_content.text
+      elif message_content.type == ContentType.JSON:
+        result_obj.output_json = message_content.json
+      elif message_content.type == ContentType.PYDANTIC_INSTANCE:
+        result_obj.output_pydantic = (
+            message_content.pydantic_content.instance_value)
+      elif message_content.type == ContentType.IMAGE:
+        result_obj.output_image = message_content.image
+      elif message_content.type == ContentType.AUDIO:
+        result_obj.output_audio = message_content.audio
+      elif message_content.type == ContentType.VIDEO:
+        result_obj.output_video = message_content.video
 
   @staticmethod
   def _resolve(
