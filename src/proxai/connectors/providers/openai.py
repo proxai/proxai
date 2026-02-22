@@ -1,5 +1,6 @@
 import functools
 import time
+import datetime
 
 from openai import OpenAI
 
@@ -355,22 +356,21 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
     if result_record.error is not None:
       return result_record
     
-    tick_count = 0
     while response.status not in ("completed", "failed"):
-      time.sleep(2)
-      tick_count += 1
+      time.sleep(5)
       response = self.api.videos.retrieve(response.id)
-      print(f"Status: {response.status}, progress: {response.progress}%")
-      if tick_count % 10 == 0:
-        print(f"Video generation progress: {response.progress}% "
-              f"after {tick_count*2} seconds")
+      print(
+          f'Status: {response.status}, '
+          f'progress: {response.progress}%, '
+          f'date: {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
     
     if response.status == "completed":
-      download = self.api.videos.download(response.id)
+      video_bytes = self.api.videos.download_content(
+          response.id, variant="video").content
       result_record.content = [
         message_content.MessageContent(
             type=message_content.ContentType.VIDEO,
-            source=download.url,
+            data=video_bytes,
         )
       ]
     else:
