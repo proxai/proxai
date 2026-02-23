@@ -191,24 +191,6 @@ def parameters_thinking_test():
   assert thinking_true
 
 
-def parameters_combined_test():
-  print('> parameters_combined_test')
-  result = px.generate(
-      prompt='What is 2 + 2?',
-      provider_model=_DEFAULT_MODEL,
-      parameters=px.ParameterType(
-          temperature=0.5, max_tokens=100, stop=['stop'], n=2))
-  _assert_text_content(result)
-  assert result.query.parameters.temperature == 0.5
-  assert result.query.parameters.max_tokens == 100
-  assert result.query.parameters.stop == ['stop']
-  assert result.query.parameters.n == 2
-  assert result.result.choices is not None
-  assert len(result.result.choices) == 2
-  for choice in result.result.choices:
-    assert choice.content is not None
-
-
 def tools_web_search_test():
   print('> tools_web_search_test')
   result = px.generate(
@@ -365,27 +347,6 @@ def connection_options_override_cache_value_test():
   assert result.connection.result_source == types.ResultSource.PROVIDER
 
 
-def full_options_test():
-  print('> full_options_test')
-  result = px.generate(
-      prompt='What is 2 + 2?',
-      system_prompt='You are a helpful math tutor.',
-      provider_model=_DEFAULT_MODEL,
-      parameters=px.ParameterType(temperature=0.5, max_tokens=100),
-      connection_options=px.ConnectionOptions(
-          fallback_models=[('openai', 'gpt-4o')],
-          suppress_provider_errors=True,
-          skip_cache=True))
-  _assert_text_content(result)
-  assert '4' in result.result.content[0].text
-  assert result.query.prompt == 'What is 2 + 2?'
-  assert result.query.system_prompt == 'You are a helpful math tutor.'
-  assert result.query.provider_model.provider == 'openai'
-  assert result.query.parameters.temperature == 0.5
-  assert result.query.parameters.max_tokens == 100
-  assert result.connection.result_source == types.ResultSource.PROVIDER
-
-
 def images_generate_test():
   print('> images_generate_test')
   result = px.generate(
@@ -433,7 +394,6 @@ def main():
   parameters_stop_list_test()
   parameters_n_test()
   parameters_thinking_test()
-  # # parameters_combined_test()
   tools_web_search_test()
   response_format_text_test()
   response_format_json_test()
@@ -443,7 +403,6 @@ def main():
   connection_options_endpoint_test()
   # # connection_options_skip_cache_test()
   # # connection_options_override_cache_value_test()
-  # # full_options_test()
   images_generate_test()
   audio_generate_test()
   video_generate_test()
