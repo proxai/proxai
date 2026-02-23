@@ -48,6 +48,7 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
               max_tokens=FeatureSupportType.SUPPORTED,
               temperature=FeatureSupportType.SUPPORTED,
               stop=FeatureSupportType.SUPPORTED,
+              n=FeatureSupportType.SUPPORTED,
               thinking=FeatureSupportType.SUPPORTED,
           ),
           tools=ToolConfigType(
@@ -68,6 +69,7 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
               max_tokens=FeatureSupportType.SUPPORTED,
               temperature=FeatureSupportType.SUPPORTED,
               stop=FeatureSupportType.SUPPORTED,
+              n=FeatureSupportType.SUPPORTED,
               thinking=FeatureSupportType.SUPPORTED,
           ),
           tools=ToolConfigType(
@@ -146,6 +148,9 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
       if query_record.parameters.stop is not None:
         create = functools.partial(create, stop=query_record.parameters.stop)
 
+      if query_record.parameters.n is not None:
+        create = functools.partial(create, n=query_record.parameters.n)
+
       if query_record.parameters.thinking is not None:
         create = functools.partial(
             create,
@@ -169,6 +174,19 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
             text=response.choices[0].message.content,
         )
     ]
+    if response.choices is not None and len(response.choices) > 0:
+      result_record.choices = []
+      for choice in response.choices:
+        result_record.choices.append(
+            types.ChoiceType(
+                content=[
+                    message_content.MessageContent(
+                        type=message_content.ContentType.TEXT,
+                        text=choice.message.content,
+                    )
+                ]
+            )
+        )
     return result_record
 
   def _beta_chat_completions_parse_executor(
@@ -198,6 +216,9 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
 
       if query_record.parameters.stop is not None:
         create = functools.partial(create, stop=query_record.parameters.stop)
+
+      if query_record.parameters.n is not None:
+        create = functools.partial(create, n=query_record.parameters.n)
       
       if query_record.parameters.thinking is not None:
         create = functools.partial(
@@ -222,6 +243,24 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
             ),
         )
     ]
+    if response.choices is not None and len(response.choices) > 0:
+      result_record.choices = []
+      for choice in response.choices:
+        pydantic_content = message_content.PydanticContent(
+            class_name=query_record.response_format.pydantic_class.__name__,
+            class_value=query_record.response_format.pydantic_class,
+            instance_value=choice.message.parsed,
+        )
+        result_record.choices.append(
+            types.ChoiceType(
+                content=[
+                    message_content.MessageContent(
+                        type=message_content.ContentType.PYDANTIC_INSTANCE,
+                        pydantic_content=pydantic_content,
+                    )
+                ]
+            )
+        )
     return result_record
 
   def _responses_create_executor(
