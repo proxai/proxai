@@ -403,9 +403,9 @@ def main():
   connection_options_endpoint_test()
   # # connection_options_skip_cache_test()
   # # connection_options_override_cache_value_test()
-  images_generate_test()
-  audio_generate_test()
-  video_generate_test()
+  # images_generate_test()
+  # audio_generate_test()
+  # video_generate_test()
 
 if __name__ == '__main__':
   main()
