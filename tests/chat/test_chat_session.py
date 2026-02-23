@@ -40,7 +40,7 @@ class TestChatCreation:
         {"role": "assistant", "content": "Hi"},
     ])
     assert len(chat) == 2
-    assert chat[0].content == "Hello"
+    assert chat[0].content[0].text == "Hello"
 
 
 class TestChatSystemPrompt:
@@ -75,12 +75,49 @@ class TestChatMutation:
     chat = Chat()
     chat.append({"role": "user", "content": "Hello"})
     assert len(chat) == 1
-    assert chat[0].content == "Hello"
+    assert chat[0].content[0].text == "Hello"
 
   def test_append_invalid_raises_error(self):
     chat = Chat()
     with pytest.raises(TypeError, match="Expected Message or dict"):
-      chat.append("not a message")
+      chat.append(123)
+
+  def test_append_string_creates_assistant_message(self):
+    chat = Chat()
+    chat.append("Hello, world!")
+    assert len(chat) == 1
+    assert chat[0].role.value == "assistant"
+    assert isinstance(chat[0].content, list)
+    assert len(chat[0].content) == 1
+    assert chat[0].content[0].type.value == "text"
+    assert chat[0].content[0].text == "Hello, world!"
+
+  def test_append_list_of_message_content_creates_assistant_message(self):
+    chat = Chat()
+    chat.append([
+        MessageContent(type="text", text="Here is an image:"),
+        MessageContent(type="image", source="https://example.com/img.png"),
+    ])
+    assert len(chat) == 1
+    assert chat[0].role.value == "assistant"
+    assert isinstance(chat[0].content, list)
+    assert len(chat[0].content) == 2
+    assert chat[0].content[0].text == "Here is an image:"
+    assert chat[0].content[1].source == "https://example.com/img.png"
+
+  def test_append_list_of_strings_creates_assistant_message(self):
+    chat = Chat()
+    chat.append(["Hello", "World"])
+    assert len(chat) == 1
+    assert chat[0].role.value == "assistant"
+    assert len(chat[0].content) == 2
+    assert chat[0].content[0].text == "Hello"
+    assert chat[0].content[1].text == "World"
+
+  def test_append_list_with_invalid_item_raises_error(self):
+    chat = Chat()
+    with pytest.raises(TypeError):
+      chat.append([123])
 
   def test_extend(self):
     chat = Chat()
@@ -216,7 +253,9 @@ class TestChatSerialization:
 
   def test_round_trip(self):
     original = Chat(system_prompt="Test prompt")
-    original.append(_user_msg("Hello"))
+    original.append(Message(role="user", content=[
+        MessageContent(type="text", text="Hello"),
+    ]))
     original.append(Message(role="assistant", content=[
         MessageContent(type="text", text="Here's an image:"),
         MessageContent(type="image", source="https://example.com/img.png"),
@@ -682,7 +721,7 @@ class TestChatExportSinglePrompt:
   def test_raises_on_data_field(self):
     chat = Chat(messages=[
         Message(role="user", content=[
-            MessageContent(type="image", data="base64data",
+            MessageContent(type="image", data=b"rawbytes",
                            media_type="image/png"),
         ]),
     ])

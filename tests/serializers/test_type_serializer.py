@@ -25,6 +25,10 @@ _MODEL_4 = types.ProviderModelType(
     provider='claude', model='sonnet-4',
     provider_model_identifier='claude-sonnet-4'
 )
+_MODEL_5 = types.ProviderModelType(
+    provider='openai', model='gpt-4o-mini',
+    provider_model_identifier='gpt-4o-mini'
+)
 
 
 def _get_provider_model_type_options():
@@ -36,14 +40,6 @@ def _get_provider_model_type_options():
       },
   ]
 
-
-def _get_provider_model_identifier_options():
-  return [
-      _MODEL_1,
-      _MODEL_3,
-      ('openai', 'gpt-4'),
-      ('claude', 'sonnet-4'),
-  ]
 
 
 def _get_provider_model_pricing_type_options():
@@ -345,23 +341,23 @@ def _get_model_configs_schema_version_config_type_options():
   }, {
       'featured_models': {
           'openai': [_MODEL_1],
-          'claude': [('claude', 'opus-4')]
+          'claude': [_MODEL_3]
       }
   }, {
       'models_by_call_type': {
           types.CallType.TEXT: {
               'openai': [_MODEL_1],
-              'claude': [('claude', 'sonnet-4')]
+              'claude': [_MODEL_4]
           }
       }
   }, {
       'models_by_size': {
-          types.ModelSizeType.SMALL: [('openai', 'gpt-4o-mini')],
-          types.ModelSizeType.LARGE: [_MODEL_1, ('claude', 'opus-4')]
+          types.ModelSizeType.SMALL: [_MODEL_5],
+          types.ModelSizeType.LARGE: [_MODEL_1, _MODEL_3]
       }
   }, {
       'default_model_priority_list': [
-          _MODEL_1, ('claude', 'opus-4'), ('openai', 'o3-mini')
+          _MODEL_1, _MODEL_3, _MODEL_2
       ]
   }, {
       'provider_model_configs': {
@@ -401,20 +397,20 @@ def _get_model_configs_schema_version_config_type_options():
       },
       'featured_models': {
           'openai': [_MODEL_1],
-          'claude': [('claude', 'opus-4')]
+          'claude': [_MODEL_3]
       },
       'models_by_call_type': {
           types.CallType.TEXT: {
               'openai': [_MODEL_1],
-              'claude': [('claude', 'sonnet-4')]
+              'claude': [_MODEL_4]
           }
       },
       'models_by_size': {
-          types.ModelSizeType.SMALL: [('openai', 'gpt-4o-mini')],
-          types.ModelSizeType.LARGE: [_MODEL_1, ('claude', 'opus-4')]
+          types.ModelSizeType.SMALL: [_MODEL_5],
+          types.ModelSizeType.LARGE: [_MODEL_1, _MODEL_3]
       },
       'default_model_priority_list': [
-          _MODEL_1, ('claude', 'opus-4'), ('openai', 'o3-mini')
+          _MODEL_1, _MODEL_3, _MODEL_2
       ]
   }]
 
@@ -517,17 +513,17 @@ def _get_model_configs_schema_type_options():
                   }
               }, featured_models={
                   'openai': [_MODEL_1],
-                  'claude': [('claude', 'opus-4')]
+                  'claude': [_MODEL_3]
               }, models_by_call_type={
                   types.CallType.TEXT: {
                       'openai': [_MODEL_1],
-                      'claude': [('claude', 'sonnet-4')]
+                      'claude': [_MODEL_4]
                   }
               }, models_by_size={
-                  types.ModelSizeType.SMALL: [('openai', 'gpt-4o-mini')],
-                  types.ModelSizeType.LARGE: [_MODEL_1, ('claude', 'opus-4')]
+                  types.ModelSizeType.SMALL: [_MODEL_5],
+                  types.ModelSizeType.LARGE: [_MODEL_1, _MODEL_3]
               }, default_model_priority_list=[
-                  _MODEL_1, ('claude', 'opus-4'), ('openai', 'o3-mini')
+                  _MODEL_1, _MODEL_3, _MODEL_2
               ]
           )
   }]
@@ -651,6 +647,36 @@ def _get_choice_type_options():
   return [
       {},
       {
+          'output_text': 'Hello, world!'
+      },
+      {
+          'output_image':
+              message_content.MessageContent(
+                  type=message_content.ContentType.IMAGE,
+                  source='https://example.com/img.png'
+              )
+      },
+      {
+          'output_audio':
+              message_content.MessageContent(
+                  type=message_content.ContentType.AUDIO,
+                  source='https://example.com/audio.mp3'
+              )
+      },
+      {
+          'output_video':
+              message_content.MessageContent(
+                  type=message_content.ContentType.VIDEO,
+                  source='https://example.com/video.mp4'
+              )
+      },
+      {
+          'output_json': {'key': 'value'}
+      },
+      {
+          'output_json': {'name': 'test', 'items': [1, 2, 3]}
+      },
+      {
           'content': 'Hello, world!'
       },
       {
@@ -668,6 +694,15 @@ def _get_choice_type_options():
               'plain text',
               message_content.MessageContent(
                   type=message_content.ContentType.TEXT, text='rich text'
+              )
+          ]
+      },
+      {
+          'output_text': 'text result',
+          'output_json': {'key': 'value'},
+          'content': [
+              message_content.MessageContent(
+                  type=message_content.ContentType.TEXT, text='hello'
               )
           ]
       },
@@ -756,6 +791,24 @@ def _get_result_record_options():
           'role': types.MessageRoleType.ASSISTANT
       },
       {
+          'output_text': 'Hello, world!'
+      },
+      {
+          'output_image': b'image_data_bytes'
+      },
+      {
+          'output_audio': b'audio_data_bytes'
+      },
+      {
+          'output_video': b'video_data_bytes'
+      },
+      {
+          'output_json': {'key': 'value'}
+      },
+      {
+          'output_json': {'name': 'test', 'items': [1, 2, 3]}
+      },
+      {
           'content': 'Hello, world!'
       },
       {
@@ -797,7 +850,14 @@ def _get_result_record_options():
       {
           'status': types.ResultStatusType.SUCCESS,
           'role': types.MessageRoleType.ASSISTANT,
-          'content': 'Full response',
+          'output_text': 'Full response',
+          'output_image': b'img_bytes',
+          'output_json': {'result': 'ok'},
+          'content': [
+              message_content.MessageContent(
+                  type=message_content.ContentType.TEXT, text='hello'
+              )
+          ],
           'choices': [types.ChoiceType(content='choice 1')],
           'usage':
               types.UsageType(
@@ -831,7 +891,11 @@ def _get_query_record_options():
               chat_session.Chat(messages=[
                   message.Message(
                       role=message_content.MessageRoleType.USER,
-                      content='Hello'
+                      content=[
+                          message_content.MessageContent(
+                              type='text', text='Hello'
+                          )
+                      ]
                   )
               ])
       },
@@ -882,11 +946,19 @@ def _get_query_record_options():
               chat_session.Chat(messages=[
                   message.Message(
                       role=message_content.MessageRoleType.USER,
-                      content='Hi'
+                      content=[
+                          message_content.MessageContent(
+                              type='text', text='Hi'
+                          )
+                      ]
                   ),
                   message.Message(
                       role=message_content.MessageRoleType.ASSISTANT,
-                      content='Hello!'
+                      content=[
+                          message_content.MessageContent(
+                              type='text', text='Hello!'
+                          )
+                      ]
                   )
               ]),
           'system_prompt': 'Be helpful.',
@@ -1320,10 +1392,10 @@ def _get_featured_models_type_options():
       'openai': [_MODEL_1]
   }, {
       'openai': [_MODEL_1],
-      'claude': [('claude', 'opus-4')]
+      'claude': [_MODEL_3]
   }, {
-      'openai': [_MODEL_1, ('openai', 'o3-mini')],
-      'claude': [('claude', 'opus-4'), _MODEL_4]
+      'openai': [_MODEL_1, _MODEL_2],
+      'claude': [_MODEL_3, _MODEL_4]
   }]
 
 
@@ -1335,33 +1407,33 @@ def _get_models_by_call_type_type_options():
   }, {
       types.CallType.TEXT: {
           'openai': [_MODEL_1],
-          'claude': [('claude', 'sonnet-4')]
+          'claude': [_MODEL_4]
       }
   }, {
       types.CallType.TEXT: {
-          'openai': [_MODEL_1, ('openai', 'o3-mini')],
-          'claude': [('claude', 'sonnet-4'), _MODEL_3]
+          'openai': [_MODEL_1, _MODEL_2],
+          'claude': [_MODEL_4, _MODEL_3]
       }
   }]
 
 
 def _get_models_by_size_type_options():
   return [{
-      types.ModelSizeType.SMALL: [('openai', 'gpt-4o-mini')]
+      types.ModelSizeType.SMALL: [_MODEL_5]
   }, {
-      types.ModelSizeType.SMALL: [('openai', 'gpt-4o-mini')],
+      types.ModelSizeType.SMALL: [_MODEL_5],
       types.ModelSizeType.LARGE: [_MODEL_1]
   }, {
-      types.ModelSizeType.SMALL: [('openai', 'gpt-4o-mini')],
-      types.ModelSizeType.LARGE: [_MODEL_1, ('claude', 'opus-4')]
+      types.ModelSizeType.SMALL: [_MODEL_5],
+      types.ModelSizeType.LARGE: [_MODEL_1, _MODEL_3]
   }]
 
 
 def _get_default_model_priority_list_type_options():
   return [
       [_MODEL_1],
-      [_MODEL_1, ('claude', 'opus-4')],
-      [_MODEL_1, ('claude', 'opus-4'), _MODEL_2]
+      [_MODEL_1, _MODEL_3],
+      [_MODEL_1, _MODEL_3, _MODEL_2]
   ]
 
 
@@ -1402,24 +1474,6 @@ class TestTypeSerializer:
         ValueError, match='Provider model identifier not found in record'
     ):
       type_serializer.decode_provider_model_type(record=invalid_record)
-
-  @pytest.mark.parametrize(
-      'provider_model_identifier', _get_provider_model_identifier_options()
-  )
-  def test_encode_decode_provider_model_identifier(
-      self, provider_model_identifier
-  ):
-    encoded_provider_model_identifier = (
-        type_serializer.encode_provider_model_identifier(
-            provider_model_identifier=provider_model_identifier
-        )
-    )
-    decoded_provider_model_identifier = (
-        type_serializer.decode_provider_model_identifier(
-            record=encoded_provider_model_identifier
-        )
-    )
-    assert provider_model_identifier == decoded_provider_model_identifier
 
   @pytest.mark.parametrize(
       'provider_model_pricing_type_options',
@@ -1979,3 +2033,49 @@ class TestTypeSerializer:
 
     hash_after = hash_serializer.get_query_record_hash(decoded_query_record)
     assert hash_before == hash_after
+
+  def test_encode_decode_choice_type_with_pydantic(self):
+    user = _UserModel(name='John', age=30)
+    choice_type = types.ChoiceType(
+        output_text='John is 30',
+        output_pydantic=user,
+        content=[
+            message_content.MessageContent(
+                type=message_content.ContentType.TEXT, text='John is 30'
+            )
+        ]
+    )
+    encoded = type_serializer.encode_choice_type(choice_type=choice_type)
+    decoded = type_serializer.decode_choice_type(record=encoded)
+    # output_pydantic cannot be reconstructed from serialized form
+    assert decoded.output_pydantic is None
+    assert decoded.output_text == choice_type.output_text
+    assert decoded.content == choice_type.content
+    # Verify pydantic metadata was encoded
+    assert 'output_pydantic' in encoded
+    assert encoded['output_pydantic']['class_name'] == '_UserModel'
+    assert encoded['output_pydantic']['instance_json_value'] == {
+        'name': 'John', 'age': 30
+    }
+
+  def test_encode_decode_result_record_with_pydantic(self):
+    user = _UserModel(name='Jane', age=25)
+    result_record = types.ResultRecord(
+        status=types.ResultStatusType.SUCCESS,
+        output_text='Jane is 25',
+        output_pydantic=user
+    )
+    encoded = type_serializer.encode_result_record(
+        result_record=result_record
+    )
+    decoded = type_serializer.decode_result_record(record=encoded)
+    # output_pydantic cannot be reconstructed from serialized form
+    assert decoded.output_pydantic is None
+    assert decoded.status == result_record.status
+    assert decoded.output_text == result_record.output_text
+    # Verify pydantic metadata was encoded
+    assert 'output_pydantic' in encoded
+    assert encoded['output_pydantic']['class_name'] == '_UserModel'
+    assert encoded['output_pydantic']['instance_json_value'] == {
+        'name': 'Jane', 'age': 25
+    }
