@@ -30,12 +30,12 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
   PROVIDER_API_KEYS = ['OPENAI_API_KEY']
 
   ENDPOINT_PRIORITY = [
-    'chat.completions.create',
-    'beta.chat.completions.parse',
-    'responses.create',
-    'images.generate',
-    'audio.speech.create',
-    'videos.create',
+      'chat.completions.create',
+      'beta.chat.completions.parse',
+      'responses.create',
+      'images.generate',
+      'audio.speech.create',
+      'videos.create',
   ]
 
   ENDPOINT_CONFIG = {
@@ -48,6 +48,7 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
               max_tokens=FeatureSupportType.SUPPORTED,
               temperature=FeatureSupportType.SUPPORTED,
               stop=FeatureSupportType.SUPPORTED,
+              thinking=FeatureSupportType.SUPPORTED,
           ),
           tools=ToolConfigType(
               web_search=FeatureSupportType.NOT_SUPPORTED,
@@ -67,6 +68,7 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
               max_tokens=FeatureSupportType.SUPPORTED,
               temperature=FeatureSupportType.SUPPORTED,
               stop=FeatureSupportType.SUPPORTED,
+              thinking=FeatureSupportType.SUPPORTED,
           ),
           tools=ToolConfigType(
               web_search=FeatureSupportType.NOT_SUPPORTED,
@@ -85,6 +87,7 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
               max_tokens=FeatureSupportType.SUPPORTED,
               temperature=FeatureSupportType.SUPPORTED,
               stop=FeatureSupportType.BEST_EFFORT,
+              thinking=FeatureSupportType.SUPPORTED,
           ),
           tools=ToolConfigType(
               web_search=FeatureSupportType.SUPPORTED,
@@ -143,6 +146,11 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
       if query_record.parameters.stop is not None:
         create = functools.partial(create, stop=query_record.parameters.stop)
 
+      if query_record.parameters.thinking is not None:
+        create = functools.partial(
+            create,
+            reasoning_effort=query_record.parameters.thinking.value.lower())
+
     if query_record.response_format.type == types.ResponseFormatType.JSON:
       create = functools.partial(
           create, response_format={'type': 'json_object'})
@@ -191,6 +199,11 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
       if query_record.parameters.stop is not None:
         create = functools.partial(create, stop=query_record.parameters.stop)
       
+      if query_record.parameters.thinking is not None:
+        create = functools.partial(
+            create,
+            reasoning_effort=query_record.parameters.thinking.value.lower())
+      
     if query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
       create = functools.partial(
           create, response_format=query_record.response_format.pydantic_class)
@@ -234,6 +247,13 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
       if query_record.parameters.temperature is not None:
         create = functools.partial(
             create, temperature=query_record.parameters.temperature)
+      
+      if query_record.parameters.thinking is not None:
+        create = functools.partial(
+            create,
+            reasoning={
+                'effort': query_record.parameters.thinking.value.lower(),
+                'summary': 'auto'})
     
     if query_record.tools is not None:
       if types.Tools.WEB_SEARCH in query_record.tools:
@@ -257,29 +277,35 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
     
     parsed_response = []
     for output in response.output:
-      if output.type != 'message':
-        continue
-      for content in output.content:
-        if content.annotations and len(content.annotations) > 0:
-          tool_message = message_content.MessageContent(
-              type=message_content.ContentType.TOOL,
-              tool_content=message_content.ToolContent(
-                  name='web_search',
-                  kind=message_content.ToolKind.RESULT,
-                  citations=[],
-              ),
-          )
-          for annotation in content.annotations:
-            tool_message.tool_content.citations.append(message_content.Citation(
-                title=annotation.title,
-                url=annotation.url,
-            ))
-          parsed_response.append(tool_message)
-        
-        parsed_response.append(message_content.MessageContent(
-            type=message_content.ContentType.TEXT,
-            text=content.text,
-        ))
+      if output.type == 'message':
+        for content in output.content:
+          if content.annotations and len(content.annotations) > 0:
+            tool_message = message_content.MessageContent(
+                type=message_content.ContentType.TOOL,
+                tool_content=message_content.ToolContent(
+                    name='web_search',
+                    kind=message_content.ToolKind.RESULT,
+                    citations=[],
+                ),
+            )
+            for annotation in content.annotations:
+              tool_message.tool_content.citations.append(
+                  message_content.Citation(
+                      title=annotation.title,
+                      url=annotation.url))
+            parsed_response.append(tool_message)
+          
+          parsed_response.append(message_content.MessageContent(
+              type=message_content.ContentType.TEXT,
+              text=content.text,
+          ))
+      elif output.type == 'reasoning':
+        for summary in output.summary:
+          if summary.type == 'summary_text':
+            parsed_response.append(
+                message_content.MessageContent(
+                    type=message_content.ContentType.THINKING,
+                    text=summary.text))
 
     result_record.content = parsed_response
     return result_record
