@@ -23,8 +23,8 @@ _QUERY_CACHE_MANAGER_STATE_PROPERTY = '_query_cache_manager_state'
 def _to_light_cache_record(cache_record: types.CacheRecord):
   """Convert a full CacheRecord to a lightweight version."""
   return types.LightCacheRecord(
-      query_record_hash=cache_record.query_record.hash_value,
-      query_response_count=len(cache_record.query_responses),
+      query_hash=cache_record.query.hash_value,
+      results_count=len(cache_record.results),
       shard_id=cache_record.shard_id,
       last_access_time=cache_record.last_access_time,
       call_count=cache_record.call_count
@@ -36,8 +36,8 @@ def _get_cache_size(
 ) -> int:
   """Calculate the storage size of a cache record."""
   if isinstance(cache_record, types.LightCacheRecord):
-    return cache_record.query_response_count + 1
-  return len(cache_record.query_responses) + 1
+    return cache_record.results_count + 1
+  return len(cache_record.results) + 1
 
 
 def _get_hash_value(
@@ -49,18 +49,18 @@ def _get_hash_value(
   if isinstance(cache_record, str):
     return cache_record
   if isinstance(cache_record, types.CacheRecord):
-    if cache_record.query_record.hash_value:
-      return cache_record.query_record.hash_value
+    if cache_record.query.hash_value:
+      return cache_record.query.hash_value
     else:
-      cache_record.query_record.hash_value = (
-          hash_serializer.get_query_record_hash(cache_record.query_record)
+      cache_record.query.hash_value = (
+          hash_serializer.get_query_record_hash(cache_record.query)
       )
-      return cache_record.query_record.hash_value
+      return cache_record.query.hash_value
   if isinstance(cache_record, types.LightCacheRecord):
-    if cache_record.query_record_hash:
-      return cache_record.query_record_hash
+    if cache_record.query_hash:
+      return cache_record.query_hash
     else:
-      raise ValueError('LightCacheRecord doesn\'t have query_record_hash')
+      raise ValueError('LightCacheRecord doesn\'t have query_hash')
   if isinstance(cache_record, types.QueryRecord):
     query_record = cache_record
     if query_record.hash_value:
@@ -306,7 +306,7 @@ class ShardManager:
         light_cache_record = type_serializer.decode_light_cache_record(record)
       except Exception:
         continue
-      if query_record_hash != light_cache_record.query_record_hash:
+      if query_record_hash != light_cache_record.query_hash:
         continue
       if (
           isinstance(light_cache_record.shard_id, str) and
@@ -350,7 +350,7 @@ class ShardManager:
           if not self._check_cache_record_is_up_to_date(cache_record):
             continue
           cache_record.call_count = self._light_cache_records[
-              cache_record.query_record.hash_value].call_count
+              cache_record.query.hash_value].call_count
           self._update_cache_record(cache_record)
           result.append(_get_hash_value(cache_record))
     except Exception:
@@ -621,45 +621,45 @@ class QueryCacheManager(state_controller.StateControlled):
     cache_record = self._shard_manager.get_cache_record(query_record)
     if cache_record is None:
       return types.CacheLookResult(
-          look_fail_reason=types.CacheLookFailReason.CACHE_NOT_FOUND
+          cache_look_fail_reason=types.CacheLookFailReason.CACHE_NOT_FOUND
       )
     is_equal = type_utils.is_query_record_equal(
-        cache_record.query_record, query_record
+        cache_record.query, query_record
     )
     if not is_equal:
       return types.CacheLookResult(
-          look_fail_reason=types.CacheLookFailReason.CACHE_NOT_MATCHED
+          cache_look_fail_reason=types.CacheLookFailReason.CACHE_NOT_MATCHED
       )
     if unique_response_limit is None:
       unique_response_limit = self.cache_options.unique_response_limit
-    if len(cache_record.query_responses) < unique_response_limit:
+    if len(cache_record.results) < unique_response_limit:
       return types.CacheLookResult(
-          look_fail_reason=types.CacheLookFailReason.
+          cache_look_fail_reason=types.CacheLookFailReason.
           UNIQUE_RESPONSE_LIMIT_NOT_REACHED
       )
-    query_response: types.QueryResponseRecord = cache_record.query_responses[
-        cache_record.call_count % len(cache_record.query_responses)]
+    result_record: types.ResultRecord = cache_record.results[
+        cache_record.call_count % len(cache_record.results)]
     if (
-        query_response.error and self.cache_options.retry_if_error_cached and
-        cache_record.call_count < len(cache_record.query_responses)
+        result_record.error and self.cache_options.retry_if_error_cached and
+        cache_record.call_count < len(cache_record.results)
     ):
       cache_record.last_access_time = datetime.datetime.now()
       cache_record.call_count += 1
       self._shard_manager.save_record(cache_record=cache_record)
       self._push_record_heap(cache_record)
       return types.CacheLookResult(
-          look_fail_reason=types.CacheLookFailReason.PROVIDER_ERROR_CACHED
+          cache_look_fail_reason=types.CacheLookFailReason.PROVIDER_ERROR_CACHED
       )
     if update:
       cache_record.last_access_time = datetime.datetime.now()
       cache_record.call_count += 1
       self._shard_manager.save_record(cache_record=cache_record)
       self._push_record_heap(cache_record)
-    return types.CacheLookResult(query_response=query_response)
+    return types.CacheLookResult(result=result_record)
 
   def cache(
       self, query_record: types.QueryRecord,
-      response_record: types.QueryResponseRecord,
+      response_record: types.ResultRecord,
       unique_response_limit: int | None = None
   ):
     """Store a query response in the cache."""
@@ -673,7 +673,7 @@ class QueryCacheManager(state_controller.StateControlled):
           query_record
       )
       cache_record = types.CacheRecord(
-          query_record=query_record, query_responses=[response_record],
+          query=query_record, results=[response_record],
           last_access_time=current_time, call_count=0
       )
       self._shard_manager.save_record(cache_record=cache_record)
@@ -681,8 +681,8 @@ class QueryCacheManager(state_controller.StateControlled):
       return
     if unique_response_limit is None:
       unique_response_limit = self.cache_options.unique_response_limit
-    if len(cache_record.query_responses) < unique_response_limit:
-      cache_record.query_responses.append(response_record)
+    if len(cache_record.results) < unique_response_limit:
+      cache_record.results.append(response_record)
       cache_record.last_access_time = current_time
       self._shard_manager.save_record(cache_record=cache_record)
       self._push_record_heap(cache_record)
@@ -691,9 +691,9 @@ class QueryCacheManager(state_controller.StateControlled):
         self.cache_options.retry_if_error_cached and
         response_record.error is None
     ):
-      for idx, previous_response in enumerate(cache_record.query_responses):
+      for idx, previous_response in enumerate(cache_record.results):
         if previous_response.error:
-          cache_record.query_responses[idx] = response_record
+          cache_record.results[idx] = response_record
           cache_record.last_access_time = current_time
           self._shard_manager.save_record(cache_record=cache_record)
           self._push_record_heap(cache_record)
