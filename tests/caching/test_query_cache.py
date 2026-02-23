@@ -392,10 +392,10 @@ class TestBaseQueryCache:
 
       # Add some records
       query_cache_manager.cache(
-          query_record=query_record_1, response_record=response_record_1
+          query_record=query_record_1, result_record=response_record_1
       )
       query_cache_manager.cache(
-          query_record=query_record_2, response_record=response_record_2
+          query_record=query_record_2, result_record=response_record_2
       )
 
       # Verify records exist
@@ -1972,7 +1972,7 @@ class TestQueryCache:
 
       # Cache (query_1, response_1)
       query_cache_manager.cache(
-          query_record=query_record_1, response_record=response_record_1
+          query_record=query_record_1, result_record=response_record_1
       )
       _check_record_heap(query_cache_manager, [query_record_1.hash_value])
       _check_shard_manager_state(
@@ -1987,7 +1987,7 @@ class TestQueryCache:
 
       # Cache (query_1, response_2)
       query_cache_manager.cache(
-          query_record=query_record_1, response_record=response_record_2
+          query_record=query_record_1, result_record=response_record_2
       )
       _check_record_heap(query_cache_manager, [query_record_1.hash_value])
       _check_shard_manager_state(
@@ -2004,7 +2004,7 @@ class TestQueryCache:
 
       # Cache (query_1, response_3)
       query_cache_manager.cache(
-          query_record=query_record_1, response_record=response_record_3
+          query_record=query_record_1, result_record=response_record_3
       )
       _check_record_heap(query_cache_manager, [query_record_1.hash_value])
       _check_shard_manager_state(
@@ -2031,7 +2031,7 @@ class TestQueryCache:
 
       # Cache (query_2, response_1)
       query_cache_manager.cache(
-          query_record=query_record_2, response_record=response_record_1
+          query_record=query_record_2, result_record=response_record_1
       )
       _check_record_heap(
           query_cache_manager,
@@ -2066,7 +2066,7 @@ class TestQueryCache:
 
       # Cache (query_3, response_1)
       query_cache_manager.cache(
-          query_record=query_record_3, response_record=response_record_1
+          query_record=query_record_3, result_record=response_record_1
       )
       _check_record_heap(
           query_cache_manager, [
@@ -2086,7 +2086,7 @@ class TestQueryCache:
 
       # Cache (query_3, response_2)
       query_cache_manager.cache(
-          query_record=query_record_3, response_record=response_record_2
+          query_record=query_record_3, result_record=response_record_2
       )
       _check_record_heap(
           query_cache_manager, [
@@ -2106,7 +2106,7 @@ class TestQueryCache:
 
       # Cache (query_3, response_3)
       query_cache_manager.cache(
-          query_record=query_record_3, response_record=response_record_3
+          query_record=query_record_3, result_record=response_record_3
       )
       _check_record_heap(
           query_cache_manager, [
@@ -2138,7 +2138,7 @@ class TestQueryCache:
       # Cache (query_4, response_1)
       # This will overflow the backlog and deletes query_2
       query_cache_manager.cache(
-          query_record=query_record_4, response_record=response_record_1
+          query_record=query_record_4, result_record=response_record_1
       )
       _check_record_heap(
           query_cache_manager, [
@@ -2179,7 +2179,7 @@ class TestQueryCache:
       # Cache (query_4, response_2)
       # This will overflow the backlog and deletes query_3
       query_cache_manager.cache(
-          query_record=query_record_4, response_record=response_record_2
+          query_record=query_record_4, result_record=response_record_2
       )
       _check_record_heap(
           query_cache_manager, [
@@ -2199,7 +2199,7 @@ class TestQueryCache:
 
       # Cache (query_4, response_3)
       query_cache_manager.cache(
-          query_record=query_record_4, response_record=response_record_3
+          query_record=query_record_4, result_record=response_record_3
       )
       _check_record_heap(
           query_cache_manager, [
@@ -2274,7 +2274,7 @@ class TestQueryCache:
 
       # Cache (query_1, response_1)
       query_cache_manager.cache(
-          query_record=query_record_1, response_record=response_record_1
+          query_record=query_record_1, result_record=response_record_1
       )
       _check_record_heap(query_cache_manager, [query_record_1.hash_value])
       _check_shard_manager_state(
@@ -2287,7 +2287,7 @@ class TestQueryCache:
 
       # Cache (query_1, response_2)
       query_cache_manager.cache(
-          query_record=query_record_1, response_record=response_record_2
+          query_record=query_record_1, result_record=response_record_2
       )
       _check_record_heap(query_cache_manager, [query_record_1.hash_value])
       _check_shard_manager_state(
@@ -2300,7 +2300,7 @@ class TestQueryCache:
 
       # Cache (query_1, response_3)
       query_cache_manager.cache(
-          query_record=query_record_1, response_record=response_record_3
+          query_record=query_record_1, result_record=response_record_3
       )
       _check_record_heap(query_cache_manager, [query_record_1.hash_value])
       _check_shard_manager_state(
@@ -2315,7 +2315,7 @@ class TestQueryCache:
 
       # Cache (query_2, response_1)
       query_cache_manager.cache(
-          query_record=query_record_2, response_record=response_record_1
+          query_record=query_record_2, result_record=response_record_1
       )
       _check_record_heap(
           query_cache_manager,
@@ -2331,7 +2331,7 @@ class TestQueryCache:
 
       # Cache (query_3, response_1)
       query_cache_manager.cache(
-          query_record=query_record_3, response_record=response_record_1
+          query_record=query_record_3, result_record=response_record_1
       )
       _check_record_heap(
           query_cache_manager, [
@@ -2367,11 +2367,11 @@ class TestQueryCache:
       )
 
       query_cache_manager.cache(
-          query_record=query_record_1, response_record=response_record_1
+          query_record=query_record_1, result_record=response_record_1
       )
       assert query_cache_manager.look(query_record_1).cache_look_fail_reason
       query_cache_manager.cache(
-          query_record=query_record_1, response_record=error_record_2
+          query_record=query_record_1, result_record=error_record_2
       )
       assert query_cache_manager.look(
           query_record_1
@@ -2384,7 +2384,7 @@ class TestQueryCache:
           query_record_1
       ).result == error_record_2
       query_cache_manager.cache(
-          query_record=query_record_1, response_record=response_record_3
+          query_record=query_record_1, result_record=response_record_3
       )
       assert query_cache_manager.look(
           query_record_1
@@ -2412,17 +2412,17 @@ class TestQueryCache:
       )
 
       query_cache_manager.cache(
-          query_record=query_record_1, response_record=response_record_1
+          query_record=query_record_1, result_record=response_record_1
       )
       assert query_cache_manager.look(query_record_1).cache_look_fail_reason
       query_cache_manager.cache(
-          query_record=query_record_1, response_record=error_record_2
+          query_record=query_record_1, result_record=error_record_2
       )
       assert query_cache_manager.look(
           query_record_1
       ).result == response_record_1
       query_cache_manager.cache(
-          query_record=query_record_1, response_record=response_record_3
+          query_record=query_record_1, result_record=response_record_3
       )
       assert query_cache_manager.look(
           query_record_1

@@ -1,3 +1,4 @@
+import shutil
 from pprint import pprint
 import os
 import pydantic
@@ -384,6 +385,46 @@ def video_generate_test():
     f.write(result.result.output_video.data)
 
 
+def cache_test():
+  print('> cache_test')
+  if os.path.exists(os.path.expanduser('~/temp/proxai_cache/')):
+    shutil.rmtree(os.path.expanduser('~/temp/proxai_cache/'))
+  os.makedirs(os.path.expanduser('~/temp/proxai_cache/'), exist_ok=True)
+  client = px.Client(
+      cache_options=px.CacheOptions(
+          cache_path=os.path.expanduser('~/temp/proxai_cache/'),
+          unique_response_limit=2
+      )
+  )
+
+  result = client.generate(
+      prompt='What is 2 + 2?',
+      provider_model=_DEFAULT_MODEL)
+  _assert_text_content(result)
+  # pprint(result)
+  assert result.connection is not None
+  assert result.connection.cache_hit == False
+  assert result.connection.result_source == types.ResultSource.PROVIDER
+
+  result = client.generate(
+      prompt='What is 2 + 2?',
+      provider_model=_DEFAULT_MODEL)
+  _assert_text_content(result)
+  # pprint(result)
+  assert result.connection is not None
+  assert result.connection.cache_hit == False
+  assert result.connection.result_source == types.ResultSource.PROVIDER
+
+  result = client.generate(
+      prompt='What is 2 + 2?',
+      provider_model=_DEFAULT_MODEL)
+  # pprint(result)
+  _assert_text_content(result)
+  assert result.connection is not None
+  assert result.connection.cache_hit == True
+  assert result.connection.result_source == types.ResultSource.CACHE
+
+
 def main():
   prompt_test()
   messages_test()
@@ -406,6 +447,7 @@ def main():
   # images_generate_test()
   # audio_generate_test()
   # video_generate_test()
+  cache_test()
 
 if __name__ == '__main__':
   main()
