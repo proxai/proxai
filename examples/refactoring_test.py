@@ -431,7 +431,7 @@ def main():
   parameters_max_tokens_test()
   parameters_stop_test()
   parameters_stop_list_test()
-  # # parameters_n_test()
+  parameters_n_test()
   parameters_thinking_test()
   # # parameters_combined_test()
   tools_web_search_test()
