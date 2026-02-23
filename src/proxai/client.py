@@ -1135,43 +1135,9 @@ class ProxAIClient(state_controller.StateControlled):
           'endpoint and fallback_models cannot be used together.\n'
           f'connection_options: {connection_options}')
     
-    if messages is not None:
-      if type(messages) == list:
-        messages = chat_session.Chat(messages=messages)
-      elif type(messages) == dict:
-        messages = chat_session.Chat(
-            system_prompt=messages.get('system', None),
-            messages=messages.get('messages', []))
-      elif type(messages) != chat_session.Chat:
-        raise ValueError(f'Invalid messages type: {type(messages)}')
-
-    if not response_format:
-      response_format = types.ResponseFormat(
-          type=types.ResponseFormatType.TEXT)
-    
-    if type(response_format) == str:
-      if response_format == 'text':
-        response_format = types.ResponseFormat(
-            type=types.ResponseFormatType.TEXT)
-      elif response_format == 'json':
-        response_format = types.ResponseFormat(
-            type=types.ResponseFormatType.JSON)
-      elif response_format == 'image':
-        response_format = types.ResponseFormat(
-            type=types.ResponseFormatType.IMAGE)
-      elif response_format == 'audio':
-        response_format = types.ResponseFormat(
-            type=types.ResponseFormatType.AUDIO)
-      elif response_format == 'video':
-        response_format = types.ResponseFormat(
-            type=types.ResponseFormatType.VIDEO)
-      else:
-        raise ValueError(f'Invalid response format: {response_format}')
-    elif (inspect.isclass(response_format) and
-          issubclass(response_format, pydantic.BaseModel)):
-      response_format = types.ResponseFormat(
-          type=types.ResponseFormatType.PYDANTIC,
-          pydantic_class=response_format)
+    messages = type_utils.messages_param_to_chat(messages)
+    response_format = type_utils.response_format_param_to_response_format(
+        response_format)
 
     provider_models = [provider_model]
     

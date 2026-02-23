@@ -1,8 +1,59 @@
 import copy
-
 import pydantic
+import inspect
 
 import proxai.types as types
+import proxai.chat.chat_session as chat_session
+
+def messages_param_to_chat(
+    messages: types.MessagesParam | None) -> types.Chat | None:
+  if messages is None:
+    return None
+
+  if type(messages) == list:
+    return chat_session.Chat(messages=messages)
+  elif type(messages) == dict:
+    return chat_session.Chat(
+        system_prompt=messages.get('system', None),
+        messages=messages.get('messages', []))
+  elif type(messages) != chat_session.Chat:
+    raise ValueError(f'Invalid messages type: {type(messages)}')
+
+  return messages
+
+
+def response_format_param_to_response_format(
+    response_format: types.ResponseFormatParam | None
+) -> types.ResponseFormat:
+  if not response_format:
+    return types.ResponseFormat(
+        type=types.ResponseFormatType.TEXT)
+    
+  if type(response_format) == str:
+    if response_format == 'text':
+      return types.ResponseFormat(
+          type=types.ResponseFormatType.TEXT)
+    elif response_format == 'json':
+      return types.ResponseFormat(
+          type=types.ResponseFormatType.JSON)
+    elif response_format == 'image':
+      return types.ResponseFormat(
+          type=types.ResponseFormatType.IMAGE)
+    elif response_format == 'audio':
+      return types.ResponseFormat(
+          type=types.ResponseFormatType.AUDIO)
+    elif response_format == 'video':
+      return types.ResponseFormat(
+          type=types.ResponseFormatType.VIDEO)
+    else:
+      raise ValueError(f'Invalid response format: {response_format}')
+  elif (inspect.isclass(response_format) and
+        issubclass(response_format, pydantic.BaseModel)):
+    return types.ResponseFormat(
+        type=types.ResponseFormatType.PYDANTIC,
+        pydantic_class=response_format)
+  
+  raise ValueError(f'Invalid response format: {response_format}')
 
 
 def _raise_invalid_response_format_value_error(
