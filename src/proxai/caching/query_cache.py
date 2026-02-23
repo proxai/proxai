@@ -658,8 +658,9 @@ class QueryCacheManager(state_controller.StateControlled):
     return types.CacheLookResult(result=result_record)
 
   def cache(
-      self, query_record: types.QueryRecord,
-      response_record: types.ResultRecord,
+      self,
+      query_record: types.QueryRecord,
+      result_record: types.ResultRecord,
       unique_response_limit: int | None = None
   ):
     """Store a query response in the cache."""
@@ -673,7 +674,7 @@ class QueryCacheManager(state_controller.StateControlled):
           query_record
       )
       cache_record = types.CacheRecord(
-          query=query_record, results=[response_record],
+          query=query_record, results=[result_record],
           last_access_time=current_time, call_count=0
       )
       self._shard_manager.save_record(cache_record=cache_record)
@@ -682,18 +683,18 @@ class QueryCacheManager(state_controller.StateControlled):
     if unique_response_limit is None:
       unique_response_limit = self.cache_options.unique_response_limit
     if len(cache_record.results) < unique_response_limit:
-      cache_record.results.append(response_record)
+      cache_record.results.append(result_record)
       cache_record.last_access_time = current_time
       self._shard_manager.save_record(cache_record=cache_record)
       self._push_record_heap(cache_record)
       return
     if (
         self.cache_options.retry_if_error_cached and
-        response_record.error is None
+        result_record.error is None
     ):
       for idx, previous_response in enumerate(cache_record.results):
         if previous_response.error:
-          cache_record.results[idx] = response_record
+          cache_record.results[idx] = result_record
           cache_record.last_access_time = current_time
           self._shard_manager.save_record(cache_record=cache_record)
           self._push_record_heap(cache_record)

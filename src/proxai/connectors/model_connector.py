@@ -523,6 +523,54 @@ class ProviderModelConnector(state_controller.StateControlled):
         response_time=end_utc_date - start_utc_date
     )
 
+  def _get_cached_result(
+      self,
+      query_record: types.QueryRecord,
+      connection_options: types.ConnectionOptions,
+  ) -> types.ResultRecord | types.CacheLookFailReason | None:
+    # NOTE: override_cache_value is only for getting the result from the cache.
+    # It is not for updating the cache. If it is set to True, cache will be
+    # ignored but cache value will still be stored.
+    # NOTE: skip_cache disables cache completely.
+    if (connection_options.skip_cache or
+        connection_options.override_cache_value or
+        not self.query_cache_manager):
+      return None
+    cache_look_result: types.CacheLookResult | None = None
+    try:
+      cache_look_result = self.query_cache_manager.look(query_record)
+    except Exception:
+      pass
+    
+    if not cache_look_result.result:
+      return cache_look_result.cache_look_fail_reason
+
+    result: types.ResultRecord = cache_look_result.result
+    result.timestamp.end_utc_date = datetime.datetime.now(datetime.timezone.utc)
+    result.timestamp.start_utc_date = (
+        result.timestamp.end_utc_date - result.timestamp.response_time
+    )
+    result.timestamp.local_time_offset_minute = (
+        datetime.datetime.now().astimezone().utcoffset().total_seconds() //
+        60
+    ) * -1
+    return result
+
+  def _update_cache(
+      self,
+      call_record: types.CallRecord,
+      connection_options: types.ConnectionOptions,
+  ) -> None:
+    # NOTE: override_cache_value is only for getting the result from the cache.
+    # It is not for updating the cache. If it is set to True, cache will be
+    # ignored but cache value will still be stored.
+    # NOTE: skip_cache disables cache completely.
+    if connection_options.skip_cache or not self.query_cache_manager:
+      return
+    self.query_cache_manager.cache(
+        query_record=call_record.query,
+        result_record=call_record.result)
+
   def generate(
       self,
       prompt: str | None = None,
@@ -551,6 +599,9 @@ class ProviderModelConnector(state_controller.StateControlled):
 
     if response_format is None:
       response_format = types.ResponseFormat(type=types.ResponseFormatType.TEXT)
+
+    if connection_options is None:
+      connection_options = types.ConnectionOptions()
     
     if connection_metadata is None:
       connection_metadata = types.ConnectionMetadata()
@@ -580,6 +631,22 @@ class ProviderModelConnector(state_controller.StateControlled):
     (chosen_executor,
      chosen_endpoint,
      modified_query_record) = self._prepare_execution(query_record=query_record)
+
+    cached_result = self._get_cached_result(
+        query_record=query_record,
+        connection_options=connection_options,
+    )
+    if isinstance(cached_result, types.ResultRecord):
+      connection_metadata.cache_hit = True
+      connection_metadata.result_source = types.ResultSource.CACHE
+      call_record = types.CallRecord(
+          query=query_record,
+          result=cached_result,
+          connection=connection_metadata,
+      )
+      return call_record
+    elif isinstance(cached_result, types.CacheLookFailReason):
+      connection_metadata.cache_look_fail_reason = cached_result
     
     result_record = self._execute_call(
         chosen_executor=chosen_executor,
@@ -608,6 +675,10 @@ class ProviderModelConnector(state_controller.StateControlled):
         raise call_record.result.error
       else:
         call_record.result.error = str(call_record.result.error)
+    else:
+      self._update_cache(
+          call_record=call_record,
+          connection_options=connection_options)
 
     return call_record
 

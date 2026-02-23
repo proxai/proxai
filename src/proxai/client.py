@@ -1081,6 +1081,7 @@ class ProxAIClient(state_controller.StateControlled):
             provider_token_value_map={
                 'OPENAI_API_KEY': os.environ['OPENAI_API_KEY'],
             },
+            query_cache_manager=self.query_cache_manager,
             feature_mapping_strategy=self.feature_mapping_strategy,
         )
     )
@@ -1110,6 +1111,7 @@ class ProxAIClient(state_controller.StateControlled):
   ) -> types.CallRecord:
     if prompt is not None and messages is not None:
       raise ValueError('prompt and messages cannot be used together')
+
     if system_prompt is not None and messages is not None:
       raise ValueError(
           'system_prompt and messages cannot be used together. '
