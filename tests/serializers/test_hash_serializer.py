@@ -41,7 +41,11 @@ def _get_query_record_options():
           chat_session.Chat(messages=[
               message.Message(
                   role=message_content.MessageRoleType.USER,
-                  content='Hello, user!'
+                  content=[
+                      message_content.MessageContent(
+                          type='text', text='Hello, user!'
+                      )
+                  ]
               )
           ])
   }, {
@@ -63,18 +67,10 @@ def _get_query_record_options():
   }, {
       'tools': [types.Tools.WEB_SEARCH]
   }, {
-      'connection_options':
-          types.ConnectionOptions(
-              feature_mapping_strategy=types.FeatureMappingStrategy.BEST_EFFORT
-          )
+      'provider_model': _MODEL_1
   }, {
       'connection_options':
-          types.ConnectionOptions(
-              feature_mapping_strategy=types.FeatureMappingStrategy.STRICT
-          )
-  }, {
-      'connection_options':
-          types.ConnectionOptions(provider_model=_MODEL_1)
+          types.ConnectionOptions(endpoint='test_endpoint')
   }, {
       'prompt': 'Hello, world!',
       'system_prompt': 'Hello, system!',
@@ -82,9 +78,14 @@ def _get_query_record_options():
           chat_session.Chat(messages=[
               message.Message(
                   role=message_content.MessageRoleType.USER,
-                  content='Hello, user!'
+                  content=[
+                      message_content.MessageContent(
+                          type='text', text='Hello, user!'
+                      )
+                  ]
               )
           ]),
+      'provider_model': _MODEL_1,
       'parameters':
           types.ParameterType(
               max_tokens=100, temperature=0.5,
@@ -95,11 +96,7 @@ def _get_query_record_options():
           types.ResponseFormat(type=types.ResponseFormatType.JSON),
       'tools': [types.Tools.WEB_SEARCH],
       'connection_options':
-          types.ConnectionOptions(
-              provider_model=_MODEL_1,
-              feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
-              chosen_endpoint='test_endpoint'
-          )
+          types.ConnectionOptions(endpoint='test_endpoint')
   }]
 
 
@@ -305,11 +302,15 @@ class TestChatHashing:
     chat = chat_session.Chat(messages=[
         message.Message(
             role=message_content.MessageRoleType.USER,
-            content='Hello'
+            content=[
+                message_content.MessageContent(type='text', text='Hello')
+            ]
         ),
         message.Message(
             role=message_content.MessageRoleType.ASSISTANT,
-            content='Hi there!'
+            content=[
+                message_content.MessageContent(type='text', text='Hi there!')
+            ]
         )
     ])
     query_record = types.QueryRecord(prompt='test', chat=chat)
@@ -322,21 +323,29 @@ class TestChatHashing:
     chat_1 = chat_session.Chat(messages=[
         message.Message(
             role=message_content.MessageRoleType.USER,
-            content='First'
+            content=[
+                message_content.MessageContent(type='text', text='First')
+            ]
         ),
         message.Message(
             role=message_content.MessageRoleType.ASSISTANT,
-            content='Second'
+            content=[
+                message_content.MessageContent(type='text', text='Second')
+            ]
         )
     ])
     chat_2 = chat_session.Chat(messages=[
         message.Message(
             role=message_content.MessageRoleType.ASSISTANT,
-            content='Second'
+            content=[
+                message_content.MessageContent(type='text', text='Second')
+            ]
         ),
         message.Message(
             role=message_content.MessageRoleType.USER,
-            content='First'
+            content=[
+                message_content.MessageContent(type='text', text='First')
+            ]
         )
     ])
     query_record_1 = types.QueryRecord(prompt='test', chat=chat_1)
@@ -465,47 +474,27 @@ class TestConnectionOptionsAffectHash:
         provider='anthropic', model='claude', provider_model_identifier='claude'
     )
     qr_1 = types.QueryRecord(
-        prompt='test',
-        connection_options=types.ConnectionOptions(provider_model=model_1)
+        prompt='test', provider_model=model_1
     )
     qr_2 = types.QueryRecord(
-        prompt='test',
-        connection_options=types.ConnectionOptions(provider_model=model_2)
+        prompt='test', provider_model=model_2
     )
     assert (
         hash_serializer.get_query_record_hash(qr_1) !=
         hash_serializer.get_query_record_hash(qr_2)
     )
 
-  def test_feature_mapping_strategy_affects_hash(self):
+  def test_endpoint_affects_hash(self):
     qr_1 = types.QueryRecord(
         prompt='test',
         connection_options=types.ConnectionOptions(
-            feature_mapping_strategy=types.FeatureMappingStrategy.BEST_EFFORT
+            endpoint='endpoint_a'
         )
     )
     qr_2 = types.QueryRecord(
         prompt='test',
         connection_options=types.ConnectionOptions(
-            feature_mapping_strategy=types.FeatureMappingStrategy.STRICT
-        )
-    )
-    assert (
-        hash_serializer.get_query_record_hash(qr_1) !=
-        hash_serializer.get_query_record_hash(qr_2)
-    )
-
-  def test_chosen_endpoint_affects_hash(self):
-    qr_1 = types.QueryRecord(
-        prompt='test',
-        connection_options=types.ConnectionOptions(
-            chosen_endpoint='endpoint_a'
-        )
-    )
-    qr_2 = types.QueryRecord(
-        prompt='test',
-        connection_options=types.ConnectionOptions(
-            chosen_endpoint='endpoint_b'
+            endpoint='endpoint_b'
         )
     )
     assert (

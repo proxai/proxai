@@ -78,20 +78,8 @@ def _hash_tools(hasher: hashlib._Hash, tools: list[types.Tools]):
 def _hash_connection_options(
     hasher: hashlib._Hash, connection_options: types.ConnectionOptions
 ):
-  if connection_options.provider_model is not None:
-    pm = connection_options.provider_model
-    _add_field(hasher, 'provider', pm.provider)
-    _add_field(hasher, 'model', pm.model)
-    _add_field(
-        hasher, 'provider_model_identifier', pm.provider_model_identifier
-    )
-  if connection_options.feature_mapping_strategy is not None:
-    _add_field(
-        hasher, 'feature_mapping_strategy',
-        connection_options.feature_mapping_strategy.value
-    )
-  if connection_options.chosen_endpoint is not None:
-    _add_field(hasher, 'chosen_endpoint', connection_options.chosen_endpoint)
+  if connection_options.endpoint is not None:
+    _add_field(hasher, 'endpoint', connection_options.endpoint)
 
 
 def get_query_record_hash(query_record: types.QueryRecord) -> str:
@@ -103,6 +91,13 @@ def get_query_record_hash(query_record: types.QueryRecord) -> str:
     _add_field(hasher, 'system_prompt', query_record.system_prompt)
   if query_record.chat is not None:
     _hash_chat(hasher, query_record.chat)
+  if query_record.provider_model is not None:
+    pm = query_record.provider_model
+    _add_field(hasher, 'provider', pm.provider)
+    _add_field(hasher, 'model', pm.model)
+    _add_field(
+        hasher, 'provider_model_identifier', pm.provider_model_identifier
+    )
   if query_record.parameters is not None:
     _hash_parameters(hasher, query_record.parameters)
   if query_record.response_format is not None:
