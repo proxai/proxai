@@ -232,6 +232,23 @@ class MessageContent:
         )
       if pydantic_dict:
         result["pydantic_content"] = pydantic_dict
+    if self.tool_content is not None:
+      tool_dict = {}
+      if self.tool_content.name is not None:
+        tool_dict["name"] = self.tool_content.name
+      if self.tool_content.kind is not None:
+        tool_dict["kind"] = self.tool_content.kind.value
+      if self.tool_content.citations is not None:
+        tool_dict["citations"] = []
+        for citation in self.tool_content.citations:
+          citation_dict = {}
+          if citation.title is not None:
+            citation_dict["title"] = citation.title
+          if citation.url is not None:
+            citation_dict["url"] = citation.url
+          tool_dict["citations"].append(citation_dict)
+      if tool_dict:
+        result["tool_content"] = tool_dict
     if self.source is not None:
       result["source"] = self.source
     if self.data is not None:
@@ -248,13 +265,27 @@ class MessageContent:
     pydantic_content = None
     if data.get("pydantic_content") is not None:
       pydantic_content = PydanticContent(**data["pydantic_content"])
+    tool_content = None
+    if data.get("tool_content") is not None:
+      tc_data = data["tool_content"]
+      citations = None
+      if tc_data.get("citations") is not None:
+        citations = [Citation(**c) for c in tc_data["citations"]]
+      tool_content = ToolContent(
+          name=tc_data.get("name"),
+          kind=ToolKind(tc_data["kind"]) if tc_data.get("kind") else None,
+          citations=citations,
+      )
     return cls(
         type=data["type"],
         text=data.get("text"),
         json=data.get("json"),
         pydantic_content=pydantic_content,
+        tool_content=tool_content,
         source=data.get("source"),
-        data=base64.b64decode(data.get("data")),
+        data=(
+            base64.b64decode(data["data"]) if "data" in data else None
+        ),
         path=data.get("path"),
         media_type=data.get("media_type"),
     )

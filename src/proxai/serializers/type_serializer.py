@@ -1,3 +1,4 @@
+import base64
 import datetime
 import json
 from typing import Any
@@ -38,35 +39,6 @@ def decode_provider_model_type(
   )
   return provider_model
 
-
-def encode_provider_model_identifier(
-    provider_model_identifier: types.ProviderModelIdentifierType
-) -> dict[str, Any]:
-  """Serialize ProviderModelIdentifierType to a dictionary."""
-  if isinstance(provider_model_identifier, types.ProviderModelType):
-    return encode_provider_model_type(provider_model_identifier)
-  else:
-    # ProviderModelTupleType
-    return {
-        'provider': provider_model_identifier[0],
-        'model': provider_model_identifier[1]
-    }
-
-
-def decode_provider_model_identifier(
-    record: dict[str, Any]
-) -> types.ProviderModelIdentifierType:
-  """Deserialize ProviderModelIdentifierType from a dictionary."""
-  if 'provider_model_identifier' in record:
-    # Full ProviderModelType
-    return decode_provider_model_type(record)
-  else:
-    # ProviderModelTupleType
-    if 'provider' not in record:
-      raise ValueError(f'Provider not found in record: {record=}')
-    if 'model' not in record:
-      raise ValueError(f'Model not found in record: {record=}')
-    return (record['provider'], record['model'])
 
 
 def encode_provider_model_pricing_type(
@@ -294,7 +266,7 @@ def encode_featured_models_type(
     record[provider] = []
     for provider_model_identifier in provider_model_identifiers:
       record[provider].append(
-          encode_provider_model_identifier(provider_model_identifier)
+          encode_provider_model_type(provider_model_identifier)
       )
   return record
 
@@ -308,7 +280,7 @@ def decode_featured_models_type(
     provider_model_identifiers = []
     for provider_model_identifier_record in (provider_model_identifier_records):
       provider_model_identifiers.append(
-          decode_provider_model_identifier(provider_model_identifier_record)
+          decode_provider_model_type(provider_model_identifier_record)
       )
     featured_models[provider] = provider_model_identifiers
   return featured_models
@@ -325,7 +297,7 @@ def encode_models_by_call_type_type(
       record[call_type.value][provider] = []
       for provider_model_identifier in provider_model_identifiers:
         record[call_type.value][provider].append(
-            encode_provider_model_identifier(provider_model_identifier)
+            encode_provider_model_type(provider_model_identifier)
         )
   return record
 
@@ -346,7 +318,7 @@ def decode_models_by_call_type_type(
           provider_model_identifier_records
       ):
         provider_model_identifiers.append(
-            decode_provider_model_identifier(provider_model_identifier_record)
+            decode_provider_model_type(provider_model_identifier_record)
         )
       provider_dict[provider] = provider_model_identifiers
     models_by_call_type[call_type] = provider_dict
@@ -362,7 +334,7 @@ def encode_models_by_size_type(
     record[model_size.value] = []
     for provider_model_identifier in provider_model_identifiers:
       record[model_size.value].append(
-          encode_provider_model_identifier(provider_model_identifier)
+          encode_provider_model_type(provider_model_identifier)
       )
   return record
 
@@ -377,7 +349,7 @@ def decode_models_by_size_type(
     provider_model_identifiers = []
     for provider_model_identifier_record in (provider_model_identifier_records):
       provider_model_identifiers.append(
-          decode_provider_model_identifier(provider_model_identifier_record)
+          decode_provider_model_type(provider_model_identifier_record)
       )
     models_by_size[model_size] = provider_model_identifiers
   return models_by_size
@@ -389,7 +361,7 @@ def encode_default_model_priority_list_type(
   """Serialize DefaultModelPriorityListType to a list."""
   record = []
   for provider_model_identifier in default_model_priority_list:
-    record.append(encode_provider_model_identifier(provider_model_identifier))
+    record.append(encode_provider_model_type(provider_model_identifier))
   return record
 
 
@@ -400,7 +372,7 @@ def decode_default_model_priority_list_type(
   default_model_priority_list = []
   for provider_model_identifier_record in record:
     default_model_priority_list.append(
-        decode_provider_model_identifier(provider_model_identifier_record)
+        decode_provider_model_type(provider_model_identifier_record)
     )
   return default_model_priority_list
 
@@ -716,6 +688,23 @@ def encode_choice_type(
 ) -> dict[str, Any]:
   """Serialize ChoiceType to a dictionary."""
   record = {}
+  if choice_type.output_text is not None:
+    record['output_text'] = choice_type.output_text
+  if choice_type.output_image is not None:
+    record['output_image'] = choice_type.output_image.to_dict()
+  if choice_type.output_audio is not None:
+    record['output_audio'] = choice_type.output_audio.to_dict()
+  if choice_type.output_video is not None:
+    record['output_video'] = choice_type.output_video.to_dict()
+  if choice_type.output_json is not None:
+    record['output_json'] = choice_type.output_json
+  if choice_type.output_pydantic is not None:
+    record['output_pydantic'] = {
+        'class_name': choice_type.output_pydantic.__class__.__name__,
+        'instance_json_value': (
+            choice_type.output_pydantic.model_dump()
+        )
+    }
   if choice_type.content is not None:
     record['content'] = encode_content(choice_type.content)
   return record
@@ -726,6 +715,21 @@ def decode_choice_type(
 ) -> types.ChoiceType:
   """Deserialize ChoiceType from a dictionary."""
   choice_type = types.ChoiceType()
+  choice_type.output_text = record.get('output_text')
+  if 'output_image' in record:
+    choice_type.output_image = message_content.MessageContent.from_dict(
+        record['output_image']
+    )
+  if 'output_audio' in record:
+    choice_type.output_audio = message_content.MessageContent.from_dict(
+        record['output_audio']
+    )
+  if 'output_video' in record:
+    choice_type.output_video = message_content.MessageContent.from_dict(
+        record['output_video']
+    )
+  if 'output_json' in record:
+    choice_type.output_json = record['output_json']
   if 'content' in record:
     choice_type.content = decode_content(record['content'])
   return choice_type
@@ -845,6 +849,29 @@ def encode_result_record(
     record['status'] = result_record.status.value
   if result_record.role is not None:
     record['role'] = result_record.role.value
+  if result_record.output_text is not None:
+    record['output_text'] = result_record.output_text
+  if result_record.output_image is not None:
+    record['output_image'] = base64.b64encode(
+        result_record.output_image
+    ).decode('utf-8')
+  if result_record.output_audio is not None:
+    record['output_audio'] = base64.b64encode(
+        result_record.output_audio
+    ).decode('utf-8')
+  if result_record.output_video is not None:
+    record['output_video'] = base64.b64encode(
+        result_record.output_video
+    ).decode('utf-8')
+  if result_record.output_json is not None:
+    record['output_json'] = result_record.output_json
+  if result_record.output_pydantic is not None:
+    record['output_pydantic'] = {
+        'class_name': result_record.output_pydantic.__class__.__name__,
+        'instance_json_value': (
+            result_record.output_pydantic.model_dump()
+        )
+    }
   if result_record.content is not None:
     record['content'] = encode_content(result_record.content)
   if result_record.choices is not None:
@@ -873,6 +900,15 @@ def decode_result_record(
     result_record.status = types.ResultStatusType(record['status'])
   if 'role' in record:
     result_record.role = types.MessageRoleType(record['role'])
+  result_record.output_text = record.get('output_text')
+  if 'output_image' in record:
+    result_record.output_image = base64.b64decode(record['output_image'])
+  if 'output_audio' in record:
+    result_record.output_audio = base64.b64decode(record['output_audio'])
+  if 'output_video' in record:
+    result_record.output_video = base64.b64decode(record['output_video'])
+  if 'output_json' in record:
+    result_record.output_json = record['output_json']
   if 'content' in record:
     result_record.content = decode_content(record['content'])
   if 'choices' in record:
