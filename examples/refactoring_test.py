@@ -173,12 +173,22 @@ def parameters_n_test():
 def parameters_thinking_test():
   print('> parameters_thinking_test')
   result = px.generate(
-      prompt='What is 2 + 2?',
-      provider_model=_DEFAULT_MODEL,
-      parameters=px.ParameterType(thinking=types.ThinkingType.HIGH))
-  _assert_text_content(result)
-  assert result.query.parameters is not None
-  assert result.query.parameters.thinking == types.ThinkingType.HIGH
+      prompt=(
+          'What is the hardest topic in quantum computing? '
+          'I am a researcher and I need very detailed answer.'
+          'I am preparing a paper on this topic. Think deep and make '
+          'very strong quantitative arguments. Show coherent examples of '
+          'hard problems in quantum computing.'),
+      provider_model=('openai', 'o3'),
+      parameters=px.ParameterType(thinking=types.ThinkingType.MEDIUM),
+      connection_options=px.ConnectionOptions(
+          endpoint='responses.create'))
+  thinking_true = False
+  for message in result.result.content:
+    if message.type == px.ContentType.THINKING:
+      thinking_true = True
+      break
+  assert thinking_true
 
 
 def parameters_combined_test():
@@ -422,7 +432,7 @@ def main():
   parameters_stop_test()
   parameters_stop_list_test()
   # # parameters_n_test()
-  # # parameters_thinking_test()
+  parameters_thinking_test()
   # # parameters_combined_test()
   tools_web_search_test()
   response_format_text_test()
