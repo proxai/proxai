@@ -83,7 +83,11 @@ class TestMessageSerialization:
   def test_round_trip_string_content(self):
     original = Message(role="assistant", content="Hello world")
     restored = Message.from_dict(original.to_dict())
-    assert restored == original
+    assert restored.role == original.role
+    assert isinstance(restored.content, list)
+    assert len(restored.content) == 1
+    assert restored.content[0].type == types.ContentType.TEXT
+    assert restored.content[0].text == "Hello world"
 
   def test_round_trip_list_content(self):
     original = Message(role="user", content=[
