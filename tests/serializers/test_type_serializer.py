@@ -46,107 +46,159 @@ def _get_provider_model_pricing_type_options():
   return [
       {},
       {
-          'per_response_token_cost': 0.001
+          'input_token_cost': 0.001
       },
       {
-          'per_query_token_cost': 0.002
+          'output_token_cost': 0.002
       },
       {
-          'per_response_token_cost': 0.001,
-          'per_query_token_cost': 0.002
+          'input_token_cost': 0.001,
+          'output_token_cost': 0.002
       },
       {
-          'per_response_token_cost': 0.0,
-          'per_query_token_cost': 0.0
+          'input_token_cost': 0.0,
+          'output_token_cost': 0.0
       },
       {
-          'per_response_token_cost': 1.5,
-          'per_query_token_cost': 0.5
-      },
-  ]
-
-
-def _get_endpoint_feature_info_type_options():
-  return [
-      {},
-      {
-          'supported': []
-      },
-      {
-          'supported': ['feature1']
-      },
-      {
-          'supported': ['feature1', 'feature2', 'feature3']
-      },
-      {
-          'best_effort': []
-      },
-      {
-          'best_effort': ['feature1']
-      },
-      {
-          'best_effort': ['feature1', 'feature2']
-      },
-      {
-          'not_supported': []
-      },
-      {
-          'not_supported': ['feature1']
-      },
-      {
-          'not_supported': ['feature1', 'feature2', 'feature3']
-      },
-      {
-          'supported': ['feature1'],
-          'best_effort': ['feature2'],
-          'not_supported': ['feature3']
+          'input_token_cost': 1.5,
+          'output_token_cost': 0.5
       },
   ]
 
 
-def _get_feature_mapping_type_options():
+def _get_feature_support_type_options():
+  return [
+      types.FeatureSupportType.SUPPORTED,
+      types.FeatureSupportType.BEST_EFFORT,
+      types.FeatureSupportType.NOT_SUPPORTED,
+  ]
+
+
+def _get_parameter_config_type_options():
   return [
       {},
       {
-          types.FeatureNameType.PROMPT: types.EndpointFeatureInfoType()
+          'temperature': types.FeatureSupportType.SUPPORTED
       },
       {
-          types.FeatureNameType.PROMPT:
-              types.EndpointFeatureInfoType(supported=['value1'])
+          'max_tokens': types.FeatureSupportType.BEST_EFFORT
       },
       {
-          types.FeatureNameType.MESSAGES:
-              types.EndpointFeatureInfoType(best_effort=['value1', 'value2'])
+          'stop': types.FeatureSupportType.NOT_SUPPORTED
       },
       {
-          types.FeatureNameType.SYSTEM_PROMPT:
-              types.EndpointFeatureInfoType(not_supported=['value1'])
+          'n': types.FeatureSupportType.SUPPORTED
       },
       {
-          types.FeatureNameType.PROMPT:
-              types.EndpointFeatureInfoType(
-                  supported=['value1'], best_effort=['value2'],
-                  not_supported=['value3']
-              )
+          'thinking': types.FeatureSupportType.BEST_EFFORT
       },
       {
-          types.FeatureNameType.PROMPT:
-              types.EndpointFeatureInfoType(supported=['value1']),
-          types.FeatureNameType.MESSAGES:
-              types.EndpointFeatureInfoType(best_effort=['value2'])
+          'temperature': types.FeatureSupportType.SUPPORTED,
+          'max_tokens': types.FeatureSupportType.SUPPORTED,
+          'stop': types.FeatureSupportType.BEST_EFFORT,
+          'n': types.FeatureSupportType.NOT_SUPPORTED,
+          'thinking': types.FeatureSupportType.SUPPORTED
+      },
+  ]
+
+
+def _get_tool_config_type_options():
+  return [
+      {},
+      {
+          'web_search': types.FeatureSupportType.SUPPORTED
       },
       {
-          types.FeatureNameType.PROMPT:
-              types.EndpointFeatureInfoType(supported=['value1']),
-          types.FeatureNameType.MESSAGES:
-              types.EndpointFeatureInfoType(best_effort=['value2']),
-          types.FeatureNameType.SYSTEM_PROMPT:
-              types.EndpointFeatureInfoType(not_supported=['value3']),
-          types.FeatureNameType.MAX_TOKENS:
-              types.EndpointFeatureInfoType(
-                  supported=['value4'], best_effort=['value5'],
-                  not_supported=['value6']
-              )
+          'web_search': types.FeatureSupportType.NOT_SUPPORTED
+      },
+  ]
+
+
+def _get_response_format_config_type_options():
+  return [
+      {},
+      {
+          'text': types.FeatureSupportType.SUPPORTED
+      },
+      {
+          'image': types.FeatureSupportType.NOT_SUPPORTED
+      },
+      {
+          'json': types.FeatureSupportType.SUPPORTED
+      },
+      {
+          'pydantic': types.FeatureSupportType.BEST_EFFORT
+      },
+      {
+          'text': types.FeatureSupportType.SUPPORTED,
+          'image': types.FeatureSupportType.NOT_SUPPORTED,
+          'audio': types.FeatureSupportType.NOT_SUPPORTED,
+          'video': types.FeatureSupportType.NOT_SUPPORTED,
+          'json': types.FeatureSupportType.SUPPORTED,
+          'pydantic': types.FeatureSupportType.BEST_EFFORT,
+          'multi_modal': types.FeatureSupportType.NOT_SUPPORTED
+      },
+  ]
+
+
+def _get_feature_config_type_options():
+  return [
+      {},
+      {
+          'prompt': types.FeatureSupportType.SUPPORTED
+      },
+      {
+          'messages': types.FeatureSupportType.SUPPORTED
+      },
+      {
+          'system_prompt': types.FeatureSupportType.BEST_EFFORT
+      },
+      {
+          'add_system_to_messages': True
+      },
+      {
+          'add_system_to_messages': False
+      },
+      {
+          'parameters': types.ParameterConfigType(
+              temperature=types.FeatureSupportType.SUPPORTED
+          )
+      },
+      {
+          'tools': types.ToolConfigType(
+              web_search=types.FeatureSupportType.SUPPORTED
+          )
+      },
+      {
+          'response_format': types.ResponseFormatConfigType(
+              text=types.FeatureSupportType.SUPPORTED,
+              json=types.FeatureSupportType.SUPPORTED
+          )
+      },
+      {
+          'prompt': types.FeatureSupportType.SUPPORTED,
+          'messages': types.FeatureSupportType.SUPPORTED,
+          'system_prompt': types.FeatureSupportType.BEST_EFFORT,
+          'add_system_to_messages': True,
+          'parameters': types.ParameterConfigType(
+              temperature=types.FeatureSupportType.SUPPORTED,
+              max_tokens=types.FeatureSupportType.SUPPORTED,
+              stop=types.FeatureSupportType.BEST_EFFORT,
+              n=types.FeatureSupportType.NOT_SUPPORTED,
+              thinking=types.FeatureSupportType.SUPPORTED
+          ),
+          'tools': types.ToolConfigType(
+              web_search=types.FeatureSupportType.SUPPORTED
+          ),
+          'response_format': types.ResponseFormatConfigType(
+              text=types.FeatureSupportType.SUPPORTED,
+              image=types.FeatureSupportType.NOT_SUPPORTED,
+              audio=types.FeatureSupportType.NOT_SUPPORTED,
+              video=types.FeatureSupportType.NOT_SUPPORTED,
+              json=types.FeatureSupportType.SUPPORTED,
+              pydantic=types.FeatureSupportType.BEST_EFFORT,
+              multi_modal=types.FeatureSupportType.NOT_SUPPORTED
+          )
       },
   ]
 
@@ -189,18 +241,6 @@ def _get_provider_model_metadata_type_options():
           ]
       },
       {
-          'is_default_candidate': True
-      },
-      {
-          'is_default_candidate': False
-      },
-      {
-          'default_candidate_priority': 1
-      },
-      {
-          'default_candidate_priority': 100
-      },
-      {
           'tags': []
       },
       {
@@ -213,32 +253,40 @@ def _get_provider_model_metadata_type_options():
           'call_type': types.CallType.TEXT,
           'is_featured': True,
           'model_size_tags': [types.ModelSizeType.LARGE],
-          'is_default_candidate': True,
-          'default_candidate_priority': 5,
           'tags': ['tag1', 'tag2']
       },
   ]
 
 
-def _get_provider_model_config_type_options():
+def _get_provider_model_config_options():
   return [
-      {},
       {
-          'provider_model': _MODEL_1
+          'provider_model': _MODEL_1,
+          'pricing': types.ProviderModelPricingType(),
+          'features': types.FeatureConfigType(),
+          'metadata': types.ProviderModelMetadataType()
       },
       {
+          'provider_model': _MODEL_1,
           'pricing':
               types.ProviderModelPricingType(
-                  per_response_token_cost=0.001, per_query_token_cost=0.002
-              )
+                  input_token_cost=0.001, output_token_cost=0.002
+              ),
+          'features': types.FeatureConfigType(),
+          'metadata': types.ProviderModelMetadataType()
       },
       {
-          'features': {
-              types.FeatureNameType.PROMPT:
-                  types.EndpointFeatureInfoType(not_supported=['feature1'])
-          }
+          'provider_model': _MODEL_1,
+          'pricing': types.ProviderModelPricingType(),
+          'features': types.FeatureConfigType(
+              prompt=types.FeatureSupportType.SUPPORTED
+          ),
+          'metadata': types.ProviderModelMetadataType()
       },
       {
+          'provider_model': _MODEL_1,
+          'pricing': types.ProviderModelPricingType(),
+          'features': types.FeatureConfigType(),
           'metadata':
               types.ProviderModelMetadataType(
                   call_type=types.CallType.TEXT, is_featured=True
@@ -248,19 +296,21 @@ def _get_provider_model_config_type_options():
           'provider_model': _MODEL_3,
           'pricing':
               types.ProviderModelPricingType(
-                  per_response_token_cost=0.003, per_query_token_cost=0.001
+                  input_token_cost=0.003, output_token_cost=0.001
               ),
-          'features': {
-              types.FeatureNameType.PROMPT:
-                  types.EndpointFeatureInfoType(
-                      not_supported=['feature1', 'feature2']
-                  )
-          },
+          'features': types.FeatureConfigType(
+              prompt=types.FeatureSupportType.SUPPORTED,
+              messages=types.FeatureSupportType.SUPPORTED,
+              system_prompt=types.FeatureSupportType.BEST_EFFORT,
+              parameters=types.ParameterConfigType(
+                  temperature=types.FeatureSupportType.SUPPORTED,
+                  max_tokens=types.FeatureSupportType.SUPPORTED
+              )
+          ),
           'metadata':
               types.ProviderModelMetadataType(
                   call_type=types.CallType.TEXT, is_featured=True,
                   model_size_tags=[types.ModelSizeType.LARGEST],
-                  is_default_candidate=True, default_candidate_priority=10,
                   tags=['production', 'recommended']
               )
       },
@@ -304,120 +354,21 @@ def _get_model_configs_schema_metadata_type_options():
   ]
 
 
-def _get_model_configs_schema_version_config_type_options():
-  return [{}, {
+def _get_model_registry_options():
+  _default_config = types.ProviderModelConfig(
+      provider_model=_MODEL_1,
+      pricing=types.ProviderModelPricingType(),
+      features=types.FeatureConfigType(),
+      metadata=types.ProviderModelMetadataType()
+  )
+  return [{
+      'metadata': types.ModelConfigsSchemaMetadataType(version='1.0.0'),
+      'default_model_priority_list': [_MODEL_1],
       'provider_model_configs': {
           'openai': {
-              'gpt-4':
-                  types.ProviderModelConfigType(provider_model=_MODEL_1)
+              'gpt-4': _default_config
           }
       }
-  }, {
-      'provider_model_configs': {
-          'openai': {
-              'gpt-4':
-                  types.ProviderModelConfigType(
-                      provider_model=_MODEL_1,
-                      pricing=types.ProviderModelPricingType(
-                          per_response_token_cost=0.001,
-                          per_query_token_cost=0.002
-                      )
-                  )
-          },
-          'claude': {
-              'opus-4':
-                  types.ProviderModelConfigType(
-                      provider_model=_MODEL_3,
-                      metadata=types.ProviderModelMetadataType(
-                          is_featured=True
-                      )
-                  )
-          }
-      }
-  }, {
-      'featured_models': {
-          'openai': [_MODEL_1]
-      }
-  }, {
-      'featured_models': {
-          'openai': [_MODEL_1],
-          'claude': [_MODEL_3]
-      }
-  }, {
-      'models_by_call_type': {
-          types.CallType.TEXT: {
-              'openai': [_MODEL_1],
-              'claude': [_MODEL_4]
-          }
-      }
-  }, {
-      'models_by_size': {
-          types.ModelSizeType.SMALL: [_MODEL_5],
-          types.ModelSizeType.LARGE: [_MODEL_1, _MODEL_3]
-      }
-  }, {
-      'default_model_priority_list': [
-          _MODEL_1, _MODEL_3, _MODEL_2
-      ]
-  }, {
-      'provider_model_configs': {
-          'openai': {
-              'gpt-4':
-                  types.ProviderModelConfigType(
-                      provider_model=_MODEL_1,
-                      pricing=types.ProviderModelPricingType(
-                          per_response_token_cost=0.001,
-                          per_query_token_cost=0.002
-                      ), features={
-                          types.FeatureNameType.PROMPT:
-                              types.EndpointFeatureInfoType(
-                                  not_supported=['feature1']
-                              )
-                      }, metadata=types.ProviderModelMetadataType(
-                          call_type=types.CallType.TEXT,
-                          is_featured=True,
-                          model_size_tags=[types.ModelSizeType.LARGE]
-                      )
-                  ),
-              'o3-mini':
-                  types.ProviderModelConfigType(provider_model=_MODEL_2)
-          },
-          'claude': {
-              'opus-4':
-                  types.ProviderModelConfigType(
-                      provider_model=_MODEL_3,
-                      metadata=types.ProviderModelMetadataType(
-                          is_featured=True,
-                          model_size_tags=[types.ModelSizeType.LARGEST]
-                      )
-                  ),
-              'sonnet-4':
-                  types.ProviderModelConfigType(provider_model=_MODEL_4)
-          }
-      },
-      'featured_models': {
-          'openai': [_MODEL_1],
-          'claude': [_MODEL_3]
-      },
-      'models_by_call_type': {
-          types.CallType.TEXT: {
-              'openai': [_MODEL_1],
-              'claude': [_MODEL_4]
-          }
-      },
-      'models_by_size': {
-          types.ModelSizeType.SMALL: [_MODEL_5],
-          types.ModelSizeType.LARGE: [_MODEL_1, _MODEL_3]
-      },
-      'default_model_priority_list': [
-          _MODEL_1, _MODEL_3, _MODEL_2
-      ]
-  }]
-
-
-def _get_model_configs_schema_type_options():
-  return [{}, {
-      'metadata': types.ModelConfigsSchemaMetadataType(version='1.0.0')
   }, {
       'metadata':
           types.ModelConfigsSchemaMetadataType(
@@ -425,43 +376,35 @@ def _get_model_configs_schema_type_options():
               released_at=datetime.datetime.now(datetime.timezone.utc),
               config_origin=types.ConfigOriginType.BUILT_IN,
               release_notes='Initial release'
-          )
-  }, {
-      'version_config':
-          types.ModelConfigsSchemaVersionConfigType(
-              provider_model_configs={
-                  'openai': {
-                      'gpt-4':
-                          types.ProviderModelConfigType(
-                              provider_model=_MODEL_1
-                          )
-                  }
-              }
-          )
-  }, {
-      'version_config':
-          types.ModelConfigsSchemaVersionConfigType(
-              featured_models={
-                  'openai': [_MODEL_1]
-              }
-          )
-  }, {
-      'metadata':
-          types.ModelConfigsSchemaMetadataType(
-              version='1.0.0',
-              released_at=datetime.datetime.now(datetime.timezone.utc)
           ),
-      'version_config':
-          types.ModelConfigsSchemaVersionConfigType(
-              provider_model_configs={
-                  'openai': {
-                      'gpt-4':
-                          types.ProviderModelConfigType(
-                              provider_model=_MODEL_1
-                          )
-                  }
-              }
-          )
+      'default_model_priority_list': [_MODEL_1],
+      'provider_model_configs': {
+          'openai': {
+              'gpt-4': _default_config
+          }
+      }
+  }, {
+      'metadata': types.ModelConfigsSchemaMetadataType(version='1.0.0'),
+      'default_model_priority_list': [_MODEL_1, _MODEL_3, _MODEL_2],
+      'provider_model_configs': {
+          'openai': {
+              'gpt-4':
+                  types.ProviderModelConfig(
+                      provider_model=_MODEL_1,
+                      pricing=types.ProviderModelPricingType(
+                          input_token_cost=0.001, output_token_cost=0.002
+                      ),
+                      features=types.FeatureConfigType(
+                          prompt=types.FeatureSupportType.SUPPORTED,
+                          messages=types.FeatureSupportType.SUPPORTED
+                      ),
+                      metadata=types.ProviderModelMetadataType(
+                          call_type=types.CallType.TEXT, is_featured=True,
+                          model_size_tags=[types.ModelSizeType.LARGE]
+                      )
+                  )
+          }
+      }
   }, {
       'metadata':
           types.ModelConfigsSchemaMetadataType(
@@ -471,61 +414,56 @@ def _get_model_configs_schema_type_options():
               config_origin=types.ConfigOriginType.PROXDASH,
               release_notes='Added new models and updated pricing'
           ),
-      'version_config':
-          types.ModelConfigsSchemaVersionConfigType(
-              provider_model_configs={
-                  'openai': {
-                      'gpt-4':
-                          types.ProviderModelConfigType(
-                              provider_model=_MODEL_1,
-                              pricing=types.ProviderModelPricingType(
-                                  per_response_token_cost=0.001,
-                                  per_query_token_cost=0.002
-                              ), features={
-                                  types.FeatureNameType.PROMPT:
-                                      types.EndpointFeatureInfoType(
-                                          not_supported=['feature1']
-                                      )
-                              }, metadata=types.ProviderModelMetadataType(
-                                  call_type=types.CallType.TEXT,
-                                  is_featured=True,
-                                  model_size_tags=[types.ModelSizeType.LARGE]
-                              )
-                          ),
-                      'o3-mini':
-                          types.ProviderModelConfigType(
-                              provider_model=_MODEL_2
+      'default_model_priority_list': [_MODEL_1, _MODEL_3, _MODEL_2],
+      'provider_model_configs': {
+          'openai': {
+              'gpt-4':
+                  types.ProviderModelConfig(
+                      provider_model=_MODEL_1,
+                      pricing=types.ProviderModelPricingType(
+                          input_token_cost=0.001, output_token_cost=0.002
+                      ),
+                      features=types.FeatureConfigType(
+                          prompt=types.FeatureSupportType.SUPPORTED,
+                          messages=types.FeatureSupportType.SUPPORTED,
+                          parameters=types.ParameterConfigType(
+                              temperature=types.FeatureSupportType.SUPPORTED,
+                              max_tokens=types.FeatureSupportType.SUPPORTED
                           )
-                  },
-                  'claude': {
-                      'opus-4':
-                          types.ProviderModelConfigType(
-                              provider_model=_MODEL_3,
-                              metadata=types.ProviderModelMetadataType(
-                                  is_featured=True,
-                                  model_size_tags=[types.ModelSizeType.LARGEST]
-                              )
-                          ),
-                      'sonnet-4':
-                          types.ProviderModelConfigType(
-                              provider_model=_MODEL_4
-                          )
-                  }
-              }, featured_models={
-                  'openai': [_MODEL_1],
-                  'claude': [_MODEL_3]
-              }, models_by_call_type={
-                  types.CallType.TEXT: {
-                      'openai': [_MODEL_1],
-                      'claude': [_MODEL_4]
-                  }
-              }, models_by_size={
-                  types.ModelSizeType.SMALL: [_MODEL_5],
-                  types.ModelSizeType.LARGE: [_MODEL_1, _MODEL_3]
-              }, default_model_priority_list=[
-                  _MODEL_1, _MODEL_3, _MODEL_2
-              ]
-          )
+                      ),
+                      metadata=types.ProviderModelMetadataType(
+                          call_type=types.CallType.TEXT, is_featured=True,
+                          model_size_tags=[types.ModelSizeType.LARGE]
+                      )
+                  ),
+              'o3-mini':
+                  types.ProviderModelConfig(
+                      provider_model=_MODEL_2,
+                      pricing=types.ProviderModelPricingType(),
+                      features=types.FeatureConfigType(),
+                      metadata=types.ProviderModelMetadataType()
+                  )
+          },
+          'claude': {
+              'opus-4':
+                  types.ProviderModelConfig(
+                      provider_model=_MODEL_3,
+                      pricing=types.ProviderModelPricingType(),
+                      features=types.FeatureConfigType(),
+                      metadata=types.ProviderModelMetadataType(
+                          is_featured=True,
+                          model_size_tags=[types.ModelSizeType.LARGEST]
+                      )
+                  ),
+              'sonnet-4':
+                  types.ProviderModelConfig(
+                      provider_model=_MODEL_4,
+                      pricing=types.ProviderModelPricingType(),
+                      features=types.FeatureConfigType(),
+                      metadata=types.ProviderModelMetadataType()
+                  )
+          }
+      }
   }]
 
 
@@ -1355,29 +1293,37 @@ def _get_model_status_options():
   }]
 
 
-def _get_provider_model_configs_type_options():
+def _get_provider_model_configs_mapping_type_options():
   return [
       {
           'openai': {
               'gpt-4':
-                  types.ProviderModelConfigType(provider_model=_MODEL_1)
+                  types.ProviderModelConfig(
+                      provider_model=_MODEL_1,
+                      pricing=types.ProviderModelPricingType(),
+                      features=types.FeatureConfigType(),
+                      metadata=types.ProviderModelMetadataType()
+                  )
           }
       },
       {
           'openai': {
               'gpt-4':
-                  types.ProviderModelConfigType(
+                  types.ProviderModelConfig(
                       provider_model=_MODEL_1,
                       pricing=types.ProviderModelPricingType(
-                          per_response_token_cost=0.001,
-                          per_query_token_cost=0.002
-                      )
+                          input_token_cost=0.001, output_token_cost=0.002
+                      ),
+                      features=types.FeatureConfigType(),
+                      metadata=types.ProviderModelMetadataType()
                   )
           },
           'claude': {
               'opus-4':
-                  types.ProviderModelConfigType(
+                  types.ProviderModelConfig(
                       provider_model=_MODEL_3,
+                      pricing=types.ProviderModelPricingType(),
+                      features=types.FeatureConfigType(),
                       metadata=types.ProviderModelMetadataType(
                           is_featured=True
                       )
@@ -1387,7 +1333,7 @@ def _get_provider_model_configs_type_options():
   ]
 
 
-def _get_featured_models_type_options():
+def _get_featured_models_mapping_type_options():
   return [{
       'openai': [_MODEL_1]
   }, {
@@ -1399,25 +1345,18 @@ def _get_featured_models_type_options():
   }]
 
 
-def _get_models_by_call_type_type_options():
+def _get_call_type_mapping_type_options():
   return [{
-      types.CallType.TEXT: {
-          'openai': [_MODEL_1]
-      }
+      types.CallType.TEXT: [_MODEL_1]
   }, {
-      types.CallType.TEXT: {
-          'openai': [_MODEL_1],
-          'claude': [_MODEL_4]
-      }
+      types.CallType.TEXT: [_MODEL_1, _MODEL_4]
   }, {
-      types.CallType.TEXT: {
-          'openai': [_MODEL_1, _MODEL_2],
-          'claude': [_MODEL_4, _MODEL_3]
-      }
+      types.CallType.TEXT: [_MODEL_1, _MODEL_2],
+      types.CallType.IMAGE: [_MODEL_3, _MODEL_4]
   }]
 
 
-def _get_models_by_size_type_options():
+def _get_model_size_mapping_type_options():
   return [{
       types.ModelSizeType.SMALL: [_MODEL_5]
   }, {
@@ -1429,7 +1368,7 @@ def _get_models_by_size_type_options():
   }]
 
 
-def _get_default_model_priority_list_type_options():
+def _get_default_model_priority_list_options():
   return [
       [_MODEL_1],
       [_MODEL_1, _MODEL_3],
@@ -1498,44 +1437,103 @@ class TestTypeSerializer:
     assert provider_model_pricing_type == decoded_provider_model_pricing_type
 
   @pytest.mark.parametrize(
-      'endpoint_feature_info_type_options',
-      _get_endpoint_feature_info_type_options()
+      'feature_support_type_option', _get_feature_support_type_options()
   )
-  def test_encode_decode_endpoint_feature_info_type(
-      self, endpoint_feature_info_type_options
+  def test_encode_decode_feature_support_type(
+      self, feature_support_type_option
   ):
-    endpoint_feature_info_type = types.EndpointFeatureInfoType(
-        **endpoint_feature_info_type_options
-    )
-    encoded_endpoint_feature_info_type = (
-        type_serializer.encode_endpoint_feature_info_type(
-            endpoint_feature_info_type=endpoint_feature_info_type
+    encoded_feature_support_type = (
+        type_serializer.encode_feature_support_type(
+            feature_support_type=feature_support_type_option
         )
     )
-    decoded_endpoint_feature_info_type = (
-        type_serializer.decode_endpoint_feature_info_type(
-            record=encoded_endpoint_feature_info_type
+    decoded_feature_support_type = (
+        type_serializer.decode_feature_support_type(
+            value=encoded_feature_support_type
         )
     )
-    assert endpoint_feature_info_type == decoded_endpoint_feature_info_type
+    assert feature_support_type_option == decoded_feature_support_type
 
   @pytest.mark.parametrize(
-      'feature_mapping_type_options', _get_feature_mapping_type_options()
+      'parameter_config_type_options', _get_parameter_config_type_options()
   )
-  def test_encode_decode_feature_mapping_type(
-      self, feature_mapping_type_options
+  def test_encode_decode_parameter_config_type(
+      self, parameter_config_type_options
   ):
-    encoded_feature_mapping_type = (
-        type_serializer.encode_feature_mapping_type(
-            feature_mapping=feature_mapping_type_options
+    parameter_config_type = types.ParameterConfigType(
+        **parameter_config_type_options
+    )
+    encoded_parameter_config_type = (
+        type_serializer.encode_parameter_config_type(
+            parameter_config_type=parameter_config_type
         )
     )
-    decoded_feature_mapping_type = (
-        type_serializer.decode_feature_mapping_type(
-            record=encoded_feature_mapping_type
+    decoded_parameter_config_type = (
+        type_serializer.decode_parameter_config_type(
+            record=encoded_parameter_config_type
         )
     )
-    assert feature_mapping_type_options == decoded_feature_mapping_type
+    assert parameter_config_type == decoded_parameter_config_type
+
+  @pytest.mark.parametrize(
+      'tool_config_type_options', _get_tool_config_type_options()
+  )
+  def test_encode_decode_tool_config_type(self, tool_config_type_options):
+    tool_config_type = types.ToolConfigType(**tool_config_type_options)
+    encoded_tool_config_type = (
+        type_serializer.encode_tool_config_type(
+            tool_config_type=tool_config_type
+        )
+    )
+    decoded_tool_config_type = (
+        type_serializer.decode_tool_config_type(
+            record=encoded_tool_config_type
+        )
+    )
+    assert tool_config_type == decoded_tool_config_type
+
+  @pytest.mark.parametrize(
+      'response_format_config_type_options',
+      _get_response_format_config_type_options()
+  )
+  def test_encode_decode_response_format_config_type(
+      self, response_format_config_type_options
+  ):
+    response_format_config_type = types.ResponseFormatConfigType(
+        **response_format_config_type_options
+    )
+    encoded_response_format_config_type = (
+        type_serializer.encode_response_format_config_type(
+            response_format_config_type=response_format_config_type
+        )
+    )
+    decoded_response_format_config_type = (
+        type_serializer.decode_response_format_config_type(
+            record=encoded_response_format_config_type
+        )
+    )
+    assert response_format_config_type == decoded_response_format_config_type
+
+  @pytest.mark.parametrize(
+      'feature_config_type_options', _get_feature_config_type_options()
+  )
+  def test_encode_decode_feature_config_type(
+      self, feature_config_type_options
+  ):
+    feature_config_type = types.FeatureConfigType(
+        **feature_config_type_options
+    )
+    encoded_feature_config_type = (
+        type_serializer.encode_feature_config_type(
+            feature_config_type=feature_config_type
+        )
+    )
+    decoded_feature_config_type = (
+        type_serializer.decode_feature_config_type(
+            record=encoded_feature_config_type
+        )
+    )
+    assert feature_config_type == decoded_feature_config_type
 
   @pytest.mark.parametrize(
       'provider_model_metadata_type_options',
@@ -1560,26 +1558,26 @@ class TestTypeSerializer:
     assert provider_model_metadata_type == decoded_provider_model_metadata_type
 
   @pytest.mark.parametrize(
-      'provider_model_config_type_options',
-      _get_provider_model_config_type_options()
+      'provider_model_config_options',
+      _get_provider_model_config_options()
   )
-  def test_encode_decode_provider_model_config_type(
-      self, provider_model_config_type_options
+  def test_encode_decode_provider_model_config(
+      self, provider_model_config_options
   ):
-    provider_model_config_type = types.ProviderModelConfigType(
-        **provider_model_config_type_options
+    provider_model_config = types.ProviderModelConfig(
+        **provider_model_config_options
     )
-    encoded_provider_model_config_type = (
-        type_serializer.encode_provider_model_config_type(
-            provider_model_config_type=provider_model_config_type
+    encoded_provider_model_config = (
+        type_serializer.encode_provider_model_config(
+            provider_model_config=provider_model_config
         )
     )
-    decoded_provider_model_config_type = (
-        type_serializer.decode_provider_model_config_type(
-            record=encoded_provider_model_config_type
+    decoded_provider_model_config = (
+        type_serializer.decode_provider_model_config(
+            record=encoded_provider_model_config
         )
     )
-    assert provider_model_config_type == decoded_provider_model_config_type
+    assert provider_model_config == decoded_provider_model_config
 
   @pytest.mark.parametrize(
       'model_configs_schema_metadata_type_options',
@@ -1608,150 +1606,121 @@ class TestTypeSerializer:
     )
 
   @pytest.mark.parametrize(
-      'model_configs_schema_version_config_type_options',
-      _get_model_configs_schema_version_config_type_options()
+      'model_registry_options', _get_model_registry_options()
   )
-  def test_encode_decode_model_configs_schema_version_config_type(
-      self, model_configs_schema_version_config_type_options
+  def test_encode_decode_model_registry(self, model_registry_options):
+    model_registry = types.ModelRegistry(**model_registry_options)
+    encoded_model_registry = (
+        type_serializer.encode_model_registry(
+            model_registry=model_registry
+        )
+    )
+    decoded_model_registry = (
+        type_serializer.decode_model_registry(
+            record=encoded_model_registry
+        )
+    )
+    assert model_registry == decoded_model_registry
+
+  @pytest.mark.parametrize(
+      'provider_model_configs_mapping_type_options',
+      _get_provider_model_configs_mapping_type_options()
+  )
+  def test_encode_decode_provider_model_configs_mapping_type(
+      self, provider_model_configs_mapping_type_options
   ):
-    model_configs_schema_version_config_type = (
-        types.ModelConfigsSchemaVersionConfigType(
-            **model_configs_schema_version_config_type_options
+    encoded_provider_model_configs_mapping_type = (
+        type_serializer.encode_provider_model_configs_mapping_type(
+            provider_model_configs=provider_model_configs_mapping_type_options
         )
     )
-    encoded_model_configs_schema_version_config_type = (
-        type_serializer.encode_model_configs_schema_version_config_type(
-            model_configs_schema_version_config_type=(
-                model_configs_schema_version_config_type
-            )
+    decoded_provider_model_configs_mapping_type = (
+        type_serializer.decode_provider_model_configs_mapping_type(
+            record=encoded_provider_model_configs_mapping_type
         )
     )
-    decoded_model_configs_schema_version_config_type = (
-        type_serializer.decode_model_configs_schema_version_config_type(
-            record=encoded_model_configs_schema_version_config_type
-        )
-    )
-    assert model_configs_schema_version_config_type == (
-        decoded_model_configs_schema_version_config_type
+    assert provider_model_configs_mapping_type_options == (
+        decoded_provider_model_configs_mapping_type
     )
 
   @pytest.mark.parametrize(
-      'model_configs_schema_type_options',
-      _get_model_configs_schema_type_options()
+      'featured_models_mapping_type_options',
+      _get_featured_models_mapping_type_options()
   )
-  def test_encode_decode_model_configs_schema_type(
-      self, model_configs_schema_type_options
+  def test_encode_decode_featured_models_mapping_type(
+      self, featured_models_mapping_type_options
   ):
-    model_configs_schema_type = types.ModelConfigsSchemaType(
-        **model_configs_schema_type_options
-    )
-    encoded_model_configs_schema_type = (
-        type_serializer.encode_model_configs_schema_type(
-            model_configs_schema_type=model_configs_schema_type
+    encoded_featured_models_mapping_type = (
+        type_serializer.encode_featured_models_mapping_type(
+            featured_models=featured_models_mapping_type_options
         )
     )
-    decoded_model_configs_schema_type = (
-        type_serializer.decode_model_configs_schema_type(
-            record=encoded_model_configs_schema_type
+    decoded_featured_models_mapping_type = (
+        type_serializer.decode_featured_models_mapping_type(
+            record=encoded_featured_models_mapping_type
         )
     )
-    assert model_configs_schema_type == decoded_model_configs_schema_type
-
-  @pytest.mark.parametrize(
-      'provider_model_configs_type_options',
-      _get_provider_model_configs_type_options()
-  )
-  def test_encode_decode_provider_model_configs_type(
-      self, provider_model_configs_type_options
-  ):
-    encoded_provider_model_configs_type = (
-        type_serializer.encode_provider_model_configs_type(
-            provider_model_configs=provider_model_configs_type_options
-        )
-    )
-    decoded_provider_model_configs_type = (
-        type_serializer.decode_provider_model_configs_type(
-            record=encoded_provider_model_configs_type
-        )
-    )
-    assert provider_model_configs_type_options == (
-        decoded_provider_model_configs_type
+    assert featured_models_mapping_type_options == (
+        decoded_featured_models_mapping_type
     )
 
   @pytest.mark.parametrize(
-      'featured_models_type_options', _get_featured_models_type_options()
+      'call_type_mapping_type_options',
+      _get_call_type_mapping_type_options()
   )
-  def test_encode_decode_featured_models_type(
-      self, featured_models_type_options
+  def test_encode_decode_call_type_mapping_type(
+      self, call_type_mapping_type_options
   ):
-    encoded_featured_models_type = (
-        type_serializer.encode_featured_models_type(
-            featured_models=featured_models_type_options
+    encoded_call_type_mapping_type = (
+        type_serializer.encode_call_type_mapping_type(
+            call_type_mapping=call_type_mapping_type_options
         )
     )
-    decoded_featured_models_type = (
-        type_serializer.decode_featured_models_type(
-            record=encoded_featured_models_type
+    decoded_call_type_mapping_type = (
+        type_serializer.decode_call_type_mapping_type(
+            record=encoded_call_type_mapping_type
         )
     )
-    assert featured_models_type_options == decoded_featured_models_type
+    assert call_type_mapping_type_options == decoded_call_type_mapping_type
 
   @pytest.mark.parametrize(
-      'models_by_call_type_type_options',
-      _get_models_by_call_type_type_options()
+      'model_size_mapping_type_options',
+      _get_model_size_mapping_type_options()
   )
-  def test_encode_decode_models_by_call_type_type(
-      self, models_by_call_type_type_options
+  def test_encode_decode_model_size_mapping_type(
+      self, model_size_mapping_type_options
   ):
-    encoded_models_by_call_type_type = (
-        type_serializer.encode_models_by_call_type_type(
-            models_by_call_type=models_by_call_type_type_options
+    encoded_model_size_mapping_type = (
+        type_serializer.encode_model_size_mapping_type(
+            model_size_mapping=model_size_mapping_type_options
         )
     )
-    decoded_models_by_call_type_type = (
-        type_serializer.decode_models_by_call_type_type(
-            record=encoded_models_by_call_type_type
+    decoded_model_size_mapping_type = (
+        type_serializer.decode_model_size_mapping_type(
+            record=encoded_model_size_mapping_type
         )
     )
-    assert models_by_call_type_type_options == decoded_models_by_call_type_type
+    assert model_size_mapping_type_options == decoded_model_size_mapping_type
 
   @pytest.mark.parametrize(
-      'models_by_size_type_options', _get_models_by_size_type_options()
+      'default_model_priority_list_options',
+      _get_default_model_priority_list_options()
   )
-  def test_encode_decode_models_by_size_type(self, models_by_size_type_options):
-    encoded_models_by_size_type = (
-        type_serializer.encode_models_by_size_type(
-            models_by_size=models_by_size_type_options
-        )
-    )
-    decoded_models_by_size_type = (
-        type_serializer.decode_models_by_size_type(
-            record=encoded_models_by_size_type
-        )
-    )
-    assert models_by_size_type_options == decoded_models_by_size_type
-
-  @pytest.mark.parametrize(
-      'default_model_priority_list_type_options',
-      _get_default_model_priority_list_type_options()
-  )
-  def test_encode_decode_default_model_priority_list_type(
-      self, default_model_priority_list_type_options
+  def test_encode_decode_default_model_priority_list(
+      self, default_model_priority_list_options
   ):
-    encoded_default_model_priority_list_type = (
-        type_serializer.encode_default_model_priority_list_type(
-            default_model_priority_list=(
-                default_model_priority_list_type_options
-            )
+    encoded_default_model_priority_list = (
+        type_serializer.encode_default_model_priority_list(
+            default_model_priority_list=default_model_priority_list_options
         )
     )
-    decoded_default_model_priority_list_type = (
-        type_serializer.decode_default_model_priority_list_type(
-            record=encoded_default_model_priority_list_type
+    decoded_default_model_priority_list = (
+        type_serializer.decode_default_model_priority_list(
+            record=encoded_default_model_priority_list
         )
     )
-    assert default_model_priority_list_type_options == (
-        decoded_default_model_priority_list_type
+    assert default_model_priority_list_options == (
+        decoded_default_model_priority_list
     )
 
   @pytest.mark.parametrize(
