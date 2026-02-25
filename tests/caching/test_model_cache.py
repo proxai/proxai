@@ -16,23 +16,23 @@ def _get_path_dir(temp_path: str):
   return path, temp_dir
 
 
-def _get_example_logging_record(
+def _get_example_call_record(
     model: types.ProviderModelType, response: str | None = None,
     error: str | None = None, long: bool = False
 ):
   end_utc_date = datetime.datetime.now(datetime.timezone.utc)
   if long:
     end_utc_date = end_utc_date - datetime.timedelta(days=1)
-  response_obj = None
-  if response is not None:
-    response_obj = types.Response(type=types.ResponseType.TEXT, value=response)
-  return types.LoggingRecord(
-      query_record=types.QueryRecord(
-          call_type=types.CallType.TEXT, prompt='hello',
+  return types.CallRecord(
+      query=types.QueryRecord(
+          prompt='hello',
           provider_model=model
-      ), response_record=types.QueryResponseRecord(
-          response=response_obj, error=error, end_utc_date=end_utc_date
-      )
+      ),
+      result=types.ResultRecord(
+          output_text=response,
+          error=error,
+          timestamp=types.TimeStampType(end_utc_date=end_utc_date),
+      ),
   )
 
 
@@ -40,19 +40,19 @@ def _get_example_model_status():
   data = types.ModelStatus()
   models = [
       pytest.model_configs_instance.get_provider_model(
-          ('openai', 'gpt-3.5-turbo')
+          ('mock_provider', 'mock_model')
       ),
-      pytest.model_configs_instance.get_provider_model(('claude', 'haiku-4.5')),
-      pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4')),
-      pytest.model_configs_instance.get_provider_model(('claude', 'opus-4')),
       pytest.model_configs_instance.get_provider_model(
-          ('openai', 'gpt-4.1-mini')
+          ('mock_failing_provider', 'mock_failing_model')
       ),
-      pytest.model_configs_instance.get_provider_model(('claude', 'sonnet-4')),
       pytest.model_configs_instance.get_provider_model(
-          ('gemini', 'gemini-3-pro')
+          ('mock_slow_provider', 'mock_slow_model')
       ),
-      pytest.model_configs_instance.get_provider_model(('cohere', 'command-r'))
+      pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4o')),
+      pytest.model_configs_instance.get_provider_model(('openai', 'o3')),
+      pytest.model_configs_instance.get_provider_model(('openai', 'dall-e-3')),
+      pytest.model_configs_instance.get_provider_model(('openai', 'sora-2')),
+      pytest.model_configs_instance.get_provider_model(('openai', 'tts-1')),
   ]
 
   data.unprocessed_models.add(models[0])
@@ -66,14 +66,14 @@ def _get_example_model_status():
 
   data.provider_queries = {
       models[2]:
-          _get_example_logging_record(models[2], response='model_2 response'),
+          _get_example_call_record(models[2], response='model_2 response'),
       models[3]:
-          _get_example_logging_record(
+          _get_example_call_record(
               models[3], response='model_3 response', long=True
           ),
-      models[4]: _get_example_logging_record(models[4], error='model_4 error'),
+      models[4]: _get_example_call_record(models[4], error='model_4 error'),
       models[5]:
-          _get_example_logging_record(
+          _get_example_call_record(
               models[5], error='model_5 error', long=True
           ),
   }
@@ -386,10 +386,10 @@ class TestModelCacheManager:
     updates.filtered_models.add(models[4])
     updates.provider_queries[
         models[0]
-    ] = _get_example_logging_record(models[0], response='model_0 response')
+    ] = _get_example_call_record(models[0], response='model_0 response')
     updates.provider_queries[
         models[2]
-    ] = _get_example_logging_record(models[2], error='model_2 error')
+    ] = _get_example_call_record(models[2], error='model_2 error')
 
     cache_manager.update(updates, types.CallType.TEXT)
     result_data = types.ModelStatus(
@@ -398,17 +398,17 @@ class TestModelCacheManager:
         failed_models={models[2], models[5]},
         filtered_models={models[4], models[7]}, provider_queries={
             models[0]:
-                _get_example_logging_record(
+                _get_example_call_record(
                     models[0], response='model_0 response'
                 ),
             models[2]:
-                _get_example_logging_record(models[2], error='model_2 error'),
+                _get_example_call_record(models[2], error='model_2 error'),
             models[3]:
-                _get_example_logging_record(
+                _get_example_call_record(
                     models[3], response='model_4 response', long=True
                 ),
             models[5]:
-                _get_example_logging_record(
+                _get_example_call_record(
                     models[5], error='model_6 error', long=True
                 ),
         }
@@ -422,7 +422,7 @@ class TestModelCacheManager:
               ) == set(result_data.provider_queries.keys())
     # Check model 2 provider query is updated
     assert updated_data.provider_queries[
-        models[2]].response_record.error == 'model_2 error'
+        models[2]].result.error == 'model_2 error'
 
   def test_update_invalid_provider_query(self):
     cache_path, temp_dir = _get_path_dir('test_cache')
@@ -435,9 +435,13 @@ class TestModelCacheManager:
     data, models = _get_example_model_status()
     cache_manager.update(data, types.CallType.TEXT)
 
+    invalid_model = types.ProviderModelType(
+        provider='nonexistent', model='nonexistent-model',
+        provider_model_identifier='nonexistent-model'
+    )
     with pytest.raises(
         ValueError, match=re.escape(
-            'Model (mistral, open-mistral-7b) is not in any of the '
+            f'Model {invalid_model} is not in any of the '
             'unprocessed, working, failed, or filtered models. Please provide '
             'the provider model in one of the sets when updating '
             'provider_queries.'
@@ -446,13 +450,9 @@ class TestModelCacheManager:
       cache_manager.update(
           types.ModelStatus(
               provider_queries={
-                  pytest.model_configs_instance.get_provider_model((
-                      'mistral', 'open-mistral-7b'
-                  )):
-                      _get_example_logging_record(
-                          pytest.model_configs_instance.get_provider_model((
-                              'mistral', 'open-mistral-7b'
-                          )), response='model_1 response'
+                  invalid_model:
+                      _get_example_call_record(
+                          invalid_model, response='model_1 response'
                       )
               }
           ), types.CallType.TEXT
