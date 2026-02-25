@@ -49,7 +49,7 @@ class ModelConfigs(state_controller.StateControlled):
   _featured_models: types.FeaturedModelsType | None
   _model_configs_state: types.ModelConfigsState | None
 
-  LOCAL_CONFIG_VERSION = "v1.1.2"
+  LOCAL_CONFIG_VERSION = "v1.2.0"
 
   def __init__(  # noqa: D107
       self,
@@ -60,28 +60,14 @@ class ModelConfigs(state_controller.StateControlled):
         init_from_params=init_from_params, init_from_state=init_from_state
     )
 
-    import datetime
-    model_registry = types.ModelRegistry(
-        metadata=types.ModelConfigsSchemaMetadataType(
-            version=ModelConfigs.LOCAL_CONFIG_VERSION,
-            released_at=datetime.datetime.now(),
-            min_proxai_version='>=2.3.0',
-            config_origin=types.ConfigOriginType.BUILT_IN,
-            release_notes='Multi modal refactoring.',
-        ),
-        provider_model_configs={},
-        default_model_priority_list=[],
-    )
-    self.model_registry = model_registry
-
-    # if init_from_state:
-    #   self.load_state(init_from_state)
-    # else:
-    #   if not init_from_params or init_from_params.model_registry is None:
-    #     model_registry = self._load_model_registry_from_local_files()
-    #   else:
-    #     model_registry = init_from_params.model_registry
-    #   self.model_registry = model_registry
+    if init_from_state:
+      self.load_state(init_from_state)
+    else:
+      if not init_from_params or init_from_params.model_registry is None:
+        model_registry = self._load_model_registry_from_local_files()
+      else:
+        model_registry = init_from_params.model_registry
+      self.model_registry = model_registry
 
   def get_internal_state_property_name(self):
     """Return the name of the internal state property."""
@@ -594,44 +580,44 @@ class ModelConfigs(state_controller.StateControlled):
         isinstance(value[0], str) and isinstance(value[1], str)
     )
 
-#   @staticmethod
-#   def _load_model_config_schema_from_local_files(
-#       version: str | None = None
-#   ) -> types.ModelConfigsSchemaType:
-#     """Load model config schema from bundled JSON files."""
-#     version = version or ModelConfigs.LOCAL_CONFIG_VERSION
+  @staticmethod
+  def _load_model_registry_from_local_files(
+      version: str | None = None
+  ) -> types.ModelRegistry:
+    """Load model registry from bundled JSON files."""
+    version = version or ModelConfigs.LOCAL_CONFIG_VERSION
 
-#     try:
-#       config_data = (
-#           resources.files("proxai.connectors.model_configs_data").
-#           joinpath(f"{version}.json").read_text(encoding="utf-8")
-#       )
-#     except FileNotFoundError as e:
-#       raise FileNotFoundError(
-#           f'Model config file "{version}.json" not found in package. '
-#           'Please update the proxai package to the latest version. '
-#           'If updating does not resolve the issue, please contact '
-#           'support@proxai.co'
-#       ) from e
+    try:
+      config_data = (
+          resources.files("proxai.connectors.model_configs_data").
+          joinpath(f"{version}.json").read_text(encoding="utf-8")
+      )
+    except FileNotFoundError as e:
+      raise FileNotFoundError(
+          f'Model config file "{version}.json" not found in package. '
+          'Please update the proxai package to the latest version. '
+          'If updating does not resolve the issue, please contact '
+          'support@proxai.co'
+      ) from e
 
-#     try:
-#       config_dict = json.loads(config_data)
-#     except json.JSONDecodeError as e:
-#       raise ValueError(
-#           f'Invalid JSON in config file "{version}.json". '
-#           'Please update the proxai package to the latest version. '
-#           'If updating does not resolve the issue, please contact '
-#           f'support@proxai.co\nError: {e}'
-#       ) from e
+    try:
+      config_dict = json.loads(config_data)
+    except json.JSONDecodeError as e:
+      raise ValueError(
+          f'Invalid JSON in config file "{version}.json". '
+          'Please update the proxai package to the latest version. '
+          'If updating does not resolve the issue, please contact '
+          f'support@proxai.co\nError: {e}'
+      ) from e
 
-#     return type_serializer.decode_model_configs_schema_type(config_dict)
+    return type_serializer.decode_model_registry(config_dict)
 
-#   def load_model_config_from_json_string(self, json_string: str):
-#     """Load model config schema from a JSON string."""
-#     model_configs_schema = type_serializer.decode_model_configs_schema_type(
-#         json.loads(json_string)
-#     )
-#     self.model_configs_schema = model_configs_schema
+  def load_model_registry_from_json_string(self, json_string: str):
+    """Load model registry from a JSON string."""
+    model_registry = type_serializer.decode_model_registry(
+        json.loads(json_string)
+    )
+    self.model_registry = model_registry
 
   def check_provider_model_identifier_type(
       self,
@@ -782,6 +768,51 @@ class ModelConfigs(state_controller.StateControlled):
         result_provider_models.append(provider_model_config.provider_model)
 
     return result_provider_models
+
+  def export_to_json(self, file_path: str):
+    """Export model registry to a JSON file with sorted keys."""
+    record = type_serializer.encode_model_registry(self.model_registry)
+
+    # Sort provider_model_configs recursively.
+    if 'provider_model_configs' in record:
+      record['provider_model_configs'] = self._sort_value(
+          record['provider_model_configs']
+      )
+
+    # Enforce key ordering.
+    ordered_record = {}
+    key_order = [
+        'metadata', 'default_model_priority_list', 'provider_model_configs'
+    ]
+    for key in key_order:
+      if key in record:
+        ordered_record[key] = record[key]
+    for key in record:
+      if key not in ordered_record:
+        ordered_record[key] = record[key]
+
+    with open(file_path, 'w') as f:
+      json.dump(ordered_record, f, indent=2)
+      f.write('\n')
+
+  @staticmethod
+  def _sort_value(value):
+    """Recursively sort dict keys and list values."""
+    if isinstance(value, dict):
+      return {
+          k: ModelConfigs._sort_value(v)
+          for k, v in sorted(value.items())
+      }
+    elif isinstance(value, list):
+      sorted_items = [ModelConfigs._sort_value(item) for item in value]
+      try:
+        return sorted(
+            sorted_items,
+            key=lambda x: json.dumps(x, sort_keys=True)
+        )
+      except TypeError:
+        return sorted_items
+    return value
 
 #   def get_default_model_priority_list(self) -> list[types.ProviderModelType]:
 #     """Return the default model priority list for fallback selection."""
