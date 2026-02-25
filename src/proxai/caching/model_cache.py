@@ -200,7 +200,7 @@ class ModelCacheManager(state_controller.StateControlled):
       provider_query = model_status.provider_queries[model]
       time_since_response = (
           datetime.datetime.now(datetime.timezone.utc) -
-          provider_query.response_record.end_utc_date
+          provider_query.result.timestamp.end_utc_date
       ).total_seconds()
       if time_since_response > self.cache_options.model_cache_duration:
         self._clean_model_from_tested_models(call_type=call_type, model=model)
