@@ -1048,28 +1048,6 @@ class ProxAIClient(state_controller.StateControlled):
       connection_options: types.ConnectionOptions | None = None,
       connection_metadata: types.ConnectionMetadata | None = None,
   ) -> types.CallRecord:
-    # BEGIN: Refactoring: Revert this after testing
-    if type(provider_model) == tuple and provider_model[0] != 'openai':
-      raise ValueError(
-          f'{provider_model} is not a valid provider model in refactoring')
-    if (type(provider_model) == types.ProviderModelType and
-        provider_model.provider != 'openai'):
-      raise ValueError(
-          f'{provider_model} is not a valid provider model in refactoring')
-
-    if type(provider_model) == tuple:
-      provider_model = types.ProviderModelType(
-          provider='openai',
-          model=provider_model[1],
-          provider_model_identifier=provider_model[1]
-      )
-    if type(provider_model) == types.ProviderModelType:
-      provider_model = types.ProviderModelType(
-          provider=provider_model.provider,
-          model=provider_model.model,
-          provider_model_identifier=provider_model.provider_model_identifier
-      )
-
     model_connector = self.available_models_instance.get_model_connector(
         provider_model_identifier=provider_model
     )
@@ -1084,7 +1062,6 @@ class ProxAIClient(state_controller.StateControlled):
         connection_options=connection_options,
         connection_metadata=connection_metadata,
     )
-    # END: Refactoring: Revert this after testing
 
   def generate(
       self,
@@ -1143,7 +1120,10 @@ class ProxAIClient(state_controller.StateControlled):
     connection_metadata = types.ConnectionMetadata(
         feature_mapping_strategy=self.feature_mapping_strategy)
     for idx, provider_model in enumerate(provider_models):
-      result_record = self._excute_model_connector_call(
+      model_connector = self.available_models_instance.get_model_connector(
+          provider_model_identifier=provider_model
+      )
+      result_record = model_connector.generate(
           prompt=prompt,
           messages=messages,
           system_prompt=system_prompt,
@@ -1154,6 +1134,17 @@ class ProxAIClient(state_controller.StateControlled):
           connection_options=connection_options,
           connection_metadata=connection_metadata,
       )
+      # result_record = self._excute_model_connector_call(
+      #     prompt=prompt,
+      #     messages=messages,
+      #     system_prompt=system_prompt,
+      #     provider_model=provider_model,
+      #     parameters=parameters,
+      #     tools=tools,
+      #     response_format=response_format,
+      #     connection_options=connection_options,
+      #     connection_metadata=connection_metadata,
+      # )
       if result_record.result.status == types.ResultStatusType.SUCCESS:
         return result_record
       if idx == 0:

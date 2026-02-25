@@ -8,7 +8,7 @@ import proxai.types as types
 
 
 _DEFAULT_MODEL = ('openai', 'gpt-4o')
-_NON_EXISTENT_MODEL = ('openai', 'non_existent_model')
+_FAILING_MODEL = ('mock_failing_provider', 'mock_failing_model')
 _THINKING_MODEL = ('openai', 'o3')
 _IMAGE_MODEL = ('openai', 'dall-e-3')
 _AUDIO_MODEL = ('openai', 'tts-1')
@@ -167,6 +167,105 @@ def register_models(px_client: px.Client):
           metadata=types.ProviderModelMetadataType(
               call_type=types.CallType.VIDEO,
               is_featured=True,
+              model_size_tags=[],
+          ),
+      )
+  )
+
+  model_configs.register_provider_model_config(
+      provider_model_config=types.ProviderModelConfig(
+          provider_model=types.ProviderModelType(
+              provider='mock_provider',
+              model='mock_model',
+              provider_model_identifier='mock_model',
+          ),
+          pricing=types.ProviderModelPricingType(
+              input_token_cost=0.0,
+              output_token_cost=0.0,
+          ),
+          features=types.FeatureConfigType(
+              prompt=types.FeatureSupportType.SUPPORTED,
+              messages=types.FeatureSupportType.SUPPORTED,
+              system_prompt=types.FeatureSupportType.SUPPORTED,
+              parameters=types.ParameterConfigType(
+                  temperature=types.FeatureSupportType.SUPPORTED,
+                  max_tokens=types.FeatureSupportType.SUPPORTED,
+              ),
+              response_format=types.ResponseFormatConfigType(
+                  text=types.FeatureSupportType.SUPPORTED,
+                  json=types.FeatureSupportType.SUPPORTED,
+                  pydantic=types.FeatureSupportType.SUPPORTED,
+              ),
+          ),
+          metadata=types.ProviderModelMetadataType(
+              call_type=types.CallType.TEXT,
+              is_featured=False,
+              model_size_tags=[],
+          ),
+      )
+  )
+
+  model_configs.register_provider_model_config(
+      provider_model_config=types.ProviderModelConfig(
+          provider_model=types.ProviderModelType(
+              provider='mock_failing_provider',
+              model='mock_failing_model',
+              provider_model_identifier='mock_failing_model',
+          ),
+          pricing=types.ProviderModelPricingType(
+              input_token_cost=0.0,
+              output_token_cost=0.0,
+          ),
+          features=types.FeatureConfigType(
+              prompt=types.FeatureSupportType.SUPPORTED,
+              messages=types.FeatureSupportType.SUPPORTED,
+              system_prompt=types.FeatureSupportType.SUPPORTED,
+              parameters=types.ParameterConfigType(
+                  temperature=types.FeatureSupportType.SUPPORTED,
+                  max_tokens=types.FeatureSupportType.SUPPORTED,
+              ),
+              response_format=types.ResponseFormatConfigType(
+                  text=types.FeatureSupportType.SUPPORTED,
+                  json=types.FeatureSupportType.SUPPORTED,
+                  pydantic=types.FeatureSupportType.SUPPORTED,
+              ),
+          ),
+          metadata=types.ProviderModelMetadataType(
+              call_type=types.CallType.TEXT,
+              is_featured=False,
+              model_size_tags=[],
+          ),
+      )
+  )
+
+  model_configs.register_provider_model_config(
+      provider_model_config=types.ProviderModelConfig(
+          provider_model=types.ProviderModelType(
+              provider='mock_slow_provider',
+              model='mock_slow_model',
+              provider_model_identifier='mock_slow_model',
+          ),
+          pricing=types.ProviderModelPricingType(
+              input_token_cost=0.0,
+              output_token_cost=0.0,
+          ),
+          features=types.FeatureConfigType(
+              prompt=types.FeatureSupportType.SUPPORTED,
+              messages=types.FeatureSupportType.SUPPORTED,
+              system_prompt=types.FeatureSupportType.SUPPORTED,
+              parameters=types.ParameterConfigType(
+                  temperature=types.FeatureSupportType.SUPPORTED,
+                  max_tokens=types.FeatureSupportType.SUPPORTED,
+              ),
+              response_format=types.ResponseFormatConfigType(
+                  text=types.FeatureSupportType.SUPPORTED,
+                  json=types.FeatureSupportType.SUPPORTED,
+                  pydantic=types.FeatureSupportType.SUPPORTED,
+              ),
+          ),
+          metadata=types.ProviderModelMetadataType(
+              call_type=types.CallType.TEXT,
+              is_featured=False,
               model_size_tags=[],
           ),
       )
@@ -432,7 +531,7 @@ def connection_options_fallback_test():
       prompt='What is 2 + 2?',
       provider_model=_DEFAULT_MODEL,
       connection_options=px.ConnectionOptions(
-          fallback_models=[_NON_EXISTENT_MODEL]))
+          fallback_models=[_FAILING_MODEL]))
   _assert_text_content(result)
   assert not result.connection.failed_fallback_models
   assert result.query.provider_model.provider_model_identifier == 'gpt-4o'
@@ -440,19 +539,20 @@ def connection_options_fallback_test():
   # Primary model fails, fallback succeeds.
   result = px.generate(
       prompt='What is 2 + 2?',
-      provider_model=_NON_EXISTENT_MODEL,
+      provider_model=_FAILING_MODEL,
       connection_options=px.ConnectionOptions(
           fallback_models=[_DEFAULT_MODEL]))
   _assert_text_content(result)
-  assert result.connection.failed_fallback_models == [_NON_EXISTENT_MODEL]
-  assert result.query.provider_model.provider_model_identifier == 'gpt-4o'
+  assert result.connection.failed_fallback_models[
+      0].provider == _FAILING_MODEL[0]
+  assert result.query.provider_model.provider_model_identifier == _DEFAULT_MODEL[1]
 
 
 def connection_options_suppress_provider_errors_test():
   print('> connection_options_suppress_provider_errors_test')
   result = px.generate(
       prompt='What is 2 + 2?',
-      provider_model=_NON_EXISTENT_MODEL,
+      provider_model=_FAILING_MODEL,
       connection_options=px.ConnectionOptions(
           suppress_provider_errors=True))
   assert result.result is not None
@@ -496,29 +596,121 @@ def connection_options_endpoint_test():
     assert 'not.existent.endpoint' in str(e)
   
 
+def cache_test():
+  print('> cache_test')
+  if os.path.exists(os.path.expanduser('~/temp/proxai_cache/')):
+    shutil.rmtree(os.path.expanduser('~/temp/proxai_cache/'))
+  os.makedirs(os.path.expanduser('~/temp/proxai_cache/'), exist_ok=True)
+  client = px.Client(
+      cache_options=px.CacheOptions(
+          cache_path=os.path.expanduser('~/temp/proxai_cache/'),
+          unique_response_limit=2
+      )
+  )
+  register_models(client)
+
+  result = client.generate(
+      prompt='What is 2 + 2?',
+      provider_model=_DEFAULT_MODEL)
+  _assert_text_content(result)
+  assert result.connection is not None
+  assert result.connection.cache_hit == False
+  assert result.connection.result_source == types.ResultSource.PROVIDER
+
+  result = client.generate(
+      prompt='What is 2 + 2?',
+      provider_model=_DEFAULT_MODEL)
+  _assert_text_content(result)
+  assert result.connection is not None
+  assert result.connection.cache_hit == False
+  assert result.connection.result_source == types.ResultSource.PROVIDER
+
+  result = client.generate(
+      prompt='What is 2 + 2?',
+      provider_model=_DEFAULT_MODEL)
+  _assert_text_content(result)
+  assert result.connection is not None
+  assert result.connection.cache_hit == True
+  assert result.connection.result_source == types.ResultSource.CACHE
+
 
 def connection_options_skip_cache_test():
   print('> connection_options_skip_cache_test')
-  result = px.generate(
+  if os.path.exists(os.path.expanduser('~/temp/proxai_cache/')):
+    shutil.rmtree(os.path.expanduser('~/temp/proxai_cache/'))
+  os.makedirs(os.path.expanduser('~/temp/proxai_cache/'), exist_ok=True)
+  client = px.Client(
+      cache_options=px.CacheOptions(
+          cache_path=os.path.expanduser('~/temp/proxai_cache/')))
+  register_models(client)
+
+  result = client.generate(
+      prompt='What is 2 + 2?',
+      provider_model=_DEFAULT_MODEL)
+  _assert_text_content(result)
+  assert result.connection is not None
+  assert result.connection.cache_hit == False
+  assert result.connection.result_source == types.ResultSource.PROVIDER
+
+  result = client.generate(
       prompt='What is 2 + 2?',
       provider_model=_DEFAULT_MODEL,
       connection_options=px.ConnectionOptions(
           skip_cache=True))
   _assert_text_content(result)
   assert result.connection is not None
+  assert result.connection.cache_hit == False
   assert result.connection.result_source == types.ResultSource.PROVIDER
+
+  result = client.generate(
+      prompt='What is 2 + 2?',
+      provider_model=_DEFAULT_MODEL)
+  _assert_text_content(result)
+  assert result.connection is not None
+  assert result.connection.cache_hit == True
+  assert result.connection.result_source == types.ResultSource.CACHE
 
 
 def connection_options_override_cache_value_test():
   print('> connection_options_override_cache_value_test')
-  result = px.generate(
-      prompt='What is 2 + 2?',
+  if os.path.exists(os.path.expanduser('~/temp/proxai_cache/')):
+    shutil.rmtree(os.path.expanduser('~/temp/proxai_cache/'))
+  os.makedirs(os.path.expanduser('~/temp/proxai_cache/'), exist_ok=True)
+  client = px.Client(
+      cache_options=px.CacheOptions(
+          cache_path=os.path.expanduser('~/temp/proxai_cache/')))
+  register_models(client)
+
+  result_1 = client.generate(
+      prompt='Write me poem about karadeniz. Make it perfect.',
+      parameters=px.ParameterType(temperature=0.5),
+      provider_model=_DEFAULT_MODEL)
+  _assert_text_content(result_1)
+  assert result_1.connection is not None
+  assert result_1.connection.cache_hit == False
+  assert result_1.connection.result_source == types.ResultSource.PROVIDER
+
+  result_2 = client.generate(
+      prompt='Write me poem about karadeniz. Make it perfect.',
+      parameters=px.ParameterType(temperature=0.5),
       provider_model=_DEFAULT_MODEL,
       connection_options=px.ConnectionOptions(
           override_cache_value=True))
-  _assert_text_content(result)
-  assert result.connection is not None
-  assert result.connection.result_source == types.ResultSource.PROVIDER
+  _assert_text_content(result_2)
+  assert result_2.connection is not None
+  assert result_2.connection.cache_hit == False
+  assert result_2.connection.result_source == types.ResultSource.PROVIDER
+  assert result_1.result.output_text != result_2.result.output_text
+
+  result_3 = client.generate(
+      prompt='Write me poem about karadeniz. Make it perfect.',
+      parameters=px.ParameterType(temperature=0.5),
+      provider_model=_DEFAULT_MODEL)
+  _assert_text_content(result_3)
+  assert result_3.connection is not None
+  assert result_3.connection.cache_hit == True
+  assert result_3.connection.result_source == types.ResultSource.CACHE
+  assert result_2.result.output_text == result_3.result.output_text
 
 
 def images_generate_test():
@@ -558,47 +750,6 @@ def video_generate_test():
     f.write(result.result.output_video.data)
 
 
-def cache_test():
-  print('> cache_test')
-  if os.path.exists(os.path.expanduser('~/temp/proxai_cache/')):
-    shutil.rmtree(os.path.expanduser('~/temp/proxai_cache/'))
-  os.makedirs(os.path.expanduser('~/temp/proxai_cache/'), exist_ok=True)
-  client = px.Client(
-      cache_options=px.CacheOptions(
-          cache_path=os.path.expanduser('~/temp/proxai_cache/'),
-          unique_response_limit=2
-      )
-  )
-  register_models(client)
-
-  result = client.generate(
-      prompt='What is 2 + 2?',
-      provider_model=_DEFAULT_MODEL)
-  _assert_text_content(result)
-  # pprint(result)
-  assert result.connection is not None
-  assert result.connection.cache_hit == False
-  assert result.connection.result_source == types.ResultSource.PROVIDER
-
-  result = client.generate(
-      prompt='What is 2 + 2?',
-      provider_model=_DEFAULT_MODEL)
-  _assert_text_content(result)
-  # pprint(result)
-  assert result.connection is not None
-  assert result.connection.cache_hit == False
-  assert result.connection.result_source == types.ResultSource.PROVIDER
-
-  result = client.generate(
-      prompt='What is 2 + 2?',
-      provider_model=_DEFAULT_MODEL)
-  # pprint(result)
-  _assert_text_content(result)
-  assert result.connection is not None
-  assert result.connection.cache_hit == True
-  assert result.connection.result_source == types.ResultSource.CACHE
-
-
 def main():
   register_models(px.get_default_proxai_client())
 
@@ -615,15 +766,17 @@ def main():
   response_format_text_test()
   response_format_json_test()
   response_format_pydantic_test()
-#   connection_options_fallback_test()
-#   connection_options_suppress_provider_errors_test()
+  connection_options_fallback_test()
+  connection_options_suppress_provider_errors_test()
   connection_options_endpoint_test()
-  # # connection_options_skip_cache_test()
+  cache_test()
+  connection_options_skip_cache_test()
+  # NOTE: There is a bug in the cache implementation. Comment in when fixed.
   # # connection_options_override_cache_value_test()
   images_generate_test()
   audio_generate_test()
+  # NOTE: Video test is too slow. Comment in when needed.
   # video_generate_test()
-  cache_test()
 
 if __name__ == '__main__':
   main()
