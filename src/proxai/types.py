@@ -751,7 +751,7 @@ class ProviderModelState(StateContainer):
 
   provider_model: ProviderModelType | None = None
   run_type: RunType | None = None
-  provider_model_config: ProviderModelConfigType | None = None
+  provider_model_config: ProviderModelConfig | None = None
   feature_mapping_strategy: FeatureMappingStrategy | None = None
   query_cache_manager: QueryCacheManagerState | None = None
   logging_options: LoggingOptions | None = None
