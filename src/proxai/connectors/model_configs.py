@@ -18,18 +18,18 @@ import proxai.types as types
 _MODEL_CONFIGS_STATE_PROPERTY = '_model_configs_state'
 
 PROVIDER_KEY_MAP: dict[str, tuple[str]] = MappingProxyType({
-    'claude': ('ANTHROPIC_API_KEY',),
-    'cohere': ('CO_API_KEY',),
-    'databricks': ('DATABRICKS_TOKEN', 'DATABRICKS_HOST'),
-    'deepseek': ('DEEPSEEK_API_KEY',),
-    'gemini': ('GEMINI_API_KEY',),
-    'grok': ('XAI_API_KEY',),
-    'huggingface': ('HF_TOKEN',),
-    'mistral': ('MISTRAL_API_KEY',),
+    # 'claude': ('ANTHROPIC_API_KEY',),
+    # 'cohere': ('CO_API_KEY',),
+    # 'databricks': ('DATABRICKS_TOKEN', 'DATABRICKS_HOST'),
+    # 'deepseek': ('DEEPSEEK_API_KEY',),
+    # 'gemini': ('GEMINI_API_KEY',),
+    # 'grok': ('XAI_API_KEY',),
+    # 'huggingface': ('HF_TOKEN',),
+    # 'mistral': ('MISTRAL_API_KEY',),
     'openai': ('OPENAI_API_KEY',),
-    'mock_provider': ('MOCK_PROVIDER_API_KEY',),
-    'mock_failing_provider': ('MOCK_FAILING_PROVIDER',),
-    'mock_slow_provider': ('MOCK_SLOW_PROVIDER',),
+    # 'mock_provider': ('MOCK_PROVIDER_API_KEY',),
+    # 'mock_failing_provider': ('MOCK_FAILING_PROVIDER',),
+    # 'mock_slow_provider': ('MOCK_SLOW_PROVIDER',),
 })
 
 
@@ -37,13 +37,16 @@ PROVIDER_KEY_MAP: dict[str, tuple[str]] = MappingProxyType({
 class ModelConfigsParams:
   """Initialization parameters for ModelConfigs."""
 
-  model_configs_schema: types.ModelConfigsSchemaType | None = None
+  model_registry: types.ModelRegistry | None = None
 
 
 class ModelConfigs(state_controller.StateControlled):
   """Manages model configuration schemas and validation."""
 
-  _model_configs_schema: types.ModelConfigsSchemaType | None
+  _model_registry: types.ModelRegistry | None
+  _models_by_call_type: types.CallTypeMappingType | None
+  _models_by_model_size: types.ModelSizeMappingType | None
+  _featured_models: types.FeaturedModelsType | None
   _model_configs_state: types.ModelConfigsState | None
 
   LOCAL_CONFIG_VERSION = "v1.1.2"
@@ -57,14 +60,28 @@ class ModelConfigs(state_controller.StateControlled):
         init_from_params=init_from_params, init_from_state=init_from_state
     )
 
-    if init_from_state:
-      self.load_state(init_from_state)
-    else:
-      if not init_from_params or init_from_params.model_configs_schema is None:
-        model_configs_schema = self._load_model_config_schema_from_local_files()
-      else:
-        model_configs_schema = init_from_params.model_configs_schema
-      self.model_configs_schema = model_configs_schema
+    import datetime
+    model_registry = types.ModelRegistry(
+        metadata=types.ModelConfigsSchemaMetadataType(
+            version=ModelConfigs.LOCAL_CONFIG_VERSION,
+            released_at=datetime.datetime.now(),
+            min_proxai_version='>=2.3.0',
+            config_origin=types.ConfigOriginType.BUILT_IN,
+            release_notes='Multi modal refactoring.',
+        ),
+        provider_model_configs={},
+        default_model_priority_list=[],
+    )
+    self.model_registry = model_registry
+
+    # if init_from_state:
+    #   self.load_state(init_from_state)
+    # else:
+    #   if not init_from_params or init_from_params.model_registry is None:
+    #     model_registry = self._load_model_registry_from_local_files()
+    #   else:
+    #     model_registry = init_from_params.model_registry
+    #   self.model_registry = model_registry
 
   def get_internal_state_property_name(self):
     """Return the name of the internal state property."""
@@ -75,400 +92,501 @@ class ModelConfigs(state_controller.StateControlled):
     return types.ModelConfigsState
 
   @property
-  def model_configs_schema(self) -> types.ModelConfigsSchemaType:
-    return self.get_property_value('model_configs_schema')
+  def model_registry(self) -> types.ModelRegistry:
+    return self.get_property_value('model_registry')
 
-  @model_configs_schema.setter
-  def model_configs_schema(self, value: types.ModelConfigsSchemaType):
-    internal_value = self.get_property_internal_state_value(
-        'model_configs_schema'
-    )
-    if internal_value != value:
-      self._validate_model_configs_schema(value)
-    self.set_property_value('model_configs_schema', value)
+  @model_registry.setter
+  def model_registry(self, value: types.ModelRegistry):
+    self.set_property_value('model_registry', value)
 
-  def _validate_min_proxai_version(self, min_proxai_version: str | None):
-    if min_proxai_version is None:
-      return
+  @property
+  def models_by_call_type(self) -> types.CallTypeMappingType:
+    return self.get_property_value('models_by_call_type')
 
-    current_version = version("proxai")
+  @models_by_call_type.setter
+  def models_by_call_type(self, value: types.CallTypeMappingType):
+    self.set_property_value('models_by_call_type', value)
 
-    try:
-      specifier_set = SpecifierSet(min_proxai_version)
-      current = Version(current_version)
+  @property
+  def models_by_model_size(self) -> types.ModelSizeMappingType:
+    return self.get_property_value('models_by_model_size')
 
-      if not specifier_set.contains(current):
-        raise ValueError(
-            f'Current proxai version ({current_version}) does not satisfy '
-            f'the minimum version requirement: {min_proxai_version}. '
-            f'Please upgrade proxai to a version that satisfies this '
-            f'requirement.'
-        )
-    except InvalidSpecifier as e:
+  @models_by_model_size.setter
+  def models_by_model_size(self, value: types.ModelSizeMappingType):
+    self.set_property_value('models_by_model_size', value)
+
+  @property
+  def featured_models(self) -> types.FeaturedModelsType:
+    return self.get_property_value('featured_models')
+
+  @featured_models.setter
+  def featured_models(self, value: types.FeaturedModelsType):
+    self.set_property_value('featured_models', value)
+
+  def register_provider_model_config(
+      self,
+      provider_model_config: types.ProviderModelConfig):
+    provider = provider_model_config.provider_model.provider
+    model = provider_model_config.provider_model.model
+    if provider not in self.model_registry.provider_model_configs:
+      self.model_registry.provider_model_configs[provider] = {}
+    if model in self.model_registry.provider_model_configs[provider]:
       raise ValueError(
-          f'Model configs schema metadata min_proxai_version is invalid. '
-          f'Min proxai version specifier: {min_proxai_version}. '
-          f'Error: {e}'
-      ) from e
-    except InvalidVersion as e:
+          f'Model {model} already registered for provider {provider}. '
+          'Please use a different model or delete the existing model.'
+      )
+    self.model_registry.provider_model_configs[
+        provider][model] = provider_model_config
+
+    call_type = provider_model_config.metadata.call_type
+    if not self.models_by_call_type:
+      self.models_by_call_type = {}
+    if call_type not in self.models_by_call_type:
+      self.models_by_call_type[call_type] = []
+    self.models_by_call_type[call_type].append(
+        provider_model_config.provider_model)
+
+    if not self.models_by_model_size:
+        self.models_by_model_size = {}
+    for model_size_tag in provider_model_config.metadata.model_size_tags:
+      if model_size_tag not in self.models_by_model_size:
+        self.models_by_model_size[model_size_tag] = []
+      self.models_by_model_size[model_size_tag].append(
+          provider_model_config.provider_model
+      )
+
+    if not self.featured_models:
+      self.featured_models = {}
+    if provider_model_config.metadata.is_featured:
+      if provider not in self.featured_models:
+        self.featured_models[provider] = []
+      self.featured_models[provider].append(
+          provider_model_config.provider_model
+      )
+
+  def unregister_model(
+      self,
+      provider_model: types.ProviderModelType):
+    provider = provider_model.provider
+    model = provider_model.model
+    if provider not in self.model_registry.provider_model_configs:
       raise ValueError(
-          f'Current proxai version ({current_version}) is invalid. '
-          f'Error: {e}'
-      ) from e
-
-  def _validate_model_configs_schema_metadata(
-      self, model_configs_schema_metadata: types.ModelConfigsSchemaMetadataType
-  ):
-    self._validate_min_proxai_version(
-        model_configs_schema_metadata.min_proxai_version
-    )
-
-  def _get_provider_model_key(
-      self, provider_model: types.ProviderModelIdentifierType
-  ) -> tuple[str, str]:
-    """Extract (provider, model) tuple from any provider model identifier."""
-    if isinstance(provider_model, types.ProviderModelType):
-      return (provider_model.provider, provider_model.model)
-    elif self._is_provider_model_tuple(provider_model):
-      return (provider_model[0], provider_model[1])
-    raise ValueError(f'Invalid provider model identifier: {provider_model}')
-
-  def _get_all_featured_models_from_configs(
-      self, provider_model_configs: types.ProviderModelConfigsType
-  ) -> set[tuple[str, str]]:
-    """Get (provider, model) tuples for all featured models in configs."""
-    featured = set()
-    for provider, models in provider_model_configs.items():
-      for model_name, config in models.items():
-        if config.metadata and config.metadata.is_featured:
-          featured.add((provider, model_name))
-    return featured
-
-  def _get_all_models_by_call_type_from_configs(
-      self, provider_model_configs: types.ProviderModelConfigsType
-  ) -> dict[types.CallType, set[tuple[str, str]]]:
-    """Get models grouped by call_type from configs."""
-    by_call_type: dict[types.CallType, set[tuple[str, str]]] = {}
-    for provider, models in provider_model_configs.items():
-      for model_name, config in models.items():
-        if config.metadata and config.metadata.call_type:
-          call_type = config.metadata.call_type
-          if call_type not in by_call_type:
-            by_call_type[call_type] = set()
-          by_call_type[call_type].add((provider, model_name))
-    return by_call_type
-
-  def _get_all_models_by_size_from_configs(
-      self, provider_model_configs: types.ProviderModelConfigsType
-  ) -> dict[types.ModelSizeType, set[tuple[str, str]]]:
-    """Get models grouped by size from configs."""
-    by_size: dict[types.ModelSizeType, set[tuple[str, str]]] = {}
-    for provider, models in provider_model_configs.items():
-      for model_name, config in models.items():
-        if config.metadata and config.metadata.model_size_tags:
-          for size_tag in config.metadata.model_size_tags:
-            if size_tag not in by_size:
-              by_size[size_tag] = set()
-            by_size[size_tag].add((provider, model_name))
-    return by_size
-
-  def _validate_provider_model_key_matches_config(
-      self, provider_key: str, model_key: str,
-      config: types.ProviderModelConfigType
-  ):
-    """Validate provider_model fields match the dict keys."""
-    if config.provider_model is None:
+          f'Provider {provider} not registered.'
+      )
+    if model not in self.model_registry.provider_model_configs[provider]:
       raise ValueError(
-          f'provider_model is None for config at '
-          f'provider_model_configs[{provider_key}][{model_key}]'
+          f'Model {model} not registered for provider {provider}.'
       )
-
-    if config.provider_model.provider != provider_key:
+    
+    provider_model_config = self.model_registry.provider_model_configs[
+        provider][model]
+    if (provider_model_config.provider_model.provider_model_identifier !=
+        provider_model.provider_model_identifier):
       raise ValueError(
-          f'Provider mismatch: config key is "{provider_key}" but '
-          f'provider_model.provider is "{config.provider_model.provider}"'
+          'Provider model identifier mismatch: '
+          f'{provider_model_config.provider_model.provider_model_identifier} '
+          f'!= {provider_model.provider_model_identifier}')
+    
+    call_type = provider_model_config.metadata.call_type
+    if call_type in self.models_by_call_type:
+      self.models_by_call_type[call_type].remove(
+          provider_model
       )
-
-    if config.provider_model.model != model_key:
-      raise ValueError(
-          f'Model mismatch: config key is "{model_key}" but '
-          f'provider_model.model is "{config.provider_model.model}"'
-      )
-
-  def _validate_pricing(
-      self, provider_key: str, model_key: str,
-      pricing: types.ProviderModelPricingType
-  ):
-    """Validate pricing values are non-negative."""
-    if pricing is None:
-      raise ValueError(
-          f'pricing is None for '
-          f'provider_model_configs[{provider_key}][{model_key}]'
-      )
-
-    if (
-        pricing.per_query_token_cost is not None and
-        pricing.per_query_token_cost < 0
-    ):
-      raise ValueError(
-          f'per_query_token_cost is negative ({pricing.per_query_token_cost}) '
-          f'for provider_model_configs[{provider_key}][{model_key}]'
-      )
-
-    if (
-        pricing.per_response_token_cost is not None and
-        pricing.per_response_token_cost < 0
-    ):
-      raise ValueError(
-          f'per_response_token_cost is negative '
-          f'({pricing.per_response_token_cost}) for '
-          f'provider_model_configs[{provider_key}][{model_key}]'
-      )
-
-  def _validate_model_size_tags(
-      self, provider_key: str, model_key: str,
-      model_size_tags: list[types.ModelSizeType]
-  ):
-    """Validate model_size_tags contains only valid ModelSizeType values."""
-    valid_sizes = set(types.ModelSizeType)
-    for tag in model_size_tags:
-      if tag not in valid_sizes:
-        raise ValueError(
-            f'Invalid model_size_tag "{tag}" for '
-            f'provider_model_configs[{provider_key}][{model_key}]. '
-            f'Valid values: {[s.value for s in types.ModelSizeType]}'
+    for model_size_tag in provider_model_config.metadata.model_size_tags:
+      if model_size_tag in self.models_by_model_size:
+        self.models_by_model_size[model_size_tag].remove(
+            provider_model
+        )
+    if provider_model_config.metadata.is_featured:
+      if provider in self.featured_models:
+        self.featured_models[provider].remove(
+            provider_model
         )
 
-  def _validate_features(
-      self, provider_key: str, model_key: str,
-      features: types.ProviderModelFeatureType
-  ):
-    """Validate supported, best_effort, and not_supported are disjoint."""
-    if features is None:
-      return
+    del self.model_registry.provider_model_configs[provider][model]
 
-    for feature_name, feature in features.items():
-      supported = set(feature.supported or [])
-      best_effort = set(feature.best_effort or [])
-      not_supported = set(feature.not_supported or [])
+#   def _validate_min_proxai_version(self, min_proxai_version: str | None):
+#     if min_proxai_version is None:
+#       return
 
-      supported_best_effort = supported & best_effort
-      if supported_best_effort:
-        raise ValueError(
-            f'Features {supported_best_effort} appear in both SUPPORTED and '
-            'BEST_EFFORT for provider_model_configs for '
-            f'({provider_key}, {model_key})\n'
-            f'Feature name: {feature_name}\n'
-            f'Feature config: {feature}'
-        )
+#     current_version = version("proxai")
 
-      supported_not_supported = supported & not_supported
-      if supported_not_supported:
-        raise ValueError(
-            f'Features {supported_not_supported} appear in both SUPPORTED and '
-            'NOT_SUPPORTED for provider_model_configs for '
-            f'({provider_key}, {model_key})\n'
-            f'Feature name: {feature_name}\n'
-            f'Feature config: {feature}'
-        )
+#     try:
+#       specifier_set = SpecifierSet(min_proxai_version)
+#       current = Version(current_version)
 
-      best_effort_not_supported = best_effort & not_supported
-      if best_effort_not_supported:
-        raise ValueError(
-            f'Features {best_effort_not_supported} appear in both '
-            'BEST_EFFORT and NOT_SUPPORTED for provider_model_configs for '
-            f'({provider_key}, {model_key})\n'
-            f'Feature name: {feature_name}\n'
-            f'Feature config: {feature}'
-        )
+#       if not specifier_set.contains(current):
+#         raise ValueError(
+#             f'Current proxai version ({current_version}) does not satisfy '
+#             f'the minimum version requirement: {min_proxai_version}. '
+#             f'Please upgrade proxai to a version that satisfies this '
+#             f'requirement.'
+#         )
+#     except InvalidSpecifier as e:
+#       raise ValueError(
+#           f'Model configs schema metadata min_proxai_version is invalid. '
+#           f'Min proxai version specifier: {min_proxai_version}. '
+#           f'Error: {e}'
+#       ) from e
+#     except InvalidVersion as e:
+#       raise ValueError(
+#           f'Current proxai version ({current_version}) is invalid. '
+#           f'Error: {e}'
+#       ) from e
 
-  def _validate_provider_model_config(
-      self, provider_key: str, model_key: str,
-      config: types.ProviderModelConfigType
-  ):
-    """Validate a single ProviderModelConfigType."""
-    self._validate_provider_model_key_matches_config(
-        provider_key, model_key, config
-    )
+#   def _validate_model_configs_schema_metadata(
+#       self, model_configs_schema_metadata: types.ModelConfigsSchemaMetadataType
+#   ):
+#     self._validate_min_proxai_version(
+#         model_configs_schema_metadata.min_proxai_version
+#     )
 
-    self._validate_pricing(provider_key, model_key, config.pricing)
+#   def _get_provider_model_key(
+#       self, provider_model: types.ProviderModelIdentifierType
+#   ) -> tuple[str, str]:
+#     """Extract (provider, model) tuple from any provider model identifier."""
+#     if isinstance(provider_model, types.ProviderModelType):
+#       return (provider_model.provider, provider_model.model)
+#     elif self._is_provider_model_tuple(provider_model):
+#       return (provider_model[0], provider_model[1])
+#     raise ValueError(f'Invalid provider model identifier: {provider_model}')
 
-    self._validate_features(provider_key, model_key, config.features)
+#   def _get_all_featured_models_from_configs(
+#       self, provider_model_configs: types.ProviderModelConfigsType
+#   ) -> set[tuple[str, str]]:
+#     """Get (provider, model) tuples for all featured models in configs."""
+#     featured = set()
+#     for provider, models in provider_model_configs.items():
+#       for model_name, config in models.items():
+#         if config.metadata and config.metadata.is_featured:
+#           featured.add((provider, model_name))
+#     return featured
 
-    if (config.metadata and config.metadata.model_size_tags is not None):
-      self._validate_model_size_tags(
-          provider_key, model_key, config.metadata.model_size_tags
-      )
+#   def _get_all_models_by_call_type_from_configs(
+#       self, provider_model_configs: types.ProviderModelConfigsType
+#   ) -> dict[types.CallType, set[tuple[str, str]]]:
+#     """Get models grouped by call_type from configs."""
+#     by_call_type: dict[types.CallType, set[tuple[str, str]]] = {}
+#     for provider, models in provider_model_configs.items():
+#       for model_name, config in models.items():
+#         if config.metadata and config.metadata.call_type:
+#           call_type = config.metadata.call_type
+#           if call_type not in by_call_type:
+#             by_call_type[call_type] = set()
+#           by_call_type[call_type].add((provider, model_name))
+#     return by_call_type
 
-  def _validate_provider_model_configs(
-      self, provider_model_configs: types.ProviderModelConfigsType
-  ):
-    """Validate all provider model configs."""
-    for provider_key, models in provider_model_configs.items():
-      for model_key, config in models.items():
-        self._validate_provider_model_config(provider_key, model_key, config)
+#   def _get_all_models_by_size_from_configs(
+#       self, provider_model_configs: types.ProviderModelConfigsType
+#   ) -> dict[types.ModelSizeType, set[tuple[str, str]]]:
+#     """Get models grouped by size from configs."""
+#     by_size: dict[types.ModelSizeType, set[tuple[str, str]]] = {}
+#     for provider, models in provider_model_configs.items():
+#       for model_name, config in models.items():
+#         if config.metadata and config.metadata.model_size_tags:
+#           for size_tag in config.metadata.model_size_tags:
+#             if size_tag not in by_size:
+#               by_size[size_tag] = set()
+#             by_size[size_tag].add((provider, model_name))
+#     return by_size
 
-  def _validate_featured_models(
-      self, provider_model_configs: types.ProviderModelConfigsType,
-      featured_models: types.FeaturedModelsType
-  ):
-    """Validate featured_models matches is_featured in configs."""
-    featured_from_configs = self._get_all_featured_models_from_configs(
-        provider_model_configs
-    )
+#   def _validate_provider_model_key_matches_config(
+#       self, provider_key: str, model_key: str,
+#       config: types.ProviderModelConfigType
+#   ):
+#     """Validate provider_model fields match the dict keys."""
+#     if config.provider_model is None:
+#       raise ValueError(
+#           f'provider_model is None for config at '
+#           f'provider_model_configs[{provider_key}][{model_key}]'
+#       )
 
-    featured_from_list: set[tuple[str, str]] = set()
-    for _provider, models in featured_models.items():
-      for model in models:
-        key = self._get_provider_model_key(model)
-        featured_from_list.add(key)
+#     if config.provider_model.provider != provider_key:
+#       raise ValueError(
+#           f'Provider mismatch: config key is "{provider_key}" but '
+#           f'provider_model.provider is "{config.provider_model.provider}"'
+#       )
 
-    missing_in_list = featured_from_configs - featured_from_list
-    if missing_in_list:
-      raise ValueError(
-          f'Models marked as is_featured=True in provider_model_configs '
-          f'but missing from featured_models: {sorted(missing_in_list)}'
-      )
+#     if config.provider_model.model != model_key:
+#       raise ValueError(
+#           f'Model mismatch: config key is "{model_key}" but '
+#           f'provider_model.model is "{config.provider_model.model}"'
+#       )
 
-    extra_in_list = featured_from_list - featured_from_configs
-    if extra_in_list:
-      raise ValueError(
-          f'Models in featured_models but not marked as is_featured=True '
-          f'in provider_model_configs: {sorted(extra_in_list)}'
-      )
+#   def _validate_pricing(
+#       self, provider_key: str, model_key: str,
+#       pricing: types.ProviderModelPricingType
+#   ):
+#     """Validate pricing values are non-negative."""
+#     if pricing is None:
+#       raise ValueError(
+#           f'pricing is None for '
+#           f'provider_model_configs[{provider_key}][{model_key}]'
+#       )
 
-  def _validate_models_by_call_type(
-      self, provider_model_configs: types.ProviderModelConfigsType,
-      models_by_call_type: types.ModelsByCallTypeType
-  ):
-    """Validate models_by_call_type matches call_type in configs."""
-    from_configs = self._get_all_models_by_call_type_from_configs(
-        provider_model_configs
-    )
+#     if (
+#         pricing.per_query_token_cost is not None and
+#         pricing.per_query_token_cost < 0
+#     ):
+#       raise ValueError(
+#           f'per_query_token_cost is negative ({pricing.per_query_token_cost}) '
+#           f'for provider_model_configs[{provider_key}][{model_key}]'
+#       )
 
-    from_list: dict[types.CallType, set[tuple[str, str]]] = {}
-    for call_type, providers in models_by_call_type.items():
-      from_list[call_type] = set()
-      for _provider, models in providers.items():
-        for model in models:
-          key = self._get_provider_model_key(model)
-          from_list[call_type].add(key)
+#     if (
+#         pricing.per_response_token_cost is not None and
+#         pricing.per_response_token_cost < 0
+#     ):
+#       raise ValueError(
+#           f'per_response_token_cost is negative '
+#           f'({pricing.per_response_token_cost}) for '
+#           f'provider_model_configs[{provider_key}][{model_key}]'
+#       )
 
-    all_call_types = set(from_configs.keys()) | set(from_list.keys())
-    for call_type in all_call_types:
-      config_models = from_configs.get(call_type, set())
-      list_models = from_list.get(call_type, set())
+#   def _validate_model_size_tags(
+#       self, provider_key: str, model_key: str,
+#       model_size_tags: list[types.ModelSizeType]
+#   ):
+#     """Validate model_size_tags contains only valid ModelSizeType values."""
+#     valid_sizes = set(types.ModelSizeType)
+#     for tag in model_size_tags:
+#       if tag not in valid_sizes:
+#         raise ValueError(
+#             f'Invalid model_size_tag "{tag}" for '
+#             f'provider_model_configs[{provider_key}][{model_key}]. '
+#             f'Valid values: {[s.value for s in types.ModelSizeType]}'
+#         )
 
-      missing_in_list = config_models - list_models
-      if missing_in_list:
-        raise ValueError(
-            f'Models with call_type={call_type} in provider_model_configs '
-            f'but missing from models_by_call_type: {sorted(missing_in_list)}'
-        )
+#   def _validate_features(
+#       self, provider_key: str, model_key: str,
+#       features: types.ProviderModelFeatureType
+#   ):
+#     """Validate supported, best_effort, and not_supported are disjoint."""
+#     if features is None:
+#       return
 
-      extra_in_list = list_models - config_models
-      if extra_in_list:
-        raise ValueError(
-            f'Models in models_by_call_type[{call_type}] but not marked with '
-            f'that call_type in configs: {sorted(extra_in_list)}'
-        )
+#     for feature_name, feature in features.items():
+#       supported = set(feature.supported or [])
+#       best_effort = set(feature.best_effort or [])
+#       not_supported = set(feature.not_supported or [])
 
-  def _validate_models_by_size(
-      self, provider_model_configs: types.ProviderModelConfigsType,
-      models_by_size: types.ModelsBySizeType
-  ):
-    """Validate models_by_size matches model_size_tags in configs."""
-    from_configs = self._get_all_models_by_size_from_configs(
-        provider_model_configs
-    )
+#       supported_best_effort = supported & best_effort
+#       if supported_best_effort:
+#         raise ValueError(
+#             f'Features {supported_best_effort} appear in both SUPPORTED and '
+#             'BEST_EFFORT for provider_model_configs for '
+#             f'({provider_key}, {model_key})\n'
+#             f'Feature name: {feature_name}\n'
+#             f'Feature config: {feature}'
+#         )
 
-    from_list: dict[types.ModelSizeType, set[tuple[str, str]]] = {}
-    for size, models in models_by_size.items():
-      from_list[size] = set()
-      for model in models:
-        key = self._get_provider_model_key(model)
-        from_list[size].add(key)
+#       supported_not_supported = supported & not_supported
+#       if supported_not_supported:
+#         raise ValueError(
+#             f'Features {supported_not_supported} appear in both SUPPORTED and '
+#             'NOT_SUPPORTED for provider_model_configs for '
+#             f'({provider_key}, {model_key})\n'
+#             f'Feature name: {feature_name}\n'
+#             f'Feature config: {feature}'
+#         )
 
-    all_sizes = set(from_configs.keys()) | set(from_list.keys())
-    for size in all_sizes:
-      config_models = from_configs.get(size, set())
-      list_models = from_list.get(size, set())
+#       best_effort_not_supported = best_effort & not_supported
+#       if best_effort_not_supported:
+#         raise ValueError(
+#             f'Features {best_effort_not_supported} appear in both '
+#             'BEST_EFFORT and NOT_SUPPORTED for provider_model_configs for '
+#             f'({provider_key}, {model_key})\n'
+#             f'Feature name: {feature_name}\n'
+#             f'Feature config: {feature}'
+#         )
 
-      missing_in_list = config_models - list_models
-      if missing_in_list:
-        raise ValueError(
-            f'Models with model_size_tags containing {size} in '
-            f'provider_model_configs but missing from models_by_size: '
-            f'{sorted(missing_in_list)}'
-        )
+#   def _validate_provider_model_config(
+#       self, provider_key: str, model_key: str,
+#       config: types.ProviderModelConfigType
+#   ):
+#     """Validate a single ProviderModelConfigType."""
+#     self._validate_provider_model_key_matches_config(
+#         provider_key, model_key, config
+#     )
 
-      extra_in_list = list_models - config_models
-      if extra_in_list:
-        raise ValueError(
-            f'Models in models_by_size[{size}] but model_size_tags in '
-            f'provider_model_configs does not contain {size}: '
-            f'{sorted(extra_in_list)}'
-        )
+#     self._validate_pricing(provider_key, model_key, config.pricing)
 
-  def _validate_default_model_priority_list(
-      self, provider_model_configs: types.ProviderModelConfigsType,
-      default_model_priority_list: types.DefaultModelPriorityListType
-  ):
-    """Validate all models in default_model_priority_list exist in configs."""
-    for model in default_model_priority_list:
-      key = self._get_provider_model_key(model)
-      provider, model_name = key
-      if provider not in provider_model_configs:
-        raise ValueError(
-            f'Provider {provider} in default_model_priority_list '
-            f'not found in provider_model_configs'
-        )
-      if model_name not in provider_model_configs[provider]:
-        raise ValueError(
-            f'Model {model_name} for provider {provider} in '
-            f'default_model_priority_list not found in provider_model_configs'
-        )
+#     self._validate_features(provider_key, model_key, config.features)
 
-  def _validate_version_config(
-      self, version_config: types.ModelConfigsSchemaVersionConfigType
-  ):
-    """Validate version_config internal consistency."""
-    provider_model_configs = version_config.provider_model_configs
-    if provider_model_configs is None:
-      return
+#     if (config.metadata and config.metadata.model_size_tags is not None):
+#       self._validate_model_size_tags(
+#           provider_key, model_key, config.metadata.model_size_tags
+#       )
 
-    self._validate_provider_model_configs(provider_model_configs)
+#   def _validate_provider_model_configs(
+#       self, provider_model_configs: types.ProviderModelConfigsType
+#   ):
+#     """Validate all provider model configs."""
+#     for provider_key, models in provider_model_configs.items():
+#       for model_key, config in models.items():
+#         self._validate_provider_model_config(provider_key, model_key, config)
 
-    if version_config.featured_models is not None:
-      self._validate_featured_models(
-          provider_model_configs, version_config.featured_models
-      )
+#   def _validate_featured_models(
+#       self, provider_model_configs: types.ProviderModelConfigsType,
+#       featured_models: types.FeaturedModelsType
+#   ):
+#     """Validate featured_models matches is_featured in configs."""
+#     featured_from_configs = self._get_all_featured_models_from_configs(
+#         provider_model_configs
+#     )
 
-    if version_config.models_by_call_type is not None:
-      self._validate_models_by_call_type(
-          provider_model_configs, version_config.models_by_call_type
-      )
+#     featured_from_list: set[tuple[str, str]] = set()
+#     for _provider, models in featured_models.items():
+#       for model in models:
+#         key = self._get_provider_model_key(model)
+#         featured_from_list.add(key)
 
-    if version_config.models_by_size is not None:
-      self._validate_models_by_size(
-          provider_model_configs, version_config.models_by_size
-      )
+#     missing_in_list = featured_from_configs - featured_from_list
+#     if missing_in_list:
+#       raise ValueError(
+#           f'Models marked as is_featured=True in provider_model_configs '
+#           f'but missing from featured_models: {sorted(missing_in_list)}'
+#       )
 
-    if version_config.default_model_priority_list is not None:
-      self._validate_default_model_priority_list(
-          provider_model_configs, version_config.default_model_priority_list
-      )
+#     extra_in_list = featured_from_list - featured_from_configs
+#     if extra_in_list:
+#       raise ValueError(
+#           f'Models in featured_models but not marked as is_featured=True '
+#           f'in provider_model_configs: {sorted(extra_in_list)}'
+#       )
 
-  def _validate_model_configs_schema(
-      self, model_configs_schema: types.ModelConfigsSchemaType
-  ):
-    if model_configs_schema.metadata:
-      self._validate_model_configs_schema_metadata(
-          model_configs_schema.metadata
-      )
+#   def _validate_models_by_call_type(
+#       self, provider_model_configs: types.ProviderModelConfigsType,
+#       models_by_call_type: types.ModelsByCallTypeType
+#   ):
+#     """Validate models_by_call_type matches call_type in configs."""
+#     from_configs = self._get_all_models_by_call_type_from_configs(
+#         provider_model_configs
+#     )
 
-    if model_configs_schema.version_config:
-      self._validate_version_config(model_configs_schema.version_config)
+#     from_list: dict[types.CallType, set[tuple[str, str]]] = {}
+#     for call_type, providers in models_by_call_type.items():
+#       from_list[call_type] = set()
+#       for _provider, models in providers.items():
+#         for model in models:
+#           key = self._get_provider_model_key(model)
+#           from_list[call_type].add(key)
+
+#     all_call_types = set(from_configs.keys()) | set(from_list.keys())
+#     for call_type in all_call_types:
+#       config_models = from_configs.get(call_type, set())
+#       list_models = from_list.get(call_type, set())
+
+#       missing_in_list = config_models - list_models
+#       if missing_in_list:
+#         raise ValueError(
+#             f'Models with call_type={call_type} in provider_model_configs '
+#             f'but missing from models_by_call_type: {sorted(missing_in_list)}'
+#         )
+
+#       extra_in_list = list_models - config_models
+#       if extra_in_list:
+#         raise ValueError(
+#             f'Models in models_by_call_type[{call_type}] but not marked with '
+#             f'that call_type in configs: {sorted(extra_in_list)}'
+#         )
+
+#   def _validate_models_by_size(
+#       self, provider_model_configs: types.ProviderModelConfigsType,
+#       models_by_size: types.ModelsBySizeType
+#   ):
+#     """Validate models_by_size matches model_size_tags in configs."""
+#     from_configs = self._get_all_models_by_size_from_configs(
+#         provider_model_configs
+#     )
+
+#     from_list: dict[types.ModelSizeType, set[tuple[str, str]]] = {}
+#     for size, models in models_by_size.items():
+#       from_list[size] = set()
+#       for model in models:
+#         key = self._get_provider_model_key(model)
+#         from_list[size].add(key)
+
+#     all_sizes = set(from_configs.keys()) | set(from_list.keys())
+#     for size in all_sizes:
+#       config_models = from_configs.get(size, set())
+#       list_models = from_list.get(size, set())
+
+#       missing_in_list = config_models - list_models
+#       if missing_in_list:
+#         raise ValueError(
+#             f'Models with model_size_tags containing {size} in '
+#             f'provider_model_configs but missing from models_by_size: '
+#             f'{sorted(missing_in_list)}'
+#         )
+
+#       extra_in_list = list_models - config_models
+#       if extra_in_list:
+#         raise ValueError(
+#             f'Models in models_by_size[{size}] but model_size_tags in '
+#             f'provider_model_configs does not contain {size}: '
+#             f'{sorted(extra_in_list)}'
+#         )
+
+#   def _validate_default_model_priority_list(
+#       self, provider_model_configs: types.ProviderModelConfigsType,
+#       default_model_priority_list: types.DefaultModelPriorityListType
+#   ):
+#     """Validate all models in default_model_priority_list exist in configs."""
+#     for model in default_model_priority_list:
+#       key = self._get_provider_model_key(model)
+#       provider, model_name = key
+#       if provider not in provider_model_configs:
+#         raise ValueError(
+#             f'Provider {provider} in default_model_priority_list '
+#             f'not found in provider_model_configs'
+#         )
+#       if model_name not in provider_model_configs[provider]:
+#         raise ValueError(
+#             f'Model {model_name} for provider {provider} in '
+#             f'default_model_priority_list not found in provider_model_configs'
+#         )
+
+#   def _validate_version_config(
+#       self, version_config: types.ModelConfigsSchemaVersionConfigType
+#   ):
+#     """Validate version_config internal consistency."""
+#     provider_model_configs = version_config.provider_model_configs
+#     if provider_model_configs is None:
+#       return
+
+#     self._validate_provider_model_configs(provider_model_configs)
+
+#     if version_config.featured_models is not None:
+#       self._validate_featured_models(
+#           provider_model_configs, version_config.featured_models
+#       )
+
+#     if version_config.models_by_call_type is not None:
+#       self._validate_models_by_call_type(
+#           provider_model_configs, version_config.models_by_call_type
+#       )
+
+#     if version_config.models_by_size is not None:
+#       self._validate_models_by_size(
+#           provider_model_configs, version_config.models_by_size
+#       )
+
+#     if version_config.default_model_priority_list is not None:
+#       self._validate_default_model_priority_list(
+#           provider_model_configs, version_config.default_model_priority_list
+#       )
+
+#   def _validate_model_configs_schema(
+#       self, model_configs_schema: types.ModelConfigsSchemaType
+#   ):
+#     if model_configs_schema.metadata:
+#       self._validate_model_configs_schema_metadata(
+#           model_configs_schema.metadata
+#       )
+
+#     if model_configs_schema.version_config:
+#       self._validate_version_config(model_configs_schema.version_config)
 
   def _is_provider_model_tuple(self, value: Any) -> bool:
     return (
@@ -476,71 +594,67 @@ class ModelConfigs(state_controller.StateControlled):
         isinstance(value[0], str) and isinstance(value[1], str)
     )
 
-  @staticmethod
-  def _load_model_config_schema_from_local_files(
-      version: str | None = None
-  ) -> types.ModelConfigsSchemaType:
-    """Load model config schema from bundled JSON files."""
-    version = version or ModelConfigs.LOCAL_CONFIG_VERSION
+#   @staticmethod
+#   def _load_model_config_schema_from_local_files(
+#       version: str | None = None
+#   ) -> types.ModelConfigsSchemaType:
+#     """Load model config schema from bundled JSON files."""
+#     version = version or ModelConfigs.LOCAL_CONFIG_VERSION
 
-    try:
-      config_data = (
-          resources.files("proxai.connectors.model_configs_data").
-          joinpath(f"{version}.json").read_text(encoding="utf-8")
-      )
-    except FileNotFoundError as e:
-      raise FileNotFoundError(
-          f'Model config file "{version}.json" not found in package. '
-          'Please update the proxai package to the latest version. '
-          'If updating does not resolve the issue, please contact '
-          'support@proxai.co'
-      ) from e
+#     try:
+#       config_data = (
+#           resources.files("proxai.connectors.model_configs_data").
+#           joinpath(f"{version}.json").read_text(encoding="utf-8")
+#       )
+#     except FileNotFoundError as e:
+#       raise FileNotFoundError(
+#           f'Model config file "{version}.json" not found in package. '
+#           'Please update the proxai package to the latest version. '
+#           'If updating does not resolve the issue, please contact '
+#           'support@proxai.co'
+#       ) from e
 
-    try:
-      config_dict = json.loads(config_data)
-    except json.JSONDecodeError as e:
-      raise ValueError(
-          f'Invalid JSON in config file "{version}.json". '
-          'Please update the proxai package to the latest version. '
-          'If updating does not resolve the issue, please contact '
-          f'support@proxai.co\nError: {e}'
-      ) from e
+#     try:
+#       config_dict = json.loads(config_data)
+#     except json.JSONDecodeError as e:
+#       raise ValueError(
+#           f'Invalid JSON in config file "{version}.json". '
+#           'Please update the proxai package to the latest version. '
+#           'If updating does not resolve the issue, please contact '
+#           f'support@proxai.co\nError: {e}'
+#       ) from e
 
-    return type_serializer.decode_model_configs_schema_type(config_dict)
+#     return type_serializer.decode_model_configs_schema_type(config_dict)
 
-  def load_model_config_from_json_string(self, json_string: str):
-    """Load model config schema from a JSON string."""
-    model_configs_schema = type_serializer.decode_model_configs_schema_type(
-        json.loads(json_string)
-    )
-    self.model_configs_schema = model_configs_schema
+#   def load_model_config_from_json_string(self, json_string: str):
+#     """Load model config schema from a JSON string."""
+#     model_configs_schema = type_serializer.decode_model_configs_schema_type(
+#         json.loads(json_string)
+#     )
+#     self.model_configs_schema = model_configs_schema
 
   def check_provider_model_identifier_type(
-      self, provider_model_identifier: types.ProviderModelIdentifierType,
-      model_configs_schema: types.ModelConfigsSchemaType | None = None
+      self,
+      provider_model_identifier: types.ProviderModelIdentifierType,
   ):
     """Check if provider model identifier is supported."""
-    if model_configs_schema is None:
-      model_configs_schema = self.model_configs_schema
-    provider_model_configs = (
-        model_configs_schema.version_config.provider_model_configs
-    )
     if isinstance(provider_model_identifier, types.ProviderModelType):
       provider = provider_model_identifier.provider
       model = provider_model_identifier.model
-      if provider not in provider_model_configs:
+      if provider not in self.model_registry.provider_model_configs:
         raise ValueError(
             f'Provider not supported: {provider}.\n'
-            f'Supported providers: {list(provider_model_configs.keys())}'
+            'Supported providers: '
+            f'{list(self.model_registry.provider_model_configs.keys())}'
         )
-      if model not in provider_model_configs[provider]:
+      if model not in self.model_registry.provider_model_configs[provider]:
         raise ValueError(
             f'Model not supported: {model}.\nSupported models: '
-            f'{provider_model_configs[provider].keys()}'
+            f'{self.model_registry.provider_model_configs[provider].keys()}'
         )
       config_provider_model = (
-          provider_model_configs[provider][model].provider_model
-      )
+          self.model_registry.provider_model_configs[
+              provider][model].provider_model)
       if provider_model_identifier != config_provider_model:
         raise ValueError(
             'Mismatch between provider model identifier and model config.'
@@ -550,15 +664,16 @@ class ModelConfigs(state_controller.StateControlled):
     elif self._is_provider_model_tuple(provider_model_identifier):
       provider = provider_model_identifier[0]
       model = provider_model_identifier[1]
-      if provider not in provider_model_configs:
+      if provider not in self.model_registry.provider_model_configs:
         raise ValueError(
             f'Provider not supported: {provider}.\n'
-            f'Supported providers: {provider_model_configs.keys()}'
+            'Supported providers: '
+            f'{self.model_registry.provider_model_configs.keys()}'
         )
-      if model not in provider_model_configs[provider]:
+      if model not in self.model_registry.provider_model_configs[provider]:
         raise ValueError(
             f'Model not supported: {model}.\nSupported models: '
-            f'{provider_model_configs[provider].keys()}'
+            f'{self.model_registry.provider_model_configs[provider].keys()}'
         )
     else:
       raise ValueError(
@@ -570,9 +685,17 @@ class ModelConfigs(state_controller.StateControlled):
   ) -> types.ProviderModelType:
     """Convert a model identifier to a ProviderModelType."""
     if self._is_provider_model_tuple(model_identifier):
-      return self.model_configs_schema.version_config.provider_model_configs[
+      return self.model_registry.provider_model_configs[
           model_identifier[0]][model_identifier[1]].provider_model
     else:
+      provider_model = self.model_registry.provider_model_configs[
+          model_identifier.provider][model_identifier.model].provider_model
+      if (provider_model.provider_model_identifier !=
+          model_identifier.provider_model_identifier):
+        raise ValueError(
+            'Provider model identifier mismatch: '
+            f'{provider_model.provider_model_identifier} != '
+            f'{model_identifier.provider_model_identifier}')
       return model_identifier
 
   def get_provider_model_config(
@@ -580,24 +703,24 @@ class ModelConfigs(state_controller.StateControlled):
   ) -> types.ProviderModelType:
     """Get the full config for a model identifier."""
     provider_model = self.get_provider_model(model_identifier)
-    return self.model_configs_schema.version_config.provider_model_configs[
+    return self.model_registry.provider_model_configs[
         provider_model.provider][provider_model.model]
 
-  def get_provider_model_cost(
-      self,
-      provider_model_identifier: types.ProviderModelIdentifierType,
-      query_token_count: int,
-      response_token_count: int,
-  ) -> int:
-    """Calculate the cost in micro-cents for a query."""
-    provider_model = self.get_provider_model(provider_model_identifier)
-    version_config = self.model_configs_schema.version_config
-    model_pricing_config = version_config.provider_model_configs[
-        provider_model.provider][provider_model.model].pricing
-    return math.floor(
-        query_token_count * model_pricing_config.per_query_token_cost +
-        response_token_count * model_pricing_config.per_response_token_cost
-    )
+#   def get_provider_model_cost(
+#       self,
+#       provider_model_identifier: types.ProviderModelIdentifierType,
+#       query_token_count: int,
+#       response_token_count: int,
+#   ) -> int:
+#     """Calculate the cost in micro-cents for a query."""
+#     provider_model = self.get_provider_model(provider_model_identifier)
+#     version_config = self.model_configs_schema.version_config
+#     model_pricing_config = version_config.provider_model_configs[
+#         provider_model.provider][provider_model.model].pricing
+#     return math.floor(
+#         query_token_count * model_pricing_config.per_query_token_cost +
+#         response_token_count * model_pricing_config.per_response_token_cost
+#     )
 
   def get_all_models(
       self,
@@ -610,21 +733,22 @@ class ModelConfigs(state_controller.StateControlled):
     version_config = self.model_configs_schema.version_config
     if (
         call_type is not None and
-        call_type not in version_config.models_by_call_type
+        call_type not in self.models_by_call_type
     ):
       raise ValueError(f'Call type not supported: {call_type}')
 
     if (
         model_size is not None and
-        model_size not in version_config.models_by_size
+        model_size not in self.models_by_model_size
     ):
       raise ValueError(f'Model size not supported: {model_size}')
 
     if (
         provider is not None and
-        provider not in version_config.provider_model_configs
+        provider not in self.model_registry.provider_model_configs
     ):
-      supported_providers = list(version_config.provider_model_configs.keys())
+      supported_providers = list(
+          self.model_registry.provider_model_configs.keys())
       raise ValueError(
           f'Provider not supported: {provider}.\n'
           f'Supported providers: {supported_providers}'
@@ -632,7 +756,7 @@ class ModelConfigs(state_controller.StateControlled):
 
     result_provider_models = []
     for provider_name, provider_models in (
-        version_config.provider_model_configs.items()
+        self.model_registry.provider_model_configs.items()
     ):
       if provider is not None and provider_name != provider:
         continue
@@ -659,16 +783,16 @@ class ModelConfigs(state_controller.StateControlled):
 
     return result_provider_models
 
-  def get_default_model_priority_list(self) -> list[types.ProviderModelType]:
-    """Return the default model priority list for fallback selection."""
-    # TODO: This operation could be optimized by caching the result and using
-    # StateController to persist the result. If the configs are updated, the
-    # result should be invalidated and recalculated by the StateController's
-    # handle_changes method.
-    result = []
-    default_list = (
-        self.model_configs_schema.version_config.default_model_priority_list
-    )
-    for provider_model in default_list:
-      result.append(self.get_provider_model(provider_model))
-    return result
+#   def get_default_model_priority_list(self) -> list[types.ProviderModelType]:
+#     """Return the default model priority list for fallback selection."""
+#     # TODO: This operation could be optimized by caching the result and using
+#     # StateController to persist the result. If the configs are updated, the
+#     # result should be invalidated and recalculated by the StateController's
+#     # handle_changes method.
+#     result = []
+#     default_list = (
+#         self.model_configs_schema.version_config.default_model_priority_list
+#     )
+#     for provider_model in default_list:
+#       result.append(self.get_provider_model(provider_model))
+#     return result

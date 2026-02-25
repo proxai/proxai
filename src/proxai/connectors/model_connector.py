@@ -33,7 +33,7 @@ class ProviderModelConnectorParams:
 
   provider_model: types.ProviderModelType | None = None
   run_type: types.RunType | None = None
-  provider_model_config: types.ProviderModelConfigType | None = None
+  provider_model_config: types.ProviderModelConfig | None = None
   feature_mapping_strategy: types.FeatureMappingStrategy | None = None
   query_cache_manager: types.QueryCacheManagerState | None = None
   logging_options: types.LoggingOptions | None = None
@@ -46,7 +46,7 @@ class ProviderModelConnector(state_controller.StateControlled):
 
   _provider_model: types.ProviderModelType | None
   _run_type: types.RunType | None
-  _provider_model_config: types.ProviderModelConfigType | None
+  _provider_model_config: types.ProviderModelConfig | None
   _feature_mapping_strategy: types.FeatureMappingStrategy | None
   _query_cache_manager: query_cache.QueryCacheManager | None
   _api: Any | None
@@ -335,10 +335,10 @@ class ProviderModelConnector(state_controller.StateControlled):
       response_token_count = 0
     model_pricing_config = self.provider_model_config.pricing
 
-    query_token_cost = model_pricing_config.per_query_token_cost
+    query_token_cost = model_pricing_config.input_token_cost
     if query_token_cost is None:
       query_token_cost = 0
-    response_token_cost = model_pricing_config.per_response_token_cost
+    response_token_cost = model_pricing_config.output_token_cost
     if response_token_cost is None:
       response_token_cost = 0
 

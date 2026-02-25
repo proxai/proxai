@@ -74,10 +74,10 @@ class AvailableModels(state_controller.StateControlled):
       self.feature_mapping_strategy = init_from_params.feature_mapping_strategy
       self.model_configs_instance = init_from_params.model_configs_instance
 
-      self.model_cache_manager = init_from_params.model_cache_manager
+      # self.model_cache_manager = init_from_params.model_cache_manager
       self.query_cache_manager = init_from_params.query_cache_manager
       self.logging_options = init_from_params.logging_options
-      self.proxdash_connection = init_from_params.proxdash_connection
+      # self.proxdash_connection = init_from_params.proxdash_connection
       self.allow_multiprocessing = init_from_params.allow_multiprocessing
       self.model_test_timeout = init_from_params.model_test_timeout
       self.proxdash_provider_api_keys = (
