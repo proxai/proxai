@@ -572,7 +572,7 @@ class ProxAIClient(state_controller.StateControlled):
     if init_from_state is not None:
       self.load_state(init_from_state)
     else:
-      # self._set_default_values()
+      self._set_default_values()
 
       self.experiment_path = init_from_params.experiment_path
       self.cache_options = init_from_params.cache_options
@@ -595,22 +595,20 @@ class ProxAIClient(state_controller.StateControlled):
       if self.cache_options and self.cache_options.clear_query_cache_on_connect:
         self.query_cache_manager.clear_cache()
 
-      # BEGIN: Refactoring: Revert this after testing
-      # available_models_params = available_models.AvailableModelsParams(
-      #     run_type=self.run_type,
-      #     feature_mapping_strategy=self.feature_mapping_strategy,
-      #     model_configs_instance=self.model_configs_instance,
-      #     model_cache_manager=self.model_cache_manager,
-      #     query_cache_manager=self.query_cache_manager,
-      #     logging_options=self.logging_options,
-      #     proxdash_connection=self.proxdash_connection,
-      #     allow_multiprocessing=self.allow_multiprocessing,
-      #     model_test_timeout=self.model_test_timeout,
-      # )
-      # self._available_models_instance = available_models.AvailableModels(
-      #     init_from_params=available_models_params
-      # )
-      # END: Refactoring
+      available_models_params = available_models.AvailableModelsParams(
+          run_type=self.run_type,
+          feature_mapping_strategy=self.feature_mapping_strategy,
+          model_configs_instance=self.model_configs_instance,
+          model_cache_manager=self.model_cache_manager,
+          query_cache_manager=self.query_cache_manager,
+          logging_options=self.logging_options,
+          proxdash_connection=self.proxdash_connection,
+          allow_multiprocessing=self.allow_multiprocessing,
+          model_test_timeout=self.model_test_timeout,
+      )
+      self._available_models_instance = available_models.AvailableModels(
+          init_from_params=available_models_params
+      )
 
   def get_internal_state_property_name(self):
     """Return the name of the internal state property."""
@@ -1072,18 +1070,8 @@ class ProxAIClient(state_controller.StateControlled):
           provider_model_identifier=provider_model.provider_model_identifier
       )
 
-    import proxai.connectors.model_connector as model_connector
-    import proxai.connectors.providers.openai as openai_provider
-    model_connector = openai_provider.OpenAIConnector(
-        init_from_params=model_connector.ProviderModelConnectorParams(
-            provider_model=provider_model,
-            run_type=types.RunType.PRODUCTION,
-            provider_token_value_map={
-                'OPENAI_API_KEY': os.environ['OPENAI_API_KEY'],
-            },
-            query_cache_manager=self.query_cache_manager,
-            feature_mapping_strategy=self.feature_mapping_strategy,
-        )
+    model_connector = self.available_models_instance.get_model_connector(
+        provider_model_identifier=provider_model
     )
     return model_connector.generate(
         prompt=prompt,
@@ -1141,12 +1129,14 @@ class ProxAIClient(state_controller.StateControlled):
     response_format = type_utils.response_format_param_to_response_format(
         response_format)
 
-    provider_models = [provider_model]
+    provider_models = [
+        self.model_configs_instance.get_provider_model(provider_model)]
     
     if (connection_options and
         connection_options.fallback_models):
       for fallback_model in connection_options.fallback_models:
-        provider_models.append(fallback_model)
+        provider_models.append(
+            self.model_configs_instance.get_provider_model(fallback_model))
       connection_options.suppress_provider_errors = True
       connection_options.fallback_models = None
 

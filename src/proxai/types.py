@@ -105,6 +105,8 @@ class ProviderModelType:
     return str(self) >= str(other)
 
 
+ProviderModelTupleType = tuple[ProviderNameType, ModelNameType]
+ProviderModelIdentifierType = ProviderModelType | ProviderModelTupleType
 StopType = str | list[str]
 
 
@@ -112,8 +114,8 @@ StopType = str | list[str]
 class ProviderModelPricingType:
   """Cost information for a model's token usage."""
 
-  per_response_token_cost: float | None = None
-  per_query_token_cost: float | None = None
+  input_token_cost: float | None = None
+  output_token_cost: float | None = None
 
 
 class FeatureSupportType(str, enum.Enum):
@@ -168,35 +170,6 @@ class FeatureConfigType:
   response_format: ResponseFormatConfigType | None = None
 
 
-@dataclasses.dataclass
-class EndpointFeatureInfoType:
-  """Feature support levels for a provider endpoint."""
-
-  supported: list[str] = dataclasses.field(default_factory=list)
-  best_effort: list[str] = dataclasses.field(default_factory=list)
-  not_supported: list[str] = dataclasses.field(default_factory=list)
-
-
-class FeatureNameType(str, enum.Enum):
-  """Available features that can be used with model queries."""
-
-  PROMPT = "prompt"
-  MESSAGES = "messages"
-  SYSTEM_PROMPT = "system_prompt"
-  MAX_TOKENS = "max_tokens"
-  TEMPERATURE = "temperature"
-  STOP = "stop"
-  WEB_SEARCH = "web_search"
-  RESPONSE_FORMAT_TEXT = "response_format::text"
-  RESPONSE_FORMAT_JSON = "response_format::json"
-  RESPONSE_FORMAT_PYDANTIC = "response_format::pydantic"
-
-
-FeatureListType = list[FeatureNameType]
-
-FeatureListParam = list[str | FeatureNameType]
-
-
 class ModelSizeType(str, enum.Enum):
   """Size category for AI models."""
 
@@ -216,22 +189,7 @@ class ProviderModelMetadataType:
   call_type: CallType | None = None
   is_featured: bool | None = None
   model_size_tags: list[ModelSizeType] | None = None
-  is_default_candidate: bool | None = None
-  default_candidate_priority: int | None = None
   tags: list[str] | None = None
-
-
-FeatureMappingType = dict[FeatureNameType, EndpointFeatureInfoType]
-
-
-@dataclasses.dataclass
-class ProviderModelConfigType:
-  """Complete configuration for a provider model."""
-
-  provider_model: ProviderModelType | None = None
-  pricing: ProviderModelPricingType | None = None
-  features: FeatureMappingType | None = None
-  metadata: ProviderModelMetadataType | None = None
 
 
 class ConfigOriginType(enum.Enum):
@@ -246,16 +204,6 @@ ProviderModelTupleParam = tuple[ProviderNameType, ModelNameType]
 ProviderModelParam = ProviderModelTupleParam | ProviderModelType
 MessagesParam = Dict[str, Any] | List[Dict[str, Any]] | chat_session.Chat
 
-ProviderModelsIdentifierDictType = dict[ProviderNameType,
-                                        tuple[ProviderModelType]]
-
-ProviderModelConfigsType = dict[ProviderNameType, dict[ModelNameType,
-                                                       ProviderModelConfigType]]
-FeaturedModelsType = ProviderModelsIdentifierDictType
-ModelsByCallTypeType = dict[CallType, ProviderModelsIdentifierDictType]
-ModelsBySizeType = dict[ModelSizeType, tuple[ProviderModelType]]
-DefaultModelPriorityListType = tuple[ProviderModelType]
-
 
 @dataclasses.dataclass
 class ModelConfigsSchemaMetadataType:
@@ -269,23 +217,25 @@ class ModelConfigsSchemaMetadataType:
 
 
 @dataclasses.dataclass
-class ModelConfigsSchemaVersionConfigType:
-  """Model configurations grouped by various categorizations."""
+class ProviderModelConfig:
+  provider_model: ProviderModelType
+  pricing: ProviderModelPricingType
+  features: FeatureConfigType
+  metadata: ProviderModelMetadataType
 
-  provider_model_configs: ProviderModelConfigsType | None = None
 
-  featured_models: FeaturedModelsType | None = None
-  models_by_call_type: ModelsByCallTypeType | None = None
-  models_by_size: ModelsBySizeType | None = None
-  default_model_priority_list: DefaultModelPriorityListType | None = None
+CallTypeMappingType = dict[CallType, list[ProviderModelType]]
+ModelSizeMappingType = dict[ModelSizeType, list[ProviderModelType]]
+FeaturedModelsMappingType = dict[ProviderNameType, list[ProviderModelType]]
+ProviderModelConfigsMappingType = dict[
+    ProviderNameType, dict[ModelNameType, ProviderModelConfig]]
 
 
 @dataclasses.dataclass
-class ModelConfigsSchemaType:
-  """Complete schema containing all model configurations."""
-
-  metadata: ModelConfigsSchemaMetadataType | None = None
-  version_config: ModelConfigsSchemaVersionConfigType | None = None
+class ModelRegistry:
+  metadata: ModelConfigsSchemaMetadataType
+  default_model_priority_list: list[ProviderModelType]
+  provider_model_configs: ProviderModelConfigsMappingType
 
 
 @dataclasses.dataclass
@@ -757,7 +707,10 @@ class StateContainer:
 class ModelConfigsState(StateContainer):
   """Persisted state for model configuration data."""
 
-  model_configs_schema: ModelConfigsSchemaType | None = None
+  model_registry: ModelRegistry | None = None
+  models_by_call_type: CallTypeMappingType | None = None
+  models_by_model_size: ModelSizeMappingType | None = None
+  featured_models: FeaturedModelsMappingType | None = None
 
 
 @dataclasses.dataclass

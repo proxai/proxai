@@ -31,7 +31,7 @@ _MODEL_CONNECTOR_MAP = {
 
 
 def get_model_connector(
-    provider_model_config: types.ProviderModelConfigsType,
+    provider_model_config: types.ProviderModelConfig,
     without_additional_args: bool = False
 ) -> Callable[[], model_connector.ProviderModelConnector]:
   """Return a connector factory for the given provider model config."""

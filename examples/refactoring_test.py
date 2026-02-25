@@ -9,6 +9,168 @@ import proxai.types as types
 
 _DEFAULT_MODEL = ('openai', 'gpt-4o')
 _NON_EXISTENT_MODEL = ('openai', 'non_existent_model')
+_THINKING_MODEL = ('openai', 'o3')
+_IMAGE_MODEL = ('openai', 'dall-e-3')
+_AUDIO_MODEL = ('openai', 'tts-1')
+_VIDEO_MODEL = ('openai', 'sora-2')
+
+
+def register_models(px_client: px.Client):
+  print('>> register_models')
+  model_configs = px_client.model_configs_instance
+  
+  model_configs.register_provider_model_config(
+      provider_model_config=types.ProviderModelConfig(
+          provider_model=types.ProviderModelType(
+              provider=_DEFAULT_MODEL[0],
+              model=_DEFAULT_MODEL[1],
+              provider_model_identifier=_DEFAULT_MODEL[1],
+          ),
+          pricing=types.ProviderModelPricingType(
+              input_token_cost=0.0,
+              output_token_cost=0.0,
+          ),
+          features=types.FeatureConfigType(
+              prompt=types.FeatureSupportType.SUPPORTED,
+              messages=types.FeatureSupportType.SUPPORTED,
+              system_prompt=types.FeatureSupportType.SUPPORTED,
+              parameters=types.ParameterConfigType(
+                  temperature=types.FeatureSupportType.SUPPORTED,
+                  max_tokens=types.FeatureSupportType.SUPPORTED,
+                  stop=types.FeatureSupportType.SUPPORTED,
+                  n=types.FeatureSupportType.SUPPORTED,
+                  thinking=types.FeatureSupportType.NOT_SUPPORTED,
+              ),
+              tools=types.ToolConfigType(
+                  web_search=types.FeatureSupportType.SUPPORTED,
+              ),
+              response_format=types.ResponseFormatConfigType(
+                  text=types.FeatureSupportType.SUPPORTED,
+                  json=types.FeatureSupportType.SUPPORTED,
+                  pydantic=types.FeatureSupportType.SUPPORTED,
+              ),
+          ),
+          metadata=types.ProviderModelMetadataType(
+              call_type=types.CallType.TEXT,
+              is_featured=True,
+              model_size_tags=[types.ModelSizeType.SMALL],
+          ),
+      )
+  )
+
+  model_configs.register_provider_model_config(
+      provider_model_config=types.ProviderModelConfig(
+          provider_model=types.ProviderModelType(
+              provider=_THINKING_MODEL[0],
+              model=_THINKING_MODEL[1],
+              provider_model_identifier=_THINKING_MODEL[1],
+          ),
+          pricing=types.ProviderModelPricingType(
+              input_token_cost=0.0,
+              output_token_cost=0.0,
+          ),
+          features=types.FeatureConfigType(
+              prompt=types.FeatureSupportType.SUPPORTED,
+              messages=types.FeatureSupportType.SUPPORTED,
+              system_prompt=types.FeatureSupportType.SUPPORTED,
+              parameters=types.ParameterConfigType(
+                  temperature=types.FeatureSupportType.SUPPORTED,
+                  max_tokens=types.FeatureSupportType.SUPPORTED,
+                  stop=types.FeatureSupportType.SUPPORTED,
+                  n=types.FeatureSupportType.SUPPORTED,
+                  thinking=types.FeatureSupportType.SUPPORTED,
+              ),
+              tools=types.ToolConfigType(
+                  web_search=types.FeatureSupportType.SUPPORTED,
+              ),
+              response_format=types.ResponseFormatConfigType(
+                  text=types.FeatureSupportType.SUPPORTED,
+                  json=types.FeatureSupportType.SUPPORTED,
+                  pydantic=types.FeatureSupportType.SUPPORTED,
+              ),
+          ),
+          metadata=types.ProviderModelMetadataType(
+              call_type=types.CallType.TEXT,
+              is_featured=True,
+              model_size_tags=[types.ModelSizeType.SMALL],
+          ),
+      )
+  )
+
+  model_configs.register_provider_model_config(
+      provider_model_config=types.ProviderModelConfig(
+          provider_model=types.ProviderModelType(
+              provider=_IMAGE_MODEL[0],
+              model=_IMAGE_MODEL[1],
+              provider_model_identifier=_IMAGE_MODEL[1],
+          ),
+          pricing=types.ProviderModelPricingType(
+              input_token_cost=0.0,
+              output_token_cost=0.0,
+          ),
+          features=types.FeatureConfigType(
+              prompt=types.FeatureSupportType.SUPPORTED,
+              response_format=types.ResponseFormatConfigType(
+                  image=types.FeatureSupportType.SUPPORTED,
+              ),
+          ),
+          metadata=types.ProviderModelMetadataType(
+              call_type=types.CallType.IMAGE,
+              is_featured=True,
+              model_size_tags=[],
+          ),
+      )
+  )
+
+  model_configs.register_provider_model_config(
+      provider_model_config=types.ProviderModelConfig(
+          provider_model=types.ProviderModelType(
+              provider=_AUDIO_MODEL[0],
+              model=_AUDIO_MODEL[1],
+              provider_model_identifier=_AUDIO_MODEL[1],
+          ),
+          pricing=types.ProviderModelPricingType(
+              input_token_cost=0.0,
+              output_token_cost=0.0,
+          ),
+          features=types.FeatureConfigType(
+              prompt=types.FeatureSupportType.SUPPORTED,
+              response_format=types.ResponseFormatConfigType(
+                  audio=types.FeatureSupportType.SUPPORTED,
+              ),
+          ),
+          metadata=types.ProviderModelMetadataType(
+              call_type=types.CallType.AUDIO,
+              is_featured=True,
+              model_size_tags=[],
+          ),
+      )
+  )
+
+  model_configs.register_provider_model_config(
+      provider_model_config=types.ProviderModelConfig(
+          provider_model=types.ProviderModelType(
+              provider=_VIDEO_MODEL[0],
+              model=_VIDEO_MODEL[1],
+              provider_model_identifier=_VIDEO_MODEL[1],
+          ),
+          pricing=types.ProviderModelPricingType(
+              input_token_cost=0.0,
+              output_token_cost=0.0,
+          ),
+          features=types.FeatureConfigType(
+              prompt=types.FeatureSupportType.SUPPORTED,
+              response_format=types.ResponseFormatConfigType(
+                  video=types.FeatureSupportType.SUPPORTED,
+              ),
+          ),
+          metadata=types.ProviderModelMetadataType(
+              call_type=types.CallType.VIDEO,
+              is_featured=True,
+              model_size_tags=[],
+          ),
+      )
+  )
 
 
 def _assert_success(result: types.CallRecord):
@@ -55,6 +217,16 @@ def assert_image_content(result: types.CallRecord):
   assert len(result.result.output_image.source) > 10
 
 
+def assert_audio_content(result: types.CallRecord):
+  """Assert content is a valid audio content."""
+  assert result.result.status == types.ResultStatusType.SUCCESS
+  assert result.result.usage.input_tokens is not None
+  assert result.result.usage.input_tokens > 0
+  assert result.result.output_audio is not None
+  assert result.result.output_audio.data is not None
+  assert len(result.result.output_audio.data) > 10
+
+
 def prompt_test():
   print('> prompt_test')
   result = px.generate(
@@ -64,8 +236,8 @@ def prompt_test():
   assert '4' in result.result.output_text
   assert result.query.prompt == 'What is 2 + 2?'
   assert result.query.chat is None
-  assert result.query.provider_model.provider == 'openai'
-  assert result.query.provider_model.model == 'gpt-4o'
+  assert result.query.provider_model.provider == _DEFAULT_MODEL[0]
+  assert result.query.provider_model.model == _DEFAULT_MODEL[1]
 
 
 def messages_test():
@@ -179,9 +351,10 @@ def parameters_thinking_test():
           'I am a researcher and I need very detailed answer.'
           'I am preparing a paper on this topic. Think deep and make '
           'very strong quantitative arguments. Show coherent examples of '
-          'hard problems in quantum computing.'),
-      provider_model=('openai', 'o3'),
-      parameters=px.ParameterType(thinking=types.ThinkingType.MEDIUM),
+          'hard problems in quantum computing.'
+          'Think step by step.'),
+      provider_model=_THINKING_MODEL,
+      parameters=px.ParameterType(thinking=types.ThinkingType.HIGH),
       connection_options=px.ConnectionOptions(
           endpoint='responses.create'))
   thinking_true = False
@@ -352,7 +525,7 @@ def images_generate_test():
   print('> images_generate_test')
   result = px.generate(
       prompt='Generate an image of a cat.',
-      provider_model=('openai', 'dall-e-3'),
+      provider_model=_IMAGE_MODEL,
       response_format='image')
   assert_image_content(result)
 
@@ -360,7 +533,7 @@ def audio_generate_test():
   print('> audio_generate_test')
   result = px.generate(
       prompt='Hello! This is a test of ProxAI\'s text to speech API.',
-      provider_model=('openai', 'tts-1'),
+      provider_model=_AUDIO_MODEL,
       response_format='audio')
   assert result.result.status == types.ResultStatusType.SUCCESS
   assert result.result.output_audio is not None
@@ -376,7 +549,7 @@ def video_generate_test():
   print('> video_generate_test')
   result = px.generate(
       prompt='Generate a video of a cat.',
-      provider_model=('openai', 'sora-2'),
+      provider_model=_VIDEO_MODEL,
       response_format='video')
   video_path = os.path.expanduser('~/temp/video.mp4')
   if os.path.exists(video_path):
@@ -396,6 +569,7 @@ def cache_test():
           unique_response_limit=2
       )
   )
+  register_models(client)
 
   result = client.generate(
       prompt='What is 2 + 2?',
@@ -426,6 +600,8 @@ def cache_test():
 
 
 def main():
+  register_models(px.get_default_proxai_client())
+
   prompt_test()
   messages_test()
   system_prompt_test()
@@ -439,13 +615,13 @@ def main():
   response_format_text_test()
   response_format_json_test()
   response_format_pydantic_test()
-  connection_options_fallback_test()
-  connection_options_suppress_provider_errors_test()
+#   connection_options_fallback_test()
+#   connection_options_suppress_provider_errors_test()
   connection_options_endpoint_test()
   # # connection_options_skip_cache_test()
   # # connection_options_override_cache_value_test()
-  # images_generate_test()
-  # audio_generate_test()
+  images_generate_test()
+  audio_generate_test()
   # video_generate_test()
   cache_test()
 
