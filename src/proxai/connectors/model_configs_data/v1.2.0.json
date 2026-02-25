@@ -4,7 +4,7 @@
     "released_at": "2026-02-24T21:40:14.000427",
     "min_proxai_version": ">=2.2.0",
     "config_origin": "BUILT_IN",
-    "release_notes": "Example ProxDash model configs."
+    "release_notes": "Multi modal refactoring."
   },
   "default_model_priority_list": [],
   "provider_model_configs": {
