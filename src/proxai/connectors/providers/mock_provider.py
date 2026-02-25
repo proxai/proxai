@@ -1,12 +1,16 @@
-import functools
 import time
-from collections.abc import Callable
 from typing import Any
 
 import pydantic
 
 import proxai.connectors.model_connector as model_connector
 import proxai.types as types
+import proxai.chat.message_content as message_content
+
+FeatureConfigType = types.FeatureConfigType
+FeatureSupportType = types.FeatureSupportType
+ParameterConfigType = types.ParameterConfigType
+ResponseFormatConfigType = types.ResponseFormatConfigType
 
 
 class SamplePydanticModel(pydantic.BaseModel):
@@ -19,11 +23,34 @@ class SamplePydanticModel(pydantic.BaseModel):
 class MockProviderModelConnector(model_connector.ProviderModelConnector):
   """Mock connector for testing without real API calls."""
 
-  def get_provider_name(self):
-    return "mock_provider"
+  PROVIDER_NAME = 'mock_provider'
 
-  def get_required_provider_token_names(self) -> list[str]:
-    return []
+  PROVIDER_API_KEYS = []
+
+  ENDPOINT_PRIORITY = [
+      'generate.text',
+  ]
+
+  ENDPOINT_CONFIG = {
+      'generate.text': FeatureConfigType(
+          prompt=FeatureSupportType.SUPPORTED,
+          messages=FeatureSupportType.SUPPORTED,
+          system_prompt=FeatureSupportType.SUPPORTED,
+          parameters=ParameterConfigType(
+              max_tokens=FeatureSupportType.SUPPORTED,
+              temperature=FeatureSupportType.SUPPORTED,
+          ),
+          response_format=ResponseFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
+              json=FeatureSupportType.SUPPORTED,
+              pydantic=FeatureSupportType.SUPPORTED,
+          ),
+      ),
+  }
+
+  ENDPOINT_EXECUTORS = {
+      'generate.text': '_generate_text_executor',
+  }
 
   def init_model(self):
     return None
@@ -31,49 +58,13 @@ class MockProviderModelConnector(model_connector.ProviderModelConnector):
   def init_mock_model(self):
     return None
 
-  def system_feature_mapping(
-      self, query_function: Callable, system_message: str | None = None
-  ) -> Callable:
-    return functools.partial(query_function, system=system_message)
+  def _generate_text_executor(
+      self, query_record: types.QueryRecord) -> types.ResultRecord:
+    def _mock_provider_query():
+      return 'mock response'
 
-  def json_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    return functools.partial(query_function, response_format='json')
+    response, result_record = self._safe_provider_query(_mock_provider_query)
 
-  def json_schema_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    return functools.partial(query_function, response_format='json_schema')
-
-  def pydantic_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    return functools.partial(query_function, response_format='pydantic')
-
-  def format_text_response_from_provider(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> str:
-    return str(response)
-
-  def format_json_response_from_provider(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> dict:
-    return response if isinstance(response, dict) else {"value": response}
-
-  def format_json_schema_response_from_provider(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> dict:
-    return response if isinstance(response, dict) else {"value": response}
-
-  def format_pydantic_response_from_provider(
-      self, response: Any, query_record: types.QueryRecord
-  ):
-    return response
-
-  def generate_text_proc(
-      self, query_record: types.QueryRecord
-  ) -> types.Response:
     fmt = query_record.response_format
     is_text = fmt is None or fmt.type == types.ResponseFormatType.TEXT
     is_json = (
@@ -83,32 +74,60 @@ class MockProviderModelConnector(model_connector.ProviderModelConnector):
         )
     )
     if is_text:
-      return types.Response(value="mock response", type=types.ResponseType.TEXT)
-    elif is_json:
-      return types.Response(
-          value={
-              "name": "John Doe",
-              "age": 30
-          }, type=types.ResponseType.JSON
-      )
-    elif fmt and fmt.type == types.ResponseFormatType.PYDANTIC:
-      return types.Response(
-          value=SamplePydanticModel(name='John Doe',
-                                    age=30), type=types.ResponseType.PYDANTIC,
-          pydantic_metadata=types.PydanticMetadataType(
-              class_name='SamplePydanticModel'
+      result_record.content = [
+          message_content.MessageContent(
+              type=message_content.ContentType.TEXT,
+              text='mock response',
           )
-      )
+      ]
+    elif is_json:
+      result_record.content = [
+          message_content.MessageContent(
+              type=message_content.ContentType.JSON,
+              json={"name": "John Doe", "age": 30},
+          )
+      ]
+    elif fmt and fmt.type == types.ResponseFormatType.PYDANTIC:
+      result_record.content = [
+          message_content.MessageContent(
+              type=message_content.ContentType.PYDANTIC_INSTANCE,
+              pydantic_content=message_content.PydanticContent(
+                  class_name='SamplePydanticModel',
+                  class_value=SamplePydanticModel,
+                  instance_value=SamplePydanticModel(
+                      name='John Doe', age=30),
+              ),
+          )
+      ]
+
+    return result_record
 
 
 class MockFailingProviderModelConnector(model_connector.ProviderModelConnector):
   """Mock connector that always fails for testing error handling."""
 
-  def get_provider_name(self):
-    return "mock_failing_provider"
+  PROVIDER_NAME = 'mock_failing_provider'
 
-  def get_required_provider_token_names(self) -> list[str]:
-    return []
+  PROVIDER_API_KEYS = []
+
+  ENDPOINT_PRIORITY = [
+      'generate.text',
+  ]
+
+  ENDPOINT_CONFIG = {
+      'generate.text': FeatureConfigType(
+          prompt=FeatureSupportType.SUPPORTED,
+          messages=FeatureSupportType.SUPPORTED,
+          system_prompt=FeatureSupportType.SUPPORTED,
+          response_format=ResponseFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
+          ),
+      ),
+  }
+
+  ENDPOINT_EXECUTORS = {
+      'generate.text': '_generate_text_executor',
+  }
 
   def init_model(self):
     return None
@@ -116,18 +135,45 @@ class MockFailingProviderModelConnector(model_connector.ProviderModelConnector):
   def init_mock_model(self):
     return None
 
-  def generate_text_proc(self, query_record: types.QueryRecord):
-    raise ValueError('Temp Error')
+  def _generate_text_executor(
+      self, query_record: types.QueryRecord) -> types.ResultRecord:
+    def _failing_provider_query():
+      raise ValueError('Mock failing provider query')
+    _, result_record = self._safe_provider_query(_failing_provider_query)
+    return result_record
 
 
 class MockSlowProviderModelConnector(model_connector.ProviderModelConnector):
   """Mock connector with delayed responses for testing timeouts."""
 
-  def get_provider_name(self):
-    return "mock_slow_provider"
+  PROVIDER_NAME = 'mock_slow_provider'
 
-  def get_required_provider_token_names(self) -> list[str]:
-    return []
+  PROVIDER_API_KEYS = []
+
+  ENDPOINT_PRIORITY = [
+      'generate.text',
+  ]
+
+  ENDPOINT_CONFIG = {
+      'generate.text': FeatureConfigType(
+          prompt=FeatureSupportType.SUPPORTED,
+          messages=FeatureSupportType.SUPPORTED,
+          system_prompt=FeatureSupportType.SUPPORTED,
+          parameters=ParameterConfigType(
+              max_tokens=FeatureSupportType.SUPPORTED,
+              temperature=FeatureSupportType.SUPPORTED,
+          ),
+          response_format=ResponseFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
+              json=FeatureSupportType.SUPPORTED,
+              pydantic=FeatureSupportType.SUPPORTED,
+          ),
+      ),
+  }
+
+  ENDPOINT_EXECUTORS = {
+      'generate.text': '_generate_text_executor',
+  }
 
   def init_model(self):
     return None
@@ -135,10 +181,12 @@ class MockSlowProviderModelConnector(model_connector.ProviderModelConnector):
   def init_mock_model(self):
     return None
 
-  def generate_text_proc(
-      self, query_record: types.QueryRecord
-  ) -> types.Response:
-    time.sleep(120)
+  def _generate_text_executor(
+      self, query_record: types.QueryRecord) -> types.ResultRecord:
+    def _slow_provider_query():
+      time.sleep(120)
+      return 'mock response'
+    response, result_record = self._safe_provider_query(_slow_provider_query)
 
     fmt = query_record.response_format
     is_text = fmt is None or fmt.type == types.ResponseFormatType.TEXT
@@ -149,19 +197,30 @@ class MockSlowProviderModelConnector(model_connector.ProviderModelConnector):
         )
     )
     if is_text:
-      return types.Response(value="mock response", type=types.ResponseType.TEXT)
-    elif is_json:
-      return types.Response(
-          value={
-              "name": "John Doe",
-              "age": 30
-          }, type=types.ResponseType.JSON
-      )
-    elif fmt and fmt.type == types.ResponseFormatType.PYDANTIC:
-      return types.Response(
-          value=SamplePydanticModel(name='John Doe',
-                                    age=30), type=types.ResponseType.PYDANTIC,
-          pydantic_metadata=types.PydanticMetadataType(
-              class_name='SamplePydanticModel'
+      result_record.content = [
+          message_content.MessageContent(
+              type=message_content.ContentType.TEXT,
+              text='mock response',
           )
-      )
+      ]
+    elif is_json:
+      result_record.content = [
+          message_content.MessageContent(
+              type=message_content.ContentType.TEXT,
+              text='{"name": "John Doe", "age": 30}',
+          )
+      ]
+    elif fmt and fmt.type == types.ResponseFormatType.PYDANTIC:
+      result_record.content = [
+          message_content.MessageContent(
+              type=message_content.ContentType.PYDANTIC_INSTANCE,
+              pydantic_content=message_content.PydanticContent(
+                  class_name='SamplePydanticModel',
+                  class_value=SamplePydanticModel,
+                  instance_value=SamplePydanticModel(
+                      name='John Doe', age=30),
+              ),
+          )
+      ]
+
+    return result_record
