@@ -174,7 +174,7 @@ class ProviderModelConnector(state_controller.StateControlled):
     self.set_property_value('run_type', value)
 
   @property
-  def provider_model_config(self):
+  def provider_model_config(self) -> types.ProviderModelConfig:
     return self.get_property_value('provider_model_config')
 
   @provider_model_config.setter
@@ -182,7 +182,7 @@ class ProviderModelConnector(state_controller.StateControlled):
     self.set_property_value('provider_model_config', value)
 
   @property
-  def feature_mapping_strategy(self):
+  def feature_mapping_strategy(self) -> types.FeatureMappingStrategy:
     return self.get_property_value('feature_mapping_strategy')
 
   @feature_mapping_strategy.setter
@@ -190,7 +190,7 @@ class ProviderModelConnector(state_controller.StateControlled):
     self.set_property_value('feature_mapping_strategy', value)
 
   @property
-  def query_cache_manager(self):
+  def query_cache_manager(self) -> query_cache.QueryCacheManager:
     return self.get_state_controlled_property_value('query_cache_manager')
 
   @query_cache_manager.setter
@@ -204,7 +204,7 @@ class ProviderModelConnector(state_controller.StateControlled):
     return query_cache.QueryCacheManager(init_from_state=state_value)
 
   @property
-  def logging_options(self):
+  def logging_options(self) -> types.LoggingOptions:
     return self.get_property_value('logging_options')
 
   @logging_options.setter
@@ -212,7 +212,7 @@ class ProviderModelConnector(state_controller.StateControlled):
     self.set_property_value('logging_options', value)
 
   @property
-  def proxdash_connection(self):
+  def proxdash_connection(self) -> proxdash.ProxDashConnection:
     return self.get_state_controlled_property_value('proxdash_connection')
 
   @proxdash_connection.setter
@@ -226,7 +226,7 @@ class ProviderModelConnector(state_controller.StateControlled):
     return proxdash.ProxDashConnection(init_from_state=state_value)
 
   @property
-  def provider_token_value_map(self):
+  def provider_token_value_map(self) -> types.ProviderTokenValueMap:
     return self.get_property_value('provider_token_value_map')
 
   @provider_token_value_map.setter
@@ -322,14 +322,14 @@ class ProviderModelConnector(state_controller.StateControlled):
 
     return total
 
-  def get_estimated_cost(self, logging_record: types.LoggingRecord):
-    """Calculate the estimated cost for a logging record."""
-    query_token_count = logging_record.query_record.token_count
-    if not isinstance(query_token_count, int):
-      query_token_count = 0
-    response_token_count = logging_record.response_record.token_count
-    if not isinstance(response_token_count, int):
-      response_token_count = 0
+  def get_estimated_cost(self, call_record: types.CallRecord):
+    """Calculate the estimated cost for a call record."""
+    input_token_count = call_record.result.usage.input_tokens
+    if input_token_count is None:
+      input_token_count = 0
+    output_token_count = call_record.result.usage.output_tokens
+    if output_token_count is None:
+      output_token_count = 0
     model_pricing_config = self.provider_model_config.pricing
 
     query_token_cost = model_pricing_config.input_token_cost
@@ -340,15 +340,15 @@ class ProviderModelConnector(state_controller.StateControlled):
       response_token_cost = 0
 
     return math.floor(
-        query_token_count * query_token_cost +
-        response_token_count * response_token_cost
+        input_token_count * query_token_cost +
+        output_token_count * response_token_cost
     )
 
-  def _update_proxdash(self, logging_record: types.LoggingRecord):
+  def _update_proxdash(self, call_record: types.CallRecord):
     if not self.proxdash_connection:
       return
     try:
-      self.proxdash_connection.upload_logging_record(logging_record)
+      self.proxdash_connection.upload_logging_record(call_record)
     except Exception as e:
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
@@ -579,7 +579,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       response_format: types.ResponseFormatType | None = None,
       connection_options: types.ConnectionOptions | None = None,
       connection_metadata: types.ConnectionMetadata | None = None,
-  ) -> types.LoggingRecord:
+  ) -> types.CallRecord:
     """Generate text from the model and return a logging record."""
     if prompt is not None and messages is not None:
       raise ValueError('prompt and messages cannot be used together')
@@ -663,6 +663,8 @@ class ProviderModelConnector(state_controller.StateControlled):
         result=result_record,
         connection=connection_metadata,
     )
+    estimated_cost = self.get_estimated_cost(call_record=call_record)
+    result_record.usage.estimated_cost = estimated_cost
 
     if call_record.result.status == types.ResultStatusType.FAILED:
       if (not connection_options or
