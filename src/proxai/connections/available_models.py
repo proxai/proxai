@@ -74,7 +74,7 @@ class AvailableModels(state_controller.StateControlled):
       self.feature_mapping_strategy = init_from_params.feature_mapping_strategy
       self.model_configs_instance = init_from_params.model_configs_instance
 
-      # self.model_cache_manager = init_from_params.model_cache_manager
+      self.model_cache_manager = init_from_params.model_cache_manager
       self.query_cache_manager = init_from_params.query_cache_manager
       self.logging_options = init_from_params.logging_options
       # self.proxdash_connection = init_from_params.proxdash_connection
@@ -396,7 +396,7 @@ class AvailableModels(state_controller.StateControlled):
       provider_model_state: types.ProviderModelState, verbose: bool = False,
       model_configs_state: types.ModelConfigsState | None = None,
       model_configs_instance: model_configs.ModelConfigs | None = None
-  ) -> list[types.LoggingRecord]:
+  ) -> types.CallRecord:
     if verbose:
       print(f'Testing {provider_model_state.provider_model}...')
     start_utc_date = datetime.datetime.now(datetime.timezone.utc)
@@ -407,53 +407,65 @@ class AvailableModels(state_controller.StateControlled):
     provider_model_config = model_configs_instance.get_provider_model_config(
         provider_model_state.provider_model
     )
-    model_connector = model_registry.get_model_connector(
+    connector = model_registry.get_model_connector(
         provider_model_config=provider_model_config,
         without_additional_args=True
     )
-    model_connector = model_connector(init_from_state=provider_model_state)
+    connector = connector(init_from_state=provider_model_state)
     try:
-      logging_record: types.LoggingRecord = model_connector.generate_text(
-          prompt=_GENERATE_TEXT_TEST_PROMPT, use_cache=False
+      call_record: types.CallRecord = connector.generate(
+          prompt=_GENERATE_TEXT_TEST_PROMPT,
+          provider_model=provider_model_state.provider_model,
+          parameters=types.ParameterType(
+              max_tokens=_GENERATE_TEXT_TEST_MAX_TOKENS),
+          connection_options=types.ConnectionOptions(
+              skip_cache=True, suppress_provider_errors=True),
       )
-      return logging_record
+      return call_record
     except Exception as e:
-      return types.LoggingRecord(
-          query_record=types.QueryRecord(
-              call_type=types.CallType.TEXT,
+      end_utc_date = datetime.datetime.now(datetime.timezone.utc)
+      return types.CallRecord(
+          query=types.QueryRecord(
               provider_model=provider_model_state.provider_model,
               prompt=_GENERATE_TEXT_TEST_PROMPT,
-              max_tokens=_GENERATE_TEXT_TEST_MAX_TOKENS
-          ), response_record=types.QueryResponseRecord(
+              parameters=types.ParameterType(
+                  max_tokens=_GENERATE_TEXT_TEST_MAX_TOKENS),
+          ), result=types.ResultRecord(
+              status=types.ResultStatusType.FAILED,
               error=str(e), error_traceback=traceback.format_exc(),
-              start_utc_date=start_utc_date,
-              end_utc_date=datetime.datetime.now(datetime.timezone.utc),
-              response_time=(
-                  datetime.datetime.now(datetime.timezone.utc) - start_utc_date
-              )
-          ), response_source=types.ResponseSource.PROVIDER
+              timestamp=types.TimeStampType(
+                  start_utc_date=start_utc_date,
+                  end_utc_date=end_utc_date,
+                  response_time=(end_utc_date - start_utc_date),
+              ),
+          ), connection=types.ConnectionMetadata(
+              result_source=types.ResultSource.PROVIDER),
       )
 
-  def _get_timeout_logging_record(
+  def _get_timeout_call_record(
       self, provider_model: types.ProviderModelType
   ):
     end_utc_date = datetime.datetime.now(datetime.timezone.utc)
     start_utc_date = end_utc_date - datetime.timedelta(
         seconds=self.model_test_timeout
     )
-    return types.LoggingRecord(
-        query_record=types.QueryRecord(
-            call_type=types.CallType.TEXT,
+    return types.CallRecord(
+        query=types.QueryRecord(
             provider_model=provider_model, prompt=_GENERATE_TEXT_TEST_PROMPT,
-            max_tokens=_GENERATE_TEXT_TEST_MAX_TOKENS
-        ), response_record=types.QueryResponseRecord(
+            parameters=types.ParameterType(
+                max_tokens=_GENERATE_TEXT_TEST_MAX_TOKENS),
+        ), result=types.ResultRecord(
+            status=types.ResultStatusType.FAILED,
             error=(
                 f'Model {provider_model} took longer than '
                 f'{self.model_test_timeout} seconds to respond'
             ), error_traceback=traceback.format_exc(),
-            start_utc_date=start_utc_date, end_utc_date=end_utc_date,
-            response_time=(end_utc_date - start_utc_date)
-        ), response_source=types.ResponseSource.PROVIDER
+            timestamp=types.TimeStampType(
+                start_utc_date=start_utc_date, end_utc_date=end_utc_date,
+                response_time=(end_utc_date - start_utc_date),
+            ),
+        ), connection=types.ConnectionMetadata(
+            result_source=types.ResultSource.PROVIDER),
     )
 
   def _get_bootstrap_error(self, e: Exception):
@@ -513,7 +525,7 @@ class AvailableModels(state_controller.StateControlled):
                 f"> {provider_model} query took longer than "
                 f'{self.model_test_timeout} seconds to respond'
             )
-          test_results.append(self._get_timeout_logging_record(provider_model))
+          test_results.append(self._get_timeout_call_record(provider_model))
       pool.terminate()
       pool.join()
     except Exception as e:
@@ -590,16 +602,15 @@ class AvailableModels(state_controller.StateControlled):
           verbose=verbose
       )
 
-    for logging_record in test_results:
+    for call_record in test_results:
       models.unprocessed_models.discard(
-          logging_record.query_record.provider_model
+          call_record.query.provider_model
       )
-      if logging_record.response_record.response is not None:
-        models.working_models.add(logging_record.query_record.provider_model)
+      if call_record.result.status == types.ResultStatusType.SUCCESS:
+        models.working_models.add(call_record.query.provider_model)
       else:
-        models.failed_models.add(logging_record.query_record.provider_model)
-      models.provider_queries[logging_record.query_record.provider_model
-                             ] = logging_record
+        models.failed_models.add(call_record.query.provider_model)
+      models.provider_queries[call_record.query.provider_model] = call_record
 
   def _format_set(
       self, provider_model_set: set[types.ProviderModelType]
@@ -611,12 +622,11 @@ class AvailableModels(state_controller.StateControlled):
   ):
     for provider_model in list(models.filtered_models):
       if provider_model in models.provider_queries:
-        if models.provider_queries[provider_model
-                                  ].response_record.response is not None:
+        call_record = models.provider_queries[provider_model]
+        if call_record.result.status == types.ResultStatusType.SUCCESS:
           models.filtered_models.discard(provider_model)
           models.working_models.add(provider_model)
-        elif models.provider_queries[provider_model
-                                    ].response_record.error is not None:
+        elif call_record.result.status == types.ResultStatusType.FAILED:
           models.filtered_models.discard(provider_model)
           models.failed_models.add(provider_model)
 
@@ -629,9 +639,6 @@ class AvailableModels(state_controller.StateControlled):
       raw_config_results_without_test: bool = False,
       call_type: types.CallType = types.CallType.TEXT
   ) -> types.ModelStatus:
-    if call_type != types.CallType.TEXT:
-      raise ValueError(f'Call type not supported: {call_type}')
-
     if self.model_cache_manager and clear_model_cache:
       self.model_cache_manager.clear_cache()
 
@@ -654,7 +661,9 @@ class AvailableModels(state_controller.StateControlled):
     self._filter_by_model_size(models, model_size=model_size)
     self._filter_by_features(models, features=features)
 
-    if raw_config_results_without_test:
+    if (raw_config_results_without_test or 
+        (call_type != types.CallType.TEXT and
+         call_type != types.CallType.MULTIMODAL)):
       return models
 
     self._filter_by_cache(models, call_type=types.CallType.TEXT)
@@ -707,8 +716,6 @@ class AvailableModels(state_controller.StateControlled):
       call_type: types.CallType = types.CallType.TEXT
   ) -> list[types.ProviderModelType]:
     """List all configured models matching the filters."""
-    if call_type != types.CallType.TEXT:
-      raise ValueError(f'Call type not supported: {call_type}')
     if model_size is not None:
       model_size = type_utils.check_model_size_identifier_type(model_size)
     if features is not None:
@@ -726,9 +733,6 @@ class AvailableModels(state_controller.StateControlled):
       self, call_type: types.CallType = types.CallType.TEXT
   ) -> list[str]:
     """List all providers with available API keys."""
-    if call_type != types.CallType.TEXT:
-      raise ValueError(f'Call type not supported: {call_type}')
-
     model_status = self._fetch_all_models(
         call_type=call_type, raw_config_results_without_test=True
     )
@@ -746,8 +750,6 @@ class AvailableModels(state_controller.StateControlled):
       call_type: types.CallType = types.CallType.TEXT,
   ) -> list[types.ProviderModelType]:
     """List all models for a specific provider."""
-    if call_type != types.CallType.TEXT:
-      raise ValueError(f'Call type not supported: {call_type}')
     if model_size is not None:
       model_size = type_utils.check_model_size_identifier_type(model_size)
     if features is not None:
@@ -776,9 +778,6 @@ class AvailableModels(state_controller.StateControlled):
       call_type: types.CallType = types.CallType.TEXT
   ) -> types.ProviderModelType:
     """Get a specific model by provider and model name."""
-    if call_type != types.CallType.TEXT:
-      raise ValueError(f'Call type not supported: {call_type}')
-
     provider_model_config = (
         self.model_configs_instance.get_provider_model_config((provider, model))
     )
@@ -804,14 +803,20 @@ class AvailableModels(state_controller.StateControlled):
     return provider_model
 
   def list_working_models(
-      self, model_size: types.ModelSizeIdentifierType | None = None,
+      self,
+      model_size: types.ModelSizeIdentifierType | None = None,
       features: types.FeatureListParam | None = None, verbose: bool = True,
       return_all: bool = False, clear_model_cache: bool = False,
       call_type: types.CallType = types.CallType.TEXT
   ) -> list[types.ProviderModelType] | types.ModelStatus:
     """List models verified to be working through API tests."""
     if call_type != types.CallType.TEXT:
-      raise ValueError(f'Call type not supported: {call_type}')
+      raise ValueError(
+          'Working models are only supported for TEXT and MULTIMODAL '
+          'because IMAGE, AUDIO, and VIDEO types are costly to test. '
+          'Please use the list_models function instead and directly use the '
+          'models you need.'
+          f'Call type: {call_type}')
     if model_size is not None:
       model_size = type_utils.check_model_size_identifier_type(model_size)
     if features is not None:
@@ -850,7 +855,12 @@ class AvailableModels(state_controller.StateControlled):
   ) -> list[str]:
     """List providers with at least one working model."""
     if call_type != types.CallType.TEXT:
-      raise ValueError(f'Call type not supported: {call_type}')
+      raise ValueError(
+          'Working models are only supported for TEXT and MULTIMODAL '
+          'because IMAGE, AUDIO, and VIDEO types are costly to test. '
+          'Please use the list_providers function instead and directly use the '
+          'models you need.'
+          f'Call type: {call_type}')
 
     providers_with_key: set[str] | None = None
     if not self.model_cache_manager:
@@ -888,7 +898,12 @@ class AvailableModels(state_controller.StateControlled):
   ) -> list[types.ProviderModelType] | types.ModelStatus:
     """List working models for a specific provider."""
     if call_type != types.CallType.TEXT:
-      raise ValueError(f'Call type not supported: {call_type}')
+      raise ValueError(
+          'Working models are only supported for TEXT and MULTIMODAL '
+          'because IMAGE, AUDIO, and VIDEO types are costly to test. '
+          'Please use the list_provider_models function instead and directly use the '
+          'models you need.'
+          f'Call type: {call_type}')
     if model_size is not None:
       model_size = type_utils.check_model_size_identifier_type(model_size)
     if features is not None:
@@ -934,7 +949,12 @@ class AvailableModels(state_controller.StateControlled):
   ) -> types.ProviderModelType:
     """Get a specific model after verifying it works."""
     if call_type != types.CallType.TEXT:
-      raise ValueError(f'Call type not supported: {call_type}')
+      raise ValueError(
+          'Working models are only supported for TEXT and MULTIMODAL '
+          'because IMAGE, AUDIO, and VIDEO types are costly to test. '
+          'Please use the get_model function instead and directly use the '
+          'models you need.'
+          f'Call type: {call_type}')
 
     provider_model_config = (
         self.model_configs_instance.get_provider_model_config((provider, model))

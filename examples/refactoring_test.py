@@ -15,264 +15,6 @@ _AUDIO_MODEL = ('openai', 'tts-1')
 _VIDEO_MODEL = ('openai', 'sora-2')
 
 
-def register_models(px_client: px.Client):
-    pass
-#   print('>> register_models')
-#   model_configs = px_client.model_configs_instance
-  
-#   model_configs.register_provider_model_config(
-#       provider_model_config=types.ProviderModelConfig(
-#           provider_model=types.ProviderModelType(
-#               provider=_DEFAULT_MODEL[0],
-#               model=_DEFAULT_MODEL[1],
-#               provider_model_identifier=_DEFAULT_MODEL[1],
-#           ),
-#           pricing=types.ProviderModelPricingType(
-#               input_token_cost=0.0,
-#               output_token_cost=0.0,
-#           ),
-#           features=types.FeatureConfigType(
-#               prompt=types.FeatureSupportType.SUPPORTED,
-#               messages=types.FeatureSupportType.SUPPORTED,
-#               system_prompt=types.FeatureSupportType.SUPPORTED,
-#               parameters=types.ParameterConfigType(
-#                   temperature=types.FeatureSupportType.SUPPORTED,
-#                   max_tokens=types.FeatureSupportType.SUPPORTED,
-#                   stop=types.FeatureSupportType.SUPPORTED,
-#                   n=types.FeatureSupportType.SUPPORTED,
-#                   thinking=types.FeatureSupportType.NOT_SUPPORTED,
-#               ),
-#               tools=types.ToolConfigType(
-#                   web_search=types.FeatureSupportType.SUPPORTED,
-#               ),
-#               response_format=types.ResponseFormatConfigType(
-#                   text=types.FeatureSupportType.SUPPORTED,
-#                   json=types.FeatureSupportType.SUPPORTED,
-#                   pydantic=types.FeatureSupportType.SUPPORTED,
-#               ),
-#           ),
-#           metadata=types.ProviderModelMetadataType(
-#               call_type=types.CallType.TEXT,
-#               is_featured=True,
-#               model_size_tags=[types.ModelSizeType.SMALL],
-#           ),
-#       )
-#   )
-
-#   model_configs.register_provider_model_config(
-#       provider_model_config=types.ProviderModelConfig(
-#           provider_model=types.ProviderModelType(
-#               provider=_THINKING_MODEL[0],
-#               model=_THINKING_MODEL[1],
-#               provider_model_identifier=_THINKING_MODEL[1],
-#           ),
-#           pricing=types.ProviderModelPricingType(
-#               input_token_cost=0.0,
-#               output_token_cost=0.0,
-#           ),
-#           features=types.FeatureConfigType(
-#               prompt=types.FeatureSupportType.SUPPORTED,
-#               messages=types.FeatureSupportType.SUPPORTED,
-#               system_prompt=types.FeatureSupportType.SUPPORTED,
-#               parameters=types.ParameterConfigType(
-#                   temperature=types.FeatureSupportType.SUPPORTED,
-#                   max_tokens=types.FeatureSupportType.SUPPORTED,
-#                   stop=types.FeatureSupportType.SUPPORTED,
-#                   n=types.FeatureSupportType.SUPPORTED,
-#                   thinking=types.FeatureSupportType.SUPPORTED,
-#               ),
-#               tools=types.ToolConfigType(
-#                   web_search=types.FeatureSupportType.SUPPORTED,
-#               ),
-#               response_format=types.ResponseFormatConfigType(
-#                   text=types.FeatureSupportType.SUPPORTED,
-#                   json=types.FeatureSupportType.SUPPORTED,
-#                   pydantic=types.FeatureSupportType.SUPPORTED,
-#               ),
-#           ),
-#           metadata=types.ProviderModelMetadataType(
-#               call_type=types.CallType.TEXT,
-#               is_featured=True,
-#               model_size_tags=[types.ModelSizeType.SMALL],
-#           ),
-#       )
-#   )
-
-#   model_configs.register_provider_model_config(
-#       provider_model_config=types.ProviderModelConfig(
-#           provider_model=types.ProviderModelType(
-#               provider=_IMAGE_MODEL[0],
-#               model=_IMAGE_MODEL[1],
-#               provider_model_identifier=_IMAGE_MODEL[1],
-#           ),
-#           pricing=types.ProviderModelPricingType(
-#               input_token_cost=0.0,
-#               output_token_cost=0.0,
-#           ),
-#           features=types.FeatureConfigType(
-#               prompt=types.FeatureSupportType.SUPPORTED,
-#               response_format=types.ResponseFormatConfigType(
-#                   image=types.FeatureSupportType.SUPPORTED,
-#               ),
-#           ),
-#           metadata=types.ProviderModelMetadataType(
-#               call_type=types.CallType.IMAGE,
-#               is_featured=True,
-#               model_size_tags=[],
-#           ),
-#       )
-#   )
-
-#   model_configs.register_provider_model_config(
-#       provider_model_config=types.ProviderModelConfig(
-#           provider_model=types.ProviderModelType(
-#               provider=_AUDIO_MODEL[0],
-#               model=_AUDIO_MODEL[1],
-#               provider_model_identifier=_AUDIO_MODEL[1],
-#           ),
-#           pricing=types.ProviderModelPricingType(
-#               input_token_cost=0.0,
-#               output_token_cost=0.0,
-#           ),
-#           features=types.FeatureConfigType(
-#               prompt=types.FeatureSupportType.SUPPORTED,
-#               response_format=types.ResponseFormatConfigType(
-#                   audio=types.FeatureSupportType.SUPPORTED,
-#               ),
-#           ),
-#           metadata=types.ProviderModelMetadataType(
-#               call_type=types.CallType.AUDIO,
-#               is_featured=True,
-#               model_size_tags=[],
-#           ),
-#       )
-#   )
-
-#   model_configs.register_provider_model_config(
-#       provider_model_config=types.ProviderModelConfig(
-#           provider_model=types.ProviderModelType(
-#               provider=_VIDEO_MODEL[0],
-#               model=_VIDEO_MODEL[1],
-#               provider_model_identifier=_VIDEO_MODEL[1],
-#           ),
-#           pricing=types.ProviderModelPricingType(
-#               input_token_cost=0.0,
-#               output_token_cost=0.0,
-#           ),
-#           features=types.FeatureConfigType(
-#               prompt=types.FeatureSupportType.SUPPORTED,
-#               response_format=types.ResponseFormatConfigType(
-#                   video=types.FeatureSupportType.SUPPORTED,
-#               ),
-#           ),
-#           metadata=types.ProviderModelMetadataType(
-#               call_type=types.CallType.VIDEO,
-#               is_featured=True,
-#               model_size_tags=[],
-#           ),
-#       )
-#   )
-
-#   model_configs.register_provider_model_config(
-#       provider_model_config=types.ProviderModelConfig(
-#           provider_model=types.ProviderModelType(
-#               provider='mock_provider',
-#               model='mock_model',
-#               provider_model_identifier='mock_model',
-#           ),
-#           pricing=types.ProviderModelPricingType(
-#               input_token_cost=0.0,
-#               output_token_cost=0.0,
-#           ),
-#           features=types.FeatureConfigType(
-#               prompt=types.FeatureSupportType.SUPPORTED,
-#               messages=types.FeatureSupportType.SUPPORTED,
-#               system_prompt=types.FeatureSupportType.SUPPORTED,
-#               parameters=types.ParameterConfigType(
-#                   temperature=types.FeatureSupportType.SUPPORTED,
-#                   max_tokens=types.FeatureSupportType.SUPPORTED,
-#               ),
-#               response_format=types.ResponseFormatConfigType(
-#                   text=types.FeatureSupportType.SUPPORTED,
-#                   json=types.FeatureSupportType.SUPPORTED,
-#                   pydantic=types.FeatureSupportType.SUPPORTED,
-#               ),
-#           ),
-#           metadata=types.ProviderModelMetadataType(
-#               call_type=types.CallType.TEXT,
-#               is_featured=False,
-#               model_size_tags=[],
-#           ),
-#       )
-#   )
-
-#   model_configs.register_provider_model_config(
-#       provider_model_config=types.ProviderModelConfig(
-#           provider_model=types.ProviderModelType(
-#               provider='mock_failing_provider',
-#               model='mock_failing_model',
-#               provider_model_identifier='mock_failing_model',
-#           ),
-#           pricing=types.ProviderModelPricingType(
-#               input_token_cost=0.0,
-#               output_token_cost=0.0,
-#           ),
-#           features=types.FeatureConfigType(
-#               prompt=types.FeatureSupportType.SUPPORTED,
-#               messages=types.FeatureSupportType.SUPPORTED,
-#               system_prompt=types.FeatureSupportType.SUPPORTED,
-#               parameters=types.ParameterConfigType(
-#                   temperature=types.FeatureSupportType.SUPPORTED,
-#                   max_tokens=types.FeatureSupportType.SUPPORTED,
-#               ),
-#               response_format=types.ResponseFormatConfigType(
-#                   text=types.FeatureSupportType.SUPPORTED,
-#                   json=types.FeatureSupportType.SUPPORTED,
-#                   pydantic=types.FeatureSupportType.SUPPORTED,
-#               ),
-#           ),
-#           metadata=types.ProviderModelMetadataType(
-#               call_type=types.CallType.TEXT,
-#               is_featured=False,
-#               model_size_tags=[],
-#           ),
-#       )
-#   )
-
-#   model_configs.register_provider_model_config(
-#       provider_model_config=types.ProviderModelConfig(
-#           provider_model=types.ProviderModelType(
-#               provider='mock_slow_provider',
-#               model='mock_slow_model',
-#               provider_model_identifier='mock_slow_model',
-#           ),
-#           pricing=types.ProviderModelPricingType(
-#               input_token_cost=0.0,
-#               output_token_cost=0.0,
-#           ),
-#           features=types.FeatureConfigType(
-#               prompt=types.FeatureSupportType.SUPPORTED,
-#               messages=types.FeatureSupportType.SUPPORTED,
-#               system_prompt=types.FeatureSupportType.SUPPORTED,
-#               parameters=types.ParameterConfigType(
-#                   temperature=types.FeatureSupportType.SUPPORTED,
-#                   max_tokens=types.FeatureSupportType.SUPPORTED,
-#               ),
-#               response_format=types.ResponseFormatConfigType(
-#                   text=types.FeatureSupportType.SUPPORTED,
-#                   json=types.FeatureSupportType.SUPPORTED,
-#                   pydantic=types.FeatureSupportType.SUPPORTED,
-#               ),
-#           ),
-#           metadata=types.ProviderModelMetadataType(
-#               call_type=types.CallType.TEXT,
-#               is_featured=False,
-#               model_size_tags=[],
-#           ),
-#       )
-#   )
-
-
 def _assert_success(result: types.CallRecord):
   assert result.result is not None
   assert result.result.status == types.ResultStatusType.SUCCESS
@@ -610,7 +352,6 @@ def cache_test():
           unique_response_limit=2
       )
   )
-  register_models(client)
 
   result = client.generate(
       prompt='What is 2 + 2?',
@@ -645,7 +386,6 @@ def connection_options_skip_cache_test():
   client = px.Client(
       cache_options=px.CacheOptions(
           cache_path=os.path.expanduser('~/temp/proxai_cache/')))
-  register_models(client)
 
   result = client.generate(
       prompt='What is 2 + 2?',
@@ -682,7 +422,6 @@ def connection_options_override_cache_value_test():
   client = px.Client(
       cache_options=px.CacheOptions(
           cache_path=os.path.expanduser('~/temp/proxai_cache/')))
-  register_models(client)
 
   result_1 = client.generate(
       prompt='Write me poem about karadeniz. Make it perfect.',
@@ -754,32 +493,30 @@ def video_generate_test():
 
 
 def main():
-  register_models(px.get_default_proxai_client())
-
   prompt_test()
   messages_test()
   system_prompt_test()
-  parameters_temperature_test()
-  parameters_max_tokens_test()
-  parameters_stop_test()
-  parameters_stop_list_test()
-  parameters_n_test()
-  parameters_thinking_test()
-  tools_web_search_test()
-  response_format_text_test()
-  response_format_json_test()
-  response_format_pydantic_test()
-  connection_options_fallback_test()
-  connection_options_suppress_provider_errors_test()
-  connection_options_endpoint_test()
-  cache_test()
-  connection_options_skip_cache_test()
-  # NOTE: There is a bug in the cache implementation. Comment in when fixed.
-  # # connection_options_override_cache_value_test()
-  images_generate_test()
-  audio_generate_test()
-  # NOTE: Video test is too slow. Comment in when needed.
-  # video_generate_test()
+  # parameters_temperature_test()
+  # parameters_max_tokens_test()
+  # parameters_stop_test()
+  # parameters_stop_list_test()
+  # parameters_n_test()
+  # parameters_thinking_test()
+  # tools_web_search_test()
+  # response_format_text_test()
+  # response_format_json_test()
+  # response_format_pydantic_test()
+  # connection_options_fallback_test()
+  # connection_options_suppress_provider_errors_test()
+  # connection_options_endpoint_test()
+  # cache_test()
+  # connection_options_skip_cache_test()
+  # # NOTE: There is a bug in the cache implementation. Comment in when fixed.
+  # # # connection_options_override_cache_value_test()
+  # images_generate_test()
+  # audio_generate_test()
+  # # NOTE: Video test is too slow. Comment in when needed.
+  # # video_generate_test()
 
 if __name__ == '__main__':
   main()

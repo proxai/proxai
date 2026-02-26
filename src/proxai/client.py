@@ -1036,33 +1036,6 @@ class ProxAIClient(state_controller.StateControlled):
         types.CallType.TEXT
     ] = (self.available_models_instance.get_model_connector(provider_model))
 
-  def _excute_model_connector_call(
-      self,
-      prompt: str | None = None,
-      messages: types.MessagesParam | None = None,
-      system_prompt: str | None = None,
-      provider_model: types.ProviderModelParam | None = None,
-      parameters: types.ParameterType | None = None,
-      tools: List[types.ToolType] | None = None,
-      response_format: types.ResponseFormatParam | None = None,
-      connection_options: types.ConnectionOptions | None = None,
-      connection_metadata: types.ConnectionMetadata | None = None,
-  ) -> types.CallRecord:
-    model_connector = self.available_models_instance.get_model_connector(
-        provider_model_identifier=provider_model
-    )
-    return model_connector.generate(
-        prompt=prompt,
-        messages=messages,
-        system_prompt=system_prompt,
-        provider_model=provider_model,
-        parameters=parameters,
-        tools=tools,
-        response_format=response_format,
-        connection_options=connection_options,
-        connection_metadata=connection_metadata,
-    )
-
   def generate(
       self,
       prompt: str | None = None,
@@ -1134,17 +1107,6 @@ class ProxAIClient(state_controller.StateControlled):
           connection_options=connection_options,
           connection_metadata=connection_metadata,
       )
-      # result_record = self._excute_model_connector_call(
-      #     prompt=prompt,
-      #     messages=messages,
-      #     system_prompt=system_prompt,
-      #     provider_model=provider_model,
-      #     parameters=parameters,
-      #     tools=tools,
-      #     response_format=response_format,
-      #     connection_options=connection_options,
-      #     connection_metadata=connection_metadata,
-      # )
       if result_record.result.status == types.ResultStatusType.SUCCESS:
         return result_record
       if idx == 0:

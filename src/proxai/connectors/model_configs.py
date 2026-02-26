@@ -67,7 +67,15 @@ class ModelConfigs(state_controller.StateControlled):
         model_registry = self._load_model_registry_from_local_files()
       else:
         model_registry = init_from_params.model_registry
-      self.model_registry = model_registry
+      self.model_registry = types.ModelRegistry(
+          metadata=model_registry.metadata,
+          default_model_priority_list=(
+              model_registry.default_model_priority_list),
+          provider_model_configs={},
+      )
+      for models in model_registry.provider_model_configs.values():
+        for model_config in models.values():
+          self.register_provider_model_config(model_config)
 
   def get_internal_state_property_name(self):
     """Return the name of the internal state property."""
@@ -716,7 +724,6 @@ class ModelConfigs(state_controller.StateControlled):
       only_featured: bool | None = True,
   ) -> list[types.ProviderModelType]:
     """List all models matching the given filters."""
-    version_config = self.model_configs_schema.version_config
     if (
         call_type is not None and
         call_type not in self.models_by_call_type

@@ -76,11 +76,11 @@ class ProviderModelConnector(state_controller.StateControlled):
     if init_from_state:
       if init_from_state.provider_model is None:
         raise ValueError('provider_model needs to be set in init_from_state.')
-      if init_from_state.provider_model.provider != self.get_provider_name():
+      if init_from_state.provider_model.provider != self.PROVIDER_NAME:
         raise ValueError(
             'provider_model needs to be same with the class provider name.\n'
             f'provider_model: {init_from_state.provider_model}\n'
-            f'class provider name: {self.get_provider_name()}'
+            f'class provider name: {self.PROVIDER_NAME}'
         )
       self.load_state(init_from_state)
     else:
@@ -92,10 +92,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       self.logging_options = init_from_params.logging_options
       self.proxdash_connection = init_from_params.proxdash_connection
       self.provider_token_value_map = init_from_params.provider_token_value_map
-
-      # BEGIN: Refactoring: Remove this after testing
-      # self._validate_provider_token_value_map()
-      # END: Refactoring
+      self._validate_provider_token_value_map()
 
   def __init_subclass__(cls, **kwargs):
     super().__init_subclass__(**kwargs)
@@ -140,7 +137,7 @@ class ProviderModelConnector(state_controller.StateControlled):
   def _validate_provider_token_value_map(self):
     if self.provider_token_value_map is None:
       raise ValueError('provider_token_value_map needs to be set.')
-    for token_name in self.get_required_provider_token_names():
+    for token_name in self.PROVIDER_API_KEYS:
       if token_name not in self.provider_token_value_map:
         raise ValueError(
             f'provider_token_value_map needs to contain {token_name}.\n'
@@ -606,14 +603,12 @@ class ProviderModelConnector(state_controller.StateControlled):
     if connection_metadata is None:
       connection_metadata = types.ConnectionMetadata()
 
-    # BEGIN: Refactoring: Remove this after testing
-    # if provider_model.provider != self.provider:
-    #   raise ValueError(
-    #       'provider_model does not match the connector provider.'
-    #       f'provider_model: {provider_model}\n'
-    #       f'connector provider: {self.provider}'
-    #   )
-    # END: Refactoring: Remove this after testing
+    if provider_model.provider != self.PROVIDER_NAME:
+      raise ValueError(
+          'provider_model does not match the connector provider.'
+          f'provider_model: {provider_model}\n'
+          f'connector provider name: {self.PROVIDER_NAME}'
+      )
 
     start_utc_date = datetime.datetime.now(datetime.timezone.utc)
 
