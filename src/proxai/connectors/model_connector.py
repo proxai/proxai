@@ -391,6 +391,32 @@ class ProviderModelConnector(state_controller.StateControlled):
             f'endpoint {endpoint} is not supported in STRICT mode.\n'
             f'query_record: {query_record}')
 
+  def get_feature_tags_support_level(
+      self,
+      feature_tags: list[types.FeatureTagType],
+  ) -> types.FeatureSupportType:
+    """Return the best support level for the given feature tags across endpoints.
+
+    Iterates ENDPOINT_PRIORITY, creates a FeatureAdapter per endpoint with both
+    endpoint and model configs, and calls adapter.get_feature_tags_support_level.
+    Returns SUPPORTED immediately if found, tracks BEST_EFFORT, else NOT_SUPPORTED.
+    """
+    has_best_effort = False
+    for endpoint in self.ENDPOINT_PRIORITY:
+      adapter = feature_adapter.FeatureAdapter(
+          endpoint=endpoint,
+          endpoint_feature_config=self.ENDPOINT_CONFIG[endpoint],
+          model_feature_config=self.provider_model_config.features,
+      )
+      support_level = adapter.get_feature_tags_support_level(feature_tags)
+      if support_level == types.FeatureSupportType.SUPPORTED:
+        return types.FeatureSupportType.SUPPORTED
+      elif support_level == types.FeatureSupportType.BEST_EFFORT:
+        has_best_effort = True
+    if has_best_effort:
+      return types.FeatureSupportType.BEST_EFFORT
+    return types.FeatureSupportType.NOT_SUPPORTED
+
   def _find_compatible_endpoint(self, query_record: types.QueryRecord):
     """Find a compatible endpoint for the query record."""
     best_effort_endpoints = []

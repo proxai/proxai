@@ -343,9 +343,21 @@ class AvailableModels(state_controller.StateControlled):
     models.working_models = _filter_set(models.working_models)
     models.failed_models = _filter_set(models.failed_models)
 
+  def _is_feature_compatible(
+      self, support_level: types.FeatureSupportType
+  ) -> bool:
+    if support_level == types.FeatureSupportType.SUPPORTED:
+      return True
+    if support_level == types.FeatureSupportType.BEST_EFFORT:
+      return (
+          self.feature_mapping_strategy == types.FeatureMappingStrategy.BEST_EFFORT
+          or self.feature_mapping_strategy is None
+      )
+    return False
+
   def _filter_by_features(
       self, models: types.ModelStatus,
-      features: types.FeatureListType | None = None
+      features: list[types.FeatureTagType] | None = None
   ):
     if features is None:
       return
@@ -355,9 +367,10 @@ class AvailableModels(state_controller.StateControlled):
     ) -> tuple[set[types.ProviderModelType], set[types.ProviderModelType]]:
       not_filtered_models = set()
       for provider_model in provider_model_set:
-        if self.get_model_connector(provider_model).check_feature_compatibility(
-            features=features
-        ):
+        support_level = self.get_model_connector(
+            provider_model
+        ).get_feature_tags_support_level(feature_tags=features)
+        if self._is_feature_compatible(support_level):
           not_filtered_models.add(provider_model)
         else:
           models.filtered_models.add(provider_model)
@@ -634,7 +647,7 @@ class AvailableModels(state_controller.StateControlled):
       self, selected_providers: set[str] | None = None,
       selected_provider_models: set[types.ProviderModelType] | None = None,
       model_size: types.ModelSizeType | None = None,
-      features: types.FeatureListType | None = None, verbose: bool = False,
+      features: list[types.FeatureTagType] | None = None, verbose: bool = False,
       clear_model_cache: bool = False,
       raw_config_results_without_test: bool = False,
       call_type: types.CallType = types.CallType.TEXT
@@ -712,14 +725,14 @@ class AvailableModels(state_controller.StateControlled):
 
   def list_models(
       self, model_size: types.ModelSizeIdentifierType | None = None,
-      features: types.FeatureListParam | None = None,
+      features: types.FeatureTagParam | None = None,
       call_type: types.CallType = types.CallType.TEXT
   ) -> list[types.ProviderModelType]:
     """List all configured models matching the filters."""
     if model_size is not None:
       model_size = type_utils.check_model_size_identifier_type(model_size)
     if features is not None:
-      features = type_utils.create_feature_list_type(features=features)
+      features = type_utils.create_feature_tag_list(features=features)
 
     model_status: types.ModelStatus | None = None
     model_status = self._fetch_all_models(
@@ -746,14 +759,14 @@ class AvailableModels(state_controller.StateControlled):
       self,
       provider: str,
       model_size: types.ModelSizeIdentifierType | None = None,
-      features: types.FeatureListParam | None = None,
+      features: types.FeatureTagParam | None = None,
       call_type: types.CallType = types.CallType.TEXT,
   ) -> list[types.ProviderModelType]:
     """List all models for a specific provider."""
     if model_size is not None:
       model_size = type_utils.check_model_size_identifier_type(model_size)
     if features is not None:
-      features = type_utils.create_feature_list_type(features=features)
+      features = type_utils.create_feature_tag_list(features=features)
 
     provider_models = self.model_configs_instance.get_all_models(
         provider=provider, call_type=call_type, model_size=model_size
@@ -805,7 +818,7 @@ class AvailableModels(state_controller.StateControlled):
   def list_working_models(
       self,
       model_size: types.ModelSizeIdentifierType | None = None,
-      features: types.FeatureListParam | None = None, verbose: bool = True,
+      features: types.FeatureTagParam | None = None, verbose: bool = True,
       return_all: bool = False, clear_model_cache: bool = False,
       call_type: types.CallType = types.CallType.TEXT
   ) -> list[types.ProviderModelType] | types.ModelStatus:
@@ -820,7 +833,7 @@ class AvailableModels(state_controller.StateControlled):
     if model_size is not None:
       model_size = type_utils.check_model_size_identifier_type(model_size)
     if features is not None:
-      features = type_utils.create_feature_list_type(features=features)
+      features = type_utils.create_feature_tag_list(features=features)
 
     model_status: types.ModelStatus | None = None
     if not self.model_cache_manager:
@@ -890,7 +903,7 @@ class AvailableModels(state_controller.StateControlled):
       self,
       provider: str,
       model_size: types.ModelSizeIdentifierType | None = None,
-      features: types.FeatureListParam | None = None,
+      features: types.FeatureTagParam | None = None,
       verbose: bool = True,
       return_all: bool = False,
       clear_model_cache: bool = False,
@@ -907,7 +920,7 @@ class AvailableModels(state_controller.StateControlled):
     if model_size is not None:
       model_size = type_utils.check_model_size_identifier_type(model_size)
     if features is not None:
-      features = type_utils.create_feature_list_type(features=features)
+      features = type_utils.create_feature_tag_list(features=features)
 
     provider_models = self.model_configs_instance.get_all_models(
         provider=provider, call_type=call_type, model_size=model_size

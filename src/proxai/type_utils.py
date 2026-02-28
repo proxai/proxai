@@ -231,16 +231,16 @@ def create_pydantic_instance_from_response(
     )
 
 
-def create_feature_list_type(
-    features: types.FeatureListParam
-) -> types.FeatureListType:
-  """Convert a list of feature strings or enums to FeatureListType."""
+def create_feature_tag_list(
+    features: types.FeatureTagParam
+) -> list[types.FeatureTagType]:
+  """Convert a list of feature strings or enums to list[FeatureTagType]."""
   result_features = []
   for feature in features:
-    if isinstance(feature, str):
-      result_features.append(types.FeatureNameType(feature))
-    elif isinstance(feature, types.FeatureNameType):
+    if isinstance(feature, types.FeatureTagType):
       result_features.append(feature)
+    elif isinstance(feature, str):
+      result_features.append(types.FeatureTagType(feature))
     else:
       raise ValueError(f'Invalid feature: {feature}')
   return result_features
