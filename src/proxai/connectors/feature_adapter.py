@@ -9,6 +9,7 @@ from proxai.connectors.adapter_utils import (
     SUPPORT_RANK,
     merge_feature_configs,
     resolve_support,
+    resolve_tag_support,
 )
 
 
@@ -42,7 +43,21 @@ class FeatureAdapter:
     else:
       self.feature_config = endpoint_feature_config
 
-  def get_support_level(
+  def get_feature_tags_support_level(
+      self, feature_tags: list[types.FeatureTagType],
+  ) -> types.FeatureSupportType:
+    """Return the minimum support level across the given feature tags.
+
+    Returns SUPPORTED if the list is empty.
+    """
+    if not feature_tags:
+      return types.FeatureSupportType.SUPPORTED
+    levels = [
+        resolve_tag_support(self.feature_config, tag) for tag in feature_tags
+    ]
+    return min(levels, key=lambda l: SUPPORT_RANK[l])
+
+  def get_query_record_support_level(
       self, query_record: types.QueryRecord,
   ) -> types.FeatureSupportType:
     """Return the minimum support level across all features used in the query.

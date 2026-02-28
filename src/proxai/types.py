@@ -170,6 +170,27 @@ class FeatureConfigType:
   response_format: ResponseFormatConfigType | None = None
 
 
+class FeatureTagType(str, enum.Enum):
+  """Tag for a feature."""
+
+  PROMPT = "prompt"
+  MESSAGES = "messages"
+  SYSTEM_PROMPT = "system_prompt"
+  TEMPERATURE = "temperature"
+  MAX_TOKENS = "max_tokens"
+  STOP = "stop"
+  N = "n"
+  THINKING = "thinking"
+  WEB_SEARCH = "web_search"
+  RESPONSE_TEXT = "response_text"
+  RESPONSE_IMAGE = "response_image"
+  RESPONSE_AUDIO = "response_audio"
+  RESPONSE_VIDEO = "response_video"
+  RESPONSE_JSON = "response_json"
+  RESPONSE_PYDANTIC = "response_pydantic"
+  RESPONSE_MULTI_MODAL = "response_multi_modal"
+
+
 class ModelSizeType(str, enum.Enum):
   """Size category for AI models."""
 

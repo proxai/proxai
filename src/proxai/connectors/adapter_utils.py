@@ -57,6 +57,50 @@ def merge_support_fields(a, b, dataclass_type):
   return dataclass_type(**merged)
 
 
+_TAG_TO_FIELD = {
+    types.FeatureTagType.PROMPT: lambda c: c.prompt,
+    types.FeatureTagType.MESSAGES: lambda c: c.messages,
+    types.FeatureTagType.SYSTEM_PROMPT: lambda c: c.system_prompt,
+    types.FeatureTagType.TEMPERATURE: lambda c: (
+        c.parameters.temperature if c.parameters else None),
+    types.FeatureTagType.MAX_TOKENS: lambda c: (
+        c.parameters.max_tokens if c.parameters else None),
+    types.FeatureTagType.STOP: lambda c: (
+        c.parameters.stop if c.parameters else None),
+    types.FeatureTagType.N: lambda c: (
+        c.parameters.n if c.parameters else None),
+    types.FeatureTagType.THINKING: lambda c: (
+        c.parameters.thinking if c.parameters else None),
+    types.FeatureTagType.WEB_SEARCH: lambda c: (
+        c.tools.web_search if c.tools else None),
+    types.FeatureTagType.RESPONSE_TEXT: lambda c: (
+        c.response_format.text if c.response_format else None),
+    types.FeatureTagType.RESPONSE_IMAGE: lambda c: (
+        c.response_format.image if c.response_format else None),
+    types.FeatureTagType.RESPONSE_AUDIO: lambda c: (
+        c.response_format.audio if c.response_format else None),
+    types.FeatureTagType.RESPONSE_VIDEO: lambda c: (
+        c.response_format.video if c.response_format else None),
+    types.FeatureTagType.RESPONSE_JSON: lambda c: (
+        c.response_format.json if c.response_format else None),
+    types.FeatureTagType.RESPONSE_PYDANTIC: lambda c: (
+        c.response_format.pydantic if c.response_format else None),
+    types.FeatureTagType.RESPONSE_MULTI_MODAL: lambda c: (
+        c.response_format.multi_modal if c.response_format else None),
+}
+
+
+def resolve_tag_support(
+    feature_config: types.FeatureConfigType,
+    tag: types.FeatureTagType,
+) -> types.FeatureSupportType:
+  """Return the support level for a single feature tag."""
+  accessor = _TAG_TO_FIELD.get(tag)
+  if accessor is None:
+    raise ValueError(f"Unknown feature tag: {tag}")
+  return resolve_support(accessor(feature_config))
+
+
 def merge_feature_configs(
     endpoint_config: types.FeatureConfigType,
     model_config: types.FeatureConfigType,
