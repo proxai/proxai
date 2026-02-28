@@ -191,6 +191,9 @@ class FeatureTagType(str, enum.Enum):
   RESPONSE_MULTI_MODAL = "response_multi_modal"
 
 
+FeatureTagParam = list[FeatureTagType] | list[str]
+
+
 class ModelSizeType(str, enum.Enum):
   """Size category for AI models."""
 

@@ -57,7 +57,7 @@ class ModelConnector:
   def list_models(
       self,
       model_size: types.ModelSizeIdentifierType | None = None,
-      features: types.FeatureListParam | None = None,
+      features: types.FeatureTagParam | None = None,
       call_type: types.CallType = types.CallType.TEXT,
   ) -> list[types.ProviderModelType]:
     """Lists all configured models matching the specified criteria.
@@ -133,7 +133,7 @@ class ModelConnector:
       self,
       provider: str,
       model_size: types.ModelSizeIdentifierType | None = None,
-      features: types.FeatureListParam | None = None,
+      features: types.FeatureTagParam | None = None,
       call_type: types.CallType = types.CallType.TEXT,
   ) -> list[types.ProviderModelType]:
     """Lists all models available from a specific provider.
@@ -220,7 +220,7 @@ class ModelConnector:
   def list_working_models(
       self,
       model_size: types.ModelSizeIdentifierType | None = None,
-      features: types.FeatureListParam | None = None,
+      features: types.FeatureTagParam | None = None,
       verbose: bool = True,
       return_all: bool = False,
       clear_model_cache: bool = False,
@@ -308,7 +308,7 @@ class ModelConnector:
       self,
       provider: str,
       model_size: types.ModelSizeIdentifierType | None = None,
-      features: types.FeatureListParam | None = None,
+      features: types.FeatureTagParam | None = None,
       verbose: bool = True,
       return_all: bool = False,
       clear_model_cache: bool = False,

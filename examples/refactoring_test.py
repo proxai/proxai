@@ -492,6 +492,34 @@ def video_generate_test():
     f.write(result.result.output_video.data)
 
 
+def list_models_test():
+  print('> list_models_test')
+  models = px.models.list_models()
+  assert len(models) > 1
+
+  models = px.models.list_models(call_type=types.CallType.IMAGE)
+  assert len(models) > 0
+  models = px.models.list_models(call_type=types.CallType.AUDIO)
+  assert len(models) > 0
+  models = px.models.list_models(call_type=types.CallType.VIDEO)
+  assert len(models) > 0
+
+  models = px.models.list_models(features=[types.FeatureTagType.PROMPT])
+  assert len(models) > 0
+  models = px.models.list_models(
+      features=[
+          types.FeatureTagType.WEB_SEARCH,
+          types.FeatureTagType.RESPONSE_PYDANTIC])
+  assert len(models) > 0
+
+  client = px.Client(
+      feature_mapping_strategy=types.FeatureMappingStrategy.STRICT)
+  models = client.models.list_models(
+      features=[
+          types.FeatureTagType.WEB_SEARCH,
+          types.FeatureTagType.RESPONSE_PYDANTIC])
+  assert len(models) == 0
+
 def main():
   prompt_test()
   messages_test()
@@ -517,6 +545,7 @@ def main():
   audio_generate_test()
   # NOTE: Video test is too slow. Comment in when needed.
   # video_generate_test()
+  list_models_test()
 
 if __name__ == '__main__':
   main()
