@@ -373,7 +373,7 @@ class ProviderModelConnector(state_controller.StateControlled):
         endpoint_feature_config=self.ENDPOINT_CONFIG[endpoint],
         model_feature_config=self.provider_model_config.features,
     )
-    return adapter.get_support_level(query_record=query_record)
+    return adapter.get_query_record_support_level(query_record=query_record)
 
   def _check_endpoint_support_compatibility(
       self,

@@ -84,117 +84,117 @@ class _TestModel(pydantic.BaseModel):
 
 
 # ===================================================================
-# get_support_level
+# get_query_record_support_level
 # ===================================================================
 
-class TestGetSupportLevelEmpty:
+class TestGetQueryRecordSupportLevelEmpty:
   """Empty query with only response_format returns SUPPORTED."""
 
   def test_empty_query(self):
     adapter = _adapter(text=S)
-    assert adapter.get_support_level(
+    assert adapter.get_query_record_support_level(
         _query(response_format_type=types.ResponseFormatType.TEXT)) == S
 
   def test_no_response_format_raises(self):
     adapter = _adapter()
     with pytest.raises(ValueError, match="response_format.type.*must be set"):
-      adapter.get_support_level(_query())
+      adapter.get_query_record_support_level(_query())
 
 
-class TestGetSupportLevelPrompt:
+class TestGetQueryRecordSupportLevelPrompt:
   """Support level for prompt feature."""
 
   def test_supported(self):
     adapter = _adapter(prompt=S, text=S)
-    assert adapter.get_support_level(
+    assert adapter.get_query_record_support_level(
         _query(prompt="hi",
                response_format_type=types.ResponseFormatType.TEXT)) == S
 
   def test_best_effort(self):
     adapter = _adapter(prompt=BE, text=S)
-    assert adapter.get_support_level(
+    assert adapter.get_query_record_support_level(
         _query(prompt="hi",
                response_format_type=types.ResponseFormatType.TEXT)) == BE
 
   def test_not_supported(self):
     adapter = _adapter(prompt=NS, text=S)
-    assert adapter.get_support_level(
+    assert adapter.get_query_record_support_level(
         _query(prompt="hi",
                response_format_type=types.ResponseFormatType.TEXT)) == NS
 
   def test_none_config_treated_as_not_supported(self):
     adapter = _adapter(prompt=None, text=S)
-    assert adapter.get_support_level(
+    assert adapter.get_query_record_support_level(
         _query(prompt="hi",
                response_format_type=types.ResponseFormatType.TEXT)) == NS
 
 
-class TestGetSupportLevelMessages:
+class TestGetQueryRecordSupportLevelMessages:
   """Support level for chat/messages feature."""
 
   def test_supported(self):
     adapter = _adapter(messages=S, text=S)
-    assert adapter.get_support_level(
+    assert adapter.get_query_record_support_level(
         _query(chat=_chat(),
                response_format_type=types.ResponseFormatType.TEXT)) == S
 
   def test_best_effort(self):
     adapter = _adapter(messages=BE, text=S)
-    assert adapter.get_support_level(
+    assert adapter.get_query_record_support_level(
         _query(chat=_chat(),
                response_format_type=types.ResponseFormatType.TEXT)) == BE
 
   def test_chat_with_system_prompt_checks_both(self):
     adapter = _adapter(messages=S, system_prompt=BE, text=S)
-    assert adapter.get_support_level(
+    assert adapter.get_query_record_support_level(
         _query(chat=_chat("Be helpful"),
                response_format_type=types.ResponseFormatType.TEXT)) == BE
 
   def test_chat_without_system_prompt_ignores_system(self):
     adapter = _adapter(messages=S, system_prompt=NS, text=S)
-    assert adapter.get_support_level(
+    assert adapter.get_query_record_support_level(
         _query(chat=_chat(),
                response_format_type=types.ResponseFormatType.TEXT)) == S
 
 
-class TestGetSupportLevelSystemPrompt:
+class TestGetQueryRecordSupportLevelSystemPrompt:
   """Support level for standalone system_prompt."""
 
   def test_supported(self):
     adapter = _adapter(prompt=S, system_prompt=S, text=S)
-    result = adapter.get_support_level(
+    result = adapter.get_query_record_support_level(
         _query(prompt="hi", system_prompt="Be nice",
                response_format_type=types.ResponseFormatType.TEXT))
     assert result == S
 
   def test_best_effort_is_minimum(self):
     adapter = _adapter(prompt=S, system_prompt=BE, text=S)
-    result = adapter.get_support_level(
+    result = adapter.get_query_record_support_level(
         _query(prompt="hi", system_prompt="Be nice",
                response_format_type=types.ResponseFormatType.TEXT))
     assert result == BE
 
 
-class TestGetSupportLevelParameters:
+class TestGetQueryRecordSupportLevelParameters:
   """Support level for parameter features."""
 
   def test_all_supported(self):
     adapter = _adapter(prompt=S, temperature=S, max_tokens=S, text=S)
-    result = adapter.get_support_level(
+    result = adapter.get_query_record_support_level(
         _query(prompt="hi", temperature=0.5, max_tokens=100,
                response_format_type=types.ResponseFormatType.TEXT))
     assert result == S
 
   def test_one_best_effort_is_minimum(self):
     adapter = _adapter(prompt=S, temperature=S, max_tokens=BE, text=S)
-    result = adapter.get_support_level(
+    result = adapter.get_query_record_support_level(
         _query(prompt="hi", temperature=0.5, max_tokens=100,
                response_format_type=types.ResponseFormatType.TEXT))
     assert result == BE
 
   def test_unset_params_ignored(self):
     adapter = _adapter(prompt=S, temperature=NS, max_tokens=S, text=S)
-    result = adapter.get_support_level(
+    result = adapter.get_query_record_support_level(
         _query(prompt="hi", max_tokens=100,
                response_format_type=types.ResponseFormatType.TEXT))
     assert result == S
@@ -203,65 +203,65 @@ class TestGetSupportLevelParameters:
     adapter = _adapter(
         prompt=S, temperature=S, max_tokens=S, stop=S, n=S, thinking=S,
         text=S)
-    result = adapter.get_support_level(_query(
+    result = adapter.get_query_record_support_level(_query(
         prompt="hi", temperature=0.5, max_tokens=100,
         stop="end", n=2, thinking=types.ThinkingType.LOW,
         response_format_type=types.ResponseFormatType.TEXT))
     assert result == S
 
 
-class TestGetSupportLevelTools:
+class TestGetQueryRecordSupportLevelTools:
   """Support level for tool features."""
 
   def test_web_search_supported(self):
     adapter = _adapter(prompt=S, web_search=S, text=S)
-    result = adapter.get_support_level(
+    result = adapter.get_query_record_support_level(
         _query(prompt="hi", tools=[types.Tools.WEB_SEARCH],
                response_format_type=types.ResponseFormatType.TEXT))
     assert result == S
 
   def test_web_search_not_supported(self):
     adapter = _adapter(prompt=S, web_search=NS, text=S)
-    result = adapter.get_support_level(
+    result = adapter.get_query_record_support_level(
         _query(prompt="hi", tools=[types.Tools.WEB_SEARCH],
                response_format_type=types.ResponseFormatType.TEXT))
     assert result == NS
 
 
-class TestGetSupportLevelResponseFormat:
+class TestGetQueryRecordSupportLevelResponseFormat:
   """Support level for response format features."""
 
   def test_text_supported(self):
     adapter = _adapter(prompt=S, text=S)
-    result = adapter.get_support_level(
+    result = adapter.get_query_record_support_level(
         _query(prompt="hi", response_format_type=types.ResponseFormatType.TEXT))
     assert result == S
 
   def test_json_best_effort(self):
     adapter = _adapter(prompt=S, json_fmt=BE)
-    result = adapter.get_support_level(
+    result = adapter.get_query_record_support_level(
         _query(prompt="hi", response_format_type=types.ResponseFormatType.JSON))
     assert result == BE
 
   def test_no_response_format_raises(self):
     adapter = _adapter(prompt=S)
     with pytest.raises(ValueError, match="response_format.type.*must be set"):
-      adapter.get_support_level(_query(prompt="hi"))
+      adapter.get_query_record_support_level(_query(prompt="hi"))
 
 
-class TestGetSupportLevelMinimumAcrossFeatures:
+class TestGetQueryRecordSupportLevelMinimumAcrossFeatures:
   """Minimum across all features determines overall level."""
 
   def test_one_not_supported_dominates(self):
     adapter = _adapter(prompt=S, temperature=S, max_tokens=NS, text=S)
-    result = adapter.get_support_level(
+    result = adapter.get_query_record_support_level(
         _query(prompt="hi", temperature=0.5, max_tokens=100,
                response_format_type=types.ResponseFormatType.TEXT))
     assert result == NS
 
   def test_best_effort_below_supported(self):
     adapter = _adapter(prompt=S, temperature=BE, text=S)
-    result = adapter.get_support_level(
+    result = adapter.get_query_record_support_level(
         _query(prompt="hi", temperature=0.5,
                response_format_type=types.ResponseFormatType.TEXT))
     assert result == BE
@@ -738,7 +738,7 @@ class TestFeatureAdapterWithModelConfig:
         endpoint_feature_config=ep_config,
         model_feature_config=model_config,
     )
-    result = adapter.get_support_level(
+    result = adapter.get_query_record_support_level(
         _query(prompt="hi", temperature=0.5,
                response_format_type=types.ResponseFormatType.TEXT))
     assert result == NS
@@ -753,3 +753,86 @@ class TestFeatureAdapterWithModelConfig:
     )
     assert adapter.endpoint_feature_config is ep_config
     assert adapter.model_feature_config is model_config
+
+
+# ===================================================================
+# get_feature_tags_support_level
+# ===================================================================
+
+class TestGetFeatureTagsSupportLevel:
+  """Tests for get_feature_tags_support_level."""
+
+  def test_empty_tags_returns_supported(self):
+    adapter = _adapter(prompt=NS, text=NS)
+    assert adapter.get_feature_tags_support_level([]) == S
+
+  def test_single_supported_tag(self):
+    adapter = _adapter(prompt=S, text=S)
+    assert adapter.get_feature_tags_support_level(
+        [types.FeatureTagType.PROMPT]) == S
+
+  def test_single_not_supported_tag(self):
+    adapter = _adapter(prompt=NS, text=S)
+    assert adapter.get_feature_tags_support_level(
+        [types.FeatureTagType.PROMPT]) == NS
+
+  def test_single_best_effort_tag(self):
+    adapter = _adapter(prompt=BE, text=S)
+    assert adapter.get_feature_tags_support_level(
+        [types.FeatureTagType.PROMPT]) == BE
+
+  def test_minimum_across_tags(self):
+    adapter = _adapter(prompt=S, messages=BE, text=S)
+    result = adapter.get_feature_tags_support_level([
+        types.FeatureTagType.PROMPT,
+        types.FeatureTagType.MESSAGES,
+    ])
+    assert result == BE
+
+  def test_not_supported_dominates(self):
+    adapter = _adapter(prompt=S, messages=NS, text=S)
+    result = adapter.get_feature_tags_support_level([
+        types.FeatureTagType.PROMPT,
+        types.FeatureTagType.MESSAGES,
+    ])
+    assert result == NS
+
+  def test_parameter_tags(self):
+    adapter = _adapter(
+        prompt=S, temperature=S, max_tokens=BE, stop=S, n=S, thinking=S,
+        text=S)
+    result = adapter.get_feature_tags_support_level([
+        types.FeatureTagType.TEMPERATURE,
+        types.FeatureTagType.MAX_TOKENS,
+    ])
+    assert result == BE
+
+  def test_tool_tag(self):
+    adapter = _adapter(prompt=S, web_search=S, text=S)
+    assert adapter.get_feature_tags_support_level(
+        [types.FeatureTagType.WEB_SEARCH]) == S
+
+  def test_response_format_tags(self):
+    adapter = _adapter(prompt=S, text=S, image=NS, json_fmt=BE)
+    assert adapter.get_feature_tags_support_level(
+        [types.FeatureTagType.RESPONSE_TEXT]) == S
+    assert adapter.get_feature_tags_support_level(
+        [types.FeatureTagType.RESPONSE_IMAGE]) == NS
+    assert adapter.get_feature_tags_support_level(
+        [types.FeatureTagType.RESPONSE_JSON]) == BE
+
+  def test_none_config_treated_as_not_supported(self):
+    adapter = _adapter(prompt=None, text=S)
+    assert adapter.get_feature_tags_support_level(
+        [types.FeatureTagType.PROMPT]) == NS
+
+  def test_all_tag_types(self):
+    adapter = _adapter(
+        prompt=S, messages=S, system_prompt=S,
+        temperature=S, max_tokens=S, stop=S, n=S, thinking=S,
+        web_search=S,
+        text=S, image=S, audio=S, video=S,
+        json_fmt=S, pydantic_fmt=S, multi_modal=S,
+    )
+    all_tags = list(types.FeatureTagType)
+    assert adapter.get_feature_tags_support_level(all_tags) == S
