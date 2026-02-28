@@ -368,10 +368,10 @@ class ProviderModelConnector(state_controller.StateControlled):
       raise ValueError(
           f'endpoint {endpoint} is not a valid endpoint.\n'
           f'Valid endpoints: {self.ENDPOINT_CONFIG.keys()}')
-    feature_config = self.ENDPOINT_CONFIG[endpoint]
     adapter = feature_adapter.FeatureAdapter(
         endpoint=endpoint,
-        feature_config=feature_config,
+        endpoint_feature_config=self.ENDPOINT_CONFIG[endpoint],
+        model_feature_config=self.provider_model_config.features,
     )
     return adapter.get_support_level(query_record=query_record)
 
@@ -434,7 +434,8 @@ class ProviderModelConnector(state_controller.StateControlled):
 
     chosen_feature_adapter = feature_adapter.FeatureAdapter(
         endpoint=chosen_endpoint,
-        feature_config=self.ENDPOINT_CONFIG[chosen_endpoint],
+        endpoint_feature_config=self.ENDPOINT_CONFIG[chosen_endpoint],
+        model_feature_config=self.provider_model_config.features,
     )
     executor_name = self.ENDPOINT_EXECUTORS[chosen_endpoint]
     chosen_executor = getattr(self, executor_name)
