@@ -10,27 +10,16 @@ from proxai.chat.message_content import ContentType
 from proxai.chat.message_content import MessageContent
 from proxai.chat.message_content import PydanticContent
 import proxai.types as types
-
-_SUPPORT_RANK = {
-    types.FeatureSupportType.NOT_SUPPORTED: 0,
-    types.FeatureSupportType.BEST_EFFORT: 1,
-    types.FeatureSupportType.SUPPORTED: 2,
-}
+from proxai.connectors.adapter_utils import (
+    RESPONSE_FORMAT_FIELD_MAP,
+    merge_feature_configs,
+    resolve_support,
+)
 
 _RESPONSE_FORMAT_TO_CONTENT_TYPE = {
     types.ResponseFormatType.IMAGE: ContentType.IMAGE,
     types.ResponseFormatType.AUDIO: ContentType.AUDIO,
     types.ResponseFormatType.VIDEO: ContentType.VIDEO,
-}
-
-_RESPONSE_FORMAT_FIELD_MAP = {
-    types.ResponseFormatType.TEXT: "text",
-    types.ResponseFormatType.IMAGE: "image",
-    types.ResponseFormatType.AUDIO: "audio",
-    types.ResponseFormatType.VIDEO: "video",
-    types.ResponseFormatType.JSON: "json",
-    types.ResponseFormatType.PYDANTIC: "pydantic",
-    types.ResponseFormatType.MULTI_MODAL: "multi_modal",
 }
 
 
@@ -40,10 +29,17 @@ class ResultAdapter:
   def __init__(
       self,
       endpoint: str,
-      feature_config: types.FeatureConfigType,
+      endpoint_feature_config: types.FeatureConfigType,
+      model_feature_config: types.FeatureConfigType | None = None,
   ):
     self.endpoint = endpoint
-    self.feature_config = feature_config
+    self.endpoint_feature_config = endpoint_feature_config
+    self.model_feature_config = model_feature_config
+    if model_feature_config is not None:
+      self.feature_config = merge_feature_configs(
+          endpoint_feature_config, model_feature_config)
+    else:
+      self.feature_config = endpoint_feature_config
 
   def get_support_level(
       self, query_record: types.QueryRecord,
@@ -59,10 +55,10 @@ class ResultAdapter:
       raise ValueError("'response_format.type' must be set.")
 
     rf_config = self.feature_config.response_format
-    field_name = _RESPONSE_FORMAT_FIELD_MAP.get(
+    field_name = RESPONSE_FORMAT_FIELD_MAP.get(
         query_record.response_format.type)
     if field_name and rf_config:
-      return self._resolve(getattr(rf_config, field_name, None))
+      return resolve_support(getattr(rf_config, field_name, None))
     return types.FeatureSupportType.NOT_SUPPORTED
 
   def adapt_result_record(
@@ -166,10 +162,3 @@ class ResultAdapter:
       elif message_content.type == ContentType.VIDEO:
         result_obj.output_video = message_content
 
-  @staticmethod
-  def _resolve(
-      support: types.FeatureSupportType | None,
-  ) -> types.FeatureSupportType:
-    if support is None:
-      return types.FeatureSupportType.NOT_SUPPORTED
-    return support

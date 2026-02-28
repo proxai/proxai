@@ -1,80 +1,15 @@
 """Feature adapter for mapping query features to provider capabilities."""
 
 import copy
-import dataclasses
 import json
 
 import proxai.types as types
-
-_SUPPORT_RANK = {
-    types.FeatureSupportType.NOT_SUPPORTED: 0,
-    types.FeatureSupportType.BEST_EFFORT: 1,
-    types.FeatureSupportType.SUPPORTED: 2,
-}
-
-_RESPONSE_FORMAT_FIELD_MAP = {
-    types.ResponseFormatType.TEXT: "text",
-    types.ResponseFormatType.IMAGE: "image",
-    types.ResponseFormatType.AUDIO: "audio",
-    types.ResponseFormatType.VIDEO: "video",
-    types.ResponseFormatType.JSON: "json",
-    types.ResponseFormatType.PYDANTIC: "pydantic",
-    types.ResponseFormatType.MULTI_MODAL: "multi_modal",
-}
-
-
-def _min_support(
-    a: types.FeatureSupportType | None,
-    b: types.FeatureSupportType | None,
-) -> types.FeatureSupportType:
-  """Return the lower-ranked support level, treating None as NOT_SUPPORTED."""
-  a = a if a is not None else types.FeatureSupportType.NOT_SUPPORTED
-  b = b if b is not None else types.FeatureSupportType.NOT_SUPPORTED
-  if _SUPPORT_RANK[a] <= _SUPPORT_RANK[b]:
-    return a
-  return b
-
-
-def _merge_support_fields(a, b, dataclass_type):
-  """Merge two nested config dataclasses field-by-field using _min_support.
-
-  Returns None if both inputs are None.
-  """
-  if a is None and b is None:
-    return None
-  a = a or dataclass_type()
-  b = b or dataclass_type()
-  merged = {}
-  for field in dataclasses.fields(dataclass_type):
-    merged[field.name] = _min_support(
-        getattr(a, field.name), getattr(b, field.name))
-  return dataclass_type(**merged)
-
-
-def _merge_feature_configs(
-    endpoint_config: types.FeatureConfigType,
-    model_config: types.FeatureConfigType,
-) -> types.FeatureConfigType:
-  """Merge endpoint and model feature configs, taking the minimum support."""
-  return types.FeatureConfigType(
-      prompt=_min_support(endpoint_config.prompt, model_config.prompt),
-      messages=_min_support(endpoint_config.messages, model_config.messages),
-      system_prompt=_min_support(
-          endpoint_config.system_prompt, model_config.system_prompt),
-      add_system_to_messages=(
-          True if (endpoint_config.add_system_to_messages
-                   or model_config.add_system_to_messages)
-          else None),
-      parameters=_merge_support_fields(
-          endpoint_config.parameters, model_config.parameters,
-          types.ParameterConfigType),
-      tools=_merge_support_fields(
-          endpoint_config.tools, model_config.tools,
-          types.ToolConfigType),
-      response_format=_merge_support_fields(
-          endpoint_config.response_format, model_config.response_format,
-          types.ResponseFormatConfigType),
-  )
+from proxai.connectors.adapter_utils import (
+    RESPONSE_FORMAT_FIELD_MAP,
+    SUPPORT_RANK,
+    merge_feature_configs,
+    resolve_support,
+)
 
 
 class FeatureAdapter:
@@ -94,7 +29,7 @@ class FeatureAdapter:
     self.endpoint_feature_config = endpoint_feature_config
     self.model_feature_config = model_feature_config
     if model_feature_config is not None:
-      self.feature_config = _merge_feature_configs(
+      self.feature_config = merge_feature_configs(
           endpoint_feature_config, model_feature_config)
     else:
       self.feature_config = endpoint_feature_config
@@ -111,13 +46,13 @@ class FeatureAdapter:
     levels = []
 
     if query_record.prompt is not None:
-      levels.append(self._resolve(self.feature_config.prompt))
+      levels.append(resolve_support(self.feature_config.prompt))
     if query_record.chat is not None:
-      levels.append(self._resolve(self.feature_config.messages))
+      levels.append(resolve_support(self.feature_config.messages))
       if query_record.chat.system_prompt is not None:
-        levels.append(self._resolve(self.feature_config.system_prompt))
+        levels.append(resolve_support(self.feature_config.system_prompt))
     if query_record.system_prompt is not None:
-      levels.append(self._resolve(self.feature_config.system_prompt))
+      levels.append(resolve_support(self.feature_config.system_prompt))
 
     if query_record.parameters is not None:
       self._collect_parameter_levels(query_record.parameters, levels)
@@ -134,7 +69,7 @@ class FeatureAdapter:
     if not levels:
       return types.FeatureSupportType.SUPPORTED
 
-    return min(levels, key=lambda l: _SUPPORT_RANK[l])
+    return min(levels, key=lambda l: SUPPORT_RANK[l])
 
   def _collect_parameter_levels(
       self,
@@ -143,19 +78,19 @@ class FeatureAdapter:
   ):
     param_config = self.feature_config.parameters
     if parameters.temperature is not None:
-      levels.append(self._resolve(
+      levels.append(resolve_support(
           param_config.temperature if param_config else None))
     if parameters.max_tokens is not None:
-      levels.append(self._resolve(
+      levels.append(resolve_support(
           param_config.max_tokens if param_config else None))
     if parameters.stop is not None:
-      levels.append(self._resolve(
+      levels.append(resolve_support(
           param_config.stop if param_config else None))
     if parameters.n is not None:
-      levels.append(self._resolve(
+      levels.append(resolve_support(
           param_config.n if param_config else None))
     if parameters.thinking is not None:
-      levels.append(self._resolve(
+      levels.append(resolve_support(
           param_config.thinking if param_config else None))
 
   def _collect_tool_levels(
@@ -166,7 +101,7 @@ class FeatureAdapter:
     tool_config = self.feature_config.tools
     for tool in tools:
       if tool == types.Tools.WEB_SEARCH:
-        levels.append(self._resolve(
+        levels.append(resolve_support(
             tool_config.web_search if tool_config else None))
 
   def _collect_response_format_level(
@@ -175,9 +110,9 @@ class FeatureAdapter:
       levels: list[types.FeatureSupportType],
   ):
     rf_config = self.feature_config.response_format
-    field_name = _RESPONSE_FORMAT_FIELD_MAP.get(response_format.type)
+    field_name = RESPONSE_FORMAT_FIELD_MAP.get(response_format.type)
     if field_name and rf_config:
-      levels.append(self._resolve(getattr(rf_config, field_name, None)))
+      levels.append(resolve_support(getattr(rf_config, field_name, None)))
     else:
       levels.append(types.FeatureSupportType.NOT_SUPPORTED)
 
@@ -186,7 +121,7 @@ class FeatureAdapter:
                     pydantic_schema: dict | None = None):
     """Adapt system_prompt and response format guidance for prompt queries."""
     if query_record.system_prompt is not None:
-      level = self._resolve(self.feature_config.system_prompt)
+      level = resolve_support(self.feature_config.system_prompt)
       if level == types.FeatureSupportType.BEST_EFFORT:
         query_record.prompt = (
             f"{query_record.system_prompt}\n\n{query_record.prompt}")
@@ -214,7 +149,7 @@ class FeatureAdapter:
     system_best_effort = False
     add_system_to_messages = False
     if query_record.chat.system_prompt is not None:
-      level = self._resolve(self.feature_config.system_prompt)
+      level = resolve_support(self.feature_config.system_prompt)
       if level == types.FeatureSupportType.SUPPORTED:
         if self.feature_config.add_system_to_messages:
           add_system_to_messages = True
@@ -229,7 +164,7 @@ class FeatureAdapter:
 
     # Resolve messages support and export.
     messages_best_effort = False
-    messages_level = self._resolve(self.feature_config.messages)
+    messages_level = resolve_support(self.feature_config.messages)
     if messages_level == types.FeatureSupportType.BEST_EFFORT:
       messages_best_effort = True
     elif messages_level == types.FeatureSupportType.NOT_SUPPORTED:
@@ -260,7 +195,7 @@ class FeatureAdapter:
             f"Unknown tool: {tool}. Only 'WEB_SEARCH' is supported."
         )
     tool_config = self.feature_config.tools
-    level = self._resolve(
+    level = resolve_support(
         tool_config.web_search if tool_config else None)
     if level == types.FeatureSupportType.SUPPORTED:
       return
@@ -290,11 +225,11 @@ class FeatureAdapter:
 
     rf_config = self.feature_config.response_format
     rf_type = query_record.response_format.type
-    field_name = _RESPONSE_FORMAT_FIELD_MAP.get(rf_type)
+    field_name = RESPONSE_FORMAT_FIELD_MAP.get(rf_type)
     if not field_name or not rf_config:
       level = types.FeatureSupportType.NOT_SUPPORTED
     else:
-      level = self._resolve(getattr(rf_config, field_name, None))
+      level = resolve_support(getattr(rf_config, field_name, None))
 
     if field_name in self._NO_BEST_EFFORT_RESPONSE_FORMATS:
       if level == types.FeatureSupportType.BEST_EFFORT:
@@ -354,7 +289,7 @@ class FeatureAdapter:
 
     Raises ValueError if the feature is not supported.
     """
-    level = self._resolve(support)
+    level = resolve_support(support)
     if level == types.FeatureSupportType.SUPPORTED:
       return False
     if level == types.FeatureSupportType.BEST_EFFORT:
@@ -396,10 +331,3 @@ class FeatureAdapter:
 
     return query_record
 
-  @staticmethod
-  def _resolve(
-      support: types.FeatureSupportType | None,
-  ) -> types.FeatureSupportType:
-    if support is None:
-      return types.FeatureSupportType.NOT_SUPPORTED
-    return support
