@@ -1,6 +1,7 @@
 """Feature adapter for mapping query features to provider capabilities."""
 
 import copy
+import dataclasses
 import json
 
 import proxai.types as types
@@ -22,6 +23,60 @@ _RESPONSE_FORMAT_FIELD_MAP = {
 }
 
 
+def _min_support(
+    a: types.FeatureSupportType | None,
+    b: types.FeatureSupportType | None,
+) -> types.FeatureSupportType:
+  """Return the lower-ranked support level, treating None as NOT_SUPPORTED."""
+  a = a if a is not None else types.FeatureSupportType.NOT_SUPPORTED
+  b = b if b is not None else types.FeatureSupportType.NOT_SUPPORTED
+  if _SUPPORT_RANK[a] <= _SUPPORT_RANK[b]:
+    return a
+  return b
+
+
+def _merge_support_fields(a, b, dataclass_type):
+  """Merge two nested config dataclasses field-by-field using _min_support.
+
+  Returns None if both inputs are None.
+  """
+  if a is None and b is None:
+    return None
+  a = a or dataclass_type()
+  b = b or dataclass_type()
+  merged = {}
+  for field in dataclasses.fields(dataclass_type):
+    merged[field.name] = _min_support(
+        getattr(a, field.name), getattr(b, field.name))
+  return dataclass_type(**merged)
+
+
+def _merge_feature_configs(
+    endpoint_config: types.FeatureConfigType,
+    model_config: types.FeatureConfigType,
+) -> types.FeatureConfigType:
+  """Merge endpoint and model feature configs, taking the minimum support."""
+  return types.FeatureConfigType(
+      prompt=_min_support(endpoint_config.prompt, model_config.prompt),
+      messages=_min_support(endpoint_config.messages, model_config.messages),
+      system_prompt=_min_support(
+          endpoint_config.system_prompt, model_config.system_prompt),
+      add_system_to_messages=(
+          True if (endpoint_config.add_system_to_messages
+                   or model_config.add_system_to_messages)
+          else None),
+      parameters=_merge_support_fields(
+          endpoint_config.parameters, model_config.parameters,
+          types.ParameterConfigType),
+      tools=_merge_support_fields(
+          endpoint_config.tools, model_config.tools,
+          types.ToolConfigType),
+      response_format=_merge_support_fields(
+          endpoint_config.response_format, model_config.response_format,
+          types.ResponseFormatConfigType),
+  )
+
+
 class FeatureAdapter:
   """Adapts query records to match a provider endpoint's feature support."""
 
@@ -32,10 +87,17 @@ class FeatureAdapter:
   def __init__(
       self,
       endpoint: str,
-      feature_config: types.FeatureConfigType,
+      endpoint_feature_config: types.FeatureConfigType,
+      model_feature_config: types.FeatureConfigType | None = None,
   ):
     self.endpoint = endpoint
-    self.feature_config = feature_config
+    self.endpoint_feature_config = endpoint_feature_config
+    self.model_feature_config = model_feature_config
+    if model_feature_config is not None:
+      self.feature_config = _merge_feature_configs(
+          endpoint_feature_config, model_feature_config)
+    else:
+      self.feature_config = endpoint_feature_config
 
   def get_support_level(
       self, query_record: types.QueryRecord,

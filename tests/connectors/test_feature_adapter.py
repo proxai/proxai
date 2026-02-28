@@ -6,7 +6,9 @@ import pydantic
 import proxai.types as types
 from proxai.chat.chat_session import Chat
 from proxai.chat.message import Message
-from proxai.connectors.feature_adapter import FeatureAdapter
+from proxai.connectors.feature_adapter import (
+    FeatureAdapter, _min_support, _merge_support_fields, _merge_feature_configs,
+)
 
 S = types.FeatureSupportType.SUPPORTED
 BE = types.FeatureSupportType.BEST_EFFORT
@@ -27,7 +29,7 @@ def _adapter(
   """Build a FeatureAdapter with the given support levels."""
   return FeatureAdapter(
       endpoint="test_endpoint",
-      feature_config=types.FeatureConfigType(
+      endpoint_feature_config=types.FeatureConfigType(
           prompt=prompt,
           messages=messages,
           system_prompt=system_prompt,
@@ -88,66 +90,90 @@ class _TestModel(pydantic.BaseModel):
 # ===================================================================
 
 class TestGetSupportLevelEmpty:
-  """Empty query returns SUPPORTED (vacuously true)."""
+  """Empty query with only response_format returns SUPPORTED."""
 
   def test_empty_query(self):
+    adapter = _adapter(text=S)
+    assert adapter.get_support_level(
+        _query(response_format_type=types.ResponseFormatType.TEXT)) == S
+
+  def test_no_response_format_raises(self):
     adapter = _adapter()
-    assert adapter.get_support_level(_query()) == S
+    with pytest.raises(ValueError, match="response_format.type.*must be set"):
+      adapter.get_support_level(_query())
 
 
 class TestGetSupportLevelPrompt:
   """Support level for prompt feature."""
 
   def test_supported(self):
-    adapter = _adapter(prompt=S)
-    assert adapter.get_support_level(_query(prompt="hi")) == S
+    adapter = _adapter(prompt=S, text=S)
+    assert adapter.get_support_level(
+        _query(prompt="hi",
+               response_format_type=types.ResponseFormatType.TEXT)) == S
 
   def test_best_effort(self):
-    adapter = _adapter(prompt=BE)
-    assert adapter.get_support_level(_query(prompt="hi")) == BE
+    adapter = _adapter(prompt=BE, text=S)
+    assert adapter.get_support_level(
+        _query(prompt="hi",
+               response_format_type=types.ResponseFormatType.TEXT)) == BE
 
   def test_not_supported(self):
-    adapter = _adapter(prompt=NS)
-    assert adapter.get_support_level(_query(prompt="hi")) == NS
+    adapter = _adapter(prompt=NS, text=S)
+    assert adapter.get_support_level(
+        _query(prompt="hi",
+               response_format_type=types.ResponseFormatType.TEXT)) == NS
 
   def test_none_config_treated_as_not_supported(self):
-    adapter = _adapter(prompt=None)
-    assert adapter.get_support_level(_query(prompt="hi")) == NS
+    adapter = _adapter(prompt=None, text=S)
+    assert adapter.get_support_level(
+        _query(prompt="hi",
+               response_format_type=types.ResponseFormatType.TEXT)) == NS
 
 
 class TestGetSupportLevelMessages:
   """Support level for chat/messages feature."""
 
   def test_supported(self):
-    adapter = _adapter(messages=S)
-    assert adapter.get_support_level(_query(chat=_chat())) == S
+    adapter = _adapter(messages=S, text=S)
+    assert adapter.get_support_level(
+        _query(chat=_chat(),
+               response_format_type=types.ResponseFormatType.TEXT)) == S
 
   def test_best_effort(self):
-    adapter = _adapter(messages=BE)
-    assert adapter.get_support_level(_query(chat=_chat())) == BE
+    adapter = _adapter(messages=BE, text=S)
+    assert adapter.get_support_level(
+        _query(chat=_chat(),
+               response_format_type=types.ResponseFormatType.TEXT)) == BE
 
   def test_chat_with_system_prompt_checks_both(self):
-    adapter = _adapter(messages=S, system_prompt=BE)
-    assert adapter.get_support_level(_query(chat=_chat("Be helpful"))) == BE
+    adapter = _adapter(messages=S, system_prompt=BE, text=S)
+    assert adapter.get_support_level(
+        _query(chat=_chat("Be helpful"),
+               response_format_type=types.ResponseFormatType.TEXT)) == BE
 
   def test_chat_without_system_prompt_ignores_system(self):
-    adapter = _adapter(messages=S, system_prompt=NS)
-    assert adapter.get_support_level(_query(chat=_chat())) == S
+    adapter = _adapter(messages=S, system_prompt=NS, text=S)
+    assert adapter.get_support_level(
+        _query(chat=_chat(),
+               response_format_type=types.ResponseFormatType.TEXT)) == S
 
 
 class TestGetSupportLevelSystemPrompt:
   """Support level for standalone system_prompt."""
 
   def test_supported(self):
-    adapter = _adapter(prompt=S, system_prompt=S)
+    adapter = _adapter(prompt=S, system_prompt=S, text=S)
     result = adapter.get_support_level(
-        _query(prompt="hi", system_prompt="Be nice"))
+        _query(prompt="hi", system_prompt="Be nice",
+               response_format_type=types.ResponseFormatType.TEXT))
     assert result == S
 
   def test_best_effort_is_minimum(self):
-    adapter = _adapter(prompt=S, system_prompt=BE)
+    adapter = _adapter(prompt=S, system_prompt=BE, text=S)
     result = adapter.get_support_level(
-        _query(prompt="hi", system_prompt="Be nice"))
+        _query(prompt="hi", system_prompt="Be nice",
+               response_format_type=types.ResponseFormatType.TEXT))
     assert result == BE
 
 
@@ -155,28 +181,34 @@ class TestGetSupportLevelParameters:
   """Support level for parameter features."""
 
   def test_all_supported(self):
-    adapter = _adapter(prompt=S, temperature=S, max_tokens=S)
+    adapter = _adapter(prompt=S, temperature=S, max_tokens=S, text=S)
     result = adapter.get_support_level(
-        _query(prompt="hi", temperature=0.5, max_tokens=100))
+        _query(prompt="hi", temperature=0.5, max_tokens=100,
+               response_format_type=types.ResponseFormatType.TEXT))
     assert result == S
 
   def test_one_best_effort_is_minimum(self):
-    adapter = _adapter(prompt=S, temperature=S, max_tokens=BE)
+    adapter = _adapter(prompt=S, temperature=S, max_tokens=BE, text=S)
     result = adapter.get_support_level(
-        _query(prompt="hi", temperature=0.5, max_tokens=100))
+        _query(prompt="hi", temperature=0.5, max_tokens=100,
+               response_format_type=types.ResponseFormatType.TEXT))
     assert result == BE
 
   def test_unset_params_ignored(self):
-    adapter = _adapter(prompt=S, temperature=NS, max_tokens=S)
-    result = adapter.get_support_level(_query(prompt="hi", max_tokens=100))
+    adapter = _adapter(prompt=S, temperature=NS, max_tokens=S, text=S)
+    result = adapter.get_support_level(
+        _query(prompt="hi", max_tokens=100,
+               response_format_type=types.ResponseFormatType.TEXT))
     assert result == S
 
   def test_all_param_types(self):
     adapter = _adapter(
-        prompt=S, temperature=S, max_tokens=S, stop=S, n=S, thinking=S)
+        prompt=S, temperature=S, max_tokens=S, stop=S, n=S, thinking=S,
+        text=S)
     result = adapter.get_support_level(_query(
         prompt="hi", temperature=0.5, max_tokens=100,
-        stop="end", n=2, thinking=types.ThinkingType.LOW))
+        stop="end", n=2, thinking=types.ThinkingType.LOW,
+        response_format_type=types.ResponseFormatType.TEXT))
     assert result == S
 
 
@@ -184,15 +216,17 @@ class TestGetSupportLevelTools:
   """Support level for tool features."""
 
   def test_web_search_supported(self):
-    adapter = _adapter(prompt=S, web_search=S)
+    adapter = _adapter(prompt=S, web_search=S, text=S)
     result = adapter.get_support_level(
-        _query(prompt="hi", tools=[types.Tools.WEB_SEARCH]))
+        _query(prompt="hi", tools=[types.Tools.WEB_SEARCH],
+               response_format_type=types.ResponseFormatType.TEXT))
     assert result == S
 
   def test_web_search_not_supported(self):
-    adapter = _adapter(prompt=S, web_search=NS)
+    adapter = _adapter(prompt=S, web_search=NS, text=S)
     result = adapter.get_support_level(
-        _query(prompt="hi", tools=[types.Tools.WEB_SEARCH]))
+        _query(prompt="hi", tools=[types.Tools.WEB_SEARCH],
+               response_format_type=types.ResponseFormatType.TEXT))
     assert result == NS
 
 
@@ -211,24 +245,27 @@ class TestGetSupportLevelResponseFormat:
         _query(prompt="hi", response_format_type=types.ResponseFormatType.JSON))
     assert result == BE
 
-  def test_no_response_format_ignored(self):
+  def test_no_response_format_raises(self):
     adapter = _adapter(prompt=S)
-    assert adapter.get_support_level(_query(prompt="hi")) == S
+    with pytest.raises(ValueError, match="response_format.type.*must be set"):
+      adapter.get_support_level(_query(prompt="hi"))
 
 
 class TestGetSupportLevelMinimumAcrossFeatures:
   """Minimum across all features determines overall level."""
 
   def test_one_not_supported_dominates(self):
-    adapter = _adapter(prompt=S, temperature=S, max_tokens=NS)
+    adapter = _adapter(prompt=S, temperature=S, max_tokens=NS, text=S)
     result = adapter.get_support_level(
-        _query(prompt="hi", temperature=0.5, max_tokens=100))
+        _query(prompt="hi", temperature=0.5, max_tokens=100,
+               response_format_type=types.ResponseFormatType.TEXT))
     assert result == NS
 
   def test_best_effort_below_supported(self):
-    adapter = _adapter(prompt=S, temperature=BE)
+    adapter = _adapter(prompt=S, temperature=BE, text=S)
     result = adapter.get_support_level(
-        _query(prompt="hi", temperature=0.5))
+        _query(prompt="hi", temperature=0.5,
+               response_format_type=types.ResponseFormatType.TEXT))
     assert result == BE
 
 
@@ -650,3 +687,194 @@ class TestAdaptCombined:
     assert original.prompt == "hi"
     assert original.system_prompt == "Be nice"
     assert original.parameters.temperature == 0.7
+
+
+# ===================================================================
+# _min_support
+# ===================================================================
+
+class TestMinSupport:
+  """Tests for _min_support helper."""
+
+  def test_both_supported(self):
+    assert _min_support(S, S) == S
+
+  def test_supported_and_best_effort(self):
+    assert _min_support(S, BE) == BE
+
+  def test_best_effort_and_not_supported(self):
+    assert _min_support(BE, NS) == NS
+
+  def test_none_treated_as_not_supported(self):
+    assert _min_support(S, None) == NS
+
+  def test_both_none(self):
+    assert _min_support(None, None) == NS
+
+  def test_symmetric(self):
+    assert _min_support(BE, S) == BE
+    assert _min_support(NS, S) == NS
+
+
+# ===================================================================
+# _merge_support_fields
+# ===================================================================
+
+class TestMergeSupportFields:
+  """Tests for _merge_support_fields helper."""
+
+  def test_both_none_returns_none(self):
+    result = _merge_support_fields(None, None, types.ParameterConfigType)
+    assert result is None
+
+  def test_one_none_uses_defaults(self):
+    a = types.ParameterConfigType(temperature=S, max_tokens=BE)
+    result = _merge_support_fields(a, None, types.ParameterConfigType)
+    assert result.temperature == NS  # S vs None(NS) -> NS
+    assert result.max_tokens == NS   # BE vs None(NS) -> NS
+
+  def test_merge_takes_minimum(self):
+    a = types.ParameterConfigType(temperature=S, max_tokens=S, stop=BE)
+    b = types.ParameterConfigType(temperature=BE, max_tokens=S, stop=S)
+    result = _merge_support_fields(a, b, types.ParameterConfigType)
+    assert result.temperature == BE
+    assert result.max_tokens == S
+    assert result.stop == BE
+
+  def test_tool_config(self):
+    a = types.ToolConfigType(web_search=S)
+    b = types.ToolConfigType(web_search=BE)
+    result = _merge_support_fields(a, b, types.ToolConfigType)
+    assert result.web_search == BE
+
+  def test_response_format_config(self):
+    a = types.ResponseFormatConfigType(text=S, json=S, pydantic=BE)
+    b = types.ResponseFormatConfigType(text=S, json=BE, pydantic=S)
+    result = _merge_support_fields(a, b, types.ResponseFormatConfigType)
+    assert result.text == S
+    assert result.json == BE
+    assert result.pydantic == BE
+
+
+# ===================================================================
+# _merge_feature_configs
+# ===================================================================
+
+class TestMergeFeatureConfigs:
+  """Tests for _merge_feature_configs."""
+
+  def test_top_level_fields_take_minimum(self):
+    ep = types.FeatureConfigType(prompt=S, messages=S, system_prompt=BE)
+    model = types.FeatureConfigType(prompt=BE, messages=S, system_prompt=S)
+    result = _merge_feature_configs(ep, model)
+    assert result.prompt == BE
+    assert result.messages == S
+    assert result.system_prompt == BE
+
+  def test_add_system_to_messages_or_logic(self):
+    ep = types.FeatureConfigType(add_system_to_messages=True)
+    model = types.FeatureConfigType(add_system_to_messages=None)
+    assert _merge_feature_configs(ep, model).add_system_to_messages is True
+
+    ep2 = types.FeatureConfigType(add_system_to_messages=None)
+    model2 = types.FeatureConfigType(add_system_to_messages=True)
+    assert _merge_feature_configs(ep2, model2).add_system_to_messages is True
+
+    ep3 = types.FeatureConfigType(add_system_to_messages=None)
+    model3 = types.FeatureConfigType(add_system_to_messages=None)
+    assert _merge_feature_configs(ep3, model3).add_system_to_messages is None
+
+  def test_nested_configs_merged(self):
+    ep = types.FeatureConfigType(
+        parameters=types.ParameterConfigType(temperature=S, max_tokens=BE),
+        tools=types.ToolConfigType(web_search=S),
+        response_format=types.ResponseFormatConfigType(text=S, json=S),
+    )
+    model = types.FeatureConfigType(
+        parameters=types.ParameterConfigType(temperature=BE, max_tokens=S),
+        tools=types.ToolConfigType(web_search=S),
+        response_format=types.ResponseFormatConfigType(text=S, json=BE),
+    )
+    result = _merge_feature_configs(ep, model)
+    assert result.parameters.temperature == BE
+    assert result.parameters.max_tokens == BE
+    assert result.tools.web_search == S
+    assert result.response_format.text == S
+    assert result.response_format.json == BE
+
+  def test_none_nested_configs(self):
+    ep = types.FeatureConfigType(
+        parameters=types.ParameterConfigType(temperature=S),
+        tools=None,
+    )
+    model = types.FeatureConfigType(
+        parameters=None,
+        tools=types.ToolConfigType(web_search=S),
+    )
+    result = _merge_feature_configs(ep, model)
+    assert result.parameters.temperature == NS  # S vs None(NS) -> NS
+    assert result.tools.web_search == NS         # None(NS) vs S -> NS
+
+  def test_both_nested_none_returns_none(self):
+    ep = types.FeatureConfigType(parameters=None, tools=None)
+    model = types.FeatureConfigType(parameters=None, tools=None)
+    result = _merge_feature_configs(ep, model)
+    assert result.parameters is None
+    assert result.tools is None
+
+
+# ===================================================================
+# FeatureAdapter with model_feature_config
+# ===================================================================
+
+class TestFeatureAdapterWithModelConfig:
+  """Tests for FeatureAdapter with model_feature_config."""
+
+  def test_no_model_config_uses_endpoint_config(self):
+    ep_config = types.FeatureConfigType(prompt=S, messages=BE)
+    adapter = FeatureAdapter(
+        endpoint="test", endpoint_feature_config=ep_config)
+    assert adapter.feature_config is ep_config
+
+  def test_model_config_merges_with_endpoint(self):
+    ep_config = types.FeatureConfigType(prompt=S, messages=S)
+    model_config = types.FeatureConfigType(prompt=BE, messages=S)
+    adapter = FeatureAdapter(
+        endpoint="test",
+        endpoint_feature_config=ep_config,
+        model_feature_config=model_config,
+    )
+    assert adapter.feature_config.prompt == BE
+    assert adapter.feature_config.messages == S
+
+  def test_model_config_restricts_support_level(self):
+    ep_config = types.FeatureConfigType(
+        prompt=S,
+        parameters=types.ParameterConfigType(temperature=S),
+        response_format=types.ResponseFormatConfigType(text=S),
+    )
+    model_config = types.FeatureConfigType(
+        prompt=S,
+        parameters=types.ParameterConfigType(temperature=NS),
+        response_format=types.ResponseFormatConfigType(text=S),
+    )
+    adapter = FeatureAdapter(
+        endpoint="test",
+        endpoint_feature_config=ep_config,
+        model_feature_config=model_config,
+    )
+    result = adapter.get_support_level(
+        _query(prompt="hi", temperature=0.5,
+               response_format_type=types.ResponseFormatType.TEXT))
+    assert result == NS
+
+  def test_originals_stored(self):
+    ep_config = types.FeatureConfigType(prompt=S)
+    model_config = types.FeatureConfigType(prompt=BE)
+    adapter = FeatureAdapter(
+        endpoint="test",
+        endpoint_feature_config=ep_config,
+        model_feature_config=model_config,
+    )
+    assert adapter.endpoint_feature_config is ep_config
+    assert adapter.model_feature_config is model_config
