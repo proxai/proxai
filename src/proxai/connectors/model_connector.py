@@ -473,7 +473,8 @@ class ProviderModelConnector(state_controller.StateControlled):
     if not result_record.error:
       chosen_result_adapter = result_adapter.ResultAdapter(
           endpoint=chosen_endpoint,
-          feature_config=self.ENDPOINT_CONFIG[chosen_endpoint],
+          endpoint_feature_config=self.ENDPOINT_CONFIG[chosen_endpoint],
+          model_feature_config=self.provider_model_config.features,
       )
       chosen_result_adapter.adapt_result_record(
           query_record=query_record,
