@@ -22,15 +22,23 @@ class FeatureAdapter:
   def __init__(
       self,
       endpoint: str,
-      endpoint_feature_config: types.FeatureConfigType,
+      endpoint_feature_config: types.FeatureConfigType | None = None,
       model_feature_config: types.FeatureConfigType | None = None,
   ):
+    if endpoint_feature_config is None and model_feature_config is None:
+      raise ValueError(
+          "At least one of 'endpoint_feature_config' or "
+          "'model_feature_config' must be set."
+      )
     self.endpoint = endpoint
     self.endpoint_feature_config = endpoint_feature_config
     self.model_feature_config = model_feature_config
-    if model_feature_config is not None:
+    if (endpoint_feature_config is not None
+        and model_feature_config is not None):
       self.feature_config = merge_feature_configs(
           endpoint_feature_config, model_feature_config)
+    elif model_feature_config is not None:
+      self.feature_config = model_feature_config
     else:
       self.feature_config = endpoint_feature_config
 

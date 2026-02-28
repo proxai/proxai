@@ -694,6 +694,17 @@ class TestAdaptCombined:
 class TestFeatureAdapterWithModelConfig:
   """Tests for FeatureAdapter with model_feature_config."""
 
+  def test_both_none_raises(self):
+    with pytest.raises(ValueError, match="At least one"):
+      FeatureAdapter(endpoint="test")
+
+  def test_only_model_config_uses_model_config(self):
+    model_config = types.FeatureConfigType(prompt=S, messages=BE)
+    adapter = FeatureAdapter(
+        endpoint="test", model_feature_config=model_config)
+    assert adapter.feature_config is model_config
+    assert adapter.endpoint_feature_config is None
+
   def test_no_model_config_uses_endpoint_config(self):
     ep_config = types.FeatureConfigType(prompt=S, messages=BE)
     adapter = FeatureAdapter(
