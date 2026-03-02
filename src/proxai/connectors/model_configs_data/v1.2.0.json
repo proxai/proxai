@@ -26,7 +26,7 @@
         },
         "metadata": {
           "call_type": "TEXT",
-          "is_featured": false,
+          "is_recommended": false,
           "model_size_tags": []
         },
         "pricing": {
@@ -58,7 +58,7 @@
         },
         "metadata": {
           "call_type": "TEXT",
-          "is_featured": false,
+          "is_recommended": false,
           "model_size_tags": []
         },
         "pricing": {
@@ -90,7 +90,7 @@
         },
         "metadata": {
           "call_type": "TEXT",
-          "is_featured": false,
+          "is_recommended": false,
           "model_size_tags": []
         },
         "pricing": {
@@ -114,7 +114,7 @@
         },
         "metadata": {
           "call_type": "IMAGE",
-          "is_featured": true,
+          "is_recommended": true,
           "model_size_tags": []
         },
         "pricing": {
@@ -150,7 +150,7 @@
         },
         "metadata": {
           "call_type": "TEXT",
-          "is_featured": true,
+          "is_recommended": true,
           "model_size_tags": [
             "small"
           ]
@@ -163,6 +163,44 @@
           "model": "gpt-4o",
           "provider": "openai",
           "provider_model_identifier": "gpt-4o"
+        }
+      },
+      "gpt-5-mini": {
+        "features": {
+          "messages": "SUPPORTED",
+          "parameters": {
+            "max_tokens": "SUPPORTED",
+            "n": "SUPPORTED",
+            "stop": "SUPPORTED",
+            "temperature": "SUPPORTED",
+            "thinking": "NOT_SUPPORTED"
+          },
+          "prompt": "SUPPORTED",
+          "response_format": {
+            "json": "SUPPORTED",
+            "pydantic": "SUPPORTED",
+            "text": "SUPPORTED"
+          },
+          "system_prompt": "SUPPORTED",
+          "tools": {
+            "web_search": "SUPPORTED"
+          }
+        },
+        "metadata": {
+          "call_type": "TEXT",
+          "is_recommended": false,
+          "model_size_tags": [
+            "small"
+          ]
+        },
+        "pricing": {
+          "input_token_cost": 0.0,
+          "output_token_cost": 0.0
+        },
+        "provider_model": {
+          "model": "gpt-5-mini",
+          "provider": "openai",
+          "provider_model_identifier": "gpt-5-mini"
         }
       },
       "o3": {
@@ -188,7 +226,7 @@
         },
         "metadata": {
           "call_type": "TEXT",
-          "is_featured": true,
+          "is_recommended": true,
           "model_size_tags": [
             "small"
           ]
@@ -212,7 +250,7 @@
         },
         "metadata": {
           "call_type": "VIDEO",
-          "is_featured": true,
+          "is_recommended": true,
           "model_size_tags": []
         },
         "pricing": {
@@ -234,7 +272,7 @@
         },
         "metadata": {
           "call_type": "AUDIO",
-          "is_featured": true,
+          "is_recommended": true,
           "model_size_tags": []
         },
         "pricing": {

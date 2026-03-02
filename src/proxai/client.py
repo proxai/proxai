@@ -59,6 +59,7 @@ class ModelConnector:
       model_size: types.ModelSizeIdentifierType | None = None,
       features: types.FeatureTagParam | None = None,
       call_type: types.CallType = types.CallType.TEXT,
+      recommended_only: bool = True,
   ) -> list[types.ProviderModelType]:
     """Lists all configured models matching the specified criteria.
 
@@ -73,6 +74,9 @@ class ModelConnector:
             models must support (e.g., ['system', 'temperature']).
         call_type: The type of API call to filter models for.
             Defaults to GENERATE_TEXT.
+        recommended_only: If True, returns only recommended models curated
+            by ProxAI. Set to False to include all available models.
+            Defaults to True.
 
     Returns:
         list[types.ProviderModelType]: A list of ProviderModelType objects
@@ -96,11 +100,13 @@ class ModelConnector:
         model_size=model_size,
         features=features,
         call_type=call_type,
+        recommended_only=recommended_only,
     )
 
   def list_providers(
       self,
       call_type: types.CallType = types.CallType.TEXT,
+      recommended_only: bool = True,
   ) -> list[str]:
     """Lists all providers that have API keys configured.
 
@@ -110,6 +116,9 @@ class ModelConnector:
     Args:
         call_type: The type of API call to filter providers for.
             Defaults to GENERATE_TEXT.
+        recommended_only: If True, returns only providers with recommended
+            models curated by ProxAI. Set to False to include all
+            available providers. Defaults to True.
 
     Returns:
         List[str]: A sorted list of provider names (e.g., ['anthropic',
@@ -127,6 +136,7 @@ class ModelConnector:
     """
     return self._client_getter().available_models_instance.list_providers(
         call_type=call_type,
+        recommended_only=recommended_only,
     )
 
   def list_provider_models(
@@ -135,6 +145,7 @@ class ModelConnector:
       model_size: types.ModelSizeIdentifierType | None = None,
       features: types.FeatureTagParam | None = None,
       call_type: types.CallType = types.CallType.TEXT,
+      recommended_only: bool = True,
   ) -> list[types.ProviderModelType]:
     """Lists all models available from a specific provider.
 
@@ -150,6 +161,9 @@ class ModelConnector:
             models must support.
         call_type: The type of API call to filter models for.
             Defaults to GENERATE_TEXT.
+        recommended_only: If True, returns only recommended models curated
+            by ProxAI. Set to False to include all available models.
+            Defaults to True.
 
     Returns:
         list[types.ProviderModelType]: A list of ProviderModelType objects
@@ -174,6 +188,7 @@ class ModelConnector:
         model_size=model_size,
         features=features,
         call_type=call_type,
+        recommended_only=recommended_only,
     )
 
   def get_model(
@@ -225,6 +240,7 @@ class ModelConnector:
       return_all: bool = False,
       clear_model_cache: bool = False,
       call_type: types.CallType = types.CallType.TEXT,
+      recommended_only: bool = True,
   ) -> list[types.ProviderModelType] | types.ModelStatus:
     """Lists models that have been verified to be working.
 
@@ -241,6 +257,9 @@ class ModelConnector:
         clear_model_cache: If True, clears the model cache and retests
             all models. Defaults to False.
         call_type: The type of API call to test. Defaults to GENERATE_TEXT.
+        recommended_only: If True, returns only recommended models curated
+            by ProxAI. Set to False to include all available models.
+            Defaults to True.
 
     Returns:
         Union[List[types.ProviderModelType], types.ModelStatus]: A list of
@@ -263,6 +282,7 @@ class ModelConnector:
         return_all=return_all,
         clear_model_cache=clear_model_cache,
         call_type=call_type,
+        recommended_only=recommended_only,
     )
 
   def list_working_providers(
@@ -270,6 +290,7 @@ class ModelConnector:
       verbose: bool = True,
       clear_model_cache: bool = False,
       call_type: types.CallType = types.CallType.TEXT,
+      recommended_only: bool = True,
   ) -> list[str]:
     """Lists providers that have at least one working model.
 
@@ -282,6 +303,9 @@ class ModelConnector:
         clear_model_cache: If True, clears the model cache and retests
             all models. Defaults to False.
         call_type: The type of API call to test. Defaults to GENERATE_TEXT.
+        recommended_only: If True, returns only providers with recommended
+            models curated by ProxAI. Set to False to include all
+            available providers. Defaults to True.
 
     Returns:
         List[str]: A sorted list of provider names with working models.
@@ -301,6 +325,7 @@ class ModelConnector:
             verbose=verbose,
             clear_model_cache=clear_model_cache,
             call_type=call_type,
+            recommended_only=recommended_only,
         )
     )
 
@@ -313,6 +338,7 @@ class ModelConnector:
       return_all: bool = False,
       clear_model_cache: bool = False,
       call_type: types.CallType = types.CallType.TEXT,
+      recommended_only: bool = True,
   ) -> list[types.ProviderModelType] | types.ModelStatus:
     """Lists working models from a specific provider.
 
@@ -330,6 +356,9 @@ class ModelConnector:
         clear_model_cache: If True, clears the model cache and retests
             models. Defaults to False.
         call_type: The type of API call to test. Defaults to GENERATE_TEXT.
+        recommended_only: If True, returns only recommended models curated
+            by ProxAI. Set to False to include all available models.
+            Defaults to True.
 
     Returns:
         Union[List[types.ProviderModelType], types.ModelStatus]: A list of
@@ -362,6 +391,7 @@ class ModelConnector:
         return_all=return_all,
         clear_model_cache=clear_model_cache,
         call_type=call_type,
+        recommended_only=recommended_only,
     )
 
   def get_working_model(

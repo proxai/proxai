@@ -248,10 +248,11 @@ class AvailableModels(state_controller.StateControlled):
     self.set_property_value('latest_model_cache_path_used_for_update', value)
 
   def _get_all_models(
-      self, models: types.ModelStatus, call_type: types.CallType
+      self, models: types.ModelStatus, call_type: types.CallType,
+      recommended_only: bool = True
   ):
     provider_models = self.model_configs_instance.get_all_models(
-        call_type=call_type
+        call_type=call_type, recommended_only=recommended_only
     )
     for provider_model in provider_models:
       models.unprocessed_models.add(provider_model)
@@ -319,13 +320,15 @@ class AvailableModels(state_controller.StateControlled):
   def _filter_by_model_size(
       self, models: types.ModelStatus,
       model_size: types.ModelSizeType | None = None,
-      call_type: types.CallType = types.CallType.TEXT
+      call_type: types.CallType = types.CallType.TEXT,
+      recommended_only: bool = True
   ):
     if model_size is None:
       return
 
     allowed_models = self.model_configs_instance.get_all_models(
-        call_type=call_type, model_size=model_size
+        call_type=call_type, model_size=model_size,
+        recommended_only=recommended_only
     )
 
     def _filter_set(
@@ -650,7 +653,8 @@ class AvailableModels(state_controller.StateControlled):
       features: list[types.FeatureTagType] | None = None, verbose: bool = False,
       clear_model_cache: bool = False,
       raw_config_results_without_test: bool = False,
-      call_type: types.CallType = types.CallType.TEXT
+      call_type: types.CallType = types.CallType.TEXT,
+      recommended_only: bool = True
   ) -> types.ModelStatus:
     if self.model_cache_manager and clear_model_cache:
       self.model_cache_manager.clear_cache()
@@ -665,13 +669,15 @@ class AvailableModels(state_controller.StateControlled):
           'https://www.proxai.co/proxai-docs/provider-integrations '
           'to set the environment variables.'
       )
-    self._get_all_models(models, call_type=call_type)
+    self._get_all_models(
+        models, call_type=call_type, recommended_only=recommended_only)
     self._filter_by_provider_api_key(models)
     self._filter_by_providers(models, providers=selected_providers)
     self._filter_by_provider_models(
         models, provider_models=selected_provider_models
     )
-    self._filter_by_model_size(models, model_size=model_size)
+    self._filter_by_model_size(
+        models, model_size=model_size, recommended_only=recommended_only)
     self._filter_by_features(models, features=features)
 
     if (raw_config_results_without_test or 
@@ -726,7 +732,8 @@ class AvailableModels(state_controller.StateControlled):
   def list_models(
       self, model_size: types.ModelSizeIdentifierType | None = None,
       features: types.FeatureTagParam | None = None,
-      call_type: types.CallType = types.CallType.TEXT
+      call_type: types.CallType = types.CallType.TEXT,
+      recommended_only: bool = True
   ) -> list[types.ProviderModelType]:
     """List all configured models matching the filters."""
     if model_size is not None:
@@ -737,17 +744,20 @@ class AvailableModels(state_controller.StateControlled):
     model_status: types.ModelStatus | None = None
     model_status = self._fetch_all_models(
         model_size=model_size, call_type=call_type, features=features,
-        raw_config_results_without_test=True
+        raw_config_results_without_test=True,
+        recommended_only=recommended_only
     )
 
     return self._format_set(model_status.unprocessed_models)
 
   def list_providers(
-      self, call_type: types.CallType = types.CallType.TEXT
+      self, call_type: types.CallType = types.CallType.TEXT,
+      recommended_only: bool = True
   ) -> list[str]:
     """List all providers with available API keys."""
     model_status = self._fetch_all_models(
-        call_type=call_type, raw_config_results_without_test=True
+        call_type=call_type, raw_config_results_without_test=True,
+        recommended_only=recommended_only
     )
     providers_with_key = {
         model.provider for model in model_status.unprocessed_models
@@ -761,6 +771,7 @@ class AvailableModels(state_controller.StateControlled):
       model_size: types.ModelSizeIdentifierType | None = None,
       features: types.FeatureTagParam | None = None,
       call_type: types.CallType = types.CallType.TEXT,
+      recommended_only: bool = True,
   ) -> list[types.ProviderModelType]:
     """List all models for a specific provider."""
     if model_size is not None:
@@ -769,7 +780,8 @@ class AvailableModels(state_controller.StateControlled):
       features = type_utils.create_feature_tag_list(features=features)
 
     provider_models = self.model_configs_instance.get_all_models(
-        provider=provider, call_type=call_type, model_size=model_size
+        provider=provider, call_type=call_type, model_size=model_size,
+        recommended_only=recommended_only
     )
 
     self._load_provider_keys()
@@ -781,7 +793,9 @@ class AvailableModels(state_controller.StateControlled):
     model_status = types.ModelStatus()
     for provider_model in provider_models:
       model_status.unprocessed_models.add(provider_model)
-    self._filter_by_model_size(model_status, model_size=model_size)
+    self._filter_by_model_size(
+        model_status, model_size=model_size,
+        recommended_only=recommended_only)
     self._filter_by_features(model_status, features=features)
 
     return self._format_set(model_status.unprocessed_models)
@@ -820,7 +834,8 @@ class AvailableModels(state_controller.StateControlled):
       model_size: types.ModelSizeIdentifierType | None = None,
       features: types.FeatureTagParam | None = None, verbose: bool = True,
       return_all: bool = False, clear_model_cache: bool = False,
-      call_type: types.CallType = types.CallType.TEXT
+      call_type: types.CallType = types.CallType.TEXT,
+      recommended_only: bool = True
   ) -> list[types.ProviderModelType] | types.ModelStatus:
     """List models verified to be working through API tests."""
     if call_type != types.CallType.TEXT:
@@ -845,17 +860,18 @@ class AvailableModels(state_controller.StateControlled):
       )
       model_status = self._fetch_all_models(
           model_size=model_size, features=features, call_type=call_type,
-          verbose=verbose
+          verbose=verbose, recommended_only=recommended_only
       )
     elif (clear_model_cache or not self._check_model_cache_path_same()):
       model_status = self._fetch_all_models(
           model_size=model_size, clear_model_cache=clear_model_cache,
-          features=features, call_type=call_type, verbose=verbose
+          features=features, call_type=call_type, verbose=verbose,
+          recommended_only=recommended_only
       )
     else:
       model_status = self._fetch_all_models(
           model_size=model_size, features=features, call_type=call_type,
-          verbose=verbose
+          verbose=verbose, recommended_only=recommended_only
       )
 
     if return_all:
@@ -864,7 +880,8 @@ class AvailableModels(state_controller.StateControlled):
 
   def list_working_providers(
       self, verbose: bool = True, clear_model_cache: bool = False,
-      call_type: types.CallType = types.CallType.TEXT
+      call_type: types.CallType = types.CallType.TEXT,
+      recommended_only: bool = True
   ) -> list[str]:
     """List providers with at least one working model."""
     if call_type != types.CallType.TEXT:
@@ -884,14 +901,15 @@ class AvailableModels(state_controller.StateControlled):
     elif (clear_model_cache or not self._check_model_cache_path_same()):
       model_status = self._fetch_all_models(
           verbose=verbose, clear_model_cache=clear_model_cache,
-          call_type=call_type
+          call_type=call_type, recommended_only=recommended_only
       )
       providers_with_key = {
           model.provider for model in model_status.working_models
       }
     else:
       model_status = self._fetch_all_models(
-          verbose=verbose, call_type=call_type
+          verbose=verbose, call_type=call_type,
+          recommended_only=recommended_only
       )
       providers_with_key = {
           model.provider for model in model_status.working_models
@@ -908,6 +926,7 @@ class AvailableModels(state_controller.StateControlled):
       return_all: bool = False,
       clear_model_cache: bool = False,
       call_type: types.CallType = types.CallType.TEXT,
+      recommended_only: bool = True,
   ) -> list[types.ProviderModelType] | types.ModelStatus:
     """List working models for a specific provider."""
     if call_type != types.CallType.TEXT:
@@ -923,7 +942,8 @@ class AvailableModels(state_controller.StateControlled):
       features = type_utils.create_feature_tag_list(features=features)
 
     provider_models = self.model_configs_instance.get_all_models(
-        provider=provider, call_type=call_type, model_size=model_size
+        provider=provider, call_type=call_type, model_size=model_size,
+        recommended_only=recommended_only
     )
 
     model_status: types.ModelStatus | None = None
@@ -937,18 +957,22 @@ class AvailableModels(state_controller.StateControlled):
       model_status = types.ModelStatus()
       for provider_model in provider_models:
         model_status.working_models.add(provider_model)
-      self._filter_by_model_size(model_status, model_size=model_size)
+      self._filter_by_model_size(
+          model_status, model_size=model_size,
+          recommended_only=recommended_only)
       self._filter_by_features(model_status, features=features)
     elif (clear_model_cache or not self._check_model_cache_path_same()):
       model_status = self._fetch_all_models(
           selected_providers={provider}, model_size=model_size,
           features=features, verbose=verbose,
-          clear_model_cache=clear_model_cache, call_type=call_type
+          clear_model_cache=clear_model_cache, call_type=call_type,
+          recommended_only=recommended_only
       )
     else:
       model_status = self._fetch_all_models(
           selected_providers={provider}, model_size=model_size,
-          features=features, verbose=verbose, call_type=call_type
+          features=features, verbose=verbose, call_type=call_type,
+          recommended_only=recommended_only
       )
 
     if return_all:

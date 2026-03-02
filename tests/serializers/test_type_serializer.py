@@ -210,10 +210,10 @@ def _get_provider_model_metadata_type_options():
           'call_type': types.CallType.TEXT
       },
       {
-          'is_featured': True
+          'is_recommended': True
       },
       {
-          'is_featured': False
+          'is_recommended': False
       },
       {
           'model_size_tags': []
@@ -251,7 +251,7 @@ def _get_provider_model_metadata_type_options():
       },
       {
           'call_type': types.CallType.TEXT,
-          'is_featured': True,
+          'is_recommended': True,
           'model_size_tags': [types.ModelSizeType.LARGE],
           'tags': ['tag1', 'tag2']
       },
@@ -289,7 +289,7 @@ def _get_provider_model_config_options():
           'features': types.FeatureConfigType(),
           'metadata':
               types.ProviderModelMetadataType(
-                  call_type=types.CallType.TEXT, is_featured=True
+                  call_type=types.CallType.TEXT, is_recommended=True
               )
       },
       {
@@ -309,7 +309,7 @@ def _get_provider_model_config_options():
           ),
           'metadata':
               types.ProviderModelMetadataType(
-                  call_type=types.CallType.TEXT, is_featured=True,
+                  call_type=types.CallType.TEXT, is_recommended=True,
                   model_size_tags=[types.ModelSizeType.LARGEST],
                   tags=['production', 'recommended']
               )
@@ -399,7 +399,7 @@ def _get_model_registry_options():
                           messages=types.FeatureSupportType.SUPPORTED
                       ),
                       metadata=types.ProviderModelMetadataType(
-                          call_type=types.CallType.TEXT, is_featured=True,
+                          call_type=types.CallType.TEXT, is_recommended=True,
                           model_size_tags=[types.ModelSizeType.LARGE]
                       )
                   )
@@ -432,7 +432,7 @@ def _get_model_registry_options():
                           )
                       ),
                       metadata=types.ProviderModelMetadataType(
-                          call_type=types.CallType.TEXT, is_featured=True,
+                          call_type=types.CallType.TEXT, is_recommended=True,
                           model_size_tags=[types.ModelSizeType.LARGE]
                       )
                   ),
@@ -451,7 +451,7 @@ def _get_model_registry_options():
                       pricing=types.ProviderModelPricingType(),
                       features=types.FeatureConfigType(),
                       metadata=types.ProviderModelMetadataType(
-                          is_featured=True,
+                          is_recommended=True,
                           model_size_tags=[types.ModelSizeType.LARGEST]
                       )
                   ),
@@ -1325,7 +1325,7 @@ def _get_provider_model_configs_mapping_type_options():
                       pricing=types.ProviderModelPricingType(),
                       features=types.FeatureConfigType(),
                       metadata=types.ProviderModelMetadataType(
-                          is_featured=True
+                          is_recommended=True
                       )
                   )
           }
@@ -1333,7 +1333,7 @@ def _get_provider_model_configs_mapping_type_options():
   ]
 
 
-def _get_featured_models_mapping_type_options():
+def _get_recommended_models_mapping_type_options():
   return [{
       'openai': [_MODEL_1]
   }, {
@@ -1644,24 +1644,24 @@ class TestTypeSerializer:
     )
 
   @pytest.mark.parametrize(
-      'featured_models_mapping_type_options',
-      _get_featured_models_mapping_type_options()
+      'recommended_models_mapping_type_options',
+      _get_recommended_models_mapping_type_options()
   )
-  def test_encode_decode_featured_models_mapping_type(
-      self, featured_models_mapping_type_options
+  def test_encode_decode_recommended_models_mapping_type(
+      self, recommended_models_mapping_type_options
   ):
-    encoded_featured_models_mapping_type = (
-        type_serializer.encode_featured_models_mapping_type(
-            featured_models=featured_models_mapping_type_options
+    encoded_recommended_models_mapping_type = (
+        type_serializer.encode_recommended_models_mapping_type(
+            recommended_models=recommended_models_mapping_type_options
         )
     )
-    decoded_featured_models_mapping_type = (
-        type_serializer.decode_featured_models_mapping_type(
-            record=encoded_featured_models_mapping_type
+    decoded_recommended_models_mapping_type = (
+        type_serializer.decode_recommended_models_mapping_type(
+            record=encoded_recommended_models_mapping_type
         )
     )
-    assert featured_models_mapping_type_options == (
-        decoded_featured_models_mapping_type
+    assert recommended_models_mapping_type_options == (
+        decoded_recommended_models_mapping_type
     )
 
   @pytest.mark.parametrize(

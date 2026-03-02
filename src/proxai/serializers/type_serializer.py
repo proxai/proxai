@@ -278,8 +278,8 @@ def encode_provider_model_metadata_type(
   record = {}
   if provider_model_metadata_type.call_type is not None:
     record['call_type'] = provider_model_metadata_type.call_type.value
-  if provider_model_metadata_type.is_featured is not None:
-    record['is_featured'] = provider_model_metadata_type.is_featured
+  if provider_model_metadata_type.is_recommended is not None:
+    record['is_recommended'] = provider_model_metadata_type.is_recommended
   if provider_model_metadata_type.model_size_tags is not None:
     record['model_size_tags'] = [
         model_size_tag.value
@@ -297,8 +297,8 @@ def decode_provider_model_metadata_type(
   provider_model_metadata_type = types.ProviderModelMetadataType()
   if 'call_type' in record and record['call_type'] is not None:
     provider_model_metadata_type.call_type = types.CallType(record['call_type'])
-  if 'is_featured' in record:
-    provider_model_metadata_type.is_featured = record['is_featured']
+  if 'is_recommended' in record:
+    provider_model_metadata_type.is_recommended = record['is_recommended']
   if 'model_size_tags' in record and record['model_size_tags'] is not None:
     provider_model_metadata_type.model_size_tags = [
         types.ModelSizeType(model_size_tag)
@@ -391,12 +391,12 @@ def decode_provider_model_configs_mapping_type(
   return provider_model_configs
 
 
-def encode_featured_models_mapping_type(
-    featured_models: types.FeaturedModelsMappingType
+def encode_recommended_models_mapping_type(
+    recommended_models: types.RecommendedModelsMappingType
 ) -> dict[str, Any]:
-  """Serialize FeaturedModelsMappingType to a dictionary."""
+  """Serialize RecommendedModelsMappingType to a dictionary."""
   record = {}
-  for provider, provider_model_identifiers in featured_models.items():
+  for provider, provider_model_identifiers in recommended_models.items():
     record[provider] = []
     for provider_model_identifier in provider_model_identifiers:
       record[provider].append(
@@ -405,19 +405,19 @@ def encode_featured_models_mapping_type(
   return record
 
 
-def decode_featured_models_mapping_type(
+def decode_recommended_models_mapping_type(
     record: dict[str, Any]
-) -> types.FeaturedModelsMappingType:
-  """Deserialize FeaturedModelsMappingType from a dictionary."""
-  featured_models = {}
+) -> types.RecommendedModelsMappingType:
+  """Deserialize RecommendedModelsMappingType from a dictionary."""
+  recommended_models = {}
   for provider, provider_model_identifier_records in record.items():
     provider_model_identifiers = []
     for provider_model_identifier_record in (provider_model_identifier_records):
       provider_model_identifiers.append(
           decode_provider_model_type(provider_model_identifier_record)
       )
-    featured_models[provider] = provider_model_identifiers
-  return featured_models
+    recommended_models[provider] = provider_model_identifiers
+  return recommended_models
 
 
 def encode_call_type_mapping_type(

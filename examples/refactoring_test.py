@@ -520,6 +520,7 @@ def list_models_test():
           types.FeatureTagType.RESPONSE_PYDANTIC])
   assert len(models) == 0
 
+
 def main():
   prompt_test()
   messages_test()

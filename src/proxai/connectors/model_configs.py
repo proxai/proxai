@@ -46,7 +46,7 @@ class ModelConfigs(state_controller.StateControlled):
   _model_registry: types.ModelRegistry | None
   _models_by_call_type: types.CallTypeMappingType | None
   _models_by_model_size: types.ModelSizeMappingType | None
-  _featured_models: types.FeaturedModelsType | None
+  _recommended_models: types.RecommendedModelsMappingType | None
   _model_configs_state: types.ModelConfigsState | None
 
   LOCAL_CONFIG_VERSION = "v1.2.0"
@@ -110,12 +110,12 @@ class ModelConfigs(state_controller.StateControlled):
     self.set_property_value('models_by_model_size', value)
 
   @property
-  def featured_models(self) -> types.FeaturedModelsType:
-    return self.get_property_value('featured_models')
+  def recommended_models(self) -> types.RecommendedModelsMappingType:
+    return self.get_property_value('recommended_models')
 
-  @featured_models.setter
-  def featured_models(self, value: types.FeaturedModelsType):
-    self.set_property_value('featured_models', value)
+  @recommended_models.setter
+  def recommended_models(self, value: types.RecommendedModelsMappingType):
+    self.set_property_value('recommended_models', value)
 
   def register_provider_model_config(
       self,
@@ -149,12 +149,12 @@ class ModelConfigs(state_controller.StateControlled):
           provider_model_config.provider_model
       )
 
-    if not self.featured_models:
-      self.featured_models = {}
-    if provider_model_config.metadata.is_featured:
-      if provider not in self.featured_models:
-        self.featured_models[provider] = []
-      self.featured_models[provider].append(
+    if not self.recommended_models:
+      self.recommended_models = {}
+    if provider_model_config.metadata.is_recommended:
+      if provider not in self.recommended_models:
+        self.recommended_models[provider] = []
+      self.recommended_models[provider].append(
           provider_model_config.provider_model
       )
 
@@ -191,9 +191,9 @@ class ModelConfigs(state_controller.StateControlled):
         self.models_by_model_size[model_size_tag].remove(
             provider_model
         )
-    if provider_model_config.metadata.is_featured:
-      if provider in self.featured_models:
-        self.featured_models[provider].remove(
+    if provider_model_config.metadata.is_recommended:
+      if provider in self.recommended_models:
+        self.recommended_models[provider].remove(
             provider_model
         )
 
@@ -245,16 +245,16 @@ class ModelConfigs(state_controller.StateControlled):
 #       return (provider_model[0], provider_model[1])
 #     raise ValueError(f'Invalid provider model identifier: {provider_model}')
 
-#   def _get_all_featured_models_from_configs(
+#   def _get_all_recommended_models_from_configs(
 #       self, provider_model_configs: types.ProviderModelConfigsType
 #   ) -> set[tuple[str, str]]:
-#     """Get (provider, model) tuples for all featured models in configs."""
-#     featured = set()
+#     """Get (provider, model) tuples for all recommended models in configs."""
+#     recommended = set()
 #     for provider, models in provider_model_configs.items():
 #       for model_name, config in models.items():
-#         if config.metadata and config.metadata.is_featured:
-#           featured.add((provider, model_name))
-#     return featured
+#         if config.metadata and config.metadata.is_recommended:
+#           recommended.add((provider, model_name))
+#     return recommended
 
 #   def _get_all_models_by_call_type_from_configs(
 #       self, provider_model_configs: types.ProviderModelConfigsType
@@ -420,32 +420,32 @@ class ModelConfigs(state_controller.StateControlled):
 #       for model_key, config in models.items():
 #         self._validate_provider_model_config(provider_key, model_key, config)
 
-#   def _validate_featured_models(
+#   def _validate_recommended_models(
 #       self, provider_model_configs: types.ProviderModelConfigsType,
-#       featured_models: types.FeaturedModelsType
+#       recommended_models: types.RecommendedModelsMappingType
 #   ):
-#     """Validate featured_models matches is_featured in configs."""
-#     featured_from_configs = self._get_all_featured_models_from_configs(
+#     """Validate recommended_models matches is_recommended in configs."""
+#     recommended_from_configs = self._get_all_recommended_models_from_configs(
 #         provider_model_configs
 #     )
 
-#     featured_from_list: set[tuple[str, str]] = set()
-#     for _provider, models in featured_models.items():
+#     recommended_from_list: set[tuple[str, str]] = set()
+#     for _provider, models in recommended_models.items():
 #       for model in models:
 #         key = self._get_provider_model_key(model)
-#         featured_from_list.add(key)
+#         recommended_from_list.add(key)
 
-#     missing_in_list = featured_from_configs - featured_from_list
+#     missing_in_list = recommended_from_configs - recommended_from_list
 #     if missing_in_list:
 #       raise ValueError(
-#           f'Models marked as is_featured=True in provider_model_configs '
-#           f'but missing from featured_models: {sorted(missing_in_list)}'
+#           f'Models marked as is_recommended=True in provider_model_configs '
+#           f'but missing from recommended_models: {sorted(missing_in_list)}'
 #       )
 
-#     extra_in_list = featured_from_list - featured_from_configs
+#     extra_in_list = recommended_from_list - recommended_from_configs
 #     if extra_in_list:
 #       raise ValueError(
-#           f'Models in featured_models but not marked as is_featured=True '
+#           f'Models in recommended_models but not marked as is_recommended=True '
 #           f'in provider_model_configs: {sorted(extra_in_list)}'
 #       )
 
@@ -551,9 +551,9 @@ class ModelConfigs(state_controller.StateControlled):
 
 #     self._validate_provider_model_configs(provider_model_configs)
 
-#     if version_config.featured_models is not None:
-#       self._validate_featured_models(
-#           provider_model_configs, version_config.featured_models
+#     if version_config.recommended_models is not None:
+#       self._validate_recommended_models(
+#           provider_model_configs, version_config.recommended_models
 #       )
 
 #     if version_config.models_by_call_type is not None:
@@ -721,7 +721,7 @@ class ModelConfigs(state_controller.StateControlled):
       provider: types.ProviderNameType | None = None,
       model_size: types.ModelSizeType | None = None,
       call_type: types.CallType | None = types.CallType.TEXT,
-      only_featured: bool | None = True,
+      recommended_only: bool | None = True,
   ) -> list[types.ProviderModelType]:
     """List all models matching the given filters."""
     if (
@@ -769,7 +769,7 @@ class ModelConfigs(state_controller.StateControlled):
         ):
           continue
 
-        if only_featured and not provider_model_config.metadata.is_featured:
+        if recommended_only and not provider_model_config.metadata.is_recommended:
           continue
 
         result_provider_models.append(provider_model_config.provider_model)

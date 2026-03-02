@@ -9,7 +9,7 @@ import proxai.types as types
 
 
 def create_provider_model_config(
-    provider: str, model: str, is_featured: bool = True,
+    provider: str, model: str, is_recommended: bool = True,
     call_type: types.CallType = types.CallType.TEXT,
     model_size_tags: list = None, features: dict = None
 ) -> types.ProviderModelConfigType:
@@ -21,7 +21,7 @@ def create_provider_model_config(
       ), pricing=types.ProviderModelPricingType(
           per_response_token_cost=1.0, per_query_token_cost=1.0
       ), features=features or {}, metadata=types.ProviderModelMetadataType(
-          call_type=call_type, is_featured=is_featured,
+          call_type=call_type, is_recommended=is_recommended,
           model_size_tags=model_size_tags
       )
   )
@@ -38,14 +38,14 @@ def create_feature_config(
 
 
 def create_version_config(
-    provider_model_configs: dict, featured_models: dict = None,
+    provider_model_configs: dict, recommended_models: dict = None,
     models_by_call_type: dict = None, models_by_size: dict = None,
     default_model_priority_list: list = None
 ) -> types.ModelConfigsSchemaVersionConfigType:
   """Create a ModelConfigsSchemaVersionConfigType for testing."""
   return types.ModelConfigsSchemaVersionConfigType(
       provider_model_configs=provider_model_configs,
-      featured_models=featured_models or {},
+      recommended_models=recommended_models or {},
       models_by_call_type=models_by_call_type or {},
       models_by_size=models_by_size or {},
       default_model_priority_list=default_model_priority_list or []
@@ -151,28 +151,28 @@ class TestCheckProviderModelIdentifierType:
 # =============================================================================
 
 
-class TestGetAllFeaturedModelsFromConfigs:
+class TestGetAllRecommendedModelsFromConfigs:
 
-  def test_returns_featured_models(self, model_configs_instance):
+  def test_returns_recommended_models(self, model_configs_instance):
     configs = {
         'openai': {
             'gpt-4':
                 create_provider_model_config(
-                    'openai', 'gpt-4', is_featured=True
+                    'openai', 'gpt-4', is_recommended=True
                 ),
             'gpt-3':
                 create_provider_model_config(
-                    'openai', 'gpt-3', is_featured=False
+                    'openai', 'gpt-3', is_recommended=False
                 ),
         }
     }
-    result = model_configs_instance._get_all_featured_models_from_configs(
+    result = model_configs_instance._get_all_recommended_models_from_configs(
         configs
     )
     assert result == {('openai', 'gpt-4')}
 
   def test_empty_configs(self, model_configs_instance):
-    result = model_configs_instance._get_all_featured_models_from_configs({})
+    result = model_configs_instance._get_all_recommended_models_from_configs({})
     assert result == set()
 
 
@@ -341,57 +341,57 @@ class TestValidateFeatures:
       model_configs_instance._validate_features('openai', 'gpt-4', features)
 
 
-class TestValidateFeaturedModels:
+class TestValidateRecommendedModels:
 
-  def test_valid_featured_models(self, model_configs_instance):
+  def test_valid_recommended_models(self, model_configs_instance):
     configs = {
         'openai': {
             'gpt-4':
                 create_provider_model_config(
-                    'openai', 'gpt-4', is_featured=True
+                    'openai', 'gpt-4', is_recommended=True
                 )
         }
     }
-    featured = {
+    recommended = {
         'openai': [
             types.ProviderModelType(
                 provider='openai', model='gpt-4', provider_model_identifier='id'
             )
         ]
     }
-    model_configs_instance._validate_featured_models(configs, featured)
+    model_configs_instance._validate_recommended_models(configs, recommended)
 
   def test_missing_in_list_raises(self, model_configs_instance):
     configs = {
         'openai': {
             'gpt-4':
                 create_provider_model_config(
-                    'openai', 'gpt-4', is_featured=True
+                    'openai', 'gpt-4', is_recommended=True
                 )
         }
     }
-    with pytest.raises(ValueError, match='missing from featured_models'):
-      model_configs_instance._validate_featured_models(configs, {})
+    with pytest.raises(ValueError, match='missing from recommended_models'):
+      model_configs_instance._validate_recommended_models(configs, {})
 
   def test_extra_in_list_raises(self, model_configs_instance):
-    """Detects when featured_models has entries not marked is_featured=True in config."""
+    """Detects when recommended_models has entries not marked is_recommended=True in config."""
     configs = {
         'openai': {
             'gpt-4':
                 create_provider_model_config(
-                    'openai', 'gpt-4', is_featured=False
+                    'openai', 'gpt-4', is_recommended=False
                 )
         }
     }
-    featured = {
+    recommended = {
         'openai': [
             types.ProviderModelType(
                 provider='openai', model='gpt-4', provider_model_identifier='id'
             )
         ]
     }
-    with pytest.raises(ValueError, match='not marked as is_featured=True'):
-      model_configs_instance._validate_featured_models(configs, featured)
+    with pytest.raises(ValueError, match='not marked as is_recommended=True'):
+      model_configs_instance._validate_recommended_models(configs, recommended)
 
 
 class TestValidateModelsByCallType:
@@ -532,14 +532,14 @@ class TestValidateVersionConfig:
         'openai': {
             'gpt-4':
                 create_provider_model_config(
-                    'openai', 'gpt-4', is_featured=True,
+                    'openai', 'gpt-4', is_recommended=True,
                     call_type=types.CallType.TEXT,
                     model_size_tags=[types.ModelSizeType.LARGE]
                 )
         }
     }
     version_config = create_version_config(
-        provider_model_configs=configs, featured_models={'openai': [pm]},
+        provider_model_configs=configs, recommended_models={'openai': [pm]},
         models_by_call_type={types.CallType.TEXT: {
             'openai': [pm]
         }}, models_by_size={types.ModelSizeType.LARGE: [pm]},
@@ -661,20 +661,20 @@ class TestGetAllModels:
         'test': {
             'featured':
                 create_provider_model_config(
-                    'test', 'featured', is_featured=True,
+                    'test', 'featured', is_recommended=True,
                     call_type=types.CallType.TEXT,
                     model_size_tags=[types.ModelSizeType.LARGE]
                 ),
             'not_featured':
                 create_provider_model_config(
-                    'test', 'not_featured', is_featured=False,
+                    'test', 'not_featured', is_recommended=False,
                     call_type=types.CallType.TEXT,
                     model_size_tags=[types.ModelSizeType.SMALL]
                 ),
         }
     }
     version_config = create_version_config(
-        provider_model_configs=configs, featured_models={'test': [pm_featured]},
+        provider_model_configs=configs, recommended_models={'test': [pm_featured]},
         models_by_call_type={
             types.CallType.TEXT: {
                 'test': [pm_featured, pm_not_featured]
@@ -690,8 +690,8 @@ class TestGetAllModels:
     )
     return model_configs.ModelConfigs(init_from_params=model_configs_params)
 
-  def test_only_featured_filter(self, custom_configs):
-    result = custom_configs.get_all_models(call_type=None, only_featured=True)
+  def test_recommended_only_filter(self, custom_configs):
+    result = custom_configs.get_all_models(call_type=None, recommended_only=True)
     model_names = [m.model for m in result]
     assert 'featured' in model_names
     assert 'not_featured' not in model_names
@@ -699,7 +699,7 @@ class TestGetAllModels:
   def test_model_size_filter(self, custom_configs):
     result = custom_configs.get_all_models(
         model_size=types.ModelSizeType.LARGE, call_type=None,
-        only_featured=False
+        recommended_only=False
     )
     model_names = [m.model for m in result]
     assert 'featured' in model_names
@@ -748,11 +748,11 @@ class TestBuiltInConfigValidation:
     configs = model_configs_instance.model_configs_schema.version_config.provider_model_configs
     model_configs_instance._validate_provider_model_configs(configs)
 
-  def test_featured_models_consistent(self, model_configs_instance):
+  def test_recommended_models_consistent(self, model_configs_instance):
     schema = model_configs_instance.model_configs_schema
-    model_configs_instance._validate_featured_models(
+    model_configs_instance._validate_recommended_models(
         schema.version_config.provider_model_configs,
-        schema.version_config.featured_models
+        schema.version_config.recommended_models
     )
 
   def test_models_by_call_type_consistent(self, model_configs_instance):
