@@ -26,7 +26,7 @@
         },
         "metadata": {
           "call_type": "TEXT",
-          "is_featured": false,
+          "is_recommended": false,
           "model_size_tags": []
         },
         "pricing": {
@@ -58,7 +58,7 @@
         },
         "metadata": {
           "call_type": "TEXT",
-          "is_featured": false,
+          "is_recommended": false,
           "model_size_tags": []
         },
         "pricing": {
@@ -90,7 +90,7 @@
         },
         "metadata": {
           "call_type": "TEXT",
-          "is_featured": false,
+          "is_recommended": false,
           "model_size_tags": []
         },
         "pricing": {
@@ -114,7 +114,7 @@
         },
         "metadata": {
           "call_type": "IMAGE",
-          "is_featured": true,
+          "is_recommended": true,
           "model_size_tags": []
         },
         "pricing": {
@@ -150,7 +150,7 @@
         },
         "metadata": {
           "call_type": "TEXT",
-          "is_featured": true,
+          "is_recommended": true,
           "model_size_tags": [
             "small"
           ]
@@ -188,7 +188,7 @@
         },
         "metadata": {
           "call_type": "TEXT",
-          "is_featured": true,
+          "is_recommended": true,
           "model_size_tags": [
             "small"
           ]
@@ -212,7 +212,7 @@
         },
         "metadata": {
           "call_type": "VIDEO",
-          "is_featured": true,
+          "is_recommended": true,
           "model_size_tags": []
         },
         "pricing": {
@@ -234,7 +234,7 @@
         },
         "metadata": {
           "call_type": "AUDIO",
-          "is_featured": true,
+          "is_recommended": true,
           "model_size_tags": []
         },
         "pricing": {

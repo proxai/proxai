@@ -211,7 +211,7 @@ class ProviderModelMetadataType:
   """Metadata describing a model's characteristics and capabilities."""
 
   call_type: CallType | None = None
-  is_featured: bool | None = None
+  is_recommended: bool | None = None
   model_size_tags: list[ModelSizeType] | None = None
   tags: list[str] | None = None
 
@@ -250,7 +250,7 @@ class ProviderModelConfig:
 
 CallTypeMappingType = dict[CallType, list[ProviderModelType]]
 ModelSizeMappingType = dict[ModelSizeType, list[ProviderModelType]]
-FeaturedModelsMappingType = dict[ProviderNameType, list[ProviderModelType]]
+RecommendedModelsMappingType = dict[ProviderNameType, list[ProviderModelType]]
 ProviderModelConfigsMappingType = dict[
     ProviderNameType, dict[ModelNameType, ProviderModelConfig]]
 
@@ -734,7 +734,7 @@ class ModelConfigsState(StateContainer):
   model_registry: ModelRegistry | None = None
   models_by_call_type: CallTypeMappingType | None = None
   models_by_model_size: ModelSizeMappingType | None = None
-  featured_models: FeaturedModelsMappingType | None = None
+  recommended_models: RecommendedModelsMappingType | None = None
 
 
 @dataclasses.dataclass
