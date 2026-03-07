@@ -18,18 +18,18 @@ import proxai.types as types
 _MODEL_CONFIGS_STATE_PROPERTY = '_model_configs_state'
 
 PROVIDER_KEY_MAP: dict[str, tuple[str]] = MappingProxyType({
-    # 'claude': ('ANTHROPIC_API_KEY',),
-    # 'cohere': ('CO_API_KEY',),
-    # 'databricks': ('DATABRICKS_TOKEN', 'DATABRICKS_HOST'),
-    # 'deepseek': ('DEEPSEEK_API_KEY',),
-    # 'gemini': ('GEMINI_API_KEY',),
-    # 'grok': ('XAI_API_KEY',),
-    # 'huggingface': ('HF_TOKEN',),
-    # 'mistral': ('MISTRAL_API_KEY',),
+    'claude': ('ANTHROPIC_API_KEY',),
+    'cohere': ('CO_API_KEY',),
+    'databricks': ('DATABRICKS_TOKEN', 'DATABRICKS_HOST'),
+    'deepseek': ('DEEPSEEK_API_KEY',),
+    'gemini': ('GEMINI_API_KEY',),
+    'grok': ('XAI_API_KEY',),
+    'huggingface': ('HF_TOKEN',),
+    'mistral': ('MISTRAL_API_KEY',),
     'openai': ('OPENAI_API_KEY',),
-    # 'mock_provider': ('MOCK_PROVIDER_API_KEY',),
-    # 'mock_failing_provider': ('MOCK_FAILING_PROVIDER',),
-    # 'mock_slow_provider': ('MOCK_SLOW_PROVIDER',),
+    'mock_provider': ('MOCK_PROVIDER_API_KEY',),
+    'mock_failing_provider': ('MOCK_FAILING_PROVIDER',),
+    'mock_slow_provider': ('MOCK_SLOW_PROVIDER',),
 })
 
 
@@ -142,12 +142,13 @@ class ModelConfigs(state_controller.StateControlled):
 
     if not self.models_by_model_size:
         self.models_by_model_size = {}
-    for model_size_tag in provider_model_config.metadata.model_size_tags:
-      if model_size_tag not in self.models_by_model_size:
-        self.models_by_model_size[model_size_tag] = []
-      self.models_by_model_size[model_size_tag].append(
-          provider_model_config.provider_model
-      )
+    if provider_model_config.metadata.model_size_tags:
+      for model_size_tag in provider_model_config.metadata.model_size_tags:
+        if model_size_tag not in self.models_by_model_size:
+          self.models_by_model_size[model_size_tag] = []
+        self.models_by_model_size[model_size_tag].append(
+            provider_model_config.provider_model
+        )
 
     if not self.recommended_models:
       self.recommended_models = {}

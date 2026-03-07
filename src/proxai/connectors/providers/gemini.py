@@ -7,17 +7,18 @@ from google.genai import types as genai_types
 
 import proxai.connectors.model_connector as model_connector
 import proxai.connectors.providers.gemini_mock as gemini_mock
+import proxai.chat.message_content as message_content
 import proxai.types as types
+
+FeatureConfigType = types.FeatureConfigType
+FeatureSupportType = types.FeatureSupportType
+ParameterConfigType = types.ParameterConfigType
+ToolConfigType = types.ToolConfigType
+ResponseFormatConfigType = types.ResponseFormatConfigType
 
 
 class GeminiConnector(model_connector.ProviderModelConnector):
   """Connector for Google Gemini models."""
-
-  def get_provider_name(self):
-    return 'gemini'
-
-  def get_required_provider_token_names(self) -> list[str]:
-    return ['GEMINI_API_KEY']
 
   def init_model(self):
     return genai.Client(api_key=self.provider_token_value_map['GEMINI_API_KEY'])
@@ -25,190 +26,195 @@ class GeminiConnector(model_connector.ProviderModelConnector):
   def init_mock_model(self):
     return gemini_mock.GeminiMock()
 
-  def _get_api_call_function(self, chosen_endpoint: str) -> Callable:
-    if chosen_endpoint == 'models.generate_content':
-      return functools.partial(self.api.models.generate_content)
-    else:
-      raise Exception(f'Invalid endpoint: {chosen_endpoint}')
+  PROVIDER_NAME = 'gemini'
 
-  def prompt_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    contents = [
-        genai_types.Content(
-            parts=[genai_types.Part(text=query_record.prompt)], role='user'
-        )
-    ]
-    return functools.partial(query_function, contents=contents)
+  PROVIDER_API_KEYS = ['GEMINI_API_KEY']
 
-  def messages_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    contents = query_function.keywords.get('contents')
-    if contents is None:
-      contents = []
+  ENDPOINT_PRIORITY = [
+      'models.generate_content',
+  ]
 
-    for message in query_record.messages:
-      if message['role'] == 'assistant':
-        contents.append(
-            genai_types.Content(
-                parts=[genai_types.Part(text=message['content'])], role='model'
-            )
-        )
-      if message['role'] == 'user':
-        contents.append(
-            genai_types.Content(
-                parts=[genai_types.Part(text=message['content'])], role='user'
-            )
-        )
-    return functools.partial(query_function, contents=contents)
+  ENDPOINT_CONFIG = {
+      'models.generate_content': FeatureConfigType(
+          prompt=FeatureSupportType.SUPPORTED,
+          messages=FeatureSupportType.SUPPORTED,
+          system_prompt=FeatureSupportType.SUPPORTED,
+          parameters=ParameterConfigType(
+              max_tokens=FeatureSupportType.SUPPORTED,
+              temperature=FeatureSupportType.SUPPORTED,
+              stop=FeatureSupportType.SUPPORTED,
+              n=FeatureSupportType.NOT_SUPPORTED,
+              thinking=FeatureSupportType.SUPPORTED,
+          ),
+          tools=ToolConfigType(
+              web_search=FeatureSupportType.SUPPORTED,
+          ),
+          response_format=ResponseFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
+              json=FeatureSupportType.SUPPORTED,
+              pydantic=FeatureSupportType.BEST_EFFORT,
+              image=FeatureSupportType.SUPPORTED,
+              audio=FeatureSupportType.SUPPORTED,
+          ),
+      ),
+  }
+  
+  def _models_generate_content_create_executor(
+      self, query_record: types.QueryRecord) -> types.Response:
+    create = functools.partial(self.api.models.generate_content)
+    create = functools.partial(create, model=(
+        query_record.provider_model.provider_model_identifier
+    ))
 
-  def system_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    config = query_function.keywords.get('config')
-    if config is None:
-      config = genai_types.GenerateContentConfig()
-    config.system_instruction = query_record.system
-    return functools.partial(query_function, config=config)
+    contents = []
+    if query_record.prompt is not None:
+      contents.append(
+          genai_types.Content(
+              parts=[genai_types.Part(text=query_record.prompt)], role='user'
+          )
+      )
 
-  def max_tokens_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    config = query_function.keywords.get('config')
-    if config is None:
-      config = genai_types.GenerateContentConfig()
-    config.max_output_tokens = query_record.max_tokens
-    return functools.partial(query_function, config=config)
-
-  def temperature_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    config = query_function.keywords.get('config')
-    if config is None:
-      config = genai_types.GenerateContentConfig()
-    config.temperature = query_record.temperature
-    return functools.partial(query_function, config=config)
-
-  def stop_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    config = query_function.keywords.get('config')
-    if config is None:
-      config = genai_types.GenerateContentConfig()
-    if isinstance(query_record.stop, str):
-      config.stop_sequences = [query_record.stop]
-    else:
-      config.stop_sequences = query_record.stop
-    return functools.partial(query_function, config=config)
-
-  def _clean_schema_for_gemini(self, schema: dict) -> dict:
-    """Clean up JSON schema for Gemini API compatibility.
-
-    Gemini's response_schema doesn't support certain JSON Schema features like
-    'additionalProperties', 'strict', etc. This function recursively removes
-    unsupported fields.
-    """
-    if not isinstance(schema, dict):
-      return schema
-
-    # Fields not supported by Gemini's Schema type
-    unsupported_fields = {'additionalProperties', 'strict', '$schema', 'name'}
-
-    cleaned = {}
-    for key, value in schema.items():
-      if key in unsupported_fields:
-        continue
-      elif key == 'properties' and isinstance(value, dict):
-        # Recursively clean property schemas
-        cleaned[key] = {
-            prop_name: self._clean_schema_for_gemini(prop_schema)
-            for prop_name, prop_schema in value.items()
-        }
-      elif key == 'items' and isinstance(value, dict):
-        # Clean array item schemas
-        cleaned[key] = self._clean_schema_for_gemini(value)
-      elif isinstance(value, dict):
-        cleaned[key] = self._clean_schema_for_gemini(value)
-      else:
-        cleaned[key] = value
-
-    return cleaned
-
-  def json_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ):
     config = genai_types.GenerateContentConfig()
-    if config is None:
-      config = genai_types.GenerateContentConfig()
-    config.response_mime_type = 'application/json'
-    return functools.partial(query_function, config=config)
+    if query_record.chat is not None:
+      for message in query_record.chat['messages']:
+        role = message['role']
+        if role == 'assistant':
+          role = 'model'
+        parts = []
+        if isinstance(message['content'], str):
+          parts.append(genai_types.Part(text=message['content']))
+        elif isinstance(message['content'], list):
+          for part in message['content']:
+            if part['type'] == 'text':
+              parts.append(genai_types.Part(text=part['text']))
+        contents.append(genai_types.Content(parts=parts, role=role))
 
-  def json_schema_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ):
-    config = query_function.keywords.get('config')
-    if config is None:
-      config = genai_types.GenerateContentConfig()
-    config.response_mime_type = 'application/json'
-    schema_value = query_record.response_format.value
-    json_schema_obj = schema_value['json_schema']
-    raw_schema = json_schema_obj.get('schema', json_schema_obj)
-    config.response_schema = self._clean_schema_for_gemini(raw_schema)
-    return functools.partial(query_function, config=config)
+      if 'system_prompt' in query_record.chat:
+        config.system_instruction = query_record.chat['system_prompt']
 
-  def pydantic_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ):
-    config = query_function.keywords.get('config')
-    if config is None:
-      config = genai_types.GenerateContentConfig()
-    config.response_mime_type = 'application/json'
-    config.response_schema = query_record.response_format.value.class_value
-    return functools.partial(query_function, config=config)
+    if query_record.system_prompt is not None:
+      config.system_instruction = query_record.system_prompt
 
-  def web_search_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ):
-    config = query_function.keywords.get('config')
-    if config is None:
-      config = genai_types.GenerateContentConfig()
-    config.tools = [genai_types.Tool(google_search=genai_types.GoogleSearch())]
-    return functools.partial(query_function, config=config)
+    if query_record.parameters is not None:
+      if query_record.parameters.max_tokens is not None:
+        config.max_output_tokens = query_record.parameters.max_tokens
 
-  def format_text_response_from_provider(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> str:
-    return response.text
+      if query_record.parameters.temperature is not None:
+        config.temperature = query_record.parameters.temperature
 
-  def format_json_response_from_provider(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> dict:
-    return self._extract_json_from_text(response.text)
+      if query_record.parameters.stop is not None:
+        if isinstance(query_record.parameters.stop, str):
+          config.stop_sequences = [query_record.parameters.stop]
+        else:
+          config.stop_sequences = query_record.parameters.stop
 
-  def format_json_schema_response_from_provider(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> dict:
-    return self._extract_json_from_text(response.text)
+      if query_record.parameters.thinking is not None:
+        if query_record.parameters.thinking.value.lower() == 'low':
+          config.thinking_config = genai_types.ThinkingConfig(
+              thinking_budget=1024)
+        elif query_record.parameters.thinking.value.lower() == 'medium':
+          config.thinking_config = genai_types.ThinkingConfig(
+              thinking_budget=8192)
+        elif query_record.parameters.thinking.value.lower() == 'high':
+          config.thinking_config = genai_types.ThinkingConfig(
+              thinking_budget=24576)
 
-  def format_pydantic_response_from_provider(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> Any:
-    pydantic_class = query_record.response_format.value.class_value
-    return pydantic_class.model_validate_json(response.text)
+    if query_record.tools is not None:
+      if types.Tools.WEB_SEARCH in query_record.tools:
+        config.tools = [genai_types.Tool(
+            google_search=genai_types.GoogleSearch())]
+    
+    if query_record.response_format.type == types.ResponseFormatType.JSON:
+      config.response_mime_type = 'application/json'
+    
+    if query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
+      config.response_mime_type = 'application/json'
+      config.response_schema = query_record.response_format.pydantic_class_json_schema
 
-  def generate_text_proc(
-      self, query_record: types.QueryRecord
-  ) -> types.Response:
-    create = self._get_api_call_function(query_record.chosen_endpoint)
+    if query_record.response_format.type == types.ResponseFormatType.IMAGE:
+      config.response_modalities=['IMAGE']
 
-    provider_model = query_record.provider_model
+    if query_record.response_format.type == types.ResponseFormatType.AUDIO:
+      config.response_modalities=['AUDIO']
+      config.speech_config=genai_types.SpeechConfig(
+          voice_config=genai_types.VoiceConfig(
+              prebuilt_voice_config=genai_types.PrebuiltVoiceConfig(
+                  voice_name='Kore'
+              )
+          )
+      )
+
     create = functools.partial(
-        create, model=provider_model.provider_model_identifier
+        create,
+        config=config,
+        contents=contents,
     )
+  
+    response, result_record = self._safe_provider_query(create)
+    response: genai_types.GenerateContentResponse = response
+    if result_record.error is not None:
+      return result_record
 
-    create = self.add_features_to_query_function(create, query_record)
+    if response.candidates:
+      result_record.content = []
+      for candidate in response.candidates:
+        if not candidate.content or not candidate.content.parts:
+          continue
+        for part in candidate.content.parts:
+          if part.text and not part.thought:
+            result_record.content.append(
+                message_content.MessageContent(
+                    type=message_content.ContentType.TEXT,
+                    text=part.text,
+                )
+            )
+          elif part.text and part.thought:
+            result_record.content.append(
+                message_content.MessageContent(
+                    type=message_content.ContentType.THINKING,
+                    text=part.text,
+                )
+            )
 
-    response = create()
+          if part.inline_data is not None:
+            if query_record.response_format.type == types.ResponseFormatType.IMAGE:
+              result_record.content.append(
+                  message_content.MessageContent(
+                      type=message_content.ContentType.IMAGE,
+                      data=part.inline_data.data,
+                  )
+              )
+            elif query_record.response_format.type == types.ResponseFormatType.AUDIO:
+              result_record.content.append(
+                  message_content.MessageContent(
+                      type=message_content.ContentType.AUDIO,
+                      data=part.inline_data.data,
+                  )
+              )
 
-    return self.format_response_from_providers(response, query_record)
+        if (candidate.grounding_metadata and
+            candidate.grounding_metadata.grounding_chunks):
+          citations = []
+          for chunk in candidate.grounding_metadata.grounding_chunks:
+            citations.append(
+                message_content.Citation(
+                    title=chunk.web.title,
+                    url=chunk.web.uri,
+                ),
+            )
+          if citations:
+            result_record.content.append(
+                message_content.MessageContent(
+                    type=message_content.ContentType.TOOL,
+                    tool_content=message_content.ToolContent(
+                        name='web_search',
+                        kind=message_content.ToolKind.RESULT,
+                        citations=citations,
+                    ),
+                )
+            )
+    return result_record
+
+  ENDPOINT_EXECUTORS = {
+    'models.generate_content': '_models_generate_content_create_executor',
+  }
