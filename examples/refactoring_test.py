@@ -7,12 +7,151 @@ import proxai as px
 import proxai.types as types
 
 
-_DEFAULT_MODEL = ('openai', 'gpt-4o')
+_DEFAULT_MODEL = ('gemini', 'gemini-3-flash-preview')
 _FAILING_MODEL = ('mock_failing_provider', 'mock_failing_model')
-_THINKING_MODEL = ('openai', 'o3')
-_IMAGE_MODEL = ('openai', 'dall-e-3')
-_AUDIO_MODEL = ('openai', 'tts-1')
-_VIDEO_MODEL = ('openai', 'sora-2')
+_THINKING_MODEL = ('gemini', 'gemini-2.5-flash')
+_IMAGE_MODEL = ('gemini', 'gemini-2.5-flash-image')
+_AUDIO_MODEL = ('gemini', 'gemini-2.5-flash-preview-tts')
+_VIDEO_MODEL = ('gemini', 'veo-3.1-generate-preview')
+
+
+_DEFAULT_MODEL_CONFIG = types.ProviderModelConfig(
+    provider_model=types.ProviderModelType(
+        provider=_DEFAULT_MODEL[0],
+        model=_DEFAULT_MODEL[1],
+        provider_model_identifier=_DEFAULT_MODEL[1]
+    ),
+    pricing=types.ProviderModelPricingType(
+        input_token_cost=1.0,
+        output_token_cost=2.0
+    ),
+    metadata=types.ProviderModelMetadataType(
+        call_type=types.CallType.MULTI_MODAL,
+        is_recommended=True
+    ),
+    features=types.FeatureConfigType(
+        prompt=types.FeatureSupportType.SUPPORTED,
+        messages=types.FeatureSupportType.SUPPORTED,
+        system_prompt=types.FeatureSupportType.SUPPORTED,
+        parameters=types.ParameterConfigType(
+            temperature=types.FeatureSupportType.SUPPORTED,
+            max_tokens=types.FeatureSupportType.SUPPORTED,
+            stop=types.FeatureSupportType.SUPPORTED,
+            n=types.FeatureSupportType.NOT_SUPPORTED,
+            thinking=types.FeatureSupportType.SUPPORTED,
+        ),
+        tools=types.ToolConfigType(
+            web_search=types.FeatureSupportType.SUPPORTED,
+        ),
+        response_format=types.ResponseFormatConfigType(
+            text=types.FeatureSupportType.SUPPORTED,
+            json=types.FeatureSupportType.SUPPORTED,
+            pydantic=types.FeatureSupportType.SUPPORTED,
+        ),
+    )
+)
+
+_THINKING_MODEL_CONFIG = types.ProviderModelConfig(
+    provider_model=types.ProviderModelType(
+        provider=_THINKING_MODEL[0],
+        model=_THINKING_MODEL[1],
+        provider_model_identifier=_THINKING_MODEL[1]
+    ),
+    pricing=types.ProviderModelPricingType(
+        input_token_cost=1.0,
+        output_token_cost=2.0
+    ),
+    metadata=types.ProviderModelMetadataType(
+        call_type=types.CallType.MULTI_MODAL,
+        is_recommended=True
+    ),
+    features=types.FeatureConfigType(
+        prompt=types.FeatureSupportType.SUPPORTED,
+        messages=types.FeatureSupportType.SUPPORTED,
+        system_prompt=types.FeatureSupportType.SUPPORTED,
+        parameters=types.ParameterConfigType(
+            temperature=types.FeatureSupportType.SUPPORTED,
+            max_tokens=types.FeatureSupportType.SUPPORTED,
+            stop=types.FeatureSupportType.SUPPORTED,
+            n=types.FeatureSupportType.SUPPORTED,
+            thinking=types.FeatureSupportType.SUPPORTED,
+        ),
+        tools=types.ToolConfigType(
+            web_search=types.FeatureSupportType.SUPPORTED,
+        ),
+        response_format=types.ResponseFormatConfigType(
+            text=types.FeatureSupportType.SUPPORTED,
+            json=types.FeatureSupportType.SUPPORTED,
+            pydantic=types.FeatureSupportType.SUPPORTED,
+        ),
+    )
+)
+
+_IMAGE_MODEL_CONFIG = types.ProviderModelConfig(
+    provider_model=types.ProviderModelType(
+        provider=_IMAGE_MODEL[0],
+        model=_IMAGE_MODEL[1],
+        provider_model_identifier=_IMAGE_MODEL[1]
+    ),
+    pricing=types.ProviderModelPricingType(
+        input_token_cost=1.0,
+        output_token_cost=2.0
+    ),
+    metadata=types.ProviderModelMetadataType(
+        call_type=types.CallType.IMAGE,
+        is_recommended=True
+    ),
+    features=types.FeatureConfigType(
+        prompt=types.FeatureSupportType.SUPPORTED,
+        response_format=types.ResponseFormatConfigType(
+            image=types.FeatureSupportType.SUPPORTED,
+        ),
+    )
+)
+
+_AUDIO_MODEL_CONFIG = types.ProviderModelConfig(
+    provider_model=types.ProviderModelType(
+        provider=_AUDIO_MODEL[0],
+        model=_AUDIO_MODEL[1],
+        provider_model_identifier=_AUDIO_MODEL[1]
+    ),
+    pricing=types.ProviderModelPricingType(
+        input_token_cost=1.0,
+        output_token_cost=2.0
+    ),
+    metadata=types.ProviderModelMetadataType(
+        call_type=types.CallType.AUDIO,
+        is_recommended=True
+    ),
+    features=types.FeatureConfigType(
+        prompt=types.FeatureSupportType.SUPPORTED,
+        response_format=types.ResponseFormatConfigType(
+            audio=types.FeatureSupportType.SUPPORTED,
+        ),
+    )
+)
+
+_VIDEO_MODEL_CONFIG = types.ProviderModelConfig(
+    provider_model=types.ProviderModelType(
+        provider=_VIDEO_MODEL[0],
+        model=_VIDEO_MODEL[1],
+        provider_model_identifier=_VIDEO_MODEL[1]
+    ),
+    pricing=types.ProviderModelPricingType(
+        input_token_cost=1.0,
+        output_token_cost=2.0
+    ),
+    metadata=types.ProviderModelMetadataType(
+        call_type=types.CallType.VIDEO,
+        is_recommended=True
+    ),
+    features=types.FeatureConfigType(
+        prompt=types.FeatureSupportType.SUPPORTED,
+        response_format=types.ResponseFormatConfigType(
+            video=types.FeatureSupportType.SUPPORTED,
+        ),
+    )
+)
 
 
 def _assert_success(result: types.CallRecord):
@@ -55,8 +194,13 @@ def assert_image_content(result: types.CallRecord):
   assert result.result.usage.input_tokens > 0
 
   assert result.result.output_image is not None
-  assert result.result.output_image.source is not None
-  assert len(result.result.output_image.source) > 10
+  is_image_generated = False
+  if result.result.output_image.source is not None:
+    is_image_generated = True
+  elif result.result.output_image.data is not None:
+    is_image_generated = True
+  if not is_image_generated:
+    assert False, 'No image content found'
 
 
 def assert_audio_content(result: types.CallRecord):
@@ -67,6 +211,38 @@ def assert_audio_content(result: types.CallRecord):
   assert result.result.output_audio is not None
   assert result.result.output_audio.data is not None
   assert len(result.result.output_audio.data) > 10
+
+
+def register_models(client: px.Client):
+  try:
+    client.models.get_model(_DEFAULT_MODEL[0], _DEFAULT_MODEL[1])
+  except Exception as e:
+    client.model_configs_instance.register_provider_model_config(
+        _DEFAULT_MODEL_CONFIG)
+
+  try:
+    client.models.get_model(_THINKING_MODEL[0], _THINKING_MODEL[1])
+  except Exception as e:
+    client.model_configs_instance.register_provider_model_config(
+        _THINKING_MODEL_CONFIG)
+
+  try:
+    client.models.get_model(_IMAGE_MODEL[0], _IMAGE_MODEL[1])
+  except Exception as e:
+    client.model_configs_instance.register_provider_model_config(
+        _IMAGE_MODEL_CONFIG)
+
+  try:
+    client.models.get_model(_AUDIO_MODEL[0], _AUDIO_MODEL[1])
+  except Exception as e:
+    client.model_configs_instance.register_provider_model_config(
+        _AUDIO_MODEL_CONFIG)
+
+  try:
+    client.models.get_model(_VIDEO_MODEL[0], _VIDEO_MODEL[1])
+  except Exception as e:
+    client.model_configs_instance.register_provider_model_config(
+        _VIDEO_MODEL_CONFIG)
 
 
 def prompt_test():
@@ -138,10 +314,10 @@ def parameters_max_tokens_test():
   result = px.generate(
       prompt='Write a long story about a cat.',
       provider_model=_DEFAULT_MODEL,
-      parameters=px.ParameterType(max_tokens=20))
+      parameters=px.ParameterType(max_tokens=100))
   _assert_text_content(result)
   assert result.query.parameters is not None
-  assert result.query.parameters.max_tokens == 20
+  assert result.query.parameters.max_tokens == 100
 
 
 def parameters_stop_test():
@@ -196,9 +372,7 @@ def parameters_thinking_test():
           'hard problems in quantum computing.'
           'Think step by step.'),
       provider_model=_THINKING_MODEL,
-      parameters=px.ParameterType(thinking=types.ThinkingType.HIGH),
-      connection_options=px.ConnectionOptions(
-          endpoint='responses.create'))
+      parameters=px.ParameterType(thinking=types.ThinkingType.MEDIUM))
   thinking_true = False
   for message in result.result.content:
     if message.type == px.ContentType.THINKING:
@@ -279,7 +453,7 @@ def connection_options_fallback_test():
           fallback_models=[_FAILING_MODEL]))
   _assert_text_content(result)
   assert not result.connection.failed_fallback_models
-  assert result.query.provider_model.provider_model_identifier == 'gpt-4o'
+  assert result.query.provider_model.provider_model_identifier == _DEFAULT_MODEL[1]
 
   # Primary model fails, fallback succeeds.
   result = px.generate(
@@ -310,6 +484,8 @@ def connection_options_suppress_provider_errors_test():
 
 
 def connection_options_endpoint_test():
+  if _DEFAULT_MODEL[0] != 'openai':
+    return
   print('> connection_options_endpoint_test')
   result = px.generate(
       prompt='What is 2 + 2?',
@@ -352,6 +528,7 @@ def cache_test():
           unique_response_limit=2
       )
   )
+  register_models(client)
 
   result = client.generate(
       prompt='What is 2 + 2?',
@@ -386,6 +563,7 @@ def connection_options_skip_cache_test():
   client = px.Client(
       cache_options=px.CacheOptions(
           cache_path=os.path.expanduser('~/temp/proxai_cache/')))
+  register_models(client)
 
   result = client.generate(
       prompt='What is 2 + 2?',
@@ -422,6 +600,7 @@ def connection_options_override_cache_value_test():
   client = px.Client(
       cache_options=px.CacheOptions(
           cache_path=os.path.expanduser('~/temp/proxai_cache/')))
+  register_models(client)
 
   result_1 = client.generate(
       prompt='Write me poem about karadeniz. Make it perfect.',
@@ -514,6 +693,7 @@ def list_models_test():
 
   client = px.Client(
       feature_mapping_strategy=types.FeatureMappingStrategy.STRICT)
+  register_models(client)
   models = client.models.list_models(
       features=[
           types.FeatureTagType.WEB_SEARCH,
@@ -522,6 +702,7 @@ def list_models_test():
 
 
 def main():
+  register_models(px.get_default_proxai_client())
   prompt_test()
   messages_test()
   system_prompt_test()
@@ -529,7 +710,7 @@ def main():
   parameters_max_tokens_test()
   parameters_stop_test()
   parameters_stop_list_test()
-  parameters_n_test()
+  # parameters_n_test()
   parameters_thinking_test()
   tools_web_search_test()
   response_format_text_test()
@@ -541,7 +722,7 @@ def main():
   cache_test()
   connection_options_skip_cache_test()
   # NOTE: There is a bug in the cache implementation. Comment in when fixed.
-  # # connection_options_override_cache_value_test()
+  # connection_options_override_cache_value_test()
   images_generate_test()
   audio_generate_test()
   # NOTE: Video test is too slow. Comment in when needed.

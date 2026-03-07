@@ -6,7 +6,7 @@ import proxai.connectors.model_connector as model_connector
 # import proxai.connectors.providers.cohere_api as cohere_api_provider
 # import proxai.connectors.providers.databricks as databricks_provider
 # import proxai.connectors.providers.deepseek as deepseek_provider
-# import proxai.connectors.providers.gemini as gemini_provider
+import proxai.connectors.providers.gemini as gemini_provider
 # import proxai.connectors.providers.grok as grok_provider
 # import proxai.connectors.providers.huggingface as huggingface_provider
 # import proxai.connectors.providers.mistral as mistral_provider
@@ -17,7 +17,7 @@ import proxai.types as types
 _MODEL_CONNECTOR_MAP = {
     'openai': openai_provider.OpenAIConnector,
     # 'claude': claude_provider.ClaudeConnector,
-    # 'gemini': gemini_provider.GeminiConnector,
+    'gemini': gemini_provider.GeminiConnector,
     # 'cohere': cohere_api_provider.CohereConnector,
     # 'databricks': databricks_provider.DatabricksConnector,
     # 'mistral': mistral_provider.MistralConnector,
