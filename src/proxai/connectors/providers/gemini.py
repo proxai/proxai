@@ -1,4 +1,5 @@
 import functools
+import time
 from collections.abc import Callable
 from typing import Any
 
@@ -32,6 +33,7 @@ class GeminiConnector(model_connector.ProviderModelConnector):
 
   ENDPOINT_PRIORITY = [
       'models.generate_content',
+      'models.generate_videos',
   ]
 
   ENDPOINT_CONFIG = {
@@ -55,6 +57,12 @@ class GeminiConnector(model_connector.ProviderModelConnector):
               pydantic=FeatureSupportType.BEST_EFFORT,
               image=FeatureSupportType.SUPPORTED,
               audio=FeatureSupportType.SUPPORTED,
+          ),
+      ),
+      'models.generate_videos': FeatureConfigType(
+          prompt=FeatureSupportType.SUPPORTED,
+          response_format=ResponseFormatConfigType(
+              video=FeatureSupportType.SUPPORTED,
           ),
       ),
   }
@@ -215,6 +223,40 @@ class GeminiConnector(model_connector.ProviderModelConnector):
             )
     return result_record
 
+  def _models_generate_videos_executor(
+      self, query_record: types.QueryRecord) -> types.Response:
+    create = functools.partial(self.api.models.generate_videos)
+    create = functools.partial(create, model=(
+        query_record.provider_model.provider_model_identifier
+    ))
+    if query_record.prompt is not None:
+      create = functools.partial(create, prompt=query_record.prompt)
+    
+    response, result_record = self._safe_provider_query(create)
+    response: genai_types.GenerateVideosOperation = response
+    if result_record.error is not None:
+      return result_record
+    
+    while not response.done:
+      time.sleep(5)
+      operation_executor = functools.partial(self.api.operations.get, response)
+      response, result_record = self._safe_provider_query(operation_executor)
+      if result_record.error is not None:
+        return result_record
+
+    generated_video = response.response.generated_videos[0]
+    self.api.files.download(file=generated_video.video)
+    video_bytes = generated_video.video.video_bytes
+
+    result_record.content = [
+      message_content.MessageContent(
+          type=message_content.ContentType.VIDEO,
+          data=video_bytes,
+      )
+    ]
+    return result_record
+
   ENDPOINT_EXECUTORS = {
     'models.generate_content': '_models_generate_content_create_executor',
+    'models.generate_videos': '_models_generate_videos_executor',
   }
