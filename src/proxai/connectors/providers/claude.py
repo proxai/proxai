@@ -152,25 +152,44 @@ class ClaudeConnector(model_connector.ProviderModelConnector):
         )
       elif hasattr(block, 'type') and block.type == 'web_search_tool_result':
         citations = []
-        if hasattr(block, 'search_results'):
-          for result in block.search_results:
+        if isinstance(block.content, list):
+          for result in block.content:
             citations.append(
                 message_content.Citation(
                     title=result.title,
                     url=result.url,
                 ))
-        if citations:
-          parsed.append(
-              message_content.MessageContent(
-                  type=message_content.ContentType.TOOL,
-                  tool_content=message_content.ToolContent(
-                      name='web_search',
-                      kind=message_content.ToolKind.RESULT,
-                      citations=citations,
-                  ),
-              )
-          )
+        parsed.append(
+            message_content.MessageContent(
+                type=message_content.ContentType.TOOL,
+                tool_content=message_content.ToolContent(
+                    name='web_search',
+                    kind=message_content.ToolKind.RESULT,
+                    citations=citations,
+                ),
+            )
+        )
       elif hasattr(block, 'text'):
+        if getattr(block, 'citations', None):
+          citations = []
+          for citation in block.citations:
+            if getattr(citation, 'type', None) == 'web_search_result_location':
+              citations.append(
+                  message_content.Citation(
+                      title=citation.title,
+                      url=citation.url,
+                  ))
+          if citations:
+            parsed.append(
+                message_content.MessageContent(
+                    type=message_content.ContentType.TOOL,
+                    tool_content=message_content.ToolContent(
+                        name='web_search',
+                        kind=message_content.ToolKind.RESULT,
+                        citations=citations,
+                    ),
+                )
+            )
         parsed.append(
             message_content.MessageContent(
                 type=message_content.ContentType.TEXT,
