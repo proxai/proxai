@@ -3,7 +3,7 @@ from collections.abc import Callable
 
 import proxai.connectors.model_connector as model_connector
 import proxai.connectors.providers.claude as claude_provider
-# import proxai.connectors.providers.cohere_api as cohere_api_provider
+import proxai.connectors.providers.cohere as cohere_provider
 # import proxai.connectors.providers.databricks as databricks_provider
 import proxai.connectors.providers.deepseek as deepseek_provider
 import proxai.connectors.providers.gemini as gemini_provider
@@ -18,7 +18,7 @@ _MODEL_CONNECTOR_MAP = {
     'openai': openai_provider.OpenAIConnector,
     'claude': claude_provider.ClaudeConnector,
     'gemini': gemini_provider.GeminiConnector,
-    # 'cohere': cohere_api_provider.CohereConnector,
+    'cohere': cohere_provider.CohereConnector,
     # 'databricks': databricks_provider.DatabricksConnector,
     'mistral': mistral_provider.MistralConnector,
     # 'huggingface': huggingface_provider.HuggingFaceConnector,
