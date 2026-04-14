@@ -71,6 +71,15 @@ _MODEL_CONFIGS = {
         'video_model': (None, None),
         'web_search_supported': False,
     },
+    'huggingface': {
+        'default_model': ('huggingface', 'meta-llama/Llama-3.1-8B-Instruct'),
+        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
+        'thinking_model': ('huggingface', 'openai/gpt-oss-120b'),
+        'image_model': (None, None),
+        'audio_model': (None, None),
+        'video_model': (None, None),
+        'web_search_supported': False,
+    },
 }
 
 
