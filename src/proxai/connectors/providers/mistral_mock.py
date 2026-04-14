@@ -1,8 +1,10 @@
-from typing import Any
-
-
 class _MockMessage:
   content: str
+  parsed: object
+
+  def __init__(self):
+    self.content = 'mock response'
+    self.parsed = None
 
 
 class _MockChoice:
@@ -10,30 +12,27 @@ class _MockChoice:
 
   def __init__(self):
     self.message = _MockMessage()
-    self.message.content = 'mock response'
 
 
 class _MockResponse:
-  choices: list[_MockChoice]
+  choices: list
 
   def __init__(self):
     self.choices = [_MockChoice()]
 
 
-class MockChat:
-  """Mock chat completion handler."""
+class _MockChat:
+  """Mock Mistral chat surface (complete + parse)."""
 
-  def complete(
-      self, model: str, messages: list[Any], max_tokens: int | None = None,
-      temperature: float | None = None, stop: list[str] | None = None
-  ) -> _MockResponse:
+  def complete(self, **kwargs) -> _MockResponse:
+    return _MockResponse()
+
+  def parse(self, **kwargs) -> _MockResponse:
     return _MockResponse()
 
 
 class MistralMock:
   """Mock Mistral API client for testing."""
 
-  chat: MockChat
-
   def __init__(self):
-    self.chat = MockChat()
+    self.chat = _MockChat()

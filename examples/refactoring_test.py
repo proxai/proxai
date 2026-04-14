@@ -32,10 +32,18 @@ _MODEL_CONFIGS = {
         'audio_model': (None, None),
         'video_model': (None, None),
     },
+    'mistral': {
+        'default_model': ('mistral', 'mistral-small-latest'),
+        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
+        'thinking_model': ('mistral', 'magistral-small-latest'),
+        'image_model': (None, None),
+        'audio_model': (None, None),
+        'video_model': (None, None),
+    },
 }
 
 
-_PROVIDER = 'claude'
+_PROVIDER = 'mistral'
 
 _DEFAULT_MODEL = _MODEL_CONFIGS[_PROVIDER]['default_model']
 _FAILING_MODEL = _MODEL_CONFIGS[_PROVIDER]['failing_model']
@@ -763,29 +771,57 @@ def list_models_test():
     models = px.models.list_models(call_type=types.CallType.VIDEO)
     assert len(models) > 0
 
-  models = px.models.list_models(features=[types.FeatureTagType.PROMPT])
-  assert len(models) > 0
-  models = px.models.list_models(
-      features=[
+  if _PROVIDER == 'openai' or _PROVIDER == 'gemini':
+    models = px.models.list_models(features=[types.FeatureTagType.PROMPT])
+    assert len(models) > 0
+    models = px.models.list_models(
+        features=[
+            types.FeatureTagType.WEB_SEARCH,
+            types.FeatureTagType.RESPONSE_PYDANTIC])
+    assert len(models) > 0
+
+    client = px.Client(
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT)
+    register_models(client)
+    models = client.models.list_models(
+        features=[
           types.FeatureTagType.WEB_SEARCH,
           types.FeatureTagType.RESPONSE_PYDANTIC])
-  assert len(models) > 0
+    assert len(models) == 0
+  elif _PROVIDER == 'claude':
+    models = px.models.list_models(features=[types.FeatureTagType.PROMPT])
+    assert len(models) > 0
+    models = px.models.list_models(
+        features=[
+            types.FeatureTagType.WEB_SEARCH,
+            types.FeatureTagType.RESPONSE_PYDANTIC])
+    assert len(models) > 0
 
-  client = px.Client(
-      feature_mapping_strategy=types.FeatureMappingStrategy.STRICT)
-  register_models(client)
-  if _PROVIDER == 'claude':
+    client = px.Client(
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT)
+    register_models(client)
     models = client.models.list_models(
         features=[
           types.FeatureTagType.WEB_SEARCH,
           types.FeatureTagType.RESPONSE_JSON])
     assert len(models) == 0
-  else:
+  elif _PROVIDER == 'mistral':
+    models = px.models.list_models(features=[types.FeatureTagType.PROMPT])
+    assert len(models) > 0
+    models = px.models.list_models(
+        features=[
+            types.FeatureTagType.RESPONSE_JSON])
+    assert len(models) > 0
+
+    client = px.Client(
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT)
+    register_models(client)
     models = client.models.list_models(
         features=[
           types.FeatureTagType.WEB_SEARCH,
-          types.FeatureTagType.RESPONSE_PYDANTIC])
+          types.FeatureTagType.RESPONSE_JSON])
     assert len(models) == 0
+  
 
 
 def main():
