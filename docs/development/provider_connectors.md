@@ -484,6 +484,47 @@ This is the section to read carefully. The PYDANTIC and JSON paths
 have a SUPPORTED-vs-BEST_EFFORT split that determines how much your
 executor has to do.
 
+### Hard rule: if `text=SUPPORTED`, `json` and `pydantic` must be at least `BEST_EFFORT`
+
+Any endpoint that produces text can produce JSON and Pydantic output
+via the framework's built-in text→JSON and text→Pydantic conversion in
+`result_adapter` (the framework injects prompt/schema guidance and
+runs the client-side parse for you). Because of that, the rule is
+not "it's nice to support json/pydantic" — it's:
+
+> **If you mark `text=SUPPORTED` on an endpoint, you must mark `json`
+> and `pydantic` at least `BEST_EFFORT`**. Leaving them omitted or
+> `NOT_SUPPORTED` is forbidden: it turns into a silent gap that forces
+> users to fall back to another endpoint (or fail) even though the
+> framework could have served them for free.
+
+The only question per endpoint is whether each of `json` / `pydantic`
+sits at `BEST_EFFORT` (the floor) or gets upgraded to `SUPPORTED`
+(the ceiling). Decide per field:
+
+- **Upgrade `json` to `SUPPORTED`** if the SDK has a native free-JSON
+  mode (e.g., OpenAI's `response_format={'type': 'json_object'}`,
+  Gemini's `config.response_mime_type = 'application/json'`). This is
+  more reliable than prompt-based coercion and costs only a few lines
+  in the executor. Otherwise leave it at `BEST_EFFORT`.
+- **Upgrade `pydantic` to `SUPPORTED`** if the SDK parses a Pydantic
+  class natively (e.g., OpenAI's `beta.chat.completions.parse`,
+  Anthropic's `beta.messages.stream(output_format=...)`). Server-side
+  schema enforcement is strictly better than client-side validation.
+  Otherwise leave it at `BEST_EFFORT`.
+- **If you stay at `BEST_EFFORT` but your model wraps output in
+  markdown fences or surrounds it with prose**, pre-clean TEXT → JSON
+  in the executor via `self._extract_json_from_text`. `result_adapter`
+  does a raw `json.loads`, so a response like
+  `` ```json\n{"a":1}\n``` `` will fail to parse without pre-cleaning.
+  Claude and Mistral's `beta.conversations.start` both do this (see
+  Pattern B below).
+
+The anti-pattern to avoid is the silent gap: `text=SUPPORTED` with
+`json` / `pydantic` left unset in the config. Always set them
+explicitly, and if there's no reason to upgrade, `BEST_EFFORT` is the
+correct minimum.
+
 ### TEXT
 
 Trivial. Don't set anything special on the SDK call. Return a
