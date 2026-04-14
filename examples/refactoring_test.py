@@ -62,10 +62,19 @@ _MODEL_CONFIGS = {
         'video_model': (None, None),
         'web_search_supported': False,
     },
+    'cohere': {
+        'default_model': ('cohere', 'command-a-03-2025'),
+        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
+        'thinking_model': ('cohere', 'command-a-reasoning-08-2025'),
+        'image_model': (None, None),
+        'audio_model': (None, None),
+        'video_model': (None, None),
+        'web_search_supported': False,
+    },
 }
 
 
-_PROVIDER = 'deepseek'
+_PROVIDER = 'cohere'
 
 _DEFAULT_MODEL = _MODEL_CONFIGS[_PROVIDER]['default_model']
 _FAILING_MODEL = _MODEL_CONFIGS[_PROVIDER]['failing_model']
