@@ -15,6 +15,7 @@ _MODEL_CONFIGS = {
         'image_model': ('openai', 'dall-e-3'),
         'audio_model': ('openai', 'tts-1'),
         'video_model': ('openai', 'sora-2'),
+        'web_search_supported': True,
     },
     'gemini': {
         'default_model': ('gemini', 'gemini-3-flash-preview'),
@@ -23,6 +24,7 @@ _MODEL_CONFIGS = {
         'image_model': ('gemini', 'gemini-2.5-flash-image'),
         'audio_model': ('gemini', 'gemini-2.5-flash-preview-tts'),
         'video_model': ('gemini', 'veo-3.1-generate-preview'),
+        'web_search_supported': True,
     },
     'claude': {
         'default_model': ('claude', 'claude-sonnet-4-6'),
@@ -31,6 +33,7 @@ _MODEL_CONFIGS = {
         'image_model': (None, None),
         'audio_model': (None, None),
         'video_model': (None, None),
+        'web_search_supported': True,
     },
     'mistral': {
         'default_model': ('mistral', 'mistral-small-latest'),
@@ -39,6 +42,7 @@ _MODEL_CONFIGS = {
         'image_model': (None, None),
         'audio_model': (None, None),
         'video_model': (None, None),
+        'web_search_supported': True,
     },
     'grok': {
         'default_model': ('grok', 'grok-4-fast-non-reasoning'),
@@ -47,11 +51,21 @@ _MODEL_CONFIGS = {
         'image_model': (None, None),
         'audio_model': (None, None),
         'video_model': (None, None),
+        'web_search_supported': True,
+    },
+    'deepseek': {
+        'default_model': ('deepseek', 'deepseek-chat'),
+        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
+        'thinking_model': ('deepseek', 'deepseek-reasoner'),
+        'image_model': (None, None),
+        'audio_model': (None, None),
+        'video_model': (None, None),
+        'web_search_supported': False,
     },
 }
 
 
-_PROVIDER = 'grok'
+_PROVIDER = 'deepseek'
 
 _DEFAULT_MODEL = _MODEL_CONFIGS[_PROVIDER]['default_model']
 _FAILING_MODEL = _MODEL_CONFIGS[_PROVIDER]['failing_model']
@@ -59,6 +73,8 @@ _THINKING_MODEL = _MODEL_CONFIGS[_PROVIDER]['thinking_model']
 _IMAGE_MODEL = _MODEL_CONFIGS[_PROVIDER]['image_model']
 _AUDIO_MODEL = _MODEL_CONFIGS[_PROVIDER]['audio_model']
 _VIDEO_MODEL = _MODEL_CONFIGS[_PROVIDER]['video_model']
+_WEB_SEARCH_SUPPORTED = _MODEL_CONFIGS[_PROVIDER].get(
+    'web_search_supported', True)
 
 
 _DEFAULT_MODEL_CONFIG = types.ProviderModelConfig(
@@ -87,7 +103,11 @@ _DEFAULT_MODEL_CONFIG = types.ProviderModelConfig(
             thinking=types.FeatureSupportType.SUPPORTED,
         ),
         tools=types.ToolConfigType(
-            web_search=types.FeatureSupportType.SUPPORTED,
+            web_search=(
+                types.FeatureSupportType.SUPPORTED
+                if _WEB_SEARCH_SUPPORTED
+                else types.FeatureSupportType.NOT_SUPPORTED
+            ),
         ),
         response_format=types.ResponseFormatConfigType(
             text=types.FeatureSupportType.SUPPORTED,
@@ -464,6 +484,9 @@ def parameters_thinking_test():
 
 def tools_web_search_test():
   print('> tools_web_search_test')
+  if not _WEB_SEARCH_SUPPORTED:
+    print('> tools_web_search_test: Web search not supported, skipping test')
+    return
   result = px.generate(
       prompt='What is the most important news for Jan 20th 2024?',
       provider_model=_DEFAULT_MODEL,
