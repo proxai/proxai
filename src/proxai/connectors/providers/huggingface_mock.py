@@ -1,9 +1,43 @@
-class HuggingFaceMock:
-  """Mock Hugging Face API client for testing."""
+class _MockMessage:
+  content: str
+  reasoning: object
 
-  def generate_content(
-      self, messages: list[dict[str, str]], model: str,
-      max_tokens: int | None = None, temperature: float | None = None,
-      stop: list[str] | None = None
-  ) -> str:
-    return 'mock response'
+  def __init__(self):
+    self.content = 'mock response'
+    self.reasoning = None
+
+
+class _MockChoice:
+  message: _MockMessage
+
+  def __init__(self):
+    self.message = _MockMessage()
+
+
+class _MockResponse:
+  choices: list
+
+  def __init__(self):
+    self.choices = [_MockChoice()]
+
+
+class _MockCompletions:
+
+  def create(self, **kwargs) -> _MockResponse:
+    return _MockResponse()
+
+
+class _MockChat:
+  completions: _MockCompletions
+
+  def __init__(self):
+    self.completions = _MockCompletions()
+
+
+class HuggingFaceMock:
+  """Mock Hugging Face InferenceClient for testing."""
+
+  chat: _MockChat
+
+  def __init__(self):
+    self.chat = _MockChat()

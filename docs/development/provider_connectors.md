@@ -13,6 +13,8 @@ The three finalized reference connectors are:
 - `src/proxai/connectors/providers/mistral.py`
 - `src/proxai/connectors/providers/grok.py`
 - `src/proxai/connectors/providers/deepseek.py`
+- `src/proxai/connectors/providers/cohere.py`
+- `src/proxai/connectors/providers/huggingface.py`
 
 Read at least one before starting. They are the source of truth for
 patterns this doc summarizes.

@@ -8,7 +8,7 @@ import proxai.connectors.providers.cohere as cohere_provider
 import proxai.connectors.providers.deepseek as deepseek_provider
 import proxai.connectors.providers.gemini as gemini_provider
 import proxai.connectors.providers.grok as grok_provider
-# import proxai.connectors.providers.huggingface as huggingface_provider
+import proxai.connectors.providers.huggingface as huggingface_provider
 import proxai.connectors.providers.mistral as mistral_provider
 import proxai.connectors.providers.mock_provider as mock_provider
 import proxai.connectors.providers.openai as openai_provider
@@ -21,7 +21,7 @@ _MODEL_CONNECTOR_MAP = {
     'cohere': cohere_provider.CohereConnector,
     # 'databricks': databricks_provider.DatabricksConnector,
     'mistral': mistral_provider.MistralConnector,
-    # 'huggingface': huggingface_provider.HuggingFaceConnector,
+    'huggingface': huggingface_provider.HuggingFaceConnector,
     'deepseek': deepseek_provider.DeepSeekConnector,
     'grok': grok_provider.GrokConnector,
     'mock_provider': mock_provider.MockProviderModelConnector,
