@@ -14,7 +14,7 @@ class _MockChoice:
     self.message = _MockMessage()
 
 
-class _MockResponse:
+class _MockChatResponse:
   choices: list
 
   def __init__(self):
@@ -24,11 +24,40 @@ class _MockResponse:
 class _MockChat:
   """Mock Mistral chat surface (complete + parse)."""
 
-  def complete(self, **kwargs) -> _MockResponse:
-    return _MockResponse()
+  def complete(self, **kwargs) -> _MockChatResponse:
+    return _MockChatResponse()
 
-  def parse(self, **kwargs) -> _MockResponse:
-    return _MockResponse()
+  def parse(self, **kwargs) -> _MockChatResponse:
+    return _MockChatResponse()
+
+
+class _MockTextChunk:
+  def __init__(self, text: str):
+    self.type = 'text'
+    self.text = text
+
+
+class _MockMessageOutput:
+  def __init__(self):
+    self.type = 'message.output'
+    self.role = 'assistant'
+    self.content = [_MockTextChunk('mock response')]
+
+
+class _MockConversationResponse:
+  def __init__(self):
+    self.conversation_id = 'mock_conversation_id'
+    self.outputs = [_MockMessageOutput()]
+
+
+class _MockConversations:
+  def start(self, **kwargs) -> _MockConversationResponse:
+    return _MockConversationResponse()
+
+
+class _MockBeta:
+  def __init__(self):
+    self.conversations = _MockConversations()
 
 
 class MistralMock:
@@ -36,3 +65,4 @@ class MistralMock:
 
   def __init__(self):
     self.chat = _MockChat()
+    self.beta = _MockBeta()

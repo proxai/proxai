@@ -1,6 +1,7 @@
 import functools
 
 from mistralai import Mistral
+from mistralai.models.websearchtool import WebSearchTool
 
 import proxai.connectors.model_connector as model_connector
 import proxai.connectors.providers.mistral_mock as mistral_mock
@@ -30,6 +31,7 @@ class MistralConnector(model_connector.ProviderModelConnector):
   ENDPOINT_PRIORITY = [
       'chat.complete',
       'chat.parse',
+      'beta.conversations.start',
   ]
 
   ENDPOINT_CONFIG = {
@@ -71,6 +73,26 @@ class MistralConnector(model_connector.ProviderModelConnector):
           ),
           response_format=ResponseFormatConfigType(
               pydantic=FeatureSupportType.SUPPORTED,
+          ),
+      ),
+      'beta.conversations.start': FeatureConfigType(
+          prompt=FeatureSupportType.SUPPORTED,
+          messages=FeatureSupportType.BEST_EFFORT,
+          system_prompt=FeatureSupportType.SUPPORTED,
+          parameters=ParameterConfigType(
+              max_tokens=FeatureSupportType.SUPPORTED,
+              temperature=FeatureSupportType.SUPPORTED,
+              stop=FeatureSupportType.SUPPORTED,
+              n=FeatureSupportType.NOT_SUPPORTED,
+              thinking=FeatureSupportType.BEST_EFFORT,
+          ),
+          tools=ToolConfigType(
+              web_search=FeatureSupportType.SUPPORTED,
+          ),
+          response_format=ResponseFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
+              json=FeatureSupportType.BEST_EFFORT,
+              pydantic=FeatureSupportType.BEST_EFFORT,
           ),
       ),
   }
@@ -224,7 +246,130 @@ class MistralConnector(model_connector.ProviderModelConnector):
         )
     return result_record
 
+  def _beta_conversations_start_executor(
+      self,
+      query_record: types.QueryRecord) -> types.ResultRecord:
+    """Execute a Mistral beta.conversations.start call with web search.
+
+    This endpoint is structurally different from chat.complete/chat.parse:
+      - `inputs` replaces `messages` and takes a plain string prompt
+      - `instructions` is the dedicated system-prompt kwarg
+      - sampling params live inside a `completion_args` dict
+      - tools accept typed SDK objects (WebSearchTool, etc.)
+      - the response is a ConversationResponse with an `outputs` list that
+        interleaves ToolExecutionEntry (breadcrumb of a tool call) and
+        MessageOutputEntry (assistant message with inline TextChunk and
+        ToolReferenceChunk for citations)
+    The executor is intentionally self-contained; it does not share helpers
+    with _chat_complete_executor.
+    """
+    start = functools.partial(self.api.beta.conversations.start)
+    start = functools.partial(start, model=(
+        query_record.provider_model.provider_model_identifier
+    ))
+
+    if query_record.prompt is not None:
+      start = functools.partial(start, inputs=query_record.prompt)
+
+    if query_record.system_prompt is not None:
+      start = functools.partial(
+          start, instructions=query_record.system_prompt)
+
+    tool_objects = []
+    if query_record.tools is not None:
+      if types.Tools.WEB_SEARCH in query_record.tools:
+        tool_objects.append(WebSearchTool(type='web_search'))
+    if tool_objects:
+      start = functools.partial(start, tools=tool_objects)
+
+    completion_args = {}
+    if query_record.parameters is not None:
+      if query_record.parameters.max_tokens is not None:
+        completion_args['max_tokens'] = query_record.parameters.max_tokens
+      if query_record.parameters.temperature is not None:
+        completion_args['temperature'] = query_record.parameters.temperature
+      if query_record.parameters.stop is not None:
+        completion_args['stop'] = query_record.parameters.stop
+    if completion_args:
+      start = functools.partial(start, completion_args=completion_args)
+
+    response, result_record = self._safe_provider_query(start)
+    if result_record.error is not None:
+      return result_record
+
+    parsed = []
+    for output in response.outputs or []:
+      output_type = getattr(output, 'type', None)
+
+      if output_type == 'message.output':
+        content = getattr(output, 'content', None)
+        # When the model doesn't invoke a tool, `content` is a plain string
+        # instead of a list of chunks. Both shapes land here.
+        if isinstance(content, str):
+          parsed.append(
+              message_content.MessageContent(
+                  type=message_content.ContentType.TEXT,
+                  text=content,
+              )
+          )
+          continue
+
+        citations = []
+        for chunk in content or []:
+          chunk_type = getattr(chunk, 'type', None)
+          if chunk_type == 'text':
+            parsed.append(
+                message_content.MessageContent(
+                    type=message_content.ContentType.TEXT,
+                    text=getattr(chunk, 'text', '') or '',
+                )
+            )
+          elif chunk_type == 'tool_reference':
+            citations.append(
+                message_content.Citation(
+                    title=getattr(chunk, 'title', None),
+                    url=getattr(chunk, 'url', None),
+                )
+            )
+        if citations:
+          parsed.append(
+              message_content.MessageContent(
+                  type=message_content.ContentType.TOOL,
+                  tool_content=message_content.ToolContent(
+                      name='web_search',
+                      kind=message_content.ToolKind.RESULT,
+                      citations=citations,
+                  ),
+              )
+          )
+
+    # Mistral's beta.conversations.start has no native JSON / pydantic mode, so
+    # json and pydantic are declared BEST_EFFORT. The framework injects schema
+    # guidance into the prompt, but the model wraps its output in markdown
+    # fences — `result_adapter`'s raw `json.loads` would fail on that. Pre-clean
+    # TEXT blocks through the base-class helper so result_adapter receives a
+    # JSON block it can pass through (for JSON) or validate (for PYDANTIC).
+    needs_json_extract = (
+        query_record.response_format is not None
+        and query_record.response_format.type in (
+            types.ResponseFormatType.JSON,
+            types.ResponseFormatType.PYDANTIC,
+        )
+    )
+    if needs_json_extract:
+      parsed = [
+          message_content.MessageContent(
+              type=message_content.ContentType.JSON,
+              json=self._extract_json_from_text(c.text),
+          ) if c.type == message_content.ContentType.TEXT else c
+          for c in parsed
+      ]
+
+    result_record.content = parsed
+    return result_record
+
   ENDPOINT_EXECUTORS = {
     'chat.complete': '_chat_complete_executor',
     'chat.parse': '_chat_parse_executor',
+    'beta.conversations.start': '_beta_conversations_start_executor',
   }
