@@ -12,18 +12,29 @@ class _MockContentBlock:
 
 class _MockResponse:
   content: list[_MockContentBlock]
+  parsed_output: any
 
   def __init__(self):
     self.content = [_MockContentBlock()]
+    self.parsed_output = None
+
+
+class _MockStream:
+
+  def __enter__(self):
+    return self
+
+  def __exit__(self, exc_type, exc, tb):
+    return False
+
+  def get_final_message(self) -> _MockResponse:
+    return _MockResponse()
 
 
 class _MockMessages:
 
-  def create(self, **kwargs) -> _MockResponse:
-    return _MockResponse()
-
-  def parse(self, **kwargs) -> _MockResponse:
-    return _MockResponse()
+  def stream(self, **kwargs) -> _MockStream:
+    return _MockStream()
 
 
 class _MockBeta:
@@ -36,9 +47,7 @@ class _MockBeta:
 class ClaudeMock:
   """Mock Claude API client for testing."""
 
-  messages: _MockMessages
   beta: _MockBeta
 
   def __init__(self):
-    self.messages = _MockMessages()
     self.beta = _MockBeta()

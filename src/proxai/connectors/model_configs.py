@@ -200,6 +200,17 @@ class ModelConfigs(state_controller.StateControlled):
 
     del self.model_registry.provider_model_configs[provider][model]
 
+  def unregister_all_models(self):
+    self.model_registry = types.ModelRegistry(
+        metadata=self.model_registry.metadata,
+        default_model_priority_list=(
+            self.model_registry.default_model_priority_list),
+        provider_model_configs={},
+    )
+    self.models_by_call_type = {}
+    self.models_by_model_size = {}
+    self.recommended_models = {}
+
 #   def _validate_min_proxai_version(self, min_proxai_version: str | None):
 #     if min_proxai_version is None:
 #       return
@@ -717,6 +728,36 @@ class ModelConfigs(state_controller.StateControlled):
 #         response_token_count * model_pricing_config.per_response_token_cost
 #     )
 
+  def _check_call_type_exists(self, call_type: types.CallType):
+    if call_type == types.CallType.TEXT:
+      if (
+        types.CallType.TEXT in self.models_by_call_type or
+        types.CallType.MULTI_MODAL in self.models_by_call_type
+      ):
+        return
+      raise ValueError(
+          f'Call type not supported: {call_type}\n'
+          f'Supported call types: {self.models_by_call_type.keys()}'
+      )
+
+    if call_type not in self.models_by_call_type:
+      raise ValueError(
+          f'Call type not supported: {call_type}\n'
+          f'Supported call types: {self.models_by_call_type.keys()}'
+      )
+
+  def _check_call_type_matches(
+      self,
+      call_type: types.CallType,
+      provider_model_config: types.ProviderModelConfig
+  ):
+    if call_type == types.CallType.TEXT:
+      return (
+        provider_model_config.metadata.call_type == types.CallType.TEXT or
+        provider_model_config.metadata.call_type == types.CallType.MULTI_MODAL
+      )
+    return provider_model_config.metadata.call_type == call_type
+
   def get_all_models(
       self,
       provider: types.ProviderNameType | None = None,
@@ -725,11 +766,8 @@ class ModelConfigs(state_controller.StateControlled):
       recommended_only: bool | None = True,
   ) -> list[types.ProviderModelType]:
     """List all models matching the given filters."""
-    if (
-        call_type is not None and
-        call_type not in self.models_by_call_type
-    ):
-      raise ValueError(f'Call type not supported: {call_type}')
+    if call_type is not None:
+      self._check_call_type_exists(call_type)
 
     if (
         model_size is not None and
@@ -758,7 +796,7 @@ class ModelConfigs(state_controller.StateControlled):
       for provider_model_config in provider_models.values():
         if (
             call_type is not None and
-            provider_model_config.metadata.call_type != call_type
+            not self._check_call_type_matches(call_type, provider_model_config)
         ):
           continue
 

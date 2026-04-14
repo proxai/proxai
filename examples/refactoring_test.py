@@ -7,12 +7,42 @@ import proxai as px
 import proxai.types as types
 
 
-_DEFAULT_MODEL = ('gemini', 'gemini-3-flash-preview')
-_FAILING_MODEL = ('mock_failing_provider', 'mock_failing_model')
-_THINKING_MODEL = ('gemini', 'gemini-2.5-flash')
-_IMAGE_MODEL = ('gemini', 'gemini-2.5-flash-image')
-_AUDIO_MODEL = ('gemini', 'gemini-2.5-flash-preview-tts')
-_VIDEO_MODEL = ('gemini', 'veo-3.1-generate-preview')
+_MODEL_CONFIGS = {
+    'openai': {
+        'default_model': ('openai', 'gpt-4o'),
+        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
+        'thinking_model': ('openai', 'o3'),
+        'image_model': ('openai', 'dall-e-3'),
+        'audio_model': ('openai', 'tts-1'),
+        'video_model': ('openai', 'sora-2'),
+    },
+    'gemini': {
+        'default_model': ('gemini', 'gemini-3-flash-preview'),
+        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
+        'thinking_model': ('gemini', 'gemini-2.5-flash'),
+        'image_model': ('gemini', 'gemini-2.5-flash-image'),
+        'audio_model': ('gemini', 'gemini-2.5-flash-preview-tts'),
+        'video_model': ('gemini', 'veo-3.1-generate-preview'),
+    },
+    'claude': {
+        'default_model': ('claude', 'claude-sonnet-4-6'),
+        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
+        'thinking_model': ('claude', 'claude-opus-4-6'),
+        'image_model': (None, None),
+        'audio_model': (None, None),
+        'video_model': (None, None),
+    },
+}
+
+
+_PROVIDER = 'claude'
+
+_DEFAULT_MODEL = _MODEL_CONFIGS[_PROVIDER]['default_model']
+_FAILING_MODEL = _MODEL_CONFIGS[_PROVIDER]['failing_model']
+_THINKING_MODEL = _MODEL_CONFIGS[_PROVIDER]['thinking_model']
+_IMAGE_MODEL = _MODEL_CONFIGS[_PROVIDER]['image_model']
+_AUDIO_MODEL = _MODEL_CONFIGS[_PROVIDER]['audio_model']
+_VIDEO_MODEL = _MODEL_CONFIGS[_PROVIDER]['video_model']
 
 
 _DEFAULT_MODEL_CONFIG = types.ProviderModelConfig(
@@ -20,6 +50,42 @@ _DEFAULT_MODEL_CONFIG = types.ProviderModelConfig(
         provider=_DEFAULT_MODEL[0],
         model=_DEFAULT_MODEL[1],
         provider_model_identifier=_DEFAULT_MODEL[1]
+    ),
+    pricing=types.ProviderModelPricingType(
+        input_token_cost=1.0,
+        output_token_cost=2.0
+    ),
+    metadata=types.ProviderModelMetadataType(
+        call_type=types.CallType.MULTI_MODAL,
+        is_recommended=True
+    ),
+    features=types.FeatureConfigType(
+        prompt=types.FeatureSupportType.SUPPORTED,
+        messages=types.FeatureSupportType.SUPPORTED,
+        system_prompt=types.FeatureSupportType.SUPPORTED,
+        parameters=types.ParameterConfigType(
+            temperature=types.FeatureSupportType.SUPPORTED,
+            max_tokens=types.FeatureSupportType.SUPPORTED,
+            stop=types.FeatureSupportType.SUPPORTED,
+            n=types.FeatureSupportType.NOT_SUPPORTED,
+            thinking=types.FeatureSupportType.SUPPORTED,
+        ),
+        tools=types.ToolConfigType(
+            web_search=types.FeatureSupportType.SUPPORTED,
+        ),
+        response_format=types.ResponseFormatConfigType(
+            text=types.FeatureSupportType.SUPPORTED,
+            json=types.FeatureSupportType.SUPPORTED,
+            pydantic=types.FeatureSupportType.SUPPORTED,
+        ),
+    )
+)
+
+_FAILING_MODEL_CONFIG = types.ProviderModelConfig(
+    provider_model=types.ProviderModelType(
+        provider=_FAILING_MODEL[0],
+        model=_FAILING_MODEL[1],
+        provider_model_identifier=_FAILING_MODEL[1]
     ),
     pricing=types.ProviderModelPricingType(
         input_token_cost=1.0,
@@ -214,11 +280,20 @@ def assert_audio_content(result: types.CallRecord):
 
 
 def register_models(client: px.Client):
+  client.model_configs_instance.unregister_all_models()
+
   try:
     client.models.get_model(_DEFAULT_MODEL[0], _DEFAULT_MODEL[1])
   except Exception as e:
     client.model_configs_instance.register_provider_model_config(
         _DEFAULT_MODEL_CONFIG)
+
+
+  try:
+    client.models.get_model(_FAILING_MODEL[0], _FAILING_MODEL[1])
+  except Exception as e:
+    client.model_configs_instance.register_provider_model_config(
+        _FAILING_MODEL_CONFIG)
 
   try:
     client.models.get_model(_THINKING_MODEL[0], _THINKING_MODEL[1])
@@ -226,23 +301,26 @@ def register_models(client: px.Client):
     client.model_configs_instance.register_provider_model_config(
         _THINKING_MODEL_CONFIG)
 
-  try:
-    client.models.get_model(_IMAGE_MODEL[0], _IMAGE_MODEL[1])
-  except Exception as e:
-    client.model_configs_instance.register_provider_model_config(
-        _IMAGE_MODEL_CONFIG)
+  if _IMAGE_MODEL[0] is not None:
+    try:
+      client.models.get_model(_IMAGE_MODEL[0], _IMAGE_MODEL[1])
+    except Exception as e:
+      client.model_configs_instance.register_provider_model_config(
+          _IMAGE_MODEL_CONFIG)
 
-  try:
-    client.models.get_model(_AUDIO_MODEL[0], _AUDIO_MODEL[1])
-  except Exception as e:
-    client.model_configs_instance.register_provider_model_config(
-        _AUDIO_MODEL_CONFIG)
+  if _AUDIO_MODEL[0] is not None:
+    try:
+      client.models.get_model(_AUDIO_MODEL[0], _AUDIO_MODEL[1])
+    except Exception as e:
+      client.model_configs_instance.register_provider_model_config(
+          _AUDIO_MODEL_CONFIG)
 
-  try:
-    client.models.get_model(_VIDEO_MODEL[0], _VIDEO_MODEL[1])
-  except Exception as e:
-    client.model_configs_instance.register_provider_model_config(
-        _VIDEO_MODEL_CONFIG)
+  if _VIDEO_MODEL[0] is not None:
+    try:
+      client.models.get_model(_VIDEO_MODEL[0], _VIDEO_MODEL[1])
+    except Exception as e:
+      client.model_configs_instance.register_provider_model_config(
+          _VIDEO_MODEL_CONFIG)
 
 
 def prompt_test():
@@ -344,21 +422,6 @@ def parameters_stop_list_test():
   _assert_text_content(result)
   assert result.query.parameters is not None
   assert result.query.parameters.stop == ['5', '7']
-
-
-def parameters_n_test():
-  print('> parameters_n_test')
-  result = px.generate(
-      prompt='What is 2 + 2?',
-      provider_model=_DEFAULT_MODEL,
-      parameters=px.ParameterType(n=3))
-  _assert_text_content(result)
-  assert result.query.parameters is not None
-  assert result.query.parameters.n == 3
-  assert result.result.choices is not None
-  assert len(result.result.choices) == 3
-  for choice in result.result.choices:
-    assert choice.content is not None
 
 
 def parameters_thinking_test():
@@ -636,14 +699,25 @@ def connection_options_override_cache_value_test():
 
 def images_generate_test():
   print('> images_generate_test')
+  if not _IMAGE_MODEL:
+    print('> images_generate_test: Image model not supported, skipping test')
+    return
   result = px.generate(
       prompt='Generate an image of a cat.',
       provider_model=_IMAGE_MODEL,
       response_format='image')
   assert_image_content(result)
+  image_path = os.path.expanduser('~/temp/image.png')
+  if os.path.exists(image_path):
+    os.remove(image_path)
+  with open(image_path, 'wb') as f:
+    f.write(result.result.output_image.data)
 
 def audio_generate_test():
   print('> audio_generate_test')
+  if not _AUDIO_MODEL:
+    print('> audio_generate_test: Audio model not supported, skipping test')
+    return
   result = px.generate(
       prompt='Hello! This is a test of ProxAI\'s text to speech API.',
       provider_model=_AUDIO_MODEL,
@@ -660,6 +734,9 @@ def audio_generate_test():
 
 def video_generate_test():
   print('> video_generate_test')
+  if not _VIDEO_MODEL:
+    print('> video_generate_test: Video model not supported, skipping test')
+    return
   result = px.generate(
       prompt='Generate a video of a cat.',
       provider_model=_VIDEO_MODEL,
@@ -710,7 +787,6 @@ def main():
   parameters_max_tokens_test()
   parameters_stop_test()
   parameters_stop_list_test()
-  # parameters_n_test()
   parameters_thinking_test()
   tools_web_search_test()
   response_format_text_test()
@@ -726,7 +802,7 @@ def main():
   images_generate_test()
   audio_generate_test()
   # NOTE: Video test is too slow. Comment in when needed.
-  # video_generate_test()
+  video_generate_test()
   list_models_test()
 
 if __name__ == '__main__':
