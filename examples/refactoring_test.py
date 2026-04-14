@@ -699,7 +699,7 @@ def connection_options_override_cache_value_test():
 
 def images_generate_test():
   print('> images_generate_test')
-  if not _IMAGE_MODEL:
+  if not _IMAGE_MODEL[0]:
     print('> images_generate_test: Image model not supported, skipping test')
     return
   result = px.generate(
@@ -715,7 +715,7 @@ def images_generate_test():
 
 def audio_generate_test():
   print('> audio_generate_test')
-  if not _AUDIO_MODEL:
+  if not _AUDIO_MODEL[0]:
     print('> audio_generate_test: Audio model not supported, skipping test')
     return
   result = px.generate(
@@ -734,7 +734,7 @@ def audio_generate_test():
 
 def video_generate_test():
   print('> video_generate_test')
-  if not _VIDEO_MODEL:
+  if not _VIDEO_MODEL[0]:
     print('> video_generate_test: Video model not supported, skipping test')
     return
   result = px.generate(
@@ -753,12 +753,15 @@ def list_models_test():
   models = px.models.list_models()
   assert len(models) > 1
 
-  models = px.models.list_models(call_type=types.CallType.IMAGE)
-  assert len(models) > 0
-  models = px.models.list_models(call_type=types.CallType.AUDIO)
-  assert len(models) > 0
-  models = px.models.list_models(call_type=types.CallType.VIDEO)
-  assert len(models) > 0
+  if _IMAGE_MODEL[0]:
+    models = px.models.list_models(call_type=types.CallType.IMAGE)
+    assert len(models) > 0
+  if _AUDIO_MODEL[0]:
+    models = px.models.list_models(call_type=types.CallType.AUDIO)
+    assert len(models) > 0
+  if _VIDEO_MODEL[0]:
+    models = px.models.list_models(call_type=types.CallType.VIDEO)
+    assert len(models) > 0
 
   models = px.models.list_models(features=[types.FeatureTagType.PROMPT])
   assert len(models) > 0
@@ -771,11 +774,18 @@ def list_models_test():
   client = px.Client(
       feature_mapping_strategy=types.FeatureMappingStrategy.STRICT)
   register_models(client)
-  models = client.models.list_models(
-      features=[
+  if _PROVIDER == 'claude':
+    models = client.models.list_models(
+        features=[
+          types.FeatureTagType.WEB_SEARCH,
+          types.FeatureTagType.RESPONSE_JSON])
+    assert len(models) == 0
+  else:
+    models = client.models.list_models(
+        features=[
           types.FeatureTagType.WEB_SEARCH,
           types.FeatureTagType.RESPONSE_PYDANTIC])
-  assert len(models) == 0
+    assert len(models) == 0
 
 
 def main():

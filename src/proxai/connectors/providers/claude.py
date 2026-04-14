@@ -60,7 +60,7 @@ class ClaudeConnector(model_connector.ProviderModelConnector):
           ),
           response_format=ResponseFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
-              json=FeatureSupportType.SUPPORTED,
+              json=FeatureSupportType.BEST_EFFORT,
               pydantic=FeatureSupportType.SUPPORTED,
           ),
       ),
@@ -217,12 +217,16 @@ class ClaudeConnector(model_connector.ProviderModelConnector):
                 "max_uses": 5,
             }])
 
-    needs_structured_output = (
+    needs_pydantic = (
         query_record.response_format is not None
         and query_record.response_format.type
         == types.ResponseFormatType.PYDANTIC)
+    needs_json = (
+        query_record.response_format is not None
+        and query_record.response_format.type
+        == types.ResponseFormatType.JSON)
 
-    if needs_structured_output:
+    if needs_pydantic:
       stream = functools.partial(
           stream,
           betas=[STRUCTURED_OUTPUTS_BETA],
@@ -233,7 +237,7 @@ class ClaudeConnector(model_connector.ProviderModelConnector):
     if result_record.error is not None:
       return result_record
 
-    if needs_structured_output:
+    if needs_pydantic:
       result_record.content = [
           message_content.MessageContent(
               type=message_content.ContentType.PYDANTIC_INSTANCE,
@@ -254,6 +258,14 @@ class ClaudeConnector(model_connector.ProviderModelConnector):
           )
     else:
       result_record.content = self._parse_content_blocks(response)
+      if needs_json:
+        result_record.content = [
+            message_content.MessageContent(
+                type=message_content.ContentType.JSON,
+                json=self._extract_json_from_text(c.text),
+            ) if c.type == message_content.ContentType.TEXT else c
+            for c in result_record.content
+        ]
 
     return result_record
 
