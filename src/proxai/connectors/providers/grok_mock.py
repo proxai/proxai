@@ -1,32 +1,29 @@
 class _MockResponse:
-  content: str
-
   def __init__(self):
     self.content = 'mock response'
-
-
-class _MockContinuedChat:
-
-  def append(*args, **kwargs):
-    pass
-
-  def sample(*args, **kwargs):
-    return _MockResponse()
-
-  def parse(*args, **kwargs):
-    return _MockResponse()
+    self.reasoning_content = ''
+    self.citations = []
+    self.inline_citations = []
 
 
 class _MockChat:
+  def append(self, *args, **kwargs):
+    pass
 
-  def create(self, **kwargs) -> _MockResponse:
-    return _MockContinuedChat()
+  def sample(self, *args, **kwargs) -> _MockResponse:
+    return _MockResponse()
+
+  def parse(self, shape, *args, **kwargs):
+    return (_MockResponse(), None)
+
+
+class _MockChatNamespace:
+  def create(self, **kwargs) -> _MockChat:
+    return _MockChat()
 
 
 class GrokMock:
-  """Mock Grok API client for testing."""
-
-  chat: _MockChat
+  """Mock xAI Grok API client for testing."""
 
   def __init__(self):
-    self.chat = _MockChat()
+    self.chat = _MockChatNamespace()

@@ -7,7 +7,7 @@ import proxai.connectors.providers.claude as claude_provider
 # import proxai.connectors.providers.databricks as databricks_provider
 # import proxai.connectors.providers.deepseek as deepseek_provider
 import proxai.connectors.providers.gemini as gemini_provider
-# import proxai.connectors.providers.grok as grok_provider
+import proxai.connectors.providers.grok as grok_provider
 # import proxai.connectors.providers.huggingface as huggingface_provider
 import proxai.connectors.providers.mistral as mistral_provider
 import proxai.connectors.providers.mock_provider as mock_provider
@@ -23,7 +23,7 @@ _MODEL_CONNECTOR_MAP = {
     'mistral': mistral_provider.MistralConnector,
     # 'huggingface': huggingface_provider.HuggingFaceConnector,
     # 'deepseek': deepseek_provider.DeepSeekConnector,
-    # 'grok': grok_provider.GrokConnector,
+    'grok': grok_provider.GrokConnector,
     'mock_provider': mock_provider.MockProviderModelConnector,
     'mock_failing_provider': mock_provider.MockFailingProviderModelConnector,
     'mock_slow_provider': mock_provider.MockSlowProviderModelConnector,

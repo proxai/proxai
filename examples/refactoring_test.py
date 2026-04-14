@@ -40,10 +40,18 @@ _MODEL_CONFIGS = {
         'audio_model': (None, None),
         'video_model': (None, None),
     },
+    'grok': {
+        'default_model': ('grok', 'grok-4-fast-non-reasoning'),
+        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
+        'thinking_model': ('grok', 'grok-3-mini'),
+        'image_model': (None, None),
+        'audio_model': (None, None),
+        'video_model': (None, None),
+    },
 }
 
 
-_PROVIDER = 'mistral'
+_PROVIDER = 'grok'
 
 _DEFAULT_MODEL = _MODEL_CONFIGS[_PROVIDER]['default_model']
 _FAILING_MODEL = _MODEL_CONFIGS[_PROVIDER]['failing_model']
