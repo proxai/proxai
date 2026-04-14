@@ -281,12 +281,12 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
     if query_record.parameters is not None:
       if query_record.parameters.max_tokens is not None:
         create = functools.partial(
-            create, max_completion_tokens=query_record.parameters.max_tokens)
+            create, max_output_tokens=query_record.parameters.max_tokens)
 
       if query_record.parameters.temperature is not None:
         create = functools.partial(
             create, temperature=query_record.parameters.temperature)
-      
+
       if query_record.parameters.thinking is not None:
         create = functools.partial(
             create,

@@ -67,7 +67,7 @@ class GeminiConnector(model_connector.ProviderModelConnector):
       ),
   }
   
-  def _models_generate_content_create_executor(
+  def _models_generate_content_executor(
       self, query_record: types.QueryRecord) -> types.Response:
     create = functools.partial(self.api.models.generate_content)
     create = functools.partial(create, model=(
@@ -257,6 +257,6 @@ class GeminiConnector(model_connector.ProviderModelConnector):
     return result_record
 
   ENDPOINT_EXECUTORS = {
-    'models.generate_content': '_models_generate_content_create_executor',
+    'models.generate_content': '_models_generate_content_executor',
     'models.generate_videos': '_models_generate_videos_executor',
   }
