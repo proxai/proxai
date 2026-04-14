@@ -10,6 +10,8 @@ The three finalized reference connectors are:
 - `src/proxai/connectors/providers/openai.py`
 - `src/proxai/connectors/providers/gemini.py`
 - `src/proxai/connectors/providers/claude.py`
+- `src/proxai/connectors/providers/mistral.py`
+- `src/proxai/connectors/providers/grok.py`
 
 Read at least one before starting. They are the source of truth for
 patterns this doc summarizes.
