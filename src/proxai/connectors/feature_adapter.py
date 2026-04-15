@@ -164,6 +164,22 @@ class FeatureAdapter:
           f"You must respond with valid JSON that follows this schema:\n"
           f"{schema_str}")
 
+    # Pattern 2: endpoint has no native system kwarg and expects the system
+    # prompt as the first entry in `messages`. Fold prompt + system_prompt
+    # into a chat-shaped dict matching `chat.export()` output, so executors
+    # see the same shape on the chat and prompt paths and never need to
+    # read `query_record.system_prompt`.
+    if (query_record.system_prompt is not None
+        and self.feature_config.add_system_to_messages):
+      query_record.chat = {
+          'messages': [
+              {'role': 'system', 'content': query_record.system_prompt},
+              {'role': 'user', 'content': query_record.prompt},
+          ],
+      }
+      query_record.prompt = None
+      query_record.system_prompt = None
+
   def _adapt_chat(self, query_record: types.QueryRecord,
                   json_guidance: bool = False,
                   pydantic_schema: dict | None = None):

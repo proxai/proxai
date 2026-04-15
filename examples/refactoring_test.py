@@ -1,6 +1,10 @@
-import shutil
-from pprint import pprint
+import argparse
+import dataclasses
 import os
+import shutil
+import traceback
+from pprint import pprint
+
 import pydantic
 
 import proxai as px
@@ -82,196 +86,210 @@ _MODEL_CONFIGS = {
     },
 }
 
-
-_PROVIDER = 'cohere'
-
-_DEFAULT_MODEL = _MODEL_CONFIGS[_PROVIDER]['default_model']
-_FAILING_MODEL = _MODEL_CONFIGS[_PROVIDER]['failing_model']
-_THINKING_MODEL = _MODEL_CONFIGS[_PROVIDER]['thinking_model']
-_IMAGE_MODEL = _MODEL_CONFIGS[_PROVIDER]['image_model']
-_AUDIO_MODEL = _MODEL_CONFIGS[_PROVIDER]['audio_model']
-_VIDEO_MODEL = _MODEL_CONFIGS[_PROVIDER]['video_model']
-_WEB_SEARCH_SUPPORTED = _MODEL_CONFIGS[_PROVIDER].get(
-    'web_search_supported', True)
+_BANNER_WIDTH = 60
 
 
-_DEFAULT_MODEL_CONFIG = types.ProviderModelConfig(
-    provider_model=types.ProviderModelType(
-        provider=_DEFAULT_MODEL[0],
-        model=_DEFAULT_MODEL[1],
-        provider_model_identifier=_DEFAULT_MODEL[1]
-    ),
-    pricing=types.ProviderModelPricingType(
-        input_token_cost=1.0,
-        output_token_cost=2.0
-    ),
-    metadata=types.ProviderModelMetadataType(
-        call_type=types.CallType.MULTI_MODAL,
-        is_recommended=True
-    ),
-    features=types.FeatureConfigType(
-        prompt=types.FeatureSupportType.SUPPORTED,
-        messages=types.FeatureSupportType.SUPPORTED,
-        system_prompt=types.FeatureSupportType.SUPPORTED,
-        parameters=types.ParameterConfigType(
-            temperature=types.FeatureSupportType.SUPPORTED,
-            max_tokens=types.FeatureSupportType.SUPPORTED,
-            stop=types.FeatureSupportType.SUPPORTED,
-            n=types.FeatureSupportType.NOT_SUPPORTED,
-            thinking=types.FeatureSupportType.SUPPORTED,
-        ),
-        tools=types.ToolConfigType(
-            web_search=(
-                types.FeatureSupportType.SUPPORTED
-                if _WEB_SEARCH_SUPPORTED
-                else types.FeatureSupportType.NOT_SUPPORTED
-            ),
-        ),
-        response_format=types.ResponseFormatConfigType(
-            text=types.FeatureSupportType.SUPPORTED,
-            json=types.FeatureSupportType.SUPPORTED,
-            pydantic=types.FeatureSupportType.SUPPORTED,
-        ),
-    )
-)
+def _configure_provider(provider: str) -> None:
+  """Rebind the module-level model constants for the given provider.
 
-_FAILING_MODEL_CONFIG = types.ProviderModelConfig(
-    provider_model=types.ProviderModelType(
-        provider=_FAILING_MODEL[0],
-        model=_FAILING_MODEL[1],
-        provider_model_identifier=_FAILING_MODEL[1]
-    ),
-    pricing=types.ProviderModelPricingType(
-        input_token_cost=1.0,
-        output_token_cost=2.0
-    ),
-    metadata=types.ProviderModelMetadataType(
-        call_type=types.CallType.MULTI_MODAL,
-        is_recommended=True
-    ),
-    features=types.FeatureConfigType(
-        prompt=types.FeatureSupportType.SUPPORTED,
-        messages=types.FeatureSupportType.SUPPORTED,
-        system_prompt=types.FeatureSupportType.SUPPORTED,
-        parameters=types.ParameterConfigType(
-            temperature=types.FeatureSupportType.SUPPORTED,
-            max_tokens=types.FeatureSupportType.SUPPORTED,
-            stop=types.FeatureSupportType.SUPPORTED,
-            n=types.FeatureSupportType.NOT_SUPPORTED,
-            thinking=types.FeatureSupportType.SUPPORTED,
-        ),
-        tools=types.ToolConfigType(
-            web_search=types.FeatureSupportType.SUPPORTED,
-        ),
-        response_format=types.ResponseFormatConfigType(
-            text=types.FeatureSupportType.SUPPORTED,
-            json=types.FeatureSupportType.SUPPORTED,
-            pydantic=types.FeatureSupportType.SUPPORTED,
-        ),
-    )
-)
+  All test functions read these as module globals, so reassigning them via
+  `global` lets a single run target one provider at a time without threading
+  a config object through every helper.
+  """
+  global _PROVIDER
+  global _DEFAULT_MODEL, _FAILING_MODEL, _THINKING_MODEL
+  global _IMAGE_MODEL, _AUDIO_MODEL, _VIDEO_MODEL
+  global _WEB_SEARCH_SUPPORTED
+  global _DEFAULT_MODEL_CONFIG, _FAILING_MODEL_CONFIG, _THINKING_MODEL_CONFIG
+  global _IMAGE_MODEL_CONFIG, _AUDIO_MODEL_CONFIG, _VIDEO_MODEL_CONFIG
 
-_THINKING_MODEL_CONFIG = types.ProviderModelConfig(
-    provider_model=types.ProviderModelType(
-        provider=_THINKING_MODEL[0],
-        model=_THINKING_MODEL[1],
-        provider_model_identifier=_THINKING_MODEL[1]
-    ),
-    pricing=types.ProviderModelPricingType(
-        input_token_cost=1.0,
-        output_token_cost=2.0
-    ),
-    metadata=types.ProviderModelMetadataType(
-        call_type=types.CallType.MULTI_MODAL,
-        is_recommended=True
-    ),
-    features=types.FeatureConfigType(
-        prompt=types.FeatureSupportType.SUPPORTED,
-        messages=types.FeatureSupportType.SUPPORTED,
-        system_prompt=types.FeatureSupportType.SUPPORTED,
-        parameters=types.ParameterConfigType(
-            temperature=types.FeatureSupportType.SUPPORTED,
-            max_tokens=types.FeatureSupportType.SUPPORTED,
-            stop=types.FeatureSupportType.SUPPORTED,
-            n=types.FeatureSupportType.SUPPORTED,
-            thinking=types.FeatureSupportType.SUPPORTED,
-        ),
-        tools=types.ToolConfigType(
-            web_search=types.FeatureSupportType.SUPPORTED,
-        ),
-        response_format=types.ResponseFormatConfigType(
-            text=types.FeatureSupportType.SUPPORTED,
-            json=types.FeatureSupportType.SUPPORTED,
-            pydantic=types.FeatureSupportType.SUPPORTED,
-        ),
-    )
-)
+  _PROVIDER = provider
+  config = _MODEL_CONFIGS[provider]
+  _DEFAULT_MODEL = config['default_model']
+  _FAILING_MODEL = config['failing_model']
+  _THINKING_MODEL = config['thinking_model']
+  _IMAGE_MODEL = config['image_model']
+  _AUDIO_MODEL = config['audio_model']
+  _VIDEO_MODEL = config['video_model']
+  _WEB_SEARCH_SUPPORTED = config.get('web_search_supported', True)
 
-_IMAGE_MODEL_CONFIG = types.ProviderModelConfig(
-    provider_model=types.ProviderModelType(
-        provider=_IMAGE_MODEL[0],
-        model=_IMAGE_MODEL[1],
-        provider_model_identifier=_IMAGE_MODEL[1]
-    ),
-    pricing=types.ProviderModelPricingType(
-        input_token_cost=1.0,
-        output_token_cost=2.0
-    ),
-    metadata=types.ProviderModelMetadataType(
-        call_type=types.CallType.IMAGE,
-        is_recommended=True
-    ),
-    features=types.FeatureConfigType(
-        prompt=types.FeatureSupportType.SUPPORTED,
-        response_format=types.ResponseFormatConfigType(
-            image=types.FeatureSupportType.SUPPORTED,
-        ),
-    )
-)
+  _DEFAULT_MODEL_CONFIG = types.ProviderModelConfig(
+      provider_model=types.ProviderModelType(
+          provider=_DEFAULT_MODEL[0],
+          model=_DEFAULT_MODEL[1],
+          provider_model_identifier=_DEFAULT_MODEL[1]
+      ),
+      pricing=types.ProviderModelPricingType(
+          input_token_cost=1.0,
+          output_token_cost=2.0
+      ),
+      metadata=types.ProviderModelMetadataType(
+          call_type=types.CallType.MULTI_MODAL,
+          is_recommended=True
+      ),
+      features=types.FeatureConfigType(
+          prompt=types.FeatureSupportType.SUPPORTED,
+          messages=types.FeatureSupportType.SUPPORTED,
+          system_prompt=types.FeatureSupportType.SUPPORTED,
+          parameters=types.ParameterConfigType(
+              temperature=types.FeatureSupportType.SUPPORTED,
+              max_tokens=types.FeatureSupportType.SUPPORTED,
+              stop=types.FeatureSupportType.SUPPORTED,
+              n=types.FeatureSupportType.NOT_SUPPORTED,
+              thinking=types.FeatureSupportType.SUPPORTED,
+          ),
+          tools=types.ToolConfigType(
+              web_search=(
+                  types.FeatureSupportType.SUPPORTED
+                  if _WEB_SEARCH_SUPPORTED
+                  else types.FeatureSupportType.NOT_SUPPORTED
+              ),
+          ),
+          response_format=types.ResponseFormatConfigType(
+              text=types.FeatureSupportType.SUPPORTED,
+              json=types.FeatureSupportType.SUPPORTED,
+              pydantic=types.FeatureSupportType.SUPPORTED,
+          ),
+      )
+  )
 
-_AUDIO_MODEL_CONFIG = types.ProviderModelConfig(
-    provider_model=types.ProviderModelType(
-        provider=_AUDIO_MODEL[0],
-        model=_AUDIO_MODEL[1],
-        provider_model_identifier=_AUDIO_MODEL[1]
-    ),
-    pricing=types.ProviderModelPricingType(
-        input_token_cost=1.0,
-        output_token_cost=2.0
-    ),
-    metadata=types.ProviderModelMetadataType(
-        call_type=types.CallType.AUDIO,
-        is_recommended=True
-    ),
-    features=types.FeatureConfigType(
-        prompt=types.FeatureSupportType.SUPPORTED,
-        response_format=types.ResponseFormatConfigType(
-            audio=types.FeatureSupportType.SUPPORTED,
-        ),
-    )
-)
+  _FAILING_MODEL_CONFIG = types.ProviderModelConfig(
+      provider_model=types.ProviderModelType(
+          provider=_FAILING_MODEL[0],
+          model=_FAILING_MODEL[1],
+          provider_model_identifier=_FAILING_MODEL[1]
+      ),
+      pricing=types.ProviderModelPricingType(
+          input_token_cost=1.0,
+          output_token_cost=2.0
+      ),
+      metadata=types.ProviderModelMetadataType(
+          call_type=types.CallType.MULTI_MODAL,
+          is_recommended=True
+      ),
+      features=types.FeatureConfigType(
+          prompt=types.FeatureSupportType.SUPPORTED,
+          messages=types.FeatureSupportType.SUPPORTED,
+          system_prompt=types.FeatureSupportType.SUPPORTED,
+          parameters=types.ParameterConfigType(
+              temperature=types.FeatureSupportType.SUPPORTED,
+              max_tokens=types.FeatureSupportType.SUPPORTED,
+              stop=types.FeatureSupportType.SUPPORTED,
+              n=types.FeatureSupportType.NOT_SUPPORTED,
+              thinking=types.FeatureSupportType.SUPPORTED,
+          ),
+          tools=types.ToolConfigType(
+              web_search=types.FeatureSupportType.SUPPORTED,
+          ),
+          response_format=types.ResponseFormatConfigType(
+              text=types.FeatureSupportType.SUPPORTED,
+              json=types.FeatureSupportType.SUPPORTED,
+              pydantic=types.FeatureSupportType.SUPPORTED,
+          ),
+      )
+  )
 
-_VIDEO_MODEL_CONFIG = types.ProviderModelConfig(
-    provider_model=types.ProviderModelType(
-        provider=_VIDEO_MODEL[0],
-        model=_VIDEO_MODEL[1],
-        provider_model_identifier=_VIDEO_MODEL[1]
-    ),
-    pricing=types.ProviderModelPricingType(
-        input_token_cost=1.0,
-        output_token_cost=2.0
-    ),
-    metadata=types.ProviderModelMetadataType(
-        call_type=types.CallType.VIDEO,
-        is_recommended=True
-    ),
-    features=types.FeatureConfigType(
-        prompt=types.FeatureSupportType.SUPPORTED,
-        response_format=types.ResponseFormatConfigType(
-            video=types.FeatureSupportType.SUPPORTED,
-        ),
-    )
-)
+  _THINKING_MODEL_CONFIG = types.ProviderModelConfig(
+      provider_model=types.ProviderModelType(
+          provider=_THINKING_MODEL[0],
+          model=_THINKING_MODEL[1],
+          provider_model_identifier=_THINKING_MODEL[1]
+      ),
+      pricing=types.ProviderModelPricingType(
+          input_token_cost=1.0,
+          output_token_cost=2.0
+      ),
+      metadata=types.ProviderModelMetadataType(
+          call_type=types.CallType.MULTI_MODAL,
+          is_recommended=True
+      ),
+      features=types.FeatureConfigType(
+          prompt=types.FeatureSupportType.SUPPORTED,
+          messages=types.FeatureSupportType.SUPPORTED,
+          system_prompt=types.FeatureSupportType.SUPPORTED,
+          parameters=types.ParameterConfigType(
+              temperature=types.FeatureSupportType.SUPPORTED,
+              max_tokens=types.FeatureSupportType.SUPPORTED,
+              stop=types.FeatureSupportType.SUPPORTED,
+              n=types.FeatureSupportType.SUPPORTED,
+              thinking=types.FeatureSupportType.SUPPORTED,
+          ),
+          tools=types.ToolConfigType(
+              web_search=types.FeatureSupportType.SUPPORTED,
+          ),
+          response_format=types.ResponseFormatConfigType(
+              text=types.FeatureSupportType.SUPPORTED,
+              json=types.FeatureSupportType.SUPPORTED,
+              pydantic=types.FeatureSupportType.SUPPORTED,
+          ),
+      )
+  )
+
+  _IMAGE_MODEL_CONFIG = types.ProviderModelConfig(
+      provider_model=types.ProviderModelType(
+          provider=_IMAGE_MODEL[0],
+          model=_IMAGE_MODEL[1],
+          provider_model_identifier=_IMAGE_MODEL[1]
+      ),
+      pricing=types.ProviderModelPricingType(
+          input_token_cost=1.0,
+          output_token_cost=2.0
+      ),
+      metadata=types.ProviderModelMetadataType(
+          call_type=types.CallType.IMAGE,
+          is_recommended=True
+      ),
+      features=types.FeatureConfigType(
+          prompt=types.FeatureSupportType.SUPPORTED,
+          response_format=types.ResponseFormatConfigType(
+              image=types.FeatureSupportType.SUPPORTED,
+          ),
+      )
+  )
+
+  _AUDIO_MODEL_CONFIG = types.ProviderModelConfig(
+      provider_model=types.ProviderModelType(
+          provider=_AUDIO_MODEL[0],
+          model=_AUDIO_MODEL[1],
+          provider_model_identifier=_AUDIO_MODEL[1]
+      ),
+      pricing=types.ProviderModelPricingType(
+          input_token_cost=1.0,
+          output_token_cost=2.0
+      ),
+      metadata=types.ProviderModelMetadataType(
+          call_type=types.CallType.AUDIO,
+          is_recommended=True
+      ),
+      features=types.FeatureConfigType(
+          prompt=types.FeatureSupportType.SUPPORTED,
+          response_format=types.ResponseFormatConfigType(
+              audio=types.FeatureSupportType.SUPPORTED,
+          ),
+      )
+  )
+
+  _VIDEO_MODEL_CONFIG = types.ProviderModelConfig(
+      provider_model=types.ProviderModelType(
+          provider=_VIDEO_MODEL[0],
+          model=_VIDEO_MODEL[1],
+          provider_model_identifier=_VIDEO_MODEL[1]
+      ),
+      pricing=types.ProviderModelPricingType(
+          input_token_cost=1.0,
+          output_token_cost=2.0
+      ),
+      metadata=types.ProviderModelMetadataType(
+          call_type=types.CallType.VIDEO,
+          is_recommended=True
+      ),
+      features=types.FeatureConfigType(
+          prompt=types.FeatureSupportType.SUPPORTED,
+          response_format=types.ResponseFormatConfigType(
+              video=types.FeatureSupportType.SUPPORTED,
+          ),
+      )
+  )
 
 
 def _assert_success(result: types.CallRecord):
@@ -767,8 +785,14 @@ def images_generate_test():
   image_path = os.path.expanduser('~/temp/image.png')
   if os.path.exists(image_path):
     os.remove(image_path)
-  with open(image_path, 'wb') as f:
-    f.write(result.result.output_image.data)
+  if result.result.output_image.data is not None:
+    with open(image_path, 'wb') as f:
+      f.write(result.result.output_image.data)
+  elif result.result.output_image.source is not None:
+    import requests
+    response = requests.get(result.result.output_image.source)
+    with open(image_path, 'wb') as f:
+      f.write(response.content)
 
 def audio_generate_test():
   print('> audio_generate_test')
@@ -873,7 +897,8 @@ def list_models_test():
   
 
 
-def main():
+def _run_all_tests():
+  """Run the full refactoring test suite against the currently-configured provider."""
   register_models(px.get_default_proxai_client())
   prompt_test()
   messages_test()
@@ -899,6 +924,88 @@ def main():
   # NOTE: Video test is too slow. Comment in when needed.
   video_generate_test()
   list_models_test()
+
+
+@dataclasses.dataclass
+class _ProviderResult:
+  """Outcome of running the refactoring suite against one provider."""
+  provider: str
+  error: str | None = None
+
+  @property
+  def ok(self) -> bool:
+    return self.error is None
+
+
+def _print_banner(title: str) -> None:
+  print()
+  print('=' * _BANNER_WIDTH)
+  print(f'  {title}')
+  print('=' * _BANNER_WIDTH)
+
+
+def _print_result(result: _ProviderResult) -> None:
+  if result.ok:
+    print(f'[OK]   {result.provider}')
+  else:
+    print(f'[FAIL] {result.provider}: {result.error}')
+
+
+def _print_summary(results: list[_ProviderResult]) -> None:
+  _print_banner('SUMMARY')
+  for result in results:
+    _print_result(result)
+  passed = sum(1 for r in results if r.ok)
+  failed = len(results) - passed
+  print('-' * _BANNER_WIDTH)
+  print(f'  {passed} passed, {failed} failed')
+
+
+def _parse_providers() -> list[str]:
+  """Parse CLI args and return the list of providers to run."""
+  parser = argparse.ArgumentParser(
+      description='Manual refactoring test runner.')
+  parser.add_argument(
+      '--provider', '-p',
+      default=None,
+      choices=sorted(_MODEL_CONFIGS.keys()),
+      help=(
+          'Which provider to run the refactoring test against. '
+          'If omitted, every provider in _MODEL_CONFIGS is run sequentially.'))
+  args = parser.parse_args()
+  if args.provider is not None:
+    return [args.provider]
+  return sorted(_MODEL_CONFIGS.keys())
+
+
+def _run_provider(
+    provider: str, index: int, total: int) -> _ProviderResult:
+  """Configure, run, and report on a single provider. Never raises."""
+  progress = f' ({index}/{total})' if total > 1 else ''
+  _print_banner(f'PROVIDER: {provider}{progress}')
+  try:
+    _configure_provider(provider)
+    _run_all_tests()
+  except Exception as exc:
+    traceback.print_exc()
+    result = _ProviderResult(
+        provider=provider,
+        error=f'{type(exc).__name__}: {exc}')
+  else:
+    result = _ProviderResult(provider=provider)
+  _print_result(result)
+  return result
+
+
+def main():
+  providers = _parse_providers()
+  total = len(providers)
+  results = [
+      _run_provider(p, i, total)
+      for i, p in enumerate(providers, start=1)]
+  if total > 1:
+    _print_summary(results)
+
 
 if __name__ == '__main__':
   main()

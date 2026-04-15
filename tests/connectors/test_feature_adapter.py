@@ -19,6 +19,7 @@ NS = types.FeatureSupportType.NOT_SUPPORTED
 
 def _adapter(
     prompt=None, messages=None, system_prompt=None,
+    add_system_to_messages=None,
     temperature=None, max_tokens=None, stop=None, n=None, thinking=None,
     web_search=None,
     text=None, image=None, audio=None, video=None,
@@ -31,6 +32,7 @@ def _adapter(
           prompt=prompt,
           messages=messages,
           system_prompt=system_prompt,
+          add_system_to_messages=add_system_to_messages,
           parameters=types.ParameterConfigType(
               temperature=temperature,
               max_tokens=max_tokens,
@@ -319,6 +321,74 @@ class TestAdaptPromptSystemPrompt:
     adapter = _adapter(prompt=S, system_prompt=NS)
     result = adapter.adapt_query_record(_query(prompt="hi"))
     assert result.prompt == "hi"
+    assert result.system_prompt is None
+
+
+# ===================================================================
+# adapt_query_record — Pattern 2 (add_system_to_messages) prompt path
+# ===================================================================
+
+class TestAdaptPromptAddSystemToMessages:
+  """Pattern 2: prompt + system_prompt folded into a chat-shaped messages list."""
+
+  def test_prompt_and_system_folded_into_chat(self):
+    adapter = _adapter(
+        prompt=S, system_prompt=S, add_system_to_messages=True)
+    result = adapter.adapt_query_record(
+        _query(prompt="hi", system_prompt="Be nice"))
+    assert result.prompt is None
+    assert result.system_prompt is None
+    assert result.chat == {
+        "messages": [
+            {"role": "system", "content": "Be nice"},
+            {"role": "user", "content": "hi"},
+        ],
+    }
+
+  def test_prompt_without_system_is_left_alone(self):
+    adapter = _adapter(
+        prompt=S, system_prompt=S, add_system_to_messages=True)
+    result = adapter.adapt_query_record(_query(prompt="hi"))
+    assert result.prompt == "hi"
+    assert result.chat is None
+    assert result.system_prompt is None
+
+  def test_json_guidance_lands_on_user_message(self):
+    adapter = _adapter(
+        prompt=S, system_prompt=S, add_system_to_messages=True,
+        text=S, json_fmt=BE)
+    result = adapter.adapt_query_record(
+        _query(
+            prompt="hi", system_prompt="Be nice",
+            response_format_type=types.ResponseFormatType.JSON))
+    assert result.chat["messages"][0] == {
+        "role": "system", "content": "Be nice"}
+    assert "valid JSON" in result.chat["messages"][1]["content"]
+    assert result.chat["messages"][1]["content"].startswith("hi")
+
+  def test_pydantic_schema_lands_on_user_message(self):
+    adapter = _adapter(
+        prompt=S, system_prompt=S, add_system_to_messages=True,
+        text=S, pydantic_fmt=BE)
+    result = adapter.adapt_query_record(
+        _query(
+            prompt="hi", system_prompt="Be nice",
+            response_format_type=types.ResponseFormatType.PYDANTIC,
+            pydantic_class=_TestModel))
+    user_content = result.chat["messages"][1]["content"]
+    assert user_content.startswith("hi")
+    assert "schema" in user_content.lower()
+    assert "name" in user_content
+
+  def test_best_effort_system_prompt_overrides_pattern_2(self):
+    # BEST_EFFORT merges system_prompt into prompt and clears it BEFORE the
+    # Pattern 2 check runs, so no chat conversion happens.
+    adapter = _adapter(
+        prompt=S, system_prompt=BE, add_system_to_messages=True)
+    result = adapter.adapt_query_record(
+        _query(prompt="hi", system_prompt="Be nice"))
+    assert result.prompt == "Be nice\n\nhi"
+    assert result.chat is None
     assert result.system_prompt is None
 
 
