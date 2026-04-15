@@ -12,7 +12,6 @@ import proxai.connectors.providers.huggingface as huggingface_provider
 import proxai.connectors.providers.mistral as mistral_provider
 import proxai.connectors.providers.mock_provider as mock_provider
 import proxai.connectors.providers.openai as openai_provider
-import proxai.types as types
 
 _MODEL_CONNECTOR_MAP = {
     'openai': openai_provider.OpenAIConnector,
@@ -31,19 +30,16 @@ _MODEL_CONNECTOR_MAP = {
 
 
 def get_model_connector(
-    provider_model_config: types.ProviderModelConfig,
+    provider: str,
     without_additional_args: bool = False
 ) -> Callable[[], model_connector.ProviderModelConnector]:
-  """Return a connector factory for the given provider model config."""
-  provider_model = provider_model_config.provider_model
-  if provider_model.provider not in _MODEL_CONNECTOR_MAP:
-    raise ValueError(f'Provider not supported. {provider_model.provider}')
-  connector = _MODEL_CONNECTOR_MAP[provider_model.provider]
+  """Return a connector factory for the given provider."""
+  if provider not in _MODEL_CONNECTOR_MAP:
+    raise ValueError(f'Provider not supported. {provider}')
+  connector = _MODEL_CONNECTOR_MAP[provider]
   if without_additional_args:
     return connector
   return functools.partial(
-      connector, init_from_params=model_connector.ProviderModelConnectorParams(
-          provider_model=provider_model,
-          provider_model_config=provider_model_config
-      )
+      connector,
+      init_from_params=model_connector.ProviderModelConnectorParams()
   )

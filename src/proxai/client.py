@@ -691,7 +691,6 @@ class ProxAIClient(state_controller.StateControlled):
     self.model_configs_requested_from_proxdash = False
 
     self.registered_model_connectors = {}
-    self.model_connectors = {}
     self.model_cache_manager = None
     self.query_cache_manager = None
     self.proxdash_connection = None
@@ -1126,11 +1125,14 @@ class ProxAIClient(state_controller.StateControlled):
       model_connector = self.available_models_instance.get_model_connector(
           provider_model_identifier=provider_model
       )
+      provider_model_config = (
+          self.model_configs_instance.get_provider_model_config(provider_model))
       result_record = model_connector.generate(
           prompt=prompt,
           messages=messages,
           system_prompt=system_prompt,
           provider_model=provider_model,
+          provider_model_config=provider_model_config,
           parameters=parameters,
           tools=tools,
           response_format=response_format,

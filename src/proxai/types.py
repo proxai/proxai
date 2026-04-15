@@ -769,12 +769,10 @@ class ProxDashConnectionState(StateContainer):
 
 
 @dataclasses.dataclass
-class ProviderModelState(StateContainer):
-  """Persisted state for a specific provider model connector."""
+class ProviderState(StateContainer):
+  """Persisted state for a provider connector (provider-scoped, not per model)."""
 
-  provider_model: ProviderModelType | None = None
   run_type: RunType | None = None
-  provider_model_config: ProviderModelConfig | None = None
   feature_mapping_strategy: FeatureMappingStrategy | None = None
   query_cache_manager: QueryCacheManagerState | None = None
   logging_options: LoggingOptions | None = None
@@ -818,8 +816,7 @@ class ProxAIClientState(StateContainer):
   model_configs: ModelConfigsState | None = None
   model_configs_requested_from_proxdash: bool | None = None
 
-  registered_model_connectors: dict[CallType, ProviderModelState] | None = None
-  model_connectors: dict[ProviderModelType, ProviderModelState] | None = None
+  registered_model_connectors: dict[CallType, ProviderState] | None = None
   default_model_cache_manager: ModelCacheManagerState | None = None
   model_cache_manager: ModelCacheManagerState | None = None
   query_cache_manager: QueryCacheManagerState | None = None
