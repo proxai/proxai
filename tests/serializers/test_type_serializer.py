@@ -1,4 +1,7 @@
 import datetime
+import json
+import uuid
+from decimal import Decimal
 
 import pydantic
 import pytest
@@ -540,6 +543,14 @@ def _get_connection_options_options():
 class _UserModel(pydantic.BaseModel):
   name: str
   age: int
+
+
+class _EventModel(pydantic.BaseModel):
+  """Model whose fields are NOT JSON-native by default."""
+  name: str
+  when: datetime.datetime
+  id: uuid.UUID
+  amount: Decimal
 
 
 class _AddressModel(pydantic.BaseModel):
@@ -2171,3 +2182,88 @@ class TestTypeSerializer:
     assert encoded['output_pydantic']['instance_json_value'] == {
         'name': 'Jane', 'age': 25
     }
+
+
+class TestPydanticDatetimeRoundTrip:
+  """Verify mode='json' fix: pydantic models with datetime/UUID/Decimal
+  fields survive cache hashing and encode/decode round-trips, and native
+  instances can be recovered via model_validate.
+  """
+
+  def _build_event(self):
+    return _EventModel(
+        name='launch',
+        when=datetime.datetime(2024, 1, 1, 12, 0, tzinfo=datetime.timezone.utc),
+        id=uuid.UUID('12345678-1234-5678-1234-567812345678'),
+        amount=Decimal('1.5'),
+    )
+
+  def _build_chat_with_event(self, event):
+    return chat_session.Chat(messages=[
+        message.Message(
+            role=message_content.MessageRoleType.ASSISTANT,
+            content=[
+                message_content.MessageContent(
+                    type=message_content.ContentType.PYDANTIC_INSTANCE,
+                    pydantic_content=message_content.PydanticContent(
+                        class_value=_EventModel, instance_value=event
+                    ),
+                ),
+            ],
+        )
+    ])
+
+  def test_hash_does_not_crash_on_datetime_pydantic(self):
+    chat = self._build_chat_with_event(self._build_event())
+    qr = types.QueryRecord(chat=chat)
+    # Must not raise TypeError from json.dumps.
+    hash_value = hash_serializer.get_query_record_hash(qr)
+    assert len(hash_value) == hash_serializer._HASH_LENGTH
+
+  def test_hash_deterministic_and_differentiating(self):
+    event_1 = self._build_event()
+    event_2 = _EventModel(
+        name='launch',
+        # One second later.
+        when=datetime.datetime(2024, 1, 1, 12, 0, 1, tzinfo=datetime.timezone.utc),
+        id=uuid.UUID('12345678-1234-5678-1234-567812345678'),
+        amount=Decimal('1.5'),
+    )
+    qr_1 = types.QueryRecord(chat=self._build_chat_with_event(event_1))
+    qr_1_again = types.QueryRecord(chat=self._build_chat_with_event(event_1))
+    qr_2 = types.QueryRecord(chat=self._build_chat_with_event(event_2))
+    h_1 = hash_serializer.get_query_record_hash(qr_1)
+    h_1_again = hash_serializer.get_query_record_hash(qr_1_again)
+    h_2 = hash_serializer.get_query_record_hash(qr_2)
+    assert h_1 == h_1_again
+    assert h_1 != h_2
+
+  def test_result_record_encode_round_trip_recovers_instance(self):
+    event = self._build_event()
+    result_record = types.ResultRecord(
+        status=types.ResultStatusType.SUCCESS,
+        output_pydantic=event,
+    )
+    encoded = type_serializer.encode_result_record(result_record=result_record)
+    # Must be json.dumps-safe for cache storage.
+    serialized = json.dumps(encoded)
+    loaded = json.loads(serialized)
+    # Instance can be recovered from the wire-stable form.
+    recovered = _EventModel.model_validate(
+        loaded['output_pydantic']['instance_json_value']
+    )
+    assert recovered == event
+    assert isinstance(recovered.when, datetime.datetime)
+    assert isinstance(recovered.id, uuid.UUID)
+    assert isinstance(recovered.amount, Decimal)
+
+  def test_choice_type_encode_round_trip_recovers_instance(self):
+    event = self._build_event()
+    choice = types.ChoiceType(output_pydantic=event)
+    encoded = type_serializer.encode_choice_type(choice_type=choice)
+    serialized = json.dumps(encoded)
+    loaded = json.loads(serialized)
+    recovered = _EventModel.model_validate(
+        loaded['output_pydantic']['instance_json_value']
+    )
+    assert recovered == event

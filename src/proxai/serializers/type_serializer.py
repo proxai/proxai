@@ -797,7 +797,7 @@ def encode_choice_type(
     record['output_pydantic'] = {
         'class_name': choice_type.output_pydantic.__class__.__name__,
         'instance_json_value': (
-            choice_type.output_pydantic.model_dump()
+            choice_type.output_pydantic.model_dump(mode='json')
         )
     }
   if choice_type.content is not None:
@@ -967,7 +967,7 @@ def encode_result_record(
     record['output_pydantic'] = {
         'class_name': result_record.output_pydantic.__class__.__name__,
         'instance_json_value': (
-            result_record.output_pydantic.model_dump()
+            result_record.output_pydantic.model_dump(mode='json')
         )
     }
   if result_record.content is not None:

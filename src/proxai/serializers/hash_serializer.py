@@ -1,5 +1,6 @@
 import hashlib
 import json
+import os
 
 import proxai.chat.chat_session as chat_session
 import proxai.chat.message_content as message_content
@@ -15,21 +16,36 @@ def _add_field(hasher: hashlib._Hash, name: str, value: str):
 
 
 def _hash_chat(hasher: hashlib._Hash, chat: chat_session.Chat):
+  """Hash a Chat into the running hasher.
+
+  Hashes system_prompt (if set), then each message's role and content. For
+  MessageContent blocks whose `path` is set, the file's mtime_ns and size
+  are folded in so in-place edits invalidate the cache (see MessageContent
+  docstring for semantics and limits).
+  """
+  if chat.system_prompt is not None:
+    _add_field(hasher, 'chat.system_prompt', chat.system_prompt)
   for i, msg in enumerate(chat.messages):
     prefix = f'msg[{i}].'
     _add_field(hasher, prefix + 'role', msg.role.value)
     if isinstance(msg.content, str):
       _add_field(hasher, prefix + 'content', msg.content)
-    elif isinstance(msg.content, list):
-      for j, content_item in enumerate(msg.content):
-        content_key = f'{prefix}content[{j}]'
-        if isinstance(content_item, str):
-          _add_field(hasher, content_key, content_item)
-        elif isinstance(content_item, message_content.MessageContent):
-          _add_field(
-              hasher, content_key,
-              json.dumps(content_item.to_dict(), sort_keys=True)
-          )
+      continue
+    for j, content_item in enumerate(msg.content):
+      content_key = f'{prefix}content[{j}]'
+      _add_field(
+          hasher, content_key,
+          json.dumps(content_item.to_dict(), sort_keys=True)
+      )
+      if content_item.path is not None:
+        try:
+          stat = os.stat(content_item.path)
+        except OSError:
+          continue
+        _add_field(
+            hasher, content_key + '.path_stat',
+            f'{stat.st_mtime_ns}:{stat.st_size}'
+        )
 
 
 def _hash_parameters(hasher: hashlib._Hash, parameters: types.ParameterType):

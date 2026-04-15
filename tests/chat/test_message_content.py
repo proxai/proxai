@@ -1,5 +1,10 @@
 """Tests for MessageContent dataclass."""
 
+import datetime
+import json
+import uuid
+from decimal import Decimal
+
 import pytest
 
 import pydantic
@@ -12,6 +17,15 @@ from proxai.chat.message_content import (
     ToolContent,
     ToolKind,
 )
+
+
+class EventModel(pydantic.BaseModel):
+  """Pydantic model spanning common non-JSON field types."""
+
+  name: str
+  when: datetime.datetime
+  id: uuid.UUID
+  amount: Decimal
 
 
 class TestMessageContentCreation:
@@ -296,6 +310,101 @@ class TestMessageContentSerialization:
     }
     assert restored.pydantic_content.class_value is None
     assert restored.pydantic_content.instance_value is None
+
+
+class TestPydanticContentPostInit:
+  """PydanticContent.__post_init__ normalizes class_name and instance_json."""
+
+  def test_derives_class_name_from_class_value(self):
+    pc = PydanticContent(class_value=EventModel)
+    assert pc.class_name == "EventModel"
+
+  def test_keeps_explicit_class_name(self):
+    pc = PydanticContent(class_name="OverriddenName", class_value=EventModel)
+    assert pc.class_name == "OverriddenName"
+
+  def test_derives_instance_json_value_from_instance(self):
+    event = EventModel(
+        name="launch",
+        when=datetime.datetime(2024, 1, 1, 12, 0, tzinfo=datetime.timezone.utc),
+        id=uuid.UUID("12345678-1234-5678-1234-567812345678"),
+        amount=Decimal("1.5"),
+    )
+    pc = PydanticContent(class_value=EventModel, instance_value=event)
+    # Must be JSON-safe: no datetime/UUID/Decimal Python objects remain.
+    assert pc.instance_json_value == {
+        "name": "launch",
+        "when": "2024-01-01T12:00:00Z",
+        "id": "12345678-1234-5678-1234-567812345678",
+        "amount": "1.5",
+    }
+
+  def test_keeps_explicit_instance_json_value(self):
+    explicit = {"name": "override", "when": "1970-01-01T00:00:00Z",
+                "id": "00000000-0000-0000-0000-000000000000", "amount": "0"}
+    event = EventModel(
+        name="launch",
+        when=datetime.datetime(2024, 1, 1, 12, 0, tzinfo=datetime.timezone.utc),
+        id=uuid.UUID("12345678-1234-5678-1234-567812345678"),
+        amount=Decimal("1.5"),
+    )
+    pc = PydanticContent(
+        class_value=EventModel,
+        instance_value=event,
+        instance_json_value=explicit,
+    )
+    assert pc.instance_json_value is explicit
+
+
+class TestPydanticContentDatetimeRoundTrip:
+  """End-to-end round-trip for pydantic instances with non-JSON field types."""
+
+  def _build_event_instance(self):
+    return EventModel(
+        name="launch",
+        when=datetime.datetime(2024, 1, 1, 12, 0, tzinfo=datetime.timezone.utc),
+        id=uuid.UUID("12345678-1234-5678-1234-567812345678"),
+        amount=Decimal("1.5"),
+    )
+
+  def test_to_dict_is_json_dumps_safe(self):
+    event = self._build_event_instance()
+    mc = MessageContent(
+        type="pydantic_instance",
+        pydantic_content=PydanticContent(
+            class_value=EventModel, instance_value=event
+        ),
+    )
+    # Must not raise: every field value is JSON-native after mode='json'.
+    serialized = json.dumps(mc.to_dict(), sort_keys=True)
+    assert "2024-01-01T12:00:00Z" in serialized
+    assert "1.5" in serialized
+
+  def test_model_validate_recovers_native_instance(self):
+    event = self._build_event_instance()
+    pc = PydanticContent(class_value=EventModel, instance_value=event)
+    restored = EventModel.model_validate(pc.instance_json_value)
+    assert restored == event
+    assert isinstance(restored.when, datetime.datetime)
+    assert isinstance(restored.id, uuid.UUID)
+    assert isinstance(restored.amount, Decimal)
+
+  def test_full_serialization_round_trip_preserves_data(self):
+    event = self._build_event_instance()
+    mc = MessageContent(
+        type="pydantic_instance",
+        pydantic_content=PydanticContent(
+            class_value=EventModel, instance_value=event
+        ),
+    )
+    # Simulate cache-style persistence: to_dict -> json.dumps -> json.loads
+    # -> from_dict -> model_validate.
+    wire = json.loads(json.dumps(mc.to_dict(), sort_keys=True))
+    restored_mc = MessageContent.from_dict(wire)
+    restored_event = EventModel.model_validate(
+        restored_mc.pydantic_content.instance_json_value
+    )
+    assert restored_event == event
 
   def test_tool_call_to_dict(self):
     mc = MessageContent(

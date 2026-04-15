@@ -1,3 +1,5 @@
+import os
+
 import pydantic
 import pytest
 
@@ -516,4 +518,166 @@ class TestSystemPromptAffectsHash:
     assert (
         hash_serializer.get_query_record_hash(qr_1) !=
         hash_serializer.get_query_record_hash(qr_3)
+    )
+
+
+def _user_chat(system_prompt=None):
+  return chat_session.Chat(
+      system_prompt=system_prompt,
+      messages=[
+          message.Message(
+              role=message_content.MessageRoleType.USER,
+              content=[
+                  message_content.MessageContent(type='text', text='Hello'),
+              ],
+          )
+      ],
+  )
+
+
+class TestChatSystemPromptAffectsHash:
+
+  def test_chat_system_prompt_affects_hash(self):
+    qr_1 = types.QueryRecord(chat=_user_chat(system_prompt='Be helpful.'))
+    qr_2 = types.QueryRecord(chat=_user_chat(system_prompt='Be concise.'))
+    qr_none = types.QueryRecord(chat=_user_chat())
+    h1 = hash_serializer.get_query_record_hash(qr_1)
+    h2 = hash_serializer.get_query_record_hash(qr_2)
+    h_none = hash_serializer.get_query_record_hash(qr_none)
+    assert h1 != h2
+    assert h1 != h_none
+    assert h2 != h_none
+
+  def test_chat_system_prompt_deterministic(self):
+    qr = types.QueryRecord(chat=_user_chat(system_prompt='Be helpful.'))
+    h1 = hash_serializer.get_query_record_hash(qr)
+    h2 = hash_serializer.get_query_record_hash(qr)
+    assert h1 == h2
+
+
+def _image_chat(**image_kwargs):
+  return chat_session.Chat(messages=[
+      message.Message(
+          role=message_content.MessageRoleType.USER,
+          content=[
+              message_content.MessageContent(
+                  type=message_content.ContentType.IMAGE, **image_kwargs
+              ),
+          ],
+      )
+  ])
+
+
+class TestMediaContentAffectsHash:
+
+  def test_source_affects_hash(self):
+    qr_1 = types.QueryRecord(
+        chat=_image_chat(source='https://example.com/a.png')
+    )
+    qr_2 = types.QueryRecord(
+        chat=_image_chat(source='https://example.com/b.png')
+    )
+    assert (
+        hash_serializer.get_query_record_hash(qr_1)
+        != hash_serializer.get_query_record_hash(qr_2)
+    )
+
+  def test_data_affects_hash(self):
+    qr_1 = types.QueryRecord(chat=_image_chat(data=b'\x89PNG\r\n\x1a\nAAA'))
+    qr_2 = types.QueryRecord(chat=_image_chat(data=b'\x89PNG\r\n\x1a\nBBB'))
+    assert (
+        hash_serializer.get_query_record_hash(qr_1)
+        != hash_serializer.get_query_record_hash(qr_2)
+    )
+
+  def test_data_deterministic(self):
+    payload = b'\x89PNG\r\n\x1a\nsame'
+    qr_1 = types.QueryRecord(chat=_image_chat(data=payload))
+    qr_2 = types.QueryRecord(chat=_image_chat(data=bytes(payload)))
+    assert (
+        hash_serializer.get_query_record_hash(qr_1)
+        == hash_serializer.get_query_record_hash(qr_2)
+    )
+
+  def test_path_affects_hash(self, tmp_path):
+    file_a = tmp_path / 'a.png'
+    file_b = tmp_path / 'b.png'
+    file_a.write_bytes(b'a')
+    file_b.write_bytes(b'a')
+    qr_a = types.QueryRecord(chat=_image_chat(path=str(file_a)))
+    qr_b = types.QueryRecord(chat=_image_chat(path=str(file_b)))
+    assert (
+        hash_serializer.get_query_record_hash(qr_a)
+        != hash_serializer.get_query_record_hash(qr_b)
+    )
+
+  def test_path_edit_invalidates_hash(self, tmp_path):
+    file_path = tmp_path / 'img.png'
+    file_path.write_bytes(b'first')
+    qr = types.QueryRecord(chat=_image_chat(path=str(file_path)))
+    hash_before = hash_serializer.get_query_record_hash(qr)
+
+    # Append bytes so both mtime and size change.
+    os.utime(file_path, (1_000_000, 1_000_000))
+    hash_same_stat = hash_serializer.get_query_record_hash(qr)
+    assert hash_same_stat != hash_before  # mtime differs from original
+
+    file_path.write_bytes(b'first-and-more')
+    hash_after_edit = hash_serializer.get_query_record_hash(qr)
+    assert hash_after_edit != hash_same_stat
+
+  def test_missing_path_does_not_raise(self, tmp_path):
+    qr = types.QueryRecord(
+        chat=_image_chat(path=str(tmp_path / 'does_not_exist.png'))
+    )
+    # Must not raise; falls back to hashing path string alone.
+    hash_value = hash_serializer.get_query_record_hash(qr)
+    assert len(hash_value) == hash_serializer._HASH_LENGTH
+
+  def test_media_type_affects_hash(self):
+    qr_png = types.QueryRecord(
+        chat=_image_chat(
+            source='https://example.com/file', media_type='image/png'
+        )
+    )
+    qr_jpeg = types.QueryRecord(
+        chat=_image_chat(
+            source='https://example.com/file', media_type='image/jpeg'
+        )
+    )
+    assert (
+        hash_serializer.get_query_record_hash(qr_png)
+        != hash_serializer.get_query_record_hash(qr_jpeg)
+    )
+
+  def test_content_type_affects_hash(self):
+    image_chat = chat_session.Chat(messages=[
+        message.Message(
+            role=message_content.MessageRoleType.USER,
+            content=[
+                message_content.MessageContent(
+                    type=message_content.ContentType.IMAGE,
+                    source='https://example.com/file',
+                ),
+            ],
+        )
+    ])
+    doc_chat = chat_session.Chat(messages=[
+        message.Message(
+            role=message_content.MessageRoleType.USER,
+            content=[
+                message_content.MessageContent(
+                    type=message_content.ContentType.DOCUMENT,
+                    source='https://example.com/file',
+                ),
+            ],
+        )
+    ])
+    assert (
+        hash_serializer.get_query_record_hash(
+            types.QueryRecord(chat=image_chat)
+        )
+        != hash_serializer.get_query_record_hash(
+            types.QueryRecord(chat=doc_chat)
+        )
     )
