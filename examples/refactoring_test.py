@@ -918,8 +918,7 @@ def _run_all_tests():
   connection_options_endpoint_test()
   cache_test()
   connection_options_skip_cache_test()
-  # NOTE: There is a bug in the cache implementation. Comment in when fixed.
-  # connection_options_override_cache_value_test()
+  connection_options_override_cache_value_test()
   images_generate_test()
   audio_generate_test()
   # NOTE: Video test is too slow. Comment in when needed.

@@ -2434,6 +2434,385 @@ class TestQueryCache:
           query_record_1
       ).result == response_record_3
 
+  def test_override_cache_value_basic(self):
+    """Override a single-entry bucket and confirm the new value fully
+    replaces the old one (reads return the new value, not the stale)."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+      query_record_1 = types.QueryRecord(prompt='p1')
+      response_record_1 = _create_response_record(response_id=1)
+      response_record_2 = _create_response_record(response_id=2)
+
+      query_cache_manager_params = query_cache.QueryCacheManagerParams(
+          cache_options=types.CacheOptions(
+              cache_path=temp_dir, unique_response_limit=1
+          ), shard_count=_SHARD_COUNT, response_per_file=_RESPONSE_PER_FILE,
+          cache_response_size=10
+      )
+      query_cache_manager = query_cache.QueryCacheManager(
+          init_from_params=query_cache_manager_params
+      )
+
+      query_cache_manager.cache(
+          query_record=query_record_1, result_record=response_record_1
+      )
+      assert query_cache_manager.look(
+          query_record_1
+      ).result.output_text == 'r1'
+
+      # Override with a new value.
+      query_cache_manager.cache(
+          query_record=query_record_1, result_record=response_record_2,
+          override_cache_value=True
+      )
+
+      # Look now returns the new value, not the stale one.
+      assert query_cache_manager.look(
+          query_record_1
+      ).result.output_text == 'r2'
+      # A second look confirms the bucket holds only the new value
+      # (unique_response_limit=1, so round-robin cycles over a single
+      # slot — if the old value were still around, it would surface).
+      assert query_cache_manager.look(
+          query_record_1
+      ).result.output_text == 'r2'
+
+      # Heap still has exactly one entry; shard state is unchanged in
+      # size (single response in backlog, _get_cache_size = 1 + 1 = 2).
+      _check_record_heap(query_cache_manager, [query_record_1.hash_value])
+      _check_shard_manager_state(
+          query_cache_manager._shard_manager, shard_active_count={
+              0: 0,
+              1: 0,
+              2: 0,
+              'backlog': 2
+          }, shard_heap=[(0, 0), (0, 1), (0, 2)]
+      )
+
+  def test_override_cache_value_wipes_multi_response_bucket(self):
+    """With unique_response_limit > 1, override must wipe every entry in
+    the bucket and reset call_count, not replace a single slot."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+      query_record_1 = types.QueryRecord(prompt='p1')
+      response_record_1 = _create_response_record(response_id=1)
+      response_record_2 = _create_response_record(response_id=2)
+      response_record_3 = _create_response_record(response_id=3)
+      response_record_4 = _create_response_record(response_id=4)
+      response_record_5 = _create_response_record(response_id=5)
+      response_record_6 = _create_response_record(response_id=6)
+
+      query_cache_manager_params = query_cache.QueryCacheManagerParams(
+          cache_options=types.CacheOptions(
+              cache_path=temp_dir, unique_response_limit=3
+          ), shard_count=_SHARD_COUNT, response_per_file=_RESPONSE_PER_FILE,
+          cache_response_size=10
+      )
+      query_cache_manager = query_cache.QueryCacheManager(
+          init_from_params=query_cache_manager_params
+      )
+
+      # Fill the bucket to unique_response_limit=3.
+      query_cache_manager.cache(
+          query_record=query_record_1, result_record=response_record_1
+      )
+      query_cache_manager.cache(
+          query_record=query_record_1, result_record=response_record_2
+      )
+      query_cache_manager.cache(
+          query_record=query_record_1, result_record=response_record_3
+      )
+
+      # Round-robin confirms the bucket is fully populated.
+      assert query_cache_manager.look(
+          query_record_1
+      ).result.output_text == 'r1'
+      assert query_cache_manager.look(
+          query_record_1
+      ).result.output_text == 'r2'
+      assert query_cache_manager.look(
+          query_record_1
+      ).result.output_text == 'r3'
+      _check_shard_manager_state(
+          query_cache_manager._shard_manager, shard_active_count={
+              0: 0,
+              1: 0,
+              2: 0,
+              'backlog': 4
+          }
+      )
+
+      # Override with a fresh value. This must collapse the bucket to
+      # exactly [r4] with call_count=0.
+      query_cache_manager.cache(
+          query_record=query_record_1, result_record=response_record_4,
+          override_cache_value=True
+      )
+
+      # The bucket is no longer full — look() should report
+      # UNIQUE_RESPONSE_LIMIT_NOT_REACHED. This is the strongest signal
+      # that the wipe was complete; if even one stale entry survived,
+      # len(results) would still be >= 3 and look would return it.
+      look_result = query_cache_manager.look(query_record_1)
+      assert look_result.result is None
+      assert look_result.cache_look_fail_reason == (
+          types.CacheLookFailReason.UNIQUE_RESPONSE_LIMIT_NOT_REACHED
+      )
+
+      # Backlog shrank from 4 (three responses + 1) to 2 (one + 1).
+      _check_shard_manager_state(
+          query_cache_manager._shard_manager, shard_active_count={
+              0: 0,
+              1: 0,
+              2: 0,
+              'backlog': 2
+          }
+      )
+      _check_record_heap(query_cache_manager, [query_record_1.hash_value])
+
+      # Refill the bucket with two more responses. If call_count was
+      # correctly reset to 0, the next round-robin will start at r4
+      # (index 0), not wrap around from a stale offset.
+      query_cache_manager.cache(
+          query_record=query_record_1, result_record=response_record_5
+      )
+      query_cache_manager.cache(
+          query_record=query_record_1, result_record=response_record_6
+      )
+
+      assert query_cache_manager.look(
+          query_record_1
+      ).result.output_text == 'r4'
+      assert query_cache_manager.look(
+          query_record_1
+      ).result.output_text == 'r5'
+      assert query_cache_manager.look(
+          query_record_1
+      ).result.output_text == 'r6'
+      # Wraps back to r4, not to anything from the old pre-override bucket.
+      assert query_cache_manager.look(
+          query_record_1
+      ).result.output_text == 'r4'
+
+  def test_override_cache_value_on_empty_cache(self):
+    """Override on an empty cache is a no-op wipe followed by a normal
+    insert (no prior entry to clean up)."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+      query_record_1 = types.QueryRecord(prompt='p1')
+      response_record_1 = _create_response_record(response_id=1)
+
+      query_cache_manager_params = query_cache.QueryCacheManagerParams(
+          cache_options=types.CacheOptions(
+              cache_path=temp_dir, unique_response_limit=1
+          ), shard_count=_SHARD_COUNT, response_per_file=_RESPONSE_PER_FILE,
+          cache_response_size=10
+      )
+      query_cache_manager = query_cache.QueryCacheManager(
+          init_from_params=query_cache_manager_params
+      )
+
+      # No prior entry for query_1 — override should behave identically
+      # to a normal cache() call in this case.
+      query_cache_manager.cache(
+          query_record=query_record_1, result_record=response_record_1,
+          override_cache_value=True
+      )
+      assert query_cache_manager.look(
+          query_record_1
+      ).result.output_text == 'r1'
+      _check_record_heap(query_cache_manager, [query_record_1.hash_value])
+
+  def test_override_cache_value_sequential_overrides(self):
+    """Repeated overrides of the same query must each fully replace the
+    previous value and leave heap/shard state bounded."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+      query_record_1 = types.QueryRecord(prompt='p1')
+      response_record_1 = _create_response_record(response_id=1)
+      response_record_2 = _create_response_record(response_id=2)
+      response_record_3 = _create_response_record(response_id=3)
+      response_record_4 = _create_response_record(response_id=4)
+
+      query_cache_manager_params = query_cache.QueryCacheManagerParams(
+          cache_options=types.CacheOptions(
+              cache_path=temp_dir, unique_response_limit=1
+          ), shard_count=_SHARD_COUNT, response_per_file=_RESPONSE_PER_FILE,
+          cache_response_size=10
+      )
+      query_cache_manager = query_cache.QueryCacheManager(
+          init_from_params=query_cache_manager_params
+      )
+
+      query_cache_manager.cache(
+          query_record=query_record_1, result_record=response_record_1
+      )
+      query_cache_manager.cache(
+          query_record=query_record_1, result_record=response_record_2,
+          override_cache_value=True
+      )
+      query_cache_manager.cache(
+          query_record=query_record_1, result_record=response_record_3,
+          override_cache_value=True
+      )
+      query_cache_manager.cache(
+          query_record=query_record_1, result_record=response_record_4,
+          override_cache_value=True
+      )
+
+      # Only the last override survives.
+      assert query_cache_manager.look(
+          query_record_1
+      ).result.output_text == 'r4'
+      assert query_cache_manager.look(
+          query_record_1
+      ).result.output_text == 'r4'
+
+      # Heap is still a single entry — sequential overrides did not
+      # grow the heap (HeapManager.push is idempotent on key).
+      _check_record_heap(query_cache_manager, [query_record_1.hash_value])
+      # Backlog still holds exactly one record of size 2.
+      _check_shard_manager_state(
+          query_cache_manager._shard_manager, shard_active_count={
+              0: 0,
+              1: 0,
+              2: 0,
+              'backlog': 2
+          }, shard_heap=[(0, 0), (0, 1), (0, 2)]
+      )
+
+  def test_lookup_ignores_transient_connection_options(self):
+    """A query cached with one ConnectionOptions must be found by a
+    lookup with a different ConnectionOptions, as long as the fields
+    that make up query identity (currently only `endpoint`) match. This
+    mirrors what hash_serializer._hash_connection_options considers. It
+    is the regression test for the bug where override_cache_value=True
+    stored on the cached query_record poisoned subsequent equality
+    checks against plain lookups."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+      # Same prompt, different transient per-call flags on the store
+      # side and the lookup side.
+      query_at_store = types.QueryRecord(
+          prompt='p1', connection_options=types.ConnectionOptions(
+              override_cache_value=True
+          )
+      )
+      query_at_look = types.QueryRecord(
+          prompt='p1', connection_options=types.ConnectionOptions()
+      )
+      response_record_1 = _create_response_record(response_id=1)
+
+      query_cache_manager_params = query_cache.QueryCacheManagerParams(
+          cache_options=types.CacheOptions(
+              cache_path=temp_dir, unique_response_limit=1
+          ), shard_count=_SHARD_COUNT, response_per_file=_RESPONSE_PER_FILE,
+          cache_response_size=10
+      )
+      query_cache_manager = query_cache.QueryCacheManager(
+          init_from_params=query_cache_manager_params
+      )
+
+      query_cache_manager.cache(
+          query_record=query_at_store, result_record=response_record_1
+      )
+      look_result = query_cache_manager.look(query_at_look)
+      assert look_result.result is not None
+      assert look_result.result.output_text == 'r1'
+
+      # Conversely, mismatch on `endpoint` (which IS part of identity
+      # per the hash) must still fail the lookup. This guards against
+      # an over-eager normalization that strips endpoint too.
+      query_at_store_ep = types.QueryRecord(
+          prompt='p2', connection_options=types.ConnectionOptions(
+              endpoint='messages.create'
+          )
+      )
+      query_at_look_ep = types.QueryRecord(
+          prompt='p2', connection_options=types.ConnectionOptions(
+              endpoint='beta.messages.stream'
+          )
+      )
+      query_cache_manager.cache(
+          query_record=query_at_store_ep, result_record=response_record_1
+      )
+      # Different endpoint → lookup returns a fail reason, not the
+      # stored result. (Hash also differs here because endpoint is
+      # hashed, so CACHE_NOT_FOUND — what matters is that look() does
+      # not return the stored record.)
+      look_ep_result = query_cache_manager.look(query_at_look_ep)
+      assert look_ep_result.result is None
+
+  def test_override_cache_value_on_committed_shard_entry(self):
+    """Override must correctly wipe a bucket that lives in a committed
+    shard (not in the backlog). This exercises the full delete path
+    through the freshness invariant — the stale row left on disk must
+    be filtered out on subsequent reads, and other buckets in the same
+    shard must remain intact."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+      query_record_1 = types.QueryRecord(prompt='p1')
+      query_record_2 = types.QueryRecord(prompt='p2')
+      query_record_3 = types.QueryRecord(prompt='p3')
+      response_record_1 = _create_response_record(response_id=1)
+      response_record_2 = _create_response_record(response_id=2)
+      response_record_3 = _create_response_record(response_id=3)
+      response_record_4 = _create_response_record(response_id=4)
+
+      query_cache_manager_params = query_cache.QueryCacheManagerParams(
+          cache_options=types.CacheOptions(
+              cache_path=temp_dir, unique_response_limit=1
+          ), shard_count=_SHARD_COUNT, response_per_file=_RESPONSE_PER_FILE,
+          cache_response_size=10
+      )
+      query_cache_manager = query_cache.QueryCacheManager(
+          init_from_params=query_cache_manager_params
+      )
+
+      # Cache three distinct entries. The third triggers a backlog flush
+      # that promotes query_1 and query_2 into shard 0 (they now live in
+      # a committed shard file, not in the backlog).
+      query_cache_manager.cache(
+          query_record=query_record_1, result_record=response_record_1
+      )
+      query_cache_manager.cache(
+          query_record=query_record_2, result_record=response_record_2
+      )
+      query_cache_manager.cache(
+          query_record=query_record_3, result_record=response_record_3
+      )
+      _check_shard_manager_state(
+          query_cache_manager._shard_manager, shard_active_count={
+              0: 4,
+              1: 0,
+              2: 0,
+              'backlog': 2
+          }, shard_heap=[(0, 1), (0, 2), (4, 0)]
+      )
+      assert query_record_1.hash_value in (
+          query_cache_manager._shard_manager._map_shard_to_cache[0]
+      )
+      assert query_record_2.hash_value in (
+          query_cache_manager._shard_manager._map_shard_to_cache[0]
+      )
+
+      # Override query_1 — its authoritative entry lives in shard 0. The
+      # cache manager must update the in-memory index so the stale row
+      # in shard 0 is filtered out, while leaving query_2 in shard 0
+      # untouched and query_3 in the backlog untouched.
+      query_cache_manager.cache(
+          query_record=query_record_1, result_record=response_record_4,
+          override_cache_value=True
+      )
+
+      # query_1 now returns the overridden value; the stale row in
+      # shard 0 is invisible to reads via the freshness invariant.
+      assert query_cache_manager.look(
+          query_record_1
+      ).result.output_text == 'r4'
+      # query_2 (still backed by its original row in shard 0) and
+      # query_3 (still in the backlog) are unaffected.
+      assert query_cache_manager.look(
+          query_record_2
+      ).result.output_text == 'r2'
+      assert query_cache_manager.look(
+          query_record_3
+      ).result.output_text == 'r3'
+
 
 class TestQueryCacheState:
 
@@ -2553,4 +2932,13 @@ class TestQueryCacheState:
         query_cache_manager.cache(
             types.QueryRecord(prompt='p1'),
             types.ResultRecord(output_text='r1')
+        )
+
+      with pytest.raises(
+          ValueError, match='QueryCacheManager status is .*CACHE_PATH_NOT_FOUND'
+      ):
+        query_cache_manager.cache(
+            types.QueryRecord(prompt='p1'),
+            types.ResultRecord(output_text='r1'),
+            override_cache_value=True
         )
