@@ -7,7 +7,7 @@ import proxai.caching.model_cache as model_cache
 import proxai.connections.available_models as available_models
 import proxai.connections.proxdash as proxdash
 import proxai.connectors.model_configs as model_configs
-import proxai.connectors.model_connector as model_connector
+import proxai.connectors.provider_connector as provider_connector
 import proxai.connectors.model_registry as model_registry
 import proxai.types as types
 
@@ -23,8 +23,9 @@ def setup_test(monkeypatch):
 
 class TestAvailableModels:
   cache_dir: tempfile.TemporaryDirectory | None = None
-  initialized_model_connectors: dict[types.ProviderModelType, model_connector.
-                                     ProviderModelConnector] | None = None
+  initialized_model_connectors: dict[types.ProviderModelType,
+                                     provider_connector.
+                                     ProviderConnector] | None = None
   model_cache_manager: model_cache.ModelCacheManager | None = None
 
   def _get_models_set(self, providers: list[str]):
@@ -762,8 +763,9 @@ class TestFilterByFeatures:
   """Tests for filtering models by feature compatibility."""
 
   cache_dir: tempfile.TemporaryDirectory | None = None
-  initialized_model_connectors: dict[types.ProviderModelType, model_connector.
-                                     ProviderModelConnector] | None = None
+  initialized_model_connectors: dict[types.ProviderModelType,
+                                     provider_connector.
+                                     ProviderConnector] | None = None
 
   def _init_test_variables(self):
     if self.cache_dir is None:

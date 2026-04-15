@@ -2,7 +2,7 @@ import functools
 
 from openai import OpenAI
 
-import proxai.connectors.model_connector as model_connector
+import proxai.connectors.provider_connector as provider_connector
 import proxai.connectors.providers.deepseek_mock as deepseek_mock
 import proxai.types as types
 import proxai.chat.message_content as message_content
@@ -14,7 +14,7 @@ ToolConfigType = types.ToolConfigType
 ResponseFormatConfigType = types.ResponseFormatConfigType
 
 
-class DeepSeekConnector(model_connector.ProviderModelConnector):
+class DeepSeekConnector(provider_connector.ProviderConnector):
   """Connector for DeepSeek models.
 
   DeepSeek exposes an OpenAI-compatible HTTP API, so we reuse the official

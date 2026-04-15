@@ -4,7 +4,7 @@ import datetime
 
 from openai import OpenAI
 
-import proxai.connectors.model_connector as model_connector
+import proxai.connectors.provider_connector as provider_connector
 import proxai.connectors.providers.openai_mock as openai_mock
 import proxai.types as types
 import proxai.chat.message_content as message_content
@@ -16,7 +16,7 @@ ToolConfigType = types.ToolConfigType
 ResponseFormatConfigType = types.ResponseFormatConfigType
 
 
-class OpenAIConnector(model_connector.ProviderModelConnector):
+class OpenAIConnector(provider_connector.ProviderConnector):
   """Connector for OpenAI models."""
 
   def init_model(self):

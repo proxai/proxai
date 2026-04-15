@@ -1,7 +1,7 @@
 import functools
 from collections.abc import Callable
 
-import proxai.connectors.model_connector as model_connector
+import proxai.connectors.provider_connector as provider_connector
 import proxai.connectors.providers.claude as claude_provider
 import proxai.connectors.providers.cohere as cohere_provider
 import proxai.connectors.providers.databricks as databricks_provider
@@ -32,14 +32,14 @@ _MODEL_CONNECTOR_MAP = {
 def get_model_connector(
     provider: str,
     without_additional_args: bool = False
-) -> Callable[[], model_connector.ProviderModelConnector]:
+) -> Callable[[], provider_connector.ProviderConnector]:
   """Return a connector factory for the given provider."""
   if provider not in _MODEL_CONNECTOR_MAP:
     raise ValueError(f'Provider not supported. {provider}')
-  connector = _MODEL_CONNECTOR_MAP[provider]
+  connector_cls = _MODEL_CONNECTOR_MAP[provider]
   if without_additional_args:
-    return connector
+    return connector_cls
   return functools.partial(
-      connector,
-      init_from_params=model_connector.ProviderModelConnectorParams()
+      connector_cls,
+      init_from_params=provider_connector.ProviderConnectorParams()
   )

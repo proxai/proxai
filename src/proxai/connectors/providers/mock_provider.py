@@ -3,7 +3,7 @@ from typing import Any
 
 import pydantic
 
-import proxai.connectors.model_connector as model_connector
+import proxai.connectors.provider_connector as provider_connector
 import proxai.types as types
 import proxai.chat.message_content as message_content
 
@@ -20,7 +20,7 @@ class SamplePydanticModel(pydantic.BaseModel):
   age: int
 
 
-class MockProviderModelConnector(model_connector.ProviderModelConnector):
+class MockProviderModelConnector(provider_connector.ProviderConnector):
   """Mock connector for testing without real API calls."""
 
   PROVIDER_NAME = 'mock_provider'
@@ -103,7 +103,7 @@ class MockProviderModelConnector(model_connector.ProviderModelConnector):
     return result_record
 
 
-class MockFailingProviderModelConnector(model_connector.ProviderModelConnector):
+class MockFailingProviderModelConnector(provider_connector.ProviderConnector):
   """Mock connector that always fails for testing error handling."""
 
   PROVIDER_NAME = 'mock_failing_provider'
@@ -143,7 +143,7 @@ class MockFailingProviderModelConnector(model_connector.ProviderModelConnector):
     return result_record
 
 
-class MockSlowProviderModelConnector(model_connector.ProviderModelConnector):
+class MockSlowProviderModelConnector(provider_connector.ProviderConnector):
   """Mock connector with delayed responses for testing timeouts."""
 
   PROVIDER_NAME = 'mock_slow_provider'

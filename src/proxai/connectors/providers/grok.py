@@ -4,7 +4,7 @@ from xai_sdk import Client
 from xai_sdk.chat import assistant, system, user
 from xai_sdk.proto import chat_pb2
 
-import proxai.connectors.model_connector as model_connector
+import proxai.connectors.provider_connector as provider_connector
 import proxai.connectors.providers.grok_mock as grok_mock
 import proxai.types as types
 import proxai.chat.message_content as message_content
@@ -16,7 +16,7 @@ ToolConfigType = types.ToolConfigType
 ResponseFormatConfigType = types.ResponseFormatConfigType
 
 
-class GrokConnector(model_connector.ProviderModelConnector):
+class GrokConnector(provider_connector.ProviderConnector):
   """Connector for xAI Grok models."""
 
   def init_model(self):

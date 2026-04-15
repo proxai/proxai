@@ -11,8 +11,8 @@ import proxai.caching.model_cache as model_cache
 import proxai.caching.query_cache as query_cache
 import proxai.connections.proxdash as proxdash
 import proxai.connectors.model_configs as model_configs
-import proxai.connectors.model_connector as model_connector
 import proxai.connectors.model_registry as model_registry
+import proxai.connectors.provider_connector as provider_connector
 import proxai.logging.utils as logging_utils
 import proxai.state_controllers.state_controller as state_controller
 import proxai.type_utils as type_utils
@@ -54,7 +54,7 @@ class AvailableModels(state_controller.StateControlled):
                             types.ProviderTokenValueMap] | None
   _latest_model_cache_path_used_for_update: str | None
   _available_models_state: types.AvailableModelsState
-  provider_connectors: dict[str, model_connector.ProviderModelConnector]
+  provider_connectors: dict[str, provider_connector.ProviderConnector]
 
   def __init__(
       self, init_from_params: AvailableModelsParams | None = None,
@@ -512,7 +512,7 @@ class AvailableModels(state_controller.StateControlled):
   def _test_models_with_multiprocessing(
       self,
       test_tasks: list[tuple[types.ProviderModelType,
-                             model_connector.ProviderModelConnector]],
+                             provider_connector.ProviderConnector]],
       call_type: str, verbose: bool = False
   ):
     process_count = max(1, multiprocessing.cpu_count() - 1)
@@ -560,7 +560,7 @@ class AvailableModels(state_controller.StateControlled):
   def _test_models_sequentially(
       self,
       test_tasks: list[tuple[types.ProviderModelType,
-                             model_connector.ProviderModelConnector]],
+                             provider_connector.ProviderConnector]],
       call_type: str, verbose: bool = False
   ):
     """Tests provider models sequentially.
