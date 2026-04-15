@@ -10,7 +10,6 @@ import proxai.serializers.hash_serializer as hash_serializer
 import proxai.serializers.type_serializer as type_serializer
 import proxai.types as types
 
-
 _MODEL_1 = types.ProviderModelType(
     provider='openai', model='gpt-4', provider_model_identifier='gpt-4'
 )
@@ -581,6 +580,31 @@ def _get_response_format_options():
   ]
 
 
+def _get_result_media_content_type_options():
+  return [
+      {
+          'data': b'',
+          'media_type': 'image/png'
+      },
+      {
+          'data': b'\x89PNG\r\n\x1a\n',
+          'media_type': 'image/png'
+      },
+      {
+          'data': b'\xff\xd8\xff\xe0',
+          'media_type': 'image/jpeg'
+      },
+      {
+          'data': b'RIFF\x00\x00\x00\x00WAVE',
+          'media_type': 'audio/wav'
+      },
+      {
+          'data': b'\x00\x00\x00\x20ftypisom',
+          'media_type': 'video/mp4'
+      },
+  ]
+
+
 def _get_choice_type_options():
   return [
       {},
@@ -1075,6 +1099,40 @@ def _get_light_cache_record_options():
   ]
 
 
+def _get_cache_look_result_options():
+  return [
+      {},
+      {
+          'result': types.ResultRecord(
+              status=types.ResultStatusType.SUCCESS,
+              output_text='cached response'
+          )
+      },
+      {
+          'cache_look_fail_reason': types.CacheLookFailReason.CACHE_NOT_FOUND
+      },
+      {
+          'cache_look_fail_reason': types.CacheLookFailReason.CACHE_NOT_MATCHED
+      },
+      {
+          'cache_look_fail_reason':
+              types.CacheLookFailReason.UNIQUE_RESPONSE_LIMIT_NOT_REACHED
+      },
+      {
+          'cache_look_fail_reason':
+              types.CacheLookFailReason.PROVIDER_ERROR_CACHED
+      },
+      {
+          'result': types.ResultRecord(
+              status=types.ResultStatusType.FAILED,
+              error='provider error'
+          ),
+          'cache_look_fail_reason':
+              types.CacheLookFailReason.PROVIDER_ERROR_CACHED
+      },
+  ]
+
+
 def _get_logging_options_options():
   return [
       {},
@@ -1150,6 +1208,18 @@ def _get_proxdash_options_options():
           'disable_proxdash': False,
           'api_key': 'my_api_key',
           'base_url': 'https://api.proxai.com'
+      },
+  ]
+
+
+def _get_summary_options_options():
+  return [
+      {},
+      {
+          'json': True
+      },
+      {
+          'json': False
       },
   ]
 
@@ -1763,6 +1833,41 @@ class TestTypeSerializer:
           response_format.pydantic_class.model_json_schema()
       )
 
+  @pytest.mark.parametrize(
+      'result_media_content_type_options',
+      _get_result_media_content_type_options()
+  )
+  def test_encode_decode_result_media_content_type(
+      self, result_media_content_type_options
+  ):
+    # Test successful encode/decode round-trip
+    result_media_content_type = types.ResultMediaContentType(
+        **result_media_content_type_options
+    )
+    encoded_result_media_content_type = (
+        type_serializer.encode_result_media_content_type(
+            result_media_content_type=result_media_content_type
+        )
+    )
+    decoded_result_media_content_type = (
+        type_serializer.decode_result_media_content_type(
+            record=encoded_result_media_content_type
+        )
+    )
+    assert result_media_content_type == decoded_result_media_content_type
+
+    # Test validation: missing data
+    invalid_record = encoded_result_media_content_type.copy()
+    del invalid_record['data']
+    with pytest.raises(ValueError, match='Data not found in record'):
+      type_serializer.decode_result_media_content_type(record=invalid_record)
+
+    # Test validation: missing media_type
+    invalid_record = encoded_result_media_content_type.copy()
+    del invalid_record['media_type']
+    with pytest.raises(ValueError, match='Media type not found in record'):
+      type_serializer.decode_result_media_content_type(record=invalid_record)
+
   @pytest.mark.parametrize('choice_type_options', _get_choice_type_options())
   def test_encode_decode_choice_type(self, choice_type_options):
     choice_type = types.ChoiceType(**choice_type_options)
@@ -1896,6 +2001,19 @@ class TestTypeSerializer:
     assert light_cache_record == decoded_light_cache_record
 
   @pytest.mark.parametrize(
+      'cache_look_result_options', _get_cache_look_result_options()
+  )
+  def test_encode_decode_cache_look_result(self, cache_look_result_options):
+    cache_look_result = types.CacheLookResult(**cache_look_result_options)
+    encoded_cache_look_result = type_serializer.encode_cache_look_result(
+        cache_look_result=cache_look_result
+    )
+    decoded_cache_look_result = type_serializer.decode_cache_look_result(
+        record=encoded_cache_look_result
+    )
+    assert cache_look_result == decoded_cache_look_result
+
+  @pytest.mark.parametrize(
       'logging_options_options', _get_logging_options_options()
   )
   def test_encode_decode_logging_options(self, logging_options_options):
@@ -1934,6 +2052,19 @@ class TestTypeSerializer:
     )
     assert proxdash_options == decoded_proxdash_options
 
+  @pytest.mark.parametrize(
+      'summary_options_options', _get_summary_options_options()
+  )
+  def test_encode_decode_summary_options(self, summary_options_options):
+    summary_options = types.SummaryOptions(**summary_options_options)
+    encoded_summary_options = type_serializer.encode_summary_options(
+        summary_options=summary_options
+    )
+    decoded_summary_options = type_serializer.decode_summary_options(
+        record=encoded_summary_options
+    )
+    assert summary_options == decoded_summary_options
+
   @pytest.mark.parametrize('run_options_options', _get_run_options_options())
   def test_encode_decode_run_options(self, run_options_options):
     run_options = types.RunOptions(**run_options_options)
@@ -1944,6 +2075,10 @@ class TestTypeSerializer:
         record=encoded_run_options
     )
     assert run_options == decoded_run_options
+    # Regression guard: feature_mapping_strategy must be JSON-serializable,
+    # i.e. stored as a string, not an enum instance.
+    if run_options.feature_mapping_strategy is not None:
+      assert isinstance(encoded_run_options['feature_mapping_strategy'], str)
 
   @pytest.mark.parametrize('model_status_options', _get_model_status_options())
   def test_encode_decode_model_status(self, model_status_options):
