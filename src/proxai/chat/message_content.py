@@ -77,12 +77,34 @@ class ContentType(str, enum.Enum):
 
 @dataclasses.dataclass
 class PydanticContent:
-  """Pydantic model information for structured response parsing."""
+  """Pydantic model information for structured response parsing.
+
+  The serializable fields (`class_name`, `instance_json_value`) are the
+  authoritative source for equality, serialization, and cache hashing.
+  `class_value` and `instance_value` are convenience handles to the live
+  Python objects and may be dropped after a serialization round-trip.
+
+  __post_init__ enforces the invariant that whenever a rich handle is
+  provided, its serializable counterpart is materialized: `class_name` is
+  derived from `class_value.__name__`, and `instance_json_value` is
+  derived from `instance_value.model_dump(mode='json')`. `mode='json'`
+  converts datetime/UUID/Decimal/Enum/Path/set/nested-model fields into
+  JSON-native forms; `class_value.model_validate(instance_json_value)`
+  round-trips back to the original native instance. Callers that supply
+  inconsistent name/class or instance/json pairs keep whatever they
+  passed in — the hook only fills missing fields, it never overwrites.
+  """
 
   class_name: str | None = None
   class_value: type[pydantic.BaseModel] | None = None
   instance_value: pydantic.BaseModel | None = None
   instance_json_value: dict[str, Any] | None = None
+
+  def __post_init__(self):
+    if self.class_name is None and self.class_value is not None:
+      self.class_name = self.class_value.__name__
+    if self.instance_json_value is None and self.instance_value is not None:
+      self.instance_json_value = self.instance_value.model_dump(mode='json')
 
 
 class ToolKind(str, enum.Enum):
@@ -118,7 +140,11 @@ class MessageContent:
     text: The text content. Required when type is TEXT.
     source: URL for media content.
     data: Base64-encoded inline data for media content.
-    path: Local file path for media content.
+    path: Local file path for media content. The query cache key includes
+      the file's mtime_ns and size (in addition to the path string), so an
+      in-place edit invalidates the cache. Replacing the file with one of
+      identical size and mtime (e.g., `touch -r`) will NOT be detected —
+      pass `data` bytes directly if byte-exact cache semantics matter.
     media_type: MIME type string (e.g., "image/png", "application/pdf").
 
   Example:
@@ -225,10 +251,6 @@ class MessageContent:
       if self.pydantic_content.instance_json_value is not None:
         pydantic_dict["instance_json_value"] = (
             self.pydantic_content.instance_json_value
-        )
-      elif self.pydantic_content.instance_value is not None:
-        pydantic_dict["instance_json_value"] = (
-            self.pydantic_content.instance_value.model_dump()
         )
       if pydantic_dict:
         result["pydantic_content"] = pydantic_dict
