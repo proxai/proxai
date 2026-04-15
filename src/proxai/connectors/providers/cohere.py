@@ -85,12 +85,8 @@ class CohereConnector(model_connector.ProviderModelConnector):
     ))
 
     if query_record.prompt is not None:
-      messages = []
-      if query_record.system_prompt is not None:
-        messages.append(
-            {'role': 'system', 'content': query_record.system_prompt})
-      messages.append({'role': 'user', 'content': query_record.prompt})
-      create = functools.partial(create, messages=messages)
+      create = functools.partial(
+          create, messages=[{'role': 'user', 'content': query_record.prompt}])
 
     if query_record.chat is not None:
       create = functools.partial(

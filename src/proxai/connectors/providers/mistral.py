@@ -100,12 +100,8 @@ class MistralConnector(model_connector.ProviderModelConnector):
   def _add_common_params(self, call, query_record: types.QueryRecord):
     """Add messages, system, and parameter kwargs to a Mistral chat call."""
     if query_record.prompt is not None:
-      messages = []
-      if query_record.system_prompt is not None:
-        messages.append(
-            {'role': 'system', 'content': query_record.system_prompt})
-      messages.append({'role': 'user', 'content': query_record.prompt})
-      call = functools.partial(call, messages=messages)
+      call = functools.partial(
+          call, messages=[{'role': 'user', 'content': query_record.prompt}])
 
     if query_record.chat is not None:
       call = functools.partial(call, messages=query_record.chat['messages'])

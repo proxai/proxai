@@ -187,7 +187,7 @@ framework treats as `NOT_SUPPORTED` via
 | `prompt` | `FeatureSupportType` | Required if endpoint accepts a single user prompt | `SUPPORTED` for almost all text endpoints |
 | `messages` | `FeatureSupportType` | Required if endpoint accepts chat history | `SUPPORTED` for chat endpoints |
 | `system_prompt` | `FeatureSupportType` | Optional | Mark `SUPPORTED` if the SDK has a real system field |
-| `add_system_to_messages` | `bool \| None` | Optional | Set `True` only when the SDK does **not** have a separate system field but accepts `[{role: 'system', content: ...}]` as the first message. The framework will prepend the system prompt to the message list automatically. OpenAI `chat.completions.create` uses this; Claude does not. |
+| `add_system_to_messages` | `bool \| None` | Required for Pattern 2 | Set `True` iff `system_prompt=SUPPORTED` **and** the SDK has no native system kwarg. When set, the framework folds `system_prompt` into `messages` (on both `prompt` and `chat` requests) and clears `query_record.system_prompt` before the executor runs. Setting alone, or alongside a native system kwarg, is a config error. See §6 "System Prompts". |
 | `parameters` | `ParameterConfigType` | Recommended | Nested config — see below |
 | `tools` | `ToolConfigType` | Optional | Nested config — see below |
 | `response_format` | `ResponseFormatConfigType` | Required (always validated by `_collect_response_format_level`) | Nested config — see below |
@@ -233,6 +233,30 @@ Omit fields that are obviously irrelevant (e.g., don't declare `image`
 on a text-only endpoint) — the convention across openai/gemini/claude
 is to list only what's relevant rather than spelling out
 `NOT_SUPPORTED` for every modality.
+
+### System Prompts
+
+Every endpoint picks exactly one pattern.
+
+|  | Pattern 1 — Native field | Pattern 2 — In `messages` |
+|---|---|---|
+| **When** | SDK has a dedicated system kwarg | SDK has none; expects `{'role':'system',...}` as first entry in `messages` |
+| **Config** | `system_prompt=SUPPORTED`. Do not set `add_system_to_messages`. | `system_prompt=SUPPORTED` **and** `add_system_to_messages=True`. |
+| **Framework guarantees on entry to executor** | `query_record.system_prompt` is set if the user passed one. | `query_record.system_prompt is None`. System prompt is already folded into `messages`, whether the user passed `prompt` or `chat`. |
+| **Executor rule** | Pass `query_record.system_prompt` to the SDK kwarg. | Do not read `query_record.system_prompt`. Read only from `messages`. |
+| **Forbidden** | — | Manually prepending `{'role':'system',...}` to `messages` in the prompt branch. |
+
+#### Flag rules
+
+- `add_system_to_messages=True` is valid **only** with `system_prompt=SUPPORTED`. Alone = config error.
+- Pattern 1 **or** Pattern 2, never both. Never pair the flag with a native system kwarg.
+- Absence of the flag means Pattern 1. It is a declaration, not a default.
+
+#### Support-level rules (both patterns)
+
+- `SUPPORTED` — framework keeps the field (Pattern 1) or folds it into `messages` (Pattern 2).
+- `BEST_EFFORT` — framework merges into prompt/first-user-message, clears the field. Executor sees nothing.
+- `NOT_SUPPORTED` — framework raises before the executor runs.
 
 ---
 
@@ -357,6 +381,8 @@ def _<endpoint>_executor(
         call, messages=[{'role': 'user', 'content': query_record.prompt}])
   if query_record.chat is not None:
     call = functools.partial(call, messages=query_record.chat['messages'])
+  # Pattern 1 only. Pattern 2 endpoints must not read system_prompt —
+  # the framework has already folded it into `messages`.
   if query_record.system_prompt is not None:
     call = functools.partial(call, system=query_record.system_prompt)
 
@@ -400,7 +426,7 @@ truth.
 |---|---|---|
 | `prompt` | When user passed `prompt=` (or BEST_EFFORT collapsed `chat`) | A plain string |
 | `chat` | When user passed `messages=` and `messages` is `SUPPORTED` | A `Chat` object with `messages` list and optional `system_prompt` |
-| `system_prompt` | When user passed `system_prompt=` and it's `SUPPORTED` (and not best-effort prepended) | A plain string |
+| `system_prompt` | Pattern 1 only (see §6 System Prompts). Guaranteed `None` under Pattern 2 or any BEST_EFFORT merge. | Plain string when set. |
 | `parameters` | When user passed any parameter; `None` if all were dropped | A `ParameterType` with only the SUPPORTED fields populated |
 | `tools` | When user passed any tool | A `list[Tools]` |
 | `response_format` | Always set; defaults to `TEXT` | A `ResponseFormat` with `type` and optional `pydantic_class` |
