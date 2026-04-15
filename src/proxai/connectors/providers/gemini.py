@@ -6,7 +6,7 @@ from typing import Any
 from google import genai
 from google.genai import types as genai_types
 
-import proxai.connectors.model_connector as model_connector
+import proxai.connectors.provider_connector as provider_connector
 import proxai.connectors.providers.gemini_mock as gemini_mock
 import proxai.chat.message_content as message_content
 import proxai.types as types
@@ -18,7 +18,7 @@ ToolConfigType = types.ToolConfigType
 ResponseFormatConfigType = types.ResponseFormatConfigType
 
 
-class GeminiConnector(model_connector.ProviderModelConnector):
+class GeminiConnector(provider_connector.ProviderConnector):
   """Connector for Google Gemini models."""
 
   def init_model(self):

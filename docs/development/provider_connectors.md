@@ -42,9 +42,9 @@ patterns this doc summarizes.
 ## 1. Overview
 
 A connector is a Python class that inherits from
-`proxai.connectors.model_connector.ProviderModelConnector`. The
+`proxai.connectors.provider_connector.ProviderConnector`. The
 framework drives it through this lifecycle (see
-`model_connector.py:599-708` for `generate()`):
+`provider_connector.py:599-708` for `generate()`):
 
 ```
 client.generate(prompt=..., parameters=..., response_format=...)
@@ -82,9 +82,9 @@ Section 14 covers the three edits in detail.
 
 ## 3. The Required Contract
 
-Your class inherits from `ProviderModelConnector` and is validated at
+Your class inherits from `ProviderConnector` and is validated at
 **import time** by `__init_subclass__`
-(`model_connector.py:97-127`). If any of the five class attributes
+(`provider_connector.py:97-127`). If any of the five class attributes
 below are missing, or if the keys across `ENDPOINT_PRIORITY`,
 `ENDPOINT_CONFIG`, and `ENDPOINT_EXECUTORS` don't match exactly,
 import will raise.
@@ -94,7 +94,7 @@ import will raise.
 | Attribute | Type | Purpose |
 |---|---|---|
 | `PROVIDER_NAME` | `str` | Lowercase short id, e.g. `'openai'`. Must match the key in `_MODEL_CONNECTOR_MAP` and `PROVIDER_KEY_MAP`. |
-| `PROVIDER_API_KEYS` | `list[str]` | Env var names the connector needs at runtime. The framework validates that every name is present in `provider_token_value_map` before instantiation (`model_connector.py:137-145`). Most providers have one (`['OPENAI_API_KEY']`); a few have two (Databricks: token + host). |
+| `PROVIDER_API_KEYS` | `list[str]` | Env var names the connector needs at runtime. The framework validates that every name is present in `provider_token_value_map` before instantiation (`provider_connector.py:137-145`). Most providers have one (`['OPENAI_API_KEY']`); a few have two (Databricks: token + host). |
 | `ENDPOINT_PRIORITY` | `list[str]` | Ordered endpoint keys. The framework iterates this list to find the first endpoint whose `ENDPOINT_CONFIG` advertises full support for the requested features. Order matters when you have multiple endpoints. |
 | `ENDPOINT_CONFIG` | `dict[str, FeatureConfigType]` | One entry per endpoint key. Declares what each endpoint supports. See section 6. |
 | `ENDPOINT_EXECUTORS` | `dict[str, str]` | Maps each endpoint key to the **string name** of the method that implements it. The framework calls `getattr(self, name)` at request time. |
@@ -434,7 +434,7 @@ truth.
 
 ### What `_safe_provider_query` Expects
 
-`model_connector.py:474-488`. It takes a **zero-argument callable**
+`provider_connector.py:474-488`. It takes a **zero-argument callable**
 that returns the SDK's response object. On success it returns
 `(response, ResultRecord(status=SUCCESS, role=ASSISTANT))`; on
 exception it returns `(None, ResultRecord(status=FAILED, error=...,
@@ -600,7 +600,7 @@ For providers in this situation:
    {…} ``` ``) or with prefatory natural language.
 5. In your executor, after `_parse_content_blocks`, convert TEXT
    blocks to JSON blocks using `self._extract_json_from_text` (the
-   base class helper at `model_connector.py:236-283`):
+   base class helper at `provider_connector.py:236-283`):
 
 ```python
 needs_json = (
@@ -623,7 +623,7 @@ if needs_json:
 `_extract_json_from_text` already handles markdown fences (with and
 without language tag), surrounding prose, brace extraction, and
 Python-style single-quoted dicts. It is tested in
-`tests/connectors/test_model_connectors.py:TestExtractJsonFromText`.
+`tests/connectors/test_provider_connector.py:TestExtractJsonFromText`.
 **Don't write your own** — reuse it.
 
 ### PYDANTIC

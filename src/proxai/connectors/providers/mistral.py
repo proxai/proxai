@@ -3,7 +3,7 @@ import functools
 from mistralai import Mistral
 from mistralai.models.websearchtool import WebSearchTool
 
-import proxai.connectors.model_connector as model_connector
+import proxai.connectors.provider_connector as provider_connector
 import proxai.connectors.providers.mistral_mock as mistral_mock
 import proxai.types as types
 import proxai.chat.message_content as message_content
@@ -15,7 +15,7 @@ ToolConfigType = types.ToolConfigType
 ResponseFormatConfigType = types.ResponseFormatConfigType
 
 
-class MistralConnector(model_connector.ProviderModelConnector):
+class MistralConnector(provider_connector.ProviderConnector):
   """Connector for Mistral AI models."""
 
   def init_model(self):

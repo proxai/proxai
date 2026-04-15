@@ -2,7 +2,7 @@ import functools
 
 import cohere
 
-import proxai.connectors.model_connector as model_connector
+import proxai.connectors.provider_connector as provider_connector
 import proxai.connectors.providers.cohere_mock as cohere_mock
 import proxai.types as types
 import proxai.chat.message_content as message_content
@@ -14,7 +14,7 @@ ToolConfigType = types.ToolConfigType
 ResponseFormatConfigType = types.ResponseFormatConfigType
 
 
-class CohereConnector(model_connector.ProviderModelConnector):
+class CohereConnector(provider_connector.ProviderConnector):
   """Connector for Cohere V2 chat models."""
 
   def init_model(self):

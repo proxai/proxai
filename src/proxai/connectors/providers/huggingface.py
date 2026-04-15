@@ -2,7 +2,7 @@ import functools
 
 from huggingface_hub import InferenceClient
 
-import proxai.connectors.model_connector as model_connector
+import proxai.connectors.provider_connector as provider_connector
 import proxai.connectors.providers.huggingface_mock as huggingface_mock
 import proxai.types as types
 import proxai.chat.message_content as message_content
@@ -14,7 +14,7 @@ ToolConfigType = types.ToolConfigType
 ResponseFormatConfigType = types.ResponseFormatConfigType
 
 
-class HuggingFaceConnector(model_connector.ProviderModelConnector):
+class HuggingFaceConnector(provider_connector.ProviderConnector):
   """Connector for Hugging Face Inference API models.
 
   Hugging Face exposes an OpenAI-compatible chat router via

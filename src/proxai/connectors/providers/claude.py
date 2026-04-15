@@ -2,7 +2,7 @@ import functools
 
 import anthropic
 
-import proxai.connectors.model_connector as model_connector
+import proxai.connectors.provider_connector as provider_connector
 import proxai.connectors.providers.claude_mock as claude_mock
 import proxai.types as types
 import proxai.chat.message_content as message_content
@@ -17,7 +17,7 @@ ToolConfigType = types.ToolConfigType
 ResponseFormatConfigType = types.ResponseFormatConfigType
 
 
-class ClaudeConnector(model_connector.ProviderModelConnector):
+class ClaudeConnector(provider_connector.ProviderConnector):
   """Connector for Anthropic Claude models."""
 
   def init_model(self):

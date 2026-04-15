@@ -7,7 +7,7 @@ import pytest
 import proxai.caching.query_cache as query_cache
 import proxai.connections.proxdash as proxdash
 import proxai.connectors.model_configs as model_configs
-import proxai.connectors.model_connector as model_connector
+import proxai.connectors.provider_connector as provider_connector
 import proxai.connectors.providers.mock_provider as mock_provider
 import proxai.types as types
 
@@ -140,7 +140,7 @@ def get_mock_provider_model_connector(
         provider_model=base_config.provider_model, pricing=base_config.pricing,
         features=_get_default_mock_features(), metadata=base_config.metadata
     )
-  mock_provider_model_params = model_connector.ProviderModelConnectorParams(
+  mock_provider_model_params = provider_connector.ProviderConnectorParams(
       provider_model=pytest.model_configs_instance.get_provider_model(
           ('mock_provider', 'mock_model')
       ), run_type=types.RunType.TEST,
@@ -339,7 +339,7 @@ class TestModelConnectorInit:
           init_from_params=proxdash_connection_params
       )
 
-      model_connector_params = model_connector.ProviderModelConnectorParams(
+      model_connector_params = provider_connector.ProviderConnectorParams(
           provider_model=pytest.model_configs_instance.get_provider_model(
               ('mock_provider', 'mock_model')
           ), run_type=types.RunType.TEST,
@@ -387,7 +387,7 @@ class TestModelConnectorInit:
             'time.'
         )
     ):
-      model_connector_params = model_connector.ProviderModelConnectorParams(
+      model_connector_params = provider_connector.ProviderConnectorParams(
           provider_model=pytest.model_configs_instance.get_provider_model(
               ('mock_provider', 'mock_model')
           ), run_type=types.RunType.TEST,

@@ -28,8 +28,8 @@ _PROVIDER_STATE_PROPERTY = '_provider_state'
 
 
 @dataclasses.dataclass
-class ProviderModelConnectorParams:
-  """Initialization parameters for ProviderModelConnector."""
+class ProviderConnectorParams:
+  """Initialization parameters for ProviderConnector."""
 
   run_type: types.RunType | None = None
   feature_mapping_strategy: types.FeatureMappingStrategy | None = None
@@ -39,7 +39,7 @@ class ProviderModelConnectorParams:
   provider_token_value_map: types.ProviderTokenValueMap | None = None
 
 
-class ProviderModelConnector(state_controller.StateControlled):
+class ProviderConnector(state_controller.StateControlled):
   """Base class for provider-specific connectors (provider-scoped)."""
 
   _run_type: types.RunType | None
@@ -60,7 +60,7 @@ class ProviderModelConnector(state_controller.StateControlled):
 
   def __init__(  # noqa: D107
       self,
-      init_from_params: ProviderModelConnectorParams | None = None,
+      init_from_params: ProviderConnectorParams | None = None,
       init_from_state: types.ProviderState | None = None
   ):
     super().__init__(

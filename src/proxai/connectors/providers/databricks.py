@@ -3,7 +3,7 @@ import functools
 from databricks.sdk import WorkspaceClient
 
 import proxai.chat.message_content as message_content
-import proxai.connectors.model_connector as model_connector
+import proxai.connectors.provider_connector as provider_connector
 import proxai.connectors.providers.databricks_mock as databricks_mock
 import proxai.types as types
 
@@ -14,7 +14,7 @@ ToolConfigType = types.ToolConfigType
 ResponseFormatConfigType = types.ResponseFormatConfigType
 
 
-class DatabricksConnector(model_connector.ProviderModelConnector):
+class DatabricksConnector(provider_connector.ProviderConnector):
   """Connector for Databricks model serving endpoints.
 
   Databricks exposes its foundation model serving endpoints through an

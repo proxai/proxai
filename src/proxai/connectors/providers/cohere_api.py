@@ -4,12 +4,12 @@ from typing import Any
 
 import cohere
 
-import proxai.connectors.model_connector as model_connector
+import proxai.connectors.provider_connector as provider_connector
 import proxai.connectors.providers.cohere_api_mock as cohere_api_mock
 import proxai.types as types
 
 
-class CohereConnector(model_connector.ProviderModelConnector):
+class CohereConnector(provider_connector.ProviderConnector):
   """Connector for Cohere models."""
 
   def get_provider_name(self):

@@ -1,7 +1,7 @@
 # CallRecord Comprehensive Use Case Analysis
 
 Source of truth: `src/proxai/types.py` and
-`src/proxai/connectors/model_connector.py`. If this document disagrees with
+`src/proxai/connectors/provider_connector.py`. If this document disagrees with
 those files, the files win — update this document.
 
 This is the definitive reference for how a `CallRecord` is shaped, how it is
@@ -185,7 +185,7 @@ class" mode — callers who want schema-constrained output must define a
 On a cache hit, `timestamp.response_time` stays equal to the original
 provider latency that was cached. `timestamp.start_utc_date` and
 `end_utc_date` are rebased to the current time (see
-`_get_cached_result` in `model_connector.py`), and
+`_get_cached_result` in `provider_connector.py`), and
 `timestamp.cache_response_time` records how long the cache lookup
 itself took. Cost-attribution and latency metrics should branch on
 `connection.result_source`.
@@ -237,7 +237,7 @@ consumers that need titles or ordering relative to the text must read the
 Stored as `int`, equal to the USD cost multiplied by 1,000,000 and floored.
 `$0.0015` becomes `1500`. This avoids floating-point drift across the cache
 and telemetry. See `get_estimated_cost` in
-`connectors/model_connector.py`.
+`connectors/provider_connector.py`.
 
 ### 2.13 Error payload lifecycle
 
@@ -1141,7 +1141,7 @@ CallRecord(
 
 For contributors debugging the pipeline: this is where each piece of the
 `CallRecord` is written, in order, inside
-`ProviderModelConnector.generate()`.
+`ProviderConnector.generate()`.
 
 1. `query: QueryRecord` — constructed from `generate()` arguments.
    `query.provider_model` comes directly from the caller.
