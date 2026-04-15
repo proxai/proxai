@@ -191,16 +191,22 @@ provider latency that was cached. `timestamp.start_utc_date` and
 itself took. Cost-attribution and latency metrics should branch on
 `connection.result_source`.
 
-### 2.8 Fallback chains produce multiple `CallRecord`s
+### 2.8 Fallback chains: one record per attempt internally, one record returned to the caller
 
-The connector does not fold multi-attempt behaviour into a single record.
-Each attempt against a different model is an independent
-`CallRecord` with its own `query.provider_model`. The caller
-(typically the client or fallback driver) is responsible for aggregating
-them. `ConnectionOptions.fallback_models` lists the intended chain, and
-`ConnectionMetadata.failed_fallback_models` accumulates the models that
-have already failed for this chain — both are bookkeeping, they do not
-alter what a single `CallRecord` represents.
+At the connector layer, each attempt against a different model is an
+independent `CallRecord` with its own `query.provider_model`, and each
+such record is logged to ProxDash and the query cache in isolation. The
+client-level `ProxAIClient.generate()` wrapper, however, loops over
+`[primary] + connection_options.fallback_models`, forces
+`suppress_provider_errors=True` for the duration of the loop, and returns
+**only one** `CallRecord` to the caller: the first success, or the last
+failure if every model failed. `ConnectionOptions.fallback_models` lists
+the intended chain; `ConnectionMetadata.failed_fallback_models`
+accumulates the models that failed before the returned record.
+
+Practical consequence: telemetry backends (ProxDash, the cache) see every
+attempt, but application code calling `px.generate()` / `client.generate()`
+only ever receives a single `CallRecord` per call.
 
 ### 2.9 `content` holds the first choice, `choices` holds the rest
 
@@ -410,14 +416,17 @@ CallRecord(
 )
 ```
 
-### 3.4 Fallback chain (separate records)
+### 3.4 Fallback chain (telemetry view)
 
-Each attempt is a standalone `CallRecord`. The intended chain lives on
-the first record's `ConnectionOptions.fallback_models`; the accumulated
-failure history is tracked on `ConnectionMetadata.failed_fallback_models`.
+The caller of `client.generate()` receives exactly one `CallRecord` — the
+successful one (here, the second attempt). The `CallRecord` for the first
+attempt shown below is what ProxDash and the query cache observe
+internally; it is not returned to user code. The returned record's
+`connection.failed_fallback_models` lists the models that were tried and
+failed before it.
 
 ```python
-# Attempt 1: openai/gpt-4 fails
+# Attempt 1: openai/gpt-4 fails (internal — logged to ProxDash, not returned)
 CallRecord(
     query=QueryRecord(
         prompt="Explain quantum entanglement.",
