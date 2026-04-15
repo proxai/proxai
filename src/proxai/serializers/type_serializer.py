@@ -1061,8 +1061,6 @@ def encode_connection_metadata(
   record = {}
   if connection_metadata.result_source is not None:
     record['result_source'] = connection_metadata.result_source.value
-  if connection_metadata.cache_hit is not None:
-    record['cache_hit'] = connection_metadata.cache_hit
   if connection_metadata.cache_look_fail_reason is not None:
     record['cache_look_fail_reason'] = (
         connection_metadata.cache_look_fail_reason.value
@@ -1091,8 +1089,6 @@ def decode_connection_metadata(
     connection_metadata.result_source = (
         types.ResultSource(record['result_source'])
     )
-  if 'cache_hit' in record:
-    connection_metadata.cache_hit = record['cache_hit']
   if 'cache_look_fail_reason' in record:
     connection_metadata.cache_look_fail_reason = (
         types.CacheLookFailReason(record['cache_look_fail_reason'])

@@ -660,7 +660,6 @@ class ProviderModelConnector(state_controller.StateControlled):
         connection_options=connection_options,
     )
     if isinstance(cached_result, types.ResultRecord):
-      connection_metadata.cache_hit = True
       connection_metadata.result_source = types.ResultSource.CACHE
       call_record = types.CallRecord(
           query=query_record,
@@ -683,7 +682,6 @@ class ProviderModelConnector(state_controller.StateControlled):
         start_utc_date=start_utc_date)
 
     connection_metadata.endpoint_used = chosen_endpoint
-    connection_metadata.cache_hit = False
     connection_metadata.result_source = types.ResultSource.PROVIDER
     connection_metadata.cache_look_fail_reason = None
     call_record = types.CallRecord(

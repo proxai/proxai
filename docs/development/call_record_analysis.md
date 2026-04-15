@@ -86,7 +86,6 @@ CallRecord
 │
 └── connection: ConnectionMetadata          # (was named `cache` in old docs)
     ├── result_source: ResultSource         # CACHE | PROVIDER
-    ├── cache_hit: bool | None
     ├── cache_look_fail_reason: CacheLookFailReason | None
     ├── endpoint_used: str | None           # set only on PROVIDER path
     ├── failed_fallback_models: list[ProviderModelType] | None
@@ -326,7 +325,6 @@ CallRecord(
         ),
     ),
     connection=ConnectionMetadata(
-        cache_hit=False,
         result_source=ResultSource.PROVIDER,
         endpoint_used="chat.completions.create",
         feature_mapping_strategy=px.FeatureMappingStrategy.BEST_EFFORT,
@@ -371,7 +369,6 @@ CallRecord(
         ),
     ),
     connection=ConnectionMetadata(
-        cache_hit=False,
         result_source=ResultSource.PROVIDER,
         endpoint_used="messages.create",
     ),
@@ -409,7 +406,6 @@ CallRecord(
         ),
     ),
     connection=ConnectionMetadata(
-        cache_hit=False,
         result_source=ResultSource.PROVIDER,
         endpoint_used="chat.completions.create",
     ),
@@ -458,7 +454,6 @@ CallRecord(
         ),
     ),
     connection=ConnectionMetadata(
-        cache_hit=False,
         result_source=ResultSource.PROVIDER,
         endpoint_used="chat.completions.create",
     ),
@@ -495,7 +490,6 @@ CallRecord(
         ),
     ),
     connection=ConnectionMetadata(
-        cache_hit=False,
         result_source=ResultSource.PROVIDER,
         endpoint_used="messages.create",
         failed_fallback_models=[
@@ -562,7 +556,6 @@ CallRecord(
         ),
     ),
     connection=ConnectionMetadata(
-        cache_hit=False,
         result_source=ResultSource.PROVIDER,
         endpoint_used="chat.completions.create",
     ),
@@ -630,7 +623,6 @@ CallRecord(
         ),
     ),
     connection=ConnectionMetadata(
-        cache_hit=False,
         result_source=ResultSource.PROVIDER,
         endpoint_used="beta.chat.completions.parse",
     ),
@@ -681,7 +673,6 @@ CallRecord(
         ),
     ),
     connection=ConnectionMetadata(
-        cache_hit=False,
         result_source=ResultSource.PROVIDER,
         endpoint_used="chat.completions.create",
     ),
@@ -754,7 +745,6 @@ CallRecord(
         ),
     ),
     connection=ConnectionMetadata(
-        cache_hit=False,
         result_source=ResultSource.PROVIDER,
         endpoint_used="responses.create",
     ),
@@ -763,7 +753,7 @@ CallRecord(
 
 ### 3.9 Cache hit
 
-`result_source == CACHE`, `cache_hit == True`. `response_time` is the
+`result_source == CACHE`. `response_time` is the
 original provider latency; `cache_response_time` is how long the cache
 lookup itself took. `endpoint_used` is left `None` on the cache path.
 `start_utc_date` / `end_utc_date` are rebased to the current time so
@@ -796,7 +786,6 @@ CallRecord(
         ),
     ),
     connection=ConnectionMetadata(
-        cache_hit=True,
         result_source=ResultSource.CACHE,
     ),
 )
@@ -810,19 +799,19 @@ reason. These map one-to-one to the `CacheLookFailReason` enum.
 ```python
 # No cache entry for this query hash
 ConnectionMetadata(
-    cache_hit=False, result_source=ResultSource.PROVIDER,
+    result_source=ResultSource.PROVIDER,
     cache_look_fail_reason=CacheLookFailReason.CACHE_NOT_FOUND,
 )
 
 # Cache entry exists but the query fingerprint didn't match
 ConnectionMetadata(
-    cache_hit=False, result_source=ResultSource.PROVIDER,
+    result_source=ResultSource.PROVIDER,
     cache_look_fail_reason=CacheLookFailReason.CACHE_NOT_MATCHED,
 )
 
 # Collecting diverse responses — unique_response_limit not yet hit
 ConnectionMetadata(
-    cache_hit=False, result_source=ResultSource.PROVIDER,
+    result_source=ResultSource.PROVIDER,
     cache_look_fail_reason=(
         CacheLookFailReason.UNIQUE_RESPONSE_LIMIT_NOT_REACHED
     ),
@@ -830,7 +819,7 @@ ConnectionMetadata(
 
 # Cached result was an error, retry_if_error_cached=True forced a retry
 ConnectionMetadata(
-    cache_hit=False, result_source=ResultSource.PROVIDER,
+    result_source=ResultSource.PROVIDER,
     cache_look_fail_reason=CacheLookFailReason.PROVIDER_ERROR_CACHED,
 )
 ```
@@ -886,7 +875,6 @@ CallRecord(
         ),
     ),
     connection=ConnectionMetadata(
-        cache_hit=False,
         result_source=ResultSource.PROVIDER,
         endpoint_used="chat.completions.create",
     ),
@@ -935,7 +923,6 @@ CallRecord(
         ),
     ),
     connection=ConnectionMetadata(
-        cache_hit=False,
         result_source=ResultSource.PROVIDER,
         endpoint_used="responses.create",
     ),
@@ -980,7 +967,6 @@ CallRecord(
         ),
     ),
     connection=ConnectionMetadata(
-        cache_hit=False,
         result_source=ResultSource.PROVIDER,
         endpoint_used="images.generate",
     ),
@@ -1040,7 +1026,6 @@ CallRecord(
         ),
     ),
     connection=ConnectionMetadata(
-        cache_hit=False,
         result_source=ResultSource.PROVIDER,
         endpoint_used="chat.completions.create",
     ),
@@ -1144,7 +1129,6 @@ CallRecord(
         ),
     ),
     connection=ConnectionMetadata(
-        cache_hit=False,
         result_source=ResultSource.PROVIDER,
         endpoint_used="beta.chat.completions.parse",
     ),
@@ -1167,9 +1151,8 @@ For contributors debugging the pipeline: this is where each piece of the
    `modified_query_record` actually sent to the provider.
 3. `_get_cached_result()` either returns a `ResultRecord` (cache hit,
    rebased timestamps) or a `CacheLookFailReason`.
-4. On cache hit: `connection.cache_hit = True`,
-   `connection.result_source = CACHE`, and the `CallRecord` is returned
-   immediately. `endpoint_used` stays `None`.
+4. On cache hit: `connection.result_source = CACHE`, and the
+   `CallRecord` is returned immediately. `endpoint_used` stays `None`.
 5. On cache miss: the executor runs inside `_safe_provider_query()`,
    which catches exceptions into `result.error` / `result.error_traceback`.
 6. On success: `ResultAdapter.adapt_result_record()` normalizes
@@ -1182,8 +1165,8 @@ For contributors debugging the pipeline: this is where each piece of the
 8. `_compute_timestamp()` sets `start_utc_date`, `end_utc_date`,
    `local_time_offset_minute`, and `response_time`.
 9. `connection.endpoint_used` is set to the endpoint that actually ran,
-   `cache_hit` is set to `False`, `result_source` is set to `PROVIDER`,
-   and `cache_look_fail_reason` is cleared.
+   `result_source` is set to `PROVIDER`, and `cache_look_fail_reason`
+   is cleared.
 10. `get_estimated_cost()` computes `result.usage.estimated_cost` in
     µ-dollars, using `provider_model_config.pricing`.
 11. If `status == FAILED` and `suppress_provider_errors` is falsy, the

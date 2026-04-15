@@ -683,7 +683,6 @@ def cache_test():
       provider_model=_DEFAULT_MODEL)
   _assert_text_content(result)
   assert result.connection is not None
-  assert result.connection.cache_hit == False
   assert result.connection.result_source == types.ResultSource.PROVIDER
 
   result = client.generate(
@@ -691,7 +690,6 @@ def cache_test():
       provider_model=_DEFAULT_MODEL)
   _assert_text_content(result)
   assert result.connection is not None
-  assert result.connection.cache_hit == False
   assert result.connection.result_source == types.ResultSource.PROVIDER
 
   result = client.generate(
@@ -699,7 +697,6 @@ def cache_test():
       provider_model=_DEFAULT_MODEL)
   _assert_text_content(result)
   assert result.connection is not None
-  assert result.connection.cache_hit == True
   assert result.connection.result_source == types.ResultSource.CACHE
 
 
@@ -718,7 +715,6 @@ def connection_options_skip_cache_test():
       provider_model=_DEFAULT_MODEL)
   _assert_text_content(result)
   assert result.connection is not None
-  assert result.connection.cache_hit == False
   assert result.connection.result_source == types.ResultSource.PROVIDER
 
   result = client.generate(
@@ -728,7 +724,6 @@ def connection_options_skip_cache_test():
           skip_cache=True))
   _assert_text_content(result)
   assert result.connection is not None
-  assert result.connection.cache_hit == False
   assert result.connection.result_source == types.ResultSource.PROVIDER
 
   result = client.generate(
@@ -736,7 +731,6 @@ def connection_options_skip_cache_test():
       provider_model=_DEFAULT_MODEL)
   _assert_text_content(result)
   assert result.connection is not None
-  assert result.connection.cache_hit == True
   assert result.connection.result_source == types.ResultSource.CACHE
 
 
@@ -756,7 +750,6 @@ def connection_options_override_cache_value_test():
       provider_model=_DEFAULT_MODEL)
   _assert_text_content(result_1)
   assert result_1.connection is not None
-  assert result_1.connection.cache_hit == False
   assert result_1.connection.result_source == types.ResultSource.PROVIDER
 
   result_2 = client.generate(
@@ -767,7 +760,6 @@ def connection_options_override_cache_value_test():
           override_cache_value=True))
   _assert_text_content(result_2)
   assert result_2.connection is not None
-  assert result_2.connection.cache_hit == False
   assert result_2.connection.result_source == types.ResultSource.PROVIDER
   assert result_1.result.output_text != result_2.result.output_text
 
@@ -777,7 +769,6 @@ def connection_options_override_cache_value_test():
       provider_model=_DEFAULT_MODEL)
   _assert_text_content(result_3)
   assert result_3.connection is not None
-  assert result_3.connection.cache_hit == True
   assert result_3.connection.result_source == types.ResultSource.CACHE
   assert result_2.result.output_text == result_3.result.output_text
 

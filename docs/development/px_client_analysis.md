@@ -564,7 +564,7 @@ rec = client.generate(
     prompt="Summarise the latest earnings report.",
     connection_options=px.ConnectionOptions(override_cache_value=True),
 )
-assert rec.connection.cache_hit is False
+assert rec.connection.result_source == px.ResultSource.PROVIDER
 ```
 
 ### 6.5 Suppressing errors for a single call
