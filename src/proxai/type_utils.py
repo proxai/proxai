@@ -202,6 +202,23 @@ def is_query_record_equal(
       )
       del query_record_2.response_format.value.class_value
 
+  # Normalize connection_options so equality mirrors the hash: only
+  # `endpoint` is part of the query identity (see
+  # hash_serializer._hash_connection_options). Without this, transient
+  # per-call flags like `override_cache_value` on the stored record
+  # would poison the equality check and break cache lookups after an
+  # override write.
+  if query_record_1.connection_options is not None:
+    query_record_1 = copy.copy(query_record_1)
+    query_record_1.connection_options = types.ConnectionOptions(
+        endpoint=query_record_1.connection_options.endpoint
+    )
+  if query_record_2.connection_options is not None:
+    query_record_2 = copy.copy(query_record_2)
+    query_record_2.connection_options = types.ConnectionOptions(
+        endpoint=query_record_2.connection_options.endpoint
+    )
+
   return query_record_1 == query_record_2
 
 

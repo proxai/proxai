@@ -539,10 +539,10 @@ class ProviderConnector(state_controller.StateControlled):
       query_record: types.QueryRecord,
       connection_options: types.ConnectionOptions,
   ) -> types.ResultRecord | types.CacheLookFailReason | None:
-    # NOTE: override_cache_value is only for getting the result from the cache.
-    # It is not for updating the cache. If it is set to True, cache will be
-    # ignored but cache value will still be stored.
-    # NOTE: skip_cache disables cache completely.
+    # NOTE: override_cache_value bypasses the cache lookup so the real
+    # provider is called, and then _update_cache() wipes any existing
+    # cached bucket for this query and replaces it with the fresh result.
+    # NOTE: skip_cache disables cache completely (no read, no write).
     if (connection_options.skip_cache or
         connection_options.override_cache_value or
         not self.query_cache_manager):
@@ -572,15 +572,18 @@ class ProviderConnector(state_controller.StateControlled):
       call_record: types.CallRecord,
       connection_options: types.ConnectionOptions,
   ) -> None:
-    # NOTE: override_cache_value is only for getting the result from the cache.
-    # It is not for updating the cache. If it is set to True, cache will be
-    # ignored but cache value will still be stored.
+    # NOTE: When override_cache_value is True, the cache manager wipes any
+    # existing entry for this query hash and stores the fresh result as a
+    # brand-new single-response bucket (call_count reset to 0). With
+    # unique_response_limit > 1, subsequent normal calls will refill the
+    # bucket from the provider until the limit is reached again.
     # NOTE: skip_cache disables cache completely.
     if connection_options.skip_cache or not self.query_cache_manager:
       return
     self.query_cache_manager.cache(
         query_record=call_record.query,
-        result_record=call_record.result)
+        result_record=call_record.result,
+        override_cache_value=connection_options.override_cache_value)
 
   def generate(
       self,

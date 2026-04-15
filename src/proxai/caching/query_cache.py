@@ -661,14 +661,24 @@ class QueryCacheManager(state_controller.StateControlled):
       self,
       query_record: types.QueryRecord,
       result_record: types.ResultRecord,
-      unique_response_limit: int | None = None
+      unique_response_limit: int | None = None,
+      override_cache_value: bool = False,
   ):
     """Store a query response in the cache."""
     if self.status != types.QueryCacheManagerStatus.WORKING:
       raise ValueError(f'QueryCacheManager status is {self.status}')
 
     current_time = datetime.datetime.now()
-    cache_record = self._shard_manager.get_cache_record(query_record)
+    if override_cache_value:
+      # Force a full wipe of any existing entry for this query hash and
+      # start a fresh bucket containing only result_record. save_record()
+      # calls delete_record() internally, which clears in-memory pointers
+      # and writes a tombstone to the light cache records file. Stale rows
+      # still physically present in old shard files are filtered out on
+      # read by _check_cache_record_is_up_to_date().
+      cache_record = None
+    else:
+      cache_record = self._shard_manager.get_cache_record(query_record)
     if not cache_record:
       query_record.hash_value = hash_serializer.get_query_record_hash(
           query_record
