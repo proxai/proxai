@@ -54,8 +54,7 @@ class AvailableModels(state_controller.StateControlled):
                             types.ProviderTokenValueMap] | None
   _latest_model_cache_path_used_for_update: str | None
   _available_models_state: types.AvailableModelsState
-  model_connectors: dict[types.ProviderModelType,
-                         model_connector.ProviderModelConnector]
+  provider_connectors: dict[str, model_connector.ProviderModelConnector]
 
   def __init__(
       self, init_from_params: AvailableModelsParams | None = None,
@@ -65,7 +64,7 @@ class AvailableModels(state_controller.StateControlled):
         init_from_params=init_from_params, init_from_state=init_from_state
     )
 
-    self.model_connectors = {}
+    self.provider_connectors = {}
 
     if init_from_state:
       self.load_state(init_from_state)
@@ -114,20 +113,15 @@ class AvailableModels(state_controller.StateControlled):
   def get_model_connector(
       self, provider_model_identifier: types.ProviderModelIdentifierType
   ):
-    """Get or create a connector for the specified model."""
+    """Get or create a provider-scoped connector for the specified model."""
     provider_model = self.model_configs_instance.get_provider_model(
         provider_model_identifier
     )
-    if provider_model in self.model_connectors:
-      return self.model_connectors[provider_model]
+    provider = provider_model.provider
+    if provider in self.provider_connectors:
+      return self.provider_connectors[provider]
 
-    provider_model_config = (
-        self.model_configs_instance.
-        get_provider_model_config(provider_model_identifier)
-    )
-    connector = model_registry.get_model_connector(
-        provider_model_config=provider_model_config
-    )
+    connector = model_registry.get_model_connector(provider=provider)
 
     init_from_params = connector.keywords['init_from_params']
     init_from_params.run_type = self.run_type
@@ -136,11 +130,11 @@ class AvailableModels(state_controller.StateControlled):
     init_from_params.logging_options = self.logging_options
     init_from_params.proxdash_connection = self.proxdash_connection
     init_from_params.provider_token_value_map = self.providers_with_key.get(
-        provider_model.provider, {}
+        provider, {}
     )
 
-    self.model_connectors[provider_model] = connector()
-    return self.model_connectors[provider_model]
+    self.provider_connectors[provider] = connector()
+    return self.provider_connectors[provider]
 
   @property
   def run_type(self) -> types.RunType:
@@ -370,9 +364,14 @@ class AvailableModels(state_controller.StateControlled):
     ) -> tuple[set[types.ProviderModelType], set[types.ProviderModelType]]:
       not_filtered_models = set()
       for provider_model in provider_model_set:
+        provider_model_config = (
+            self.model_configs_instance.get_provider_model_config(
+                provider_model))
         support_level = self.get_model_connector(
             provider_model
-        ).get_feature_tags_support_level(feature_tags=features)
+        ).get_feature_tags_support_level(
+            feature_tags=features,
+            model_feature_config=provider_model_config.features)
         if self._is_feature_compatible(support_level):
           not_filtered_models.add(provider_model)
         else:
@@ -409,29 +408,32 @@ class AvailableModels(state_controller.StateControlled):
 
   @staticmethod
   def _test_generate_text(
-      provider_model_state: types.ProviderModelState, verbose: bool = False,
+      provider_state: types.ProviderState,
+      provider_model: types.ProviderModelType,
+      verbose: bool = False,
       model_configs_state: types.ModelConfigsState | None = None,
       model_configs_instance: model_configs.ModelConfigs | None = None
   ) -> types.CallRecord:
     if verbose:
-      print(f'Testing {provider_model_state.provider_model}...')
+      print(f'Testing {provider_model}...')
     start_utc_date = datetime.datetime.now(datetime.timezone.utc)
     if model_configs_instance is None:
       model_configs_instance = model_configs.ModelConfigs(
           init_from_state=model_configs_state
       )
     provider_model_config = model_configs_instance.get_provider_model_config(
-        provider_model_state.provider_model
+        provider_model
     )
     connector = model_registry.get_model_connector(
-        provider_model_config=provider_model_config,
+        provider=provider_model.provider,
         without_additional_args=True
     )
-    connector = connector(init_from_state=provider_model_state)
+    connector = connector(init_from_state=provider_state)
     try:
       call_record: types.CallRecord = connector.generate(
           prompt=_GENERATE_TEXT_TEST_PROMPT,
-          provider_model=provider_model_state.provider_model,
+          provider_model=provider_model,
+          provider_model_config=provider_model_config,
           parameters=types.ParameterType(
               max_tokens=_GENERATE_TEXT_TEST_MAX_TOKENS),
           connection_options=types.ConnectionOptions(
@@ -442,7 +444,7 @@ class AvailableModels(state_controller.StateControlled):
       end_utc_date = datetime.datetime.now(datetime.timezone.utc)
       return types.CallRecord(
           query=types.QueryRecord(
-              provider_model=provider_model_state.provider_model,
+              provider_model=provider_model,
               prompt=_GENERATE_TEXT_TEST_PROMPT,
               parameters=types.ParameterType(
                   max_tokens=_GENERATE_TEXT_TEST_MAX_TOKENS),
@@ -508,8 +510,9 @@ class AvailableModels(state_controller.StateControlled):
     return None
 
   def _test_models_with_multiprocessing(
-      self, model_connectors: dict[types.ProviderModelType,
-                                   model_connector.ProviderModelConnector],
+      self,
+      test_tasks: list[tuple[types.ProviderModelType,
+                             model_connector.ProviderModelConnector]],
       call_type: str, verbose: bool = False
   ):
     process_count = max(1, multiprocessing.cpu_count() - 1)
@@ -524,9 +527,11 @@ class AvailableModels(state_controller.StateControlled):
       pool = multiprocessing.Pool(processes=process_count)
       pool_results = []
       model_configs_state = self.model_configs_instance.get_state()
-      for provider_model, connector in model_connectors.items():
+      for provider_model, connector in test_tasks:
         pool_result = pool.apply_async(
-            test_func, args=(connector.get_state(), verbose), kwds={
+            test_func,
+            args=(connector.get_state(), provider_model, verbose),
+            kwds={
                 'model_configs_state': model_configs_state,
             }
         )
@@ -553,8 +558,9 @@ class AvailableModels(state_controller.StateControlled):
     return test_results
 
   def _test_models_sequentially(
-      self, model_connectors: dict[types.ProviderModelType,
-                                   model_connector.ProviderModelConnector],
+      self,
+      test_tasks: list[tuple[types.ProviderModelType,
+                             model_connector.ProviderModelConnector]],
       call_type: str, verbose: bool = False
   ):
     """Tests provider models sequentially.
@@ -585,10 +591,10 @@ class AvailableModels(state_controller.StateControlled):
       print(f'WARNING: {warning_message}')
 
     test_results = []
-    for connector in model_connectors.values():
+    for provider_model, connector in test_tasks:
       test_results.append(
           test_func(
-              connector.get_state(), verbose,
+              connector.get_state(), provider_model, verbose,
               model_configs_instance=self.model_configs_instance
           )
       )
@@ -601,20 +607,19 @@ class AvailableModels(state_controller.StateControlled):
     if not models.unprocessed_models:
       return
 
-    model_connectors = {}
+    test_tasks = []
     for provider_model in models.unprocessed_models:
-      model_connectors[provider_model] = self.get_model_connector(
-          provider_model
-      )
+      connector = self.get_model_connector(provider_model)
+      test_tasks.append((provider_model, connector))
 
     if self.allow_multiprocessing:
       test_results = self._test_models_with_multiprocessing(
-          model_connectors=model_connectors, call_type=call_type,
+          test_tasks=test_tasks, call_type=call_type,
           verbose=verbose
       )
     else:
       test_results = self._test_models_sequentially(
-          model_connectors=model_connectors, call_type=call_type,
+          test_tasks=test_tasks, call_type=call_type,
           verbose=verbose
       )
 

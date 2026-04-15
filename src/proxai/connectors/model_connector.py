@@ -24,16 +24,14 @@ import proxai.connectors.feature_adapter as feature_adapter
 import proxai.connectors.result_adapter as result_adapter
 import proxai.chat.message_content as message_content
 
-_PROVIDER_MODEL_STATE_PROPERTY = '_provider_model_state'
+_PROVIDER_STATE_PROPERTY = '_provider_state'
 
 
 @dataclasses.dataclass
 class ProviderModelConnectorParams:
   """Initialization parameters for ProviderModelConnector."""
 
-  provider_model: types.ProviderModelType | None = None
   run_type: types.RunType | None = None
-  provider_model_config: types.ProviderModelConfig | None = None
   feature_mapping_strategy: types.FeatureMappingStrategy | None = None
   query_cache_manager: types.QueryCacheManagerState | None = None
   logging_options: types.LoggingOptions | None = None
@@ -42,17 +40,15 @@ class ProviderModelConnectorParams:
 
 
 class ProviderModelConnector(state_controller.StateControlled):
-  """Base class for provider-specific model connectors."""
+  """Base class for provider-specific connectors (provider-scoped)."""
 
-  _provider_model: types.ProviderModelType | None
   _run_type: types.RunType | None
-  _provider_model_config: types.ProviderModelConfig | None
   _feature_mapping_strategy: types.FeatureMappingStrategy | None
   _query_cache_manager: query_cache.QueryCacheManager | None
   _api: Any | None
   _logging_options: types.LoggingOptions | None
   _proxdash_connection: proxdash.ProxDashConnection | None
-  _provider_model_state: types.ProviderModelState | None
+  _provider_state: types.ProviderState | None
 
   _chosen_endpoint_cached_result: dict[str, bool] | None
 
@@ -65,7 +61,7 @@ class ProviderModelConnector(state_controller.StateControlled):
   def __init__(  # noqa: D107
       self,
       init_from_params: ProviderModelConnectorParams | None = None,
-      init_from_state: types.ProviderModelState | None = None
+      init_from_state: types.ProviderState | None = None
   ):
     super().__init__(
         init_from_params=init_from_params, init_from_state=init_from_state
@@ -74,19 +70,9 @@ class ProviderModelConnector(state_controller.StateControlled):
     self._chosen_endpoint_cached_result = {}
 
     if init_from_state:
-      if init_from_state.provider_model is None:
-        raise ValueError('provider_model needs to be set in init_from_state.')
-      if init_from_state.provider_model.provider != self.PROVIDER_NAME:
-        raise ValueError(
-            'provider_model needs to be same with the class provider name.\n'
-            f'provider_model: {init_from_state.provider_model}\n'
-            f'class provider name: {self.PROVIDER_NAME}'
-        )
       self.load_state(init_from_state)
     else:
-      self.provider_model = init_from_params.provider_model
       self.run_type = init_from_params.run_type
-      self.provider_model_config = init_from_params.provider_model_config
       self.feature_mapping_strategy = init_from_params.feature_mapping_strategy
       self.query_cache_manager = init_from_params.query_cache_manager
       self.logging_options = init_from_params.logging_options
@@ -128,11 +114,11 @@ class ProviderModelConnector(state_controller.StateControlled):
 
   def get_internal_state_property_name(self):
     """Return the name of the internal state property."""
-    return _PROVIDER_MODEL_STATE_PROPERTY
+    return _PROVIDER_STATE_PROPERTY
 
   def get_internal_state_type(self):
     """Return the dataclass type used for state storage."""
-    return types.ProviderModelState
+    return types.ProviderState
 
   def _validate_provider_token_value_map(self):
     if self.provider_token_value_map is None:
@@ -158,28 +144,12 @@ class ProviderModelConnector(state_controller.StateControlled):
     raise ValueError('api should not be set directly.')
 
   @property
-  def provider_model(self):
-    return self.get_property_value('provider_model')
-
-  @provider_model.setter
-  def provider_model(self, value):
-    self.set_property_value('provider_model', value)
-
-  @property
   def run_type(self):
     return self.get_property_value('run_type')
 
   @run_type.setter
   def run_type(self, value):
     self.set_property_value('run_type', value)
-
-  @property
-  def provider_model_config(self) -> types.ProviderModelConfig:
-    return self.get_property_value('provider_model_config')
-
-  @provider_model_config.setter
-  def provider_model_config(self, value):
-    self.set_property_value('provider_model_config', value)
 
   @property
   def feature_mapping_strategy(self) -> types.FeatureMappingStrategy:
@@ -322,7 +292,11 @@ class ProviderModelConnector(state_controller.StateControlled):
 
     return total
 
-  def get_estimated_cost(self, call_record: types.CallRecord):
+  def get_estimated_cost(
+      self,
+      call_record: types.CallRecord,
+      provider_model_config: types.ProviderModelConfig,
+  ):
     """Calculate the estimated cost for a call record."""
     input_token_count = call_record.result.usage.input_tokens
     if input_token_count is None:
@@ -330,7 +304,7 @@ class ProviderModelConnector(state_controller.StateControlled):
     output_token_count = call_record.result.usage.output_tokens
     if output_token_count is None:
       output_token_count = 0
-    model_pricing_config = self.provider_model_config.pricing
+    model_pricing_config = provider_model_config.pricing
 
     query_token_cost = model_pricing_config.input_token_cost
     if query_token_cost is None:
@@ -363,6 +337,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       self,
       endpoint: str,
       query_record: types.QueryRecord,
+      provider_model_config: types.ProviderModelConfig,
   ) -> types.FeatureSupportType:
     if endpoint not in self.ENDPOINT_CONFIG:
       raise ValueError(
@@ -371,7 +346,7 @@ class ProviderModelConnector(state_controller.StateControlled):
     adapter = feature_adapter.FeatureAdapter(
         endpoint=endpoint,
         endpoint_feature_config=self.ENDPOINT_CONFIG[endpoint],
-        model_feature_config=self.provider_model_config.features,
+        model_feature_config=provider_model_config.features,
     )
     return adapter.get_query_record_support_level(query_record=query_record)
 
@@ -394,6 +369,7 @@ class ProviderModelConnector(state_controller.StateControlled):
   def get_feature_tags_support_level(
       self,
       feature_tags: list[types.FeatureTagType],
+      model_feature_config: types.FeatureConfigType,
   ) -> types.FeatureSupportType:
     """Return the best support level for the given feature tags across endpoints.
 
@@ -406,7 +382,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       adapter = feature_adapter.FeatureAdapter(
           endpoint=endpoint,
           endpoint_feature_config=self.ENDPOINT_CONFIG[endpoint],
-          model_feature_config=self.provider_model_config.features,
+          model_feature_config=model_feature_config,
       )
       support_level = adapter.get_feature_tags_support_level(feature_tags)
       if support_level == types.FeatureSupportType.SUPPORTED:
@@ -417,13 +393,18 @@ class ProviderModelConnector(state_controller.StateControlled):
       return types.FeatureSupportType.BEST_EFFORT
     return types.FeatureSupportType.NOT_SUPPORTED
 
-  def _find_compatible_endpoint(self, query_record: types.QueryRecord):
+  def _find_compatible_endpoint(
+      self,
+      query_record: types.QueryRecord,
+      provider_model_config: types.ProviderModelConfig,
+  ):
     """Find a compatible endpoint for the query record."""
     best_effort_endpoints = []
     for endpoint in self.ENDPOINT_PRIORITY:
       support_level = self._get_endpoint_support_level(
           endpoint=endpoint,
-          query_record=query_record)
+          query_record=query_record,
+          provider_model_config=provider_model_config)
       if support_level == types.FeatureSupportType.SUPPORTED:
         return endpoint
       elif support_level == types.FeatureSupportType.BEST_EFFORT:
@@ -444,24 +425,28 @@ class ProviderModelConnector(state_controller.StateControlled):
   def _prepare_execution(
       self,
       query_record: types.QueryRecord,
+      provider_model_config: types.ProviderModelConfig,
   ) -> tuple[Callable, types.QueryRecord]:
     if (query_record.connection_options and
         query_record.connection_options.endpoint is not None):
       chosen_endpoint = query_record.connection_options.endpoint
       support_level = self._get_endpoint_support_level(
           endpoint=chosen_endpoint,
-          query_record=query_record)
+          query_record=query_record,
+          provider_model_config=provider_model_config)
       self._check_endpoint_support_compatibility(
           endpoint=chosen_endpoint,
           support_level=support_level,
           query_record=query_record)
     else:
-      chosen_endpoint = self._find_compatible_endpoint(query_record=query_record)
+      chosen_endpoint = self._find_compatible_endpoint(
+          query_record=query_record,
+          provider_model_config=provider_model_config)
 
     chosen_feature_adapter = feature_adapter.FeatureAdapter(
         endpoint=chosen_endpoint,
         endpoint_feature_config=self.ENDPOINT_CONFIG[chosen_endpoint],
-        model_feature_config=self.provider_model_config.features,
+        model_feature_config=provider_model_config.features,
     )
     executor_name = self.ENDPOINT_EXECUTORS[chosen_endpoint]
     chosen_executor = getattr(self, executor_name)
@@ -492,6 +477,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       chosen_executor: Callable,
       chosen_endpoint: str,
       query_record: types.QueryRecord,
+      provider_model_config: types.ProviderModelConfig,
   ):
     result_record = chosen_executor(
         query_record=query_record)
@@ -500,7 +486,7 @@ class ProviderModelConnector(state_controller.StateControlled):
       chosen_result_adapter = result_adapter.ResultAdapter(
           endpoint=chosen_endpoint,
           endpoint_feature_config=self.ENDPOINT_CONFIG[chosen_endpoint],
-          model_feature_config=self.provider_model_config.features,
+          model_feature_config=provider_model_config.features,
       )
       chosen_result_adapter.adapt_result_record(
           query_record=query_record,
@@ -598,10 +584,12 @@ class ProviderModelConnector(state_controller.StateControlled):
 
   def generate(
       self,
+      *,
+      provider_model: types.ProviderModelType,
+      provider_model_config: types.ProviderModelConfig,
       prompt: str | None = None,
       messages: chat_session.Chat | None = None,
       system_prompt: str | None = None,
-      provider_model: types.ProviderModelType | None = None,
       parameters: types.ParameterType | None = None,
       tools: List[types.ToolType] | None = None,
       response_format: types.ResponseFormatType | None = None,
@@ -653,7 +641,9 @@ class ProviderModelConnector(state_controller.StateControlled):
 
     (chosen_executor,
      chosen_endpoint,
-     modified_query_record) = self._prepare_execution(query_record=query_record)
+     modified_query_record) = self._prepare_execution(
+         query_record=query_record,
+         provider_model_config=provider_model_config)
 
     cached_result = self._get_cached_result(
         query_record=query_record,
@@ -669,11 +659,12 @@ class ProviderModelConnector(state_controller.StateControlled):
       return call_record
     elif isinstance(cached_result, types.CacheLookFailReason):
       connection_metadata.cache_look_fail_reason = cached_result
-    
+
     result_record = self._execute_call(
         chosen_executor=chosen_executor,
         chosen_endpoint=chosen_endpoint,
         query_record=modified_query_record,
+        provider_model_config=provider_model_config,
     )
     result_record.usage = self._compute_usage(
         query_record=modified_query_record,
@@ -689,7 +680,9 @@ class ProviderModelConnector(state_controller.StateControlled):
         result=result_record,
         connection=connection_metadata,
     )
-    estimated_cost = self.get_estimated_cost(call_record=call_record)
+    estimated_cost = self.get_estimated_cost(
+        call_record=call_record,
+        provider_model_config=provider_model_config)
     result_record.usage.estimated_cost = estimated_cost
 
     if call_record.result.status == types.ResultStatusType.FAILED:
