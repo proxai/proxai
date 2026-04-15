@@ -84,6 +84,16 @@ _MODEL_CONFIGS = {
         'video_model': (None, None),
         'web_search_supported': False,
     },
+    'databricks': {
+        'default_model': (
+            'databricks', 'databricks-meta-llama-3-3-70b-instruct'),
+        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
+        'thinking_model': ('databricks', 'databricks-gpt-oss-20b'),
+        'image_model': (None, None),
+        'audio_model': (None, None),
+        'video_model': (None, None),
+        'web_search_supported': False,
+    },
 }
 
 _BANNER_WIDTH = 60

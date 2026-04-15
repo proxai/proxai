@@ -1,205 +1,332 @@
 import functools
-from collections.abc import Callable
-from typing import Any
 
 from databricks.sdk import WorkspaceClient
 
+import proxai.chat.message_content as message_content
 import proxai.connectors.model_connector as model_connector
 import proxai.connectors.providers.databricks_mock as databricks_mock
 import proxai.types as types
 
+FeatureConfigType = types.FeatureConfigType
+FeatureSupportType = types.FeatureSupportType
+ParameterConfigType = types.ParameterConfigType
+ToolConfigType = types.ToolConfigType
+ResponseFormatConfigType = types.ResponseFormatConfigType
+
 
 class DatabricksConnector(model_connector.ProviderModelConnector):
-  """Connector for Databricks model serving endpoints."""
+  """Connector for Databricks model serving endpoints.
 
-  def get_provider_name(self):
-    return 'databricks'
+  Databricks exposes its foundation model serving endpoints through an
+  OpenAI-compatible API surface. We obtain a pre-configured `openai.OpenAI`
+  client via `WorkspaceClient.serving_endpoints.get_open_ai_client()` and
+  drive two endpoints:
 
-  def get_required_provider_token_names(self) -> list[str]:
-    return ['DATABRICKS_TOKEN', 'DATABRICKS_HOST']
+  - `chat.completions.create`: the default path. Handles plain text, JSON,
+    thinking, and pydantic-as-prompt-injection. Reasoning models
+    (`databricks-gpt-oss-*`) return `message.content` as a list of
+    `{'type': 'reasoning', ...}` / `{'type': 'text', ...}` blocks; the
+    executor parses both shapes.
+  - `beta.chat.completions.parse`: server-side pydantic structured
+    outputs for non-reasoning models. The OpenAI SDK's client-side parse
+    step assumes `message.content` is a string, so reasoning models must
+    NOT route here — they crash with a Pydantic ValidationError before
+    `message.parsed` is populated. Keep reasoning-model pydantic routed
+    through `chat.completions.create` by capping their model-level
+    `response_format.pydantic = BEST_EFFORT` in `model_configs_data`.
+  """
 
   def init_model(self):
-    w = WorkspaceClient(
+    workspace = WorkspaceClient(
+        host=self.provider_token_value_map['DATABRICKS_HOST'],
         token=self.provider_token_value_map['DATABRICKS_TOKEN'],
-        host=self.provider_token_value_map['DATABRICKS_HOST']
     )
-    return w.serving_endpoints.get_open_ai_client()
+    return workspace.serving_endpoints.get_open_ai_client()
 
   def init_mock_model(self):
     return databricks_mock.DatabricksMock()
 
-  def _get_api_call_function(self, chosen_endpoint: str) -> Callable:
-    if chosen_endpoint == 'chat.completions.create':
-      return functools.partial(self.api.chat.completions.create)
-    elif chosen_endpoint == 'beta.chat.completions.parse':
-      return functools.partial(self.api.beta.chat.completions.parse)
-    else:
-      raise Exception(f'Invalid endpoint: {chosen_endpoint}')
+  PROVIDER_NAME = 'databricks'
 
-  def prompt_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    return functools.partial(
-        query_function, messages=[{
-            'role': 'user',
-            'content': query_record.prompt
-        }]
-    )
+  PROVIDER_API_KEYS = ['DATABRICKS_TOKEN', 'DATABRICKS_HOST']
 
-  def messages_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    # Note: Databricks uses OpenAI-compatible API with 'system', 'user', and
-    # 'assistant' as roles.
-    # Some parameters may not work as expected for some models. For example,
-    # the system instruction doesn't have any effect on the completion for
-    # databricks-dbrx-instruct. But the stop parameter works as expected for
-    # this model. However, system instruction works for
-    # databricks-llama-2-70b-chat.
-    messages = query_function.keywords.get('messages')
-    if messages is None:
-      return functools.partial(query_function, messages=query_record.messages)
-    else:
-      messages = query_record.messages + messages
-      return functools.partial(query_function, messages=messages)
+  ENDPOINT_PRIORITY = [
+      'chat.completions.create',
+      'beta.chat.completions.parse',
+  ]
 
-  def system_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    messages = query_function.keywords.get('messages')
-    if messages is None:
-      raise Exception('Set messages parameter before adding system message.')
-    messages.insert(0, {'role': 'system', 'content': query_record.system})
-    return functools.partial(query_function, messages=messages)
+  ENDPOINT_CONFIG = {
+      'chat.completions.create':
+          FeatureConfigType(
+              prompt=FeatureSupportType.SUPPORTED,
+              messages=FeatureSupportType.SUPPORTED,
+              system_prompt=FeatureSupportType.SUPPORTED,
+              add_system_to_messages=True,
+              parameters=ParameterConfigType(
+                  max_tokens=FeatureSupportType.SUPPORTED,
+                  temperature=FeatureSupportType.SUPPORTED,
+                  stop=FeatureSupportType.SUPPORTED,
+                  n=FeatureSupportType.SUPPORTED,
+                  thinking=FeatureSupportType.SUPPORTED,
+              ),
+              tools=ToolConfigType(
+                  web_search=FeatureSupportType.NOT_SUPPORTED,
+              ),
+              response_format=ResponseFormatConfigType(
+                  text=FeatureSupportType.SUPPORTED,
+                  json=FeatureSupportType.SUPPORTED,
+                  pydantic=FeatureSupportType.BEST_EFFORT,
+              ),
+          ),
+      'beta.chat.completions.parse':
+          FeatureConfigType(
+              prompt=FeatureSupportType.SUPPORTED,
+              messages=FeatureSupportType.SUPPORTED,
+              system_prompt=FeatureSupportType.SUPPORTED,
+              add_system_to_messages=True,
+              parameters=ParameterConfigType(
+                  max_tokens=FeatureSupportType.SUPPORTED,
+                  temperature=FeatureSupportType.SUPPORTED,
+                  stop=FeatureSupportType.SUPPORTED,
+                  n=FeatureSupportType.SUPPORTED,
+                  thinking=FeatureSupportType.SUPPORTED,
+              ),
+              tools=ToolConfigType(
+                  web_search=FeatureSupportType.NOT_SUPPORTED,
+              ),
+              response_format=ResponseFormatConfigType(
+                  text=FeatureSupportType.NOT_SUPPORTED,
+                  json=FeatureSupportType.NOT_SUPPORTED,
+                  pydantic=FeatureSupportType.SUPPORTED,
+              ),
+          ),
+  }
 
-  def max_tokens_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    return functools.partial(query_function, max_tokens=query_record.max_tokens)
+  def _parse_message_content(self, content) -> list:
+    """Parse a Databricks chat message content into MessageContent blocks.
 
-  def temperature_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    return functools.partial(
-        query_function, temperature=query_record.temperature
-    )
-
-  def stop_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    return functools.partial(query_function, stop=query_record.stop)
-
-  def _add_json_guidance_to_user_message(self, query_function: Callable):
-    # NOTE: Some Databricks models expect JSON guidance in the user message.
-    # This is a workaround to add JSON guidance to the user message.
-    messages = query_function.keywords.get('messages')
-    if messages is None:
-      raise Exception('Set messages parameter before adding JSON guidance.')
-    for message in messages:
-      if message['role'] == 'user':
-        if 'json' not in message['content'].lower():
-          message['content'] = (
-              f'{message["content"]}\n\nYou must respond with valid JSON.'
-          )
-        break
-    return functools.partial(query_function, messages=messages)
-
-  def json_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ):
-    query_function = self._add_json_guidance_to_user_message(query_function)
-    return functools.partial(
-        query_function, response_format={'type': 'json_object'}
-    )
-
-  def json_schema_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ):
-    return functools.partial(
-        query_function, response_format=query_record.response_format.value
-    )
-
-  def pydantic_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ):
-    if query_record.chosen_endpoint == 'chat.completions.create':
-      raise Exception(
-          'Pydantic response format is not supported for '
-          'chat.completions.create. Code should never reach here.'
-      )
-    elif query_record.chosen_endpoint == 'beta.chat.completions.parse':
-      return functools.partial(
-          query_function,
-          response_format=query_record.response_format.value.class_value
-      )
-
-  def web_search_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ):
-    raise Exception('Web search is not supported for Databricks.')
-
-  def _extract_text_from_content(self, content) -> str:
-    # If content is already a string, return it directly
+    Non-reasoning models return a plain string. Reasoning models
+    (databricks-gpt-oss-*) return a list of dicts with `type` fields —
+    `'reasoning'` (with a `summary` list of `{'type': 'summary_text',
+    'text': ...}` items) and `'text'` (with a `text` field).
+    """
     if isinstance(content, str):
-      return content
+      return [
+          message_content.MessageContent(
+              type=message_content.ContentType.TEXT,
+              text=content,
+          )
+      ]
 
-    # If content is a list of chunks, extract text from TextChunk objects
+    parsed = []
     if isinstance(content, list):
-      text_parts = []
       for chunk in content:
-        # Check for TextChunk (has type='text' and text attribute)
-        chunk_type = getattr(chunk, 'type', None)
-        if chunk_type == 'text':
-          text = getattr(chunk, 'text', None)
-          if text:
-            text_parts.append(text)
-      return '\n'.join(text_parts) if text_parts else ''
+        chunk_type = None
+        if isinstance(chunk, dict):
+          chunk_type = chunk.get('type')
+          if chunk_type == 'reasoning':
+            summary_parts = []
+            for summary in chunk.get('summary') or []:
+              text = None
+              if isinstance(summary, dict):
+                text = summary.get('text')
+              else:
+                text = getattr(summary, 'text', None)
+              if text:
+                summary_parts.append(text)
+            parsed.append(
+                message_content.MessageContent(
+                    type=message_content.ContentType.THINKING,
+                    text='\n'.join(summary_parts),
+                )
+            )
+          elif chunk_type == 'text':
+            parsed.append(
+                message_content.MessageContent(
+                    type=message_content.ContentType.TEXT,
+                    text=chunk.get('text') or '',
+                )
+            )
+        else:
+          chunk_type = getattr(chunk, 'type', None)
+          if chunk_type == 'reasoning':
+            summary_parts = []
+            for summary in getattr(chunk, 'summary', None) or []:
+              text = getattr(summary, 'text', None)
+              if text:
+                summary_parts.append(text)
+            parsed.append(
+                message_content.MessageContent(
+                    type=message_content.ContentType.THINKING,
+                    text='\n'.join(summary_parts),
+                )
+            )
+          elif chunk_type == 'text':
+            parsed.append(
+                message_content.MessageContent(
+                    type=message_content.ContentType.TEXT,
+                    text=getattr(chunk, 'text', '') or '',
+                )
+            )
+    return parsed
 
-    # Fallback: try to convert to string
-    return str(content) if content else ''
-
-  def format_text_response_from_provider(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> str:
-    return self._extract_text_from_content(response.choices[0].message.content)
-
-  def format_json_response_from_provider(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> dict:
-    return self._extract_json_from_text(
-        self._extract_text_from_content(response.choices[0].message.content)
-    )
-
-  def format_json_schema_response_from_provider(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> dict:
-    return self._extract_json_from_text(
-        self._extract_text_from_content(response.choices[0].message.content)
-    )
-
-  def format_pydantic_response_from_provider(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> Any:
-    if query_record.chosen_endpoint == 'chat.completions.create':
-      raise Exception(
-          'Pydantic response format is not supported for '
-          'chat.completions.create. Code should never reach here.'
-      )
-    elif query_record.chosen_endpoint == 'beta.chat.completions.parse':
-      return response.choices[0].message.parsed
-
-  def generate_text_proc(
+  def _chat_completions_create_executor(
       self, query_record: types.QueryRecord
-  ) -> types.Response:
-    create = self._get_api_call_function(query_record.chosen_endpoint)
-
-    provider_model = query_record.provider_model
+  ) -> types.ResultRecord:
+    create = functools.partial(self.api.chat.completions.create)
     create = functools.partial(
-        create, model=provider_model.provider_model_identifier
+        create, model=(query_record.provider_model.provider_model_identifier)
     )
 
-    create = self.add_features_to_query_function(create, query_record)
+    if query_record.prompt is not None:
+      create = functools.partial(
+          create, messages=[{
+              'role': 'user',
+              'content': query_record.prompt
+          }]
+      )
 
-    response = create()
+    if query_record.chat is not None:
+      create = functools.partial(create, messages=query_record.chat['messages'])
 
-    return self.format_response_from_providers(response, query_record)
+    if query_record.parameters is not None:
+      if query_record.parameters.max_tokens is not None:
+        create = functools.partial(
+            create, max_tokens=query_record.parameters.max_tokens
+        )
+
+      if query_record.parameters.temperature is not None:
+        create = functools.partial(
+            create, temperature=query_record.parameters.temperature
+        )
+
+      if query_record.parameters.stop is not None:
+        create = functools.partial(create, stop=query_record.parameters.stop)
+
+      if query_record.parameters.n is not None:
+        create = functools.partial(create, n=query_record.parameters.n)
+
+      if query_record.parameters.thinking is not None:
+        create = functools.partial(
+            create,
+            reasoning_effort=query_record.parameters.thinking.value.lower()
+        )
+
+    # Databricks' OpenAI-compatible chat.completions.create exposes the
+    # native `{'type': 'json_object'}` response format. Pydantic stays at
+    # BEST_EFFORT but we flip on json_object when a schema was requested so
+    # the framework's downstream json.loads + model_validate step is
+    # reliable.
+    if query_record.response_format.type in (
+        types.ResponseFormatType.JSON,
+        types.ResponseFormatType.PYDANTIC,
+    ):
+      create = functools.partial(
+          create, response_format={'type': 'json_object'}
+      )
+
+    response, result_record = self._safe_provider_query(create)
+    if result_record.error is not None:
+      return result_record
+
+    result_record.content = self._parse_message_content(
+        response.choices[0].message.content
+    )
+
+    if response.choices is not None and len(response.choices) > 1:
+      result_record.choices = []
+      for choice in response.choices:
+        result_record.choices.append(
+            types.ChoiceType(
+                content=self._parse_message_content(choice.message.content)
+            )
+        )
+
+    return result_record
+
+  def _beta_chat_completions_parse_executor(
+      self, query_record: types.QueryRecord
+  ) -> types.ResultRecord:
+    create = functools.partial(self.api.beta.chat.completions.parse)
+    create = functools.partial(
+        create, model=(query_record.provider_model.provider_model_identifier)
+    )
+
+    if query_record.prompt is not None:
+      create = functools.partial(
+          create, messages=[{
+              'role': 'user',
+              'content': query_record.prompt
+          }]
+      )
+
+    if query_record.chat is not None:
+      create = functools.partial(create, messages=query_record.chat['messages'])
+
+    if query_record.parameters is not None:
+      if query_record.parameters.max_tokens is not None:
+        create = functools.partial(
+            create, max_tokens=query_record.parameters.max_tokens
+        )
+
+      if query_record.parameters.temperature is not None:
+        create = functools.partial(
+            create, temperature=query_record.parameters.temperature
+        )
+
+      if query_record.parameters.stop is not None:
+        create = functools.partial(create, stop=query_record.parameters.stop)
+
+      if query_record.parameters.n is not None:
+        create = functools.partial(create, n=query_record.parameters.n)
+
+      if query_record.parameters.thinking is not None:
+        create = functools.partial(
+            create,
+            reasoning_effort=query_record.parameters.thinking.value.lower()
+        )
+
+    create = functools.partial(
+        create, response_format=query_record.response_format.pydantic_class
+    )
+
+    response, result_record = self._safe_provider_query(create)
+    if result_record.error is not None:
+      return result_record
+
+    pydantic_class = query_record.response_format.pydantic_class
+    result_record.content = [
+        message_content.MessageContent(
+            type=message_content.ContentType.PYDANTIC_INSTANCE,
+            pydantic_content=message_content.PydanticContent(
+                class_name=pydantic_class.__name__,
+                class_value=pydantic_class,
+                instance_value=response.choices[0].message.parsed,
+            ),
+        )
+    ]
+
+    if response.choices is not None and len(response.choices) > 1:
+      result_record.choices = []
+      for choice in response.choices:
+        result_record.choices.append(
+            types.ChoiceType(
+                content=[
+                    message_content.MessageContent(
+                        type=message_content.ContentType.PYDANTIC_INSTANCE,
+                        pydantic_content=message_content.PydanticContent(
+                            class_name=pydantic_class.__name__,
+                            class_value=pydantic_class,
+                            instance_value=choice.message.parsed,
+                        ),
+                    )
+                ]
+            )
+        )
+
+    return result_record
+
+  ENDPOINT_EXECUTORS = {
+      'chat.completions.create': '_chat_completions_create_executor',
+      'beta.chat.completions.parse': '_beta_chat_completions_parse_executor',
+  }
