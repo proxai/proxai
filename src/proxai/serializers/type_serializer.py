@@ -718,6 +718,32 @@ def decode_response_format(record: dict[str, Any]) -> types.ResponseFormat:
   return response_format
 
 
+def encode_result_media_content_type(
+    result_media_content_type: types.ResultMediaContentType
+) -> dict[str, Any]:
+  """Serialize ResultMediaContentType to a dictionary."""
+  record = {}
+  record['data'] = base64.b64encode(
+      result_media_content_type.data
+  ).decode('utf-8')
+  record['media_type'] = result_media_content_type.media_type
+  return record
+
+
+def decode_result_media_content_type(
+    record: dict[str, Any]
+) -> types.ResultMediaContentType:
+  """Deserialize ResultMediaContentType from a dictionary."""
+  if 'data' not in record:
+    raise ValueError(f'Data not found in record: {record=}')
+  if 'media_type' not in record:
+    raise ValueError(f'Media type not found in record: {record=}')
+  return types.ResultMediaContentType(
+      data=base64.b64decode(record['data']),
+      media_type=record['media_type'],
+  )
+
+
 def encode_content(
     content: str | list[message_content.MessageContent | str] | None
 ) -> str | list | None:
@@ -799,6 +825,9 @@ def decode_choice_type(
     )
   if 'output_json' in record:
     choice_type.output_json = record['output_json']
+  # output_pydantic is intentionally not reconstructed: the encoded metadata
+  # (class_name, instance_json_value) is preserved on the wire but the live
+  # pydantic.BaseModel class cannot be rebuilt at decode time.
   if 'content' in record:
     choice_type.content = decode_content(record['content'])
   return choice_type
@@ -1222,6 +1251,34 @@ def decode_light_cache_record(record: dict[str, Any]) -> types.LightCacheRecord:
   return light_cache_record
 
 
+def encode_cache_look_result(
+    cache_look_result: types.CacheLookResult
+) -> dict[str, Any]:
+  """Serialize CacheLookResult to a dictionary."""
+  record = {}
+  if cache_look_result.result is not None:
+    record['result'] = encode_result_record(cache_look_result.result)
+  if cache_look_result.cache_look_fail_reason is not None:
+    record['cache_look_fail_reason'] = (
+        cache_look_result.cache_look_fail_reason.value
+    )
+  return record
+
+
+def decode_cache_look_result(
+    record: dict[str, Any]
+) -> types.CacheLookResult:
+  """Deserialize CacheLookResult from a dictionary."""
+  cache_look_result = types.CacheLookResult()
+  if 'result' in record:
+    cache_look_result.result = decode_result_record(record['result'])
+  if 'cache_look_fail_reason' in record:
+    cache_look_result.cache_look_fail_reason = types.CacheLookFailReason(
+        record['cache_look_fail_reason']
+    )
+  return cache_look_result
+
+
 def encode_model_status(model_status: types.ModelStatus) -> dict[str, Any]:
   """Serialize ModelStatus to a dictionary."""
   record = {}
@@ -1305,6 +1362,18 @@ def encode_logging_options(
   return record
 
 
+def decode_logging_options(record: dict[str, Any]) -> types.LoggingOptions:
+  """Deserialize LoggingOptions from a dictionary."""
+  logging_options = types.LoggingOptions()
+  if 'logging_path' in record:
+    logging_options.logging_path = record['logging_path']
+  if 'stdout' in record:
+    logging_options.stdout = record['stdout']
+  if 'hide_sensitive_content' in record:
+    logging_options.hide_sensitive_content = record['hide_sensitive_content']
+  return logging_options
+
+
 def encode_cache_options(cache_options: types.CacheOptions) -> dict[str, Any]:
   """Serialize CacheOptions to a dictionary."""
   record = {}
@@ -1329,6 +1398,30 @@ def encode_cache_options(cache_options: types.CacheOptions) -> dict[str, Any]:
   return record
 
 
+def decode_cache_options(record: dict[str, Any]) -> types.CacheOptions:
+  """Deserialize CacheOptions from a dictionary."""
+  cache_options = types.CacheOptions()
+  if 'cache_path' in record:
+    cache_options.cache_path = record['cache_path']
+  if 'unique_response_limit' in record:
+    cache_options.unique_response_limit = record['unique_response_limit']
+  if 'retry_if_error_cached' in record:
+    cache_options.retry_if_error_cached = record['retry_if_error_cached']
+  if 'clear_query_cache_on_connect' in record:
+    cache_options.clear_query_cache_on_connect = (
+        record['clear_query_cache_on_connect']
+    )
+  if 'clear_model_cache_on_connect' in record:
+    cache_options.clear_model_cache_on_connect = (
+        record['clear_model_cache_on_connect']
+    )
+  if 'disable_model_cache' in record:
+    cache_options.disable_model_cache = record['disable_model_cache']
+  if 'model_cache_duration' in record:
+    cache_options.model_cache_duration = record['model_cache_duration']
+  return cache_options
+
+
 def encode_proxdash_options(
     proxdash_options: types.ProxDashOptions
 ) -> dict[str, Any]:
@@ -1345,6 +1438,41 @@ def encode_proxdash_options(
   if proxdash_options.base_url is not None:
     record['base_url'] = proxdash_options.base_url
   return record
+
+
+def decode_proxdash_options(record: dict[str, Any]) -> types.ProxDashOptions:
+  """Deserialize ProxDashOptions from a dictionary."""
+  proxdash_options = types.ProxDashOptions()
+  if 'stdout' in record:
+    proxdash_options.stdout = record['stdout']
+  if 'hide_sensitive_content' in record:
+    proxdash_options.hide_sensitive_content = record['hide_sensitive_content']
+  if 'disable_proxdash' in record:
+    proxdash_options.disable_proxdash = record['disable_proxdash']
+  if 'api_key' in record:
+    proxdash_options.api_key = record['api_key']
+  if 'base_url' in record:
+    proxdash_options.base_url = record['base_url']
+  return proxdash_options
+
+
+def encode_summary_options(
+    summary_options: types.SummaryOptions
+) -> dict[str, Any]:
+  """Serialize SummaryOptions to a dictionary."""
+  record = {}
+  record['json'] = summary_options.json
+  return record
+
+
+def decode_summary_options(
+    record: dict[str, Any]
+) -> types.SummaryOptions:
+  """Deserialize SummaryOptions from a dictionary."""
+  summary_options = types.SummaryOptions()
+  if 'json' in record:
+    summary_options.json = record['json']
+  return summary_options
 
 
 def encode_run_options(run_options: types.RunOptions) -> dict[str, Any]:
@@ -1375,62 +1503,12 @@ def encode_run_options(run_options: types.RunOptions) -> dict[str, Any]:
   if run_options.model_test_timeout is not None:
     record['model_test_timeout'] = run_options.model_test_timeout
   if run_options.feature_mapping_strategy is not None:
-    record['feature_mapping_strategy'] = run_options.feature_mapping_strategy
+    record['feature_mapping_strategy'] = (
+        run_options.feature_mapping_strategy.value
+    )
   if run_options.suppress_provider_errors is not None:
     record['suppress_provider_errors'] = run_options.suppress_provider_errors
   return record
-
-
-def decode_logging_options(record: dict[str, Any]) -> types.LoggingOptions:
-  """Deserialize LoggingOptions from a dictionary."""
-  logging_options = types.LoggingOptions()
-  if 'logging_path' in record:
-    logging_options.logging_path = record['logging_path']
-  if 'stdout' in record:
-    logging_options.stdout = record['stdout']
-  if 'hide_sensitive_content' in record:
-    logging_options.hide_sensitive_content = record['hide_sensitive_content']
-  return logging_options
-
-
-def decode_cache_options(record: dict[str, Any]) -> types.CacheOptions:
-  """Deserialize CacheOptions from a dictionary."""
-  cache_options = types.CacheOptions()
-  if 'cache_path' in record:
-    cache_options.cache_path = record['cache_path']
-  if 'unique_response_limit' in record:
-    cache_options.unique_response_limit = record['unique_response_limit']
-  if 'retry_if_error_cached' in record:
-    cache_options.retry_if_error_cached = record['retry_if_error_cached']
-  if 'clear_query_cache_on_connect' in record:
-    cache_options.clear_query_cache_on_connect = (
-        record['clear_query_cache_on_connect']
-    )
-  if 'clear_model_cache_on_connect' in record:
-    cache_options.clear_model_cache_on_connect = (
-        record['clear_model_cache_on_connect']
-    )
-  if 'disable_model_cache' in record:
-    cache_options.disable_model_cache = record['disable_model_cache']
-  if 'model_cache_duration' in record:
-    cache_options.model_cache_duration = record['model_cache_duration']
-  return cache_options
-
-
-def decode_proxdash_options(record: dict[str, Any]) -> types.ProxDashOptions:
-  """Deserialize ProxDashOptions from a dictionary."""
-  proxdash_options = types.ProxDashOptions()
-  if 'stdout' in record:
-    proxdash_options.stdout = record['stdout']
-  if 'hide_sensitive_content' in record:
-    proxdash_options.hide_sensitive_content = record['hide_sensitive_content']
-  if 'disable_proxdash' in record:
-    proxdash_options.disable_proxdash = record['disable_proxdash']
-  if 'api_key' in record:
-    proxdash_options.api_key = record['api_key']
-  if 'base_url' in record:
-    proxdash_options.base_url = record['base_url']
-  return proxdash_options
 
 
 def decode_run_options(record: dict[str, Any]) -> types.RunOptions:
