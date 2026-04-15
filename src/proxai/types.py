@@ -617,7 +617,6 @@ class ConnectionMetadata:
   """Metadata for a cached query."""
 
   result_source: ResultSource | None = None
-  cache_hit: bool | None = None
   cache_look_fail_reason: CacheLookFailReason | None = None
   endpoint_used: str | None = None
   failed_fallback_models: list[ProviderModelType] | None = None

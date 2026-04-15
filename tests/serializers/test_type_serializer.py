@@ -931,12 +931,6 @@ def _get_connection_metadata_options():
           'result_source': types.ResultSource.PROVIDER
       },
       {
-          'cache_hit': True
-      },
-      {
-          'cache_hit': False
-      },
-      {
           'cache_look_fail_reason':
               types.CacheLookFailReason.CACHE_NOT_FOUND
       },
@@ -960,12 +954,7 @@ def _get_connection_metadata_options():
           'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT
       },
       {
-          'result_source': types.ResultSource.CACHE,
-          'cache_hit': True
-      },
-      {
           'result_source': types.ResultSource.PROVIDER,
-          'cache_hit': False,
           'cache_look_fail_reason':
               types.CacheLookFailReason.CACHE_NOT_MATCHED,
           'endpoint_used': 'test_endpoint',
@@ -990,14 +979,13 @@ def _get_call_record_options():
       {
           'connection':
               types.ConnectionMetadata(
-                  result_source=types.ResultSource.CACHE, cache_hit=True
+                  result_source=types.ResultSource.CACHE
               )
       },
       {
           'connection':
               types.ConnectionMetadata(
                   result_source=types.ResultSource.PROVIDER,
-                  cache_hit=False,
                   endpoint_used='test_endpoint',
                   failed_fallback_models=[_MODEL_2],
                   feature_mapping_strategy=(
@@ -1014,7 +1002,7 @@ def _get_call_record_options():
               ),
           'connection':
               types.ConnectionMetadata(
-                  result_source=types.ResultSource.CACHE, cache_hit=True
+                  result_source=types.ResultSource.CACHE
               )
       },
   ]
