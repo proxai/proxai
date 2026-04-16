@@ -199,7 +199,6 @@ class ModelConnector:
       self,
       provider: str,
       model: str,
-      call_type: types.CallTypeParam = types.CallType.TEXT,
   ) -> types.ProviderModelType:
     """Gets a specific model by provider and model name.
 
@@ -209,9 +208,6 @@ class ModelConnector:
     Args:
         provider: The provider name (e.g., 'openai', 'anthropic').
         model: The model name (e.g., 'gpt-4', 'claude-3-opus').
-        call_type: The type of API call the model should support. Can be a
-            CallType enum or a string (e.g., 'text', 'image').
-            Defaults to TEXT.
 
     Returns:
         types.ProviderModelType: The model information including provider,
@@ -219,7 +215,7 @@ class ModelConnector:
 
     Raises:
         ValueError: If the provider's API key is not found, or if the
-            model doesn't exist or doesn't support the specified call_type.
+            model doesn't exist.
 
     Example:
         >>> import proxai as px
@@ -234,7 +230,6 @@ class ModelConnector:
     return self._client_getter().available_models_instance.get_model(
         provider=provider,
         model=model,
-        call_type=call_type,
     )
 
   def list_working_models(
@@ -718,6 +713,7 @@ class ProxAIClient(state_controller.StateControlled):
     self.model_configs_requested_from_proxdash = False
 
     self.registered_model_connectors = {}
+    self.registered_models = {}
     self.model_cache_manager = None
     self.query_cache_manager = None
     self.proxdash_connection = None
@@ -1054,44 +1050,52 @@ class ProxAIClient(state_controller.StateControlled):
           init_from_params=proxdash_connection_params
       )
 
-  def get_registered_model_connector(self, call_type: types.CallType):
-    """Get or create a connector for the default model of a call type."""
+  def get_default_provider_model(
+      self, call_type: types.CallType,
+  ) -> types.ProviderModelType:
+    """Resolve and return the default ProviderModelType for a call type."""
     if call_type != types.CallType.TEXT:
       raise ValueError(f"Call type not supported: {call_type}")
 
-    if call_type not in self.registered_model_connectors:
-      default_models = (
-          self.model_configs_instance.get_default_model_priority_list()
+    if call_type in self.registered_models:
+      return self.registered_models[call_type]
+
+    default_models = (
+        self.model_configs_instance.get_default_model_priority_list()
+    )
+    for provider_model in default_models:
+      try:
+        self.available_models_instance.get_working_model(
+            provider=provider_model.provider, model=provider_model.model
+        )
+        self.registered_models[call_type] = provider_model
+        self.registered_model_connectors[call_type] = (
+            self.available_models_instance.
+            get_model_connector(provider_model)
+        )
+        return provider_model
+      except ValueError:
+        continue
+
+    models = self.available_models_instance.list_working_models()
+    if len(models.working_models) > 0:
+      provider_model = models.working_models.pop()
+      self.registered_models[call_type] = provider_model
+      self.registered_model_connectors[call_type] = (
+          self.available_models_instance.get_model_connector(provider_model)
       )
-      for provider_model in default_models:
-        try:
-          self.available_models_instance.get_working_model(
-              provider=provider_model.provider, model=provider_model.model
-          )
-          self.registered_model_connectors[call_type] = (
-              self.available_models_instance.
-              get_model_connector(provider_model)
-          )
-          break
-        except ValueError:
-          continue
+      return provider_model
 
-      if call_type not in self.registered_model_connectors:
-        models = self.available_models_instance.list_working_models()
-        if len(models.working_models) > 0:
-          self.registered_model_connectors[call_type] = (
-              self.available_models_instance.get_model_connector(
-                  models.working_models.pop()
-              )
-          )
-        else:
-          raise ValueError(
-              "No working models found in current environment:\n"
-              "* Please check your environment variables and try again.\n"
-              "* You can use px.check_health() method as instructed in "
-              "https://www.proxai.co/proxai-docs/check-health"
-          )
+    raise ValueError(
+        "No working models found in current environment:\n"
+        "* Please check your environment variables and try again.\n"
+        "* You can use px.check_health() method as instructed in "
+        "https://www.proxai.co/proxai-docs/check-health"
+    )
 
+  def get_registered_model_connector(self, call_type: types.CallType):
+    """Get or create a connector for the default model of a call type."""
+    self.get_default_provider_model(call_type=call_type)
     return self.registered_model_connectors[call_type]
 
   def set_model(
@@ -1138,6 +1142,8 @@ class ProxAIClient(state_controller.StateControlled):
         provider_model
     )
 
+    resolved = self.model_configs_instance.get_provider_model(provider_model)
+    self.registered_models[types.CallType.TEXT] = resolved
     self.registered_model_connectors[
         types.CallType.TEXT
     ] = (self.available_models_instance.get_model_connector(provider_model))
@@ -1180,16 +1186,29 @@ class ProxAIClient(state_controller.StateControlled):
       raise ValueError(
           'endpoint and fallback_models cannot be used together.\n'
           f'connection_options: {connection_options}')
-    
+
+    if connection_options is None:
+      connection_options = types.ConnectionOptions()
+    if connection_options.suppress_provider_errors is None:
+      connection_options.suppress_provider_errors = (
+          self.suppress_provider_errors)
+
+    if (connection_options.override_cache_value and (
+        self.query_cache_manager is None or
+        self.query_cache_manager.status
+        != types.QueryCacheManagerStatus.WORKING)):
+      raise ValueError(
+          "override_cache_value is True but query cache is not configured.\n"
+          "Please set cache_options to enable query cache.")
+
     messages = type_utils.messages_param_to_chat(messages)
     response_format = type_utils.response_format_param_to_response_format(
         response_format)
 
     provider_models = [
         self.model_configs_instance.get_provider_model(provider_model)]
-    
-    if (connection_options and
-        connection_options.fallback_models):
+
+    if connection_options.fallback_models:
       for fallback_model in connection_options.fallback_models:
         provider_models.append(
             self.model_configs_instance.get_provider_model(fallback_model))
@@ -1226,71 +1245,35 @@ class ProxAIClient(state_controller.StateControlled):
   def generate_text(
       self,
       prompt: str | None = None,
-      system: str | None = None,
-      messages: types.MessagesType | None = None,
-      max_tokens: int | None = None,
-      temperature: float | None = None,
-      stop: types.StopType | None = None,
-      response_format: types.ResponseFormatParam | None = None,
-      web_search: bool | None = None,
-      provider_model: types.ProviderModelIdentifierType | None = None,
-      feature_mapping_strategy: types.FeatureMappingStrategy | None = None,
-      use_cache: bool | None = None,
-      unique_response_limit: int | None = None,
-      extensive_return: bool = False,
-      suppress_provider_errors: bool | None = None,
-  ) -> str | types.LoggingRecord:
+      messages: types.MessagesParam | None = None,
+      system_prompt: str | None = None,
+      provider_model: types.ProviderModelParam | None = None,
+      parameters: types.ParameterType | None = None,
+      tools: List[types.ToolType] | None = None,
+      connection_options: types.ConnectionOptions | None = None,
+  ) -> str:
     """Generates text using the configured AI model.
 
-    Sends a text generation request to the AI provider using either a simple
-    prompt or a structured messages format. Supports various configuration
-    options including response formatting, caching, and error handling.
+    Thin alias for generate() that resolves the default model and returns
+    the generated text string directly.
 
     Args:
         prompt: Simple text prompt for the AI model. Cannot be used together
             with messages parameter.
-        system: System message to set the AI's behavior and context. Provides
-            instructions that guide the model's responses.
-        messages: List of message dictionaries for multi-turn conversations.
-            Each message should have 'role' and 'content' keys. Cannot be
-            used together with prompt parameter.
-        max_tokens: Maximum number of tokens to generate in the response.
-            If not specified, uses the model's default limit.
-        temperature: Sampling temperature between 0 and 2. Higher values
-            (e.g., 0.8) make output more random, lower values (e.g., 0.2)
-            make it more deterministic.
-        stop: String or list of strings that will stop generation when
-            encountered in the output.
-        response_format: Specifies the desired response format. Can be a
-            Pydantic model class for structured output, a JSON schema dict,
-            or a StructuredResponseFormat instance.
-        web_search: Whether to enable web search capabilities for models
-            that support it.
+        messages: Structured messages for multi-turn conversations. Cannot
+            be used together with prompt parameter.
+        system_prompt: System message to set the AI's behavior and context.
         provider_model: Specific provider and model to use for this request,
-            overriding the default model. Can be a tuple like
-            ('openai', 'gpt-4') or a ProviderModelType instance.
-        feature_mapping_strategy: Strategy for handling feature compatibility.
-            Overrides the client-level setting for this request.
-        use_cache: Whether to use query caching for this request. If None,
-            uses cache if available and configured.
-        unique_response_limit: Number of unique responses to collect before
-            returning from cache. Useful for generating diverse outputs.
-        extensive_return: If True, returns the full LoggingRecord with
-            metadata instead of just the response text.
-        suppress_provider_errors: If True, returns error messages as strings
-            instead of raising exceptions. Overrides client-level setting.
+            overriding the default model.
+        parameters: Generation parameters (temperature, max_tokens, etc.).
+        tools: Tools to enable for this request (e.g., web search).
+        connection_options: Connection options (fallback models, cache
+            control, error suppression, etc.).
 
     Returns:
-        Union[str, types.LoggingRecord]: The generated text response as a
-            string, or the full LoggingRecord if extensive_return is True.
-            If response_format specifies a Pydantic model, returns an
-            instance of that model.
-
-    Raises:
-        ValueError: If both prompt and messages are provided, or if use_cache
-            is True but cache is not configured.
-        Exception: If the provider returns an error and suppress_provider_errors
-            is False.
+        The generated text as a string. If the provider returns an error
+        and suppress_provider_errors is True, returns the error message
+        string.
 
     Example:
         >>> client = px.Client()
@@ -1299,104 +1282,151 @@ class ProxAIClient(state_controller.StateControlled):
         ... )
         >>> print(response)
         'The capital of France is Paris.'
+    """
+    if provider_model is None:
+      provider_model = self.get_default_provider_model(
+          call_type=types.CallType.TEXT)
 
-        >>> # Using structured output
+    call_record = self.generate(
+        prompt=prompt,
+        messages=messages,
+        system_prompt=system_prompt,
+        provider_model=provider_model,
+        parameters=parameters,
+        tools=tools,
+        connection_options=connection_options,
+    )
+
+    if call_record.result.status == types.ResultStatusType.FAILED:
+      return call_record.result.error
+
+    return call_record.result.output_text
+
+  def generate_json(
+      self,
+      prompt: str | None = None,
+      messages: types.MessagesParam | None = None,
+      system_prompt: str | None = None,
+      provider_model: types.ProviderModelParam | None = None,
+      parameters: types.ParameterType | None = None,
+      tools: List[types.ToolType] | None = None,
+      connection_options: types.ConnectionOptions | None = None,
+  ) -> dict:
+    """Generates a JSON response using the configured AI model.
+
+    Thin alias for generate() that resolves the default model, sets
+    response_format to JSON, and returns the parsed dict directly.
+
+    Args:
+        prompt: Simple text prompt for the AI model. Cannot be used together
+            with messages parameter.
+        messages: Structured messages for multi-turn conversations.
+        system_prompt: System message to set the AI's behavior and context.
+        provider_model: Specific provider and model to use for this request.
+        parameters: Generation parameters (temperature, max_tokens, etc.).
+        tools: Tools to enable for this request.
+        connection_options: Connection options.
+
+    Returns:
+        The generated response as a parsed dict. If the provider returns
+        an error and suppress_provider_errors is True, returns the error
+        message string.
+
+    Example:
+        >>> client = px.Client()
+        >>> result = client.generate_json(
+        ...   prompt="Return the capital of France as JSON"
+        ... )
+        >>> print(result)
+        {'capital': 'Paris', 'country': 'France'}
+    """
+    if provider_model is None:
+      provider_model = self.get_default_provider_model(
+          call_type=types.CallType.TEXT)
+
+    response_format = types.ResponseFormat(
+        type=types.ResponseFormatType.JSON)
+
+    call_record = self.generate(
+        prompt=prompt,
+        messages=messages,
+        system_prompt=system_prompt,
+        provider_model=provider_model,
+        parameters=parameters,
+        tools=tools,
+        response_format=response_format,
+        connection_options=connection_options,
+    )
+
+    if call_record.result.status == types.ResultStatusType.FAILED:
+      return call_record.result.error
+
+    return call_record.result.output_json
+
+  def generate_pydantic(
+      self,
+      prompt: str | None = None,
+      messages: types.MessagesParam | None = None,
+      system_prompt: str | None = None,
+      provider_model: types.ProviderModelParam | None = None,
+      parameters: types.ParameterType | None = None,
+      tools: List[types.ToolType] | None = None,
+      response_format: types.ResponseFormatParam | None = None,
+      connection_options: types.ConnectionOptions | None = None,
+  ) -> pydantic.BaseModel:
+    """Generates a structured pydantic response using the configured AI model.
+
+    Thin alias for generate() that resolves the default model and returns
+    the pydantic model instance directly.
+
+    Args:
+        prompt: Simple text prompt for the AI model. Cannot be used together
+            with messages parameter.
+        messages: Structured messages for multi-turn conversations.
+        system_prompt: System message to set the AI's behavior and context.
+        provider_model: Specific provider and model to use for this request.
+        parameters: Generation parameters (temperature, max_tokens, etc.).
+        tools: Tools to enable for this request.
+        response_format: The pydantic model class to validate against.
+        connection_options: Connection options.
+
+    Returns:
+        An instance of the pydantic model specified in response_format.
+        If the provider returns an error and suppress_provider_errors is
+        True, returns the error message string.
+
+    Example:
         >>> from pydantic import BaseModel
         >>> class City(BaseModel):
         ...   name: str
         ...   country: str
-        >>> result = client.generate_text(
-        ...   prompt="What is the capital of France?", response_format=City
+        >>> client = px.Client()
+        >>> result = client.generate_pydantic(
+        ...   prompt="What is the capital of France?",
+        ...   response_format=City
         ... )
         >>> print(result.name)
         'Paris'
     """
-    if prompt is not None and messages is not None:
-      raise ValueError("prompt and messages cannot be set at the same time.")
-    if messages is not None:
-      type_utils.check_messages_type(messages)
+    if provider_model is None:
+      provider_model = self.get_default_provider_model(
+          call_type=types.CallType.TEXT)
 
-    if use_cache:
-      if self.query_cache_manager is None:
-        raise ValueError(
-            "use_cache is True but query cache is not working.\n"
-            "Please set query cache options to enable query cache."
-        )
-      if (
-          self.query_cache_manager.status
-          != types.QueryCacheManagerStatus.WORKING
-      ):
-        raise ValueError(
-            "use_cache is True but query cache is not working.\n"
-            f"Query Cache Manager Status: {self.query_cache_manager.status}"
-        )
-    elif use_cache is None:
-      use_cache = (
-          self.query_cache_manager is not None and
-          self.query_cache_manager.status
-          == types.QueryCacheManagerStatus.WORKING
-      )
-
-    if provider_model is not None:
-      model_connector = self.available_models_instance.get_model_connector(
-          provider_model_identifier=provider_model
-      )
-    else:
-      model_connector = self.get_registered_model_connector(
-          call_type=types.CallType.GENERATE_TEXT
-      )
-
-    if suppress_provider_errors is None:
-      suppress_provider_errors = self.suppress_provider_errors
-
-    response_format: types.ResponseFormat = type_utils.create_response_format(
-        response_format
-    )
-
-    logging_record: types.LoggingRecord = model_connector.generate_text(
+    call_record = self.generate(
         prompt=prompt,
-        system=system,
         messages=messages,
-        max_tokens=max_tokens,
-        temperature=temperature,
-        stop=stop,
+        system_prompt=system_prompt,
+        provider_model=provider_model,
+        parameters=parameters,
+        tools=tools,
         response_format=response_format,
-        web_search=web_search,
-        feature_mapping_strategy=feature_mapping_strategy,
-        use_cache=use_cache,
-        unique_response_limit=unique_response_limit,
+        connection_options=connection_options,
     )
-    if (
-        logging_record.response_record.error or
-        logging_record.response_record.error_traceback
-    ):
-      if suppress_provider_errors:
-        if extensive_return:
-          return logging_record
-        return logging_record.response_record.error
-      else:
-        error_traceback = ""
-        if logging_record.response_record.error_traceback:
-          error_traceback = (
-              logging_record.response_record.error_traceback + "\n"
-          )
-        raise Exception(error_traceback + logging_record.response_record.error)
 
-    if (
-        logging_record.response_record.response.type ==
-        types.ResponseType.PYDANTIC
-    ):
-      # Recreate instance from pydantic_metadata if value is None (from cache)
-      instance = type_utils.create_pydantic_instance_from_response(
-          response_format=response_format,
-          response=logging_record.response_record.response,
-      )
-      logging_record.response_record.response.value = instance
+    if call_record.result.status == types.ResultStatusType.FAILED:
+      return call_record.result.error
 
-    if extensive_return:
-      return logging_record
-
-    return logging_record.response_record.response.value
+    return call_record.result.output_pydantic
 
   def get_current_options(
       self,

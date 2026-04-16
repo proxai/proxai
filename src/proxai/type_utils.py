@@ -29,6 +29,9 @@ def response_format_param_to_response_format(
     return types.ResponseFormat(
         type=types.ResponseFormatType.TEXT)
     
+  if isinstance(response_format, types.ResponseFormat):
+    return response_format
+
   if type(response_format) == str:
     if response_format == 'text':
       return types.ResponseFormat(
@@ -52,7 +55,7 @@ def response_format_param_to_response_format(
     return types.ResponseFormat(
         type=types.ResponseFormatType.PYDANTIC,
         pydantic_class=response_format)
-  
+
   raise ValueError(f'Invalid response format: {response_format}')
 
 

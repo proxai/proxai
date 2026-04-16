@@ -203,13 +203,31 @@ class ModelConfigs(state_controller.StateControlled):
   def unregister_all_models(self):
     self.model_registry = types.ModelRegistry(
         metadata=self.model_registry.metadata,
-        default_model_priority_list=(
-            self.model_registry.default_model_priority_list),
+        default_model_priority_list=[],
         provider_model_configs={},
     )
     self.models_by_call_type = {}
     self.models_by_model_size = {}
     self.recommended_models = {}
+
+  def override_default_model_priority_list(
+      self,
+      default_model_priority_list: list[types.ProviderModelType]):
+    for provider_model in default_model_priority_list:
+      if (provider_model.provider not in
+          self.model_registry.provider_model_configs):
+        raise ValueError(
+            f'Provider {provider_model.provider} not registered.'
+        )
+      if (provider_model.model not in
+          self.model_registry.provider_model_configs[provider_model.provider]):
+        raise ValueError(
+            f'Model {provider_model.model} not registered for provider '
+            f'{provider_model.provider}.'
+        )
+    self.model_registry.default_model_priority_list = (
+        default_model_priority_list
+    )
 
 #   def _validate_min_proxai_version(self, min_proxai_version: str | None):
 #     if min_proxai_version is None:
@@ -860,16 +878,6 @@ class ModelConfigs(state_controller.StateControlled):
         return sorted_items
     return value
 
-#   def get_default_model_priority_list(self) -> list[types.ProviderModelType]:
-#     """Return the default model priority list for fallback selection."""
-#     # TODO: This operation could be optimized by caching the result and using
-#     # StateController to persist the result. If the configs are updated, the
-#     # result should be invalidated and recalculated by the StateController's
-#     # handle_changes method.
-#     result = []
-#     default_list = (
-#         self.model_configs_schema.version_config.default_model_priority_list
-#     )
-#     for provider_model in default_list:
-#       result.append(self.get_provider_model(provider_model))
-#     return result
+  def get_default_model_priority_list(self) -> list[types.ProviderModelType]:
+    """Return the default model priority list for fallback selection."""
+    return self.model_registry.default_model_priority_list

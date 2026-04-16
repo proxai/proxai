@@ -186,6 +186,59 @@ class TestCreatePydanticInstanceFromResponse:
     assert 'no value (instance) or' in str(exc_info.value)
 
 
+class TestResponseFormatParamToResponseFormat:
+
+  def test_none_returns_text_format(self):
+    result = type_utils.response_format_param_to_response_format(None)
+    assert result.type == types.ResponseFormatType.TEXT
+
+  def test_text_string(self):
+    result = type_utils.response_format_param_to_response_format('text')
+    assert result.type == types.ResponseFormatType.TEXT
+
+  def test_json_string(self):
+    result = type_utils.response_format_param_to_response_format('json')
+    assert result.type == types.ResponseFormatType.JSON
+
+  def test_image_string(self):
+    result = type_utils.response_format_param_to_response_format('image')
+    assert result.type == types.ResponseFormatType.IMAGE
+
+  def test_audio_string(self):
+    result = type_utils.response_format_param_to_response_format('audio')
+    assert result.type == types.ResponseFormatType.AUDIO
+
+  def test_video_string(self):
+    result = type_utils.response_format_param_to_response_format('video')
+    assert result.type == types.ResponseFormatType.VIDEO
+
+  def test_invalid_string_raises_error(self):
+    with pytest.raises(ValueError, match='Invalid response format'):
+      type_utils.response_format_param_to_response_format('invalid')
+
+  def test_pydantic_class(self):
+    result = type_utils.response_format_param_to_response_format(SampleModel)
+    assert result.type == types.ResponseFormatType.PYDANTIC
+    assert result.pydantic_class == SampleModel
+
+  def test_response_format_passthrough(self):
+    fmt = types.ResponseFormat(type=types.ResponseFormatType.JSON)
+    result = type_utils.response_format_param_to_response_format(fmt)
+    assert result is fmt
+
+  def test_response_format_pydantic_passthrough(self):
+    fmt = types.ResponseFormat(
+        type=types.ResponseFormatType.PYDANTIC,
+        pydantic_class=SampleModel)
+    result = type_utils.response_format_param_to_response_format(fmt)
+    assert result is fmt
+    assert result.pydantic_class == SampleModel
+
+  def test_invalid_type_raises_error(self):
+    with pytest.raises(ValueError, match='Invalid response format'):
+      type_utils.response_format_param_to_response_format(123)
+
+
 class TestCreateFeatureListType:
 
   def test_string_features_converted_to_enum(self):

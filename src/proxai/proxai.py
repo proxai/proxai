@@ -129,104 +129,154 @@ def generate(
 
 def generate_text(
     prompt: str | None = None,
-    system: str | None = None,
-    messages: types.MessagesType | None = None,
-    max_tokens: int | None = None,
-    temperature: float | None = None,
-    stop: types.StopType | None = None,
-    response_format: types.ResponseFormatParam | None = None,
-    web_search: bool | None = None,
-    provider_model: types.ProviderModelIdentifierType | None = None,
-    feature_mapping_strategy: types.FeatureMappingStrategy | None = None,
-    use_cache: bool | None = None,
-    unique_response_limit: int | None = None,
-    extensive_return: bool = False,
-    suppress_provider_errors: bool | None = None,
-) -> str | types.LoggingRecord:
+    messages: types.MessagesParam | None = None,
+    system_prompt: str | None = None,
+    provider_model: types.ProviderModelParam | None = None,
+    parameters: types.ParameterType | None = None,
+    tools: List[types.ToolType] | None = None,
+    connection_options: types.ConnectionOptions | None = None,
+) -> str:
   """Generates text using the configured AI model.
 
-  Sends a text generation request to the AI provider using either a simple
-  prompt or a structured messages format. Supports various configuration
-  options including response formatting, caching, and error handling.
+  Thin alias for generate() that resolves the default model and returns
+  the generated text string directly.
 
   Args:
       prompt: Simple text prompt for the AI model. Cannot be used together
           with messages parameter.
-      system: System message to set the AI's behavior and context. Provides
-          instructions that guide the model's responses.
-      messages: List of message dictionaries for multi-turn conversations.
-          Each message should have 'role' and 'content' keys. Cannot be
-          used together with prompt parameter.
-      max_tokens: Maximum number of tokens to generate in the response.
-          If not specified, uses the model's default limit.
-      temperature: Sampling temperature between 0 and 2. Higher values
-          (e.g., 0.8) make output more random, lower values (e.g., 0.2)
-          make it more deterministic.
-      stop: String or list of strings that will stop generation when
-          encountered in the output.
-      response_format: Specifies the desired response format. Can be a
-          Pydantic model class for structured output, a JSON schema dict,
-          or a StructuredResponseFormat instance.
-      web_search: Whether to enable web search capabilities for models
-          that support it.
+      messages: Structured messages for multi-turn conversations. Cannot
+          be used together with prompt parameter.
+      system_prompt: System message to set the AI's behavior and context.
       provider_model: Specific provider and model to use for this request,
-          overriding the default model. Can be a tuple like
-          ('openai', 'gpt-4') or a ProviderModelType instance.
-      feature_mapping_strategy: Strategy for handling feature compatibility.
-          Overrides the client-level setting for this request.
-      use_cache: Whether to use query caching for this request. If None,
-          uses cache if available and configured.
-      unique_response_limit: Number of unique responses to collect before
-          returning from cache. Useful for generating diverse outputs.
-      extensive_return: If True, returns the full LoggingRecord with
-          metadata instead of just the response text.
-      suppress_provider_errors: If True, returns error messages as strings
-          instead of raising exceptions. Overrides client-level setting.
+          overriding the default model.
+      parameters: Generation parameters (temperature, max_tokens, etc.).
+      tools: Tools to enable for this request (e.g., web search).
+      connection_options: Connection options (fallback models, cache
+          control, error suppression, etc.).
 
   Returns:
-      Union[str, types.LoggingRecord]: The generated text response as a
-          string, or the full LoggingRecord if extensive_return is True.
-          If response_format specifies a Pydantic model, returns an
-          instance of that model.
-
-  Raises:
-      ValueError: If both prompt and messages are provided, or if use_cache
-          is True but cache is not configured.
-      Exception: If the provider returns an error and suppress_provider_errors
-          is False.
+      The generated text as a string. If the provider returns an error
+      and suppress_provider_errors is True, returns the error message
+      string.
 
   Example:
       >>> import proxai as px
       >>> response = px.generate_text(prompt="What is the capital of France?")
       >>> print(response)
       'The capital of France is Paris.'
+  """
+  return get_default_proxai_client().generate_text(
+      prompt=prompt,
+      messages=messages,
+      system_prompt=system_prompt,
+      provider_model=provider_model,
+      parameters=parameters,
+      tools=tools,
+      connection_options=connection_options,
+  )
 
-      >>> # Using structured output
+
+def generate_json(
+    prompt: str | None = None,
+    messages: types.MessagesParam | None = None,
+    system_prompt: str | None = None,
+    provider_model: types.ProviderModelParam | None = None,
+    parameters: types.ParameterType | None = None,
+    tools: List[types.ToolType] | None = None,
+    connection_options: types.ConnectionOptions | None = None,
+) -> dict:
+  """Generates a JSON response using the configured AI model.
+
+  Thin alias for generate() that resolves the default model, sets
+  response_format to JSON, and returns the parsed dict directly.
+
+  Args:
+      prompt: Simple text prompt for the AI model. Cannot be used together
+          with messages parameter.
+      messages: Structured messages for multi-turn conversations.
+      system_prompt: System message to set the AI's behavior and context.
+      provider_model: Specific provider and model to use for this request.
+      parameters: Generation parameters (temperature, max_tokens, etc.).
+      tools: Tools to enable for this request.
+      connection_options: Connection options.
+
+  Returns:
+      The generated response as a parsed dict. If the provider returns
+      an error and suppress_provider_errors is True, returns the error
+      message string.
+
+  Example:
+      >>> import proxai as px
+      >>> result = px.generate_json(
+      ...   prompt="Return the capital of France as JSON"
+      ... )
+      >>> print(result)
+      {'capital': 'Paris', 'country': 'France'}
+  """
+  return get_default_proxai_client().generate_json(
+      prompt=prompt,
+      messages=messages,
+      system_prompt=system_prompt,
+      provider_model=provider_model,
+      parameters=parameters,
+      tools=tools,
+      connection_options=connection_options,
+  )
+
+
+def generate_pydantic(
+    prompt: str | None = None,
+    messages: types.MessagesParam | None = None,
+    system_prompt: str | None = None,
+    provider_model: types.ProviderModelParam | None = None,
+    parameters: types.ParameterType | None = None,
+    tools: List[types.ToolType] | None = None,
+    response_format: types.ResponseFormatParam | None = None,
+    connection_options: types.ConnectionOptions | None = None,
+) -> 'pydantic.BaseModel':
+  """Generates a structured pydantic response using the configured AI model.
+
+  Thin alias for generate() that resolves the default model and returns
+  the pydantic model instance directly.
+
+  Args:
+      prompt: Simple text prompt for the AI model. Cannot be used together
+          with messages parameter.
+      messages: Structured messages for multi-turn conversations.
+      system_prompt: System message to set the AI's behavior and context.
+      provider_model: Specific provider and model to use for this request.
+      parameters: Generation parameters (temperature, max_tokens, etc.).
+      tools: Tools to enable for this request.
+      response_format: The pydantic model class to validate against.
+      connection_options: Connection options.
+
+  Returns:
+      An instance of the pydantic model specified in response_format.
+      If the provider returns an error and suppress_provider_errors is
+      True, returns the error message string.
+
+  Example:
       >>> from pydantic import BaseModel
       >>> class City(BaseModel):
       ...   name: str
       ...   country: str
-      >>> result = px.generate_text(
-      ...   prompt="What is the capital of France?", response_format=City
+      >>> import proxai as px
+      >>> result = px.generate_pydantic(
+      ...   prompt="What is the capital of France?",
+      ...   response_format=City
       ... )
       >>> print(result.name)
       'Paris'
   """
-  return get_default_proxai_client().generate_text(
+  return get_default_proxai_client().generate_pydantic(
       prompt=prompt,
-      system=system,
       messages=messages,
-      max_tokens=max_tokens,
-      temperature=temperature,
-      stop=stop,
-      response_format=response_format,
-      web_search=web_search,
+      system_prompt=system_prompt,
       provider_model=provider_model,
-      feature_mapping_strategy=feature_mapping_strategy,
-      use_cache=use_cache,
-      unique_response_limit=unique_response_limit,
-      extensive_return=extensive_return,
-      suppress_provider_errors=suppress_provider_errors,
+      parameters=parameters,
+      tools=tools,
+      response_format=response_format,
+      connection_options=connection_options,
   )
 
 

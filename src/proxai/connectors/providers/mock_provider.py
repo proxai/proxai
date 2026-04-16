@@ -72,7 +72,7 @@ class MockProviderModelConnector(provider_connector.ProviderConnector):
     is_json = (
         fmt and (
             fmt.type == types.ResponseFormatType.JSON or
-            fmt.type == types.ResponseFormatType.JSON_SCHEMA
+            fmt.type == types.ResponseFormatType.PYDANTIC
         )
     )
     if is_text:
@@ -199,7 +199,7 @@ class MockSlowProviderModelConnector(provider_connector.ProviderConnector):
     is_json = (
         fmt and (
             fmt.type == types.ResponseFormatType.JSON or
-            fmt.type == types.ResponseFormatType.JSON_SCHEMA
+            fmt.type == types.ResponseFormatType.PYDANTIC
         )
     )
     if is_text:
