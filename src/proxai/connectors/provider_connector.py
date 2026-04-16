@@ -596,6 +596,36 @@ class ProviderConnector(state_controller.StateControlled):
         result_record=call_record.result,
         override_cache_value=connection_options.override_cache_value)
 
+  def _reconstruct_pydantic_from_cache(
+      self,
+      query_record: types.QueryRecord,
+      result_record: types.ResultRecord,
+  ) -> None:
+    """Reconstruct pydantic instances on a cached ResultRecord."""
+    if (not query_record.response_format or
+        query_record.response_format.type
+        != types.ResponseFormatType.PYDANTIC or
+        not query_record.response_format.pydantic_class):
+      return
+    pydantic_class = query_record.response_format.pydantic_class
+    if result_record.content:
+      for mc in result_record.content:
+        if (mc.pydantic_content and
+            mc.pydantic_content.instance_json_value is not None and
+            mc.pydantic_content.instance_value is None):
+          mc.pydantic_content.instance_value = (
+              pydantic_class.model_validate(
+                  mc.pydantic_content.instance_json_value))
+          mc.pydantic_content.class_value = pydantic_class
+    if (result_record.output_pydantic is None and
+        result_record.content):
+      for mc in reversed(result_record.content):
+        if (mc.pydantic_content and
+            mc.pydantic_content.instance_value is not None):
+          result_record.output_pydantic = (
+              mc.pydantic_content.instance_value)
+          break
+
   def generate(
       self,
       *,
@@ -664,6 +694,8 @@ class ProviderConnector(state_controller.StateControlled):
         connection_options=connection_options,
     )
     if isinstance(cached_result, types.ResultRecord):
+      self._reconstruct_pydantic_from_cache(
+          query_record=query_record, result_record=cached_result)
       connection_metadata.result_source = types.ResultSource.CACHE
       call_record = types.CallRecord(
           query=query_record,

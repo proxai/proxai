@@ -817,21 +817,11 @@ class AvailableModels(state_controller.StateControlled):
 
   def get_model(
       self, provider: str, model: str,
-      call_type: types.CallTypeParam = types.CallType.TEXT
   ) -> types.ProviderModelType:
     """Get a specific model by provider and model name."""
-    call_type = type_utils.check_call_type_param(call_type)
     provider_model_config = (
         self.model_configs_instance.get_provider_model_config((provider, model))
     )
-
-    if provider_model_config.metadata.call_type != call_type:
-      raise ValueError(
-          'Provider model call type mismatch.\n'
-          f'Call type: {call_type}\n'
-          f'Provider model config: {provider_model_config}'
-      )
-
     provider_model = provider_model_config.provider_model
 
     self._load_provider_keys()
