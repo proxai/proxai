@@ -36,6 +36,9 @@ class CallType(str, enum.Enum):
   OTHER = "OTHER"
 
 
+CallTypeParam = CallType | str
+
+
 ProviderNameType = str
 ModelNameType = str
 RawProviderModelIdentifierType = str

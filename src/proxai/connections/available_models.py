@@ -744,10 +744,11 @@ class AvailableModels(state_controller.StateControlled):
   def list_models(
       self, model_size: types.ModelSizeIdentifierType | None = None,
       features: types.FeatureTagParam | None = None,
-      call_type: types.CallType = types.CallType.TEXT,
+      call_type: types.CallTypeParam = types.CallType.TEXT,
       recommended_only: bool = True
   ) -> list[types.ProviderModelType]:
     """List all configured models matching the filters."""
+    call_type = type_utils.check_call_type_param(call_type)
     if model_size is not None:
       model_size = type_utils.check_model_size_identifier_type(model_size)
     if features is not None:
@@ -763,10 +764,11 @@ class AvailableModels(state_controller.StateControlled):
     return self._format_set(model_status.unprocessed_models)
 
   def list_providers(
-      self, call_type: types.CallType = types.CallType.TEXT,
+      self, call_type: types.CallTypeParam = types.CallType.TEXT,
       recommended_only: bool = True
   ) -> list[str]:
     """List all providers with available API keys."""
+    call_type = type_utils.check_call_type_param(call_type)
     model_status = self._fetch_all_models(
         call_type=call_type, raw_config_results_without_test=True,
         recommended_only=recommended_only
@@ -782,10 +784,11 @@ class AvailableModels(state_controller.StateControlled):
       provider: str,
       model_size: types.ModelSizeIdentifierType | None = None,
       features: types.FeatureTagParam | None = None,
-      call_type: types.CallType = types.CallType.TEXT,
+      call_type: types.CallTypeParam = types.CallType.TEXT,
       recommended_only: bool = True,
   ) -> list[types.ProviderModelType]:
     """List all models for a specific provider."""
+    call_type = type_utils.check_call_type_param(call_type)
     if model_size is not None:
       model_size = type_utils.check_model_size_identifier_type(model_size)
     if features is not None:
@@ -814,9 +817,10 @@ class AvailableModels(state_controller.StateControlled):
 
   def get_model(
       self, provider: str, model: str,
-      call_type: types.CallType = types.CallType.TEXT
+      call_type: types.CallTypeParam = types.CallType.TEXT
   ) -> types.ProviderModelType:
     """Get a specific model by provider and model name."""
+    call_type = type_utils.check_call_type_param(call_type)
     provider_model_config = (
         self.model_configs_instance.get_provider_model_config((provider, model))
     )
@@ -846,16 +850,17 @@ class AvailableModels(state_controller.StateControlled):
       model_size: types.ModelSizeIdentifierType | None = None,
       features: types.FeatureTagParam | None = None, verbose: bool = True,
       return_all: bool = False, clear_model_cache: bool = False,
-      call_type: types.CallType = types.CallType.TEXT,
+      call_type: types.CallTypeParam = types.CallType.TEXT,
       recommended_only: bool = True
   ) -> list[types.ProviderModelType] | types.ModelStatus:
     """List models verified to be working through API tests."""
-    if call_type != types.CallType.TEXT:
+    call_type = type_utils.check_call_type_param(call_type)
+    if call_type not in (types.CallType.TEXT, types.CallType.MULTI_MODAL):
       raise ValueError(
           'Working models are only supported for TEXT and MULTIMODAL '
           'because IMAGE, AUDIO, and VIDEO types are costly to test. '
           'Please use the list_models function instead and directly use the '
-          'models you need.'
+          'models you need. '
           f'Call type: {call_type}')
     if model_size is not None:
       model_size = type_utils.check_model_size_identifier_type(model_size)
@@ -892,16 +897,17 @@ class AvailableModels(state_controller.StateControlled):
 
   def list_working_providers(
       self, verbose: bool = True, clear_model_cache: bool = False,
-      call_type: types.CallType = types.CallType.TEXT,
+      call_type: types.CallTypeParam = types.CallType.TEXT,
       recommended_only: bool = True
   ) -> list[str]:
     """List providers with at least one working model."""
-    if call_type != types.CallType.TEXT:
+    call_type = type_utils.check_call_type_param(call_type)
+    if call_type not in (types.CallType.TEXT, types.CallType.MULTI_MODAL):
       raise ValueError(
           'Working models are only supported for TEXT and MULTIMODAL '
           'because IMAGE, AUDIO, and VIDEO types are costly to test. '
           'Please use the list_providers function instead and directly use the '
-          'models you need.'
+          'models you need. '
           f'Call type: {call_type}')
 
     providers_with_key: set[str] | None = None
@@ -937,16 +943,17 @@ class AvailableModels(state_controller.StateControlled):
       verbose: bool = True,
       return_all: bool = False,
       clear_model_cache: bool = False,
-      call_type: types.CallType = types.CallType.TEXT,
+      call_type: types.CallTypeParam = types.CallType.TEXT,
       recommended_only: bool = True,
   ) -> list[types.ProviderModelType] | types.ModelStatus:
     """List working models for a specific provider."""
-    if call_type != types.CallType.TEXT:
+    call_type = type_utils.check_call_type_param(call_type)
+    if call_type not in (types.CallType.TEXT, types.CallType.MULTI_MODAL):
       raise ValueError(
           'Working models are only supported for TEXT and MULTIMODAL '
           'because IMAGE, AUDIO, and VIDEO types are costly to test. '
           'Please use the list_provider_models function instead and directly use the '
-          'models you need.'
+          'models you need. '
           f'Call type: {call_type}')
     if model_size is not None:
       model_size = type_utils.check_model_size_identifier_type(model_size)
@@ -994,15 +1001,16 @@ class AvailableModels(state_controller.StateControlled):
   def get_working_model(
       self, provider: str, model: str, verbose: bool = False,
       clear_model_cache: bool = False,
-      call_type: types.CallType = types.CallType.TEXT
+      call_type: types.CallTypeParam = types.CallType.TEXT
   ) -> types.ProviderModelType:
     """Get a specific model after verifying it works."""
-    if call_type != types.CallType.TEXT:
+    call_type = type_utils.check_call_type_param(call_type)
+    if call_type not in (types.CallType.TEXT, types.CallType.MULTI_MODAL):
       raise ValueError(
           'Working models are only supported for TEXT and MULTIMODAL '
           'because IMAGE, AUDIO, and VIDEO types are costly to test. '
           'Please use the get_model function instead and directly use the '
-          'models you need.'
+          'models you need. '
           f'Call type: {call_type}')
 
     provider_model_config = (

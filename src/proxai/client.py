@@ -59,7 +59,7 @@ class ModelConnector:
       self,
       model_size: types.ModelSizeIdentifierType | None = None,
       features: types.FeatureTagParam | None = None,
-      call_type: types.CallType = types.CallType.TEXT,
+      call_type: types.CallTypeParam = types.CallType.TEXT,
       recommended_only: bool = True,
   ) -> list[types.ProviderModelType]:
     """Lists all configured models matching the specified criteria.
@@ -73,8 +73,9 @@ class ModelConnector:
             enum value ('small', 'medium', 'large', 'largest') or a string.
         features: Filter by required features. List of feature names that
             models must support (e.g., ['system', 'temperature']).
-        call_type: The type of API call to filter models for.
-            Defaults to GENERATE_TEXT.
+        call_type: The type of API call to filter models for. Can be a
+            CallType enum or a string (e.g., 'text', 'image').
+            Defaults to TEXT.
         recommended_only: If True, returns only recommended models curated
             by ProxAI. Set to False to include all available models.
             Defaults to True.
@@ -106,7 +107,7 @@ class ModelConnector:
 
   def list_providers(
       self,
-      call_type: types.CallType = types.CallType.TEXT,
+      call_type: types.CallTypeParam = types.CallType.TEXT,
       recommended_only: bool = True,
   ) -> list[str]:
     """Lists all providers that have API keys configured.
@@ -115,8 +116,9 @@ class ModelConnector:
     are set, indicating the provider can potentially be used.
 
     Args:
-        call_type: The type of API call to filter providers for.
-            Defaults to GENERATE_TEXT.
+        call_type: The type of API call to filter providers for. Can be a
+            CallType enum or a string (e.g., 'text', 'image').
+            Defaults to TEXT.
         recommended_only: If True, returns only providers with recommended
             models curated by ProxAI. Set to False to include all
             available providers. Defaults to True.
@@ -145,7 +147,7 @@ class ModelConnector:
       provider: str,
       model_size: types.ModelSizeIdentifierType | None = None,
       features: types.FeatureTagParam | None = None,
-      call_type: types.CallType = types.CallType.TEXT,
+      call_type: types.CallTypeParam = types.CallType.TEXT,
       recommended_only: bool = True,
   ) -> list[types.ProviderModelType]:
     """Lists all models available from a specific provider.
@@ -160,8 +162,9 @@ class ModelConnector:
             enum value or a string.
         features: Filter by required features. List of feature names that
             models must support.
-        call_type: The type of API call to filter models for.
-            Defaults to GENERATE_TEXT.
+        call_type: The type of API call to filter models for. Can be a
+            CallType enum or a string (e.g., 'text', 'image').
+            Defaults to TEXT.
         recommended_only: If True, returns only recommended models curated
             by ProxAI. Set to False to include all available models.
             Defaults to True.
@@ -196,7 +199,7 @@ class ModelConnector:
       self,
       provider: str,
       model: str,
-      call_type: types.CallType = types.CallType.TEXT,
+      call_type: types.CallTypeParam = types.CallType.TEXT,
   ) -> types.ProviderModelType:
     """Gets a specific model by provider and model name.
 
@@ -206,8 +209,9 @@ class ModelConnector:
     Args:
         provider: The provider name (e.g., 'openai', 'anthropic').
         model: The model name (e.g., 'gpt-4', 'claude-3-opus').
-        call_type: The type of API call the model should support.
-            Defaults to GENERATE_TEXT.
+        call_type: The type of API call the model should support. Can be a
+            CallType enum or a string (e.g., 'text', 'image').
+            Defaults to TEXT.
 
     Returns:
         types.ProviderModelType: The model information including provider,
@@ -240,7 +244,7 @@ class ModelConnector:
       verbose: bool = True,
       return_all: bool = False,
       clear_model_cache: bool = False,
-      call_type: types.CallType = types.CallType.TEXT,
+      call_type: types.CallTypeParam = types.CallType.TEXT,
       recommended_only: bool = True,
   ) -> list[types.ProviderModelType] | types.ModelStatus:
     """Lists models that have been verified to be working.
@@ -257,7 +261,8 @@ class ModelConnector:
             failed, and filtered models. Defaults to False.
         clear_model_cache: If True, clears the model cache and retests
             all models. Defaults to False.
-        call_type: The type of API call to test. Defaults to GENERATE_TEXT.
+        call_type: The type of API call to test. Can be a CallType enum
+            or a string (e.g., 'text'). Defaults to TEXT.
         recommended_only: If True, returns only recommended models curated
             by ProxAI. Set to False to include all available models.
             Defaults to True.
@@ -290,7 +295,7 @@ class ModelConnector:
       self,
       verbose: bool = True,
       clear_model_cache: bool = False,
-      call_type: types.CallType = types.CallType.TEXT,
+      call_type: types.CallTypeParam = types.CallType.TEXT,
       recommended_only: bool = True,
   ) -> list[str]:
     """Lists providers that have at least one working model.
@@ -303,7 +308,8 @@ class ModelConnector:
             Defaults to True.
         clear_model_cache: If True, clears the model cache and retests
             all models. Defaults to False.
-        call_type: The type of API call to test. Defaults to GENERATE_TEXT.
+        call_type: The type of API call to test. Can be a CallType enum
+            or a string (e.g., 'text'). Defaults to TEXT.
         recommended_only: If True, returns only providers with recommended
             models curated by ProxAI. Set to False to include all
             available providers. Defaults to True.
@@ -338,7 +344,7 @@ class ModelConnector:
       verbose: bool = True,
       return_all: bool = False,
       clear_model_cache: bool = False,
-      call_type: types.CallType = types.CallType.TEXT,
+      call_type: types.CallTypeParam = types.CallType.TEXT,
       recommended_only: bool = True,
   ) -> list[types.ProviderModelType] | types.ModelStatus:
     """Lists working models from a specific provider.
@@ -356,7 +362,8 @@ class ModelConnector:
             results. Defaults to False.
         clear_model_cache: If True, clears the model cache and retests
             models. Defaults to False.
-        call_type: The type of API call to test. Defaults to GENERATE_TEXT.
+        call_type: The type of API call to test. Can be a CallType enum
+            or a string (e.g., 'text'). Defaults to TEXT.
         recommended_only: If True, returns only recommended models curated
             by ProxAI. Set to False to include all available models.
             Defaults to True.
@@ -401,7 +408,7 @@ class ModelConnector:
       model: str,
       verbose: bool = False,
       clear_model_cache: bool = False,
-      call_type: types.CallType = types.CallType.TEXT,
+      call_type: types.CallTypeParam = types.CallType.TEXT,
   ) -> types.ProviderModelType:
     """Verifies and returns a specific model if it's working.
 
@@ -415,7 +422,8 @@ class ModelConnector:
             Defaults to False.
         clear_model_cache: If True, clears the model cache and retests
             the model. Defaults to False.
-        call_type: The type of API call to test. Defaults to GENERATE_TEXT.
+        call_type: The type of API call to test. Can be a CallType enum
+            or a string (e.g., 'text'). Defaults to TEXT.
 
     Returns:
         types.ProviderModelType: The model information if the model is
