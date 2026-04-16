@@ -111,7 +111,7 @@ class DeepSeekConnector(provider_connector.ProviderConnector):
 
     response, result_record = self._safe_provider_query(create)
     if result_record.error is not None:
-      return result_record
+      return types.ExecutorResult(result_record=result_record)
 
     parsed = []
     message = response.choices[0].message
@@ -135,7 +135,8 @@ class DeepSeekConnector(provider_connector.ProviderConnector):
     )
 
     result_record.content = parsed
-    return result_record
+    return types.ExecutorResult(
+        result_record=result_record, raw_provider_response=response)
 
   ENDPOINT_EXECUTORS = {
       'chat.completions.create': '_chat_completions_create_executor',

@@ -162,7 +162,7 @@ class GrokConnector(provider_connector.ProviderConnector):
         functools.partial(
             self._run_chat, kwargs, messages, pydantic_class))
     if result_record.error is not None:
-      return result_record
+      return types.ExecutorResult(result_record=result_record)
 
     sample_response, parsed = response
 
@@ -218,7 +218,8 @@ class GrokConnector(provider_connector.ProviderConnector):
       )
 
     result_record.content = parsed_content
-    return result_record
+    return types.ExecutorResult(
+        result_record=result_record, raw_provider_response=response)
 
   ENDPOINT_EXECUTORS = {
       'chat.create': '_chat_create_executor',

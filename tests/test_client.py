@@ -599,3 +599,90 @@ class TestModelConnector:
     assert px_client1.models is not px_client2.models
     assert px_client1.models._client_getter() is px_client1
     assert px_client2.models._client_getter() is px_client2
+
+
+class TestKeepRawProviderResponse:
+  """Test the client-level keep_raw_provider_response escape hatch."""
+
+  def test_default_is_false(self):
+    px_client = _create_client_from_params()
+    assert px_client.keep_raw_provider_response is False
+    assert px_client.get_current_options().keep_raw_provider_response is False
+
+  def test_params_default_is_false(self):
+    params = client.ProxAIClientParams()
+    assert params.keep_raw_provider_response is False
+
+  def test_init_from_params_propagates_flag(self):
+    px_client = _create_client_from_params(keep_raw_provider_response=True)
+    assert px_client.keep_raw_provider_response is True
+    assert px_client.get_current_options().keep_raw_provider_response is True
+
+  def test_direct_kwargs_propagates_flag(self):
+    px_client = client.ProxAIClient(keep_raw_provider_response=True)
+    assert px_client.keep_raw_provider_response is True
+
+  def test_flag_flows_to_provider_connector(self):
+    px_client = _create_client_from_params(keep_raw_provider_response=True)
+    px_client._available_models_instance.run_type = types.RunType.TEST
+    connector = px_client._available_models_instance.get_model_connector(
+        provider_model_identifier=("mock_provider", "mock_model")
+    )
+    assert connector.keep_raw_provider_response is True
+
+  def test_flag_off_flows_to_provider_connector(self):
+    px_client = _create_client_from_params()
+    px_client._available_models_instance.run_type = types.RunType.TEST
+    connector = px_client._available_models_instance.get_model_connector(
+        provider_model_identifier=("mock_provider", "mock_model")
+    )
+    assert not connector.keep_raw_provider_response
+
+  def test_mutual_exclusion_via_direct_kwargs_raises(self):
+    cache_path, _ = _get_path_dir("test_cache_keep_raw_a")
+    cache_options = types.CacheOptions(cache_path=cache_path)
+    with pytest.raises(
+        ValueError,
+        match="keep_raw_provider_response=True is incompatible with "
+        "cache_options",
+    ):
+      client.ProxAIClient(
+          cache_options=cache_options,
+          keep_raw_provider_response=True,
+      )
+
+  def test_mutual_exclusion_via_init_from_params_raises(self):
+    cache_path, _ = _get_path_dir("test_cache_keep_raw_b")
+    cache_options = types.CacheOptions(cache_path=cache_path)
+    with pytest.raises(
+        ValueError,
+        match="keep_raw_provider_response=True is incompatible with "
+        "cache_options",
+    ):
+      _create_client_from_params(
+          cache_options=cache_options,
+          keep_raw_provider_response=True,
+      )
+
+  def test_mutual_exclusion_via_init_from_state_raises(self):
+    cache_path, _ = _get_path_dir("test_cache_keep_raw_c")
+    state = types.ProxAIClientState(
+        run_type=types.RunType.PRODUCTION,
+        cache_options=types.CacheOptions(cache_path=cache_path),
+        keep_raw_provider_response=True,
+    )
+    with pytest.raises(
+        ValueError,
+        match="keep_raw_provider_response=True is incompatible with "
+        "cache_options",
+    ):
+      client.ProxAIClient(init_from_state=state)
+
+  def test_mutual_exclusion_does_not_fire_when_flag_off(self):
+    cache_path, _ = _get_path_dir("test_cache_keep_raw_d")
+    cache_options = types.CacheOptions(cache_path=cache_path)
+    px_client = _create_client_from_params(
+        cache_options=cache_options, keep_raw_provider_response=False
+    )
+    assert px_client.cache_options.cache_path == cache_path
+    assert px_client.keep_raw_provider_response is False

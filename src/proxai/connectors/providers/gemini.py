@@ -161,7 +161,7 @@ class GeminiConnector(provider_connector.ProviderConnector):
     response, result_record = self._safe_provider_query(create)
     response: genai_types.GenerateContentResponse = response
     if result_record.error is not None:
-      return result_record
+      return types.ExecutorResult(result_record=result_record)
 
     if response.candidates:
       result_record.content = []
@@ -221,7 +221,8 @@ class GeminiConnector(provider_connector.ProviderConnector):
                     ),
                 )
             )
-    return result_record
+    return types.ExecutorResult(
+        result_record=result_record, raw_provider_response=response)
 
   def _models_generate_videos_executor(
       self, query_record: types.QueryRecord) -> types.Response:
@@ -235,14 +236,14 @@ class GeminiConnector(provider_connector.ProviderConnector):
     response, result_record = self._safe_provider_query(create)
     response: genai_types.GenerateVideosOperation = response
     if result_record.error is not None:
-      return result_record
+      return types.ExecutorResult(result_record=result_record)
     
     while not response.done:
       time.sleep(5)
       operation_executor = functools.partial(self.api.operations.get, response)
       response, result_record = self._safe_provider_query(operation_executor)
       if result_record.error is not None:
-        return result_record
+        return types.ExecutorResult(result_record=result_record)
 
     generated_video = response.response.generated_videos[0]
     self.api.files.download(file=generated_video.video)
@@ -254,7 +255,8 @@ class GeminiConnector(provider_connector.ProviderConnector):
           data=video_bytes,
       )
     ]
-    return result_record
+    return types.ExecutorResult(
+        result_record=result_record, raw_provider_response=response)
 
   ENDPOINT_EXECUTORS = {
     'models.generate_content': '_models_generate_content_executor',

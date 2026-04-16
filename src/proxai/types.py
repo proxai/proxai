@@ -416,6 +416,7 @@ class RunOptions:
   model_test_timeout: int | None = None
   feature_mapping_strategy: FeatureMappingStrategy | None = None
   suppress_provider_errors: bool | None = None
+  keep_raw_provider_response: bool | None = None
 
 
 class ResponseFormatType(str, enum.Enum):
@@ -596,6 +597,14 @@ class ResultRecord:
   timestamp: TimeStampType | None = None
 
 
+@dataclasses.dataclass
+class ExecutorResult:
+  """Return type for provider endpoint executors."""
+
+  result_record: ResultRecord
+  raw_provider_response: Any | None = None
+
+
 class ResultSource(str, enum.Enum):
   """Origin of the response data."""
 
@@ -624,12 +633,26 @@ class ConnectionMetadata:
 
 
 @dataclasses.dataclass
+class DebugInfo:
+  """Debug-only sidecar fields attached to a CallRecord.
+
+  None of the fields here are part of ProxAI's stable contract. They exist
+  as escape hatches for ad-hoc debugging and may change shape or disappear
+  without notice. They are intentionally never serialized to the query
+  cache or to ProxDash.
+  """
+
+  raw_provider_response: Any | None = None
+
+
+@dataclasses.dataclass
 class CallRecord:
   """Complete record of a call to a provider."""
 
   query: QueryRecord | None = None
   result: ResultRecord | None = None
   connection: ConnectionMetadata | None = None
+  debug: DebugInfo | None = None
 
 
 @dataclasses.dataclass
@@ -778,6 +801,7 @@ class ProviderState(StateContainer):
   logging_options: LoggingOptions | None = None
   proxdash_connection: ProxDashConnectionState | None = None
   provider_token_value_map: ProviderTokenValueMap | None = None
+  keep_raw_provider_response: bool | None = None
 
 
 @dataclasses.dataclass
@@ -824,6 +848,7 @@ class ProxAIClientState(StateContainer):
 
   feature_mapping_strategy: FeatureMappingStrategy | None = None
   suppress_provider_errors: bool | None = None
+  keep_raw_provider_response: bool | None = None
   allow_multiprocessing: bool | None = None
   model_test_timeout: int | None = None
 

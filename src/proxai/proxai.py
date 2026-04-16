@@ -43,6 +43,7 @@ def connect(
     feature_mapping_strategy: (types.FeatureMappingStrategy |
                                None) = types.FeatureMappingStrategy.BEST_EFFORT,
     suppress_provider_errors: bool | None = False,
+    keep_raw_provider_response: bool | None = False,
 ) -> None:
   """Initializes the default ProxAI client with the specified configuration.
 
@@ -71,6 +72,13 @@ def connect(
           matches. Defaults to BEST_EFFORT.
       suppress_provider_errors: If True, provider errors are returned as
           strings instead of raising exceptions. Defaults to False.
+      keep_raw_provider_response: Debug-only escape hatch. If True, attaches
+          the raw provider SDK response object to
+          ``call_record.debug.raw_provider_response`` for every successful
+          call. The field is not part of ProxAI's stable contract, is not
+          serialized to the query cache or ProxDash, and is mutually
+          exclusive with ``cache_options`` (constructing a client with
+          both raises ``ValueError``). Defaults to False.
 
   Returns:
       None
@@ -92,6 +100,7 @@ def connect(
       model_test_timeout=model_test_timeout,
       feature_mapping_strategy=feature_mapping_strategy,
       suppress_provider_errors=suppress_provider_errors,
+      keep_raw_provider_response=keep_raw_provider_response,
   )
   _DEFAULT_CLIENT = client.ProxAIClient(init_from_params=proxai_client_params)
 
