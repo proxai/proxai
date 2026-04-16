@@ -124,6 +124,31 @@ def check_model_size_identifier_type(
   )
 
 
+def check_call_type_param(
+    call_type: types.CallTypeParam
+) -> types.CallType:
+  """Check if call type param is supported."""
+  if isinstance(call_type, types.CallType):
+    return call_type
+  elif isinstance(call_type, str):
+    normalized = call_type.upper()
+    valid_values = [ct.value for ct in types.CallType]
+    if normalized not in valid_values:
+      valid_strings = ', '.join(ct.value.lower() for ct in types.CallType)
+      raise ValueError(
+          'Call type should be proxai.types.CallType or one of the '
+          f'following strings: {valid_strings}\n'
+          f'Invalid call type: {call_type}'
+      )
+    return types.CallType(normalized)
+  raise ValueError(
+      'Call type should be proxai.types.CallType or one of the '
+      'following strings: text, image, audio, video, multi_modal, other\n'
+      f'Invalid call type: {call_type}\n'
+      f'Type: {type(call_type)}'
+  )
+
+
 def create_response_format(
     response_format: types.ResponseFormatParam | None = None
 ) -> types.ResponseFormat:

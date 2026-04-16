@@ -838,11 +838,17 @@ def list_models_test():
   if _IMAGE_MODEL[0]:
     models = px.models.list_models(call_type=types.CallType.IMAGE)
     assert len(models) > 0
+    models = px.models.list_models(call_type='image')
+    assert len(models) > 0
   if _AUDIO_MODEL[0]:
     models = px.models.list_models(call_type=types.CallType.AUDIO)
     assert len(models) > 0
+    models = px.models.list_models(call_type='audio')
+    assert len(models) > 0
   if _VIDEO_MODEL[0]:
     models = px.models.list_models(call_type=types.CallType.VIDEO)
+    assert len(models) > 0
+    models = px.models.list_models(call_type='video')
     assert len(models) > 0
 
   if _PROVIDER == 'openai' or _PROVIDER == 'gemini':
