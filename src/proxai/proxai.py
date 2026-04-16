@@ -280,6 +280,81 @@ def generate_pydantic(
   )
 
 
+def generate_image(
+    prompt: str | None = None,
+    messages: types.MessagesParam | None = None,
+    system_prompt: str | None = None,
+    provider_model: types.ProviderModelParam | None = None,
+    parameters: types.ParameterType | None = None,
+    tools: List[types.ToolType] | None = None,
+    connection_options: types.ConnectionOptions | None = None,
+):
+  """Generates an image using the configured AI model.
+
+  Thin alias for generate() that resolves the default model, sets
+  response_format to IMAGE, and returns the image content directly.
+  """
+  return get_default_proxai_client().generate_image(
+      prompt=prompt,
+      messages=messages,
+      system_prompt=system_prompt,
+      provider_model=provider_model,
+      parameters=parameters,
+      tools=tools,
+      connection_options=connection_options,
+  )
+
+
+def generate_audio(
+    prompt: str | None = None,
+    messages: types.MessagesParam | None = None,
+    system_prompt: str | None = None,
+    provider_model: types.ProviderModelParam | None = None,
+    parameters: types.ParameterType | None = None,
+    tools: List[types.ToolType] | None = None,
+    connection_options: types.ConnectionOptions | None = None,
+):
+  """Generates audio using the configured AI model.
+
+  Thin alias for generate() that resolves the default model, sets
+  response_format to AUDIO, and returns the audio content directly.
+  """
+  return get_default_proxai_client().generate_audio(
+      prompt=prompt,
+      messages=messages,
+      system_prompt=system_prompt,
+      provider_model=provider_model,
+      parameters=parameters,
+      tools=tools,
+      connection_options=connection_options,
+  )
+
+
+def generate_video(
+    prompt: str | None = None,
+    messages: types.MessagesParam | None = None,
+    system_prompt: str | None = None,
+    provider_model: types.ProviderModelParam | None = None,
+    parameters: types.ParameterType | None = None,
+    tools: List[types.ToolType] | None = None,
+    connection_options: types.ConnectionOptions | None = None,
+):
+  """Generates video using the configured AI model.
+
+  Thin alias for generate() that resolves the default model, sets
+  response_format to VIDEO, and returns the video content directly.
+  """
+  return get_default_proxai_client().generate_video(
+      prompt=prompt,
+      messages=messages,
+      system_prompt=system_prompt,
+      provider_model=provider_model,
+      parameters=parameters,
+      tools=tools,
+      connection_options=connection_options,
+  )
+
+
 def set_model(
     provider_model: types.ProviderModelIdentifierType | None = None,
     generate_text: types.ProviderModelIdentifierType | None = None,

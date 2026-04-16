@@ -1,3 +1,7 @@
+import os
+import subprocess
+import tempfile
+import urllib.request
 from pprint import pprint
 from pydantic import BaseModel
 import proxai as px
@@ -366,11 +370,101 @@ def plain_alias_function_use():
       provider_model=('gemini', 'gemini-3-flash-preview'))
   print(response)
 
+def image_alias_function_use():
+  print('> image_alias_function_use')
+
+  def _open_image_response(response: types.MessageContent | None):
+    if not response:
+      print('> No response')
+      return
+
+    suffix = '.png'
+    if response.media_type and '/' in response.media_type:
+      ext = response.media_type.split('/', 1)[1]
+      if ext == 'jpeg':
+        ext = 'jpg'
+      suffix = f'.{ext}'
+
+    tmp_path = None
+    try:
+      if response.data:
+        with tempfile.NamedTemporaryFile(
+            delete=False, suffix=suffix) as tmp:
+          tmp.write(response.data)
+          tmp_path = tmp.name
+      elif response.source:
+        with tempfile.NamedTemporaryFile(
+            delete=False, suffix=suffix) as tmp:
+          with urllib.request.urlopen(response.source) as http_resp:
+            tmp.write(http_resp.read())
+          tmp_path = tmp.name
+      else:
+        print('> No image data or source')
+        return
+
+      print(f'> Opening image preview: {tmp_path}')
+      subprocess.run(
+          ['qlmanage', '-p', tmp_path],
+          stdout=subprocess.DEVNULL,
+          stderr=subprocess.DEVNULL,
+          check=False)
+    finally:
+      if tmp_path and os.path.exists(tmp_path):
+        os.unlink(tmp_path)
+
+  print('* generate_image:')
+  print('OpenAI:')
+  response = px.generate_image(
+      prompt='Make funny cartoon cat in living room.',
+      provider_model=('openai', 'dall-e-3'))
+  _open_image_response(response)
+
+  print('Gemini:')
+  response = px.generate_image(
+      prompt='Make funny cartoon cat in living room.',
+      provider_model=('gemini', 'gemini-2.5-flash-image'))
+  _open_image_response(response)
+
+
+def set_model_use():
+  print('> set_model_use')
+
+  print('* set_model text models:')
+
+  print('OpenAI:')
+  px.set_model(('openai', 'gpt-4o'))
+  response = px.generate_text(
+      prompt='Which provider model are you?')
+  print(response)
+  assert 'openai' in response.lower()
+
+  print('Gemini:')
+  px.set_model(('gemini', 'gemini-3-flash-preview'))
+  response = px.generate_text(
+      prompt='Which provider model are you?')
+  print(response)
+  assert 'gemini' in response.lower() or 'google' in response.lower()
+
+  # print('* set_model image models:')
+  # print('OpenAI:')
+  # px.set_model(provider_model=('openai', 'dall-e-3'), )
+  # response = px.generate_image(
+  #     prompt='Make funny cartoon cat in living room.')
+  # print(response)
+
+  # print('Gemini:')
+  # px.set_model(('gemini', 'gemini-2.5-flash-image'))
+  # response = px.generate_image(
+  #     prompt='Make funny cartoon cat in living room.')
+  # print(response)
+
 
 def main():
   register_models(px.get_default_proxai_client())
   list_models_examples()
-  plain_alias_function_use()
+  # plain_alias_function_use()
+  image_alias_function_use()
+  # set_model_use()
 
 
 if __name__ == "__main__":

@@ -1428,6 +1428,162 @@ class ProxAIClient(state_controller.StateControlled):
 
     return call_record.result.output_pydantic
 
+  def generate_image(
+      self,
+      prompt: str | None = None,
+      messages: types.MessagesParam | None = None,
+      system_prompt: str | None = None,
+      provider_model: types.ProviderModelParam | None = None,
+      parameters: types.ParameterType | None = None,
+      tools: List[types.ToolType] | None = None,
+      connection_options: types.ConnectionOptions | None = None,
+  ):
+    """Generates an image using the configured AI model.
+
+    Thin alias for generate() that resolves the default model, sets
+    response_format to IMAGE, and returns the image content directly.
+
+    Args:
+        prompt: Text prompt describing the desired image.
+        messages: Structured messages for multi-turn conversations.
+        system_prompt: System message to set the AI's behavior and context.
+        provider_model: Specific provider and model to use for this request.
+        parameters: Generation parameters.
+        tools: Tools to enable for this request.
+        connection_options: Connection options.
+
+    Returns:
+        The generated image content. If the provider returns an error
+        and suppress_provider_errors is True, returns the error message
+        string.
+    """
+    if provider_model is None:
+      provider_model = self.get_default_provider_model(
+          call_type=types.CallType.IMAGE)
+
+    response_format = types.ResponseFormat(
+        type=types.ResponseFormatType.IMAGE)
+
+    call_record = self.generate(
+        prompt=prompt,
+        messages=messages,
+        system_prompt=system_prompt,
+        provider_model=provider_model,
+        parameters=parameters,
+        tools=tools,
+        response_format=response_format,
+        connection_options=connection_options,
+    )
+
+    if call_record.result.status == types.ResultStatusType.FAILED:
+      return call_record.result.error
+
+    return call_record.result.output_image
+
+  def generate_audio(
+      self,
+      prompt: str | None = None,
+      messages: types.MessagesParam | None = None,
+      system_prompt: str | None = None,
+      provider_model: types.ProviderModelParam | None = None,
+      parameters: types.ParameterType | None = None,
+      tools: List[types.ToolType] | None = None,
+      connection_options: types.ConnectionOptions | None = None,
+  ):
+    """Generates audio using the configured AI model.
+
+    Thin alias for generate() that resolves the default model, sets
+    response_format to AUDIO, and returns the audio content directly.
+
+    Args:
+        prompt: Text prompt describing the desired audio.
+        messages: Structured messages for multi-turn conversations.
+        system_prompt: System message to set the AI's behavior and context.
+        provider_model: Specific provider and model to use for this request.
+        parameters: Generation parameters.
+        tools: Tools to enable for this request.
+        connection_options: Connection options.
+
+    Returns:
+        The generated audio content. If the provider returns an error
+        and suppress_provider_errors is True, returns the error message
+        string.
+    """
+    if provider_model is None:
+      provider_model = self.get_default_provider_model(
+          call_type=types.CallType.AUDIO)
+
+    response_format = types.ResponseFormat(
+        type=types.ResponseFormatType.AUDIO)
+
+    call_record = self.generate(
+        prompt=prompt,
+        messages=messages,
+        system_prompt=system_prompt,
+        provider_model=provider_model,
+        parameters=parameters,
+        tools=tools,
+        response_format=response_format,
+        connection_options=connection_options,
+    )
+
+    if call_record.result.status == types.ResultStatusType.FAILED:
+      return call_record.result.error
+
+    return call_record.result.output_audio
+
+  def generate_video(
+      self,
+      prompt: str | None = None,
+      messages: types.MessagesParam | None = None,
+      system_prompt: str | None = None,
+      provider_model: types.ProviderModelParam | None = None,
+      parameters: types.ParameterType | None = None,
+      tools: List[types.ToolType] | None = None,
+      connection_options: types.ConnectionOptions | None = None,
+  ):
+    """Generates video using the configured AI model.
+
+    Thin alias for generate() that resolves the default model, sets
+    response_format to VIDEO, and returns the video content directly.
+
+    Args:
+        prompt: Text prompt describing the desired video.
+        messages: Structured messages for multi-turn conversations.
+        system_prompt: System message to set the AI's behavior and context.
+        provider_model: Specific provider and model to use for this request.
+        parameters: Generation parameters.
+        tools: Tools to enable for this request.
+        connection_options: Connection options.
+
+    Returns:
+        The generated video content. If the provider returns an error
+        and suppress_provider_errors is True, returns the error message
+        string.
+    """
+    if provider_model is None:
+      provider_model = self.get_default_provider_model(
+          call_type=types.CallType.VIDEO)
+
+    response_format = types.ResponseFormat(
+        type=types.ResponseFormatType.VIDEO)
+
+    call_record = self.generate(
+        prompt=prompt,
+        messages=messages,
+        system_prompt=system_prompt,
+        provider_model=provider_model,
+        parameters=parameters,
+        tools=tools,
+        response_format=response_format,
+        connection_options=connection_options,
+    )
+
+    if call_record.result.status == types.ResultStatusType.FAILED:
+      return call_record.result.error
+
+    return call_record.result.output_video
+
   def get_current_options(
       self,
       json: bool = False,

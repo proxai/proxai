@@ -950,17 +950,11 @@ def encode_result_record(
   if result_record.output_text is not None:
     record['output_text'] = result_record.output_text
   if result_record.output_image is not None:
-    record['output_image'] = base64.b64encode(
-        result_record.output_image
-    ).decode('utf-8')
+    record['output_image'] = result_record.output_image.to_dict()
   if result_record.output_audio is not None:
-    record['output_audio'] = base64.b64encode(
-        result_record.output_audio
-    ).decode('utf-8')
+    record['output_audio'] = result_record.output_audio.to_dict()
   if result_record.output_video is not None:
-    record['output_video'] = base64.b64encode(
-        result_record.output_video
-    ).decode('utf-8')
+    record['output_video'] = result_record.output_video.to_dict()
   if result_record.output_json is not None:
     record['output_json'] = result_record.output_json
   if result_record.output_pydantic is not None:
@@ -1000,11 +994,14 @@ def decode_result_record(
     result_record.role = types.MessageRoleType(record['role'])
   result_record.output_text = record.get('output_text')
   if 'output_image' in record:
-    result_record.output_image = base64.b64decode(record['output_image'])
+    result_record.output_image = message_content.MessageContent.from_dict(
+        record['output_image'])
   if 'output_audio' in record:
-    result_record.output_audio = base64.b64decode(record['output_audio'])
+    result_record.output_audio = message_content.MessageContent.from_dict(
+        record['output_audio'])
   if 'output_video' in record:
-    result_record.output_video = base64.b64decode(record['output_video'])
+    result_record.output_video = message_content.MessageContent.from_dict(
+        record['output_video'])
   if 'output_json' in record:
     result_record.output_json = record['output_json']
   if 'content' in record:

@@ -767,13 +767,26 @@ def _get_result_record_options():
           'output_text': 'Hello, world!'
       },
       {
-          'output_image': b'image_data_bytes'
+          'output_image':
+              message_content.MessageContent(
+                  type=message_content.ContentType.IMAGE,
+                  source='https://example.com/img.png',
+              )
       },
       {
-          'output_audio': b'audio_data_bytes'
+          'output_audio':
+              message_content.MessageContent(
+                  type=message_content.ContentType.AUDIO,
+                  data=b'audio_data_bytes',
+                  media_type='audio/mpeg',
+              )
       },
       {
-          'output_video': b'video_data_bytes'
+          'output_video':
+              message_content.MessageContent(
+                  type=message_content.ContentType.VIDEO,
+                  source='https://example.com/video.mp4',
+              )
       },
       {
           'output_json': {'key': 'value'}
@@ -824,7 +837,11 @@ def _get_result_record_options():
           'status': types.ResultStatusType.SUCCESS,
           'role': types.MessageRoleType.ASSISTANT,
           'output_text': 'Full response',
-          'output_image': b'img_bytes',
+          'output_image':
+              message_content.MessageContent(
+                  type=message_content.ContentType.IMAGE,
+                  source='https://example.com/img.png',
+              ),
           'output_json': {'result': 'ok'},
           'content': [
               message_content.MessageContent(
