@@ -932,9 +932,9 @@ CallRecord(
 ### 3.13 Image response
 
 `output_image` is set by the adapter to the `MessageContent` block
-itself (not raw bytes), even though the type annotation on
-`ResultRecord.output_image` is `bytes | None` — the runtime shape is
-`MessageContent`. Read `content` if you need the canonical view.
+itself — typed `MessageContent | None` on both `ResultRecord` and
+`ChoiceType`. Read `content` if you need the canonical view;
+`output_image` is a convenience shortcut to the last IMAGE block.
 
 ```python
 CallRecord(

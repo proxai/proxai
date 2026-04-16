@@ -2,6 +2,8 @@
 
 import pytest
 
+from proxai.chat.message_content import ContentType
+from proxai.chat.message_content import MessageContent
 import proxai.types as types
 from proxai.connectors.result_adapter import ResultAdapter
 
@@ -145,3 +147,82 @@ class TestGetFeatureTagsSupportLevel:
     )
     all_tags = list(types.FeatureTagType)
     assert adapter.get_feature_tags_support_level(all_tags) == S
+
+
+# ===================================================================
+# _adapt_output_values — media output projection
+# ===================================================================
+
+class TestAdaptOutputValues:
+  """Tests for _adapt_output_values on ResultAdapter."""
+
+  def _make_adapter(self) -> ResultAdapter:
+    return _adapter(
+        prompt=S, text=S, image=S, audio=S, video=S)
+
+  def test_image_content_populates_output_image(self):
+    adapter = self._make_adapter()
+    img = MessageContent(
+        type=ContentType.IMAGE,
+        source='https://example.com/img.png',
+    )
+    result = types.ResultRecord(content=[img])
+    adapter._adapt_output_values(result)
+    assert result.output_image is img
+
+  def test_audio_content_populates_output_audio(self):
+    adapter = self._make_adapter()
+    audio = MessageContent(
+        type=ContentType.AUDIO,
+        data=b'audio_bytes',
+        media_type='audio/mpeg',
+    )
+    result = types.ResultRecord(content=[audio])
+    adapter._adapt_output_values(result)
+    assert result.output_audio is audio
+
+  def test_video_content_populates_output_video(self):
+    adapter = self._make_adapter()
+    video = MessageContent(
+        type=ContentType.VIDEO,
+        source='https://example.com/video.mp4',
+    )
+    result = types.ResultRecord(content=[video])
+    adapter._adapt_output_values(result)
+    assert result.output_video is video
+
+  def test_mixed_text_and_image(self):
+    adapter = self._make_adapter()
+    text = MessageContent(type=ContentType.TEXT, text='hello')
+    img = MessageContent(
+        type=ContentType.IMAGE,
+        source='https://example.com/img.png',
+    )
+    result = types.ResultRecord(content=[text, img])
+    adapter._adapt_output_values(result)
+    assert result.output_text == 'hello'
+    assert result.output_image is img
+
+  def test_multiple_images_first_wins(self):
+    """Reversed scan means the first content block overwrites later ones."""
+    adapter = self._make_adapter()
+    img1 = MessageContent(
+        type=ContentType.IMAGE,
+        source='https://example.com/first.png',
+    )
+    img2 = MessageContent(
+        type=ContentType.IMAGE,
+        source='https://example.com/second.png',
+    )
+    result = types.ResultRecord(content=[img1, img2])
+    adapter._adapt_output_values(result)
+    assert result.output_image is img1
+
+  def test_no_media_leaves_output_none(self):
+    adapter = self._make_adapter()
+    text = MessageContent(type=ContentType.TEXT, text='hello')
+    result = types.ResultRecord(content=[text])
+    adapter._adapt_output_values(result)
+    assert result.output_image is None
+    assert result.output_audio is None
+    assert result.output_video is None
