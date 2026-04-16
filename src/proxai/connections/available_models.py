@@ -36,6 +36,7 @@ class AvailableModelsParams:
   proxdash_connection: proxdash.ProxDashConnection | None = None
   allow_multiprocessing: bool | None = None
   model_test_timeout: int | None = None
+  keep_raw_provider_response: bool | None = None
 
 
 class AvailableModels(state_controller.StateControlled):
@@ -79,6 +80,9 @@ class AvailableModels(state_controller.StateControlled):
       # self.proxdash_connection = init_from_params.proxdash_connection
       self.allow_multiprocessing = init_from_params.allow_multiprocessing
       self.model_test_timeout = init_from_params.model_test_timeout
+      self.keep_raw_provider_response = (
+          init_from_params.keep_raw_provider_response
+      )
       self.proxdash_provider_api_keys = (
           self.proxdash_connection.get_provider_api_keys()
           if self.proxdash_connection else {}
@@ -131,6 +135,9 @@ class AvailableModels(state_controller.StateControlled):
     init_from_params.proxdash_connection = self.proxdash_connection
     init_from_params.provider_token_value_map = self.providers_with_key.get(
         provider, {}
+    )
+    init_from_params.keep_raw_provider_response = (
+        getattr(self, 'keep_raw_provider_response', None)
     )
 
     self.provider_connectors[provider] = connector()

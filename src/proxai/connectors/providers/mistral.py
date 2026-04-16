@@ -180,7 +180,7 @@ class MistralConnector(provider_connector.ProviderConnector):
 
     response, result_record = self._safe_provider_query(create)
     if result_record.error is not None:
-      return result_record
+      return types.ExecutorResult(result_record=result_record)
 
     result_record.content = self._parse_message_content(
         response.choices[0].message.content)
@@ -193,7 +193,8 @@ class MistralConnector(provider_connector.ProviderConnector):
                 content=self._parse_message_content(choice.message.content)
             )
         )
-    return result_record
+    return types.ExecutorResult(
+        result_record=result_record, raw_provider_response=response)
 
   def _chat_parse_executor(
       self,
@@ -210,7 +211,7 @@ class MistralConnector(provider_connector.ProviderConnector):
 
     response, result_record = self._safe_provider_query(create)
     if result_record.error is not None:
-      return result_record
+      return types.ExecutorResult(result_record=result_record)
 
     result_record.content = [
         message_content.MessageContent(
@@ -240,7 +241,8 @@ class MistralConnector(provider_connector.ProviderConnector):
                 ]
             )
         )
-    return result_record
+    return types.ExecutorResult(
+        result_record=result_record, raw_provider_response=response)
 
   def _beta_conversations_start_executor(
       self,
@@ -291,7 +293,7 @@ class MistralConnector(provider_connector.ProviderConnector):
 
     response, result_record = self._safe_provider_query(start)
     if result_record.error is not None:
-      return result_record
+      return types.ExecutorResult(result_record=result_record)
 
     parsed = []
     for output in response.outputs or []:
@@ -362,7 +364,8 @@ class MistralConnector(provider_connector.ProviderConnector):
       ]
 
     result_record.content = parsed
-    return result_record
+    return types.ExecutorResult(
+        result_record=result_record, raw_provider_response=response)
 
   ENDPOINT_EXECUTORS = {
     'chat.complete': '_chat_complete_executor',

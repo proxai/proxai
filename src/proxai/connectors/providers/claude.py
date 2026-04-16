@@ -235,7 +235,7 @@ class ClaudeConnector(provider_connector.ProviderConnector):
     response, result_record = self._safe_provider_query(
         functools.partial(self._run_stream, stream))
     if result_record.error is not None:
-      return result_record
+      return types.ExecutorResult(result_record=result_record)
 
     if needs_pydantic:
       result_record.content = [
@@ -267,7 +267,8 @@ class ClaudeConnector(provider_connector.ProviderConnector):
             for c in result_record.content
         ]
 
-    return result_record
+    return types.ExecutorResult(
+        result_record=result_record, raw_provider_response=response)
 
   ENDPOINT_EXECUTORS = {
     'beta.messages.stream': '_beta_messages_stream_executor',

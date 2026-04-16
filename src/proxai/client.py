@@ -16,6 +16,7 @@ import proxai.connections.available_models as available_models
 import proxai.connections.proxdash as proxdash
 import proxai.connectors.model_configs as model_configs
 import proxai.experiment.experiment as experiment
+import proxai.logging.utils as logging_utils
 import proxai.serializers.type_serializer as type_serializer
 import proxai.state_controllers.state_controller as state_controller
 import proxai.type_utils as type_utils
@@ -457,6 +458,7 @@ class ProxAIClientParams:
       types.FeatureMappingStrategy.BEST_EFFORT
   )
   suppress_provider_errors: bool | None = False
+  keep_raw_provider_response: bool | None = False
 
 
 class ProxAIClient(state_controller.StateControlled):
@@ -495,6 +497,7 @@ class ProxAIClient(state_controller.StateControlled):
       feature_mapping_strategy: (types.FeatureMappingStrategy | None
                                 ) = types.FeatureMappingStrategy.BEST_EFFORT,
       suppress_provider_errors: bool | None = False,
+      keep_raw_provider_response: bool | None = False,
       init_from_params: ProxAIClientParams | None = None,
       init_from_state: types.ProxAIClientState | None = None,
   ) -> None:
@@ -531,6 +534,13 @@ class ProxAIClient(state_controller.StateControlled):
         suppress_provider_errors: If True, provider errors are returned as
             error strings instead of raising exceptions. Useful for graceful
             error handling in production. Defaults to False.
+        keep_raw_provider_response: Debug-only escape hatch. If True, the
+            raw provider SDK response object is attached to
+            ``call_record.debug.raw_provider_response`` for every successful
+            call. The field is not part of ProxAI's stable contract, is not
+            serialized to the query cache or ProxDash, and is mutually
+            exclusive with ``cache_options`` (constructing a client with
+            both raises ``ValueError``). Defaults to False.
         init_from_params: Internal parameter for initializing from a
             ProxAIClientParams object. Cannot be used together with other
             parameters.
@@ -566,7 +576,7 @@ class ProxAIClient(state_controller.StateControlled):
           not allow_multiprocessing or model_test_timeout != 25 or (
               feature_mapping_strategy
               != types.FeatureMappingStrategy.BEST_EFFORT
-          ) or suppress_provider_errors
+          ) or suppress_provider_errors or keep_raw_provider_response
       ):
         raise ValueError(
             "init_from_params or init_from_state cannot be set at with "
@@ -580,6 +590,7 @@ class ProxAIClient(state_controller.StateControlled):
             "model_test_timeout: {model_test_timeout}\n"
             "feature_mapping_strategy: {feature_mapping_strategy}\n"
             "suppress_provider_errors: {suppress_provider_errors}\n"
+            "keep_raw_provider_response: {keep_raw_provider_response}\n"
             "init_from_params: {init_from_params}\n"
             "init_from_state: {init_from_state}\n"
         )
@@ -593,6 +604,7 @@ class ProxAIClient(state_controller.StateControlled):
           model_test_timeout=model_test_timeout,
           feature_mapping_strategy=feature_mapping_strategy,
           suppress_provider_errors=suppress_provider_errors,
+          keep_raw_provider_response=keep_raw_provider_response,
       )
 
     super().__init__(
@@ -612,6 +624,9 @@ class ProxAIClient(state_controller.StateControlled):
       self.model_test_timeout = init_from_params.model_test_timeout
       self.feature_mapping_strategy = init_from_params.feature_mapping_strategy
       self.suppress_provider_errors = init_from_params.suppress_provider_errors
+      self.keep_raw_provider_response = (
+          init_from_params.keep_raw_provider_response
+      )
 
       _ = self.model_cache_manager
       _ = self.query_cache_manager
@@ -635,10 +650,14 @@ class ProxAIClient(state_controller.StateControlled):
           proxdash_connection=self.proxdash_connection,
           allow_multiprocessing=self.allow_multiprocessing,
           model_test_timeout=self.model_test_timeout,
+          keep_raw_provider_response=self.keep_raw_provider_response,
       )
       self._available_models_instance = available_models.AvailableModels(
           init_from_params=available_models_params
       )
+
+    self._validate_raw_provider_response_options()
+    self._maybe_emit_raw_provider_response_warning()
 
   def get_internal_state_property_name(self):
     """Return the name of the internal state property."""
@@ -698,10 +717,49 @@ class ProxAIClient(state_controller.StateControlled):
 
     self.feature_mapping_strategy = types.FeatureMappingStrategy.BEST_EFFORT
     self.suppress_provider_errors = False
+    self.keep_raw_provider_response = False
     self.allow_multiprocessing = True
     self.model_test_timeout = 25
 
     self.available_models_instance = None
+
+  def _validate_raw_provider_response_options(self):
+    """Reject keep_raw_provider_response=True while a query cache is set.
+
+    Runs after both the direct-kwargs and load_state branches of __init__
+    converge, so it protects every construction path — including state
+    restoration, which goes through
+    set_property_value_without_triggering_getters and would otherwise
+    bypass any validation living in the property setter.
+    """
+    if (self.keep_raw_provider_response and self.cache_options is not None):
+      raise ValueError(
+          "keep_raw_provider_response=True is incompatible with "
+          "cache_options. The query cache cannot reconstruct provider "
+          "SDK objects on cache hits, so the combination would silently "
+          "return None for cached calls. To use both, construct two "
+          "clients: a cached production client and a separate debug "
+          "client with keep_raw_provider_response=True."
+      )
+
+  def _maybe_emit_raw_provider_response_warning(self):
+    if not self.keep_raw_provider_response:
+      return
+    logging_utils.log_message(
+        logging_options=self.logging_options,
+        message=(
+            "keep_raw_provider_response=True is a debugging-only escape "
+            "hatch. The raw provider response is not part of ProxAI's "
+            "stable contract, is not serialized to the query cache or "
+            "ProxDash, and may break at any provider SDK upgrade. It is "
+            "also mutually exclusive with cache_options. If you need a "
+            "specific provider field surfaced as a first-class CallRecord "
+            "attribute, please reach out to the ProxAI team so we can "
+            "model it properly instead of having you depend on this hatch "
+            "long-term."
+        ),
+        type=types.LoggingType.WARNING,
+    )
 
   @property
   def run_type(self) -> types.RunType:
@@ -867,6 +925,17 @@ class ProxAIClient(state_controller.StateControlled):
   @suppress_provider_errors.setter
   def suppress_provider_errors(self, value: bool):
     self.set_property_value("suppress_provider_errors", value)
+
+  @property
+  def keep_raw_provider_response(self) -> bool:
+    return self.get_property_value("keep_raw_provider_response")
+
+  @keep_raw_provider_response.setter
+  def keep_raw_provider_response(self, value: bool):
+    # Validation lives in _validate_raw_provider_response_options() so that
+    # it runs on every construction path, including the load_state path
+    # which bypasses property setters.
+    self.set_property_value("keep_raw_provider_response", value)
 
   @property
   def model_configs_instance(self) -> model_configs.ModelConfigs:
@@ -1361,6 +1430,7 @@ class ProxAIClient(state_controller.StateControlled):
         proxdash_options=self.proxdash_options,
         feature_mapping_strategy=self.feature_mapping_strategy,
         suppress_provider_errors=self.suppress_provider_errors,
+        keep_raw_provider_response=self.keep_raw_provider_response,
         allow_multiprocessing=self.allow_multiprocessing,
         model_test_timeout=self.model_test_timeout,
     )

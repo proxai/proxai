@@ -64,6 +64,8 @@ class MockProviderModelConnector(provider_connector.ProviderConnector):
       return 'mock response'
 
     response, result_record = self._safe_provider_query(_mock_provider_query)
+    if result_record.error is not None:
+      return types.ExecutorResult(result_record=result_record)
 
     fmt = query_record.response_format
     is_text = fmt is None or fmt.type == types.ResponseFormatType.TEXT
@@ -100,7 +102,8 @@ class MockProviderModelConnector(provider_connector.ProviderConnector):
           )
       ]
 
-    return result_record
+    return types.ExecutorResult(
+        result_record=result_record, raw_provider_response=response)
 
 
 class MockFailingProviderModelConnector(provider_connector.ProviderConnector):
@@ -139,8 +142,9 @@ class MockFailingProviderModelConnector(provider_connector.ProviderConnector):
       self, query_record: types.QueryRecord) -> types.ResultRecord:
     def _failing_provider_query():
       raise ValueError('Mock failing provider query')
-    _, result_record = self._safe_provider_query(_failing_provider_query)
-    return result_record
+    response, result_record = self._safe_provider_query(_failing_provider_query)
+    return types.ExecutorResult(
+        result_record=result_record, raw_provider_response=response)
 
 
 class MockSlowProviderModelConnector(provider_connector.ProviderConnector):
@@ -187,6 +191,8 @@ class MockSlowProviderModelConnector(provider_connector.ProviderConnector):
       time.sleep(120)
       return 'mock response'
     response, result_record = self._safe_provider_query(_slow_provider_query)
+    if result_record.error is not None:
+      return types.ExecutorResult(result_record=result_record)
 
     fmt = query_record.response_format
     is_text = fmt is None or fmt.type == types.ResponseFormatType.TEXT
@@ -223,4 +229,5 @@ class MockSlowProviderModelConnector(provider_connector.ProviderConnector):
           )
       ]
 
-    return result_record
+    return types.ExecutorResult(
+        result_record=result_record, raw_provider_response=response)

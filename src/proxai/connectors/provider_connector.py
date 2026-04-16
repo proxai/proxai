@@ -37,6 +37,7 @@ class ProviderConnectorParams:
   logging_options: types.LoggingOptions | None = None
   proxdash_connection: proxdash.ProxDashConnection | None = None
   provider_token_value_map: types.ProviderTokenValueMap | None = None
+  keep_raw_provider_response: bool | None = None
 
 
 class ProviderConnector(state_controller.StateControlled):
@@ -49,6 +50,7 @@ class ProviderConnector(state_controller.StateControlled):
   _logging_options: types.LoggingOptions | None
   _proxdash_connection: proxdash.ProxDashConnection | None
   _provider_state: types.ProviderState | None
+  _keep_raw_provider_response: bool | None
 
   _chosen_endpoint_cached_result: dict[str, bool] | None
 
@@ -78,6 +80,9 @@ class ProviderConnector(state_controller.StateControlled):
       self.logging_options = init_from_params.logging_options
       self.proxdash_connection = init_from_params.proxdash_connection
       self.provider_token_value_map = init_from_params.provider_token_value_map
+      self.keep_raw_provider_response = (
+          init_from_params.keep_raw_provider_response
+      )
       self._validate_provider_token_value_map()
 
   def __init_subclass__(cls, **kwargs):
@@ -202,6 +207,14 @@ class ProviderConnector(state_controller.StateControlled):
   @provider_token_value_map.setter
   def provider_token_value_map(self, value):
     self.set_property_value('provider_token_value_map', value)
+
+  @property
+  def keep_raw_provider_response(self) -> bool:
+    return self.get_property_value('keep_raw_provider_response')
+
+  @keep_raw_provider_response.setter
+  def keep_raw_provider_response(self, value):
+    self.set_property_value('keep_raw_provider_response', value)
 
   def _extract_json_from_text(self, text: str) -> dict:
     """Helper function for extracting JSON from text.
@@ -478,11 +491,11 @@ class ProviderConnector(state_controller.StateControlled):
       chosen_endpoint: str,
       query_record: types.QueryRecord,
       provider_model_config: types.ProviderModelConfig,
-  ):
-    result_record = chosen_executor(
+  ) -> types.ExecutorResult:
+    executor_result: types.ExecutorResult = chosen_executor(
         query_record=query_record)
 
-    if not result_record.error:
+    if not executor_result.result_record.error:
       chosen_result_adapter = result_adapter.ResultAdapter(
           endpoint=chosen_endpoint,
           endpoint_feature_config=self.ENDPOINT_CONFIG[chosen_endpoint],
@@ -490,10 +503,8 @@ class ProviderConnector(state_controller.StateControlled):
       )
       chosen_result_adapter.adapt_result_record(
           query_record=query_record,
-          result_record=result_record)
-      return result_record
-    else:
-      return result_record
+          result_record=executor_result.result_record)
+    return executor_result
 
   def _compute_usage(
       self,
@@ -663,12 +674,13 @@ class ProviderConnector(state_controller.StateControlled):
     elif isinstance(cached_result, types.CacheLookFailReason):
       connection_metadata.cache_look_fail_reason = cached_result
 
-    result_record = self._execute_call(
+    executor_result = self._execute_call(
         chosen_executor=chosen_executor,
         chosen_endpoint=chosen_endpoint,
         query_record=modified_query_record,
         provider_model_config=provider_model_config,
     )
+    result_record = executor_result.result_record
     result_record.usage = self._compute_usage(
         query_record=modified_query_record,
         result_record=result_record)
@@ -678,10 +690,16 @@ class ProviderConnector(state_controller.StateControlled):
     connection_metadata.endpoint_used = chosen_endpoint
     connection_metadata.result_source = types.ResultSource.PROVIDER
     connection_metadata.cache_look_fail_reason = None
+    debug_info = None
+    if executor_result.raw_provider_response is not None:
+      debug_info = types.DebugInfo(
+          raw_provider_response=executor_result.raw_provider_response
+      )
     call_record = types.CallRecord(
         query=query_record,
         result=result_record,
         connection=connection_metadata,
+        debug=debug_info,
     )
     estimated_cost = self.get_estimated_cost(
         call_record=call_record,

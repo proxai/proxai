@@ -1147,6 +1147,12 @@ def encode_call_record(
     record['result'] = encode_result_record(call_record.result)
   if call_record.connection is not None:
     record['connection'] = encode_connection_metadata(call_record.connection)
+  # call_record.debug is intentionally NOT serialized: the
+  # raw_provider_response field on DebugInfo holds a live provider SDK
+  # object that is not portable across the cache or ProxDash boundary.
+  # The keep_raw_provider_response client flag is mutually exclusive
+  # with cache_options at construction time, so this branch is normally
+  # unreachable for cached records anyway.
   return record
 
 
@@ -1508,6 +1514,10 @@ def encode_run_options(run_options: types.RunOptions) -> dict[str, Any]:
     )
   if run_options.suppress_provider_errors is not None:
     record['suppress_provider_errors'] = run_options.suppress_provider_errors
+  if run_options.keep_raw_provider_response is not None:
+    record['keep_raw_provider_response'] = (
+        run_options.keep_raw_provider_response
+    )
   return record
 
 
@@ -1544,4 +1554,8 @@ def decode_run_options(record: dict[str, Any]) -> types.RunOptions:
     )
   if 'suppress_provider_errors' in record:
     run_options.suppress_provider_errors = record['suppress_provider_errors']
+  if 'keep_raw_provider_response' in record:
+    run_options.keep_raw_provider_response = (
+        record['keep_raw_provider_response']
+    )
   return run_options

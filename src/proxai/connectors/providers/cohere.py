@@ -137,7 +137,7 @@ class CohereConnector(provider_connector.ProviderConnector):
 
     response, result_record = self._safe_provider_query(create)
     if result_record.error is not None:
-      return result_record
+      return types.ExecutorResult(result_record=result_record)
 
     parsed = []
     text_buffer = []
@@ -182,7 +182,8 @@ class CohereConnector(provider_connector.ProviderConnector):
       )
 
     result_record.content = parsed
-    return result_record
+    return types.ExecutorResult(
+        result_record=result_record, raw_provider_response=response)
 
   ENDPOINT_EXECUTORS = {
       'chat': '_chat_executor',

@@ -1983,6 +1983,20 @@ class TestTypeSerializer:
     )
     assert call_record == decoded_call_record
 
+  def test_encode_call_record_drops_debug_field(self):
+    # The debug sidecar holds a live provider SDK object that is
+    # intentionally NOT serialized to the cache or ProxDash. Any
+    # round-trip through the serializer must zero the debug field, even
+    # when the source CallRecord had a populated raw_provider_response.
+    sentinel = object()
+    call_record = types.CallRecord(
+        debug=types.DebugInfo(raw_provider_response=sentinel),
+    )
+    encoded = type_serializer.encode_call_record(call_record=call_record)
+    assert 'debug' not in encoded
+    decoded = type_serializer.decode_call_record(record=encoded)
+    assert decoded.debug is None
+
   @pytest.mark.parametrize('cache_record_options', _get_cache_record_options())
   def test_encode_decode_cache_record(self, cache_record_options):
     cache_record = types.CacheRecord(**cache_record_options)

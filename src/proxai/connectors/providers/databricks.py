@@ -227,7 +227,7 @@ class DatabricksConnector(provider_connector.ProviderConnector):
 
     response, result_record = self._safe_provider_query(create)
     if result_record.error is not None:
-      return result_record
+      return types.ExecutorResult(result_record=result_record)
 
     result_record.content = self._parse_message_content(
         response.choices[0].message.content
@@ -242,7 +242,8 @@ class DatabricksConnector(provider_connector.ProviderConnector):
             )
         )
 
-    return result_record
+    return types.ExecutorResult(
+        result_record=result_record, raw_provider_response=response)
 
   def _beta_chat_completions_parse_executor(
       self, query_record: types.QueryRecord
@@ -292,7 +293,7 @@ class DatabricksConnector(provider_connector.ProviderConnector):
 
     response, result_record = self._safe_provider_query(create)
     if result_record.error is not None:
-      return result_record
+      return types.ExecutorResult(result_record=result_record)
 
     pydantic_class = query_record.response_format.pydantic_class
     result_record.content = [
@@ -324,7 +325,8 @@ class DatabricksConnector(provider_connector.ProviderConnector):
             )
         )
 
-    return result_record
+    return types.ExecutorResult(
+        result_record=result_record, raw_provider_response=response)
 
   ENDPOINT_EXECUTORS = {
       'chat.completions.create': '_chat_completions_create_executor',

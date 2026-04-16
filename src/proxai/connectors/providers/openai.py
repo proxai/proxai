@@ -166,7 +166,7 @@ class OpenAIConnector(provider_connector.ProviderConnector):
 
     response, result_record = self._safe_provider_query(create)
     if result_record.error is not None:
-      return result_record
+      return types.ExecutorResult(result_record=result_record)
     
     result_record.content = [
         message_content.MessageContent(
@@ -187,7 +187,8 @@ class OpenAIConnector(provider_connector.ProviderConnector):
                 ]
             )
         )
-    return result_record
+    return types.ExecutorResult(
+        result_record=result_record, raw_provider_response=response)
 
   def _beta_chat_completions_parse_executor(
       self,
@@ -231,7 +232,7 @@ class OpenAIConnector(provider_connector.ProviderConnector):
 
     response, result_record = self._safe_provider_query(create)
     if result_record.error is not None:
-      return result_record
+      return types.ExecutorResult(result_record=result_record)
     
     result_record.content = [
         message_content.MessageContent(
@@ -261,7 +262,8 @@ class OpenAIConnector(provider_connector.ProviderConnector):
                 ]
             )
         )
-    return result_record
+    return types.ExecutorResult(
+        result_record=result_record, raw_provider_response=response)
 
   def _responses_create_executor(
       self,
@@ -312,7 +314,7 @@ class OpenAIConnector(provider_connector.ProviderConnector):
 
     response, result_record = self._safe_provider_query(create)
     if result_record.error is not None:
-      return result_record
+      return types.ExecutorResult(result_record=result_record)
     
     parsed_response = []
     for output in response.output:
@@ -347,7 +349,8 @@ class OpenAIConnector(provider_connector.ProviderConnector):
                     text=summary.text))
 
     result_record.content = parsed_response
-    return result_record
+    return types.ExecutorResult(
+        result_record=result_record, raw_provider_response=response)
 
   def _images_generate_executor(
       self,
@@ -369,7 +372,7 @@ class OpenAIConnector(provider_connector.ProviderConnector):
     
     response, result_record = self._safe_provider_query(generate)
     if result_record.error is not None:
-      return result_record
+      return types.ExecutorResult(result_record=result_record)
 
     result_record.content = [
         message_content.MessageContent(
@@ -377,7 +380,8 @@ class OpenAIConnector(provider_connector.ProviderConnector):
             source=response.data[0].url,
         )
     ]
-    return result_record
+    return types.ExecutorResult(
+        result_record=result_record, raw_provider_response=response)
 
   def _audio_speech_create_executor(
       self,
@@ -395,7 +399,7 @@ class OpenAIConnector(provider_connector.ProviderConnector):
 
     response, result_record = self._safe_provider_query(create)
     if result_record.error is not None:
-      return result_record
+      return types.ExecutorResult(result_record=result_record)
 
     result_record.content = [
         message_content.MessageContent(
@@ -404,7 +408,8 @@ class OpenAIConnector(provider_connector.ProviderConnector):
         )
     ]
     
-    return result_record
+    return types.ExecutorResult(
+        result_record=result_record, raw_provider_response=response)
 
   def _videos_create_executor(
       self,
@@ -419,7 +424,7 @@ class OpenAIConnector(provider_connector.ProviderConnector):
     
     response, result_record = self._safe_provider_query(create)
     if result_record.error is not None:
-      return result_record
+      return types.ExecutorResult(result_record=result_record)
     
     while response.status not in ("completed", "failed"):
       time.sleep(5)
@@ -442,7 +447,8 @@ class OpenAIConnector(provider_connector.ProviderConnector):
       result_record.error = Exception(
           f"Video generation failed: {response.error}")
 
-    return result_record
+    return types.ExecutorResult(
+        result_record=result_record, raw_provider_response=response)
 
 
   ENDPOINT_EXECUTORS = {
