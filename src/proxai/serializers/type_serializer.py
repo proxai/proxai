@@ -213,6 +213,52 @@ def decode_response_format_config_type(
   return response_format_config_type
 
 
+def encode_input_format_config_type(
+    input_format_config_type: types.InputFormatConfigType
+) -> dict[str, Any]:
+  """Serialize InputFormatConfigType to a dictionary."""
+  record = {}
+  if input_format_config_type.text is not None:
+    record['text'] = encode_feature_support_type(
+        input_format_config_type.text)
+  if input_format_config_type.image is not None:
+    record['image'] = encode_feature_support_type(
+        input_format_config_type.image)
+  if input_format_config_type.document is not None:
+    record['document'] = encode_feature_support_type(
+        input_format_config_type.document)
+  if input_format_config_type.audio is not None:
+    record['audio'] = encode_feature_support_type(
+        input_format_config_type.audio)
+  if input_format_config_type.video is not None:
+    record['video'] = encode_feature_support_type(
+        input_format_config_type.video)
+  return record
+
+
+def decode_input_format_config_type(
+    record: dict[str, Any]
+) -> types.InputFormatConfigType:
+  """Deserialize InputFormatConfigType from a dictionary."""
+  input_format_config_type = types.InputFormatConfigType()
+  if 'text' in record:
+    input_format_config_type.text = decode_feature_support_type(
+        record['text'])
+  if 'image' in record:
+    input_format_config_type.image = decode_feature_support_type(
+        record['image'])
+  if 'document' in record:
+    input_format_config_type.document = decode_feature_support_type(
+        record['document'])
+  if 'audio' in record:
+    input_format_config_type.audio = decode_feature_support_type(
+        record['audio'])
+  if 'video' in record:
+    input_format_config_type.video = decode_feature_support_type(
+        record['video'])
+  return input_format_config_type
+
+
 def encode_feature_config_type(
     feature_config_type: types.FeatureConfigType
 ) -> dict[str, Any]:
@@ -239,6 +285,9 @@ def encode_feature_config_type(
   if feature_config_type.response_format is not None:
     record['response_format'] = encode_response_format_config_type(
         feature_config_type.response_format)
+  if feature_config_type.input_format is not None:
+    record['input_format'] = encode_input_format_config_type(
+        feature_config_type.input_format)
   return record
 
 
@@ -268,6 +317,9 @@ def decode_feature_config_type(
   if 'response_format' in record:
     feature_config_type.response_format = decode_response_format_config_type(
         record['response_format'])
+  if 'input_format' in record:
+    feature_config_type.input_format = decode_input_format_config_type(
+        record['input_format'])
   return feature_config_type
 
 
@@ -276,8 +328,6 @@ def encode_provider_model_metadata_type(
 ) -> dict[str, Any]:
   """Serialize ProviderModelMetadataType to a dictionary."""
   record = {}
-  if provider_model_metadata_type.call_type is not None:
-    record['call_type'] = provider_model_metadata_type.call_type.value
   if provider_model_metadata_type.is_recommended is not None:
     record['is_recommended'] = provider_model_metadata_type.is_recommended
   if provider_model_metadata_type.model_size_tags is not None:
@@ -295,8 +345,7 @@ def decode_provider_model_metadata_type(
 ) -> types.ProviderModelMetadataType:
   """Deserialize ProviderModelMetadataType from a dictionary."""
   provider_model_metadata_type = types.ProviderModelMetadataType()
-  if 'call_type' in record and record['call_type'] is not None:
-    provider_model_metadata_type.call_type = types.CallType(record['call_type'])
+  # Gracefully ignore old keys: call_type, response_type, input_type
   if 'is_recommended' in record:
     provider_model_metadata_type.is_recommended = record['is_recommended']
   if 'model_size_tags' in record and record['model_size_tags'] is not None:
@@ -420,34 +469,36 @@ def decode_recommended_models_mapping_type(
   return recommended_models
 
 
-def encode_call_type_mapping_type(
-    call_type_mapping: types.CallTypeMappingType
+def encode_output_format_type_mapping_type(
+    output_format_type_mapping: types.OutputFormatTypeMappingType
 ) -> dict[str, Any]:
-  """Serialize CallTypeMappingType to a dictionary."""
+  """Serialize OutputFormatTypeMappingType to a dictionary."""
   record = {}
-  for call_type, provider_models in call_type_mapping.items():
-    record[call_type.value] = []
+  for output_format_type, provider_models in (
+      output_format_type_mapping.items()
+  ):
+    record[output_format_type.value] = []
     for provider_model in provider_models:
-      record[call_type.value].append(
+      record[output_format_type.value].append(
           encode_provider_model_type(provider_model)
       )
   return record
 
 
-def decode_call_type_mapping_type(
+def decode_output_format_type_mapping_type(
     record: dict[str, Any]
-) -> types.CallTypeMappingType:
-  """Deserialize CallTypeMappingType from a dictionary."""
-  call_type_mapping = {}
-  for call_type_str, provider_model_records in record.items():
-    call_type = types.CallType(call_type_str)
+) -> types.OutputFormatTypeMappingType:
+  """Deserialize OutputFormatTypeMappingType from a dictionary."""
+  output_format_type_mapping = {}
+  for output_format_type_str, provider_model_records in record.items():
+    output_format_type = types.OutputFormatType(output_format_type_str)
     provider_models = []
     for provider_model_record in provider_model_records:
       provider_models.append(
           decode_provider_model_type(provider_model_record)
       )
-    call_type_mapping[call_type] = provider_models
-  return call_type_mapping
+    output_format_type_mapping[output_format_type] = provider_models
+  return output_format_type_mapping
 
 
 def encode_model_size_mapping_type(

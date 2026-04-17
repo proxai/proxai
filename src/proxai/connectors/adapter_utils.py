@@ -57,45 +57,96 @@ def merge_support_fields(a, b, dataclass_type):
   return dataclass_type(**merged)
 
 
-_TAG_TO_FIELD = {
-    types.FeatureTagType.PROMPT: lambda c: c.prompt,
-    types.FeatureTagType.MESSAGES: lambda c: c.messages,
-    types.FeatureTagType.SYSTEM_PROMPT: lambda c: c.system_prompt,
-    types.FeatureTagType.TEMPERATURE: lambda c: (
-        c.parameters.temperature if c.parameters else None),
-    types.FeatureTagType.MAX_TOKENS: lambda c: (
-        c.parameters.max_tokens if c.parameters else None),
-    types.FeatureTagType.STOP: lambda c: (
-        c.parameters.stop if c.parameters else None),
-    types.FeatureTagType.N: lambda c: (
-        c.parameters.n if c.parameters else None),
-    types.FeatureTagType.THINKING: lambda c: (
-        c.parameters.thinking if c.parameters else None),
-    types.FeatureTagType.WEB_SEARCH: lambda c: (
-        c.tools.web_search if c.tools else None),
-    types.FeatureTagType.RESPONSE_TEXT: lambda c: (
+_INPUT_FORMAT_TYPE_TO_FIELD = {
+    types.InputFormatType.TEXT: lambda c: (
+        c.input_format.text if c.input_format else None),
+    types.InputFormatType.IMAGE: lambda c: (
+        c.input_format.image if c.input_format else None),
+    types.InputFormatType.DOCUMENT: lambda c: (
+        c.input_format.document if c.input_format else None),
+    types.InputFormatType.AUDIO: lambda c: (
+        c.input_format.audio if c.input_format else None),
+    types.InputFormatType.VIDEO: lambda c: (
+        c.input_format.video if c.input_format else None),
+}
+
+_OUTPUT_FORMAT_TYPE_TO_FIELD = {
+    types.OutputFormatType.TEXT: lambda c: (
         c.response_format.text if c.response_format else None),
-    types.FeatureTagType.RESPONSE_IMAGE: lambda c: (
+    types.OutputFormatType.IMAGE: lambda c: (
         c.response_format.image if c.response_format else None),
-    types.FeatureTagType.RESPONSE_AUDIO: lambda c: (
+    types.OutputFormatType.AUDIO: lambda c: (
         c.response_format.audio if c.response_format else None),
-    types.FeatureTagType.RESPONSE_VIDEO: lambda c: (
+    types.OutputFormatType.VIDEO: lambda c: (
         c.response_format.video if c.response_format else None),
-    types.FeatureTagType.RESPONSE_JSON: lambda c: (
+    types.OutputFormatType.JSON: lambda c: (
         c.response_format.json if c.response_format else None),
-    types.FeatureTagType.RESPONSE_PYDANTIC: lambda c: (
+    types.OutputFormatType.PYDANTIC: lambda c: (
         c.response_format.pydantic if c.response_format else None),
-    types.FeatureTagType.RESPONSE_MULTI_MODAL: lambda c: (
+    types.OutputFormatType.MULTI_MODAL: lambda c: (
         c.response_format.multi_modal if c.response_format else None),
 }
 
+_TOOL_TAG_TO_FIELD = {
+    types.ToolTag.WEB_SEARCH: lambda c: (
+        c.tools.web_search if c.tools else None),
+}
 
-def resolve_tag_support(
+_FEATURE_TAG_TO_FIELD = {
+    types.FeatureTag.PROMPT: lambda c: c.prompt,
+    types.FeatureTag.MESSAGES: lambda c: c.messages,
+    types.FeatureTag.SYSTEM_PROMPT: lambda c: c.system_prompt,
+    types.FeatureTag.TEMPERATURE: lambda c: (
+        c.parameters.temperature if c.parameters else None),
+    types.FeatureTag.MAX_TOKENS: lambda c: (
+        c.parameters.max_tokens if c.parameters else None),
+    types.FeatureTag.STOP: lambda c: (
+        c.parameters.stop if c.parameters else None),
+    types.FeatureTag.N: lambda c: (
+        c.parameters.n if c.parameters else None),
+    types.FeatureTag.THINKING: lambda c: (
+        c.parameters.thinking if c.parameters else None),
+}
+
+def resolve_input_format_type_support(
     feature_config: types.FeatureConfigType,
-    tag: types.FeatureTagType,
+    tag: types.InputFormatType,
 ) -> types.FeatureSupportType:
-  """Return the support level for a single feature tag."""
-  accessor = _TAG_TO_FIELD.get(tag)
+  """Return the support level for an input format type."""
+  accessor = _INPUT_FORMAT_TYPE_TO_FIELD.get(tag)
+  if accessor is None:
+    raise ValueError(f"Unknown input format type: {tag}")
+  return resolve_support(accessor(feature_config))
+
+
+def resolve_output_format_type_support(
+    feature_config: types.FeatureConfigType,
+    tag: types.OutputFormatType,
+) -> types.FeatureSupportType:
+  """Return the support level for an output format type."""
+  accessor = _OUTPUT_FORMAT_TYPE_TO_FIELD.get(tag)
+  if accessor is None:
+    raise ValueError(f"Unknown output format type: {tag}")
+  return resolve_support(accessor(feature_config))
+
+
+def resolve_tool_tag_support(
+    feature_config: types.FeatureConfigType,
+    tag: types.ToolTag,
+) -> types.FeatureSupportType:
+  """Return the support level for a tool tag."""
+  accessor = _TOOL_TAG_TO_FIELD.get(tag)
+  if accessor is None:
+    raise ValueError(f"Unknown tool tag: {tag}")
+  return resolve_support(accessor(feature_config))
+
+
+def resolve_feature_tag_support(
+    feature_config: types.FeatureConfigType,
+    tag: types.FeatureTag,
+) -> types.FeatureSupportType:
+  """Return the support level for a feature tag."""
+  accessor = _FEATURE_TAG_TO_FIELD.get(tag)
   if accessor is None:
     raise ValueError(f"Unknown feature tag: {tag}")
   return resolve_support(accessor(feature_config))
@@ -124,4 +175,7 @@ def merge_feature_configs(
       response_format=merge_support_fields(
           endpoint_config.response_format, model_config.response_format,
           types.ResponseFormatConfigType),
+      input_format=merge_support_fields(
+          endpoint_config.input_format, model_config.input_format,
+          types.InputFormatConfigType),
   )

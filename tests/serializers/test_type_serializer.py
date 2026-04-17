@@ -208,9 +208,7 @@ def _get_feature_config_type_options():
 def _get_provider_model_metadata_type_options():
   return [
       {},
-      {
-          'call_type': types.CallType.TEXT
-      },
+      {},
       {
           'is_recommended': True
       },
@@ -252,7 +250,6 @@ def _get_provider_model_metadata_type_options():
           'tags': ['tag1', 'tag2', 'tag3']
       },
       {
-          'call_type': types.CallType.TEXT,
           'is_recommended': True,
           'model_size_tags': [types.ModelSizeType.LARGE],
           'tags': ['tag1', 'tag2']
@@ -291,7 +288,7 @@ def _get_provider_model_config_options():
           'features': types.FeatureConfigType(),
           'metadata':
               types.ProviderModelMetadataType(
-                  call_type=types.CallType.TEXT, is_recommended=True
+                  is_recommended=True
               )
       },
       {
@@ -311,7 +308,7 @@ def _get_provider_model_config_options():
           ),
           'metadata':
               types.ProviderModelMetadataType(
-                  call_type=types.CallType.TEXT, is_recommended=True,
+                  is_recommended=True,
                   model_size_tags=[types.ModelSizeType.LARGEST],
                   tags=['production', 'recommended']
               )
@@ -401,7 +398,7 @@ def _get_model_registry_options():
                           messages=types.FeatureSupportType.SUPPORTED
                       ),
                       metadata=types.ProviderModelMetadataType(
-                          call_type=types.CallType.TEXT, is_recommended=True,
+                          is_recommended=True,
                           model_size_tags=[types.ModelSizeType.LARGE]
                       )
                   )
@@ -434,7 +431,7 @@ def _get_model_registry_options():
                           )
                       ),
                       metadata=types.ProviderModelMetadataType(
-                          call_type=types.CallType.TEXT, is_recommended=True,
+                          is_recommended=True,
                           model_size_tags=[types.ModelSizeType.LARGE]
                       )
                   ),
@@ -1431,14 +1428,14 @@ def _get_recommended_models_mapping_type_options():
   }]
 
 
-def _get_call_type_mapping_type_options():
+def _get_output_format_type_mapping_type_options():
   return [{
-      types.CallType.TEXT: [_MODEL_1]
+      types.OutputFormatType.TEXT: [_MODEL_1]
   }, {
-      types.CallType.TEXT: [_MODEL_1, _MODEL_4]
+      types.OutputFormatType.TEXT: [_MODEL_1, _MODEL_4]
   }, {
-      types.CallType.TEXT: [_MODEL_1, _MODEL_2],
-      types.CallType.IMAGE: [_MODEL_3, _MODEL_4]
+      types.OutputFormatType.TEXT: [_MODEL_1, _MODEL_2],
+      types.OutputFormatType.IMAGE: [_MODEL_3, _MODEL_4]
   }]
 
 
@@ -1751,23 +1748,23 @@ class TestTypeSerializer:
     )
 
   @pytest.mark.parametrize(
-      'call_type_mapping_type_options',
-      _get_call_type_mapping_type_options()
+      'output_format_type_mapping_type_options',
+      _get_output_format_type_mapping_type_options()
   )
-  def test_encode_decode_call_type_mapping_type(
-      self, call_type_mapping_type_options
+  def test_encode_decode_output_format_type_mapping_type(
+      self, output_format_type_mapping_type_options
   ):
-    encoded_call_type_mapping_type = (
-        type_serializer.encode_call_type_mapping_type(
-            call_type_mapping=call_type_mapping_type_options
+    encoded_output_format_type_mapping_type = (
+        type_serializer.encode_output_format_type_mapping_type(
+            output_format_type_mapping=output_format_type_mapping_type_options
         )
     )
-    decoded_call_type_mapping_type = (
-        type_serializer.decode_call_type_mapping_type(
-            record=encoded_call_type_mapping_type
+    decoded_output_format_type_mapping_type = (
+        type_serializer.decode_output_format_type_mapping_type(
+            record=encoded_output_format_type_mapping_type
         )
     )
-    assert call_type_mapping_type_options == decoded_call_type_mapping_type
+    assert output_format_type_mapping_type_options == decoded_output_format_type_mapping_type
 
   @pytest.mark.parametrize(
       'model_size_mapping_type_options',

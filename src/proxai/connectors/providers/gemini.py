@@ -13,6 +13,7 @@ import proxai.types as types
 
 FeatureConfigType = types.FeatureConfigType
 FeatureSupportType = types.FeatureSupportType
+InputFormatConfigType = types.InputFormatConfigType
 ParameterConfigType = types.ParameterConfigType
 ToolConfigType = types.ToolConfigType
 ResponseFormatConfigType = types.ResponseFormatConfigType
@@ -51,6 +52,13 @@ class GeminiConnector(provider_connector.ProviderConnector):
           tools=ToolConfigType(
               web_search=FeatureSupportType.SUPPORTED,
           ),
+          input_format=InputFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
+              image=FeatureSupportType.SUPPORTED,
+              document=FeatureSupportType.SUPPORTED,
+              audio=FeatureSupportType.SUPPORTED,
+              video=FeatureSupportType.SUPPORTED,
+          ),
           response_format=ResponseFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
               json=FeatureSupportType.SUPPORTED,
@@ -61,6 +69,9 @@ class GeminiConnector(provider_connector.ProviderConnector):
       ),
       'models.generate_videos': FeatureConfigType(
           prompt=FeatureSupportType.SUPPORTED,
+          input_format=InputFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
+          ),
           response_format=ResponseFormatConfigType(
               video=FeatureSupportType.SUPPORTED,
           ),

@@ -34,7 +34,13 @@ from proxai.proxai import (
     reset_state,
     set_model,
 )
-from proxai.types import MessageRoleType
+from proxai.types import (
+    FeatureTag,
+    InputFormatType,
+    MessageRoleType,
+    OutputFormatType,
+    ToolTag,
+)
 
 __all__ = [
     "CacheOptions",
@@ -43,6 +49,8 @@ __all__ = [
     "ConnectionOptions",
     "DefaultModelsConnector",
     "FeatureMappingStrategy",
+    "FeatureTag",
+    "InputFormatType",
     "LoggingOptions",
     "ParameterType",
     "Tools",
@@ -52,9 +60,11 @@ __all__ = [
     "ModelConnector",
     "MessageRoleType",
     "ContentType",
+    "OutputFormatType",
     "ProxDashOptions",
     "ProviderModelType",
     "ResponseFormatType",
+    "ToolTag",
     "check_health",
     "connect",
     "generate",

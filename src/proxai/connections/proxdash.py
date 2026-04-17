@@ -389,10 +389,10 @@ class ProxDashConnection(state_controller.StateControlled):
     ):
       return _SENSITIVE_CONTENT_HIDDEN_STRING
 
-    if response_type == types.ResponseType.TEXT:
+    if response_type == types.ResponseFormatType.TEXT:
       return str(logging_record.response_record.response.value)
 
-    if response_type == types.ResponseType.JSON:
+    if response_type == types.ResponseFormatType.JSON:
       try:
         return json.dumps(
             logging_record.response_record.response.value, indent=2,
@@ -409,7 +409,7 @@ class ProxDashConnection(state_controller.StateControlled):
         )
         return None
 
-    if response_type == types.ResponseType.PYDANTIC:
+    if response_type == types.ResponseFormatType.PYDANTIC:
       return None
 
     logging_utils.log_proxdash_message(
@@ -429,7 +429,7 @@ class ProxDashConnection(state_controller.StateControlled):
       return None
     if (
         logging_record.response_record.response.type
-        != types.ResponseType.PYDANTIC
+        != types.ResponseFormatType.PYDANTIC
     ):
       return None
     if (

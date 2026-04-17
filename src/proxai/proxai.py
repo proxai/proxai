@@ -358,35 +358,38 @@ def generate_video(
 def set_model(
     provider_model: types.ProviderModelIdentifierType | None = None,
     generate_text: types.ProviderModelIdentifierType | None = None,
+    generate_json: types.ProviderModelIdentifierType | None = None,
+    generate_pydantic: types.ProviderModelIdentifierType | None = None,
+    generate_image: types.ProviderModelIdentifierType | None = None,
+    generate_audio: types.ProviderModelIdentifierType | None = None,
+    generate_video: types.ProviderModelIdentifierType | None = None,
 ) -> None:
-  """Sets the default model for text generation requests.
-
-  Configures which AI provider and model should be used for subsequent
-  generate_text() calls when no explicit provider_model is specified.
+  """Sets the default model for generation requests.
 
   Args:
-      provider_model: The provider and model to use as default. Can be
-          specified as a tuple like ('openai', 'gpt-4') or a
-          ProviderModelType instance.
-      generate_text: Alias for provider_model. Use this parameter name
-          for clarity when setting the model specifically for text
-          generation. Cannot be used together with provider_model.
-
-  Returns:
-      None
-
-  Raises:
-      ValueError: If both provider_model and generate_text are provided,
-          or if neither is provided.
+      provider_model: Sets the default TEXT model (backward compat).
+      generate_text: Default model for generate_text().
+      generate_json: Default model for generate_json().
+      generate_pydantic: Default model for generate_pydantic().
+      generate_image: Default model for generate_image().
+      generate_audio: Default model for generate_audio().
+      generate_video: Default model for generate_video().
 
   Example:
       >>> import proxai as px
-      >>> px.set_model(provider_model=("openai", "gpt-4"))
-      >>> # Or equivalently:
-      >>> px.set_model(generate_text=("anthropic", "claude-3-opus"))
+      >>> px.set_model(
+      ...   generate_text=('openai', 'gpt-4o'),
+      ...   generate_image=('openai', 'dall-e-3'),
+      ... )
   """
   get_default_proxai_client().set_model(
-      provider_model=provider_model, generate_text=generate_text
+      provider_model=provider_model,
+      generate_text=generate_text,
+      generate_json=generate_json,
+      generate_pydantic=generate_pydantic,
+      generate_image=generate_image,
+      generate_audio=generate_audio,
+      generate_video=generate_video,
   )
 
 

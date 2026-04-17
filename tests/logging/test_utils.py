@@ -11,9 +11,6 @@ import proxai.types as types
 def _get_query_record_examples():
   return [
       {
-          'call_type': types.CallType.TEXT
-      },
-      {
           'prompt': 'Test prompt'
       },
       {
@@ -26,7 +23,6 @@ def _get_query_record_examples():
           }]
       },
       {
-          'call_type': types.CallType.TEXT,
           'provider_model':
               pytest.model_configs_instance.get_provider_model(
                   ('openai', 'gpt-4')
@@ -46,7 +42,7 @@ def _get_query_response_record_examples():
       {
           'response':
               types.Response(
-                  type=types.ResponseType.TEXT, value='Test response'
+                  type=types.OutputFormatType.TEXT, value='Test response'
               )
       },
       {
@@ -55,7 +51,7 @@ def _get_query_response_record_examples():
       {
           'response':
               types.Response(
-                  type=types.ResponseType.TEXT, value='Test response'
+                  type=types.OutputFormatType.TEXT, value='Test response'
               ),
           'error': None
       },

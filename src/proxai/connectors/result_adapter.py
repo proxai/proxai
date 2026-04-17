@@ -14,8 +14,8 @@ from proxai.connectors.adapter_utils import (
     RESPONSE_FORMAT_FIELD_MAP,
     SUPPORT_RANK,
     merge_feature_configs,
+    resolve_feature_tag_support,
     resolve_support,
-    resolve_tag_support,
 )
 
 _RESPONSE_FORMAT_TO_CONTENT_TYPE = {
@@ -52,7 +52,7 @@ class ResultAdapter:
       self.feature_config = endpoint_feature_config
 
   def get_feature_tags_support_level(
-      self, feature_tags: list[types.FeatureTagType],
+      self, feature_tags: list[types.FeatureTag],
   ) -> types.FeatureSupportType:
     """Return the minimum support level across the given feature tags.
 
@@ -61,7 +61,8 @@ class ResultAdapter:
     if not feature_tags:
       return types.FeatureSupportType.SUPPORTED
     levels = [
-        resolve_tag_support(self.feature_config, tag) for tag in feature_tags
+        resolve_feature_tag_support(self.feature_config, tag)
+        for tag in feature_tags
     ]
     return min(levels, key=lambda l: SUPPORT_RANK[l])
 

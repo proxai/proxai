@@ -25,18 +25,30 @@ class RunType(enum.Enum):
   TEST = "TEST"
 
 
-class CallType(str, enum.Enum):
-  """Type of API call being made to the provider."""
+class OutputFormatType(str, enum.Enum):
+  """Output formats for capability filtering and model registration."""
 
   TEXT = "TEXT"
   IMAGE = "IMAGE"
   AUDIO = "AUDIO"
   VIDEO = "VIDEO"
+  JSON = "JSON"
+  PYDANTIC = "PYDANTIC"
   MULTI_MODAL = "MULTI_MODAL"
-  OTHER = "OTHER"
 
 
-CallTypeParam = CallType | str
+class InputFormatType(str, enum.Enum):
+  """Input formats for capability filtering."""
+
+  TEXT = "TEXT"
+  IMAGE = "IMAGE"
+  DOCUMENT = "DOCUMENT"
+  AUDIO = "AUDIO"
+  VIDEO = "VIDEO"
+
+
+OutputFormatTypeParam = OutputFormatType | str
+InputFormatTypeParam = InputFormatType | str
 
 
 ProviderNameType = str
@@ -161,6 +173,17 @@ class ResponseFormatConfigType:
 
 
 @dataclasses.dataclass
+class InputFormatConfigType:
+  """Input format configuration for a provider endpoint."""
+
+  text: FeatureSupportType | None = None
+  image: FeatureSupportType | None = None
+  document: FeatureSupportType | None = None
+  audio: FeatureSupportType | None = None
+  video: FeatureSupportType | None = None
+
+
+@dataclasses.dataclass
 class FeatureConfigType:
   """Feature configuration for a provider endpoint."""
 
@@ -171,10 +194,17 @@ class FeatureConfigType:
   parameters: ParameterConfigType | None = None
   tools: ToolConfigType | None = None
   response_format: ResponseFormatConfigType | None = None
+  input_format: InputFormatConfigType | None = None
 
 
-class FeatureTagType(str, enum.Enum):
-  """Tag for a feature."""
+class ToolTag(str, enum.Enum):
+  """What tools the model supports."""
+
+  WEB_SEARCH = "web_search"
+
+
+class FeatureTag(str, enum.Enum):
+  """General model features and parameters."""
 
   PROMPT = "prompt"
   MESSAGES = "messages"
@@ -184,17 +214,14 @@ class FeatureTagType(str, enum.Enum):
   STOP = "stop"
   N = "n"
   THINKING = "thinking"
-  WEB_SEARCH = "web_search"
-  RESPONSE_TEXT = "response_text"
-  RESPONSE_IMAGE = "response_image"
-  RESPONSE_AUDIO = "response_audio"
-  RESPONSE_VIDEO = "response_video"
-  RESPONSE_JSON = "response_json"
-  RESPONSE_PYDANTIC = "response_pydantic"
-  RESPONSE_MULTI_MODAL = "response_multi_modal"
 
 
-FeatureTagParam = list[FeatureTagType] | list[str]
+InputFormatTypeParam = (
+    list[InputFormatType] | list[str] | InputFormatType | str | None)
+OutputFormatTypeParam = (
+    list[OutputFormatType] | list[str] | OutputFormatType | str | None)
+ToolTagParam = list[ToolTag] | list[str] | ToolTag | str | None
+FeatureTagParam = list[FeatureTag] | list[str] | FeatureTag | str | None
 
 
 class ModelSizeType(str, enum.Enum):
@@ -213,7 +240,6 @@ ModelSizeIdentifierType = ModelSizeType | str
 class ProviderModelMetadataType:
   """Metadata describing a model's characteristics and capabilities."""
 
-  call_type: CallType | None = None
   is_recommended: bool | None = None
   model_size_tags: list[ModelSizeType] | None = None
   tags: list[str] | None = None
@@ -251,7 +277,7 @@ class ProviderModelConfig:
   metadata: ProviderModelMetadataType
 
 
-CallTypeMappingType = dict[CallType, list[ProviderModelType]]
+OutputFormatTypeMappingType = dict[OutputFormatType, list[ProviderModelType]]
 ModelSizeMappingType = dict[ModelSizeType, list[ProviderModelType]]
 RecommendedModelsMappingType = dict[ProviderNameType, list[ProviderModelType]]
 ProviderModelConfigsMappingType = dict[
@@ -707,7 +733,7 @@ class ModelStatus:
   )
 
 
-ModelStatusByCallType = dict[CallType, ModelStatus]
+ModelStatusByOutputFormatType = dict[OutputFormatType, ModelStatus]
 
 
 class ModelCacheManagerStatus(str, enum.Enum):
@@ -757,7 +783,6 @@ class ModelConfigsState(StateContainer):
   """Persisted state for model configuration data."""
 
   model_registry: ModelRegistry | None = None
-  models_by_call_type: CallTypeMappingType | None = None
   models_by_model_size: ModelSizeMappingType | None = None
   recommended_models: RecommendedModelsMappingType | None = None
 
@@ -843,7 +868,7 @@ class ProxAIClientState(StateContainer):
   model_configs: ModelConfigsState | None = None
   model_configs_requested_from_proxdash: bool | None = None
 
-  registered_model_connectors: dict[CallType, ProviderState] | None = None
+  registered_model_connectors: dict[OutputFormatType, ProviderState] | None = None
   default_model_cache_manager: ModelCacheManagerState | None = None
   model_cache_manager: ModelCacheManagerState | None = None
   query_cache_manager: QueryCacheManagerState | None = None

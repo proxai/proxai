@@ -23,7 +23,7 @@ class ModelCacheManager(state_controller.StateControlled):
   """Manages caching of model availability status by call type."""
 
   _cache_options: types.CacheOptions
-  _model_status_by_call_type: types.ModelStatusByCallType
+  _model_status_by_output_format_type: types.ModelStatusByOutputFormatType
   _model_cache_manager_state: types.ModelCacheManagerState
 
   def __init__(
@@ -56,22 +56,22 @@ class ModelCacheManager(state_controller.StateControlled):
     """Initialize the cache manager status based on configuration."""
     if self.cache_options is None:
       self.status = types.ModelCacheManagerStatus.CACHE_OPTIONS_NOT_FOUND
-      self.model_status_by_call_type = None
+      self.model_status_by_output_format_type = None
       return
 
     if self.cache_options.disable_model_cache:
       self.status = types.ModelCacheManagerStatus.DISABLED
-      self.model_status_by_call_type = None
+      self.model_status_by_output_format_type = None
       return
 
     if self.cache_options.cache_path is None:
       self.status = types.ModelCacheManagerStatus.CACHE_PATH_NOT_FOUND
-      self.model_status_by_call_type = None
+      self.model_status_by_output_format_type = None
       return
 
     if not os.access(self.cache_options.cache_path, os.W_OK):
       self.status = types.ModelCacheManagerStatus.CACHE_PATH_NOT_WRITABLE
-      self.model_status_by_call_type = None
+      self.model_status_by_output_format_type = None
       return
 
     self._load_from_cache_path()
@@ -104,18 +104,18 @@ class ModelCacheManager(state_controller.StateControlled):
     self.set_property_value('cache_options', value)
 
   @property
-  def model_status_by_call_type(self) -> types.ModelStatusByCallType:
-    if getattr(self, '_model_status_by_call_type', None) is None:
-      self._model_status_by_call_type = {}
-    return self._model_status_by_call_type
+  def model_status_by_output_format_type(self) -> types.ModelStatusByOutputFormatType:
+    if getattr(self, '_model_status_by_output_format_type', None) is None:
+      self._model_status_by_output_format_type = {}
+    return self._model_status_by_output_format_type
 
-  @model_status_by_call_type.setter
-  def model_status_by_call_type(self, value: types.ModelStatusByCallType):
-    self._model_status_by_call_type = value
+  @model_status_by_output_format_type.setter
+  def model_status_by_output_format_type(self, value: types.ModelStatusByOutputFormatType):
+    self._model_status_by_output_format_type = value
 
   def clear_cache(self):
     """Remove all cached model status data."""
-    self.model_status_by_call_type = None
+    self.model_status_by_output_format_type = None
     if self.cache_path is None:
       return
     if os.path.exists(self.cache_path):
@@ -124,14 +124,14 @@ class ModelCacheManager(state_controller.StateControlled):
   def _save_to_cache_path(self):
     if self.cache_path is None:
       return
-    data = copy.deepcopy(self.model_status_by_call_type)
+    data = copy.deepcopy(self.model_status_by_output_format_type)
     for call_value in data:
       data[call_value] = type_serializer.encode_model_status(data[call_value])
     with open(self.cache_path, 'w') as f:
       json.dump(data, f)
 
   def _load_from_cache_path(self):
-    self.model_status_by_call_type = {}
+    self.model_status_by_output_format_type = {}
     if self.cache_path is None:
       return
     if not os.path.exists(self.cache_path):
@@ -141,7 +141,7 @@ class ModelCacheManager(state_controller.StateControlled):
       try:
         data = json.load(f)
         for call_value in data:
-          self.model_status_by_call_type[call_value] = (
+          self.model_status_by_output_format_type[call_value] = (
               type_serializer.decode_model_status(data[call_value])
           )
       except Exception:
@@ -160,12 +160,13 @@ class ModelCacheManager(state_controller.StateControlled):
         raise ValueError(error_message) from None
 
   def _clean_model_from_tested_models(
-      self, call_type: types.CallType, model: types.ProviderModelType
+      self, output_format_type: types.OutputFormatType,
+      model: types.ProviderModelType
   ):
     """Cleans a model from tested models: working_models and failed_models."""
-    if call_type not in self.model_status_by_call_type:
+    if output_format_type not in self.model_status_by_output_format_type:
       return
-    model_status = self.model_status_by_call_type[call_type]
+    model_status = self.model_status_by_output_format_type[output_format_type]
     if model in model_status.working_models:
       model_status.working_models.remove(model)
     if model in model_status.failed_models:
@@ -173,27 +174,28 @@ class ModelCacheManager(state_controller.StateControlled):
     model_status.provider_queries.pop(model, None)
 
   def _clean_model_from_model_status(
-      self, call_type: types.CallType, model: types.ProviderModelType
+      self, output_format_type: types.OutputFormatType,
+      model: types.ProviderModelType
   ):
-    if call_type not in self.model_status_by_call_type:
+    if output_format_type not in self.model_status_by_output_format_type:
       return
-    model_status = self.model_status_by_call_type[call_type]
+    model_status = self.model_status_by_output_format_type[output_format_type]
     model_status.unprocessed_models.discard(model)
     model_status.working_models.discard(model)
     model_status.failed_models.discard(model)
     model_status.filtered_models.discard(model)
     model_status.provider_queries.pop(model, None)
 
-  def get(self, call_type: types.CallType) -> types.ModelStatus:
-    """Retrieve cached model status for a call type."""
+  def get(self, output_format_type: types.OutputFormatType) -> types.ModelStatus:
+    """Retrieve cached model status for a response type."""
     result = types.ModelStatus()
-    if call_type not in self.model_status_by_call_type:
+    if output_format_type not in self.model_status_by_output_format_type:
       return result
 
     if self.cache_options.model_cache_duration is None:
-      return self.model_status_by_call_type[call_type]
+      return self.model_status_by_output_format_type[output_format_type]
 
-    model_status = self.model_status_by_call_type[call_type]
+    model_status = self.model_status_by_output_format_type[output_format_type]
     for model in list(model_status.provider_queries.keys()):
       if model not in model_status.provider_queries:
         continue
@@ -203,17 +205,19 @@ class ModelCacheManager(state_controller.StateControlled):
           provider_query.result.timestamp.end_utc_date
       ).total_seconds()
       if time_since_response > self.cache_options.model_cache_duration:
-        self._clean_model_from_tested_models(call_type=call_type, model=model)
+        self._clean_model_from_tested_models(
+            output_format_type=output_format_type, model=model)
 
     self._save_to_cache_path()
     return model_status
 
   def update(
-      self, model_status_updates: types.ModelStatus, call_type: types.CallType
+      self, model_status_updates: types.ModelStatus,
+      output_format_type: types.OutputFormatType
   ):
     """Apply incremental updates to cached model status."""
-    if call_type not in self.model_status_by_call_type:
-      self.model_status_by_call_type[call_type] = types.ModelStatus()
+    if output_format_type not in self.model_status_by_output_format_type:
+      self.model_status_by_output_format_type[output_format_type] = types.ModelStatus()
     all_updated_models = (
         model_status_updates.unprocessed_models |
         model_status_updates.working_models |
@@ -229,9 +233,10 @@ class ModelCacheManager(state_controller.StateControlled):
         )
 
     for model in all_updated_models:
-      self._clean_model_from_model_status(call_type=call_type, model=model)
+      self._clean_model_from_model_status(
+          output_format_type=output_format_type, model=model)
 
-    model_status = self.model_status_by_call_type[call_type]
+    model_status = self.model_status_by_output_format_type[output_format_type]
     for model in model_status_updates.unprocessed_models:
       model_status.unprocessed_models.add(model)
     for model in model_status_updates.working_models:
@@ -246,7 +251,11 @@ class ModelCacheManager(state_controller.StateControlled):
       model_status.provider_queries[provider_model] = provider_query
     self._save_to_cache_path()
 
-  def save(self, model_status: types.ModelStatus, call_type: types.CallType):
-    """Replace cached model status for a call type."""
-    self.model_status_by_call_type[call_type] = copy.deepcopy(model_status)
+  def save(
+      self, model_status: types.ModelStatus,
+      output_format_type: types.OutputFormatType
+  ):
+    """Replace cached model status for a response type."""
+    self.model_status_by_output_format_type[output_format_type] = copy.deepcopy(
+        model_status)
     self._save_to_cache_path()

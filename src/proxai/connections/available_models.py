@@ -249,11 +249,11 @@ class AvailableModels(state_controller.StateControlled):
     self.set_property_value('latest_model_cache_path_used_for_update', value)
 
   def _get_all_models(
-      self, models: types.ModelStatus, call_type: types.CallType,
+      self, models: types.ModelStatus,
       recommended_only: bool = True
   ):
     provider_models = self.model_configs_instance.get_all_models(
-        call_type=call_type, recommended_only=recommended_only
+        recommended_only=recommended_only
     )
     for provider_model in provider_models:
       models.unprocessed_models.add(provider_model)
@@ -321,14 +321,13 @@ class AvailableModels(state_controller.StateControlled):
   def _filter_by_model_size(
       self, models: types.ModelStatus,
       model_size: types.ModelSizeType | None = None,
-      call_type: types.CallType = types.CallType.TEXT,
       recommended_only: bool = True
   ):
     if model_size is None:
       return
 
     allowed_models = self.model_configs_instance.get_all_models(
-        call_type=call_type, model_size=model_size,
+        model_size=model_size,
         recommended_only=recommended_only
     )
 
@@ -361,7 +360,7 @@ class AvailableModels(state_controller.StateControlled):
 
   def _filter_by_features(
       self, models: types.ModelStatus,
-      features: list[types.FeatureTagType] | None = None
+      features: list[types.FeatureTag] | None = None
   ):
     if features is None:
       return
@@ -389,15 +388,89 @@ class AvailableModels(state_controller.StateControlled):
     models.working_models = _filter_set(models.working_models)
     models.failed_models = _filter_set(models.failed_models)
 
-  def _filter_by_cache(self, models: types.ModelStatus, call_type: str):
+  def _filter_by_tag_list(
+      self, models: types.ModelStatus,
+      tags, resolve_fn
+  ):
+    if tags is None:
+      return
+
+    def _filter_set(provider_model_set):
+      not_filtered_models = set()
+      for provider_model in provider_model_set:
+        provider_model_config = (
+            self.model_configs_instance.get_provider_model_config(
+                provider_model))
+        support_level = self.get_model_connector(
+            provider_model
+        ).get_tag_support_level(
+            tags=tags,
+            resolve_fn=resolve_fn,
+            model_feature_config=provider_model_config.features)
+        if self._is_feature_compatible(support_level):
+          not_filtered_models.add(provider_model)
+        else:
+          models.filtered_models.add(provider_model)
+      return not_filtered_models
+
+    models.unprocessed_models = _filter_set(models.unprocessed_models)
+    models.working_models = _filter_set(models.working_models)
+    models.failed_models = _filter_set(models.failed_models)
+
+  def _filter_by_input_format(
+      self, models: types.ModelStatus,
+      input_format_types: list[types.InputFormatType] | None = None
+  ):
+    if input_format_types is None:
+      return
+    from proxai.connectors.adapter_utils import (
+        resolve_input_format_type_support)
+    self._filter_by_tag_list(
+        models, input_format_types, resolve_input_format_type_support)
+
+  def _filter_by_output_format(
+      self, models: types.ModelStatus,
+      output_format_types: list[types.OutputFormatType] | None = None
+  ):
+    if output_format_types is None:
+      return
+    from proxai.connectors.adapter_utils import (
+        resolve_output_format_type_support)
+    self._filter_by_tag_list(
+        models, output_format_types, resolve_output_format_type_support)
+
+  def _filter_by_feature_tags(
+      self, models: types.ModelStatus,
+      feature_tags: list[types.FeatureTag] | None = None
+  ):
+    if feature_tags is None:
+      return
+    self._filter_by_features(models, features=feature_tags)
+
+  def _filter_by_tool_tags(
+      self, models: types.ModelStatus,
+      tool_tags: list[types.ToolTag] | None = None
+  ):
+    if tool_tags is None:
+      return
+    from proxai.connectors.adapter_utils import resolve_tool_tag_support
+    self._filter_by_tag_list(
+        models, tool_tags, resolve_tool_tag_support)
+
+  def _filter_by_cache(
+      self, models: types.ModelStatus,
+      output_format_type: types.OutputFormatType
+  ):
     if (
         not self.model_cache_manager or
-        self.model_cache_manager.status != types.ModelCacheManagerStatus.WORKING
+        self.model_cache_manager.status
+        != types.ModelCacheManagerStatus.WORKING
     ):
       return
     cache_model_status = types.ModelStatus()
     if self.model_cache_manager:
-      cache_model_status = self.model_cache_manager.get(call_type=call_type)
+      cache_model_status = self.model_cache_manager.get(
+          output_format_type=output_format_type)
       self._place_filtered_models_back_to_working_or_failed_models(
           cache_model_status
       )
@@ -520,14 +593,17 @@ class AvailableModels(state_controller.StateControlled):
       self,
       test_tasks: list[tuple[types.ProviderModelType,
                              provider_connector.ProviderConnector]],
-      call_type: str, verbose: bool = False
+      output_format_type: types.OutputFormatType,
+      verbose: bool = False
   ):
     process_count = max(1, multiprocessing.cpu_count() - 1)
     test_func = None
-    if call_type == types.CallType.TEXT:
+    if output_format_type == types.OutputFormatType.TEXT:
       test_func = self._test_generate_text
     else:
-      raise ValueError(f'Call type not supported: {call_type}')
+      raise ValueError(
+          f'Output format type not supported: {output_format_type}'
+      )
 
     test_results = []
     try:
@@ -568,7 +644,8 @@ class AvailableModels(state_controller.StateControlled):
       self,
       test_tasks: list[tuple[types.ProviderModelType,
                              provider_connector.ProviderConnector]],
-      call_type: str, verbose: bool = False
+      output_format_type: types.OutputFormatType,
+      verbose: bool = False
   ):
     """Tests provider models sequentially.
 
@@ -577,10 +654,12 @@ class AvailableModels(state_controller.StateControlled):
     on timeout handling without multiprocessing/threading.
     """
     test_func = None
-    if call_type == types.CallType.TEXT:
+    if output_format_type == types.OutputFormatType.TEXT:
       test_func = self._test_generate_text
     else:
-      raise ValueError(f'Call type not supported: {call_type}')
+      raise ValueError(
+          f'Output format type not supported: {output_format_type}'
+      )
 
     warning_message = (
         'Testing models sequentially can take a while because it '
@@ -609,7 +688,9 @@ class AvailableModels(state_controller.StateControlled):
     return test_results
 
   def _test_models(
-      self, models: types.ModelStatus, call_type: str, verbose: bool = False
+      self, models: types.ModelStatus,
+      output_format_type: types.OutputFormatType,
+      verbose: bool = False
   ):
     if not models.unprocessed_models:
       return
@@ -621,12 +702,14 @@ class AvailableModels(state_controller.StateControlled):
 
     if self.allow_multiprocessing:
       test_results = self._test_models_with_multiprocessing(
-          test_tasks=test_tasks, call_type=call_type,
+          test_tasks=test_tasks,
+          output_format_type=output_format_type,
           verbose=verbose
       )
     else:
       test_results = self._test_models_sequentially(
-          test_tasks=test_tasks, call_type=call_type,
+          test_tasks=test_tasks,
+          output_format_type=output_format_type,
           verbose=verbose
       )
 
@@ -662,10 +745,14 @@ class AvailableModels(state_controller.StateControlled):
       self, selected_providers: set[str] | None = None,
       selected_provider_models: set[types.ProviderModelType] | None = None,
       model_size: types.ModelSizeType | None = None,
-      features: list[types.FeatureTagType] | None = None, verbose: bool = False,
+      features: list[types.FeatureTag] | None = None,
+      output_format: types.OutputFormatTypeParam | None = None,
+      input_format: types.InputFormatTypeParam | None = None,
+      feature_tags: list[types.FeatureTag] | None = None,
+      tool_tags: list[types.ToolTag] | None = None,
+      verbose: bool = False,
       clear_model_cache: bool = False,
       raw_config_results_without_test: bool = False,
-      call_type: types.CallType = types.CallType.TEXT,
       recommended_only: bool = True
   ) -> types.ModelStatus:
     if self.model_cache_manager and clear_model_cache:
@@ -682,22 +769,31 @@ class AvailableModels(state_controller.StateControlled):
           'to set the environment variables.'
       )
     self._get_all_models(
-        models, call_type=call_type, recommended_only=recommended_only)
+        models, recommended_only=recommended_only)
     self._filter_by_provider_api_key(models)
     self._filter_by_providers(models, providers=selected_providers)
     self._filter_by_provider_models(
         models, provider_models=selected_provider_models
     )
     self._filter_by_model_size(
-        models, model_size=model_size, recommended_only=recommended_only)
+        models, model_size=model_size,
+        recommended_only=recommended_only)
     self._filter_by_features(models, features=features)
+    output_format_tags = type_utils.create_output_format_type_list(
+        output_format)
+    input_format_tags = type_utils.create_input_format_type_list(
+        input_format)
+    self._filter_by_output_format(models, output_format_tags)
+    self._filter_by_input_format(models, input_format_tags)
+    self._filter_by_feature_tags(models, feature_tags)
+    self._filter_by_tool_tags(models, tool_tags)
 
-    if (raw_config_results_without_test or 
-        (call_type != types.CallType.TEXT and
-         call_type != types.CallType.MULTIMODAL)):
+    if raw_config_results_without_test:
       return models
 
-    self._filter_by_cache(models, call_type=types.CallType.TEXT)
+    self._filter_by_cache(
+        models,
+        output_format_type=types.OutputFormatType.TEXT)
 
     print_flag = bool(verbose and models.unprocessed_models)
     verbose_print = print if print_flag else lambda *args, **kwargs: None
@@ -713,7 +809,9 @@ class AvailableModels(state_controller.StateControlled):
           f'Running test for {len(models.unprocessed_models)} models.'
       )
       self._test_models(
-          models, call_type=types.CallType.TEXT, verbose=verbose
+          models,
+          output_format_type=types.OutputFormatType.TEXT,
+          verbose=verbose
       )
       verbose_print(
           f'After test;\n'
@@ -722,7 +820,9 @@ class AvailableModels(state_controller.StateControlled):
       )
 
     if self.model_cache_manager:
-      self.model_cache_manager.save(model_status=models, call_type=call_type)
+      self.model_cache_manager.save(
+          model_status=models,
+          output_format_type=types.OutputFormatType.TEXT)
       self.latest_model_cache_path_used_for_update = (
           self.model_cache_manager.cache_path
       )
@@ -744,19 +844,28 @@ class AvailableModels(state_controller.StateControlled):
   def list_models(
       self, model_size: types.ModelSizeIdentifierType | None = None,
       features: types.FeatureTagParam | None = None,
-      call_type: types.CallTypeParam = types.CallType.TEXT,
+      input_format: types.InputFormatTypeParam | None = None,
+      output_format: types.OutputFormatTypeParam = (
+          types.OutputFormatType.TEXT),
+      feature_tags: types.FeatureTagParam | None = None,
+      tool_tags: types.ToolTagParam | None = None,
       recommended_only: bool = True
   ) -> list[types.ProviderModelType]:
     """List all configured models matching the filters."""
-    call_type = type_utils.check_call_type_param(call_type)
     if model_size is not None:
       model_size = type_utils.check_model_size_identifier_type(model_size)
     if features is not None:
       features = type_utils.create_feature_tag_list(features=features)
+    feature_tag_list = None
+    if feature_tags is not None:
+      feature_tag_list = type_utils.create_feature_tag_list(
+          features=feature_tags)
+    tool_tag_list = type_utils.create_tool_tag_list(tool_tags)
 
-    model_status: types.ModelStatus | None = None
     model_status = self._fetch_all_models(
-        model_size=model_size, call_type=call_type, features=features,
+        model_size=model_size, features=features,
+        output_format=output_format, input_format=input_format,
+        feature_tags=feature_tag_list, tool_tags=tool_tag_list,
         raw_config_results_without_test=True,
         recommended_only=recommended_only
     )
@@ -764,13 +873,15 @@ class AvailableModels(state_controller.StateControlled):
     return self._format_set(model_status.unprocessed_models)
 
   def list_providers(
-      self, call_type: types.CallTypeParam = types.CallType.TEXT,
+      self,
+      output_format: types.OutputFormatTypeParam = (
+          types.OutputFormatType.TEXT),
       recommended_only: bool = True
   ) -> list[str]:
     """List all providers with available API keys."""
-    call_type = type_utils.check_call_type_param(call_type)
     model_status = self._fetch_all_models(
-        call_type=call_type, raw_config_results_without_test=True,
+        output_format=output_format,
+        raw_config_results_without_test=True,
         recommended_only=recommended_only
     )
     providers_with_key = {
@@ -784,20 +895,23 @@ class AvailableModels(state_controller.StateControlled):
       provider: str,
       model_size: types.ModelSizeIdentifierType | None = None,
       features: types.FeatureTagParam | None = None,
-      call_type: types.CallTypeParam = types.CallType.TEXT,
+      input_format: types.InputFormatTypeParam | None = None,
+      output_format: types.OutputFormatTypeParam = (
+          types.OutputFormatType.TEXT),
+      feature_tags: types.FeatureTagParam | None = None,
+      tool_tags: types.ToolTagParam | None = None,
       recommended_only: bool = True,
   ) -> list[types.ProviderModelType]:
     """List all models for a specific provider."""
-    call_type = type_utils.check_call_type_param(call_type)
     if model_size is not None:
       model_size = type_utils.check_model_size_identifier_type(model_size)
     if features is not None:
       features = type_utils.create_feature_tag_list(features=features)
-
-    provider_models = self.model_configs_instance.get_all_models(
-        provider=provider, call_type=call_type, model_size=model_size,
-        recommended_only=recommended_only
-    )
+    feature_tag_list = None
+    if feature_tags is not None:
+      feature_tag_list = type_utils.create_feature_tag_list(
+          features=feature_tags)
+    tool_tag_list = type_utils.create_tool_tag_list(tool_tags)
 
     self._load_provider_keys()
     if provider not in self.providers_with_key:
@@ -805,13 +919,15 @@ class AvailableModels(state_controller.StateControlled):
           f'Provider key not found in environment variables for {provider}.\n'
           f'Required keys: {model_configs.PROVIDER_KEY_MAP[provider]}'
       )
-    model_status = types.ModelStatus()
-    for provider_model in provider_models:
-      model_status.unprocessed_models.add(provider_model)
-    self._filter_by_model_size(
-        model_status, model_size=model_size,
-        recommended_only=recommended_only)
-    self._filter_by_features(model_status, features=features)
+
+    model_status = self._fetch_all_models(
+        selected_providers={provider},
+        model_size=model_size, features=features,
+        output_format=output_format, input_format=input_format,
+        feature_tags=feature_tag_list, tool_tags=tool_tag_list,
+        raw_config_results_without_test=True,
+        recommended_only=recommended_only
+    )
 
     return self._format_set(model_status.unprocessed_models)
 
@@ -838,20 +954,14 @@ class AvailableModels(state_controller.StateControlled):
   def list_working_models(
       self,
       model_size: types.ModelSizeIdentifierType | None = None,
-      features: types.FeatureTagParam | None = None, verbose: bool = True,
+      features: types.FeatureTagParam | None = None,
+      verbose: bool = True,
       return_all: bool = False, clear_model_cache: bool = False,
-      call_type: types.CallTypeParam = types.CallType.TEXT,
+      output_format: types.OutputFormatTypeParam = (
+          types.OutputFormatType.TEXT),
       recommended_only: bool = True
   ) -> list[types.ProviderModelType] | types.ModelStatus:
     """List models verified to be working through API tests."""
-    call_type = type_utils.check_call_type_param(call_type)
-    if call_type not in (types.CallType.TEXT, types.CallType.MULTI_MODAL):
-      raise ValueError(
-          'Working models are only supported for TEXT and MULTIMODAL '
-          'because IMAGE, AUDIO, and VIDEO types are costly to test. '
-          'Please use the list_models function instead and directly use the '
-          'models you need. '
-          f'Call type: {call_type}')
     if model_size is not None:
       model_size = type_utils.check_model_size_identifier_type(model_size)
     if features is not None:
@@ -861,23 +971,26 @@ class AvailableModels(state_controller.StateControlled):
     if not self.model_cache_manager:
       logging_utils.log_message(
           logging_options=self.logging_options,
-          message='Model cache is not enabled. Fetching all models from '
-          'providers. This is not ideal for performance.',
+          message='Model cache is not enabled. Fetching all models '
+          'from providers. This is not ideal for performance.',
           type=types.LoggingType.WARNING
       )
       model_status = self._fetch_all_models(
-          model_size=model_size, features=features, call_type=call_type,
+          model_size=model_size, features=features,
+          output_format=output_format,
           verbose=verbose, recommended_only=recommended_only
       )
-    elif (clear_model_cache or not self._check_model_cache_path_same()):
+    elif (clear_model_cache or
+          not self._check_model_cache_path_same()):
       model_status = self._fetch_all_models(
           model_size=model_size, clear_model_cache=clear_model_cache,
-          features=features, call_type=call_type, verbose=verbose,
-          recommended_only=recommended_only
+          features=features, output_format=output_format,
+          verbose=verbose, recommended_only=recommended_only
       )
     else:
       model_status = self._fetch_all_models(
-          model_size=model_size, features=features, call_type=call_type,
+          model_size=model_size, features=features,
+          output_format=output_format,
           verbose=verbose, recommended_only=recommended_only
       )
 
@@ -887,40 +1000,37 @@ class AvailableModels(state_controller.StateControlled):
 
   def list_working_providers(
       self, verbose: bool = True, clear_model_cache: bool = False,
-      call_type: types.CallTypeParam = types.CallType.TEXT,
+      output_format: types.OutputFormatTypeParam = (
+          types.OutputFormatType.TEXT),
       recommended_only: bool = True
   ) -> list[str]:
     """List providers with at least one working model."""
-    call_type = type_utils.check_call_type_param(call_type)
-    if call_type not in (types.CallType.TEXT, types.CallType.MULTI_MODAL):
-      raise ValueError(
-          'Working models are only supported for TEXT and MULTIMODAL '
-          'because IMAGE, AUDIO, and VIDEO types are costly to test. '
-          'Please use the list_providers function instead and directly use the '
-          'models you need. '
-          f'Call type: {call_type}')
-
+    type_utils.create_output_format_type_list(output_format)
     providers_with_key: set[str] | None = None
     if not self.model_cache_manager:
-      # For performance, we only load the provider keys if the model cache is
-      # not enabled instead of fetching all models.
+      # For performance, we only load the provider keys if the
+      # model cache is not enabled instead of fetching all models.
       self._load_provider_keys()
       providers_with_key = set(self.providers_with_key.keys())
-    elif (clear_model_cache or not self._check_model_cache_path_same()):
+    elif (clear_model_cache or
+          not self._check_model_cache_path_same()):
       model_status = self._fetch_all_models(
           verbose=verbose, clear_model_cache=clear_model_cache,
-          call_type=call_type, recommended_only=recommended_only
-      )
-      providers_with_key = {
-          model.provider for model in model_status.working_models
-      }
-    else:
-      model_status = self._fetch_all_models(
-          verbose=verbose, call_type=call_type,
+          output_format=output_format,
           recommended_only=recommended_only
       )
       providers_with_key = {
-          model.provider for model in model_status.working_models
+          model.provider
+          for model in model_status.working_models
+      }
+    else:
+      model_status = self._fetch_all_models(
+          verbose=verbose, output_format=output_format,
+          recommended_only=recommended_only
+      )
+      providers_with_key = {
+          model.provider
+          for model in model_status.working_models
       }
 
     return sorted(providers_with_key)
@@ -933,26 +1043,20 @@ class AvailableModels(state_controller.StateControlled):
       verbose: bool = True,
       return_all: bool = False,
       clear_model_cache: bool = False,
-      call_type: types.CallTypeParam = types.CallType.TEXT,
+      output_format: types.OutputFormatTypeParam = (
+          types.OutputFormatType.TEXT),
       recommended_only: bool = True,
   ) -> list[types.ProviderModelType] | types.ModelStatus:
     """List working models for a specific provider."""
-    call_type = type_utils.check_call_type_param(call_type)
-    if call_type not in (types.CallType.TEXT, types.CallType.MULTI_MODAL):
-      raise ValueError(
-          'Working models are only supported for TEXT and MULTIMODAL '
-          'because IMAGE, AUDIO, and VIDEO types are costly to test. '
-          'Please use the list_provider_models function instead and directly use the '
-          'models you need. '
-          f'Call type: {call_type}')
+    type_utils.create_output_format_type_list(output_format)
     if model_size is not None:
       model_size = type_utils.check_model_size_identifier_type(model_size)
     if features is not None:
       features = type_utils.create_feature_tag_list(features=features)
 
     provider_models = self.model_configs_instance.get_all_models(
-        provider=provider, call_type=call_type, model_size=model_size,
-        recommended_only=recommended_only
+        provider=provider,
+        model_size=model_size, recommended_only=recommended_only
     )
 
     model_status: types.ModelStatus | None = None
@@ -970,18 +1074,19 @@ class AvailableModels(state_controller.StateControlled):
           model_status, model_size=model_size,
           recommended_only=recommended_only)
       self._filter_by_features(model_status, features=features)
-    elif (clear_model_cache or not self._check_model_cache_path_same()):
+    elif (clear_model_cache or
+          not self._check_model_cache_path_same()):
       model_status = self._fetch_all_models(
           selected_providers={provider}, model_size=model_size,
-          features=features, verbose=verbose,
-          clear_model_cache=clear_model_cache, call_type=call_type,
+          features=features, output_format=output_format,
+          verbose=verbose, clear_model_cache=clear_model_cache,
           recommended_only=recommended_only
       )
     else:
       model_status = self._fetch_all_models(
           selected_providers={provider}, model_size=model_size,
-          features=features, verbose=verbose, call_type=call_type,
-          recommended_only=recommended_only
+          features=features, output_format=output_format,
+          verbose=verbose, recommended_only=recommended_only
       )
 
     if return_all:
@@ -991,60 +1096,50 @@ class AvailableModels(state_controller.StateControlled):
   def get_working_model(
       self, provider: str, model: str, verbose: bool = False,
       clear_model_cache: bool = False,
-      call_type: types.CallTypeParam = types.CallType.TEXT
+      output_format: types.OutputFormatTypeParam = (
+          types.OutputFormatType.TEXT)
   ) -> types.ProviderModelType:
     """Get a specific model after verifying it works."""
-    call_type = type_utils.check_call_type_param(call_type)
-    if call_type not in (types.CallType.TEXT, types.CallType.MULTI_MODAL):
-      raise ValueError(
-          'Working models are only supported for TEXT and MULTIMODAL '
-          'because IMAGE, AUDIO, and VIDEO types are costly to test. '
-          'Please use the get_model function instead and directly use the '
-          'models you need. '
-          f'Call type: {call_type}')
-
+    type_utils.create_output_format_type_list(output_format)
     provider_model_config = (
-        self.model_configs_instance.get_provider_model_config((provider, model))
+        self.model_configs_instance.get_provider_model_config(
+            (provider, model))
     )
-
-    if provider_model_config.metadata.call_type != call_type:
-      raise ValueError(
-          'Provider model call type mismatch.\n'
-          f'Call type: {call_type}\n'
-          f'Provider model config: {provider_model_config}'
-      )
 
     provider_model = provider_model_config.provider_model
 
     model_status: types.ModelStatus | None = None
     if not self.model_cache_manager:
-      # For performance, we only load the provider keys if the model cache is
-      # not enabled instead of fetching all models.
+      # For performance, we only load the provider keys if the
+      # model cache is not enabled instead of fetching all models.
       self._load_provider_keys()
       if provider_model.provider not in self.providers_with_key:
         raise ValueError(
-            'Provider key not found in environment variables for '
-            f'{provider_model.provider}.\n'
+            'Provider key not found in environment variables '
+            f'for {provider_model.provider}.\n'
             'Required keys: '
             f'{model_configs.PROVIDER_KEY_MAP[provider_model.provider]}'
         )
       return provider_model
-    elif (clear_model_cache or not self._check_model_cache_path_same()):
+    elif (clear_model_cache or
+          not self._check_model_cache_path_same()):
       model_status = self._fetch_all_models(
-          selected_provider_models={provider_model}, verbose=verbose,
-          clear_model_cache=clear_model_cache, call_type=call_type
+          selected_provider_models={provider_model},
+          verbose=verbose,
+          clear_model_cache=clear_model_cache
       )
     else:
       model_status = self._fetch_all_models(
-          selected_provider_models={provider_model}, verbose=verbose,
-          call_type=call_type
+          selected_provider_models={provider_model},
+          verbose=verbose
       )
 
     if provider_model in model_status.working_models:
       return provider_model
 
     raise ValueError(
-        f'Provider model not found in working models: ({provider}, {model})\n' +
+        'Provider model not found in working models: '
+        f'({provider}, {model})\n' +
         'Logging Record: ' +
         f'{model_status.provider_queries.get(provider_model, "")}'
     )

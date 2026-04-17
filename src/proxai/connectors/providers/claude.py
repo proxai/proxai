@@ -12,6 +12,7 @@ STRUCTURED_OUTPUTS_BETA = "structured-outputs-2025-11-13"
 
 FeatureConfigType = types.FeatureConfigType
 FeatureSupportType = types.FeatureSupportType
+InputFormatConfigType = types.InputFormatConfigType
 ParameterConfigType = types.ParameterConfigType
 ToolConfigType = types.ToolConfigType
 ResponseFormatConfigType = types.ResponseFormatConfigType
@@ -57,6 +58,11 @@ class ClaudeConnector(provider_connector.ProviderConnector):
           ),
           tools=ToolConfigType(
               web_search=FeatureSupportType.SUPPORTED,
+          ),
+          input_format=InputFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
+              image=FeatureSupportType.SUPPORTED,
+              document=FeatureSupportType.SUPPORTED,
           ),
           response_format=ResponseFormatConfigType(
               text=FeatureSupportType.SUPPORTED,

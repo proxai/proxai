@@ -9,6 +9,7 @@ import proxai.chat.message_content as message_content
 
 FeatureConfigType = types.FeatureConfigType
 FeatureSupportType = types.FeatureSupportType
+InputFormatConfigType = types.InputFormatConfigType
 ParameterConfigType = types.ParameterConfigType
 ToolConfigType = types.ToolConfigType
 ResponseFormatConfigType = types.ResponseFormatConfigType
@@ -61,6 +62,9 @@ class CohereConnector(provider_connector.ProviderConnector):
               # V2 chat has no built-in web search tool. Function tools
               # exist but are out of scope for the proxai web_search flag.
               web_search=FeatureSupportType.NOT_SUPPORTED,
+          ),
+          input_format=InputFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
           ),
           response_format=ResponseFormatConfigType(
               text=FeatureSupportType.SUPPORTED,

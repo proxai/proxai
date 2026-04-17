@@ -381,7 +381,7 @@ class ProviderConnector(state_controller.StateControlled):
 
   def get_feature_tags_support_level(
       self,
-      feature_tags: list[types.FeatureTagType],
+      feature_tags: list[types.FeatureTag],
       model_feature_config: types.FeatureConfigType,
   ) -> types.FeatureSupportType:
     """Return the best support level for the given feature tags across endpoints.
@@ -401,6 +401,31 @@ class ProviderConnector(state_controller.StateControlled):
       if support_level == types.FeatureSupportType.SUPPORTED:
         return types.FeatureSupportType.SUPPORTED
       elif support_level == types.FeatureSupportType.BEST_EFFORT:
+        has_best_effort = True
+    if has_best_effort:
+      return types.FeatureSupportType.BEST_EFFORT
+    return types.FeatureSupportType.NOT_SUPPORTED
+
+  def get_tag_support_level(
+      self,
+      tags,
+      resolve_fn,
+      model_feature_config: types.FeatureConfigType,
+  ) -> types.FeatureSupportType:
+    """Return the best support level for generic tags across endpoints."""
+    from proxai.connectors.adapter_utils import (
+        SUPPORT_RANK, merge_feature_configs)
+    has_best_effort = False
+    for endpoint in self.ENDPOINT_PRIORITY:
+      merged = merge_feature_configs(
+          self.ENDPOINT_CONFIG[endpoint],
+          model_feature_config,
+      )
+      levels = [resolve_fn(merged, tag) for tag in tags]
+      min_level = min(levels, key=lambda l: SUPPORT_RANK[l])
+      if min_level == types.FeatureSupportType.SUPPORTED:
+        return types.FeatureSupportType.SUPPORTED
+      elif min_level == types.FeatureSupportType.BEST_EFFORT:
         has_best_effort = True
     if has_best_effort:
       return types.FeatureSupportType.BEST_EFFORT

@@ -127,28 +127,57 @@ def check_model_size_identifier_type(
   )
 
 
-def check_call_type_param(
-    call_type: types.CallTypeParam
-) -> types.CallType:
-  """Check if call type param is supported."""
-  if isinstance(call_type, types.CallType):
-    return call_type
-  elif isinstance(call_type, str):
-    normalized = call_type.upper()
-    valid_values = [ct.value for ct in types.CallType]
+def check_output_format_type_param(
+    output_format_type: types.OutputFormatTypeParam
+) -> types.OutputFormatType:
+  """Check if output format type param is supported."""
+  if isinstance(output_format_type, types.OutputFormatType):
+    return output_format_type
+  elif isinstance(output_format_type, str):
+    normalized = output_format_type.upper()
+    valid_values = [rt.value for rt in types.OutputFormatType]
     if normalized not in valid_values:
-      valid_strings = ', '.join(ct.value.lower() for ct in types.CallType)
+      valid_strings = ', '.join(
+          rt.value.lower() for rt in types.OutputFormatType)
       raise ValueError(
-          'Call type should be proxai.types.CallType or one of the '
-          f'following strings: {valid_strings}\n'
-          f'Invalid call type: {call_type}'
+          'Output format type should be proxai.types.OutputFormatType '
+          f'or one of the following strings: {valid_strings}\n'
+          f'Invalid output format type: {output_format_type}'
       )
-    return types.CallType(normalized)
+    return types.OutputFormatType(normalized)
   raise ValueError(
-      'Call type should be proxai.types.CallType or one of the '
-      'following strings: text, image, audio, video, multi_modal, other\n'
-      f'Invalid call type: {call_type}\n'
-      f'Type: {type(call_type)}'
+      'Output format type should be proxai.types.OutputFormatType '
+      'or one of the following strings: text, image, audio, video, '
+      'json, pydantic, multi_modal\n'
+      f'Invalid output format type: {output_format_type}\n'
+      f'Type: {type(output_format_type)}'
+  )
+
+
+def check_input_format_type_param(
+    input_format_type: types.InputFormatTypeParam
+) -> types.InputFormatType:
+  """Check if input format type param is supported."""
+  if isinstance(input_format_type, types.InputFormatType):
+    return input_format_type
+  elif isinstance(input_format_type, str):
+    normalized = input_format_type.upper()
+    valid_values = [it.value for it in types.InputFormatType]
+    if normalized not in valid_values:
+      valid_strings = ', '.join(
+          it.value.lower() for it in types.InputFormatType)
+      raise ValueError(
+          'Input format type should be proxai.types.InputFormatType '
+          f'or one of the following strings: {valid_strings}\n'
+          f'Invalid input format type: {input_format_type}'
+      )
+    return types.InputFormatType(normalized)
+  raise ValueError(
+      'Input format type should be proxai.types.InputFormatType '
+      'or one of the following strings: text, image, document, '
+      'audio, video\n'
+      f'Invalid input format type: {input_format_type}\n'
+      f'Type: {type(input_format_type)}'
   )
 
 
@@ -276,16 +305,49 @@ def create_pydantic_instance_from_response(
     )
 
 
+def _normalize_tag_param(param, tag_enum):
+  """Normalize a tag param (single or list) to a list of enum values."""
+  if param is None:
+    return None
+  if isinstance(param, (str, tag_enum)):
+    param = [param]
+  result = []
+  for item in param:
+    if isinstance(item, tag_enum):
+      result.append(item)
+    elif isinstance(item, str):
+      try:
+        result.append(tag_enum(item))
+      except ValueError:
+        result.append(tag_enum(item.upper()))
+    else:
+      raise ValueError(f'Invalid tag: {item}')
+  return result
+
+
+def create_input_format_type_list(
+    tags: types.InputFormatTypeParam
+) -> list[types.InputFormatType] | None:
+  """Convert InputFormatTypeParam to list[InputFormatType]."""
+  return _normalize_tag_param(tags, types.InputFormatType)
+
+
+def create_output_format_type_list(
+    tags: types.OutputFormatTypeParam
+) -> list[types.OutputFormatType] | None:
+  """Convert OutputFormatTypeParam to list[OutputFormatType]."""
+  return _normalize_tag_param(tags, types.OutputFormatType)
+
+
+def create_tool_tag_list(
+    tags: types.ToolTagParam
+) -> list[types.ToolTag] | None:
+  """Convert ToolTagParam to list[ToolTag]."""
+  return _normalize_tag_param(tags, types.ToolTag)
+
+
 def create_feature_tag_list(
     features: types.FeatureTagParam
-) -> list[types.FeatureTagType]:
-  """Convert a list of feature strings or enums to list[FeatureTagType]."""
-  result_features = []
-  for feature in features:
-    if isinstance(feature, types.FeatureTagType):
-      result_features.append(feature)
-    elif isinstance(feature, str):
-      result_features.append(types.FeatureTagType(feature))
-    else:
-      raise ValueError(f'Invalid feature: {feature}')
-  return result_features
+) -> list[types.FeatureTag] | None:
+  """Convert feature tag param to list[FeatureTag]."""
+  return _normalize_tag_param(features, types.FeatureTag)

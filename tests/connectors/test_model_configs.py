@@ -10,7 +10,6 @@ import proxai.types as types
 
 def create_provider_model_config(
     provider: str, model: str, is_recommended: bool = True,
-    call_type: types.CallType = types.CallType.TEXT,
     model_size_tags: list = None, features: dict = None
 ) -> types.ProviderModelConfigType:
   """Create a ProviderModelConfigType for testing."""
@@ -21,7 +20,7 @@ def create_provider_model_config(
       ), pricing=types.ProviderModelPricingType(
           per_response_token_cost=1.0, per_query_token_cost=1.0
       ), features=features or {}, metadata=types.ProviderModelMetadataType(
-          call_type=call_type, is_recommended=is_recommended,
+          is_recommended=is_recommended,
           model_size_tags=model_size_tags
       )
   )
@@ -39,14 +38,13 @@ def create_feature_config(
 
 def create_version_config(
     provider_model_configs: dict, recommended_models: dict = None,
-    models_by_call_type: dict = None, models_by_size: dict = None,
+    models_by_size: dict = None,
     default_model_priority_list: list = None
 ) -> types.ModelConfigsSchemaVersionConfigType:
   """Create a ModelConfigsSchemaVersionConfigType for testing."""
   return types.ModelConfigsSchemaVersionConfigType(
       provider_model_configs=provider_model_configs,
       recommended_models=recommended_models or {},
-      models_by_call_type=models_by_call_type or {},
       models_by_size=models_by_size or {},
       default_model_priority_list=default_model_priority_list or []
   )
@@ -174,23 +172,6 @@ class TestGetAllRecommendedModelsFromConfigs:
   def test_empty_configs(self, model_configs_instance):
     result = model_configs_instance._get_all_recommended_models_from_configs({})
     assert result == set()
-
-
-class TestGetAllModelsByCallTypeFromConfigs:
-
-  def test_groups_by_call_type(self, model_configs_instance):
-    configs = {
-        'openai': {
-            'gpt-4':
-                create_provider_model_config(
-                    'openai', 'gpt-4', call_type=types.CallType.TEXT
-                ),
-        }
-    }
-    result = model_configs_instance._get_all_models_by_call_type_from_configs(
-        configs
-    )
-    assert result[types.CallType.TEXT] == {('openai', 'gpt-4')}
 
 
 class TestGetAllModelsBySizeFromConfigs:
@@ -394,42 +375,6 @@ class TestValidateRecommendedModels:
       model_configs_instance._validate_recommended_models(configs, recommended)
 
 
-class TestValidateModelsByCallType:
-
-  def test_valid_models_by_call_type(self, model_configs_instance):
-    configs = {
-        'openai': {
-            'gpt-4':
-                create_provider_model_config(
-                    'openai', 'gpt-4', call_type=types.CallType.TEXT
-                )
-        }
-    }
-    by_call_type = {
-        types.CallType.TEXT: {
-            'openai': [
-                types.ProviderModelType(
-                    provider='openai', model='gpt-4',
-                    provider_model_identifier='id'
-                )
-            ]
-        }
-    }
-    model_configs_instance._validate_models_by_call_type(configs, by_call_type)
-
-  def test_missing_in_list_raises(self, model_configs_instance):
-    configs = {
-        'openai': {
-            'gpt-4':
-                create_provider_model_config(
-                    'openai', 'gpt-4', call_type=types.CallType.TEXT
-                )
-        }
-    }
-    with pytest.raises(ValueError, match='missing from models_by_call_type'):
-      model_configs_instance._validate_models_by_call_type(configs, {})
-
-
 class TestValidateModelsBySize:
 
   def test_valid_models_by_size(self, model_configs_instance):
@@ -533,16 +478,13 @@ class TestValidateVersionConfig:
             'gpt-4':
                 create_provider_model_config(
                     'openai', 'gpt-4', is_recommended=True,
-                    call_type=types.CallType.TEXT,
                     model_size_tags=[types.ModelSizeType.LARGE]
                 )
         }
     }
     version_config = create_version_config(
         provider_model_configs=configs, recommended_models={'openai': [pm]},
-        models_by_call_type={types.CallType.TEXT: {
-            'openai': [pm]
-        }}, models_by_size={types.ModelSizeType.LARGE: [pm]},
+        models_by_size={types.ModelSizeType.LARGE: [pm]},
         default_model_priority_list=[pm]
     )
     model_configs_instance._validate_version_config(version_config)
@@ -662,24 +604,18 @@ class TestGetAllModels:
             'featured':
                 create_provider_model_config(
                     'test', 'featured', is_recommended=True,
-                    call_type=types.CallType.TEXT,
                     model_size_tags=[types.ModelSizeType.LARGE]
                 ),
             'not_featured':
                 create_provider_model_config(
                     'test', 'not_featured', is_recommended=False,
-                    call_type=types.CallType.TEXT,
                     model_size_tags=[types.ModelSizeType.SMALL]
                 ),
         }
     }
     version_config = create_version_config(
         provider_model_configs=configs, recommended_models={'test': [pm_featured]},
-        models_by_call_type={
-            types.CallType.TEXT: {
-                'test': [pm_featured, pm_not_featured]
-            }
-        }, models_by_size={
+        models_by_size={
             types.ModelSizeType.LARGE: [pm_featured],
             types.ModelSizeType.SMALL: [pm_not_featured]
         }, default_model_priority_list=[pm_featured]
@@ -691,14 +627,14 @@ class TestGetAllModels:
     return model_configs.ModelConfigs(init_from_params=model_configs_params)
 
   def test_recommended_only_filter(self, custom_configs):
-    result = custom_configs.get_all_models(call_type=None, recommended_only=True)
+    result = custom_configs.get_all_models(recommended_only=True)
     model_names = [m.model for m in result]
     assert 'featured' in model_names
     assert 'not_featured' not in model_names
 
   def test_model_size_filter(self, custom_configs):
     result = custom_configs.get_all_models(
-        model_size=types.ModelSizeType.LARGE, call_type=None,
+        model_size=types.ModelSizeType.LARGE,
         recommended_only=False
     )
     model_names = [m.model for m in result]
@@ -753,13 +689,6 @@ class TestBuiltInConfigValidation:
     model_configs_instance._validate_recommended_models(
         schema.version_config.provider_model_configs,
         schema.version_config.recommended_models
-    )
-
-  def test_models_by_call_type_consistent(self, model_configs_instance):
-    schema = model_configs_instance.model_configs_schema
-    model_configs_instance._validate_models_by_call_type(
-        schema.version_config.provider_model_configs,
-        schema.version_config.models_by_call_type
     )
 
   def test_models_by_size_consistent(self, model_configs_instance):

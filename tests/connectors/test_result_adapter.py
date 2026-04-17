@@ -104,48 +104,46 @@ class TestGetFeatureTagsSupportLevel:
     assert adapter.get_feature_tags_support_level([]) == S
 
   def test_single_supported_tag(self):
-    adapter = _adapter(text=S)
+    adapter = _adapter(prompt=S, text=S)
     assert adapter.get_feature_tags_support_level(
-        [types.FeatureTagType.RESPONSE_TEXT]) == S
+        [types.FeatureTag.PROMPT]) == S
 
   def test_single_not_supported_tag(self):
-    adapter = _adapter(text=NS)
+    adapter = _adapter(prompt=NS, text=S)
     assert adapter.get_feature_tags_support_level(
-        [types.FeatureTagType.RESPONSE_TEXT]) == NS
+        [types.FeatureTag.PROMPT]) == NS
 
   def test_minimum_across_tags(self):
-    adapter = _adapter(text=S, image=BE)
+    adapter = _adapter(prompt=S, messages=BE, text=S)
     result = adapter.get_feature_tags_support_level([
-        types.FeatureTagType.RESPONSE_TEXT,
-        types.FeatureTagType.RESPONSE_IMAGE,
+        types.FeatureTag.PROMPT,
+        types.FeatureTag.MESSAGES,
     ])
     assert result == BE
 
   def test_not_supported_dominates(self):
-    adapter = _adapter(text=S, json_fmt=NS)
+    adapter = _adapter(prompt=S, messages=NS, text=S)
     result = adapter.get_feature_tags_support_level([
-        types.FeatureTagType.RESPONSE_TEXT,
-        types.FeatureTagType.RESPONSE_JSON,
+        types.FeatureTag.PROMPT,
+        types.FeatureTag.MESSAGES,
     ])
     assert result == NS
 
   def test_parameter_tags(self):
     adapter = _adapter(temperature=S, max_tokens=BE)
     result = adapter.get_feature_tags_support_level([
-        types.FeatureTagType.TEMPERATURE,
-        types.FeatureTagType.MAX_TOKENS,
+        types.FeatureTag.TEMPERATURE,
+        types.FeatureTag.MAX_TOKENS,
     ])
     assert result == BE
 
-  def test_all_tag_types(self):
+  def test_all_feature_tags(self):
     adapter = _adapter(
         prompt=S, messages=S, system_prompt=S,
         temperature=S, max_tokens=S, stop=S, n=S, thinking=S,
-        web_search=S,
-        text=S, image=S, audio=S, video=S,
-        json_fmt=S, pydantic_fmt=S, multi_modal=S,
+        text=S,
     )
-    all_tags = list(types.FeatureTagType)
+    all_tags = list(types.FeatureTag)
     assert adapter.get_feature_tags_support_level(all_tags) == S
 
 
