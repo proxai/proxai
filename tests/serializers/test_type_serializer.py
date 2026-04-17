@@ -143,6 +143,33 @@ def _get_output_format_config_type_options():
   ]
 
 
+def _get_input_format_config_type_options():
+  return [
+      {},
+      {
+          'text': types.FeatureSupportType.SUPPORTED
+      },
+      {
+          'image': types.FeatureSupportType.NOT_SUPPORTED
+      },
+      {
+          'json': types.FeatureSupportType.BEST_EFFORT
+      },
+      {
+          'pydantic': types.FeatureSupportType.BEST_EFFORT
+      },
+      {
+          'text': types.FeatureSupportType.SUPPORTED,
+          'image': types.FeatureSupportType.SUPPORTED,
+          'document': types.FeatureSupportType.SUPPORTED,
+          'audio': types.FeatureSupportType.SUPPORTED,
+          'video': types.FeatureSupportType.SUPPORTED,
+          'json': types.FeatureSupportType.BEST_EFFORT,
+          'pydantic': types.FeatureSupportType.BEST_EFFORT
+      },
+  ]
+
+
 def _get_feature_config_type_options():
   return [
       {},
@@ -178,6 +205,14 @@ def _get_feature_config_type_options():
           )
       },
       {
+          'input_format': types.InputFormatConfigType(
+              text=types.FeatureSupportType.SUPPORTED,
+              image=types.FeatureSupportType.SUPPORTED,
+              json=types.FeatureSupportType.BEST_EFFORT,
+              pydantic=types.FeatureSupportType.BEST_EFFORT
+          )
+      },
+      {
           'prompt': types.FeatureSupportType.SUPPORTED,
           'messages': types.FeatureSupportType.SUPPORTED,
           'system_prompt': types.FeatureSupportType.BEST_EFFORT,
@@ -200,6 +235,15 @@ def _get_feature_config_type_options():
               json=types.FeatureSupportType.SUPPORTED,
               pydantic=types.FeatureSupportType.BEST_EFFORT,
               multi_modal=types.FeatureSupportType.NOT_SUPPORTED
+          ),
+          'input_format': types.InputFormatConfigType(
+              text=types.FeatureSupportType.SUPPORTED,
+              image=types.FeatureSupportType.SUPPORTED,
+              document=types.FeatureSupportType.SUPPORTED,
+              audio=types.FeatureSupportType.SUPPORTED,
+              video=types.FeatureSupportType.SUPPORTED,
+              json=types.FeatureSupportType.BEST_EFFORT,
+              pydantic=types.FeatureSupportType.BEST_EFFORT
           )
       },
   ]
@@ -1596,6 +1640,28 @@ class TestTypeSerializer:
         )
     )
     assert output_format_config_type == decoded_output_format_config_type
+
+  @pytest.mark.parametrize(
+      'input_format_config_type_options',
+      _get_input_format_config_type_options()
+  )
+  def test_encode_decode_input_format_config_type(
+      self, input_format_config_type_options
+  ):
+    input_format_config_type = types.InputFormatConfigType(
+        **input_format_config_type_options
+    )
+    encoded_input_format_config_type = (
+        type_serializer.encode_input_format_config_type(
+            input_format_config_type=input_format_config_type
+        )
+    )
+    decoded_input_format_config_type = (
+        type_serializer.decode_input_format_config_type(
+            record=encoded_input_format_config_type
+        )
+    )
+    assert input_format_config_type == decoded_input_format_config_type
 
   @pytest.mark.parametrize(
       'feature_config_type_options', _get_feature_config_type_options()

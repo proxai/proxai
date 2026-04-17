@@ -233,6 +233,12 @@ def encode_input_format_config_type(
   if input_format_config_type.video is not None:
     record['video'] = encode_feature_support_type(
         input_format_config_type.video)
+  if input_format_config_type.json is not None:
+    record['json'] = encode_feature_support_type(
+        input_format_config_type.json)
+  if input_format_config_type.pydantic is not None:
+    record['pydantic'] = encode_feature_support_type(
+        input_format_config_type.pydantic)
   return record
 
 
@@ -256,6 +262,12 @@ def decode_input_format_config_type(
   if 'video' in record:
     input_format_config_type.video = decode_feature_support_type(
         record['video'])
+  if 'json' in record:
+    input_format_config_type.json = decode_feature_support_type(
+        record['json'])
+  if 'pydantic' in record:
+    input_format_config_type.pydantic = decode_feature_support_type(
+        record['pydantic'])
   return input_format_config_type
 
 

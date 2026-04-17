@@ -175,7 +175,7 @@ def check_input_format_type_param(
   raise ValueError(
       'Input format type should be proxai.types.InputFormatType '
       'or one of the following strings: text, image, document, '
-      'audio, video\n'
+      'audio, video, json, pydantic\n'
       f'Invalid input format type: {input_format_type}\n'
       f'Type: {type(input_format_type)}'
   )

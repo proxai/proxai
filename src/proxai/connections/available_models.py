@@ -951,6 +951,13 @@ class AvailableModels(state_controller.StateControlled):
 
     return provider_model
 
+  def get_model_config(
+      self, provider: str, model: str,
+  ) -> types.ProviderModelConfig:
+    """Get the full config for a specific model."""
+    return self.model_configs_instance.get_provider_model_config(
+        (provider, model))
+
   def list_working_models(
       self,
       model_size: types.ModelSizeIdentifierType | None = None,

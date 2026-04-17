@@ -45,6 +45,8 @@ class InputFormatType(str, enum.Enum):
   DOCUMENT = "DOCUMENT"
   AUDIO = "AUDIO"
   VIDEO = "VIDEO"
+  JSON = "JSON"
+  PYDANTIC = "PYDANTIC"
 
 
 OutputFormatTypeParam = OutputFormatType | str
@@ -181,6 +183,8 @@ class InputFormatConfigType:
   document: FeatureSupportType | None = None
   audio: FeatureSupportType | None = None
   video: FeatureSupportType | None = None
+  json: FeatureSupportType | None = None
+  pydantic: FeatureSupportType | None = None
 
 
 @dataclasses.dataclass

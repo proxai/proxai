@@ -6,6 +6,9 @@ import pydantic
 import proxai.types as types
 from proxai.chat.chat_session import Chat
 from proxai.chat.message import Message
+from proxai.chat.message_content import (
+    ContentType, MessageContent, PydanticContent,
+)
 from proxai.connectors.feature_adapter import FeatureAdapter
 
 S = types.FeatureSupportType.SUPPORTED
@@ -24,6 +27,9 @@ def _adapter(
     web_search=None,
     text=None, image=None, audio=None, video=None,
     json_fmt=None, pydantic_fmt=None, multi_modal=None,
+    input_text=None, input_image=None, input_document=None,
+    input_audio=None, input_video=None,
+    input_json=None, input_pydantic=None,
 ) -> FeatureAdapter:
   """Build a FeatureAdapter with the given support levels."""
   return FeatureAdapter(
@@ -44,6 +50,11 @@ def _adapter(
           output_format=types.OutputFormatConfigType(
               text=text, image=image, audio=audio, video=video,
               json=json_fmt, pydantic=pydantic_fmt, multi_modal=multi_modal,
+          ),
+          input_format=types.InputFormatConfigType(
+              text=input_text, image=input_image, document=input_document,
+              audio=input_audio, video=input_video,
+              json=input_json, pydantic=input_pydantic,
           ),
       ),
   )
@@ -890,3 +901,301 @@ class TestGetFeatureTagsSupportLevel:
     )
     all_tags = list(types.FeatureTag)
     assert adapter.get_feature_tags_support_level(all_tags) == S
+
+
+# ===================================================================
+# adapt_query_record — input format: JSON content blocks
+# ===================================================================
+
+def _chat_with_json(system_prompt=None):
+  """Build a Chat with a JSON content block in the user message."""
+  chat = Chat(system_prompt=system_prompt)
+  chat.append(Message(role="user", content=[
+      MessageContent(type=ContentType.TEXT, text="Here is some data:"),
+      MessageContent(type=ContentType.JSON, json={"key": "value", "n": 42}),
+  ]))
+  chat.append(Message(role="assistant", content="Got it."))
+  return chat
+
+
+def _chat_with_pydantic(system_prompt=None):
+  """Build a Chat with a PYDANTIC content block in the user message."""
+  chat = Chat(system_prompt=system_prompt)
+  instance = _TestModel(name="Alice", age=30)
+  chat.append(Message(role="user", content=[
+      MessageContent(type=ContentType.TEXT, text="User info:"),
+      MessageContent(
+          type=ContentType.PYDANTIC_INSTANCE,
+          pydantic_content=PydanticContent(
+              class_value=_TestModel, instance_value=instance,
+          ),
+      ),
+  ]))
+  chat.append(Message(role="assistant", content="Got it."))
+  return chat
+
+
+class TestAdaptInputFormatJSON:
+  """JSON input format content block handling."""
+
+  def test_supported_keeps_json_block(self):
+    adapter = _adapter(messages=S, input_text=S, input_json=S)
+    result = adapter.adapt_query_record(
+        _query(chat=_chat_with_json()))
+    user_content = result.chat['messages'][0]['content']
+    types_in_content = [b['type'] for b in user_content]
+    assert 'json' in types_in_content
+
+  def test_best_effort_converts_to_text(self):
+    adapter = _adapter(messages=S, input_text=S, input_json=BE)
+    result = adapter.adapt_query_record(
+        _query(chat=_chat_with_json()))
+    user_content = result.chat['messages'][0]['content']
+    types_in_content = [b['type'] for b in user_content]
+    assert 'json' not in types_in_content
+    assert 'text' in types_in_content
+    json_text = user_content[1]['text']
+    assert '"key": "value"' in json_text
+    assert '"n": 42' in json_text
+
+  def test_not_supported_raises(self):
+    adapter = _adapter(messages=S, input_text=S, input_json=NS)
+    with pytest.raises(ValueError, match="json.*not supported"):
+      adapter.adapt_query_record(
+          _query(chat=_chat_with_json()))
+
+  def test_best_effort_preserves_other_blocks(self):
+    adapter = _adapter(messages=S, input_text=S, input_json=BE)
+    result = adapter.adapt_query_record(
+        _query(chat=_chat_with_json()))
+    user_content = result.chat['messages'][0]['content']
+    assert user_content[0]['type'] == 'text'
+    assert user_content[0]['text'] == 'Here is some data:'
+
+
+# ===================================================================
+# adapt_query_record — input format: PYDANTIC content blocks
+# ===================================================================
+
+class TestAdaptInputFormatPydantic:
+  """Pydantic input format content block handling."""
+
+  def test_supported_keeps_pydantic_block(self):
+    adapter = _adapter(messages=S, input_text=S, input_pydantic=S)
+    result = adapter.adapt_query_record(
+        _query(chat=_chat_with_pydantic()))
+    user_content = result.chat['messages'][0]['content']
+    types_in_content = [b['type'] for b in user_content]
+    assert 'pydantic_instance' in types_in_content
+
+  def test_best_effort_converts_to_text(self):
+    adapter = _adapter(messages=S, input_text=S, input_pydantic=BE)
+    result = adapter.adapt_query_record(
+        _query(chat=_chat_with_pydantic()))
+    user_content = result.chat['messages'][0]['content']
+    types_in_content = [b['type'] for b in user_content]
+    assert 'pydantic_instance' not in types_in_content
+    assert 'text' in types_in_content
+    pydantic_text = user_content[1]['text']
+    assert 'class name: _TestModel' in pydantic_text
+    assert 'class value:' in pydantic_text
+    assert '"name": "Alice"' in pydantic_text
+    assert '"age": 30' in pydantic_text
+
+  def test_not_supported_raises(self):
+    adapter = _adapter(messages=S, input_text=S, input_pydantic=NS)
+    with pytest.raises(ValueError, match="pydantic.*not supported"):
+      adapter.adapt_query_record(
+          _query(chat=_chat_with_pydantic()))
+
+  def test_best_effort_preserves_other_blocks(self):
+    adapter = _adapter(messages=S, input_text=S, input_pydantic=BE)
+    result = adapter.adapt_query_record(
+        _query(chat=_chat_with_pydantic()))
+    user_content = result.chat['messages'][0]['content']
+    assert user_content[0]['type'] == 'text'
+    assert user_content[0]['text'] == 'User info:'
+
+
+# ===================================================================
+# adapt_query_record — input format: IMAGE content blocks
+# ===================================================================
+
+def _chat_with_image(system_prompt=None):
+  """Build a Chat with an IMAGE content block in the user message."""
+  chat = Chat(system_prompt=system_prompt)
+  chat.append(Message(role="user", content=[
+      MessageContent(type=ContentType.TEXT, text="What is this?"),
+      MessageContent(
+          type=ContentType.IMAGE,
+          data=b'\x89PNG\r\n',
+          media_type='image/png',
+      ),
+  ]))
+  chat.append(Message(role="assistant", content="It's an image."))
+  return chat
+
+
+class TestAdaptInputFormatImage:
+  """Image input format content block handling."""
+
+  def test_supported_keeps_image_block(self):
+    adapter = _adapter(messages=S, input_text=S, input_image=S)
+    result = adapter.adapt_query_record(
+        _query(chat=_chat_with_image()))
+    user_content = result.chat['messages'][0]['content']
+    types_in_content = [b['type'] for b in user_content]
+    assert 'image' in types_in_content
+
+  def test_best_effort_drops_image_block(self):
+    adapter = _adapter(messages=S, input_text=S, input_image=BE)
+    result = adapter.adapt_query_record(
+        _query(chat=_chat_with_image()))
+    user_content = result.chat['messages'][0]['content']
+    types_in_content = [b['type'] for b in user_content]
+    assert 'image' not in types_in_content
+    assert 'text' in types_in_content
+
+  def test_not_supported_raises(self):
+    adapter = _adapter(messages=S, input_text=S, input_image=NS)
+    with pytest.raises(ValueError, match="image.*not supported"):
+      adapter.adapt_query_record(
+          _query(chat=_chat_with_image()))
+
+
+# ===================================================================
+# adapt_query_record — input format: DOCUMENT content blocks
+# ===================================================================
+
+def _chat_with_document(system_prompt=None):
+  """Build a Chat with a DOCUMENT content block in the user message."""
+  chat = Chat(system_prompt=system_prompt)
+  chat.append(Message(role="user", content=[
+      MessageContent(type=ContentType.TEXT, text="Read this:"),
+      MessageContent(
+          type=ContentType.DOCUMENT,
+          data=b'%PDF-1.4 fake',
+          media_type='application/pdf',
+      ),
+  ]))
+  chat.append(Message(role="assistant", content="Got it."))
+  return chat
+
+
+class TestAdaptInputFormatDocument:
+  """Document input format content block handling."""
+
+  def test_supported_keeps_document_block(self):
+    adapter = _adapter(messages=S, input_text=S, input_document=S)
+    result = adapter.adapt_query_record(
+        _query(chat=_chat_with_document()))
+    user_content = result.chat['messages'][0]['content']
+    types_in_content = [b['type'] for b in user_content]
+    assert 'document' in types_in_content
+
+  def test_best_effort_drops_document_block(self):
+    adapter = _adapter(messages=S, input_text=S, input_document=BE)
+    result = adapter.adapt_query_record(
+        _query(chat=_chat_with_document()))
+    user_content = result.chat['messages'][0]['content']
+    types_in_content = [b['type'] for b in user_content]
+    assert 'document' not in types_in_content
+    assert 'text' in types_in_content
+
+  def test_not_supported_raises(self):
+    adapter = _adapter(messages=S, input_text=S, input_document=NS)
+    with pytest.raises(ValueError, match="document.*not supported"):
+      adapter.adapt_query_record(
+          _query(chat=_chat_with_document()))
+
+
+# ===================================================================
+# adapt_query_record — input format: AUDIO content blocks
+# ===================================================================
+
+def _chat_with_audio(system_prompt=None):
+  """Build a Chat with an AUDIO content block in the user message."""
+  chat = Chat(system_prompt=system_prompt)
+  chat.append(Message(role="user", content=[
+      MessageContent(type=ContentType.TEXT, text="Listen to this:"),
+      MessageContent(
+          type=ContentType.AUDIO,
+          data=b'\xff\xfb\x90\x00',
+          media_type='audio/mpeg',
+      ),
+  ]))
+  chat.append(Message(role="assistant", content="Got it."))
+  return chat
+
+
+class TestAdaptInputFormatAudio:
+  """Audio input format content block handling."""
+
+  def test_supported_keeps_audio_block(self):
+    adapter = _adapter(messages=S, input_text=S, input_audio=S)
+    result = adapter.adapt_query_record(
+        _query(chat=_chat_with_audio()))
+    user_content = result.chat['messages'][0]['content']
+    types_in_content = [b['type'] for b in user_content]
+    assert 'audio' in types_in_content
+
+  def test_best_effort_drops_audio_block(self):
+    adapter = _adapter(messages=S, input_text=S, input_audio=BE)
+    result = adapter.adapt_query_record(
+        _query(chat=_chat_with_audio()))
+    user_content = result.chat['messages'][0]['content']
+    types_in_content = [b['type'] for b in user_content]
+    assert 'audio' not in types_in_content
+    assert 'text' in types_in_content
+
+  def test_not_supported_raises(self):
+    adapter = _adapter(messages=S, input_text=S, input_audio=NS)
+    with pytest.raises(ValueError, match="audio.*not supported"):
+      adapter.adapt_query_record(
+          _query(chat=_chat_with_audio()))
+
+
+# ===================================================================
+# adapt_query_record — input format: VIDEO content blocks
+# ===================================================================
+
+def _chat_with_video(system_prompt=None):
+  """Build a Chat with a VIDEO content block in the user message."""
+  chat = Chat(system_prompt=system_prompt)
+  chat.append(Message(role="user", content=[
+      MessageContent(type=ContentType.TEXT, text="Watch this:"),
+      MessageContent(
+          type=ContentType.VIDEO,
+          data=b'\x00\x00\x00\x1cftyp',
+          media_type='video/mp4',
+      ),
+  ]))
+  chat.append(Message(role="assistant", content="Got it."))
+  return chat
+
+
+class TestAdaptInputFormatVideo:
+  """Video input format content block handling."""
+
+  def test_supported_keeps_video_block(self):
+    adapter = _adapter(messages=S, input_text=S, input_video=S)
+    result = adapter.adapt_query_record(
+        _query(chat=_chat_with_video()))
+    user_content = result.chat['messages'][0]['content']
+    types_in_content = [b['type'] for b in user_content]
+    assert 'video' in types_in_content
+
+  def test_best_effort_drops_video_block(self):
+    adapter = _adapter(messages=S, input_text=S, input_video=BE)
+    result = adapter.adapt_query_record(
+        _query(chat=_chat_with_video()))
+    user_content = result.chat['messages'][0]['content']
+    types_in_content = [b['type'] for b in user_content]
+    assert 'video' not in types_in_content
+    assert 'text' in types_in_content
+
+  def test_not_supported_raises(self):
+    adapter = _adapter(messages=S, input_text=S, input_video=NS)
+    with pytest.raises(ValueError, match="video.*not supported"):
+      adapter.adapt_query_record(
+          _query(chat=_chat_with_video()))

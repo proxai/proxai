@@ -10,6 +10,8 @@ import pydantic
 import proxai as px
 import proxai.types as types
 
+_TEST_ASSETS_DIR = os.path.join(
+    os.path.dirname(__file__), 'refactoring_test_assets')
 
 _MODEL_CONFIGS = {
     'openai': {
@@ -99,6 +101,85 @@ _MODEL_CONFIGS = {
 _BANNER_WIDTH = 60
 
 
+def _get_model_config(
+    provider: str,
+    model: str,
+    provider_model_identifier: str,
+    web_search: bool = False,
+    input_format: list[str] | None = None,
+    output_format: list[types.OutputFormatType] = [types.OutputFormatType.TEXT],
+):
+  """Get a model config for given parameters."""
+  S = types.FeatureSupportType.SUPPORTED
+  NS = types.FeatureSupportType.NOT_SUPPORTED
+  if input_format is None:
+    input_format = ['text']
+
+  web_search_supported = S if web_search else NS
+  text_supported = (
+      S if types.OutputFormatType.TEXT in output_format else NS)
+  json_supported = (
+      S if types.OutputFormatType.JSON in output_format else NS)
+  pydantic_supported = (
+      S if types.OutputFormatType.PYDANTIC in output_format else NS)
+  image_supported = (
+      S if types.OutputFormatType.IMAGE in output_format else NS)
+  audio_supported = (
+      S if types.OutputFormatType.AUDIO in output_format else NS)
+  video_supported = (
+      S if types.OutputFormatType.VIDEO in output_format else NS)
+  multi_modal_supported = (
+      S if types.OutputFormatType.MULTI_MODAL in output_format
+      else NS)
+  return types.ProviderModelConfig(
+      provider_model=types.ProviderModelType(
+          provider=provider,
+          model=model,
+          provider_model_identifier=provider_model_identifier
+      ),
+      pricing=types.ProviderModelPricingType(
+          input_token_cost=1.0,
+          output_token_cost=2.0
+      ),
+      metadata=types.ProviderModelMetadataType(
+          is_recommended=True
+      ),
+      features=types.FeatureConfigType(
+          prompt=types.FeatureSupportType.SUPPORTED,
+          messages=types.FeatureSupportType.SUPPORTED,
+          system_prompt=types.FeatureSupportType.SUPPORTED,
+          parameters=types.ParameterConfigType(
+              temperature=types.FeatureSupportType.SUPPORTED,
+              max_tokens=types.FeatureSupportType.SUPPORTED,
+              stop=types.FeatureSupportType.SUPPORTED,
+              n=types.FeatureSupportType.NOT_SUPPORTED,
+              thinking=types.FeatureSupportType.SUPPORTED,
+          ),
+          tools=types.ToolConfigType(
+              web_search=web_search_supported,
+          ),
+          input_format=types.InputFormatConfigType(
+              text=S if 'text' in input_format else NS,
+              image=S if 'image' in input_format else NS,
+              document=S if 'document' in input_format else NS,
+              audio=S if 'audio' in input_format else NS,
+              video=S if 'video' in input_format else NS,
+              json=S if 'json' in input_format else NS,
+              pydantic=S if 'pydantic' in input_format else NS,
+          ),
+          output_format=types.OutputFormatConfigType(
+              text=text_supported,
+              json=json_supported,
+              pydantic=pydantic_supported,
+              image=image_supported,
+              audio=audio_supported,
+              video=video_supported,
+              multi_modal=multi_modal_supported,
+          ),
+      )
+  )
+
+
 def _configure_provider(provider: str) -> None:
   """Rebind the module-level model constants for the given provider.
 
@@ -123,176 +204,61 @@ def _configure_provider(provider: str) -> None:
   _VIDEO_MODEL = config['video_model']
   _WEB_SEARCH_SUPPORTED = config.get('web_search_supported', True)
 
-  _DEFAULT_MODEL_CONFIG = types.ProviderModelConfig(
-      provider_model=types.ProviderModelType(
-          provider=_DEFAULT_MODEL[0],
-          model=_DEFAULT_MODEL[1],
-          provider_model_identifier=_DEFAULT_MODEL[1]
-      ),
-      pricing=types.ProviderModelPricingType(
-          input_token_cost=1.0,
-          output_token_cost=2.0
-      ),
-      metadata=types.ProviderModelMetadataType(
-          is_recommended=True
-      ),
-      features=types.FeatureConfigType(
-          prompt=types.FeatureSupportType.SUPPORTED,
-          messages=types.FeatureSupportType.SUPPORTED,
-          system_prompt=types.FeatureSupportType.SUPPORTED,
-          parameters=types.ParameterConfigType(
-              temperature=types.FeatureSupportType.SUPPORTED,
-              max_tokens=types.FeatureSupportType.SUPPORTED,
-              stop=types.FeatureSupportType.SUPPORTED,
-              n=types.FeatureSupportType.NOT_SUPPORTED,
-              thinking=types.FeatureSupportType.SUPPORTED,
-          ),
-          tools=types.ToolConfigType(
-              web_search=(
-                  types.FeatureSupportType.SUPPORTED
-                  if _WEB_SEARCH_SUPPORTED
-                  else types.FeatureSupportType.NOT_SUPPORTED
-              ),
-          ),
-          output_format=types.OutputFormatConfigType(
-              text=types.FeatureSupportType.SUPPORTED,
-              json=types.FeatureSupportType.SUPPORTED,
-              pydantic=types.FeatureSupportType.SUPPORTED,
-          ),
-      )
+  _DEFAULT_MODEL_CONFIG = _get_model_config(
+      provider=_DEFAULT_MODEL[0],
+      model=_DEFAULT_MODEL[1],
+      provider_model_identifier=_DEFAULT_MODEL[1],
+      web_search=_WEB_SEARCH_SUPPORTED,
+      input_format=[
+          'text', 'image', 'document', 'audio', 'video', 'json', 'pydantic'],
+      output_format=[
+          types.OutputFormatType.TEXT,
+          types.OutputFormatType.JSON,
+          types.OutputFormatType.PYDANTIC],
   )
 
-  _FAILING_MODEL_CONFIG = types.ProviderModelConfig(
-      provider_model=types.ProviderModelType(
-          provider=_FAILING_MODEL[0],
-          model=_FAILING_MODEL[1],
-          provider_model_identifier=_FAILING_MODEL[1]
-      ),
-      pricing=types.ProviderModelPricingType(
-          input_token_cost=1.0,
-          output_token_cost=2.0
-      ),
-      metadata=types.ProviderModelMetadataType(
-          is_recommended=True
-      ),
-      features=types.FeatureConfigType(
-          prompt=types.FeatureSupportType.SUPPORTED,
-          messages=types.FeatureSupportType.SUPPORTED,
-          system_prompt=types.FeatureSupportType.SUPPORTED,
-          parameters=types.ParameterConfigType(
-              temperature=types.FeatureSupportType.SUPPORTED,
-              max_tokens=types.FeatureSupportType.SUPPORTED,
-              stop=types.FeatureSupportType.SUPPORTED,
-              n=types.FeatureSupportType.NOT_SUPPORTED,
-              thinking=types.FeatureSupportType.SUPPORTED,
-          ),
-          tools=types.ToolConfigType(
-              web_search=types.FeatureSupportType.SUPPORTED,
-          ),
-          output_format=types.OutputFormatConfigType(
-              text=types.FeatureSupportType.SUPPORTED,
-              json=types.FeatureSupportType.SUPPORTED,
-              pydantic=types.FeatureSupportType.SUPPORTED,
-          ),
-      )
+  _FAILING_MODEL_CONFIG = _get_model_config(
+      provider=_FAILING_MODEL[0],
+      model=_FAILING_MODEL[1],
+      provider_model_identifier=_FAILING_MODEL[1],
+      web_search=True,
+      input_format=['text'],
+      output_format=[
+          types.OutputFormatType.TEXT,
+          types.OutputFormatType.JSON,
+          types.OutputFormatType.PYDANTIC],
   )
 
-  _THINKING_MODEL_CONFIG = types.ProviderModelConfig(
-      provider_model=types.ProviderModelType(
-          provider=_THINKING_MODEL[0],
-          model=_THINKING_MODEL[1],
-          provider_model_identifier=_THINKING_MODEL[1]
-      ),
-      pricing=types.ProviderModelPricingType(
-          input_token_cost=1.0,
-          output_token_cost=2.0
-      ),
-      metadata=types.ProviderModelMetadataType(
-          is_recommended=True
-      ),
-      features=types.FeatureConfigType(
-          prompt=types.FeatureSupportType.SUPPORTED,
-          messages=types.FeatureSupportType.SUPPORTED,
-          system_prompt=types.FeatureSupportType.SUPPORTED,
-          parameters=types.ParameterConfigType(
-              temperature=types.FeatureSupportType.SUPPORTED,
-              max_tokens=types.FeatureSupportType.SUPPORTED,
-              stop=types.FeatureSupportType.SUPPORTED,
-              n=types.FeatureSupportType.SUPPORTED,
-              thinking=types.FeatureSupportType.SUPPORTED,
-          ),
-          tools=types.ToolConfigType(
-              web_search=types.FeatureSupportType.SUPPORTED,
-          ),
-          output_format=types.OutputFormatConfigType(
-              text=types.FeatureSupportType.SUPPORTED,
-              json=types.FeatureSupportType.SUPPORTED,
-              pydantic=types.FeatureSupportType.SUPPORTED,
-          ),
-      )
+  _THINKING_MODEL_CONFIG = _get_model_config(
+      provider=_THINKING_MODEL[0],
+      model=_THINKING_MODEL[1],
+      provider_model_identifier=_THINKING_MODEL[1],
+      web_search=True,
+      input_format=['text'],
+      output_format=[
+          types.OutputFormatType.TEXT,
+          types.OutputFormatType.JSON,
+          types.OutputFormatType.PYDANTIC],
+  )
+  _IMAGE_MODEL_CONFIG = _get_model_config(
+      provider=_IMAGE_MODEL[0],
+      model=_IMAGE_MODEL[1],
+      provider_model_identifier=_IMAGE_MODEL[1],
+      output_format=[types.OutputFormatType.IMAGE],
   )
 
-  _IMAGE_MODEL_CONFIG = types.ProviderModelConfig(
-      provider_model=types.ProviderModelType(
-          provider=_IMAGE_MODEL[0],
-          model=_IMAGE_MODEL[1],
-          provider_model_identifier=_IMAGE_MODEL[1]
-      ),
-      pricing=types.ProviderModelPricingType(
-          input_token_cost=1.0,
-          output_token_cost=2.0
-      ),
-      metadata=types.ProviderModelMetadataType(
-          is_recommended=True
-      ),
-      features=types.FeatureConfigType(
-          prompt=types.FeatureSupportType.SUPPORTED,
-          output_format=types.OutputFormatConfigType(
-              image=types.FeatureSupportType.SUPPORTED,
-          ),
-      )
+  _AUDIO_MODEL_CONFIG = _get_model_config(
+      provider=_AUDIO_MODEL[0],
+      model=_AUDIO_MODEL[1],
+      provider_model_identifier=_AUDIO_MODEL[1],
+      output_format=[types.OutputFormatType.AUDIO],
   )
 
-  _AUDIO_MODEL_CONFIG = types.ProviderModelConfig(
-      provider_model=types.ProviderModelType(
-          provider=_AUDIO_MODEL[0],
-          model=_AUDIO_MODEL[1],
-          provider_model_identifier=_AUDIO_MODEL[1]
-      ),
-      pricing=types.ProviderModelPricingType(
-          input_token_cost=1.0,
-          output_token_cost=2.0
-      ),
-      metadata=types.ProviderModelMetadataType(
-          is_recommended=True
-      ),
-      features=types.FeatureConfigType(
-          prompt=types.FeatureSupportType.SUPPORTED,
-          output_format=types.OutputFormatConfigType(
-              audio=types.FeatureSupportType.SUPPORTED,
-          ),
-      )
-  )
-
-  _VIDEO_MODEL_CONFIG = types.ProviderModelConfig(
-      provider_model=types.ProviderModelType(
-          provider=_VIDEO_MODEL[0],
-          model=_VIDEO_MODEL[1],
-          provider_model_identifier=_VIDEO_MODEL[1]
-      ),
-      pricing=types.ProviderModelPricingType(
-          input_token_cost=1.0,
-          output_token_cost=2.0
-      ),
-      metadata=types.ProviderModelMetadataType(
-          is_recommended=True
-      ),
-      features=types.FeatureConfigType(
-          prompt=types.FeatureSupportType.SUPPORTED,
-          output_format=types.OutputFormatConfigType(
-              video=types.FeatureSupportType.SUPPORTED,
-          ),
-      )
+  _VIDEO_MODEL_CONFIG = _get_model_config(
+      provider=_VIDEO_MODEL[0],
+      model=_VIDEO_MODEL[1],
+      provider_model_identifier=_VIDEO_MODEL[1],
+      output_format=[types.OutputFormatType.VIDEO],
   )
 
 
@@ -315,6 +281,23 @@ def _assert_text_content(result: types.CallRecord):
   """Assert content is a non-empty string."""
   _assert_success(result)
   assert result.result.output_text is not None
+
+
+def _assert_cat_in_text(result: types.CallRecord):
+  """Assert output text mentions a cat."""
+  _assert_text_content(result)
+  output = result.result.output_text.lower()
+  assert any(w in output for w in ('cat', 'kitten', 'feline'))
+
+
+def _input_format_supported(format_name: str) -> bool:
+  """Check if the default model supports the given input format."""
+  config = px.models.get_model_config(_DEFAULT_MODEL[0], _DEFAULT_MODEL[1])
+  input_fmt = config.features.input_format
+  if input_fmt is None:
+    return False
+  level = getattr(input_fmt, format_name, None)
+  return level is not None and level != types.FeatureSupportType.NOT_SUPPORTED
 
 
 def assert_json_content(result: types.CallRecord):
@@ -540,6 +523,160 @@ def tools_web_search_test():
       assert message.tool_content.name == 'web_search'
       assert message.tool_content.citations is not None
       assert len(message.tool_content.citations) > 0
+
+
+def input_format_json_test():
+  print('> input_format_json_test')
+  if not _input_format_supported('json'):
+    print('  skipping: json input not supported')
+    return
+  result = px.generate(
+      messages=[{
+          'role': 'user',
+          'content': [
+              px.MessageContent(
+                  type=px.ContentType.JSON,
+                  json={
+                      'title': 'This is a love letter to cats!',
+                      'description': (
+                          'I want to explain my feelings in json format.'),
+                  },
+              ),
+              px.MessageContent(
+                  type=px.ContentType.TEXT,
+                  text='What is this about?',
+              ),
+          ],
+      }],
+      provider_model=_DEFAULT_MODEL)
+  print(result.result.output_text.replace('\n', ' ')[:80] + '...')
+  _assert_cat_in_text(result)
+
+
+def input_format_md_test():
+  print('> input_format_md_test')
+  if not _input_format_supported('document'):
+    print('  skipping: document input not supported')
+    return
+  result = px.generate(
+      messages=[{
+          'role': 'user',
+          'content': [
+              px.MessageContent(
+                  type=px.ContentType.DOCUMENT,
+                  path=os.path.join(_TEST_ASSETS_DIR, 'cat.md'),
+                  media_type='text/markdown',
+              ),
+              px.MessageContent(
+                  type=px.ContentType.TEXT,
+                  text='What is inside this document?',
+              ),
+          ],
+      }],
+      provider_model=_DEFAULT_MODEL)
+  print(result.result.output_text.replace('\n', ' ')[:80] + '...')
+  _assert_cat_in_text(result)
+
+
+def input_format_pdf_test():
+  print('> input_format_pdf_test')
+  if not _input_format_supported('document'):
+    print('  skipping: document input not supported')
+    return
+  result = px.generate(
+      messages=[{
+          'role': 'user',
+          'content': [
+              px.MessageContent(
+                  type=px.ContentType.DOCUMENT,
+                  path=os.path.join(_TEST_ASSETS_DIR, 'cat.pdf'),
+                  media_type='application/pdf',
+              ),
+              px.MessageContent(
+                  type=px.ContentType.TEXT,
+                  text='What is inside this document?',
+              ),
+          ],
+      }],
+      provider_model=_DEFAULT_MODEL)
+  print(result.result.output_text.replace('\n', ' ')[:80] + '...')
+  _assert_cat_in_text(result)
+
+
+def input_format_image_test():
+  print('> input_format_image_test')
+  if not _input_format_supported('image'):
+    print('  skipping: image input not supported')
+    return
+  result = px.generate(
+      messages=[{
+          'role': 'user',
+          'content': [
+              px.MessageContent(
+                  type=px.ContentType.IMAGE,
+                  path=os.path.join(_TEST_ASSETS_DIR, 'cat.jpeg'),
+                  media_type='image/jpeg',
+              ),
+              px.MessageContent(
+                  type=px.ContentType.TEXT,
+                  text='What is in this image?',
+              ),
+          ],
+      }],
+      provider_model=_DEFAULT_MODEL)
+  print(result.result.output_text.replace('\n', ' ')[:80] + '...')
+  _assert_cat_in_text(result)
+
+
+def input_format_audio_test():
+  print('> input_format_audio_test')
+  if not _input_format_supported('audio'):
+    print('  skipping: audio input not supported')
+    return
+  result = px.generate(
+      messages=[{
+          'role': 'user',
+          'content': [
+              px.MessageContent(
+                  type=px.ContentType.AUDIO,
+                  path=os.path.join(_TEST_ASSETS_DIR, 'cat.mp3'),
+                  media_type='audio/mpeg',
+              ),
+              px.MessageContent(
+                  type=px.ContentType.TEXT,
+                  text='What is this audio about?',
+              ),
+          ],
+      }],
+      provider_model=_DEFAULT_MODEL)
+  print(result.result.output_text.replace('\n', ' ')[:80] + '...')
+  _assert_cat_in_text(result)
+
+
+def input_format_video_test():
+  print('> input_format_video_test')
+  if not _input_format_supported('video'):
+    print('  skipping: video input not supported')
+    return
+  result = px.generate(
+      messages=[{
+          'role': 'user',
+          'content': [
+              px.MessageContent(
+                  type=px.ContentType.VIDEO,
+                  path=os.path.join(_TEST_ASSETS_DIR, 'cat.mp4'),
+                  media_type='video/mp4',
+              ),
+              px.MessageContent(
+                  type=px.ContentType.TEXT,
+                  text='What is in this video?',
+              ),
+          ],
+      }],
+      provider_model=_DEFAULT_MODEL)
+  print(result.result.output_text.replace('\n', ' ')[:80] + '...')
+  _assert_cat_in_text(result)
+
 
 def output_format_text_test():
   print('> output_format_text_test')
@@ -908,6 +1045,12 @@ def _run_all_tests():
   parameters_stop_list_test()
   parameters_thinking_test()
   tools_web_search_test()
+  input_format_json_test()
+  input_format_md_test()
+  input_format_pdf_test()
+  input_format_image_test()
+  input_format_audio_test()
+  input_format_video_test()
   output_format_text_test()
   output_format_json_test()
   output_format_pydantic_test()

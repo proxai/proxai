@@ -9,6 +9,7 @@ from proxai.connectors.adapter_utils import (
     SUPPORT_RANK,
     merge_feature_configs,
     resolve_feature_tag_support,
+    resolve_input_format_type_support,
     resolve_support,
 )
 
@@ -339,6 +340,77 @@ class FeatureAdapter:
         f"by endpoint '{self.endpoint}'."
     )
 
+  @staticmethod
+  def _json_block_to_text(block: dict) -> dict:
+    return {
+        'type': 'text',
+        'text': json.dumps(block['json'], indent=2),
+    }
+
+  @staticmethod
+  def _pydantic_block_to_text(block: dict) -> dict:
+    pydantic = block.get('pydantic_content', {})
+    name = pydantic.get('class_name', 'Unknown')
+    value = pydantic.get('instance_json_value', {})
+    return {
+        'type': 'text',
+        'text': (
+            f'class name: {name}\n'
+            f'class value:\n{json.dumps(value, indent=2)}'
+        ),
+    }
+
+  _CONTENT_TYPE_TO_INPUT_FORMAT = {
+      'text': (types.InputFormatType.TEXT, None),
+      'image': (types.InputFormatType.IMAGE, None),
+      'document': (types.InputFormatType.DOCUMENT, None),
+      'audio': (types.InputFormatType.AUDIO, None),
+      'video': (types.InputFormatType.VIDEO, None),
+      'json': (types.InputFormatType.JSON, '_json_block_to_text'),
+      'pydantic_instance': (
+          types.InputFormatType.PYDANTIC, '_pydantic_block_to_text'),
+  }
+
+  def _adapt_content_block(self, block: dict) -> dict:
+    """Adapt a single content block based on input format support.
+
+    SUPPORTED     → pass through.
+    BEST_EFFORT   → convert to text (if converter exists), else raise.
+    NOT_SUPPORTED → raise.
+    """
+    entry = self._CONTENT_TYPE_TO_INPUT_FORMAT.get(block.get('type'))
+    if entry is None:
+      return block
+    input_format_type, converter_name = entry
+    level = resolve_input_format_type_support(
+        self.feature_config, input_format_type)
+    if level == types.FeatureSupportType.NOT_SUPPORTED:
+      raise ValueError(
+          f"Input format '{input_format_type.value.lower()}' is not "
+          f"supported by endpoint '{self.endpoint}'."
+      )
+    if level == types.FeatureSupportType.BEST_EFFORT:
+      if converter_name is not None:
+        return getattr(self, converter_name)(block)
+      return None
+    return block
+
+  def _adapt_input_format(self, query_record: types.QueryRecord):
+    """Adapt content blocks in exported chat messages."""
+    chat = query_record.chat
+    if not isinstance(chat, dict) or 'messages' not in chat:
+      return
+    for message in chat['messages']:
+      content = message.get('content')
+      if not isinstance(content, list):
+        continue
+      adapted_content = []
+      for block in content:
+        adapted = self._adapt_content_block(block)
+        if adapted is not None:
+          adapted_content.append(adapted)
+      message['content'] = adapted_content
+
   def adapt_query_record(
       self, query_record: types.QueryRecord,
   ) -> types.QueryRecord:
@@ -360,6 +432,7 @@ class FeatureAdapter:
 
     if query_record.chat is not None:
       self._adapt_chat(query_record, json_guidance, pydantic_schema)
+      self._adapt_input_format(query_record)
     elif query_record.prompt is not None:
       self._adapt_prompt(query_record, json_guidance, pydantic_schema)
 
