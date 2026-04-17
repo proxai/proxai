@@ -12,7 +12,7 @@ FeatureSupportType = types.FeatureSupportType
 InputFormatConfigType = types.InputFormatConfigType
 ParameterConfigType = types.ParameterConfigType
 ToolConfigType = types.ToolConfigType
-ResponseFormatConfigType = types.ResponseFormatConfigType
+OutputFormatConfigType = types.OutputFormatConfigType
 
 
 class DeepSeekConnector(provider_connector.ProviderConnector):
@@ -65,7 +65,7 @@ class DeepSeekConnector(provider_connector.ProviderConnector):
           input_format=InputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
           ),
-          response_format=ResponseFormatConfigType(
+          output_format=OutputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
               json=FeatureSupportType.SUPPORTED,
               pydantic=FeatureSupportType.BEST_EFFORT,
@@ -106,9 +106,9 @@ class DeepSeekConnector(provider_connector.ProviderConnector):
     # Pydantic stays at BEST_EFFORT (no native parse endpoint), but we can
     # still flip on json_object so the framework's downstream
     # json.loads + model_validate is reliable.
-    if query_record.response_format.type in (
-        types.ResponseFormatType.JSON,
-        types.ResponseFormatType.PYDANTIC,
+    if query_record.output_format.type in (
+        types.OutputFormatType.JSON,
+        types.OutputFormatType.PYDANTIC,
     ):
       create = functools.partial(
           create, response_format={'type': 'json_object'})

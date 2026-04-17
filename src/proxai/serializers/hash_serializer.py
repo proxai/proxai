@@ -61,22 +61,22 @@ def _hash_parameters(hasher: hashlib._Hash, parameters: types.ParameterType):
     _add_field(hasher, 'thinking', parameters.thinking.value)
 
 
-def _hash_response_format(
-    hasher: hashlib._Hash, response_format: types.ResponseFormat
+def _hash_output_format(
+    hasher: hashlib._Hash, output_format: types.OutputFormat
 ):
-  if response_format.type is not None:
-    _add_field(hasher, 'response_format.type', response_format.type.value)
+  if output_format.type is not None:
+    _add_field(hasher, 'output_format.type', output_format.type.value)
   # Resolve pydantic metadata: prefer live class, fallback to stored metadata
   pydantic_class_name = None
   pydantic_class_json_schema = None
-  if response_format.pydantic_class is not None:
-    pydantic_class_name = response_format.pydantic_class.__name__
+  if output_format.pydantic_class is not None:
+    pydantic_class_name = output_format.pydantic_class.__name__
     pydantic_class_json_schema = (
-        response_format.pydantic_class.model_json_schema()
+        output_format.pydantic_class.model_json_schema()
     )
-  elif response_format.pydantic_class_name is not None:
-    pydantic_class_name = response_format.pydantic_class_name
-    pydantic_class_json_schema = response_format.pydantic_class_json_schema
+  elif output_format.pydantic_class_name is not None:
+    pydantic_class_name = output_format.pydantic_class_name
+    pydantic_class_json_schema = output_format.pydantic_class_json_schema
   if pydantic_class_name is not None:
     _add_field(hasher, 'pydantic_class_name', pydantic_class_name)
   if pydantic_class_json_schema is not None:
@@ -116,8 +116,8 @@ def get_query_record_hash(query_record: types.QueryRecord) -> str:
     )
   if query_record.parameters is not None:
     _hash_parameters(hasher, query_record.parameters)
-  if query_record.response_format is not None:
-    _hash_response_format(hasher, query_record.response_format)
+  if query_record.output_format is not None:
+    _hash_output_format(hasher, query_record.output_format)
   if query_record.tools is not None:
     _hash_tools(hasher, query_record.tools)
   if query_record.connection_options is not None:

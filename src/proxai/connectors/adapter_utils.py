@@ -10,14 +10,14 @@ SUPPORT_RANK = {
     types.FeatureSupportType.SUPPORTED: 2,
 }
 
-RESPONSE_FORMAT_FIELD_MAP = {
-    types.ResponseFormatType.TEXT: "text",
-    types.ResponseFormatType.IMAGE: "image",
-    types.ResponseFormatType.AUDIO: "audio",
-    types.ResponseFormatType.VIDEO: "video",
-    types.ResponseFormatType.JSON: "json",
-    types.ResponseFormatType.PYDANTIC: "pydantic",
-    types.ResponseFormatType.MULTI_MODAL: "multi_modal",
+OUTPUT_FORMAT_FIELD_MAP = {
+    types.OutputFormatType.TEXT: "text",
+    types.OutputFormatType.IMAGE: "image",
+    types.OutputFormatType.AUDIO: "audio",
+    types.OutputFormatType.VIDEO: "video",
+    types.OutputFormatType.JSON: "json",
+    types.OutputFormatType.PYDANTIC: "pydantic",
+    types.OutputFormatType.MULTI_MODAL: "multi_modal",
 }
 
 
@@ -72,19 +72,19 @@ _INPUT_FORMAT_TYPE_TO_FIELD = {
 
 _OUTPUT_FORMAT_TYPE_TO_FIELD = {
     types.OutputFormatType.TEXT: lambda c: (
-        c.response_format.text if c.response_format else None),
+        c.output_format.text if c.output_format else None),
     types.OutputFormatType.IMAGE: lambda c: (
-        c.response_format.image if c.response_format else None),
+        c.output_format.image if c.output_format else None),
     types.OutputFormatType.AUDIO: lambda c: (
-        c.response_format.audio if c.response_format else None),
+        c.output_format.audio if c.output_format else None),
     types.OutputFormatType.VIDEO: lambda c: (
-        c.response_format.video if c.response_format else None),
+        c.output_format.video if c.output_format else None),
     types.OutputFormatType.JSON: lambda c: (
-        c.response_format.json if c.response_format else None),
+        c.output_format.json if c.output_format else None),
     types.OutputFormatType.PYDANTIC: lambda c: (
-        c.response_format.pydantic if c.response_format else None),
+        c.output_format.pydantic if c.output_format else None),
     types.OutputFormatType.MULTI_MODAL: lambda c: (
-        c.response_format.multi_modal if c.response_format else None),
+        c.output_format.multi_modal if c.output_format else None),
 }
 
 _TOOL_TAG_TO_FIELD = {
@@ -172,9 +172,9 @@ def merge_feature_configs(
       tools=merge_support_fields(
           endpoint_config.tools, model_config.tools,
           types.ToolConfigType),
-      response_format=merge_support_fields(
-          endpoint_config.response_format, model_config.response_format,
-          types.ResponseFormatConfigType),
+      output_format=merge_support_fields(
+          endpoint_config.output_format, model_config.output_format,
+          types.OutputFormatConfigType),
       input_format=merge_support_fields(
           endpoint_config.input_format, model_config.input_format,
           types.InputFormatConfigType),

@@ -155,62 +155,62 @@ def decode_tool_config_type(
   return tool_config_type
 
 
-def encode_response_format_config_type(
-    response_format_config_type: types.ResponseFormatConfigType
+def encode_output_format_config_type(
+    output_format_config_type: types.OutputFormatConfigType
 ) -> dict[str, Any]:
-  """Serialize ResponseFormatConfigType to a dictionary."""
+  """Serialize OutputFormatConfigType to a dictionary."""
   record = {}
-  if response_format_config_type.text is not None:
+  if output_format_config_type.text is not None:
     record['text'] = encode_feature_support_type(
-        response_format_config_type.text)
-  if response_format_config_type.image is not None:
+        output_format_config_type.text)
+  if output_format_config_type.image is not None:
     record['image'] = encode_feature_support_type(
-        response_format_config_type.image)
-  if response_format_config_type.audio is not None:
+        output_format_config_type.image)
+  if output_format_config_type.audio is not None:
     record['audio'] = encode_feature_support_type(
-        response_format_config_type.audio)
-  if response_format_config_type.video is not None:
+        output_format_config_type.audio)
+  if output_format_config_type.video is not None:
     record['video'] = encode_feature_support_type(
-        response_format_config_type.video)
-  if response_format_config_type.json is not None:
+        output_format_config_type.video)
+  if output_format_config_type.json is not None:
     record['json'] = encode_feature_support_type(
-        response_format_config_type.json)
-  if response_format_config_type.pydantic is not None:
+        output_format_config_type.json)
+  if output_format_config_type.pydantic is not None:
     record['pydantic'] = encode_feature_support_type(
-        response_format_config_type.pydantic)
-  if response_format_config_type.multi_modal is not None:
+        output_format_config_type.pydantic)
+  if output_format_config_type.multi_modal is not None:
     record['multi_modal'] = encode_feature_support_type(
-        response_format_config_type.multi_modal)
+        output_format_config_type.multi_modal)
   return record
 
 
-def decode_response_format_config_type(
+def decode_output_format_config_type(
     record: dict[str, Any]
-) -> types.ResponseFormatConfigType:
-  """Deserialize ResponseFormatConfigType from a dictionary."""
-  response_format_config_type = types.ResponseFormatConfigType()
+) -> types.OutputFormatConfigType:
+  """Deserialize OutputFormatConfigType from a dictionary."""
+  output_format_config_type = types.OutputFormatConfigType()
   if 'text' in record:
-    response_format_config_type.text = decode_feature_support_type(
+    output_format_config_type.text = decode_feature_support_type(
         record['text'])
   if 'image' in record:
-    response_format_config_type.image = decode_feature_support_type(
+    output_format_config_type.image = decode_feature_support_type(
         record['image'])
   if 'audio' in record:
-    response_format_config_type.audio = decode_feature_support_type(
+    output_format_config_type.audio = decode_feature_support_type(
         record['audio'])
   if 'video' in record:
-    response_format_config_type.video = decode_feature_support_type(
+    output_format_config_type.video = decode_feature_support_type(
         record['video'])
   if 'json' in record:
-    response_format_config_type.json = decode_feature_support_type(
+    output_format_config_type.json = decode_feature_support_type(
         record['json'])
   if 'pydantic' in record:
-    response_format_config_type.pydantic = decode_feature_support_type(
+    output_format_config_type.pydantic = decode_feature_support_type(
         record['pydantic'])
   if 'multi_modal' in record:
-    response_format_config_type.multi_modal = decode_feature_support_type(
+    output_format_config_type.multi_modal = decode_feature_support_type(
         record['multi_modal'])
-  return response_format_config_type
+  return output_format_config_type
 
 
 def encode_input_format_config_type(
@@ -282,9 +282,9 @@ def encode_feature_config_type(
   if feature_config_type.tools is not None:
     record['tools'] = encode_tool_config_type(
         feature_config_type.tools)
-  if feature_config_type.response_format is not None:
-    record['response_format'] = encode_response_format_config_type(
-        feature_config_type.response_format)
+  if feature_config_type.output_format is not None:
+    record['output_format'] = encode_output_format_config_type(
+        feature_config_type.output_format)
   if feature_config_type.input_format is not None:
     record['input_format'] = encode_input_format_config_type(
         feature_config_type.input_format)
@@ -314,8 +314,11 @@ def decode_feature_config_type(
   if 'tools' in record:
     feature_config_type.tools = decode_tool_config_type(
         record['tools'])
-  if 'response_format' in record:
-    feature_config_type.response_format = decode_response_format_config_type(
+  if 'output_format' in record:
+    feature_config_type.output_format = decode_output_format_config_type(
+        record['output_format'])
+  elif 'response_format' in record:
+    feature_config_type.output_format = decode_output_format_config_type(
         record['response_format'])
   if 'input_format' in record:
     feature_config_type.input_format = decode_input_format_config_type(
@@ -731,20 +734,20 @@ def decode_connection_options(
   return connection_options
 
 
-def encode_response_format(
-    response_format: types.ResponseFormat
+def encode_output_format(
+    output_format: types.OutputFormat
 ) -> dict[str, Any]:
-  """Serialize ResponseFormat to a dictionary."""
+  """Serialize OutputFormat to a dictionary."""
   record = {}
-  if response_format.type is not None:
-    record['type'] = response_format.type.value
+  if output_format.type is not None:
+    record['type'] = output_format.type.value
   # Extract from live class if available, else use stored metadata
-  pydantic_class_name = response_format.pydantic_class_name
-  pydantic_class_json_schema = response_format.pydantic_class_json_schema
-  if response_format.pydantic_class is not None:
-    pydantic_class_name = response_format.pydantic_class.__name__
+  pydantic_class_name = output_format.pydantic_class_name
+  pydantic_class_json_schema = output_format.pydantic_class_json_schema
+  if output_format.pydantic_class is not None:
+    pydantic_class_name = output_format.pydantic_class.__name__
     pydantic_class_json_schema = (
-        response_format.pydantic_class.model_json_schema()
+        output_format.pydantic_class.model_json_schema()
     )
   if pydantic_class_name is not None:
     record['pydantic_class_name'] = pydantic_class_name
@@ -755,18 +758,18 @@ def encode_response_format(
   return record
 
 
-def decode_response_format(record: dict[str, Any]) -> types.ResponseFormat:
-  """Deserialize ResponseFormat from a dictionary."""
-  response_format = types.ResponseFormat()
+def decode_output_format(record: dict[str, Any]) -> types.OutputFormat:
+  """Deserialize OutputFormat from a dictionary."""
+  output_format = types.OutputFormat()
   if 'type' in record:
-    response_format.type = types.ResponseFormatType(record['type'])
+    output_format.type = types.OutputFormatType(record['type'])
   if 'pydantic_class_name' in record:
-    response_format.pydantic_class_name = record['pydantic_class_name']
+    output_format.pydantic_class_name = record['pydantic_class_name']
   if 'pydantic_class_json_schema' in record:
-    response_format.pydantic_class_json_schema = json.loads(
+    output_format.pydantic_class_json_schema = json.loads(
         record['pydantic_class_json_schema']
     )
-  return response_format
+  return output_format
 
 
 def encode_result_media_content_type(
@@ -1089,9 +1092,9 @@ def encode_query_record(query_record: types.QueryRecord) -> dict[str, Any]:
     record['parameters'] = encode_parameter_type(query_record.parameters)
   if query_record.tools is not None:
     record['tools'] = [tool.value for tool in query_record.tools]
-  if query_record.response_format is not None:
-    record['response_format'] = encode_response_format(
-        query_record.response_format
+  if query_record.output_format is not None:
+    record['output_format'] = encode_output_format(
+        query_record.output_format
     )
   if query_record.connection_options is not None:
     record['connection_options'] = encode_connection_options(
@@ -1119,8 +1122,12 @@ def decode_query_record(record: dict[str, Any]) -> types.QueryRecord:
     query_record.tools = [
         types.Tools(tool) for tool in record['tools']
     ]
-  if 'response_format' in record:
-    query_record.response_format = decode_response_format(
+  if 'output_format' in record:
+    query_record.output_format = decode_output_format(
+        record['output_format']
+    )
+  elif 'response_format' in record:
+    query_record.output_format = decode_output_format(
         record['response_format']
     )
   if 'connection_options' in record:

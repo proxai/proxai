@@ -10,7 +10,7 @@ import proxai.chat.message_content as message_content
 FeatureConfigType = types.FeatureConfigType
 FeatureSupportType = types.FeatureSupportType
 ParameterConfigType = types.ParameterConfigType
-ResponseFormatConfigType = types.ResponseFormatConfigType
+OutputFormatConfigType = types.OutputFormatConfigType
 
 
 class SamplePydanticModel(pydantic.BaseModel):
@@ -40,7 +40,7 @@ class MockProviderModelConnector(provider_connector.ProviderConnector):
               max_tokens=FeatureSupportType.SUPPORTED,
               temperature=FeatureSupportType.SUPPORTED,
           ),
-          response_format=ResponseFormatConfigType(
+          output_format=OutputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
               json=FeatureSupportType.SUPPORTED,
               pydantic=FeatureSupportType.SUPPORTED,
@@ -67,12 +67,12 @@ class MockProviderModelConnector(provider_connector.ProviderConnector):
     if result_record.error is not None:
       return types.ExecutorResult(result_record=result_record)
 
-    fmt = query_record.response_format
-    is_text = fmt is None or fmt.type == types.ResponseFormatType.TEXT
+    fmt = query_record.output_format
+    is_text = fmt is None or fmt.type == types.OutputFormatType.TEXT
     is_json = (
         fmt and (
-            fmt.type == types.ResponseFormatType.JSON or
-            fmt.type == types.ResponseFormatType.PYDANTIC
+            fmt.type == types.OutputFormatType.JSON or
+            fmt.type == types.OutputFormatType.PYDANTIC
         )
     )
     if is_text:
@@ -89,7 +89,7 @@ class MockProviderModelConnector(provider_connector.ProviderConnector):
               json={"name": "John Doe", "age": 30},
           )
       ]
-    elif fmt and fmt.type == types.ResponseFormatType.PYDANTIC:
+    elif fmt and fmt.type == types.OutputFormatType.PYDANTIC:
       result_record.content = [
           message_content.MessageContent(
               type=message_content.ContentType.PYDANTIC_INSTANCE,
@@ -122,7 +122,7 @@ class MockFailingProviderModelConnector(provider_connector.ProviderConnector):
           prompt=FeatureSupportType.SUPPORTED,
           messages=FeatureSupportType.SUPPORTED,
           system_prompt=FeatureSupportType.SUPPORTED,
-          response_format=ResponseFormatConfigType(
+          output_format=OutputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
           ),
       ),
@@ -167,7 +167,7 @@ class MockSlowProviderModelConnector(provider_connector.ProviderConnector):
               max_tokens=FeatureSupportType.SUPPORTED,
               temperature=FeatureSupportType.SUPPORTED,
           ),
-          response_format=ResponseFormatConfigType(
+          output_format=OutputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
               json=FeatureSupportType.SUPPORTED,
               pydantic=FeatureSupportType.SUPPORTED,
@@ -194,12 +194,12 @@ class MockSlowProviderModelConnector(provider_connector.ProviderConnector):
     if result_record.error is not None:
       return types.ExecutorResult(result_record=result_record)
 
-    fmt = query_record.response_format
-    is_text = fmt is None or fmt.type == types.ResponseFormatType.TEXT
+    fmt = query_record.output_format
+    is_text = fmt is None or fmt.type == types.OutputFormatType.TEXT
     is_json = (
         fmt and (
-            fmt.type == types.ResponseFormatType.JSON or
-            fmt.type == types.ResponseFormatType.PYDANTIC
+            fmt.type == types.OutputFormatType.JSON or
+            fmt.type == types.OutputFormatType.PYDANTIC
         )
     )
     if is_text:
@@ -216,7 +216,7 @@ class MockSlowProviderModelConnector(provider_connector.ProviderConnector):
               text='{"name": "John Doe", "age": 30}',
           )
       ]
-    elif fmt and fmt.type == types.ResponseFormatType.PYDANTIC:
+    elif fmt and fmt.type == types.OutputFormatType.PYDANTIC:
       result_record.content = [
           message_content.MessageContent(
               type=message_content.ContentType.PYDANTIC_INSTANCE,

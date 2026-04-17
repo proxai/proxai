@@ -17,12 +17,12 @@
             "temperature": "SUPPORTED"
           },
           "prompt": "SUPPORTED",
-          "response_format": {
+          "system_prompt": "SUPPORTED",
+          "output_format": {
             "json": "SUPPORTED",
             "pydantic": "SUPPORTED",
             "text": "SUPPORTED"
-          },
-          "system_prompt": "SUPPORTED"
+          }
         },
         "metadata": {
           "is_recommended": false,
@@ -48,12 +48,12 @@
             "temperature": "SUPPORTED"
           },
           "prompt": "SUPPORTED",
-          "response_format": {
+          "system_prompt": "SUPPORTED",
+          "output_format": {
             "json": "SUPPORTED",
             "pydantic": "SUPPORTED",
             "text": "SUPPORTED"
-          },
-          "system_prompt": "SUPPORTED"
+          }
         },
         "metadata": {
           "is_recommended": false,
@@ -79,12 +79,12 @@
             "temperature": "SUPPORTED"
           },
           "prompt": "SUPPORTED",
-          "response_format": {
+          "system_prompt": "SUPPORTED",
+          "output_format": {
             "json": "SUPPORTED",
             "pydantic": "SUPPORTED",
             "text": "SUPPORTED"
-          },
-          "system_prompt": "SUPPORTED"
+          }
         },
         "metadata": {
           "is_recommended": false,
@@ -105,7 +105,7 @@
       "dall-e-3": {
         "features": {
           "prompt": "SUPPORTED",
-          "response_format": {
+          "output_format": {
             "image": "SUPPORTED"
           }
         },
@@ -134,14 +134,14 @@
             "thinking": "NOT_SUPPORTED"
           },
           "prompt": "SUPPORTED",
-          "response_format": {
-            "json": "SUPPORTED",
-            "pydantic": "SUPPORTED",
-            "text": "SUPPORTED"
-          },
           "system_prompt": "SUPPORTED",
           "tools": {
             "web_search": "SUPPORTED"
+          },
+          "output_format": {
+            "json": "SUPPORTED",
+            "pydantic": "SUPPORTED",
+            "text": "SUPPORTED"
           }
         },
         "metadata": {
@@ -171,14 +171,14 @@
             "thinking": "NOT_SUPPORTED"
           },
           "prompt": "SUPPORTED",
-          "response_format": {
-            "json": "SUPPORTED",
-            "pydantic": "SUPPORTED",
-            "text": "SUPPORTED"
-          },
           "system_prompt": "SUPPORTED",
           "tools": {
             "web_search": "SUPPORTED"
+          },
+          "output_format": {
+            "json": "SUPPORTED",
+            "pydantic": "SUPPORTED",
+            "text": "SUPPORTED"
           }
         },
         "metadata": {
@@ -208,14 +208,14 @@
             "thinking": "SUPPORTED"
           },
           "prompt": "SUPPORTED",
-          "response_format": {
-            "json": "SUPPORTED",
-            "pydantic": "SUPPORTED",
-            "text": "SUPPORTED"
-          },
           "system_prompt": "SUPPORTED",
           "tools": {
             "web_search": "SUPPORTED"
+          },
+          "output_format": {
+            "json": "SUPPORTED",
+            "pydantic": "SUPPORTED",
+            "text": "SUPPORTED"
           }
         },
         "metadata": {
@@ -237,7 +237,7 @@
       "sora-2": {
         "features": {
           "prompt": "SUPPORTED",
-          "response_format": {
+          "output_format": {
             "video": "SUPPORTED"
           }
         },
@@ -258,7 +258,7 @@
       "tts-1": {
         "features": {
           "prompt": "SUPPORTED",
-          "response_format": {
+          "output_format": {
             "audio": "SUPPORTED"
           }
         },

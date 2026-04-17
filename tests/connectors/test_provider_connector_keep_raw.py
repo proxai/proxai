@@ -93,8 +93,8 @@ class TestExecutorResultContract:
     )
     query_record = types.QueryRecord(
         prompt='hi',
-        response_format=types.ResponseFormat(
-            type=types.ResponseFormatType.TEXT
+        output_format=types.OutputFormat(
+            type=types.OutputFormatType.TEXT
         ),
     )
     executor_result = connector._execute_call(
@@ -113,8 +113,8 @@ class TestExecutorResultContract:
     )
     query_record = types.QueryRecord(
         prompt='hi',
-        response_format=types.ResponseFormat(
-            type=types.ResponseFormatType.TEXT
+        output_format=types.OutputFormat(
+            type=types.OutputFormatType.TEXT
         ),
     )
     executor_result = connector._execute_call(
@@ -132,8 +132,8 @@ class TestExecutorResultContract:
     )
     query_record = types.QueryRecord(
         prompt='hi',
-        response_format=types.ResponseFormat(
-            type=types.ResponseFormatType.TEXT
+        output_format=types.OutputFormat(
+            type=types.OutputFormatType.TEXT
         ),
     )
     executor_result = connector._execute_call(

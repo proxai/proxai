@@ -15,7 +15,7 @@ FeatureSupportType = types.FeatureSupportType
 InputFormatConfigType = types.InputFormatConfigType
 ParameterConfigType = types.ParameterConfigType
 ToolConfigType = types.ToolConfigType
-ResponseFormatConfigType = types.ResponseFormatConfigType
+OutputFormatConfigType = types.OutputFormatConfigType
 
 
 class ClaudeConnector(provider_connector.ProviderConnector):
@@ -64,7 +64,7 @@ class ClaudeConnector(provider_connector.ProviderConnector):
               image=FeatureSupportType.SUPPORTED,
               document=FeatureSupportType.SUPPORTED,
           ),
-          response_format=ResponseFormatConfigType(
+          output_format=OutputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
               json=FeatureSupportType.BEST_EFFORT,
               pydantic=FeatureSupportType.SUPPORTED,
@@ -224,19 +224,19 @@ class ClaudeConnector(provider_connector.ProviderConnector):
             }])
 
     needs_pydantic = (
-        query_record.response_format is not None
-        and query_record.response_format.type
-        == types.ResponseFormatType.PYDANTIC)
+        query_record.output_format is not None
+        and query_record.output_format.type
+        == types.OutputFormatType.PYDANTIC)
     needs_json = (
-        query_record.response_format is not None
-        and query_record.response_format.type
-        == types.ResponseFormatType.JSON)
+        query_record.output_format is not None
+        and query_record.output_format.type
+        == types.OutputFormatType.JSON)
 
     if needs_pydantic:
       stream = functools.partial(
           stream,
           betas=[STRUCTURED_OUTPUTS_BETA],
-          output_format=query_record.response_format.pydantic_class)
+          output_format=query_record.output_format.pydantic_class)
 
     response, result_record = self._safe_provider_query(
         functools.partial(self._run_stream, stream))
@@ -248,8 +248,8 @@ class ClaudeConnector(provider_connector.ProviderConnector):
           message_content.MessageContent(
               type=message_content.ContentType.PYDANTIC_INSTANCE,
               pydantic_content=message_content.PydanticContent(
-                  class_name=query_record.response_format.pydantic_class.__name__,
-                  class_value=query_record.response_format.pydantic_class,
+                  class_name=query_record.output_format.pydantic_class.__name__,
+                  class_value=query_record.output_format.pydantic_class,
                   instance_value=response.parsed_output,
               ),
           )

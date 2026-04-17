@@ -73,10 +73,10 @@ class TestMergeSupportFields:
     result = merge_support_fields(a, b, types.ToolConfigType)
     assert result.web_search == BE
 
-  def test_response_format_config(self):
-    a = types.ResponseFormatConfigType(text=S, json=S, pydantic=BE)
-    b = types.ResponseFormatConfigType(text=S, json=BE, pydantic=S)
-    result = merge_support_fields(a, b, types.ResponseFormatConfigType)
+  def test_output_format_config(self):
+    a = types.OutputFormatConfigType(text=S, json=S, pydantic=BE)
+    b = types.OutputFormatConfigType(text=S, json=BE, pydantic=S)
+    result = merge_support_fields(a, b, types.OutputFormatConfigType)
     assert result.text == S
     assert result.json == BE
     assert result.pydantic == BE
@@ -114,19 +114,19 @@ class TestMergeFeatureConfigs:
     ep = types.FeatureConfigType(
         parameters=types.ParameterConfigType(temperature=S, max_tokens=BE),
         tools=types.ToolConfigType(web_search=S),
-        response_format=types.ResponseFormatConfigType(text=S, json=S),
+        output_format=types.OutputFormatConfigType(text=S, json=S),
     )
     model = types.FeatureConfigType(
         parameters=types.ParameterConfigType(temperature=BE, max_tokens=S),
         tools=types.ToolConfigType(web_search=S),
-        response_format=types.ResponseFormatConfigType(text=S, json=BE),
+        output_format=types.OutputFormatConfigType(text=S, json=BE),
     )
     result = merge_feature_configs(ep, model)
     assert result.parameters.temperature == BE
     assert result.parameters.max_tokens == BE
     assert result.tools.web_search == S
-    assert result.response_format.text == S
-    assert result.response_format.json == BE
+    assert result.output_format.text == S
+    assert result.output_format.json == BE
 
   def test_none_nested_configs(self):
     ep = types.FeatureConfigType(
@@ -197,20 +197,20 @@ class TestResolveTagSupport:
     assert resolve_tool_tag_support(
         config, types.ToolTag.WEB_SEARCH) == NS
 
-  def test_response_format_text(self):
+  def test_output_format_text(self):
     config = types.FeatureConfigType(
-        response_format=types.ResponseFormatConfigType(text=S))
+        output_format=types.OutputFormatConfigType(text=S))
     assert resolve_output_format_type_support(
         config, types.OutputFormatType.TEXT) == S
 
-  def test_response_format_json(self):
+  def test_output_format_json(self):
     config = types.FeatureConfigType(
-        response_format=types.ResponseFormatConfigType(json=BE))
+        output_format=types.OutputFormatConfigType(json=BE))
     assert resolve_output_format_type_support(
         config, types.OutputFormatType.JSON) == BE
 
-  def test_response_format_none_config(self):
-    config = types.FeatureConfigType(response_format=None)
+  def test_output_format_none_config(self):
+    config = types.FeatureConfigType(output_format=None)
     assert resolve_output_format_type_support(
         config, types.OutputFormatType.TEXT) == NS
 

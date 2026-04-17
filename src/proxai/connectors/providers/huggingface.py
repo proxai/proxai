@@ -12,7 +12,7 @@ FeatureSupportType = types.FeatureSupportType
 InputFormatConfigType = types.InputFormatConfigType
 ParameterConfigType = types.ParameterConfigType
 ToolConfigType = types.ToolConfigType
-ResponseFormatConfigType = types.ResponseFormatConfigType
+OutputFormatConfigType = types.OutputFormatConfigType
 
 
 class HuggingFaceConnector(provider_connector.ProviderConnector):
@@ -70,7 +70,7 @@ class HuggingFaceConnector(provider_connector.ProviderConnector):
           input_format=InputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
           ),
-          response_format=ResponseFormatConfigType(
+          output_format=OutputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
               # Native `response_format={'type': 'json_object'}` is honored.
               json=FeatureSupportType.SUPPORTED,
@@ -119,16 +119,16 @@ class HuggingFaceConnector(provider_connector.ProviderConnector):
               create, stop=query_record.parameters.stop)
 
     needs_pydantic = (
-        query_record.response_format is not None
-        and query_record.response_format.type
-        == types.ResponseFormatType.PYDANTIC)
+        query_record.output_format is not None
+        and query_record.output_format.type
+        == types.OutputFormatType.PYDANTIC)
 
-    if query_record.response_format.type == types.ResponseFormatType.JSON:
+    if query_record.output_format.type == types.OutputFormatType.JSON:
       create = functools.partial(
           create, response_format={'type': 'json_object'})
 
     if needs_pydantic:
-      pydantic_class = query_record.response_format.pydantic_class
+      pydantic_class = query_record.output_format.pydantic_class
       create = functools.partial(
           create,
           response_format={

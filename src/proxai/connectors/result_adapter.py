@@ -11,17 +11,17 @@ from proxai.chat.message_content import MessageContent
 from proxai.chat.message_content import PydanticContent
 import proxai.types as types
 from proxai.connectors.adapter_utils import (
-    RESPONSE_FORMAT_FIELD_MAP,
+    OUTPUT_FORMAT_FIELD_MAP,
     SUPPORT_RANK,
     merge_feature_configs,
     resolve_feature_tag_support,
     resolve_support,
 )
 
-_RESPONSE_FORMAT_TO_CONTENT_TYPE = {
-    types.ResponseFormatType.IMAGE: ContentType.IMAGE,
-    types.ResponseFormatType.AUDIO: ContentType.AUDIO,
-    types.ResponseFormatType.VIDEO: ContentType.VIDEO,
+_OUTPUT_FORMAT_TO_CONTENT_TYPE = {
+    types.OutputFormatType.IMAGE: ContentType.IMAGE,
+    types.OutputFormatType.AUDIO: ContentType.AUDIO,
+    types.OutputFormatType.VIDEO: ContentType.VIDEO,
 }
 
 
@@ -75,13 +75,13 @@ class ResultAdapter:
     config. Returns NOT_SUPPORTED if the response format is not supported,
     BEST_EFFORT if partially supported, or SUPPORTED if fully supported.
     """
-    if (query_record.response_format is None
-        or query_record.response_format.type is None):
-      raise ValueError("'response_format.type' must be set.")
+    if (query_record.output_format is None
+        or query_record.output_format.type is None):
+      raise ValueError("'output_format.type' must be set.")
 
-    rf_config = self.feature_config.response_format
-    field_name = RESPONSE_FORMAT_FIELD_MAP.get(
-        query_record.response_format.type)
+    rf_config = self.feature_config.output_format
+    field_name = OUTPUT_FORMAT_FIELD_MAP.get(
+        query_record.output_format.type)
     if field_name and rf_config:
       return resolve_support(getattr(rf_config, field_name, None))
     return types.FeatureSupportType.NOT_SUPPORTED
@@ -119,7 +119,7 @@ class ResultAdapter:
       message_content: MessageContent,
   ) -> MessageContent:
     """Adapt content value to the expected response format."""
-    response_format = query_record.response_format
+    output_format = query_record.output_format
     if message_content.type in [
         ContentType.THINKING,
         ContentType.IMAGE,
@@ -131,18 +131,18 @@ class ResultAdapter:
       return message_content
 
     if message_content.type == ContentType.TEXT:
-      if response_format.type == types.ResponseFormatType.TEXT:
+      if output_format.type == types.OutputFormatType.TEXT:
         return message_content
-      if response_format.type == types.ResponseFormatType.JSON:
+      if output_format.type == types.OutputFormatType.JSON:
         return MessageContent(
             type=ContentType.JSON,
             json=json.loads(message_content.text))
-      if response_format.type == types.ResponseFormatType.PYDANTIC:
+      if output_format.type == types.OutputFormatType.PYDANTIC:
         json_value = json.loads(message_content.text)
         pydantic_content = PydanticContent(
-            class_name=response_format.pydantic_class.__name__,
-            class_value=response_format.pydantic_class,
-            instance_value=response_format.pydantic_class.model_validate(
+            class_name=output_format.pydantic_class.__name__,
+            class_value=output_format.pydantic_class,
+            instance_value=output_format.pydantic_class.model_validate(
                 json_value),
             instance_json_value=json_value,
         )
@@ -151,14 +151,14 @@ class ResultAdapter:
             pydantic_content=pydantic_content)
 
     if message_content.type == ContentType.JSON:
-      if response_format.type == types.ResponseFormatType.JSON:
+      if output_format.type == types.OutputFormatType.JSON:
         return message_content
-      if response_format.type == types.ResponseFormatType.PYDANTIC:
+      if output_format.type == types.OutputFormatType.PYDANTIC:
         json_value = message_content.json
         pydantic_content = PydanticContent(
-            class_name=response_format.pydantic_class.__name__,
-            class_value=response_format.pydantic_class,
-            instance_value=response_format.pydantic_class.model_validate(
+            class_name=output_format.pydantic_class.__name__,
+            class_value=output_format.pydantic_class,
+            instance_value=output_format.pydantic_class.model_validate(
                 json_value),
             instance_json_value=json_value,
         )

@@ -14,7 +14,7 @@ FeatureSupportType = types.FeatureSupportType
 InputFormatConfigType = types.InputFormatConfigType
 ParameterConfigType = types.ParameterConfigType
 ToolConfigType = types.ToolConfigType
-ResponseFormatConfigType = types.ResponseFormatConfigType
+OutputFormatConfigType = types.OutputFormatConfigType
 
 
 class OpenAIConnector(provider_connector.ProviderConnector):
@@ -60,7 +60,7 @@ class OpenAIConnector(provider_connector.ProviderConnector):
               image=FeatureSupportType.SUPPORTED,
               document=FeatureSupportType.SUPPORTED,
           ),
-          response_format=ResponseFormatConfigType(
+          output_format=OutputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
               json=FeatureSupportType.SUPPORTED,
               pydantic=FeatureSupportType.BEST_EFFORT,
@@ -86,7 +86,7 @@ class OpenAIConnector(provider_connector.ProviderConnector):
               image=FeatureSupportType.SUPPORTED,
               document=FeatureSupportType.SUPPORTED,
           ),
-          response_format=ResponseFormatConfigType(
+          output_format=OutputFormatConfigType(
               text=FeatureSupportType.NOT_SUPPORTED,
               json=FeatureSupportType.NOT_SUPPORTED,
               pydantic=FeatureSupportType.SUPPORTED,
@@ -110,7 +110,7 @@ class OpenAIConnector(provider_connector.ProviderConnector):
               image=FeatureSupportType.SUPPORTED,
               document=FeatureSupportType.SUPPORTED,
           ),
-          response_format=ResponseFormatConfigType(
+          output_format=OutputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
               json=FeatureSupportType.SUPPORTED,
               pydantic=FeatureSupportType.BEST_EFFORT,
@@ -121,7 +121,7 @@ class OpenAIConnector(provider_connector.ProviderConnector):
           input_format=InputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
           ),
-          response_format=ResponseFormatConfigType(
+          output_format=OutputFormatConfigType(
               image=FeatureSupportType.SUPPORTED,
           ),
       ),
@@ -130,7 +130,7 @@ class OpenAIConnector(provider_connector.ProviderConnector):
           input_format=InputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
           ),
-          response_format=ResponseFormatConfigType(
+          output_format=OutputFormatConfigType(
               audio=FeatureSupportType.SUPPORTED,
           ),
       ),
@@ -139,7 +139,7 @@ class OpenAIConnector(provider_connector.ProviderConnector):
           input_format=InputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
           ),
-          response_format=ResponseFormatConfigType(
+          output_format=OutputFormatConfigType(
               video=FeatureSupportType.SUPPORTED,
           ),
       ),
@@ -181,11 +181,11 @@ class OpenAIConnector(provider_connector.ProviderConnector):
             create,
             reasoning_effort=query_record.parameters.thinking.value.lower())
 
-    if query_record.response_format.type == types.ResponseFormatType.JSON:
+    if query_record.output_format.type == types.OutputFormatType.JSON:
       create = functools.partial(
           create, response_format={'type': 'json_object'})
 
-    if query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
+    if query_record.output_format.type == types.OutputFormatType.PYDANTIC:
       create = functools.partial(
           create, response_format={'type': 'json_object'})
 
@@ -251,9 +251,9 @@ class OpenAIConnector(provider_connector.ProviderConnector):
             create,
             reasoning_effort=query_record.parameters.thinking.value.lower())
       
-    if query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
+    if query_record.output_format.type == types.OutputFormatType.PYDANTIC:
       create = functools.partial(
-          create, response_format=query_record.response_format.pydantic_class)
+          create, response_format=query_record.output_format.pydantic_class)
 
     response, result_record = self._safe_provider_query(create)
     if result_record.error is not None:
@@ -263,8 +263,8 @@ class OpenAIConnector(provider_connector.ProviderConnector):
         message_content.MessageContent(
             type=message_content.ContentType.PYDANTIC_INSTANCE,
             pydantic_content=message_content.PydanticContent(
-                class_name=query_record.response_format.pydantic_class.__name__,
-                class_value=query_record.response_format.pydantic_class,
+                class_name=query_record.output_format.pydantic_class.__name__,
+                class_value=query_record.output_format.pydantic_class,
                 instance_value=response.choices[0].message.parsed,
             ),
         )
@@ -273,8 +273,8 @@ class OpenAIConnector(provider_connector.ProviderConnector):
       result_record.choices = []
       for choice in response.choices:
         pydantic_content = message_content.PydanticContent(
-            class_name=query_record.response_format.pydantic_class.__name__,
-            class_value=query_record.response_format.pydantic_class,
+            class_name=query_record.output_format.pydantic_class.__name__,
+            class_value=query_record.output_format.pydantic_class,
             instance_value=choice.message.parsed,
         )
         result_record.choices.append(
@@ -325,13 +325,13 @@ class OpenAIConnector(provider_connector.ProviderConnector):
       if types.Tools.WEB_SEARCH in query_record.tools:
         create = functools.partial(create, tools=[{"type": "web_search"}])
   
-    if query_record.response_format.type == types.ResponseFormatType.JSON:
+    if query_record.output_format.type == types.OutputFormatType.JSON:
       create = functools.partial(
           create, text={'format': {
               'type': 'json_object'
           }})
 
-    if query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
+    if query_record.output_format.type == types.OutputFormatType.PYDANTIC:
       create = functools.partial(
           create, text={'format': {
               'type': 'json_object'

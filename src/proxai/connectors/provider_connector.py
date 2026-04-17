@@ -627,12 +627,12 @@ class ProviderConnector(state_controller.StateControlled):
       result_record: types.ResultRecord,
   ) -> None:
     """Reconstruct pydantic instances on a cached ResultRecord."""
-    if (not query_record.response_format or
-        query_record.response_format.type
-        != types.ResponseFormatType.PYDANTIC or
-        not query_record.response_format.pydantic_class):
+    if (not query_record.output_format or
+        query_record.output_format.type
+        != types.OutputFormatType.PYDANTIC or
+        not query_record.output_format.pydantic_class):
       return
-    pydantic_class = query_record.response_format.pydantic_class
+    pydantic_class = query_record.output_format.pydantic_class
     if result_record.content:
       for mc in result_record.content:
         if (mc.pydantic_content and
@@ -661,7 +661,7 @@ class ProviderConnector(state_controller.StateControlled):
       system_prompt: str | None = None,
       parameters: types.ParameterType | None = None,
       tools: List[types.ToolType] | None = None,
-      response_format: types.ResponseFormatType | None = None,
+      output_format: types.OutputFormatType | None = None,
       connection_options: types.ConnectionOptions | None = None,
       connection_metadata: types.ConnectionMetadata | None = None,
   ) -> types.CallRecord:
@@ -679,12 +679,12 @@ class ProviderConnector(state_controller.StateControlled):
           '         "content": "You are a helpful assistant."},\n'
           '        ...])')
 
-    if response_format is None:
-      response_format = types.ResponseFormat(type=types.ResponseFormatType.TEXT)
+    if output_format is None:
+      output_format = types.OutputFormat(type=types.OutputFormatType.TEXT)
 
     if connection_options is None:
       connection_options = types.ConnectionOptions()
-    
+
     if connection_metadata is None:
       connection_metadata = types.ConnectionMetadata()
 
@@ -704,7 +704,7 @@ class ProviderConnector(state_controller.StateControlled):
         provider_model=provider_model,
         parameters=parameters,
         tools=tools,
-        response_format=response_format,
+        output_format=output_format,
         connection_options=connection_options,
     )
 

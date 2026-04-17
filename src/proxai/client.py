@@ -1180,7 +1180,7 @@ class ProxAIClient(state_controller.StateControlled):
       provider_model: types.ProviderModelParam | None = None,
       parameters: types.ParameterType | None = None,
       tools: List[types.ToolType] | None = None,
-      response_format: types.ResponseFormatParam | None = None,
+      output_format: types.OutputFormatParam | None = None,
       connection_options: types.ConnectionOptions | None = None,
   ) -> types.CallRecord:
     if prompt is not None and messages is not None:
@@ -1226,8 +1226,8 @@ class ProxAIClient(state_controller.StateControlled):
           "Please set cache_options to enable query cache.")
 
     messages = type_utils.messages_param_to_chat(messages)
-    response_format = type_utils.response_format_param_to_response_format(
-        response_format)
+    output_format = type_utils.output_format_param_to_output_format(
+        output_format)
 
     provider_models = [
         self.model_configs_instance.get_provider_model(provider_model)]
@@ -1255,7 +1255,7 @@ class ProxAIClient(state_controller.StateControlled):
           provider_model_config=provider_model_config,
           parameters=parameters,
           tools=tools,
-          response_format=response_format,
+          output_format=output_format,
           connection_options=connection_options,
           connection_metadata=connection_metadata,
       )
@@ -1339,7 +1339,7 @@ class ProxAIClient(state_controller.StateControlled):
     """Generates a JSON response using the configured AI model.
 
     Thin alias for generate() that resolves the default model, sets
-    response_format to JSON, and returns the parsed dict directly.
+    output_format to JSON, and returns the parsed dict directly.
 
     Args:
         prompt: Simple text prompt for the AI model. Cannot be used together
@@ -1368,8 +1368,8 @@ class ProxAIClient(state_controller.StateControlled):
       provider_model = self.get_default_provider_model(
           output_format_type=types.OutputFormatType.JSON)
 
-    response_format = types.ResponseFormat(
-        type=types.ResponseFormatType.JSON)
+    output_format = types.OutputFormat(
+        type=types.OutputFormatType.JSON)
 
     call_record = self.generate(
         prompt=prompt,
@@ -1378,7 +1378,7 @@ class ProxAIClient(state_controller.StateControlled):
         provider_model=provider_model,
         parameters=parameters,
         tools=tools,
-        response_format=response_format,
+        output_format=output_format,
         connection_options=connection_options,
     )
 
@@ -1395,7 +1395,7 @@ class ProxAIClient(state_controller.StateControlled):
       provider_model: types.ProviderModelParam | None = None,
       parameters: types.ParameterType | None = None,
       tools: List[types.ToolType] | None = None,
-      response_format: types.ResponseFormatParam | None = None,
+      output_format: types.OutputFormatParam | None = None,
       connection_options: types.ConnectionOptions | None = None,
   ) -> pydantic.BaseModel:
     """Generates a structured pydantic response using the configured AI model.
@@ -1411,11 +1411,11 @@ class ProxAIClient(state_controller.StateControlled):
         provider_model: Specific provider and model to use for this request.
         parameters: Generation parameters (temperature, max_tokens, etc.).
         tools: Tools to enable for this request.
-        response_format: The pydantic model class to validate against.
+        output_format: The pydantic model class to validate against.
         connection_options: Connection options.
 
     Returns:
-        An instance of the pydantic model specified in response_format.
+        An instance of the pydantic model specified in output_format.
         If the provider returns an error and suppress_provider_errors is
         True, returns the error message string.
 
@@ -1427,7 +1427,7 @@ class ProxAIClient(state_controller.StateControlled):
         >>> client = px.Client()
         >>> result = client.generate_pydantic(
         ...   prompt="What is the capital of France?",
-        ...   response_format=City
+        ...   output_format=City
         ... )
         >>> print(result.name)
         'Paris'
@@ -1443,7 +1443,7 @@ class ProxAIClient(state_controller.StateControlled):
         provider_model=provider_model,
         parameters=parameters,
         tools=tools,
-        response_format=response_format,
+        output_format=output_format,
         connection_options=connection_options,
     )
 
@@ -1465,7 +1465,7 @@ class ProxAIClient(state_controller.StateControlled):
     """Generates an image using the configured AI model.
 
     Thin alias for generate() that resolves the default model, sets
-    response_format to IMAGE, and returns the image content directly.
+    output_format to IMAGE, and returns the image content directly.
 
     Args:
         prompt: Text prompt describing the desired image.
@@ -1485,8 +1485,8 @@ class ProxAIClient(state_controller.StateControlled):
       provider_model = self.get_default_provider_model(
           output_format_type=types.OutputFormatType.IMAGE)
 
-    response_format = types.ResponseFormat(
-        type=types.ResponseFormatType.IMAGE)
+    output_format = types.OutputFormat(
+        type=types.OutputFormatType.IMAGE)
 
     call_record = self.generate(
         prompt=prompt,
@@ -1495,7 +1495,7 @@ class ProxAIClient(state_controller.StateControlled):
         provider_model=provider_model,
         parameters=parameters,
         tools=tools,
-        response_format=response_format,
+        output_format=output_format,
         connection_options=connection_options,
     )
 
@@ -1517,7 +1517,7 @@ class ProxAIClient(state_controller.StateControlled):
     """Generates audio using the configured AI model.
 
     Thin alias for generate() that resolves the default model, sets
-    response_format to AUDIO, and returns the audio content directly.
+    output_format to AUDIO, and returns the audio content directly.
 
     Args:
         prompt: Text prompt describing the desired audio.
@@ -1537,8 +1537,8 @@ class ProxAIClient(state_controller.StateControlled):
       provider_model = self.get_default_provider_model(
           output_format_type=types.OutputFormatType.AUDIO)
 
-    response_format = types.ResponseFormat(
-        type=types.ResponseFormatType.AUDIO)
+    output_format = types.OutputFormat(
+        type=types.OutputFormatType.AUDIO)
 
     call_record = self.generate(
         prompt=prompt,
@@ -1547,7 +1547,7 @@ class ProxAIClient(state_controller.StateControlled):
         provider_model=provider_model,
         parameters=parameters,
         tools=tools,
-        response_format=response_format,
+        output_format=output_format,
         connection_options=connection_options,
     )
 
@@ -1569,7 +1569,7 @@ class ProxAIClient(state_controller.StateControlled):
     """Generates video using the configured AI model.
 
     Thin alias for generate() that resolves the default model, sets
-    response_format to VIDEO, and returns the video content directly.
+    output_format to VIDEO, and returns the video content directly.
 
     Args:
         prompt: Text prompt describing the desired video.
@@ -1589,8 +1589,8 @@ class ProxAIClient(state_controller.StateControlled):
       provider_model = self.get_default_provider_model(
           output_format_type=types.OutputFormatType.VIDEO)
 
-    response_format = types.ResponseFormat(
-        type=types.ResponseFormatType.VIDEO)
+    output_format = types.OutputFormat(
+        type=types.OutputFormatType.VIDEO)
 
     call_record = self.generate(
         prompt=prompt,
@@ -1599,7 +1599,7 @@ class ProxAIClient(state_controller.StateControlled):
         provider_model=provider_model,
         parameters=parameters,
         tools=tools,
-        response_format=response_format,
+        output_format=output_format,
         connection_options=connection_options,
     )
 

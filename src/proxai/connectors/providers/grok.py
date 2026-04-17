@@ -14,7 +14,7 @@ FeatureSupportType = types.FeatureSupportType
 InputFormatConfigType = types.InputFormatConfigType
 ParameterConfigType = types.ParameterConfigType
 ToolConfigType = types.ToolConfigType
-ResponseFormatConfigType = types.ResponseFormatConfigType
+OutputFormatConfigType = types.OutputFormatConfigType
 
 
 class GrokConnector(provider_connector.ProviderConnector):
@@ -60,7 +60,7 @@ class GrokConnector(provider_connector.ProviderConnector):
           input_format=InputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
           ),
-          response_format=ResponseFormatConfigType(
+          output_format=OutputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
               json=FeatureSupportType.SUPPORTED,
               pydantic=FeatureSupportType.SUPPORTED,
@@ -97,7 +97,7 @@ class GrokConnector(provider_connector.ProviderConnector):
         kwargs['tools'] = [chat_pb2.Tool(web_search=chat_pb2.WebSearch())]
         kwargs['include'] = ['web_search_call_output', 'inline_citations']
 
-    if query_record.response_format.type == types.ResponseFormatType.JSON:
+    if query_record.output_format.type == types.OutputFormatType.JSON:
       kwargs['response_format'] = 'json_object'
 
     return kwargs
@@ -157,10 +157,10 @@ class GrokConnector(provider_connector.ProviderConnector):
     messages = self._build_messages(query_record)
 
     pydantic_class = None
-    if (query_record.response_format is not None
-        and query_record.response_format.type
-        == types.ResponseFormatType.PYDANTIC):
-      pydantic_class = query_record.response_format.pydantic_class
+    if (query_record.output_format is not None
+        and query_record.output_format.type
+        == types.OutputFormatType.PYDANTIC):
+      pydantic_class = query_record.output_format.pydantic_class
 
     response, result_record = self._safe_provider_query(
         functools.partial(

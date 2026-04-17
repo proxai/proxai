@@ -5,7 +5,7 @@ import json
 
 import proxai.types as types
 from proxai.connectors.adapter_utils import (
-    RESPONSE_FORMAT_FIELD_MAP,
+    OUTPUT_FORMAT_FIELD_MAP,
     SUPPORT_RANK,
     merge_feature_configs,
     resolve_feature_tag_support,
@@ -84,11 +84,11 @@ class FeatureAdapter:
     if query_record.tools:
       self._collect_tool_levels(query_record.tools, levels)
 
-    if (query_record.response_format is None
-        or query_record.response_format.type is None):
-      raise ValueError("'response_format.type' must be set.")
-    self._collect_response_format_level(
-        query_record.response_format, levels)
+    if (query_record.output_format is None
+        or query_record.output_format.type is None):
+      raise ValueError("'output_format.type' must be set.")
+    self._collect_output_format_level(
+        query_record.output_format, levels)
 
     if not levels:
       return types.FeatureSupportType.SUPPORTED
@@ -128,13 +128,13 @@ class FeatureAdapter:
         levels.append(resolve_support(
             tool_config.web_search if tool_config else None))
 
-  def _collect_response_format_level(
+  def _collect_output_format_level(
       self,
-      response_format: types.ResponseFormat,
+      output_format: types.OutputFormat,
       levels: list[types.FeatureSupportType],
   ):
-    rf_config = self.feature_config.response_format
-    field_name = RESPONSE_FORMAT_FIELD_MAP.get(response_format.type)
+    rf_config = self.feature_config.output_format
+    field_name = OUTPUT_FORMAT_FIELD_MAP.get(output_format.type)
     if field_name and rf_config:
       levels.append(resolve_support(getattr(rf_config, field_name, None)))
     else:
@@ -250,22 +250,22 @@ class FeatureAdapter:
         'Open bug report at https://github.com/proxai/proxai/issues'
     )
 
-  def _adapt_response_format(
+  def _adapt_output_format(
       self, query_record: types.QueryRecord,
   ) -> tuple[bool, dict | None]:
-    """Validate response format and return guidance flags.
+    """Validate output format and return guidance flags.
 
     Returns (json_guidance, pydantic_schema):
       json_guidance: True if JSON guidance should be added.
       pydantic_schema: JSON schema dict if pydantic schema guidance needed.
     """
-    if (query_record.response_format is None
-        or query_record.response_format.type is None):
+    if (query_record.output_format is None
+        or query_record.output_format.type is None):
       return False, None
 
-    rf_config = self.feature_config.response_format
-    rf_type = query_record.response_format.type
-    field_name = RESPONSE_FORMAT_FIELD_MAP.get(rf_type)
+    rf_config = self.feature_config.output_format
+    rf_type = query_record.output_format.type
+    field_name = OUTPUT_FORMAT_FIELD_MAP.get(rf_type)
     if not field_name or not rf_config:
       level = types.FeatureSupportType.NOT_SUPPORTED
     else:
@@ -274,23 +274,23 @@ class FeatureAdapter:
     if field_name in self._NO_BEST_EFFORT_RESPONSE_FORMATS:
       if level == types.FeatureSupportType.BEST_EFFORT:
         raise Exception(
-            f"'{field_name}' response format config cannot be best effort. "
+            f"'{field_name}' output format config cannot be best effort. "
             f"Code should never reach here.\n"
             f"Open bug report at https://github.com/proxai/proxai/issues"
         )
 
     if level == types.FeatureSupportType.NOT_SUPPORTED:
       raise ValueError(
-          f"Feature 'response_format.{rf_type.value}' is not supported "
+          f"Feature 'output_format.{rf_type.value}' is not supported "
           f"by endpoint '{self.endpoint}'."
       )
 
-    if rf_type == types.ResponseFormatType.JSON:
+    if rf_type == types.OutputFormatType.JSON:
       return True, None
 
-    if rf_type == types.ResponseFormatType.PYDANTIC:
+    if rf_type == types.OutputFormatType.PYDANTIC:
       if level == types.FeatureSupportType.BEST_EFFORT:
-        schema = query_record.response_format.pydantic_class.model_json_schema()
+        schema = query_record.output_format.pydantic_class.model_json_schema()
         return False, schema
 
     return False, None
@@ -356,7 +356,7 @@ class FeatureAdapter:
     if query_record.prompt is not None and query_record.chat is not None:
       raise ValueError("'prompt' and 'chat' cannot both be set.")
 
-    json_guidance, pydantic_schema = self._adapt_response_format(query_record)
+    json_guidance, pydantic_schema = self._adapt_output_format(query_record)
 
     if query_record.chat is not None:
       self._adapt_chat(query_record, json_guidance, pydantic_schema)

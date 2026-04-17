@@ -39,80 +39,80 @@ class TestCheckMessagesType:
     type_utils.check_messages_type([{'role': 'user', 'content': 'content'}])
 
 
-class TestCreateResponseFormat:
+class TestCreateOutputFormat:
 
   def test_none_returns_text_format(self):
-    result = type_utils.create_response_format(None)
-    assert result.type == types.ResponseFormatType.TEXT
+    result = type_utils.create_output_format(None)
+    assert result.type == types.OutputFormatType.TEXT
 
   def test_text_string_returns_text_format(self):
-    result = type_utils.create_response_format('text')
-    assert result.type == types.ResponseFormatType.TEXT
+    result = type_utils.create_output_format('text')
+    assert result.type == types.OutputFormatType.TEXT
 
   def test_json_string_returns_json_format(self):
-    result = type_utils.create_response_format('json')
-    assert result.type == types.ResponseFormatType.JSON
+    result = type_utils.create_output_format('json')
+    assert result.type == types.OutputFormatType.JSON
 
   def test_dict_returns_json_schema_format(self):
     schema = {'type': 'object', 'properties': {'name': {'type': 'string'}}}
-    result = type_utils.create_response_format(schema)
-    assert result.type == types.ResponseFormatType.JSON_SCHEMA
+    result = type_utils.create_output_format(schema)
+    assert result.type == types.OutputFormatType.JSON_SCHEMA
     assert result.value == schema
 
   def test_pydantic_model_returns_pydantic_format(self):
-    result = type_utils.create_response_format(SampleModel)
-    assert result.type == types.ResponseFormatType.PYDANTIC
+    result = type_utils.create_output_format(SampleModel)
+    assert result.type == types.OutputFormatType.PYDANTIC
     assert result.value.class_name == 'SampleModel'
     assert result.value.class_value == SampleModel
 
-  def test_structured_response_format_text(self):
-    response_format = types.StructuredResponseFormat(
-        type=types.ResponseFormatType.TEXT
+  def test_structured_output_format_text(self):
+    output_format = types.StructuredOutputFormat(
+        type=types.OutputFormatType.TEXT
     )
-    result = type_utils.create_response_format(response_format)
-    assert result.type == types.ResponseFormatType.TEXT
+    result = type_utils.create_output_format(output_format)
+    assert result.type == types.OutputFormatType.TEXT
 
-  def test_structured_response_format_json(self):
-    response_format = types.StructuredResponseFormat(
-        type=types.ResponseFormatType.JSON
+  def test_structured_output_format_json(self):
+    output_format = types.StructuredOutputFormat(
+        type=types.OutputFormatType.JSON
     )
-    result = type_utils.create_response_format(response_format)
-    assert result.type == types.ResponseFormatType.JSON
+    result = type_utils.create_output_format(output_format)
+    assert result.type == types.OutputFormatType.JSON
 
-  def test_structured_response_format_json_schema(self):
+  def test_structured_output_format_json_schema(self):
     schema = {'type': 'object', 'properties': {'name': {'type': 'string'}}}
-    response_format = types.StructuredResponseFormat(
-        schema=schema, type=types.ResponseFormatType.JSON_SCHEMA
+    output_format = types.StructuredOutputFormat(
+        schema=schema, type=types.OutputFormatType.JSON_SCHEMA
     )
-    result = type_utils.create_response_format(response_format)
-    assert result.type == types.ResponseFormatType.JSON_SCHEMA
+    result = type_utils.create_output_format(output_format)
+    assert result.type == types.OutputFormatType.JSON_SCHEMA
     assert result.value == schema
 
-  def test_structured_response_format_pydantic(self):
-    response_format = types.StructuredResponseFormat(
-        schema=SampleModel, type=types.ResponseFormatType.PYDANTIC
+  def test_structured_output_format_pydantic(self):
+    output_format = types.StructuredOutputFormat(
+        schema=SampleModel, type=types.OutputFormatType.PYDANTIC
     )
-    result = type_utils.create_response_format(response_format)
-    assert result.type == types.ResponseFormatType.PYDANTIC
+    result = type_utils.create_output_format(output_format)
+    assert result.type == types.OutputFormatType.PYDANTIC
     assert result.value.class_name == 'SampleModel'
     assert result.value.class_value == SampleModel
 
   def test_invalid_string_raises_error(self):
     with pytest.raises(ValueError):
-      type_utils.create_response_format('invalid')
+      type_utils.create_output_format('invalid')
 
 
 class TestCreatePydanticInstanceFromResponse:
 
-  def _create_response_format(self) -> types.ResponseFormat:
-    return types.ResponseFormat(
-        value=types.ResponseFormatPydanticValue(
+  def _create_output_format(self) -> types.OutputFormat:
+    return types.OutputFormat(
+        value=types.OutputFormatPydanticValue(
             class_name=SampleModel.__name__, class_value=SampleModel
-        ), type=types.ResponseFormatType.PYDANTIC
+        ), type=types.OutputFormatType.PYDANTIC
     )
 
   def test_returns_instance_value_when_present(self):
-    response_format = self._create_response_format()
+    output_format = self._create_output_format()
     instance = SampleModel(name='John', age=30)
     response = types.Response(
         value=instance, type=types.ResponseType.PYDANTIC,
@@ -122,7 +122,7 @@ class TestCreatePydanticInstanceFromResponse:
     )
 
     result = type_utils.create_pydantic_instance_from_response(
-        response_format, response
+        output_format, response
     )
 
     assert result is instance
@@ -130,7 +130,7 @@ class TestCreatePydanticInstanceFromResponse:
     assert result.age == 30
 
   def test_creates_instance_from_json_value(self):
-    response_format = self._create_response_format()
+    output_format = self._create_output_format()
     response = types.Response(
         value=None, type=types.ResponseType.PYDANTIC,
         pydantic_metadata=types.PydanticMetadataType(
@@ -142,7 +142,7 @@ class TestCreatePydanticInstanceFromResponse:
     )
 
     result = type_utils.create_pydantic_instance_from_response(
-        response_format, response
+        output_format, response
     )
 
     assert isinstance(result, SampleModel)
@@ -150,7 +150,7 @@ class TestCreatePydanticInstanceFromResponse:
     assert result.age == 25
 
   def test_prefers_instance_value_over_json_value(self):
-    response_format = self._create_response_format()
+    output_format = self._create_output_format()
     instance = SampleModel(name='John', age=30)
     response = types.Response(
         value=instance, type=types.ResponseType.PYDANTIC,
@@ -163,14 +163,14 @@ class TestCreatePydanticInstanceFromResponse:
     )
 
     result = type_utils.create_pydantic_instance_from_response(
-        response_format, response
+        output_format, response
     )
 
     assert result is instance
     assert result.name == 'John'
 
   def test_raises_error_when_no_value_present(self):
-    response_format = self._create_response_format()
+    output_format = self._create_output_format()
     response = types.Response(
         value=None, type=types.ResponseType.PYDANTIC,
         pydantic_metadata=types.PydanticMetadataType(
@@ -180,63 +180,63 @@ class TestCreatePydanticInstanceFromResponse:
 
     with pytest.raises(ValueError) as exc_info:
       type_utils.create_pydantic_instance_from_response(
-          response_format, response
+          output_format, response
       )
 
     assert 'no value (instance) or' in str(exc_info.value)
 
 
-class TestResponseFormatParamToResponseFormat:
+class TestOutputFormatParamToOutputFormat:
 
   def test_none_returns_text_format(self):
-    result = type_utils.response_format_param_to_response_format(None)
-    assert result.type == types.ResponseFormatType.TEXT
+    result = type_utils.output_format_param_to_output_format(None)
+    assert result.type == types.OutputFormatType.TEXT
 
   def test_text_string(self):
-    result = type_utils.response_format_param_to_response_format('text')
-    assert result.type == types.ResponseFormatType.TEXT
+    result = type_utils.output_format_param_to_output_format('text')
+    assert result.type == types.OutputFormatType.TEXT
 
   def test_json_string(self):
-    result = type_utils.response_format_param_to_response_format('json')
-    assert result.type == types.ResponseFormatType.JSON
+    result = type_utils.output_format_param_to_output_format('json')
+    assert result.type == types.OutputFormatType.JSON
 
   def test_image_string(self):
-    result = type_utils.response_format_param_to_response_format('image')
-    assert result.type == types.ResponseFormatType.IMAGE
+    result = type_utils.output_format_param_to_output_format('image')
+    assert result.type == types.OutputFormatType.IMAGE
 
   def test_audio_string(self):
-    result = type_utils.response_format_param_to_response_format('audio')
-    assert result.type == types.ResponseFormatType.AUDIO
+    result = type_utils.output_format_param_to_output_format('audio')
+    assert result.type == types.OutputFormatType.AUDIO
 
   def test_video_string(self):
-    result = type_utils.response_format_param_to_response_format('video')
-    assert result.type == types.ResponseFormatType.VIDEO
+    result = type_utils.output_format_param_to_output_format('video')
+    assert result.type == types.OutputFormatType.VIDEO
 
   def test_invalid_string_raises_error(self):
-    with pytest.raises(ValueError, match='Invalid response format'):
-      type_utils.response_format_param_to_response_format('invalid')
+    with pytest.raises(ValueError, match='Invalid output format'):
+      type_utils.output_format_param_to_output_format('invalid')
 
   def test_pydantic_class(self):
-    result = type_utils.response_format_param_to_response_format(SampleModel)
-    assert result.type == types.ResponseFormatType.PYDANTIC
+    result = type_utils.output_format_param_to_output_format(SampleModel)
+    assert result.type == types.OutputFormatType.PYDANTIC
     assert result.pydantic_class == SampleModel
 
-  def test_response_format_passthrough(self):
-    fmt = types.ResponseFormat(type=types.ResponseFormatType.JSON)
-    result = type_utils.response_format_param_to_response_format(fmt)
+  def test_output_format_passthrough(self):
+    fmt = types.OutputFormat(type=types.OutputFormatType.JSON)
+    result = type_utils.output_format_param_to_output_format(fmt)
     assert result is fmt
 
-  def test_response_format_pydantic_passthrough(self):
-    fmt = types.ResponseFormat(
-        type=types.ResponseFormatType.PYDANTIC,
+  def test_output_format_pydantic_passthrough(self):
+    fmt = types.OutputFormat(
+        type=types.OutputFormatType.PYDANTIC,
         pydantic_class=SampleModel)
-    result = type_utils.response_format_param_to_response_format(fmt)
+    result = type_utils.output_format_param_to_output_format(fmt)
     assert result is fmt
     assert result.pydantic_class == SampleModel
 
   def test_invalid_type_raises_error(self):
-    with pytest.raises(ValueError, match='Invalid response format'):
-      type_utils.response_format_param_to_response_format(123)
+    with pytest.raises(ValueError, match='Invalid output format'):
+      type_utils.output_format_param_to_output_format(123)
 
 
 class TestCreateFeatureListType:
