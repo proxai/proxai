@@ -1,7 +1,10 @@
+import base64
 import functools
+import os
 
 from openai import OpenAI
 
+import proxai.connectors.content_utils as content_utils
 import proxai.connectors.provider_connector as provider_connector
 import proxai.connectors.providers.deepseek_mock as deepseek_mock
 import proxai.types as types
@@ -64,6 +67,9 @@ class DeepSeekConnector(provider_connector.ProviderConnector):
           ),
           input_format=InputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
+              document=FeatureSupportType.BEST_EFFORT,
+              json=FeatureSupportType.BEST_EFFORT,
+              pydantic=FeatureSupportType.BEST_EFFORT,
           ),
           output_format=OutputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
@@ -72,6 +78,56 @@ class DeepSeekConnector(provider_connector.ProviderConnector):
           ),
       ),
   }
+
+  @staticmethod
+  def _to_deepseek_part(part_dict):
+    """Convert a ProxAI content block to a DeepSeek content part.
+
+    Type mapping:
+      text     → ``{"type": "text", "text": "..."}``
+      document → Text-based docs (md, csv, txt) are read as text.
+                 PDF is extracted via pypdf. Other binary formats
+                 (docx, xlsx) are dropped. DeepSeek has no native
+                 document or image support.
+
+    Returns None for unsupported content types.
+    """
+    content_type = part_dict.get('type')
+    if content_type == 'text':
+      return {'type': 'text', 'text': part_dict['text']}
+    if content_type == 'document':
+      text_content = content_utils.read_text_document(part_dict)
+      if text_content is not None:
+        return {'type': 'text', 'text': text_content}
+      pdf_content = content_utils.read_pdf_document(part_dict)
+      if pdf_content is not None:
+        return {'type': 'text', 'text': pdf_content}
+      return None
+    return None
+
+  @staticmethod
+  def _convert_messages(messages):
+    """Convert ProxAI message content blocks to DeepSeek format.
+
+    String content is passed through unchanged. List content is
+    converted block-by-block; blocks where the converter returns
+    None are dropped.
+    """
+    converted = []
+    for message in messages:
+      if isinstance(message['content'], str):
+        converted.append(message)
+        continue
+      if isinstance(message['content'], list):
+        parts = []
+        for block in message['content']:
+          part = DeepSeekConnector._to_deepseek_part(block)
+          if part is not None:
+            parts.append(part)
+        converted.append({**message, 'content': parts})
+      else:
+        converted.append(message)
+    return converted
 
   def _chat_completions_create_executor(
       self,
@@ -87,8 +143,8 @@ class DeepSeekConnector(provider_connector.ProviderConnector):
               {'role': 'user', 'content': query_record.prompt}])
 
     if query_record.chat is not None:
-      create = functools.partial(
-          create, messages=query_record.chat['messages'])
+      messages = self._convert_messages(query_record.chat['messages'])
+      create = functools.partial(create, messages=messages)
 
     if query_record.parameters is not None:
       if query_record.parameters.max_tokens is not None:
