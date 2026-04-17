@@ -48,10 +48,10 @@ _MODEL_CONFIGS = {
         'video_model': (None, None),
     },
     'mistral': {
-        'main_model': ('mistral', 'mistral-small-latest'),
+        'main_model': ('mistral', 'mistral-large-latest'),
         'main_model_web_search_supported': True,
-        'main_model_audio_input_supported': True,
-        'main_model_video_input_supported': True,
+        'main_model_audio_input_supported': False,
+        'main_model_video_input_supported': False,
         'thinking_model': ('mistral', 'magistral-small-latest'),
         'failing_model': ('mock_failing_provider', 'mock_failing_model'),
         'image_model': (None, None),
@@ -1052,8 +1052,7 @@ def list_models_test():
         feature_mapping_strategy=types.FeatureMappingStrategy.STRICT)
     register_models(client)
     models = client.models.list_models(
-        tool_tags=[types.ToolTag.WEB_SEARCH],
-        output_format=[types.OutputFormatType.JSON])
+        input_format=[types.InputFormatType.JSON])
     assert len(models) == 0
   
 

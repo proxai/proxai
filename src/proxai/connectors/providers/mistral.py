@@ -1,4 +1,6 @@
+import base64
 import functools
+import os
 
 from mistralai import Mistral
 from mistralai.models.websearchtool import WebSearchTool
@@ -53,6 +55,10 @@ class MistralConnector(provider_connector.ProviderConnector):
           ),
           input_format=InputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
+              image=FeatureSupportType.SUPPORTED,
+              document=FeatureSupportType.SUPPORTED,
+              json=FeatureSupportType.BEST_EFFORT,
+              pydantic=FeatureSupportType.BEST_EFFORT,
           ),
           output_format=OutputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
@@ -77,6 +83,10 @@ class MistralConnector(provider_connector.ProviderConnector):
           ),
           input_format=InputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
+              image=FeatureSupportType.SUPPORTED,
+              document=FeatureSupportType.SUPPORTED,
+              json=FeatureSupportType.BEST_EFFORT,
+              pydantic=FeatureSupportType.BEST_EFFORT,
           ),
           output_format=OutputFormatConfigType(
               pydantic=FeatureSupportType.SUPPORTED,
@@ -107,6 +117,76 @@ class MistralConnector(provider_connector.ProviderConnector):
       ),
   }
 
+  @staticmethod
+  def _build_data_uri(part_dict):
+    """Build a ``data:<mime>;base64,...`` URI from a content block."""
+    mime_type = part_dict.get('media_type', 'application/octet-stream')
+    if 'data' in part_dict:
+      return f"data:{mime_type};base64,{part_dict['data']}"
+    if 'path' in part_dict:
+      with open(part_dict['path'], 'rb') as f:
+        encoded = base64.b64encode(f.read()).decode('utf-8')
+      return f"data:{mime_type};base64,{encoded}"
+    return None
+
+  @staticmethod
+  def _to_mistral_part(part_dict):
+    """Convert a ProxAI content block to a Mistral chat content part.
+
+    Type mapping:
+      text     → ``{"type": "text", "text": "..."}``
+      image    → ``{"type": "image_url", "image_url": {"url": "..."}}``
+      document → ``{"type": "document_url", "document_url": "..."}``
+                 Accepts all document types natively (PDF, markdown,
+                 CSV, etc.).
+
+    Returns None for unsupported content types.
+    """
+    content_type = part_dict.get('type')
+    if content_type == 'text':
+      return {'type': 'text', 'text': part_dict['text']}
+    if content_type == 'image':
+      if 'source' in part_dict:
+        url = part_dict['source']
+      else:
+        url = MistralConnector._build_data_uri(part_dict)
+      if url is None:
+        return None
+      return {'type': 'image_url', 'image_url': {'url': url}}
+    if content_type == 'document':
+      if 'source' in part_dict:
+        doc_url = part_dict['source']
+      else:
+        doc_url = MistralConnector._build_data_uri(part_dict)
+      if doc_url is None:
+        return None
+      return {'type': 'document_url', 'document_url': doc_url}
+    return None
+
+  @staticmethod
+  def _convert_messages(messages):
+    """Convert ProxAI message content blocks to Mistral API format.
+
+    String content is passed through unchanged. List content is
+    converted block-by-block; blocks where the converter returns
+    None are dropped.
+    """
+    converted = []
+    for message in messages:
+      if isinstance(message['content'], str):
+        converted.append(message)
+        continue
+      if isinstance(message['content'], list):
+        parts = []
+        for block in message['content']:
+          part = MistralConnector._to_mistral_part(block)
+          if part is not None:
+            parts.append(part)
+        converted.append({**message, 'content': parts})
+      else:
+        converted.append(message)
+    return converted
+
   def _add_common_params(self, call, query_record: types.QueryRecord):
     """Add messages, system, and parameter kwargs to a Mistral chat call."""
     if query_record.prompt is not None:
@@ -114,7 +194,8 @@ class MistralConnector(provider_connector.ProviderConnector):
           call, messages=[{'role': 'user', 'content': query_record.prompt}])
 
     if query_record.chat is not None:
-      call = functools.partial(call, messages=query_record.chat['messages'])
+      messages = self._convert_messages(query_record.chat['messages'])
+      call = functools.partial(call, messages=messages)
 
     if query_record.parameters is not None:
       if query_record.parameters.max_tokens is not None:
