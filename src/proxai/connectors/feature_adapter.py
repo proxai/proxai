@@ -21,6 +21,46 @@ class FeatureAdapter:
       "text", "image", "audio", "video", "multi_modal",
   )
 
+  @staticmethod
+  def get_query_signature(query_record: types.QueryRecord) -> dict:
+    """Build a structured signature of features used in the query."""
+    signature = {}
+    if query_record.prompt is not None:
+      signature['prompt'] = True
+    if query_record.chat is not None:
+      signature['messages'] = True
+      if query_record.chat.system_prompt is not None:
+        signature['system_prompt'] = True
+      content_types = set()
+      for message in query_record.chat.messages:
+        if isinstance(message.content, list):
+          for block in message.content:
+            content_types.add(block.type.value)
+      if content_types:
+        signature['input_format'] = sorted(content_types)
+    if query_record.system_prompt is not None:
+      signature['system_prompt'] = True
+    if query_record.parameters is not None:
+      params = {}
+      if query_record.parameters.temperature is not None:
+        params['temperature'] = query_record.parameters.temperature
+      if query_record.parameters.max_tokens is not None:
+        params['max_tokens'] = query_record.parameters.max_tokens
+      if query_record.parameters.stop is not None:
+        params['stop'] = query_record.parameters.stop
+      if query_record.parameters.n is not None:
+        params['n'] = query_record.parameters.n
+      if query_record.parameters.thinking is not None:
+        params['thinking'] = query_record.parameters.thinking.value.lower()
+      if params:
+        signature['parameters'] = params
+    if query_record.tools:
+      signature['tools'] = [t.value.lower() for t in query_record.tools]
+    if query_record.output_format and query_record.output_format.type:
+      signature['output_format'] = (
+          query_record.output_format.type.value.lower())
+    return signature
+
   def __init__(
       self,
       endpoint: str,
@@ -59,6 +99,73 @@ class FeatureAdapter:
     ]
     return min(levels, key=lambda l: SUPPORT_RANK[l])
 
+  def get_query_support_details(
+      self, query_record: types.QueryRecord,
+  ) -> dict[str, str]:
+    """Return per-feature support levels for features used in the query."""
+    details = {}
+    S = types.FeatureSupportType
+
+    if query_record.prompt is not None:
+      details['prompt'] = resolve_support(
+          self.feature_config.prompt).value.lower()
+    if query_record.chat is not None:
+      details['messages'] = resolve_support(
+          self.feature_config.messages).value.lower()
+      if query_record.chat.system_prompt is not None:
+        details['system_prompt'] = resolve_support(
+            self.feature_config.system_prompt).value.lower()
+      seen = set()
+      for message in query_record.chat.messages:
+        if isinstance(message.content, list):
+          for block in message.content:
+            ct = block.type.value
+            if ct in seen:
+              continue
+            seen.add(ct)
+            fmt_type = self._CONTENT_TYPE_TO_INPUT_FORMAT_TYPE.get(ct)
+            if fmt_type is not None:
+              level = resolve_input_format_type_support(
+                  self.feature_config, fmt_type)
+              details[f'input:{ct}'] = level.value.lower()
+    if query_record.system_prompt is not None:
+      details['system_prompt'] = resolve_support(
+          self.feature_config.system_prompt).value.lower()
+    if query_record.parameters is not None:
+      p = query_record.parameters
+      pc = self.feature_config.parameters
+      if p.temperature is not None:
+        details['temperature'] = resolve_support(
+            pc.temperature if pc else None).value.lower()
+      if p.max_tokens is not None:
+        details['max_tokens'] = resolve_support(
+            pc.max_tokens if pc else None).value.lower()
+      if p.stop is not None:
+        details['stop'] = resolve_support(
+            pc.stop if pc else None).value.lower()
+      if p.n is not None:
+        details['n'] = resolve_support(
+            pc.n if pc else None).value.lower()
+      if p.thinking is not None:
+        details['thinking'] = resolve_support(
+            pc.thinking if pc else None).value.lower()
+    if query_record.tools:
+      tc = self.feature_config.tools
+      for tool in query_record.tools:
+        if tool == types.Tools.WEB_SEARCH:
+          details['web_search'] = resolve_support(
+              tc.web_search if tc else None).value.lower()
+    if query_record.output_format and query_record.output_format.type:
+      rf_config = self.feature_config.output_format
+      field_name = OUTPUT_FORMAT_FIELD_MAP.get(
+          query_record.output_format.type)
+      if field_name and rf_config:
+        details['output_format'] = resolve_support(
+            getattr(rf_config, field_name, None)).value.lower()
+      else:
+        details['output_format'] = 'not_supported'
+    return details
+
   def get_query_record_support_level(
       self, query_record: types.QueryRecord,
   ) -> types.FeatureSupportType:
@@ -76,6 +183,7 @@ class FeatureAdapter:
       levels.append(resolve_support(self.feature_config.messages))
       if query_record.chat.system_prompt is not None:
         levels.append(resolve_support(self.feature_config.system_prompt))
+      self._collect_input_format_levels(query_record.chat, levels)
     if query_record.system_prompt is not None:
       levels.append(resolve_support(self.feature_config.system_prompt))
 
@@ -117,6 +225,38 @@ class FeatureAdapter:
     if parameters.thinking is not None:
       levels.append(resolve_support(
           param_config.thinking if param_config else None))
+
+  _CONTENT_TYPE_TO_INPUT_FORMAT_TYPE = {
+      'text': types.InputFormatType.TEXT,
+      'image': types.InputFormatType.IMAGE,
+      'document': types.InputFormatType.DOCUMENT,
+      'audio': types.InputFormatType.AUDIO,
+      'video': types.InputFormatType.VIDEO,
+      'json': types.InputFormatType.JSON,
+      'pydantic_instance': types.InputFormatType.PYDANTIC,
+  }
+
+  def _collect_input_format_levels(
+      self,
+      chat: types.Chat,
+      levels: list[types.FeatureSupportType],
+  ):
+    """Collect support levels for content types found in chat messages."""
+    seen = set()
+    for message in chat.messages:
+      if isinstance(message.content, str):
+        continue
+      for block in message.content:
+        content_type_value = block.type.value
+        if content_type_value in seen:
+          continue
+        seen.add(content_type_value)
+        input_format_type = self._CONTENT_TYPE_TO_INPUT_FORMAT_TYPE.get(
+            content_type_value)
+        if input_format_type is None:
+          continue
+        levels.append(resolve_input_format_type_support(
+            self.feature_config, input_format_type))
 
   def _collect_tool_levels(
       self,

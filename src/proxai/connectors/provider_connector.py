@@ -431,6 +431,39 @@ class ProviderConnector(state_controller.StateControlled):
       return types.FeatureSupportType.BEST_EFFORT
     return types.FeatureSupportType.NOT_SUPPORTED
 
+  def _raise_no_compatible_endpoint(
+      self,
+      query_record: types.QueryRecord,
+      provider_model_config: types.ProviderModelConfig,
+  ):
+    import json as _json
+    signature = feature_adapter.FeatureAdapter.get_query_signature(
+        query_record)
+    provider = query_record.provider_model.provider
+    model = query_record.provider_model.model
+    signature_str = _json.dumps(signature)
+
+    endpoint_lines = []
+    for endpoint in self.ENDPOINT_PRIORITY:
+      adapter = feature_adapter.FeatureAdapter(
+          endpoint=endpoint,
+          endpoint_feature_config=self.ENDPOINT_CONFIG[endpoint],
+          model_feature_config=provider_model_config.features,
+      )
+      details = adapter.get_query_support_details(query_record)
+      details_str = _json.dumps(details)
+      endpoint_lines.append(f"- {endpoint}:\n  {details_str}")
+
+    raise ValueError(
+        f"No compatible endpoint found for provider '{provider}' "
+        f"model '{model}'. "
+        'Try reducing the number of features or using a '
+        'different model that supports the requested features.\n'
+        f"Query signature:\n  {signature_str}\n"
+        f"Endpoints support configs:\n" + '\n'.join(endpoint_lines)
+        
+    )
+
   def _find_compatible_endpoint(
       self,
       query_record: types.QueryRecord,
@@ -447,18 +480,15 @@ class ProviderConnector(state_controller.StateControlled):
         return endpoint
       elif support_level == types.FeatureSupportType.BEST_EFFORT:
         best_effort_endpoints.append(endpoint)
-    
+
     if (
         len(best_effort_endpoints) > 0 and
         self.feature_mapping_strategy == types.FeatureMappingStrategy.BEST_EFFORT
     ):
       return best_effort_endpoints[0]
-    else:
-      raise ValueError(
-          'No compatible endpoint found for the query record.'
-          f'query_record: {query_record}\n'
-          'Try to reduce the number of features.'
-      )
+
+    self._raise_no_compatible_endpoint(
+        query_record, provider_model_config)
 
   def _prepare_execution(
       self,
