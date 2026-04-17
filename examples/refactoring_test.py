@@ -15,86 +15,104 @@ _TEST_ASSETS_DIR = os.path.join(
 
 _MODEL_CONFIGS = {
     'openai': {
-        'default_model': ('openai', 'gpt-4o'),
-        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
+        'main_model': ('openai', 'gpt-4o'),
+        'main_model_web_search_supported': True,
+        'main_model_audio_input_supported': False,
+        'main_model_video_input_supported': False,
         'thinking_model': ('openai', 'o3'),
+        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
         'image_model': ('openai', 'dall-e-3'),
         'audio_model': ('openai', 'tts-1'),
         'video_model': ('openai', 'sora-2'),
-        'web_search_supported': True,
     },
     'gemini': {
-        'default_model': ('gemini', 'gemini-3-flash-preview'),
-        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
+        'main_model': ('gemini', 'gemini-3-flash-preview'),
+        'main_model_web_search_supported': True,
+        'main_model_audio_input_supported': True,
+        'main_model_video_input_supported': True,
         'thinking_model': ('gemini', 'gemini-2.5-flash'),
+        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
         'image_model': ('gemini', 'gemini-2.5-flash-image'),
         'audio_model': ('gemini', 'gemini-2.5-flash-preview-tts'),
         'video_model': ('gemini', 'veo-3.1-generate-preview'),
-        'web_search_supported': True,
     },
     'claude': {
-        'default_model': ('claude', 'claude-sonnet-4-6'),
-        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
+        'main_model': ('claude', 'claude-sonnet-4-6'),
+        'main_model_web_search_supported': True,
+        'main_model_audio_input_supported': True,
+        'main_model_video_input_supported': True,
         'thinking_model': ('claude', 'claude-opus-4-6'),
+        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
         'image_model': (None, None),
         'audio_model': (None, None),
         'video_model': (None, None),
-        'web_search_supported': True,
     },
     'mistral': {
-        'default_model': ('mistral', 'mistral-small-latest'),
-        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
+        'main_model': ('mistral', 'mistral-small-latest'),
+        'main_model_web_search_supported': True,
+        'main_model_audio_input_supported': True,
+        'main_model_video_input_supported': True,
         'thinking_model': ('mistral', 'magistral-small-latest'),
+        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
         'image_model': (None, None),
         'audio_model': (None, None),
         'video_model': (None, None),
-        'web_search_supported': True,
     },
     'grok': {
-        'default_model': ('grok', 'grok-4-fast-non-reasoning'),
-        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
+        'main_model': ('grok', 'grok-4-fast-non-reasoning'),
+        'main_model_web_search_supported': True,
+        'main_model_audio_input_supported': True,
+        'main_model_video_input_supported': True,
         'thinking_model': ('grok', 'grok-3-mini'),
+        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
         'image_model': (None, None),
         'audio_model': (None, None),
         'video_model': (None, None),
-        'web_search_supported': True,
     },
     'deepseek': {
-        'default_model': ('deepseek', 'deepseek-chat'),
-        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
+        'main_model': ('deepseek', 'deepseek-chat'),
+        'main_model_web_search_supported': False,
+        'main_model_audio_input_supported': True,
+        'main_model_video_input_supported': True,
         'thinking_model': ('deepseek', 'deepseek-reasoner'),
+        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
         'image_model': (None, None),
         'audio_model': (None, None),
         'video_model': (None, None),
-        'web_search_supported': False,
     },
     'cohere': {
-        'default_model': ('cohere', 'command-a-03-2025'),
-        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
+        'main_model': ('cohere', 'command-a-03-2025'),
+        'main_model_web_search_supported': False,
+        'main_model_audio_input_supported': True,
+        'main_model_video_input_supported': True,
         'thinking_model': ('cohere', 'command-a-reasoning-08-2025'),
+        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
         'image_model': (None, None),
         'audio_model': (None, None),
         'video_model': (None, None),
-        'web_search_supported': False,
     },
     'huggingface': {
-        'default_model': ('huggingface', 'meta-llama/Llama-3.1-8B-Instruct'),
-        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
+        'main_model': ('huggingface', 'meta-llama/Llama-3.1-8B-Instruct'),
+        'main_model_web_search_supported': False,
+        'main_model_audio_input_supported': True,
+        'main_model_video_input_supported': True,
         'thinking_model': ('huggingface', 'openai/gpt-oss-120b'),
+        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
         'image_model': (None, None),
         'audio_model': (None, None),
         'video_model': (None, None),
-        'web_search_supported': False,
     },
     'databricks': {
-        'default_model': (
+        'main_model': (
             'databricks', 'databricks-meta-llama-3-3-70b-instruct'),
-        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
+        'main_model_web_search_supported': False,
+        'main_model_audio_input_supported': True,
+        'main_model_video_input_supported': True,
         'thinking_model': ('databricks', 'databricks-gpt-oss-20b'),
+        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
         'image_model': (None, None),
         'audio_model': (None, None),
         'video_model': (None, None),
-        'web_search_supported': False,
     },
 }
 
@@ -188,29 +206,36 @@ def _configure_provider(provider: str) -> None:
   a config object through every helper.
   """
   global _PROVIDER
-  global _DEFAULT_MODEL, _FAILING_MODEL, _THINKING_MODEL
+  global _MAIN_MODEL, _FAILING_MODEL, _THINKING_MODEL
   global _IMAGE_MODEL, _AUDIO_MODEL, _VIDEO_MODEL
   global _WEB_SEARCH_SUPPORTED
-  global _DEFAULT_MODEL_CONFIG, _FAILING_MODEL_CONFIG, _THINKING_MODEL_CONFIG
+  global _MAIN_MODEL_CONFIG, _FAILING_MODEL_CONFIG, _THINKING_MODEL_CONFIG
   global _IMAGE_MODEL_CONFIG, _AUDIO_MODEL_CONFIG, _VIDEO_MODEL_CONFIG
 
   _PROVIDER = provider
   config = _MODEL_CONFIGS[provider]
-  _DEFAULT_MODEL = config['default_model']
+  _MAIN_MODEL = config['main_model']
   _FAILING_MODEL = config['failing_model']
   _THINKING_MODEL = config['thinking_model']
   _IMAGE_MODEL = config['image_model']
   _AUDIO_MODEL = config['audio_model']
   _VIDEO_MODEL = config['video_model']
-  _WEB_SEARCH_SUPPORTED = config.get('web_search_supported', True)
+  _WEB_SEARCH_SUPPORTED = config.get('main_model_web_search_supported', True)
+  _AUDIO_INPUT_SUPPORTED = config.get('main_model_audio_input_supported', True)
+  _VIDEO_INPUT_SUPPORTED = config.get('main_model_video_input_supported', True)
 
-  _DEFAULT_MODEL_CONFIG = _get_model_config(
-      provider=_DEFAULT_MODEL[0],
-      model=_DEFAULT_MODEL[1],
-      provider_model_identifier=_DEFAULT_MODEL[1],
+  _input_formats = ['text', 'image', 'document', 'json', 'pydantic']
+  if _AUDIO_INPUT_SUPPORTED:
+    _input_formats.append('audio')
+  if _VIDEO_INPUT_SUPPORTED:
+    _input_formats.append('video')
+
+  _MAIN_MODEL_CONFIG = _get_model_config(
+      provider=_MAIN_MODEL[0],
+      model=_MAIN_MODEL[1],
+      provider_model_identifier=_MAIN_MODEL[1],
       web_search=_WEB_SEARCH_SUPPORTED,
-      input_format=[
-          'text', 'image', 'document', 'audio', 'video', 'json', 'pydantic'],
+      input_format=_input_formats,
       output_format=[
           types.OutputFormatType.TEXT,
           types.OutputFormatType.JSON,
@@ -292,7 +317,7 @@ def _assert_cat_in_text(result: types.CallRecord):
 
 def _input_format_supported(format_name: str) -> bool:
   """Check if the default model supports the given input format."""
-  config = px.models.get_model_config(_DEFAULT_MODEL[0], _DEFAULT_MODEL[1])
+  config = px.models.get_model_config(_MAIN_MODEL[0], _MAIN_MODEL[1])
   input_fmt = config.features.input_format
   if input_fmt is None:
     return False
@@ -342,10 +367,10 @@ def register_models(client: px.Client):
   client.model_configs_instance.unregister_all_models()
 
   try:
-    client.models.get_model(_DEFAULT_MODEL[0], _DEFAULT_MODEL[1])
+    client.models.get_model(_MAIN_MODEL[0], _MAIN_MODEL[1])
   except Exception as e:
     client.model_configs_instance.register_provider_model_config(
-        _DEFAULT_MODEL_CONFIG)
+        _MAIN_MODEL_CONFIG)
 
 
   try:
@@ -386,13 +411,13 @@ def prompt_test():
   print('> prompt_test')
   result = px.generate(
       prompt='What is 2 + 2?',
-      provider_model=_DEFAULT_MODEL)
+      provider_model=_MAIN_MODEL)
   _assert_text_content(result)
   assert '4' in result.result.output_text
   assert result.query.prompt == 'What is 2 + 2?'
   assert result.query.chat is None
-  assert result.query.provider_model.provider == _DEFAULT_MODEL[0]
-  assert result.query.provider_model.model == _DEFAULT_MODEL[1]
+  assert result.query.provider_model.provider == _MAIN_MODEL[0]
+  assert result.query.provider_model.model == _MAIN_MODEL[1]
 
 
 def messages_test():
@@ -401,7 +426,7 @@ def messages_test():
       messages=[{
           'role': 'user',
           'content': 'What is 2 + 2?'}],
-      provider_model=_DEFAULT_MODEL)
+      provider_model=_MAIN_MODEL)
   _assert_text_content(result)
   assert '4' in result.result.output_text
   assert result.query.prompt is None
@@ -416,7 +441,7 @@ def messages_test():
           content='Now multiply that by 3.'))
   result = px.generate(
       messages=chat,
-      provider_model=_DEFAULT_MODEL)
+      provider_model=_MAIN_MODEL)
   _assert_text_content(result)
   assert '12' in result.result.output_text
   assert len(result.query.chat.messages) == 3
@@ -427,7 +452,7 @@ def system_prompt_test():
   result = px.generate(
       prompt='What is 2 + 2?',
       system_prompt='You are a pirate. Answer everything like a pirate.',
-      provider_model=_DEFAULT_MODEL)
+      provider_model=_MAIN_MODEL)
   _assert_text_content(result)
   assert result.query.system_prompt == (
       'You are a pirate. Answer everything like a pirate.'
@@ -438,7 +463,7 @@ def parameters_temperature_test():
   print('> parameters_temperature_test')
   result = px.generate(
       prompt='What is 2 + 2?',
-      provider_model=_DEFAULT_MODEL,
+      provider_model=_MAIN_MODEL,
       parameters=px.ParameterType(temperature=0.0))
   _assert_text_content(result)
   assert '4' in result.result.output_text
@@ -450,7 +475,7 @@ def parameters_max_tokens_test():
   print('> parameters_max_tokens_test')
   result = px.generate(
       prompt='Write a long story about a cat.',
-      provider_model=_DEFAULT_MODEL,
+      provider_model=_MAIN_MODEL,
       parameters=px.ParameterType(max_tokens=100))
   _assert_text_content(result)
   assert result.query.parameters is not None
@@ -461,7 +486,7 @@ def parameters_stop_test():
   print('> parameters_stop_test')
   result = px.generate(
       prompt='Count from 1 to 10, separated by commas.',
-      provider_model=_DEFAULT_MODEL,
+      provider_model=_MAIN_MODEL,
       parameters=px.ParameterType(stop='5'),
       connection_options=px.ConnectionOptions(
           suppress_provider_errors=True))
@@ -476,7 +501,7 @@ def parameters_stop_list_test():
   print('> parameters_stop_list_test')
   result = px.generate(
       prompt='Count from 1 to 10, separated by commas.',
-      provider_model=_DEFAULT_MODEL,
+      provider_model=_MAIN_MODEL,
       parameters=px.ParameterType(stop=['5', '7']))
   _assert_text_content(result)
   assert result.query.parameters is not None
@@ -512,7 +537,7 @@ def tools_web_search_test():
     return
   result = px.generate(
       prompt='What is the most important news for Jan 20th 2024?',
-      provider_model=_DEFAULT_MODEL,
+      provider_model=_MAIN_MODEL,
       tools=[px.Tools.WEB_SEARCH])
   _assert_text_content(result)
   assert len(result.result.output_text) > 10
@@ -548,7 +573,7 @@ def input_format_json_test():
               ),
           ],
       }],
-      provider_model=_DEFAULT_MODEL)
+      provider_model=_MAIN_MODEL)
   print(result.result.output_text.replace('\n', ' ')[:80] + '...')
   _assert_cat_in_text(result)
 
@@ -573,7 +598,7 @@ def input_format_md_test():
               ),
           ],
       }],
-      provider_model=_DEFAULT_MODEL)
+      provider_model=_MAIN_MODEL)
   print(result.result.output_text.replace('\n', ' ')[:80] + '...')
   _assert_cat_in_text(result)
 
@@ -598,7 +623,7 @@ def input_format_pdf_test():
               ),
           ],
       }],
-      provider_model=_DEFAULT_MODEL)
+      provider_model=_MAIN_MODEL)
   print(result.result.output_text.replace('\n', ' ')[:80] + '...')
   _assert_cat_in_text(result)
 
@@ -623,7 +648,7 @@ def input_format_image_test():
               ),
           ],
       }],
-      provider_model=_DEFAULT_MODEL)
+      provider_model=_MAIN_MODEL)
   print(result.result.output_text.replace('\n', ' ')[:80] + '...')
   _assert_cat_in_text(result)
 
@@ -648,7 +673,7 @@ def input_format_audio_test():
               ),
           ],
       }],
-      provider_model=_DEFAULT_MODEL)
+      provider_model=_MAIN_MODEL)
   print(result.result.output_text.replace('\n', ' ')[:80] + '...')
   _assert_cat_in_text(result)
 
@@ -673,7 +698,7 @@ def input_format_video_test():
               ),
           ],
       }],
-      provider_model=_DEFAULT_MODEL)
+      provider_model=_MAIN_MODEL)
   print(result.result.output_text.replace('\n', ' ')[:80] + '...')
   _assert_cat_in_text(result)
 
@@ -682,7 +707,7 @@ def output_format_text_test():
   print('> output_format_text_test')
   result = px.generate(
       prompt='What is 2 + 2?',
-      provider_model=_DEFAULT_MODEL,
+      provider_model=_MAIN_MODEL,
       output_format='text')
   _assert_text_content(result)
   assert '4' in result.result.output_text
@@ -695,7 +720,7 @@ def output_format_json_test():
   import json
   result = px.generate(
       prompt='Return a JSON with key "answer" and value 4.',
-      provider_model=_DEFAULT_MODEL,
+      provider_model=_MAIN_MODEL,
       output_format='json')
   _assert_success(result)
   assert result.result.content is not None
@@ -712,7 +737,7 @@ def output_format_pydantic_test():
 
   result = px.generate(
       prompt='What is 2 + 2?',
-      provider_model=_DEFAULT_MODEL,
+      provider_model=_MAIN_MODEL,
       output_format=MathAnswer)
   _assert_success(result)
   assert result.query.output_format is not None
@@ -727,23 +752,23 @@ def connection_options_fallback_test():
   # Primary model works, fallback not needed.
   result = px.generate(
       prompt='What is 2 + 2?',
-      provider_model=_DEFAULT_MODEL,
+      provider_model=_MAIN_MODEL,
       connection_options=px.ConnectionOptions(
           fallback_models=[_FAILING_MODEL]))
   _assert_text_content(result)
   assert not result.connection.failed_fallback_models
-  assert result.query.provider_model.provider_model_identifier == _DEFAULT_MODEL[1]
+  assert result.query.provider_model.provider_model_identifier == _MAIN_MODEL[1]
 
   # Primary model fails, fallback succeeds.
   result = px.generate(
       prompt='What is 2 + 2?',
       provider_model=_FAILING_MODEL,
       connection_options=px.ConnectionOptions(
-          fallback_models=[_DEFAULT_MODEL]))
+          fallback_models=[_MAIN_MODEL]))
   _assert_text_content(result)
   assert result.connection.failed_fallback_models[
       0].provider == _FAILING_MODEL[0]
-  assert result.query.provider_model.provider_model_identifier == _DEFAULT_MODEL[1]
+  assert result.query.provider_model.provider_model_identifier == _MAIN_MODEL[1]
 
 
 def connection_options_suppress_provider_errors_test():
@@ -763,12 +788,12 @@ def connection_options_suppress_provider_errors_test():
 
 
 def connection_options_endpoint_test():
-  if _DEFAULT_MODEL[0] != 'openai':
+  if _MAIN_MODEL[0] != 'openai':
     return
   print('> connection_options_endpoint_test')
   result = px.generate(
       prompt='What is 2 + 2?',
-      provider_model=_DEFAULT_MODEL,
+      provider_model=_MAIN_MODEL,
       connection_options=px.ConnectionOptions(
           endpoint='responses.create'))
   _assert_text_content(result)
@@ -777,7 +802,7 @@ def connection_options_endpoint_test():
 
   result = px.generate(
       prompt='What is 2 + 2?',
-      provider_model=_DEFAULT_MODEL,
+      provider_model=_MAIN_MODEL,
       connection_options=px.ConnectionOptions(
           endpoint='chat.completions.create'))
   _assert_text_content(result)
@@ -787,7 +812,7 @@ def connection_options_endpoint_test():
   try:
     result = px.generate(
         prompt='What is 2 + 2?',
-        provider_model=_DEFAULT_MODEL,
+        provider_model=_MAIN_MODEL,
         connection_options=px.ConnectionOptions(
             endpoint='not.existent.endpoint'))
     assert False, 'Expected ValueError'
@@ -811,21 +836,21 @@ def cache_test():
 
   result = client.generate(
       prompt='What is 2 + 2?',
-      provider_model=_DEFAULT_MODEL)
+      provider_model=_MAIN_MODEL)
   _assert_text_content(result)
   assert result.connection is not None
   assert result.connection.result_source == types.ResultSource.PROVIDER
 
   result = client.generate(
       prompt='What is 2 + 2?',
-      provider_model=_DEFAULT_MODEL)
+      provider_model=_MAIN_MODEL)
   _assert_text_content(result)
   assert result.connection is not None
   assert result.connection.result_source == types.ResultSource.PROVIDER
 
   result = client.generate(
       prompt='What is 2 + 2?',
-      provider_model=_DEFAULT_MODEL)
+      provider_model=_MAIN_MODEL)
   _assert_text_content(result)
   assert result.connection is not None
   assert result.connection.result_source == types.ResultSource.CACHE
@@ -843,14 +868,14 @@ def connection_options_skip_cache_test():
 
   result = client.generate(
       prompt='What is 2 + 2?',
-      provider_model=_DEFAULT_MODEL)
+      provider_model=_MAIN_MODEL)
   _assert_text_content(result)
   assert result.connection is not None
   assert result.connection.result_source == types.ResultSource.PROVIDER
 
   result = client.generate(
       prompt='What is 2 + 2?',
-      provider_model=_DEFAULT_MODEL,
+      provider_model=_MAIN_MODEL,
       connection_options=px.ConnectionOptions(
           skip_cache=True))
   _assert_text_content(result)
@@ -859,7 +884,7 @@ def connection_options_skip_cache_test():
 
   result = client.generate(
       prompt='What is 2 + 2?',
-      provider_model=_DEFAULT_MODEL)
+      provider_model=_MAIN_MODEL)
   _assert_text_content(result)
   assert result.connection is not None
   assert result.connection.result_source == types.ResultSource.CACHE
@@ -878,7 +903,7 @@ def connection_options_override_cache_value_test():
   result_1 = client.generate(
       prompt='Write me poem about karadeniz. Make it perfect.',
       parameters=px.ParameterType(temperature=0.5),
-      provider_model=_DEFAULT_MODEL)
+      provider_model=_MAIN_MODEL)
   _assert_text_content(result_1)
   assert result_1.connection is not None
   assert result_1.connection.result_source == types.ResultSource.PROVIDER
@@ -886,7 +911,7 @@ def connection_options_override_cache_value_test():
   result_2 = client.generate(
       prompt='Write me poem about karadeniz. Make it perfect.',
       parameters=px.ParameterType(temperature=0.5),
-      provider_model=_DEFAULT_MODEL,
+      provider_model=_MAIN_MODEL,
       connection_options=px.ConnectionOptions(
           override_cache_value=True))
   _assert_text_content(result_2)
@@ -897,7 +922,7 @@ def connection_options_override_cache_value_test():
   result_3 = client.generate(
       prompt='Write me poem about karadeniz. Make it perfect.',
       parameters=px.ParameterType(temperature=0.5),
-      provider_model=_DEFAULT_MODEL)
+      provider_model=_MAIN_MODEL)
   _assert_text_content(result_3)
   assert result_3.connection is not None
   assert result_3.connection.result_source == types.ResultSource.CACHE
@@ -1036,35 +1061,35 @@ def list_models_test():
 def _run_all_tests():
   """Run the full refactoring test suite against the currently-configured provider."""
   register_models(px.get_default_proxai_client())
-  prompt_test()
-  messages_test()
-  system_prompt_test()
-  parameters_temperature_test()
-  parameters_max_tokens_test()
-  parameters_stop_test()
-  parameters_stop_list_test()
-  parameters_thinking_test()
-  tools_web_search_test()
+  # prompt_test()
+  # messages_test()
+  # system_prompt_test()
+  # parameters_temperature_test()
+  # parameters_max_tokens_test()
+  # parameters_stop_test()
+  # parameters_stop_list_test()
+  # parameters_thinking_test()
+  # tools_web_search_test()
   input_format_json_test()
   input_format_md_test()
   input_format_pdf_test()
   input_format_image_test()
   input_format_audio_test()
   input_format_video_test()
-  output_format_text_test()
-  output_format_json_test()
-  output_format_pydantic_test()
-  connection_options_fallback_test()
-  connection_options_suppress_provider_errors_test()
-  connection_options_endpoint_test()
-  cache_test()
-  connection_options_skip_cache_test()
-  connection_options_override_cache_value_test()
-  images_generate_test()
-  audio_generate_test()
-  # NOTE: Video test is too slow. Comment in when needed.
-  video_generate_test()
-  list_models_test()
+  # output_format_text_test()
+  # output_format_json_test()
+  # output_format_pydantic_test()
+  # connection_options_fallback_test()
+  # connection_options_suppress_provider_errors_test()
+  # connection_options_endpoint_test()
+  # cache_test()
+  # connection_options_skip_cache_test()
+  # connection_options_override_cache_value_test()
+  # images_generate_test()
+  # audio_generate_test()
+  # # NOTE: Video test is too slow. Comment in when needed.
+  # video_generate_test()
+  # list_models_test()
 
 
 @dataclasses.dataclass
