@@ -1,7 +1,9 @@
+import base64
 import functools
 
 import cohere
 
+import proxai.connectors.content_utils as content_utils
 import proxai.connectors.provider_connector as provider_connector
 import proxai.connectors.providers.cohere_mock as cohere_mock
 import proxai.types as types
@@ -65,6 +67,10 @@ class CohereConnector(provider_connector.ProviderConnector):
           ),
           input_format=InputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
+              image=FeatureSupportType.SUPPORTED,
+              document=FeatureSupportType.BEST_EFFORT,
+              json=FeatureSupportType.BEST_EFFORT,
+              pydantic=FeatureSupportType.BEST_EFFORT,
           ),
           output_format=OutputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
@@ -80,6 +86,78 @@ class CohereConnector(provider_connector.ProviderConnector):
       ),
   }
 
+  @staticmethod
+  def _build_data_uri(part_dict):
+    """Build a ``data:<mime>;base64,...`` URI from a content block."""
+    mime_type = part_dict.get('media_type', 'application/octet-stream')
+    if 'data' in part_dict:
+      return f"data:{mime_type};base64,{part_dict['data']}"
+    if 'path' in part_dict:
+      with open(part_dict['path'], 'rb') as f:
+        encoded = base64.b64encode(f.read()).decode('utf-8')
+      return f"data:{mime_type};base64,{encoded}"
+    return None
+
+  @staticmethod
+  def _to_cohere_part(part_dict):
+    """Convert a ProxAI content block to a Cohere V2 chat content part.
+
+    Type mapping:
+      text     → ``{"type": "text", "text": "..."}``
+      image    → ``{"type": "image_url", "image_url": {"url": "..."}}``
+                 Supports PNG, JPEG, WebP, and non-animated GIF.
+      document → Text-based docs (md, csv, txt) are read as text.
+                 PDF is extracted via pypdf. Other binary formats
+                 (docx, xlsx) are dropped. Cohere has no native
+                 document input support.
+
+    Returns None for unsupported content types.
+    """
+    content_type = part_dict.get('type')
+    if content_type == 'text':
+      return {'type': 'text', 'text': part_dict['text']}
+    if content_type == 'image':
+      if 'source' in part_dict:
+        url = part_dict['source']
+      else:
+        url = CohereConnector._build_data_uri(part_dict)
+      if url is None:
+        return None
+      return {'type': 'image_url', 'image_url': {'url': url}}
+    if content_type == 'document':
+      text_content = content_utils.read_text_document(part_dict)
+      if text_content is not None:
+        return {'type': 'text', 'text': text_content}
+      pdf_content = content_utils.read_pdf_document(part_dict)
+      if pdf_content is not None:
+        return {'type': 'text', 'text': pdf_content}
+      return None
+    return None
+
+  @staticmethod
+  def _convert_messages(messages):
+    """Convert ProxAI message content blocks to Cohere V2 format.
+
+    String content is passed through unchanged. List content is
+    converted block-by-block; blocks where the converter returns
+    None are dropped.
+    """
+    converted = []
+    for message in messages:
+      if isinstance(message['content'], str):
+        converted.append(message)
+        continue
+      if isinstance(message['content'], list):
+        parts = []
+        for block in message['content']:
+          part = CohereConnector._to_cohere_part(block)
+          if part is not None:
+            parts.append(part)
+        converted.append({**message, 'content': parts})
+      else:
+        converted.append(message)
+    return converted
+
   def _chat_executor(
       self,
       query_record: types.QueryRecord) -> types.ResultRecord:
@@ -93,8 +171,8 @@ class CohereConnector(provider_connector.ProviderConnector):
           create, messages=[{'role': 'user', 'content': query_record.prompt}])
 
     if query_record.chat is not None:
-      create = functools.partial(
-          create, messages=query_record.chat['messages'])
+      messages = self._convert_messages(query_record.chat['messages'])
+      create = functools.partial(create, messages=messages)
 
     if query_record.parameters is not None:
       if query_record.parameters.max_tokens is not None:
