@@ -59,86 +59,49 @@ class ModelConnector:
       self,
       model_size: types.ModelSizeIdentifierType | None = None,
       features: types.FeatureTagParam | None = None,
-      call_type: types.CallTypeParam = types.CallType.TEXT,
+      input_format: types.InputFormatTypeParam | None = None,
+      output_format: types.OutputFormatTypeParam = (
+          types.OutputFormatType.TEXT),
+      feature_tags: types.FeatureTagParam | None = None,
+      tool_tags: types.ToolTagParam | None = None,
       recommended_only: bool = True,
   ) -> list[types.ProviderModelType]:
     """Lists all configured models matching the specified criteria.
 
-    Returns models that are configured in the system regardless of whether
-    they are currently accessible or working. Use list_working_models()
-    to get only models that have been verified to work.
-
     Args:
-        model_size: Filter by model size category. Can be a ModelSizeType
-            enum value ('small', 'medium', 'large', 'largest') or a string.
-        features: Filter by required features. List of feature names that
-            models must support (e.g., ['system', 'temperature']).
-        call_type: The type of API call to filter models for. Can be a
-            CallType enum or a string (e.g., 'text', 'image').
-            Defaults to TEXT.
-        recommended_only: If True, returns only recommended models curated
-            by ProxAI. Set to False to include all available models.
-            Defaults to True.
-
-    Returns:
-        list[types.ProviderModelType]: A list of ProviderModelType objects
-            representing the matching models.
-
-    Example:
-        >>> import proxai as px
-        >>> # List all models
-        >>> models = px.models.list_models()
-        >>> print(models[0])
-        (openai, gpt-4)
-
-        >>> # Filter by size
-        >>> large_models = px.models.list_models(model_size="large")
-
-        >>> # Using a specific client
-        >>> client = px.Client()
-        >>> models = client.models.list_models()
+        model_size: Filter by model size category.
+        features: Deprecated. Filter by required features.
+        input_format: Filter by input format capabilities.
+        output_format: Filter by output format capabilities.
+        feature_tags: Filter by general feature support.
+        tool_tags: Filter by tool support.
+        recommended_only: If True, returns only recommended models.
     """
     return self._client_getter().available_models_instance.list_models(
         model_size=model_size,
         features=features,
-        call_type=call_type,
+        input_format=input_format,
+        output_format=output_format,
+        feature_tags=feature_tags,
+        tool_tags=tool_tags,
         recommended_only=recommended_only,
     )
 
   def list_providers(
       self,
-      call_type: types.CallTypeParam = types.CallType.TEXT,
+      output_format: types.OutputFormatTypeParam = (
+          types.OutputFormatType.TEXT),
       recommended_only: bool = True,
   ) -> list[str]:
     """Lists all providers that have API keys configured.
 
-    Returns provider names for which the required environment variables
-    are set, indicating the provider can potentially be used.
-
     Args:
-        call_type: The type of API call to filter providers for. Can be a
-            CallType enum or a string (e.g., 'text', 'image').
-            Defaults to TEXT.
+        output_format: Filter by output format. Defaults to TEXT.
         recommended_only: If True, returns only providers with recommended
-            models curated by ProxAI. Set to False to include all
-            available providers. Defaults to True.
-
-    Returns:
-        List[str]: A sorted list of provider names (e.g., ['anthropic',
-            'openai']).
-
-    Example:
-        >>> import proxai as px
-        >>> providers = px.models.list_providers()
-        >>> print(providers)
-        ['anthropic', 'google', 'openai']
-
-        >>> # Using a specific client
-        >>> client = px.Client()
-        >>> providers = client.models.list_providers()
+            models. Defaults to True.
     """
     return self._client_getter().available_models_instance.list_providers(
-        call_type=call_type,
+        output_format=output_format,
         recommended_only=recommended_only,
     )
 
@@ -147,52 +110,37 @@ class ModelConnector:
       provider: str,
       model_size: types.ModelSizeIdentifierType | None = None,
       features: types.FeatureTagParam | None = None,
-      call_type: types.CallTypeParam = types.CallType.TEXT,
+      input_format: types.InputFormatTypeParam | None = None,
+      output_format: types.OutputFormatTypeParam = (
+          types.OutputFormatType.TEXT),
+      feature_tags: types.FeatureTagParam | None = None,
+      tool_tags: types.ToolTagParam | None = None,
       recommended_only: bool = True,
   ) -> list[types.ProviderModelType]:
     """Lists all models available from a specific provider.
 
-    Returns models for the given provider that match the specified
-    filtering criteria.
-
     Args:
-        provider: The provider name to list models for (e.g., 'openai',
-            'anthropic').
-        model_size: Filter by model size category. Can be a ModelSizeType
-            enum value or a string.
-        features: Filter by required features. List of feature names that
-            models must support.
-        call_type: The type of API call to filter models for. Can be a
-            CallType enum or a string (e.g., 'text', 'image').
-            Defaults to TEXT.
-        recommended_only: If True, returns only recommended models curated
-            by ProxAI. Set to False to include all available models.
-            Defaults to True.
-
-    Returns:
-        list[types.ProviderModelType]: A list of ProviderModelType objects
-            representing the matching models for the provider.
-
-    Raises:
-        ValueError: If the provider's API key is not found in environment
-            variables.
-
-    Example:
-        >>> import proxai as px
-        >>> openai_models = px.models.list_provider_models("openai")
-        >>> print(openai_models)
-        [(openai, gpt-4), (openai, gpt-3.5-turbo), ...]
-
-        >>> # Using a specific client
-        >>> client = px.Client()
-        >>> openai_models = client.models.list_provider_models("openai")
+        provider: The provider name (e.g., 'openai', 'anthropic').
+        model_size: Filter by model size category.
+        features: Deprecated. Filter by required features.
+        input_format: Filter by input format capabilities.
+        output_format: Filter by output format capabilities.
+        feature_tags: Filter by general feature support.
+        tool_tags: Filter by tool support.
+        recommended_only: If True, returns only recommended models.
     """
-    return self._client_getter().available_models_instance.list_provider_models(
-        provider=provider,
-        model_size=model_size,
-        features=features,
-        call_type=call_type,
-        recommended_only=recommended_only,
+    return (
+        self._client_getter().available_models_instance
+        .list_provider_models(
+            provider=provider,
+            model_size=model_size,
+            features=features,
+            input_format=input_format,
+            output_format=output_format,
+            feature_tags=feature_tags,
+            tool_tags=tool_tags,
+            recommended_only=recommended_only,
+        )
     )
 
   def get_model(
@@ -239,33 +187,20 @@ class ModelConnector:
       verbose: bool = True,
       return_all: bool = False,
       clear_model_cache: bool = False,
-      call_type: types.CallTypeParam = types.CallType.TEXT,
+      output_format: types.OutputFormatTypeParam = (
+          types.OutputFormatType.TEXT),
       recommended_only: bool = True,
   ) -> list[types.ProviderModelType] | types.ModelStatus:
     """Lists models that have been verified to be working.
-
-    Tests each configured model and returns only those that successfully
-    respond. Results are cached to avoid repeated testing.
 
     Args:
         model_size: Filter by model size category.
         features: Filter by required features.
         verbose: If True, prints progress information during testing.
-            Defaults to True.
-        return_all: If True, returns a ModelStatus object with working,
-            failed, and filtered models. Defaults to False.
-        clear_model_cache: If True, clears the model cache and retests
-            all models. Defaults to False.
-        call_type: The type of API call to test. Can be a CallType enum
-            or a string (e.g., 'text'). Defaults to TEXT.
-        recommended_only: If True, returns only recommended models curated
-            by ProxAI. Set to False to include all available models.
-            Defaults to True.
-
-    Returns:
-        Union[List[types.ProviderModelType], types.ModelStatus]: A list of
-            working ProviderModelType objects, or a ModelStatus object if
-            return_all is True.
+        return_all: If True, returns a ModelStatus object.
+        clear_model_cache: If True, clears and retests all models.
+        output_format: Output format to test. Defaults to TEXT.
+        recommended_only: If True, returns only recommended models.
 
     Example:
         >>> import proxai as px
@@ -274,23 +209,28 @@ class ModelConnector:
 
         >>> # Using a specific client
         >>> client = px.Client()
-        >>> working_models = client.models.list_working_models(verbose=False)
+        >>> working_models = client.models.list_working_models(
+        ...   verbose=False)
     """
-    return self._client_getter().available_models_instance.list_working_models(
-        model_size=model_size,
-        features=features,
-        verbose=verbose,
-        return_all=return_all,
-        clear_model_cache=clear_model_cache,
-        call_type=call_type,
-        recommended_only=recommended_only,
+    return (
+        self._client_getter().available_models_instance
+        .list_working_models(
+            model_size=model_size,
+            features=features,
+            verbose=verbose,
+            return_all=return_all,
+            clear_model_cache=clear_model_cache,
+            output_format=output_format,
+            recommended_only=recommended_only,
+        )
     )
 
   def list_working_providers(
       self,
       verbose: bool = True,
       clear_model_cache: bool = False,
-      call_type: types.CallTypeParam = types.CallType.TEXT,
+      output_format: types.OutputFormatTypeParam = (
+          types.OutputFormatType.TEXT),
       recommended_only: bool = True,
   ) -> list[str]:
     """Lists providers that have at least one working model.
@@ -303,14 +243,16 @@ class ModelConnector:
             Defaults to True.
         clear_model_cache: If True, clears the model cache and retests
             all models. Defaults to False.
-        call_type: The type of API call to test. Can be a CallType enum
-            or a string (e.g., 'text'). Defaults to TEXT.
-        recommended_only: If True, returns only providers with recommended
-            models curated by ProxAI. Set to False to include all
-            available providers. Defaults to True.
+        output_format: The output format to test. Can be an
+            OutputFormatType enum or a string (e.g., 'text').
+            Defaults to TEXT.
+        recommended_only: If True, returns only providers with
+            recommended models curated by ProxAI. Set to False to
+            include all available providers. Defaults to True.
 
     Returns:
-        List[str]: A sorted list of provider names with working models.
+        List[str]: A sorted list of provider names with working
+            models.
 
     Example:
         >>> import proxai as px
@@ -320,13 +262,15 @@ class ModelConnector:
 
         >>> # Using a specific client
         >>> client = px.Client()
-        >>> providers = client.models.list_working_providers(verbose=False)
+        >>> providers = client.models.list_working_providers(
+        ...   verbose=False)
     """
     return (
-        self._client_getter().available_models_instance.list_working_providers(
+        self._client_getter().available_models_instance
+        .list_working_providers(
             verbose=verbose,
             clear_model_cache=clear_model_cache,
-            call_type=call_type,
+            output_format=output_format,
             recommended_only=recommended_only,
         )
     )
@@ -339,13 +283,14 @@ class ModelConnector:
       verbose: bool = True,
       return_all: bool = False,
       clear_model_cache: bool = False,
-      call_type: types.CallTypeParam = types.CallType.TEXT,
+      output_format: types.OutputFormatTypeParam = (
+          types.OutputFormatType.TEXT),
       recommended_only: bool = True,
   ) -> list[types.ProviderModelType] | types.ModelStatus:
     """Lists working models from a specific provider.
 
-    Tests models from the specified provider and returns only those that
-    successfully respond.
+    Tests models from the specified provider and returns only those
+    that successfully respond.
 
     Args:
         provider: The provider name to list models for.
@@ -353,20 +298,21 @@ class ModelConnector:
         features: Filter by required features.
         verbose: If True, prints progress information during testing.
             Defaults to True.
-        return_all: If True, returns a ModelStatus object with detailed
-            results. Defaults to False.
-        clear_model_cache: If True, clears the model cache and retests
-            models. Defaults to False.
-        call_type: The type of API call to test. Can be a CallType enum
-            or a string (e.g., 'text'). Defaults to TEXT.
-        recommended_only: If True, returns only recommended models curated
-            by ProxAI. Set to False to include all available models.
-            Defaults to True.
+        return_all: If True, returns a ModelStatus object with
+            detailed results. Defaults to False.
+        clear_model_cache: If True, clears the model cache and
+            retests models. Defaults to False.
+        output_format: The output format to test. Can be an
+            OutputFormatType enum or a string (e.g., 'text').
+            Defaults to TEXT.
+        recommended_only: If True, returns only recommended models
+            curated by ProxAI. Set to False to include all available
+            models. Defaults to True.
 
     Returns:
-        Union[List[types.ProviderModelType], types.ModelStatus]: A list of
-            working ProviderModelType objects from the provider, or a
-            ModelStatus object if return_all is True.
+        Union[List[types.ProviderModelType], types.ModelStatus]: A
+            list of working ProviderModelType objects from the
+            provider, or a ModelStatus object if return_all is True.
 
     Raises:
         ValueError: If the provider's API key is not found.
@@ -381,11 +327,14 @@ class ModelConnector:
 
         >>> # Using a specific client
         >>> client = px.Client()
-        >>> openai_working = client.models.list_working_provider_models(
-        ...   "openai", verbose=False
+        >>> openai_working = (
+        ...   client.models.list_working_provider_models(
+        ...     "openai", verbose=False
+        ...   )
         ... )
     """
-    available_models = self._client_getter().available_models_instance
+    available_models = (
+        self._client_getter().available_models_instance)
     return available_models.list_working_provider_models(
         provider=provider,
         model_size=model_size,
@@ -393,7 +342,7 @@ class ModelConnector:
         verbose=verbose,
         return_all=return_all,
         clear_model_cache=clear_model_cache,
-        call_type=call_type,
+        output_format=output_format,
         recommended_only=recommended_only,
     )
 
@@ -403,7 +352,8 @@ class ModelConnector:
       model: str,
       verbose: bool = False,
       clear_model_cache: bool = False,
-      call_type: types.CallTypeParam = types.CallType.TEXT,
+      output_format: types.OutputFormatTypeParam = (
+          types.OutputFormatType.TEXT),
   ) -> types.ProviderModelType:
     """Verifies and returns a specific model if it's working.
 
@@ -415,18 +365,20 @@ class ModelConnector:
         model: The model name (e.g., 'gpt-4', 'claude-3-opus').
         verbose: If True, prints progress information during testing.
             Defaults to False.
-        clear_model_cache: If True, clears the model cache and retests
-            the model. Defaults to False.
-        call_type: The type of API call to test. Can be a CallType enum
-            or a string (e.g., 'text'). Defaults to TEXT.
+        clear_model_cache: If True, clears the model cache and
+            retests the model. Defaults to False.
+        output_format: The output format to test. Can be an
+            OutputFormatType enum or a string (e.g., 'text').
+            Defaults to TEXT.
 
     Returns:
-        types.ProviderModelType: The model information if the model is
-            working.
+        types.ProviderModelType: The model information if the model
+            is working.
 
     Raises:
-        ValueError: If the provider's API key is not found, the model
-            doesn't exist, or the model failed the health check.
+        ValueError: If the provider's API key is not found, the
+            model doesn't exist, or the model failed the health
+            check.
 
     Example:
         >>> import proxai as px
@@ -436,14 +388,18 @@ class ModelConnector:
 
         >>> # Using a specific client
         >>> client = px.Client()
-        >>> model = client.models.get_working_model("openai", "gpt-4")
+        >>> model = client.models.get_working_model(
+        ...   "openai", "gpt-4")
     """
-    return self._client_getter().available_models_instance.get_working_model(
-        provider=provider,
-        model=model,
-        verbose=verbose,
-        clear_model_cache=clear_model_cache,
-        call_type=call_type,
+    return (
+        self._client_getter().available_models_instance
+        .get_working_model(
+            provider=provider,
+            model=model,
+            verbose=verbose,
+            clear_model_cache=clear_model_cache,
+            output_format=output_format,
+        )
     )
 
 
@@ -1050,28 +1006,54 @@ class ProxAIClient(state_controller.StateControlled):
           init_from_params=proxdash_connection_params
       )
 
-  def get_default_provider_model(
-      self, call_type: types.CallType,
-  ) -> types.ProviderModelType:
-    """Resolve and return the default ProviderModelType for a call type."""
-    if call_type != types.CallType.TEXT:
-      raise ValueError(f"Call type not supported: {call_type}")
+  _OUTPUT_FORMAT_TYPE_FALLBACK = {
+      types.OutputFormatType.PYDANTIC: [
+          types.OutputFormatType.JSON,
+          types.OutputFormatType.TEXT],
+      types.OutputFormatType.JSON: [types.OutputFormatType.TEXT],
+  }
 
-    if call_type in self.registered_models:
-      return self.registered_models[call_type]
+  def get_default_provider_model(
+      self,
+      output_format_type: types.OutputFormatType = None,
+  ) -> types.ProviderModelType:
+    """Resolve and return the default ProviderModelType."""
+    if output_format_type is None:
+      output_format_type = types.OutputFormatType.TEXT
+
+    if output_format_type in self.registered_models:
+      return self.registered_models[output_format_type]
+
+    fallbacks = self._OUTPUT_FORMAT_TYPE_FALLBACK.get(
+        output_format_type, [])
+    for fallback_type in fallbacks:
+      if fallback_type in self.registered_models:
+        return self.registered_models[fallback_type]
+
+    if output_format_type not in (
+        types.OutputFormatType.TEXT,
+        types.OutputFormatType.JSON,
+        types.OutputFormatType.PYDANTIC):
+      raise ValueError(
+          f"Output format type not supported: "
+          f"{output_format_type}")
 
     default_models = (
-        self.model_configs_instance.get_default_model_priority_list()
+        self.model_configs_instance
+        .get_default_model_priority_list()
     )
     for provider_model in default_models:
       try:
         self.available_models_instance.get_working_model(
-            provider=provider_model.provider, model=provider_model.model
+            provider=provider_model.provider,
+            model=provider_model.model
         )
-        self.registered_models[call_type] = provider_model
-        self.registered_model_connectors[call_type] = (
-            self.available_models_instance.
-            get_model_connector(provider_model)
+        self.registered_models[
+            types.OutputFormatType.TEXT] = provider_model
+        self.registered_model_connectors[
+            types.OutputFormatType.TEXT] = (
+            self.available_models_instance
+            .get_model_connector(provider_model)
         )
         return provider_model
       except ValueError:
@@ -1080,51 +1062,83 @@ class ProxAIClient(state_controller.StateControlled):
     models = self.available_models_instance.list_working_models()
     if len(models.working_models) > 0:
       provider_model = models.working_models.pop()
-      self.registered_models[call_type] = provider_model
-      self.registered_model_connectors[call_type] = (
-          self.available_models_instance.get_model_connector(provider_model)
+      self.registered_models[
+          types.OutputFormatType.TEXT] = provider_model
+      self.registered_model_connectors[
+          types.OutputFormatType.TEXT] = (
+          self.available_models_instance
+          .get_model_connector(provider_model)
       )
       return provider_model
 
     raise ValueError(
         "No working models found in current environment:\n"
-        "* Please check your environment variables and try again.\n"
-        "* You can use px.check_health() method as instructed in "
-        "https://www.proxai.co/proxai-docs/check-health"
+        "* Please check your environment variables and try "
+        "again.\n"
+        "* You can use px.check_health() method as instructed "
+        "in https://www.proxai.co/proxai-docs/check-health"
     )
 
-  def get_registered_model_connector(self, call_type: types.CallType):
-    """Get or create a connector for the default model of a call type."""
-    self.get_default_provider_model(call_type=call_type)
-    return self.registered_model_connectors[call_type]
+  def get_registered_model_connector(
+      self,
+      output_format_type: types.OutputFormatType = None,
+  ):
+    """Get or create a connector for the default model."""
+    if output_format_type is None:
+      output_format_type = types.OutputFormatType.TEXT
+    self.get_default_provider_model(
+        output_format_type=output_format_type)
+
+    if output_format_type in self.registered_model_connectors:
+      return self.registered_model_connectors[output_format_type]
+    fallbacks = self._OUTPUT_FORMAT_TYPE_FALLBACK.get(
+        output_format_type, [])
+    for fallback_type in fallbacks:
+      if fallback_type in self.registered_model_connectors:
+        return self.registered_model_connectors[fallback_type]
+    raise ValueError(
+        "No registered model connector for output format "
+        f"type: {output_format_type}")
+
+  def _register_model_for_output_format_type(
+      self,
+      output_format_type: types.OutputFormatType,
+      provider_model: types.ProviderModelIdentifierType,
+  ):
+    self.model_configs_instance.check_provider_model_identifier_type(
+        provider_model
+    )
+    resolved = self.model_configs_instance.get_provider_model(
+        provider_model)
+    self.registered_models[output_format_type] = resolved
+    self.registered_model_connectors[output_format_type] = (
+        self.available_models_instance.get_model_connector(
+            provider_model))
 
   def set_model(
       self,
       provider_model: types.ProviderModelIdentifierType | None = None,
       generate_text: types.ProviderModelIdentifierType | None = None,
+      generate_json: types.ProviderModelIdentifierType | None = None,
+      generate_pydantic: types.ProviderModelIdentifierType | None = None,
+      generate_image: types.ProviderModelIdentifierType | None = None,
+      generate_audio: types.ProviderModelIdentifierType | None = None,
+      generate_video: types.ProviderModelIdentifierType | None = None,
   ) -> None:
-    """Sets the default model for text generation requests.
-
-    Configures which AI provider and model should be used for subsequent
-    generate_text() calls when no explicit provider_model is specified.
+    """Sets the default model for generation requests.
 
     Args:
-        provider_model: The provider and model to use as default. Can be
-            specified as a tuple like ('openai', 'gpt-4') or a
-            ProviderModelType instance.
-        generate_text: Alias for provider_model. Use this parameter name
-            for clarity when setting the model specifically for text
-            generation. Cannot be used together with provider_model.
+        provider_model: Sets the default TEXT model (backward compat).
+        generate_text: Default model for generate_text().
+        generate_json: Default model for generate_json().
+        generate_pydantic: Default model for generate_pydantic().
+        generate_image: Default model for generate_image().
+        generate_audio: Default model for generate_audio().
+        generate_video: Default model for generate_video().
 
     Raises:
-        ValueError: If both provider_model and generate_text are provided,
-            or if neither is provided.
-
-    Example:
-        >>> client = px.Client()
-        >>> client.set_model(provider_model=("openai", "gpt-4"))
-        >>> # Or equivalently:
-        >>> client.set_model(generate_text=("anthropic", "claude-3-opus"))
+        ValueError: If provider_model and generate_text are both provided,
+            or if no arguments are provided.
     """
     if provider_model and generate_text:
       raise ValueError(
@@ -1132,21 +1146,31 @@ class ProxAIClient(state_controller.StateControlled):
           "same time. Please set one of them."
       )
 
-    if provider_model is None and generate_text is None:
-      raise ValueError("provider_model or generate_text must be set.")
+    if generate_text is None and provider_model is not None:
+      generate_text = provider_model
 
-    if generate_text:
-      provider_model = generate_text
+    has_any = any([
+        generate_text, generate_json, generate_pydantic,
+        generate_image, generate_audio, generate_video])
+    if not has_any:
+      raise ValueError(
+          "At least one model must be specified. Use provider_model, "
+          "generate_text, generate_json, generate_pydantic, "
+          "generate_image, generate_audio, or generate_video."
+      )
 
-    self.model_configs_instance.check_provider_model_identifier_type(
-        provider_model
-    )
-
-    resolved = self.model_configs_instance.get_provider_model(provider_model)
-    self.registered_models[types.CallType.TEXT] = resolved
-    self.registered_model_connectors[
-        types.CallType.TEXT
-    ] = (self.available_models_instance.get_model_connector(provider_model))
+    mapping = {
+        types.OutputFormatType.TEXT: generate_text,
+        types.OutputFormatType.JSON: generate_json,
+        types.OutputFormatType.PYDANTIC: generate_pydantic,
+        types.OutputFormatType.IMAGE: generate_image,
+        types.OutputFormatType.AUDIO: generate_audio,
+        types.OutputFormatType.VIDEO: generate_video,
+    }
+    for fmt_type, model in mapping.items():
+      if model is not None:
+        self._register_model_for_output_format_type(
+            fmt_type, model)
 
   def generate(
       self,
@@ -1285,7 +1309,7 @@ class ProxAIClient(state_controller.StateControlled):
     """
     if provider_model is None:
       provider_model = self.get_default_provider_model(
-          call_type=types.CallType.TEXT)
+          output_format_type=types.OutputFormatType.TEXT)
 
     call_record = self.generate(
         prompt=prompt,
@@ -1342,7 +1366,7 @@ class ProxAIClient(state_controller.StateControlled):
     """
     if provider_model is None:
       provider_model = self.get_default_provider_model(
-          call_type=types.CallType.TEXT)
+          output_format_type=types.OutputFormatType.JSON)
 
     response_format = types.ResponseFormat(
         type=types.ResponseFormatType.JSON)
@@ -1410,7 +1434,7 @@ class ProxAIClient(state_controller.StateControlled):
     """
     if provider_model is None:
       provider_model = self.get_default_provider_model(
-          call_type=types.CallType.TEXT)
+          output_format_type=types.OutputFormatType.PYDANTIC)
 
     call_record = self.generate(
         prompt=prompt,
@@ -1459,7 +1483,7 @@ class ProxAIClient(state_controller.StateControlled):
     """
     if provider_model is None:
       provider_model = self.get_default_provider_model(
-          call_type=types.CallType.IMAGE)
+          output_format_type=types.OutputFormatType.IMAGE)
 
     response_format = types.ResponseFormat(
         type=types.ResponseFormatType.IMAGE)
@@ -1511,7 +1535,7 @@ class ProxAIClient(state_controller.StateControlled):
     """
     if provider_model is None:
       provider_model = self.get_default_provider_model(
-          call_type=types.CallType.AUDIO)
+          output_format_type=types.OutputFormatType.AUDIO)
 
     response_format = types.ResponseFormat(
         type=types.ResponseFormatType.AUDIO)
@@ -1563,7 +1587,7 @@ class ProxAIClient(state_controller.StateControlled):
     """
     if provider_model is None:
       provider_model = self.get_default_provider_model(
-          call_type=types.CallType.VIDEO)
+          output_format_type=types.OutputFormatType.VIDEO)
 
     response_format = types.ResponseFormat(
         type=types.ResponseFormatType.VIDEO)

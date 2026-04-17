@@ -9,6 +9,7 @@ import proxai.chat.message_content as message_content
 
 FeatureConfigType = types.FeatureConfigType
 FeatureSupportType = types.FeatureSupportType
+InputFormatConfigType = types.InputFormatConfigType
 ParameterConfigType = types.ParameterConfigType
 ToolConfigType = types.ToolConfigType
 ResponseFormatConfigType = types.ResponseFormatConfigType
@@ -60,6 +61,9 @@ class DeepSeekConnector(provider_connector.ProviderConnector):
           ),
           tools=ToolConfigType(
               web_search=FeatureSupportType.NOT_SUPPORTED,
+          ),
+          input_format=InputFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
           ),
           response_format=ResponseFormatConfigType(
               text=FeatureSupportType.SUPPORTED,

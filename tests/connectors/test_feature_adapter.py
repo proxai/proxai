@@ -839,31 +839,31 @@ class TestGetFeatureTagsSupportLevel:
   def test_single_supported_tag(self):
     adapter = _adapter(prompt=S, text=S)
     assert adapter.get_feature_tags_support_level(
-        [types.FeatureTagType.PROMPT]) == S
+        [types.FeatureTag.PROMPT]) == S
 
   def test_single_not_supported_tag(self):
     adapter = _adapter(prompt=NS, text=S)
     assert adapter.get_feature_tags_support_level(
-        [types.FeatureTagType.PROMPT]) == NS
+        [types.FeatureTag.PROMPT]) == NS
 
   def test_single_best_effort_tag(self):
     adapter = _adapter(prompt=BE, text=S)
     assert adapter.get_feature_tags_support_level(
-        [types.FeatureTagType.PROMPT]) == BE
+        [types.FeatureTag.PROMPT]) == BE
 
   def test_minimum_across_tags(self):
     adapter = _adapter(prompt=S, messages=BE, text=S)
     result = adapter.get_feature_tags_support_level([
-        types.FeatureTagType.PROMPT,
-        types.FeatureTagType.MESSAGES,
+        types.FeatureTag.PROMPT,
+        types.FeatureTag.MESSAGES,
     ])
     assert result == BE
 
   def test_not_supported_dominates(self):
     adapter = _adapter(prompt=S, messages=NS, text=S)
     result = adapter.get_feature_tags_support_level([
-        types.FeatureTagType.PROMPT,
-        types.FeatureTagType.MESSAGES,
+        types.FeatureTag.PROMPT,
+        types.FeatureTag.MESSAGES,
     ])
     assert result == NS
 
@@ -872,37 +872,21 @@ class TestGetFeatureTagsSupportLevel:
         prompt=S, temperature=S, max_tokens=BE, stop=S, n=S, thinking=S,
         text=S)
     result = adapter.get_feature_tags_support_level([
-        types.FeatureTagType.TEMPERATURE,
-        types.FeatureTagType.MAX_TOKENS,
+        types.FeatureTag.TEMPERATURE,
+        types.FeatureTag.MAX_TOKENS,
     ])
     assert result == BE
-
-  def test_tool_tag(self):
-    adapter = _adapter(prompt=S, web_search=S, text=S)
-    assert adapter.get_feature_tags_support_level(
-        [types.FeatureTagType.WEB_SEARCH]) == S
-
-  def test_response_format_tags(self):
-    adapter = _adapter(prompt=S, text=S, image=NS, json_fmt=BE)
-    assert adapter.get_feature_tags_support_level(
-        [types.FeatureTagType.RESPONSE_TEXT]) == S
-    assert adapter.get_feature_tags_support_level(
-        [types.FeatureTagType.RESPONSE_IMAGE]) == NS
-    assert adapter.get_feature_tags_support_level(
-        [types.FeatureTagType.RESPONSE_JSON]) == BE
 
   def test_none_config_treated_as_not_supported(self):
     adapter = _adapter(prompt=None, text=S)
     assert adapter.get_feature_tags_support_level(
-        [types.FeatureTagType.PROMPT]) == NS
+        [types.FeatureTag.PROMPT]) == NS
 
-  def test_all_tag_types(self):
+  def test_all_feature_tags(self):
     adapter = _adapter(
         prompt=S, messages=S, system_prompt=S,
         temperature=S, max_tokens=S, stop=S, n=S, thinking=S,
-        web_search=S,
-        text=S, image=S, audio=S, video=S,
-        json_fmt=S, pydantic_fmt=S, multi_modal=S,
+        text=S,
     )
-    all_tags = list(types.FeatureTagType)
+    all_tags = list(types.FeatureTag)
     assert adapter.get_feature_tags_support_level(all_tags) == S

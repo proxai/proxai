@@ -5,7 +5,9 @@ import pytest
 import proxai.types as types
 from proxai.connectors.adapter_utils import (
     min_support, merge_support_fields, merge_feature_configs,
-    resolve_tag_support,
+    resolve_feature_tag_support,
+    resolve_output_format_type_support,
+    resolve_tool_tag_support,
 )
 
 S = types.FeatureSupportType.SUPPORTED
@@ -148,83 +150,79 @@ class TestMergeFeatureConfigs:
 
 
 # ===================================================================
-# resolve_tag_support
+# resolve_feature_tag_support
 # ===================================================================
 
 class TestResolveTagSupport:
-  """Tests for resolve_tag_support helper."""
+  """Tests for resolve_feature_tag_support helper."""
 
   def test_top_level_prompt(self):
     config = types.FeatureConfigType(prompt=S)
-    assert resolve_tag_support(config, types.FeatureTagType.PROMPT) == S
+    assert resolve_feature_tag_support(config, types.FeatureTag.PROMPT) == S
 
   def test_top_level_messages(self):
     config = types.FeatureConfigType(messages=BE)
-    assert resolve_tag_support(config, types.FeatureTagType.MESSAGES) == BE
+    assert resolve_feature_tag_support(config, types.FeatureTag.MESSAGES) == BE
 
   def test_top_level_system_prompt(self):
     config = types.FeatureConfigType(system_prompt=NS)
-    assert resolve_tag_support(
-        config, types.FeatureTagType.SYSTEM_PROMPT) == NS
+    assert resolve_feature_tag_support(
+        config, types.FeatureTag.SYSTEM_PROMPT) == NS
 
   def test_parameter_temperature(self):
     config = types.FeatureConfigType(
         parameters=types.ParameterConfigType(temperature=S))
-    assert resolve_tag_support(
-        config, types.FeatureTagType.TEMPERATURE) == S
+    assert resolve_feature_tag_support(
+        config, types.FeatureTag.TEMPERATURE) == S
 
   def test_parameter_max_tokens(self):
     config = types.FeatureConfigType(
         parameters=types.ParameterConfigType(max_tokens=BE))
-    assert resolve_tag_support(
-        config, types.FeatureTagType.MAX_TOKENS) == BE
+    assert resolve_feature_tag_support(
+        config, types.FeatureTag.MAX_TOKENS) == BE
 
   def test_parameter_none_config(self):
     config = types.FeatureConfigType(parameters=None)
-    assert resolve_tag_support(
-        config, types.FeatureTagType.TEMPERATURE) == NS
+    assert resolve_feature_tag_support(
+        config, types.FeatureTag.TEMPERATURE) == NS
 
   def test_tool_web_search(self):
     config = types.FeatureConfigType(
         tools=types.ToolConfigType(web_search=S))
-    assert resolve_tag_support(
-        config, types.FeatureTagType.WEB_SEARCH) == S
+    assert resolve_tool_tag_support(
+        config, types.ToolTag.WEB_SEARCH) == S
 
   def test_tool_none_config(self):
     config = types.FeatureConfigType(tools=None)
-    assert resolve_tag_support(
-        config, types.FeatureTagType.WEB_SEARCH) == NS
+    assert resolve_tool_tag_support(
+        config, types.ToolTag.WEB_SEARCH) == NS
 
   def test_response_format_text(self):
     config = types.FeatureConfigType(
         response_format=types.ResponseFormatConfigType(text=S))
-    assert resolve_tag_support(
-        config, types.FeatureTagType.RESPONSE_TEXT) == S
+    assert resolve_output_format_type_support(
+        config, types.OutputFormatType.TEXT) == S
 
   def test_response_format_json(self):
     config = types.FeatureConfigType(
         response_format=types.ResponseFormatConfigType(json=BE))
-    assert resolve_tag_support(
-        config, types.FeatureTagType.RESPONSE_JSON) == BE
+    assert resolve_output_format_type_support(
+        config, types.OutputFormatType.JSON) == BE
 
   def test_response_format_none_config(self):
     config = types.FeatureConfigType(response_format=None)
-    assert resolve_tag_support(
-        config, types.FeatureTagType.RESPONSE_TEXT) == NS
+    assert resolve_output_format_type_support(
+        config, types.OutputFormatType.TEXT) == NS
 
   def test_none_field_treated_as_not_supported(self):
     config = types.FeatureConfigType(prompt=None)
-    assert resolve_tag_support(config, types.FeatureTagType.PROMPT) == NS
+    assert resolve_feature_tag_support(config, types.FeatureTag.PROMPT) == NS
 
-  def test_all_tags_covered(self):
+  def test_all_feature_tags_covered(self):
     config = types.FeatureConfigType(
         prompt=S, messages=S, system_prompt=S,
         parameters=types.ParameterConfigType(
             temperature=S, max_tokens=S, stop=S, n=S, thinking=S),
-        tools=types.ToolConfigType(web_search=S),
-        response_format=types.ResponseFormatConfigType(
-            text=S, image=S, audio=S, video=S,
-            json=S, pydantic=S, multi_modal=S),
     )
-    for tag in types.FeatureTagType:
-      assert resolve_tag_support(config, tag) == S
+    for tag in types.FeatureTag:
+      assert resolve_feature_tag_support(config, tag) == S

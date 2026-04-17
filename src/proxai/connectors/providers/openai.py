@@ -11,6 +11,7 @@ import proxai.chat.message_content as message_content
 
 FeatureConfigType = types.FeatureConfigType
 FeatureSupportType = types.FeatureSupportType
+InputFormatConfigType = types.InputFormatConfigType
 ParameterConfigType = types.ParameterConfigType
 ToolConfigType = types.ToolConfigType
 ResponseFormatConfigType = types.ResponseFormatConfigType
@@ -54,6 +55,11 @@ class OpenAIConnector(provider_connector.ProviderConnector):
           tools=ToolConfigType(
               web_search=FeatureSupportType.NOT_SUPPORTED,
           ),
+          input_format=InputFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
+              image=FeatureSupportType.SUPPORTED,
+              document=FeatureSupportType.SUPPORTED,
+          ),
           response_format=ResponseFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
               json=FeatureSupportType.SUPPORTED,
@@ -75,6 +81,11 @@ class OpenAIConnector(provider_connector.ProviderConnector):
           tools=ToolConfigType(
               web_search=FeatureSupportType.NOT_SUPPORTED,
           ),
+          input_format=InputFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
+              image=FeatureSupportType.SUPPORTED,
+              document=FeatureSupportType.SUPPORTED,
+          ),
           response_format=ResponseFormatConfigType(
               text=FeatureSupportType.NOT_SUPPORTED,
               json=FeatureSupportType.NOT_SUPPORTED,
@@ -94,6 +105,11 @@ class OpenAIConnector(provider_connector.ProviderConnector):
           tools=ToolConfigType(
               web_search=FeatureSupportType.SUPPORTED,
           ),
+          input_format=InputFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
+              image=FeatureSupportType.SUPPORTED,
+              document=FeatureSupportType.SUPPORTED,
+          ),
           response_format=ResponseFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
               json=FeatureSupportType.SUPPORTED,
@@ -102,18 +118,27 @@ class OpenAIConnector(provider_connector.ProviderConnector):
       ),
       'images.generate': FeatureConfigType(
           prompt=FeatureSupportType.SUPPORTED,
+          input_format=InputFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
+          ),
           response_format=ResponseFormatConfigType(
               image=FeatureSupportType.SUPPORTED,
           ),
       ),
       'audio.speech.create': FeatureConfigType(
           prompt=FeatureSupportType.SUPPORTED,
+          input_format=InputFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
+          ),
           response_format=ResponseFormatConfigType(
               audio=FeatureSupportType.SUPPORTED,
           ),
       ),
       'videos.create': FeatureConfigType(
           prompt=FeatureSupportType.SUPPORTED,
+          input_format=InputFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
+          ),
           response_format=ResponseFormatConfigType(
               video=FeatureSupportType.SUPPORTED,
           ),

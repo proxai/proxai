@@ -315,7 +315,7 @@ class TestProxAIClientSetModel:
     px_client._available_models_instance.run_type = types.RunType.TEST
     px_client.set_model(provider_model=("mock_provider", "mock_model"))
     connector = px_client.registered_model_connectors[
-        types.CallType.TEXT]
+        types.OutputFormatType.TEXT]
     assert connector.provider_model.provider == "mock_provider"
     assert connector.provider_model.model == "mock_model"
 
@@ -324,7 +324,7 @@ class TestProxAIClientSetModel:
     px_client._available_models_instance.run_type = types.RunType.TEST
     px_client.set_model(generate_text=("mock_provider", "mock_model"))
     connector = px_client.registered_model_connectors[
-        types.CallType.TEXT]
+        types.OutputFormatType.TEXT]
     assert connector.provider_model.provider == "mock_provider"
     assert connector.provider_model.model == "mock_model"
 
@@ -333,7 +333,7 @@ class TestProxAIClientSetModel:
     px_client._available_models_instance.run_type = types.RunType.TEST
     px_client.set_model(("mock_provider", "mock_model"))
     connector = px_client.registered_model_connectors[
-        types.CallType.TEXT]
+        types.OutputFormatType.TEXT]
     assert connector.provider_model.provider == "mock_provider"
     assert connector.provider_model.model == "mock_model"
 
@@ -351,7 +351,7 @@ class TestProxAIClientSetModel:
   def test_set_model_no_params_raises_error(self):
     px_client = _create_client_from_params()
     with pytest.raises(
-        ValueError, match="provider_model or generate_text must be set"
+        ValueError, match="At least one model must be specified"
     ):
       px_client.set_model()
 
@@ -361,7 +361,7 @@ class TestProxAIClientSetModel:
     px_client.set_model(("mock_provider", "mock_model"))
     px_client.set_model(("mock_failing_provider", "mock_failing_model"))
     connector = px_client.registered_model_connectors[
-        types.CallType.TEXT]
+        types.OutputFormatType.TEXT]
     assert connector.provider_model.provider == "mock_failing_provider"
     assert connector.provider_model.model == "mock_failing_model"
 
@@ -523,18 +523,18 @@ class TestProxAIClientGetRegisteredModelConnector:
   def test_get_registered_model_connector_returns_set_model(self):
     px_client = _create_test_client()
     connector = px_client.get_registered_model_connector(
-        types.CallType.TEXT
+        types.OutputFormatType.TEXT
     )
     assert connector is not None
     assert connector.provider_model.provider == "mock_provider"
     assert connector.provider_model.model == "mock_model"
 
-  def test_get_registered_model_connector_unsupported_call_type_raises_error(
+  def test_get_registered_model_connector_unsupported_output_format_raises_error(
       self,
   ):
     px_client = _create_client_from_params()
-    with pytest.raises(ValueError, match="Call type not supported"):
-      px_client.get_registered_model_connector("unsupported_call_type")
+    with pytest.raises(ValueError, match="Output format type"):
+      px_client.get_registered_model_connector("unsupported_output_format")
 
 
 class TestProxAIClientState:

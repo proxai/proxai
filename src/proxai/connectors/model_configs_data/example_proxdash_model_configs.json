@@ -25,7 +25,6 @@
           "system_prompt": "SUPPORTED"
         },
         "metadata": {
-          "call_type": "TEXT",
           "is_recommended": false,
           "model_size_tags": []
         },
@@ -57,7 +56,6 @@
           "system_prompt": "SUPPORTED"
         },
         "metadata": {
-          "call_type": "TEXT",
           "is_recommended": false,
           "model_size_tags": []
         },
@@ -89,7 +87,6 @@
           "system_prompt": "SUPPORTED"
         },
         "metadata": {
-          "call_type": "TEXT",
           "is_recommended": false,
           "model_size_tags": []
         },
@@ -113,7 +110,6 @@
           }
         },
         "metadata": {
-          "call_type": "IMAGE",
           "is_recommended": true,
           "model_size_tags": []
         },
@@ -149,7 +145,6 @@
           }
         },
         "metadata": {
-          "call_type": "TEXT",
           "is_recommended": true,
           "model_size_tags": [
             "small"
@@ -187,7 +182,6 @@
           }
         },
         "metadata": {
-          "call_type": "TEXT",
           "is_recommended": true,
           "model_size_tags": [
             "small"
@@ -211,7 +205,6 @@
           }
         },
         "metadata": {
-          "call_type": "VIDEO",
           "is_recommended": true,
           "model_size_tags": []
         },
@@ -233,7 +226,6 @@
           }
         },
         "metadata": {
-          "call_type": "AUDIO",
           "is_recommended": true,
           "model_size_tags": []
         },

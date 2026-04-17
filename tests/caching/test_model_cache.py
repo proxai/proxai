@@ -145,7 +145,7 @@ class TestModelCacheManagerGettersSetters:
         types.CacheOptions(cache_path=cache_path, model_cache_duration=20)
     )
 
-  def test_model_status_by_call_type(self):
+  def test_model_status_by_output_format_type(self):
     cache_path, _ = _get_path_dir('test_cache')
     cache_manager_params = model_cache.ModelCacheManagerParams(
         cache_options=types.CacheOptions(cache_path=cache_path)
@@ -153,17 +153,17 @@ class TestModelCacheManagerGettersSetters:
     cache_manager = model_cache.ModelCacheManager(
         init_from_params=cache_manager_params
     )
-    assert cache_manager.model_status_by_call_type == {}
+    assert cache_manager.model_status_by_output_format_type == {}
 
-    cache_manager.model_status_by_call_type = {
-        types.CallType.TEXT: types.ModelStatus()
+    cache_manager.model_status_by_output_format_type = {
+        types.OutputFormatType.TEXT: types.ModelStatus()
     }
-    assert cache_manager.model_status_by_call_type == {
-        types.CallType.TEXT: types.ModelStatus()
+    assert cache_manager.model_status_by_output_format_type == {
+        types.OutputFormatType.TEXT: types.ModelStatus()
     }
 
-    cache_manager.model_status_by_call_type = None
-    assert cache_manager.model_status_by_call_type == {}
+    cache_manager.model_status_by_output_format_type = None
+    assert cache_manager.model_status_by_output_format_type == {}
 
 
 class TestModelCacheManagerInit:
@@ -179,7 +179,7 @@ class TestModelCacheManagerInit:
     assert cache_manager.cache_options == types.CacheOptions(
         cache_path=cache_path
     )
-    assert cache_manager.model_status_by_call_type == {}
+    assert cache_manager.model_status_by_output_format_type == {}
 
   def test_init_with_all_options(self):
     cache_path, _ = _get_path_dir('test_cache')
@@ -196,7 +196,7 @@ class TestModelCacheManagerInit:
         cache_path=cache_path, disable_model_cache=False,
         clear_model_cache_on_connect=True, model_cache_duration=20
     )
-    assert cache_manager.model_status_by_call_type == {}
+    assert cache_manager.model_status_by_output_format_type == {}
 
   def test_init_invalid_combinations(self):
     cache_path, _ = _get_path_dir('test_cache')
@@ -264,7 +264,7 @@ class TestModelCacheManagerInit:
         cache_path=cache_path, model_cache_duration=20
     )
     assert cache_manager.status == types.ModelCacheManagerStatus.WORKING
-    assert cache_manager.model_status_by_call_type == {}
+    assert cache_manager.model_status_by_output_format_type == {}
 
   def test_init_corrupted_cache_file(self):
     cache_path, _ = _get_path_dir('test_cache')
@@ -293,7 +293,7 @@ class TestModelCacheManager:
         init_from_params=model_cache_manager_params
     )
     data, _ = _get_example_model_status()
-    save_cache.update(data, types.CallType.TEXT)
+    save_cache.update(data, types.OutputFormatType.TEXT)
 
     model_cache_manager_params = model_cache.ModelCacheManagerParams(
         cache_options=types.CacheOptions(cache_path=cache_path)
@@ -301,7 +301,7 @@ class TestModelCacheManager:
     load_cache = model_cache.ModelCacheManager(
         init_from_params=model_cache_manager_params
     )
-    loaded_data = load_cache.get(types.CallType.TEXT)
+    loaded_data = load_cache.get(types.OutputFormatType.TEXT)
     assert loaded_data == data
 
   def test_duration_filter(self):
@@ -313,7 +313,7 @@ class TestModelCacheManager:
         init_from_params=model_cache_manager_params
     )
     data, _ = _get_example_model_status()
-    save_cache.update(data, types.CallType.TEXT)
+    save_cache.update(data, types.OutputFormatType.TEXT)
 
     model_cache_manager_params = model_cache.ModelCacheManagerParams(
         cache_options=types.
@@ -322,7 +322,7 @@ class TestModelCacheManager:
     load_cache = model_cache.ModelCacheManager(
         init_from_params=model_cache_manager_params
     )
-    loaded_data = load_cache.get(types.CallType.TEXT)
+    loaded_data = load_cache.get(types.OutputFormatType.TEXT)
 
     new_data, models = _get_example_model_status()
     new_data.working_models.remove(models[3])
@@ -346,7 +346,7 @@ class TestModelCacheManager:
         init_from_params=model_cache_manager_params
     )
     data, _ = _get_example_model_status()
-    save_cache.update(data, types.CallType.TEXT)
+    save_cache.update(data, types.OutputFormatType.TEXT)
 
     model_cache_manager_params = model_cache.ModelCacheManagerParams(
         cache_options=types.CacheOptions(cache_path=cache_path)
@@ -354,10 +354,10 @@ class TestModelCacheManager:
     load_cache = model_cache.ModelCacheManager(
         init_from_params=model_cache_manager_params
     )
-    assert load_cache.get(types.CallType.TEXT) == data
+    assert load_cache.get(types.OutputFormatType.TEXT) == data
 
     load_cache.clear_cache()
-    assert load_cache.get(types.CallType.TEXT) == types.ModelStatus()
+    assert load_cache.get(types.OutputFormatType.TEXT) == types.ModelStatus()
 
     model_cache_manager_params = model_cache.ModelCacheManagerParams(
         cache_options=types.CacheOptions(cache_path=cache_path)
@@ -365,7 +365,7 @@ class TestModelCacheManager:
     load_cache_2 = model_cache.ModelCacheManager(
         init_from_params=model_cache_manager_params
     )
-    assert load_cache_2.get(types.CallType.TEXT) == types.ModelStatus()
+    assert load_cache_2.get(types.OutputFormatType.TEXT) == types.ModelStatus()
 
   def test_update(self):
     cache_path, temp_dir = _get_path_dir('test_cache')
@@ -376,7 +376,7 @@ class TestModelCacheManager:
         init_from_params=model_cache_manager_params
     )
     data, models = _get_example_model_status()
-    cache_manager.update(data, types.CallType.TEXT)
+    cache_manager.update(data, types.OutputFormatType.TEXT)
 
     # Round Robin update for even models
     updates = types.ModelStatus()
@@ -391,7 +391,7 @@ class TestModelCacheManager:
         models[2]
     ] = _get_example_call_record(models[2], error='model_2 error')
 
-    cache_manager.update(updates, types.CallType.TEXT)
+    cache_manager.update(updates, types.OutputFormatType.TEXT)
     result_data = types.ModelStatus(
         unprocessed_models={models[1],
                             models[6]}, working_models={models[0], models[3]},
@@ -413,7 +413,7 @@ class TestModelCacheManager:
                 ),
         }
     )
-    updated_data = cache_manager.get(types.CallType.TEXT)
+    updated_data = cache_manager.get(types.OutputFormatType.TEXT)
     assert updated_data.unprocessed_models == result_data.unprocessed_models
     assert updated_data.working_models == result_data.working_models
     assert updated_data.failed_models == result_data.failed_models
@@ -433,7 +433,7 @@ class TestModelCacheManager:
         init_from_params=model_cache_manager_params
     )
     data, models = _get_example_model_status()
-    cache_manager.update(data, types.CallType.TEXT)
+    cache_manager.update(data, types.OutputFormatType.TEXT)
 
     invalid_model = types.ProviderModelType(
         provider='nonexistent', model='nonexistent-model',
@@ -455,5 +455,5 @@ class TestModelCacheManager:
                           invalid_model, response='model_1 response'
                       )
               }
-          ), types.CallType.TEXT
+          ), types.OutputFormatType.TEXT
       )

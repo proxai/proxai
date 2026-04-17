@@ -134,7 +134,6 @@ def _configure_provider(provider: str) -> None:
           output_token_cost=2.0
       ),
       metadata=types.ProviderModelMetadataType(
-          call_type=types.CallType.MULTI_MODAL,
           is_recommended=True
       ),
       features=types.FeatureConfigType(
@@ -174,7 +173,6 @@ def _configure_provider(provider: str) -> None:
           output_token_cost=2.0
       ),
       metadata=types.ProviderModelMetadataType(
-          call_type=types.CallType.MULTI_MODAL,
           is_recommended=True
       ),
       features=types.FeatureConfigType(
@@ -210,7 +208,6 @@ def _configure_provider(provider: str) -> None:
           output_token_cost=2.0
       ),
       metadata=types.ProviderModelMetadataType(
-          call_type=types.CallType.MULTI_MODAL,
           is_recommended=True
       ),
       features=types.FeatureConfigType(
@@ -246,7 +243,6 @@ def _configure_provider(provider: str) -> None:
           output_token_cost=2.0
       ),
       metadata=types.ProviderModelMetadataType(
-          call_type=types.CallType.IMAGE,
           is_recommended=True
       ),
       features=types.FeatureConfigType(
@@ -268,7 +264,6 @@ def _configure_provider(provider: str) -> None:
           output_token_cost=2.0
       ),
       metadata=types.ProviderModelMetadataType(
-          call_type=types.CallType.AUDIO,
           is_recommended=True
       ),
       features=types.FeatureConfigType(
@@ -290,7 +285,6 @@ def _configure_provider(provider: str) -> None:
           output_token_cost=2.0
       ),
       metadata=types.ProviderModelMetadataType(
-          call_type=types.CallType.VIDEO,
           is_recommended=True
       ),
       features=types.FeatureConfigType(
@@ -836,70 +830,68 @@ def list_models_test():
   assert len(models) > 1
 
   if _IMAGE_MODEL[0]:
-    models = px.models.list_models(call_type=types.CallType.IMAGE)
+    models = px.models.list_models(output_format=types.OutputFormatType.IMAGE)
     assert len(models) > 0
-    models = px.models.list_models(call_type='image')
+    models = px.models.list_models(output_format='image')
     assert len(models) > 0
   if _AUDIO_MODEL[0]:
-    models = px.models.list_models(call_type=types.CallType.AUDIO)
+    models = px.models.list_models(output_format=types.OutputFormatType.AUDIO)
     assert len(models) > 0
-    models = px.models.list_models(call_type='audio')
+    models = px.models.list_models(output_format='audio')
     assert len(models) > 0
   if _VIDEO_MODEL[0]:
-    models = px.models.list_models(call_type=types.CallType.VIDEO)
+    models = px.models.list_models(output_format=types.OutputFormatType.VIDEO)
     assert len(models) > 0
-    models = px.models.list_models(call_type='video')
+    models = px.models.list_models(output_format='video')
     assert len(models) > 0
+
 
   if _PROVIDER == 'openai' or _PROVIDER == 'gemini':
-    models = px.models.list_models(features=[types.FeatureTagType.PROMPT])
+    models = px.models.list_models(
+        feature_tags=[types.FeatureTag.PROMPT])
     assert len(models) > 0
     models = px.models.list_models(
-        features=[
-            types.FeatureTagType.WEB_SEARCH,
-            types.FeatureTagType.RESPONSE_PYDANTIC])
+        tool_tags=[types.ToolTag.WEB_SEARCH],
+        output_format=[types.OutputFormatType.PYDANTIC])
     assert len(models) > 0
 
     client = px.Client(
         feature_mapping_strategy=types.FeatureMappingStrategy.STRICT)
     register_models(client)
     models = client.models.list_models(
-        features=[
-          types.FeatureTagType.WEB_SEARCH,
-          types.FeatureTagType.RESPONSE_PYDANTIC])
+        tool_tags=[types.ToolTag.WEB_SEARCH],
+        output_format=[types.OutputFormatType.PYDANTIC])
     assert len(models) == 0
   elif _PROVIDER == 'claude':
-    models = px.models.list_models(features=[types.FeatureTagType.PROMPT])
+    models = px.models.list_models(
+        feature_tags=[types.FeatureTag.PROMPT])
     assert len(models) > 0
     models = px.models.list_models(
-        features=[
-            types.FeatureTagType.WEB_SEARCH,
-            types.FeatureTagType.RESPONSE_PYDANTIC])
+        tool_tags=[types.ToolTag.WEB_SEARCH],
+        output_format=[types.OutputFormatType.PYDANTIC])
     assert len(models) > 0
 
     client = px.Client(
         feature_mapping_strategy=types.FeatureMappingStrategy.STRICT)
     register_models(client)
     models = client.models.list_models(
-        features=[
-          types.FeatureTagType.WEB_SEARCH,
-          types.FeatureTagType.RESPONSE_JSON])
+        tool_tags=[types.ToolTag.WEB_SEARCH],
+        output_format=[types.OutputFormatType.JSON])
     assert len(models) == 0
   elif _PROVIDER == 'mistral':
-    models = px.models.list_models(features=[types.FeatureTagType.PROMPT])
+    models = px.models.list_models(
+        feature_tags=[types.FeatureTag.PROMPT])
     assert len(models) > 0
     models = px.models.list_models(
-        features=[
-            types.FeatureTagType.RESPONSE_JSON])
+        output_format=[types.OutputFormatType.JSON])
     assert len(models) > 0
 
     client = px.Client(
         feature_mapping_strategy=types.FeatureMappingStrategy.STRICT)
     register_models(client)
     models = client.models.list_models(
-        features=[
-          types.FeatureTagType.WEB_SEARCH,
-          types.FeatureTagType.RESPONSE_JSON])
+        tool_tags=[types.ToolTag.WEB_SEARCH],
+        output_format=[types.OutputFormatType.JSON])
     assert len(models) == 0
   
 

@@ -44,7 +44,6 @@ class ModelConfigs(state_controller.StateControlled):
   """Manages model configuration schemas and validation."""
 
   _model_registry: types.ModelRegistry | None
-  _models_by_call_type: types.CallTypeMappingType | None
   _models_by_model_size: types.ModelSizeMappingType | None
   _recommended_models: types.RecommendedModelsMappingType | None
   _model_configs_state: types.ModelConfigsState | None
@@ -94,14 +93,6 @@ class ModelConfigs(state_controller.StateControlled):
     self.set_property_value('model_registry', value)
 
   @property
-  def models_by_call_type(self) -> types.CallTypeMappingType:
-    return self.get_property_value('models_by_call_type')
-
-  @models_by_call_type.setter
-  def models_by_call_type(self, value: types.CallTypeMappingType):
-    self.set_property_value('models_by_call_type', value)
-
-  @property
   def models_by_model_size(self) -> types.ModelSizeMappingType:
     return self.get_property_value('models_by_model_size')
 
@@ -131,14 +122,6 @@ class ModelConfigs(state_controller.StateControlled):
       )
     self.model_registry.provider_model_configs[
         provider][model] = provider_model_config
-
-    call_type = provider_model_config.metadata.call_type
-    if not self.models_by_call_type:
-      self.models_by_call_type = {}
-    if call_type not in self.models_by_call_type:
-      self.models_by_call_type[call_type] = []
-    self.models_by_call_type[call_type].append(
-        provider_model_config.provider_model)
 
     if not self.models_by_model_size:
         self.models_by_model_size = {}
@@ -182,11 +165,6 @@ class ModelConfigs(state_controller.StateControlled):
           f'{provider_model_config.provider_model.provider_model_identifier} '
           f'!= {provider_model.provider_model_identifier}')
     
-    call_type = provider_model_config.metadata.call_type
-    if call_type in self.models_by_call_type:
-      self.models_by_call_type[call_type].remove(
-          provider_model
-      )
     for model_size_tag in provider_model_config.metadata.model_size_tags:
       if model_size_tag in self.models_by_model_size:
         self.models_by_model_size[model_size_tag].remove(
@@ -206,7 +184,6 @@ class ModelConfigs(state_controller.StateControlled):
         default_model_priority_list=[],
         provider_model_configs={},
     )
-    self.models_by_call_type = {}
     self.models_by_model_size = {}
     self.recommended_models = {}
 
@@ -746,47 +723,13 @@ class ModelConfigs(state_controller.StateControlled):
 #         response_token_count * model_pricing_config.per_response_token_cost
 #     )
 
-  def _check_call_type_exists(self, call_type: types.CallType):
-    if call_type == types.CallType.TEXT:
-      if (
-        types.CallType.TEXT in self.models_by_call_type or
-        types.CallType.MULTI_MODAL in self.models_by_call_type
-      ):
-        return
-      raise ValueError(
-          f'Call type not supported: {call_type}\n'
-          f'Supported call types: {self.models_by_call_type.keys()}'
-      )
-
-    if call_type not in self.models_by_call_type:
-      raise ValueError(
-          f'Call type not supported: {call_type}\n'
-          f'Supported call types: {self.models_by_call_type.keys()}'
-      )
-
-  def _check_call_type_matches(
-      self,
-      call_type: types.CallType,
-      provider_model_config: types.ProviderModelConfig
-  ):
-    if call_type == types.CallType.TEXT:
-      return (
-        provider_model_config.metadata.call_type == types.CallType.TEXT or
-        provider_model_config.metadata.call_type == types.CallType.MULTI_MODAL
-      )
-    return provider_model_config.metadata.call_type == call_type
-
   def get_all_models(
       self,
       provider: types.ProviderNameType | None = None,
       model_size: types.ModelSizeType | None = None,
-      call_type: types.CallType | None = types.CallType.TEXT,
       recommended_only: bool | None = True,
   ) -> list[types.ProviderModelType]:
     """List all models matching the given filters."""
-    if call_type is not None:
-      self._check_call_type_exists(call_type)
-
     if (
         model_size is not None and
         model_size not in self.models_by_model_size
@@ -813,23 +756,20 @@ class ModelConfigs(state_controller.StateControlled):
 
       for provider_model_config in provider_models.values():
         if (
-            call_type is not None and
-            not self._check_call_type_matches(call_type, provider_model_config)
-        ):
-          continue
-
-        if (
             model_size is not None and (
                 provider_model_config.metadata.model_size_tags is None or
-                model_size not in provider_model_config.metadata.model_size_tags
+                model_size not in
+                provider_model_config.metadata.model_size_tags
             )
         ):
           continue
 
-        if recommended_only and not provider_model_config.metadata.is_recommended:
+        if (recommended_only and
+            not provider_model_config.metadata.is_recommended):
           continue
 
-        result_provider_models.append(provider_model_config.provider_model)
+        result_provider_models.append(
+            provider_model_config.provider_model)
 
     return result_provider_models
 

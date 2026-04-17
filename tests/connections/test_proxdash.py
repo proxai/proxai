@@ -52,7 +52,7 @@ def _create_test_logging_record(
     prompt: str = "test prompt", system: str = "test system",
     messages: list[dict[str, str]] | None | object = _UNSET,
     response: str | dict | pydantic.BaseModel = "test response",
-    response_type: types.ResponseType = types.ResponseType.TEXT,
+    output_format_type: types.OutputFormatType = types.OutputFormatType.TEXT,
     response_format: types.ResponseFormat | None = None,
     error: str | None = None, error_traceback: str | None = None,
     stop: str | list[str] | None = None, hash_value: str = "test_hash"
@@ -72,13 +72,13 @@ def _create_test_logging_record(
       prompt=prompt, system=system, messages=messages,
       provider_model=model_configs_instance.get_provider_model(
           ('mock_provider', 'mock_model')
-      ), call_type=types.CallType.TEXT, max_tokens=100,
+      ), output_format_type=types.OutputFormatType.TEXT, max_tokens=100,
       temperature=0.7, stop=stop, hash_value=hash_value,
       response_format=response_format
   )
 
   response_record = types.QueryResponseRecord(
-      response=types.Response(value=response, type=response_type), error=error,
+      response=types.Response(value=response, type=output_format_type), error=error,
       error_traceback=error_traceback,
       start_utc_date=datetime.datetime(2024, 1, 1, 12, 0),
       end_utc_date=datetime.datetime(2024, 1, 1, 12,
@@ -679,13 +679,13 @@ class TestProxDashConnectionHideSensitiveContent:
             "content": "sensitive assistant message"
         }], provider_model=model_configs_instance.get_provider_model(
             ('mock_provider', 'mock_model')
-        ), call_type="completion", max_tokens=100, temperature=0.7, stop=None,
+        ), output_format_type="completion", max_tokens=100, temperature=0.7, stop=None,
         hash_value="test_hash"
     )
 
     response_record = types.QueryResponseRecord(
         response=types.Response(
-            value="sensitive response", type=types.ResponseType.TEXT
+            value="sensitive response", type=types.OutputFormatType.TEXT
         ), error=None, error_traceback=None,
         start_utc_date=datetime.datetime.now(datetime.timezone.utc),
         end_utc_date=datetime.datetime.now(datetime.timezone.utc),
@@ -729,10 +729,6 @@ class TestProxDashConnectionHideSensitiveContent:
     assert (
         hidden_record.query_record.provider_model ==
         logging_record.query_record.provider_model
-    )
-    assert (
-        hidden_record.query_record.call_type ==
-        logging_record.query_record.call_type
     )
     assert (
         hidden_record.query_record.max_tokens ==
@@ -1067,12 +1063,12 @@ class TestProxDashConnectionUploadLoggingRecord:
                 "content": "test assistant message"
             }], provider_model=model_configs_instance.get_provider_model(
                 ('mock_provider', 'mock_model')
-            ), call_type=types.CallType.TEXT, max_tokens=100,
+            ), output_format_type=types.OutputFormatType.TEXT, max_tokens=100,
             temperature=0.7, stop=["stop1", "stop2"], hash_value="test_hash"
         ),
         response_record=types.QueryResponseRecord(
             response=types.Response(
-                value="test response", type=types.ResponseType.TEXT
+                value="test response", type=types.OutputFormatType.TEXT
             ),
             error="test error",
             error_traceback="test error traceback",
@@ -1505,7 +1501,7 @@ class TestProxDashConnectionFormatResponse:
     """Tests formatting of TEXT response type."""
     connection, _, _ = _create_connection()
     logging_record = _create_test_logging_record(
-        response="test text response", response_type=types.ResponseType.TEXT
+        response="test text response", output_format_type=types.OutputFormatType.TEXT
     )
     result = connection._format_response(logging_record)
 
@@ -1516,7 +1512,7 @@ class TestProxDashConnectionFormatResponse:
     connection, _, _ = _create_connection()
     json_response = {"key": "value", "number": 42}
     logging_record = _create_test_logging_record(
-        response=json_response, response_type=types.ResponseType.JSON
+        response=json_response, output_format_type=types.OutputFormatType.JSON
     )
     result = connection._format_response(logging_record)
 
@@ -1533,7 +1529,7 @@ class TestProxDashConnectionFormatResponse:
     connection, _, _ = _create_connection()
     pydantic_response = SamplePydanticModel(name="test", value=123, active=True)
     logging_record = _create_test_logging_record(
-        response=pydantic_response, response_type=types.ResponseType.PYDANTIC
+        response=pydantic_response, output_format_type=types.OutputFormatType.PYDANTIC
     )
     result = connection._format_response(logging_record)
 
@@ -1553,7 +1549,7 @@ class TestProxDashConnectionFormatResponse:
     connection, _, _ = _create_connection()
     logging_record = _create_test_logging_record(
         response=proxdash._SENSITIVE_CONTENT_HIDDEN_STRING,
-        response_type=types.ResponseType.TEXT
+        output_format_type=types.OutputFormatType.TEXT
     )
     result = connection._format_response(logging_record)
 
@@ -1568,7 +1564,7 @@ class TestProxDashConnectionFormatResponsePydanticJsonValue:
     connection, _, _ = _create_connection()
     pydantic_response = SamplePydanticModel(name="test", value=456)
     logging_record = _create_test_logging_record(
-        response=pydantic_response, response_type=types.ResponseType.PYDANTIC
+        response=pydantic_response, output_format_type=types.OutputFormatType.PYDANTIC
     )
     result = connection._format_response_pydantic_json_value(logging_record)
 
@@ -1581,7 +1577,7 @@ class TestProxDashConnectionFormatResponsePydanticJsonValue:
     """Tests that None is returned for non-pydantic response types."""
     connection, _, _ = _create_connection()
     logging_record = _create_test_logging_record(
-        response="text response", response_type=types.ResponseType.TEXT
+        response="text response", output_format_type=types.OutputFormatType.TEXT
     )
     result = connection._format_response_pydantic_json_value(logging_record)
 
@@ -1591,7 +1587,7 @@ class TestProxDashConnectionFormatResponsePydanticJsonValue:
     """Tests that None is returned for JSON response type."""
     connection, _, _ = _create_connection()
     logging_record = _create_test_logging_record(
-        response={"key": "value"}, response_type=types.ResponseType.JSON
+        response={"key": "value"}, output_format_type=types.OutputFormatType.JSON
     )
     result = connection._format_response_pydantic_json_value(logging_record)
 
@@ -1611,7 +1607,7 @@ class TestProxDashConnectionFormatResponsePydanticJsonValue:
     connection, _, _ = _create_connection()
     logging_record = _create_test_logging_record(
         response=proxdash._SENSITIVE_CONTENT_HIDDEN_STRING,
-        response_type=types.ResponseType.PYDANTIC
+        output_format_type=types.OutputFormatType.PYDANTIC
     )
     result = connection._format_response_pydantic_json_value(logging_record)
 
@@ -1698,7 +1694,7 @@ class TestProxDashConnectionUploadLoggingRecordResponseTypes:
     connection, temp_dir, _ = _create_connection()
     json_response = {"result": "success", "count": 5}
     logging_record = _create_test_logging_record(
-        response=json_response, response_type=types.ResponseType.JSON
+        response=json_response, output_format_type=types.OutputFormatType.JSON
     )
     requests_mock.post(
         'https://proxainest-production.up.railway.app/ingestion/logging-records',
@@ -1717,7 +1713,7 @@ class TestProxDashConnectionUploadLoggingRecordResponseTypes:
     connection, temp_dir, _ = _create_connection()
     pydantic_response = SamplePydanticModel(name="test_name", value=789)
     logging_record = _create_test_logging_record(
-        response=pydantic_response, response_type=types.ResponseType.PYDANTIC
+        response=pydantic_response, output_format_type=types.OutputFormatType.PYDANTIC
     )
     requests_mock.post(
         'https://proxainest-production.up.railway.app/ingestion/logging-records',
@@ -1747,7 +1743,7 @@ class TestProxDashConnectionUploadLoggingRecordResponseTypes:
         )
     )
     logging_record = _create_test_logging_record(
-        response=pydantic_response, response_type=types.ResponseType.PYDANTIC,
+        response=pydantic_response, output_format_type=types.OutputFormatType.PYDANTIC,
         response_format=response_format
     )
     requests_mock.post(
@@ -1778,7 +1774,7 @@ class TestProxDashConnectionUploadLoggingRecordResponseTypes:
         )
     )
     logging_record = _create_test_logging_record(
-        response=pydantic_response, response_type=types.ResponseType.PYDANTIC,
+        response=pydantic_response, output_format_type=types.OutputFormatType.PYDANTIC,
         response_format=response_format
     )
     requests_mock.post(
@@ -1805,7 +1801,7 @@ class TestProxDashConnectionUploadLoggingRecordResponseTypes:
         type=types.ResponseFormatType.JSON, value=None
     )
     logging_record = _create_test_logging_record(
-        response=json_response, response_type=types.ResponseType.JSON,
+        response=json_response, output_format_type=types.OutputFormatType.JSON,
         response_format=response_format
     )
     requests_mock.post(
