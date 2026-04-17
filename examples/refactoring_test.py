@@ -17,6 +17,7 @@ _MODEL_CONFIGS = {
     'openai': {
         'main_model': ('openai', 'gpt-4o'),
         'main_model_web_search_supported': True,
+        'main_model_image_input_supported': True,
         'main_model_audio_input_supported': False,
         'main_model_video_input_supported': False,
         'thinking_model': ('openai', 'o3'),
@@ -28,6 +29,7 @@ _MODEL_CONFIGS = {
     'gemini': {
         'main_model': ('gemini', 'gemini-3-flash-preview'),
         'main_model_web_search_supported': True,
+        'main_model_image_input_supported': True,
         'main_model_audio_input_supported': True,
         'main_model_video_input_supported': True,
         'thinking_model': ('gemini', 'gemini-2.5-flash'),
@@ -39,6 +41,7 @@ _MODEL_CONFIGS = {
     'claude': {
         'main_model': ('claude', 'claude-sonnet-4-6'),
         'main_model_web_search_supported': True,
+        'main_model_image_input_supported': True,
         'main_model_audio_input_supported': False,
         'main_model_video_input_supported': False,
         'thinking_model': ('claude', 'claude-opus-4-6'),
@@ -50,6 +53,7 @@ _MODEL_CONFIGS = {
     'mistral': {
         'main_model': ('mistral', 'mistral-large-latest'),
         'main_model_web_search_supported': True,
+        'main_model_image_input_supported': True,
         'main_model_audio_input_supported': False,
         'main_model_video_input_supported': False,
         'thinking_model': ('mistral', 'magistral-small-latest'),
@@ -61,6 +65,7 @@ _MODEL_CONFIGS = {
     'grok': {
         'main_model': ('grok', 'grok-4-fast-non-reasoning'),
         'main_model_web_search_supported': True,
+        'main_model_image_input_supported': True,
         'main_model_audio_input_supported': False,
         'main_model_video_input_supported': False,
         'thinking_model': ('grok', 'grok-3-mini'),
@@ -72,8 +77,9 @@ _MODEL_CONFIGS = {
     'deepseek': {
         'main_model': ('deepseek', 'deepseek-chat'),
         'main_model_web_search_supported': False,
-        'main_model_audio_input_supported': True,
-        'main_model_video_input_supported': True,
+        'main_model_image_input_supported': False,
+        'main_model_audio_input_supported': False,
+        'main_model_video_input_supported': False,
         'thinking_model': ('deepseek', 'deepseek-reasoner'),
         'failing_model': ('mock_failing_provider', 'mock_failing_model'),
         'image_model': (None, None),
@@ -83,6 +89,7 @@ _MODEL_CONFIGS = {
     'cohere': {
         'main_model': ('cohere', 'command-a-03-2025'),
         'main_model_web_search_supported': False,
+        'main_model_image_input_supported': True,
         'main_model_audio_input_supported': True,
         'main_model_video_input_supported': True,
         'thinking_model': ('cohere', 'command-a-reasoning-08-2025'),
@@ -94,6 +101,7 @@ _MODEL_CONFIGS = {
     'huggingface': {
         'main_model': ('huggingface', 'meta-llama/Llama-3.1-8B-Instruct'),
         'main_model_web_search_supported': False,
+        'main_model_image_input_supported': True,
         'main_model_audio_input_supported': True,
         'main_model_video_input_supported': True,
         'thinking_model': ('huggingface', 'openai/gpt-oss-120b'),
@@ -106,6 +114,7 @@ _MODEL_CONFIGS = {
         'main_model': (
             'databricks', 'databricks-meta-llama-3-3-70b-instruct'),
         'main_model_web_search_supported': False,
+        'main_model_image_input_supported': True,
         'main_model_audio_input_supported': True,
         'main_model_video_input_supported': True,
         'thinking_model': ('databricks', 'databricks-gpt-oss-20b'),
@@ -221,10 +230,13 @@ def _configure_provider(provider: str) -> None:
   _AUDIO_MODEL = config['audio_model']
   _VIDEO_MODEL = config['video_model']
   _WEB_SEARCH_SUPPORTED = config.get('main_model_web_search_supported', True)
+  _IMAGE_INPUT_SUPPORTED = config.get('main_model_image_input_supported', True)
   _AUDIO_INPUT_SUPPORTED = config.get('main_model_audio_input_supported', True)
   _VIDEO_INPUT_SUPPORTED = config.get('main_model_video_input_supported', True)
 
-  _input_formats = ['text', 'image', 'document', 'json', 'pydantic']
+  _input_formats = ['text', 'document', 'json', 'pydantic']
+  if _IMAGE_INPUT_SUPPORTED:
+    _input_formats.append('image')
   if _AUDIO_INPUT_SUPPORTED:
     _input_formats.append('audio')
   if _VIDEO_INPUT_SUPPORTED:
