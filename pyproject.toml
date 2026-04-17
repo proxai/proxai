@@ -30,6 +30,7 @@ platformdirs = "^4.0.0"
 packaging = "^25.0"
 xai-sdk = "^1.5.0"
 huggingface-hub = "^1.2.3"
+pypdf = "^6.10.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.1.1"
