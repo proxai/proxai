@@ -39,8 +39,8 @@ _MODEL_CONFIGS = {
     'claude': {
         'main_model': ('claude', 'claude-sonnet-4-6'),
         'main_model_web_search_supported': True,
-        'main_model_audio_input_supported': True,
-        'main_model_video_input_supported': True,
+        'main_model_audio_input_supported': False,
+        'main_model_video_input_supported': False,
         'thinking_model': ('claude', 'claude-opus-4-6'),
         'failing_model': ('mock_failing_provider', 'mock_failing_model'),
         'image_model': (None, None),
@@ -1061,35 +1061,35 @@ def list_models_test():
 def _run_all_tests():
   """Run the full refactoring test suite against the currently-configured provider."""
   register_models(px.get_default_proxai_client())
-  # prompt_test()
-  # messages_test()
-  # system_prompt_test()
-  # parameters_temperature_test()
-  # parameters_max_tokens_test()
-  # parameters_stop_test()
-  # parameters_stop_list_test()
-  # parameters_thinking_test()
-  # tools_web_search_test()
+  prompt_test()
+  messages_test()
+  system_prompt_test()
+  parameters_temperature_test()
+  parameters_max_tokens_test()
+  parameters_stop_test()
+  parameters_stop_list_test()
+  parameters_thinking_test()
+  tools_web_search_test()
   input_format_json_test()
   input_format_md_test()
   input_format_pdf_test()
   input_format_image_test()
   input_format_audio_test()
   input_format_video_test()
-  # output_format_text_test()
-  # output_format_json_test()
-  # output_format_pydantic_test()
-  # connection_options_fallback_test()
-  # connection_options_suppress_provider_errors_test()
-  # connection_options_endpoint_test()
-  # cache_test()
-  # connection_options_skip_cache_test()
-  # connection_options_override_cache_value_test()
-  # images_generate_test()
-  # audio_generate_test()
-  # # NOTE: Video test is too slow. Comment in when needed.
-  # video_generate_test()
-  # list_models_test()
+  output_format_text_test()
+  output_format_json_test()
+  output_format_pydantic_test()
+  connection_options_fallback_test()
+  connection_options_suppress_provider_errors_test()
+  connection_options_endpoint_test()
+  cache_test()
+  connection_options_skip_cache_test()
+  connection_options_override_cache_value_test()
+  images_generate_test()
+  audio_generate_test()
+  # NOTE: Video test is too slow. Comment in when needed.
+  video_generate_test()
+  list_models_test()
 
 
 @dataclasses.dataclass

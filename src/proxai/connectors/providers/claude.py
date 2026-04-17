@@ -1,7 +1,10 @@
+import base64
 import functools
+import os
 
 import anthropic
 
+import proxai.connectors.content_utils as content_utils
 import proxai.connectors.provider_connector as provider_connector
 import proxai.connectors.providers.claude_mock as claude_mock
 import proxai.types as types
@@ -63,6 +66,8 @@ class ClaudeConnector(provider_connector.ProviderConnector):
               text=FeatureSupportType.SUPPORTED,
               image=FeatureSupportType.SUPPORTED,
               document=FeatureSupportType.SUPPORTED,
+              json=FeatureSupportType.BEST_EFFORT,
+              pydantic=FeatureSupportType.BEST_EFFORT,
           ),
           output_format=OutputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
@@ -71,6 +76,82 @@ class ClaudeConnector(provider_connector.ProviderConnector):
           ),
       ),
   }
+
+  @staticmethod
+  def _to_claude_part(part_dict):
+    """Convert a ProxAI content block to a Claude API content part.
+
+    Type mapping:
+      text     → ``{"type": "text", "text": "..."}``
+      image    → ``{"type": "image", "source": {"type": "base64"|"url", ...}}``
+      document → Text-based docs (md, csv, txt) are read and sent as
+                 text blocks via ``content_utils.read_text_document``.
+                 PDF is sent as a native document block
+                 ``{"type": "document", "source": {...}}``. Other
+                 binary formats (docx, xlsx) are dropped.
+
+    Returns None for unsupported content types.
+    """
+    content_type = part_dict.get('type')
+    if content_type == 'text':
+      return {'type': 'text', 'text': part_dict['text']}
+    if content_type == 'image':
+      if 'source' in part_dict:
+        return {'type': 'image', 'source': {
+            'type': 'url', 'url': part_dict['source']}}
+      mime_type = part_dict.get('media_type', 'image/png')
+      if 'data' in part_dict:
+        data = part_dict['data']
+      elif 'path' in part_dict:
+        with open(part_dict['path'], 'rb') as f:
+          data = base64.b64encode(f.read()).decode('utf-8')
+      else:
+        return None
+      return {'type': 'image', 'source': {
+          'type': 'base64', 'media_type': mime_type, 'data': data}}
+    if content_type == 'document':
+      text_content = content_utils.read_text_document(part_dict)
+      if text_content is not None:
+        return {'type': 'text', 'text': text_content}
+      if part_dict.get('media_type') != 'application/pdf':
+        return None
+      if 'source' in part_dict:
+        return {'type': 'document', 'source': {
+            'type': 'url', 'url': part_dict['source']}}
+      if 'data' in part_dict:
+        data = part_dict['data']
+      elif 'path' in part_dict:
+        with open(part_dict['path'], 'rb') as f:
+          data = base64.b64encode(f.read()).decode('utf-8')
+      else:
+        return None
+      return {'type': 'document', 'source': {
+          'type': 'base64', 'media_type': 'application/pdf', 'data': data}}
+    return None
+
+  @staticmethod
+  def _convert_messages(messages):
+    """Convert ProxAI message content blocks to Claude API format.
+
+    String content is passed through unchanged. List content is
+    converted block-by-block; blocks where the converter returns
+    None are dropped.
+    """
+    converted = []
+    for message in messages:
+      if isinstance(message['content'], str):
+        converted.append(message)
+        continue
+      if isinstance(message['content'], list):
+        parts = []
+        for block in message['content']:
+          part = ClaudeConnector._to_claude_part(block)
+          if part is not None:
+            parts.append(part)
+        converted.append({**message, 'content': parts})
+      else:
+        converted.append(message)
+    return converted
 
   def _add_common_params(
       self, partial_call, query_record: types.QueryRecord):
@@ -81,8 +162,9 @@ class ClaudeConnector(provider_connector.ProviderConnector):
               {'role': 'user', 'content': query_record.prompt}])
 
     if query_record.chat is not None:
+      messages = self._convert_messages(query_record.chat['messages'])
       partial_call = functools.partial(
-          partial_call, messages=query_record.chat['messages'])
+          partial_call, messages=messages)
       if 'system_prompt' in query_record.chat:
         partial_call = functools.partial(
             partial_call, system=query_record.chat['system_prompt'])
