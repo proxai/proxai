@@ -114,7 +114,7 @@ class GeminiConnector(provider_connector.ProviderConnector):
     return None
   
   def _models_generate_content_executor(
-      self, query_record: types.QueryRecord) -> types.Response:
+      self, query_record: types.QueryRecord) -> types.ExecutorResult:
     create = functools.partial(self.api.models.generate_content)
     create = functools.partial(create, model=(
         query_record.provider_model.provider_model_identifier
@@ -272,7 +272,7 @@ class GeminiConnector(provider_connector.ProviderConnector):
         result_record=result_record, raw_provider_response=response)
 
   def _models_generate_videos_executor(
-      self, query_record: types.QueryRecord) -> types.Response:
+      self, query_record: types.QueryRecord) -> types.ExecutorResult:
     create = functools.partial(self.api.models.generate_videos)
     create = functools.partial(create, model=(
         query_record.provider_model.provider_model_identifier

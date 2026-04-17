@@ -165,7 +165,7 @@ class HuggingFaceConnector(provider_connector.ProviderConnector):
 
   def _chat_completions_create_executor(
       self,
-      query_record: types.QueryRecord) -> types.ResultRecord:
+      query_record: types.QueryRecord) -> types.ExecutorResult:
     create = functools.partial(self.api.chat.completions.create)
     create = functools.partial(create, model=(
         query_record.provider_model.provider_model_identifier

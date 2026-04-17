@@ -15,6 +15,7 @@ import proxai.caching.query_cache as query_cache
 import proxai.connections.available_models as available_models
 import proxai.connections.proxdash as proxdash
 import proxai.connectors.model_configs as model_configs
+import proxai.connectors.provider_connector as provider_connector
 import proxai.experiment.experiment as experiment
 import proxai.logging.utils as logging_utils
 import proxai.serializers.type_serializer as type_serializer
@@ -653,11 +654,11 @@ class ProxAIClient(state_controller.StateControlled):
     self._validate_raw_provider_response_options()
     self._maybe_emit_raw_provider_response_warning()
 
-  def get_internal_state_property_name(self):
+  def get_internal_state_property_name(self) -> str:
     """Return the name of the internal state property."""
     return _PROXAI_CLIENT_STATE_PROPERTY
 
-  def get_internal_state_type(self):
+  def get_internal_state_type(self) -> type:
     """Return the dataclass type used for state storage."""
     return types.ProxAIClientState
 
@@ -1117,7 +1118,7 @@ class ProxAIClient(state_controller.StateControlled):
   def get_registered_model_connector(
       self,
       output_format_type: types.OutputFormatType = None,
-  ):
+  ) -> provider_connector.ProviderConnector:
     """Get or create a connector for the default model."""
     if output_format_type is None:
       output_format_type = types.OutputFormatType.TEXT
@@ -1496,7 +1497,7 @@ class ProxAIClient(state_controller.StateControlled):
       parameters: types.ParameterType | None = None,
       tools: List[types.ToolType] | None = None,
       connection_options: types.ConnectionOptions | None = None,
-  ):
+  ) -> types.MessageContent | str:
     """Generates an image using the configured AI model.
 
     Thin alias for generate() that resolves the default model, sets
@@ -1548,7 +1549,7 @@ class ProxAIClient(state_controller.StateControlled):
       parameters: types.ParameterType | None = None,
       tools: List[types.ToolType] | None = None,
       connection_options: types.ConnectionOptions | None = None,
-  ):
+  ) -> types.MessageContent | str:
     """Generates audio using the configured AI model.
 
     Thin alias for generate() that resolves the default model, sets
@@ -1600,7 +1601,7 @@ class ProxAIClient(state_controller.StateControlled):
       parameters: types.ParameterType | None = None,
       tools: List[types.ToolType] | None = None,
       connection_options: types.ConnectionOptions | None = None,
-  ):
+  ) -> types.MessageContent | str:
     """Generates video using the configured AI model.
 
     Thin alias for generate() that resolves the default model, sets

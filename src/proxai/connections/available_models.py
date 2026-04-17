@@ -6,6 +6,7 @@ import datetime
 import multiprocessing
 import os
 import traceback
+from collections.abc import Callable
 
 import proxai.caching.model_cache as model_cache
 import proxai.caching.query_cache as query_cache
@@ -92,11 +93,11 @@ class AvailableModels(state_controller.StateControlled):
       self.latest_model_cache_path_used_for_update = None
       self._load_provider_keys()
 
-  def get_internal_state_property_name(self):
+  def get_internal_state_property_name(self) -> str:
     """Return the name of the internal state property."""
     return _AVAILABLE_MODELS_STATE_PROPERTY
 
-  def get_internal_state_type(self):
+  def get_internal_state_type(self) -> type:
     """Return the dataclass type used for state storage."""
     return types.AvailableModelsState
 
@@ -115,8 +116,8 @@ class AvailableModels(state_controller.StateControlled):
           self.providers_with_key[provider][key_name] = os.environ[key_name]
 
   def get_model_connector(
-      self, provider_model_identifier: types.ProviderModelIdentifierType
-  ):
+      self, provider_model_identifier: types.ProviderModelIdentifierType,
+  ) -> provider_connector.ProviderConnector:
     """Get or create a provider-scoped connector for the specified model."""
     provider_model = self.model_configs_instance.get_provider_model(
         provider_model_identifier
@@ -390,8 +391,9 @@ class AvailableModels(state_controller.StateControlled):
 
   def _filter_by_tag_list(
       self, models: types.ModelStatus,
-      tags, resolve_fn
-  ):
+      tags: list,
+      resolve_fn: Callable,
+  ) -> None:
     if tags is None:
       return
 

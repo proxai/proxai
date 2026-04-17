@@ -59,7 +59,7 @@ class MockProviderModelConnector(provider_connector.ProviderConnector):
     return None
 
   def _generate_text_executor(
-      self, query_record: types.QueryRecord) -> types.ResultRecord:
+      self, query_record: types.QueryRecord) -> types.ExecutorResult:
     def _mock_provider_query():
       return 'mock response'
 
@@ -139,7 +139,7 @@ class MockFailingProviderModelConnector(provider_connector.ProviderConnector):
     return None
 
   def _generate_text_executor(
-      self, query_record: types.QueryRecord) -> types.ResultRecord:
+      self, query_record: types.QueryRecord) -> types.ExecutorResult:
     def _failing_provider_query():
       raise ValueError('Mock failing provider query')
     response, result_record = self._safe_provider_query(_failing_provider_query)
@@ -186,7 +186,7 @@ class MockSlowProviderModelConnector(provider_connector.ProviderConnector):
     return None
 
   def _generate_text_executor(
-      self, query_record: types.QueryRecord) -> types.ResultRecord:
+      self, query_record: types.QueryRecord) -> types.ExecutorResult:
     def _slow_provider_query():
       time.sleep(120)
       return 'mock response'

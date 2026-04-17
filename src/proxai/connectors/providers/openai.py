@@ -334,7 +334,7 @@ class OpenAIConnector(provider_connector.ProviderConnector):
 
   def _chat_completions_create_executor(
       self,
-      query_record: types.QueryRecord) -> types.Response:
+      query_record: types.QueryRecord) -> types.ExecutorResult:
     create = functools.partial(self.api.chat.completions.create)
     create = functools.partial(create, model=(
         query_record.provider_model.provider_model_identifier
@@ -406,7 +406,7 @@ class OpenAIConnector(provider_connector.ProviderConnector):
 
   def _beta_chat_completions_parse_executor(
       self,
-      query_record: types.QueryRecord) -> types.Response:
+      query_record: types.QueryRecord) -> types.ExecutorResult:
     create = functools.partial(self.api.beta.chat.completions.parse)
     create = functools.partial(create, model=(
         query_record.provider_model.provider_model_identifier
@@ -483,7 +483,7 @@ class OpenAIConnector(provider_connector.ProviderConnector):
 
   def _responses_create_executor(
       self,
-      query_record: types.QueryRecord) -> types.Response:
+      query_record: types.QueryRecord) -> types.ExecutorResult:
     create = functools.partial(self.api.responses.create)
     create = functools.partial(create, model=(
         query_record.provider_model.provider_model_identifier
@@ -578,7 +578,7 @@ class OpenAIConnector(provider_connector.ProviderConnector):
 
   def _images_generate_executor(
       self,
-      query_record: types.QueryRecord) -> types.Response:
+      query_record: types.QueryRecord) -> types.ExecutorResult:
     generate = functools.partial(self.api.images.generate)
     generate = functools.partial(generate, model=(
         query_record.provider_model.provider_model_identifier
@@ -609,7 +609,7 @@ class OpenAIConnector(provider_connector.ProviderConnector):
 
   def _audio_speech_create_executor(
       self,
-      query_record: types.QueryRecord) -> types.Response:
+      query_record: types.QueryRecord) -> types.ExecutorResult:
     create = functools.partial(self.api.audio.speech.create)
     create = functools.partial(create, model=(
         query_record.provider_model.provider_model_identifier
@@ -637,7 +637,7 @@ class OpenAIConnector(provider_connector.ProviderConnector):
 
   def _videos_create_executor(
       self,
-      query_record: types.QueryRecord) -> types.Response:
+      query_record: types.QueryRecord) -> types.ExecutorResult:
     create = functools.partial(self.api.videos.create)
     create = functools.partial(create, model=(
         query_record.provider_model.provider_model_identifier

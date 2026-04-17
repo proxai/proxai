@@ -288,7 +288,7 @@ class ClaudeConnector(provider_connector.ProviderConnector):
 
   def _beta_messages_stream_executor(
       self,
-      query_record: types.QueryRecord) -> types.ResultRecord:
+      query_record: types.QueryRecord) -> types.ExecutorResult:
     stream = functools.partial(self.api.beta.messages.stream)
     stream = functools.partial(stream, model=(
         query_record.provider_model.provider_model_identifier

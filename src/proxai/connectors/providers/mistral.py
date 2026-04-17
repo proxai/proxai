@@ -257,7 +257,7 @@ class MistralConnector(provider_connector.ProviderConnector):
 
   def _chat_complete_executor(
       self,
-      query_record: types.QueryRecord) -> types.ResultRecord:
+      query_record: types.QueryRecord) -> types.ExecutorResult:
     create = functools.partial(self.api.chat.complete)
     create = functools.partial(create, model=(
         query_record.provider_model.provider_model_identifier
@@ -289,7 +289,7 @@ class MistralConnector(provider_connector.ProviderConnector):
 
   def _chat_parse_executor(
       self,
-      query_record: types.QueryRecord) -> types.ResultRecord:
+      query_record: types.QueryRecord) -> types.ExecutorResult:
     create = functools.partial(self.api.chat.parse)
     create = functools.partial(create, model=(
         query_record.provider_model.provider_model_identifier
@@ -337,7 +337,7 @@ class MistralConnector(provider_connector.ProviderConnector):
 
   def _beta_conversations_start_executor(
       self,
-      query_record: types.QueryRecord) -> types.ResultRecord:
+      query_record: types.QueryRecord) -> types.ExecutorResult:
     """Execute a Mistral beta.conversations.start call with web search.
 
     This endpoint is structurally different from chat.complete/chat.parse:

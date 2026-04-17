@@ -3,9 +3,13 @@
 import copy
 import json
 import dataclasses
+from collections.abc import Iterator
+from typing import Any
 
 from proxai.chat.message import Message
 from proxai.chat.message_content import MessageContent, ContentType, MessageRoleType
+
+MessageInput = Message | dict | str | list[MessageContent]
 
 
 @dataclasses.dataclass(init=False)
@@ -36,12 +40,16 @@ class Chat:
     return self._system_prompt
 
   @system_prompt.setter
-  def system_prompt(self, value):
+  def system_prompt(self, value: str | None) -> None:
     if value is not None and not isinstance(value, str):
       raise TypeError("system_prompt must be a string.")
     self._system_prompt = value
 
-  def __init__(self, messages=None, system_prompt=None):
+  def __init__(
+      self,
+      messages: list[MessageInput] | None = None,
+      system_prompt: str | None = None,
+  ):
     """Initialize a Chat session.
 
     Args:
@@ -54,7 +62,7 @@ class Chat:
       for msg in messages:
         self.messages.append(self._validate_message(msg))
 
-  def _validate_message(self, msg) -> Message:
+  def _validate_message(self, msg: MessageInput) -> Message:
     """Validate and return a Message object."""
     if isinstance(msg, Message):
       return msg
@@ -87,16 +95,16 @@ class Chat:
         f"Expected Message or dict, got {type(msg).__name__}."
     )
 
-  def append(self, msg) -> None:
+  def append(self, msg: MessageInput) -> None:
     """Append a message to the conversation."""
     self.messages.append(self._validate_message(msg))
 
-  def extend(self, msgs) -> None:
+  def extend(self, msgs: list[MessageInput]) -> None:
     """Extend the conversation with multiple messages."""
     for msg in msgs:
       self.messages.append(self._validate_message(msg))
 
-  def insert(self, index: int, msg) -> None:
+  def insert(self, index: int, msg: MessageInput) -> None:
     """Insert a message at the given index."""
     self.messages.insert(index, self._validate_message(msg))
 
@@ -112,39 +120,39 @@ class Chat:
     """Return a deep copy of this Chat."""
     return copy.deepcopy(self)
 
-  def __getitem__(self, index):
+  def __getitem__(self, index: int | slice) -> "Chat | Message":
     if isinstance(index, slice):
       new_chat = Chat(system_prompt=self.system_prompt)
       new_chat.messages = self.messages[index]
       return new_chat
     return self.messages[index]
 
-  def __setitem__(self, index, msg):
+  def __setitem__(self, index: int, msg: MessageInput) -> None:
     self.messages[index] = self._validate_message(msg)
 
-  def __delitem__(self, index):
+  def __delitem__(self, index: int | slice) -> None:
     del self.messages[index]
 
   def __len__(self) -> int:
     return len(self.messages)
 
-  def __iter__(self):
+  def __iter__(self) -> Iterator[Message]:
     return iter(self.messages)
 
-  def __add__(self, other):
+  def __add__(self, other: Any) -> "Chat":
     if not isinstance(other, Chat):
       return NotImplemented
     new_chat = self.copy()
     new_chat.messages.extend(other.messages)
     return new_chat
 
-  def __iadd__(self, other):
+  def __iadd__(self, other: Any) -> "Chat":
     if not isinstance(other, Chat):
       return NotImplemented
     self.messages.extend(other.messages)
     return self
 
-  def __eq__(self, other):
+  def __eq__(self, other: Any) -> bool:
     if not isinstance(other, Chat):
       return NotImplemented
     return (
@@ -279,10 +287,13 @@ class Chat:
 
   @staticmethod
   def _validate_export_params(
-      add_json_guidance_system, add_json_schema_guidance_system,
-      add_json_guidance_user, add_json_schema_guidance_user,
-      add_system_to_messages, add_system_to_first_user,
-  ):
+      add_json_guidance_system: bool,
+      add_json_schema_guidance_system: dict | str | None,
+      add_json_guidance_user: bool,
+      add_json_schema_guidance_user: dict | str | None,
+      add_system_to_messages: bool,
+      add_system_to_first_user: bool,
+  ) -> None:
     """Validate mutually exclusive export parameters."""
     if add_json_guidance_system and add_json_schema_guidance_system is not None:
       raise ValueError(
@@ -343,7 +354,7 @@ class Chat:
       messages: list[Message],
       add_json_guidance: bool,
       add_json_schema_guidance: dict | str | None,
-  ):
+  ) -> None:
     """Append JSON guidance to the last user message's content."""
     suffix = cls._build_json_guidance_text(
         add_json_guidance, add_json_schema_guidance,
@@ -364,7 +375,7 @@ class Chat:
   @staticmethod
   def _prepend_system_to_first_user(
       messages: list[Message], system_prompt: str,
-  ):
+  ) -> None:
     """Prepend system prompt text to the first user message."""
     for msg in messages:
       if msg.role == MessageRoleType.USER:
@@ -421,7 +432,7 @@ class Chat:
   def _validate_allowed_types(
       messages: list[Message],
       allowed_set: set[ContentType],
-  ):
+  ) -> None:
     """Raise ValueError if any content type is not in allowed_set."""
     for msg in messages:
       if isinstance(msg.content, str):
@@ -457,7 +468,7 @@ class Chat:
     return merged
 
   @staticmethod
-  def _validate_single_prompt_content(messages: list[Message]):
+  def _validate_single_prompt_content(messages: list[Message]) -> None:
     """Raise ValueError if any content uses data or path fields."""
     for msg in messages:
       if not isinstance(msg.content, list):

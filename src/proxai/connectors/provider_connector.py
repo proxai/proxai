@@ -117,11 +117,11 @@ class ProviderConnector(state_controller.StateControlled):
           f'  Missing in ENDPOINT_EXECUTORS: {missing_in_executors or "none"}\n'
           f'  Extra in ENDPOINT_EXECUTORS: {extra_in_executors or "none"}')
 
-  def get_internal_state_property_name(self):
+  def get_internal_state_property_name(self) -> str:
     """Return the name of the internal state property."""
     return _PROVIDER_STATE_PROPERTY
 
-  def get_internal_state_type(self):
+  def get_internal_state_type(self) -> type:
     """Return the dataclass type used for state storage."""
     return types.ProviderState
 
@@ -136,7 +136,7 @@ class ProviderConnector(state_controller.StateControlled):
         )
 
   @property
-  def api(self):
+  def api(self) -> Any:
     if not getattr(self, '_api', None):
       if self.run_type == types.RunType.PRODUCTION:
         self._api = self.init_model()
@@ -145,15 +145,15 @@ class ProviderConnector(state_controller.StateControlled):
     return self._api
 
   @api.setter
-  def api(self, value):
+  def api(self, value: Any) -> None:
     raise ValueError('api should not be set directly.')
 
   @property
-  def run_type(self):
+  def run_type(self) -> types.RunType | None:
     return self.get_property_value('run_type')
 
   @run_type.setter
-  def run_type(self, value):
+  def run_type(self, value: types.RunType | None) -> None:
     self.set_property_value('run_type', value)
 
   @property
@@ -161,7 +161,9 @@ class ProviderConnector(state_controller.StateControlled):
     return self.get_property_value('feature_mapping_strategy')
 
   @feature_mapping_strategy.setter
-  def feature_mapping_strategy(self, value):
+  def feature_mapping_strategy(
+      self, value: types.FeatureMappingStrategy | None,
+  ) -> None:
     self.set_property_value('feature_mapping_strategy', value)
 
   @property
@@ -169,7 +171,9 @@ class ProviderConnector(state_controller.StateControlled):
     return self.get_state_controlled_property_value('query_cache_manager')
 
   @query_cache_manager.setter
-  def query_cache_manager(self, value):
+  def query_cache_manager(
+      self, value: query_cache.QueryCacheManager | None,
+  ) -> None:
     self.set_state_controlled_property_value('query_cache_manager', value)
 
   def query_cache_manager_deserializer(
@@ -183,7 +187,7 @@ class ProviderConnector(state_controller.StateControlled):
     return self.get_property_value('logging_options')
 
   @logging_options.setter
-  def logging_options(self, value):
+  def logging_options(self, value: types.LoggingOptions | None) -> None:
     self.set_property_value('logging_options', value)
 
   @property
@@ -191,7 +195,9 @@ class ProviderConnector(state_controller.StateControlled):
     return self.get_state_controlled_property_value('proxdash_connection')
 
   @proxdash_connection.setter
-  def proxdash_connection(self, value):
+  def proxdash_connection(
+      self, value: proxdash.ProxDashConnection | None,
+  ) -> None:
     self.set_state_controlled_property_value('proxdash_connection', value)
 
   def proxdash_connection_deserializer(
@@ -205,7 +211,9 @@ class ProviderConnector(state_controller.StateControlled):
     return self.get_property_value('provider_token_value_map')
 
   @provider_token_value_map.setter
-  def provider_token_value_map(self, value):
+  def provider_token_value_map(
+      self, value: types.ProviderTokenValueMap | None,
+  ) -> None:
     self.set_property_value('provider_token_value_map', value)
 
   @property
@@ -213,7 +221,7 @@ class ProviderConnector(state_controller.StateControlled):
     return self.get_property_value('keep_raw_provider_response')
 
   @keep_raw_provider_response.setter
-  def keep_raw_provider_response(self, value):
+  def keep_raw_provider_response(self, value: bool | None) -> None:
     self.set_property_value('keep_raw_provider_response', value)
 
   def _extract_json_from_text(self, text: str) -> dict:
@@ -309,7 +317,7 @@ class ProviderConnector(state_controller.StateControlled):
       self,
       call_record: types.CallRecord,
       provider_model_config: types.ProviderModelConfig,
-  ):
+  ) -> int:
     """Calculate the estimated cost for a call record."""
     input_token_count = call_record.result.usage.input_tokens
     if input_token_count is None:
@@ -408,8 +416,8 @@ class ProviderConnector(state_controller.StateControlled):
 
   def get_tag_support_level(
       self,
-      tags,
-      resolve_fn,
+      tags: list,
+      resolve_fn: Callable,
       model_feature_config: types.FeatureConfigType,
   ) -> types.FeatureSupportType:
     """Return the best support level for generic tags across endpoints."""
@@ -468,7 +476,7 @@ class ProviderConnector(state_controller.StateControlled):
       self,
       query_record: types.QueryRecord,
       provider_model_config: types.ProviderModelConfig,
-  ):
+  ) -> str:
     """Find a compatible endpoint for the query record."""
     best_effort_endpoints = []
     for endpoint in self.ENDPOINT_PRIORITY:
@@ -806,10 +814,10 @@ class ProviderConnector(state_controller.StateControlled):
 
     return call_record
 
-  def init_model(self):
+  def init_model(self) -> Any:
     """Initialize the provider API client."""
     raise NotImplementedError
 
-  def init_mock_model(self):
+  def init_mock_model(self) -> Any:
     """Initialize a mock API client for testing."""
     raise NotImplementedError

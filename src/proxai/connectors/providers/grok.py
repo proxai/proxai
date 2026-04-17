@@ -200,7 +200,7 @@ class GrokConnector(provider_connector.ProviderConnector):
 
   def _chat_create_executor(
       self,
-      query_record: types.QueryRecord) -> types.ResultRecord:
+      query_record: types.QueryRecord) -> types.ExecutorResult:
     kwargs = self._build_create_kwargs(query_record)
     messages = self._build_messages(query_record)
 

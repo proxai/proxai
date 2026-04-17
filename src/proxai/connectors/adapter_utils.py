@@ -41,7 +41,11 @@ def min_support(
   return b
 
 
-def merge_support_fields(a, b, dataclass_type):
+def merge_support_fields(
+    a: types.FeatureSupportType | None,
+    b: types.FeatureSupportType | None,
+    dataclass_type: type,
+) -> types.FeatureSupportType | None:
   """Merge two nested config dataclasses field-by-field using min_support.
 
   Returns None if both inputs are None.
