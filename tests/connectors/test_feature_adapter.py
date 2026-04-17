@@ -1093,14 +1093,13 @@ class TestAdaptInputFormatDocument:
     types_in_content = [b['type'] for b in user_content]
     assert 'document' in types_in_content
 
-  def test_best_effort_drops_document_block(self):
+  def test_best_effort_passes_through_document_block(self):
     adapter = _adapter(messages=S, input_text=S, input_document=BE)
     result = adapter.adapt_query_record(
         _query(chat=_chat_with_document()))
     user_content = result.chat['messages'][0]['content']
     types_in_content = [b['type'] for b in user_content]
-    assert 'document' not in types_in_content
-    assert 'text' in types_in_content
+    assert 'document' in types_in_content
 
   def test_not_supported_raises(self):
     adapter = _adapter(messages=S, input_text=S, input_document=NS)

@@ -511,11 +511,18 @@ class FeatureAdapter:
           types.InputFormatType.PYDANTIC, '_pydantic_block_to_text'),
   }
 
+  # Types that should be passed through on BEST_EFFORT instead of
+  # dropped, so the connector can apply its own conversion (e.g.,
+  # PDF text extraction via content_utils).
+  _BEST_EFFORT_PASSTHROUGH_TYPES = frozenset({'document'})
+
   def _adapt_content_block(self, block: dict) -> dict:
     """Adapt a single content block based on input format support.
 
     SUPPORTED     → pass through.
-    BEST_EFFORT   → convert to text (if converter exists), else raise.
+    BEST_EFFORT   → convert to text (if converter exists),
+                    pass through (if in _BEST_EFFORT_PASSTHROUGH_TYPES),
+                    else drop.
     NOT_SUPPORTED → raise.
     """
     entry = self._CONTENT_TYPE_TO_INPUT_FORMAT.get(block.get('type'))
@@ -532,6 +539,8 @@ class FeatureAdapter:
     if level == types.FeatureSupportType.BEST_EFFORT:
       if converter_name is not None:
         return getattr(self, converter_name)(block)
+      if block.get('type') in self._BEST_EFFORT_PASSTHROUGH_TYPES:
+        return block
       return None
     return block
 

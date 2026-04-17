@@ -1,9 +1,11 @@
+import base64
 import functools
 
 from xai_sdk import Client
-from xai_sdk.chat import assistant, system, user
+from xai_sdk.chat import assistant, image, system, text, user
 from xai_sdk.proto import chat_pb2
 
+import proxai.connectors.content_utils as content_utils
 import proxai.connectors.provider_connector as provider_connector
 import proxai.connectors.providers.grok_mock as grok_mock
 import proxai.types as types
@@ -59,6 +61,10 @@ class GrokConnector(provider_connector.ProviderConnector):
           ),
           input_format=InputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
+              image=FeatureSupportType.SUPPORTED,
+              document=FeatureSupportType.BEST_EFFORT,
+              json=FeatureSupportType.BEST_EFFORT,
+              pydantic=FeatureSupportType.BEST_EFFORT,
           ),
           output_format=OutputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
@@ -102,6 +108,46 @@ class GrokConnector(provider_connector.ProviderConnector):
 
     return kwargs
 
+  @staticmethod
+  def _to_grok_content(part_dict):
+    """Convert a ProxAI content block to an xAI SDK Content proto.
+
+    Type mapping:
+      text     → ``text()`` proto
+      image    → ``image()`` proto with URL or data URI.
+                 Supports PNG and JPEG only.
+      document → Text-based docs (md, csv, txt) are read and sent
+                 as ``text()`` protos via ``content_utils``. Binary
+                 formats (PDF, docx, xlsx) are dropped because the
+                 SDK only supports file references by pre-uploaded
+                 file_id, not inline data.
+
+    Returns None for unsupported content types.
+    """
+    content_type = part_dict.get('type')
+    if content_type == 'text':
+      return text(part_dict['text'])
+    if content_type == 'image':
+      if 'source' in part_dict:
+        return image(part_dict['source'])
+      mime_type = part_dict.get('media_type', 'image/png')
+      if 'data' in part_dict:
+        return image(f"data:{mime_type};base64,{part_dict['data']}")
+      if 'path' in part_dict:
+        with open(part_dict['path'], 'rb') as f:
+          encoded = base64.b64encode(f.read()).decode('utf-8')
+        return image(f"data:{mime_type};base64,{encoded}")
+      return None
+    if content_type == 'document':
+      text_content = content_utils.read_text_document(part_dict)
+      if text_content is not None:
+        return text(text_content)
+      pdf_content = content_utils.read_pdf_document(part_dict)
+      if pdf_content is not None:
+        return text(pdf_content)
+      return None
+    return None
+
   def _build_messages(
       self, query_record: types.QueryRecord) -> list:
     """Translate the query record into xAI SDK message protos."""
@@ -113,23 +159,25 @@ class GrokConnector(provider_connector.ProviderConnector):
     if query_record.chat is not None:
       if 'system_prompt' in query_record.chat:
         messages.append(system(query_record.chat['system_prompt']))
-      for message in query_record.chat['messages']:
-        role = message['role']
-        content = message['content']
-        if isinstance(content, list):
-          # The proxai chat schema lets `content` be a list of typed parts
-          # (text/image/...). Grok's helpers only accept plain strings, so
-          # collapse text parts and skip everything else.
-          text_parts = [
-              p['text'] for p in content
-              if isinstance(p, dict) and p.get('type') == 'text']
-          content = '\n'.join(text_parts)
+      for msg in query_record.chat['messages']:
+        role = msg['role']
+        content = msg['content']
+        if isinstance(content, str):
+          parts = [text(content)]
+        elif isinstance(content, list):
+          parts = []
+          for block in content:
+            part = self._to_grok_content(block)
+            if part is not None:
+              parts.append(part)
+        else:
+          parts = [text(str(content))]
         if role == 'user':
-          messages.append(user(content))
+          messages.append(user(*parts))
         elif role == 'assistant':
-          messages.append(assistant(content))
+          messages.append(assistant(*parts))
         elif role == 'system':
-          messages.append(system(content))
+          messages.append(system(*parts))
 
     if query_record.prompt is not None:
       messages.append(user(query_record.prompt))

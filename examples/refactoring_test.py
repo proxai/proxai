@@ -61,8 +61,8 @@ _MODEL_CONFIGS = {
     'grok': {
         'main_model': ('grok', 'grok-4-fast-non-reasoning'),
         'main_model_web_search_supported': True,
-        'main_model_audio_input_supported': True,
-        'main_model_video_input_supported': True,
+        'main_model_audio_input_supported': False,
+        'main_model_video_input_supported': False,
         'thinking_model': ('grok', 'grok-3-mini'),
         'failing_model': ('mock_failing_provider', 'mock_failing_model'),
         'image_model': (None, None),
