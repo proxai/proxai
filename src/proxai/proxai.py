@@ -482,14 +482,14 @@ def check_health(
             (provider, model)
         )
         duration = model_status.provider_queries[provider_model
-                                                ].response_record.response_time
+                                                ].result.timestamp.response_time
         print(f"   [ WORKING | {duration.total_seconds():6.2f}s ]: {model}")
       for model in sorted(result_table[provider]["failed"]):
         provider_model = px_client.model_configs_instance.get_provider_model(
             (provider, model)
         )
         duration = model_status.provider_queries[provider_model
-                                                ].response_record.response_time
+                                                ].result.timestamp.response_time
         print(f"   [ FAILED  | {duration.total_seconds():6.2f}s ]: {model}")
   if extensive_return:
     return model_status
