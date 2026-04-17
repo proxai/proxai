@@ -68,6 +68,10 @@ _INPUT_FORMAT_TYPE_TO_FIELD = {
         c.input_format.audio if c.input_format else None),
     types.InputFormatType.VIDEO: lambda c: (
         c.input_format.video if c.input_format else None),
+    types.InputFormatType.JSON: lambda c: (
+        c.input_format.json if c.input_format else None),
+    types.InputFormatType.PYDANTIC: lambda c: (
+        c.input_format.pydantic if c.input_format else None),
 }
 
 _OUTPUT_FORMAT_TYPE_TO_FIELD = {

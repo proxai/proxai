@@ -1,3 +1,4 @@
+import base64
 import functools
 import time
 from collections.abc import Callable
@@ -54,8 +55,10 @@ class GeminiConnector(provider_connector.ProviderConnector):
           ),
           input_format=InputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
-              image=FeatureSupportType.SUPPORTED,
+              json=FeatureSupportType.BEST_EFFORT,
+              pydantic=FeatureSupportType.BEST_EFFORT,
               document=FeatureSupportType.SUPPORTED,
+              image=FeatureSupportType.SUPPORTED,
               audio=FeatureSupportType.SUPPORTED,
               video=FeatureSupportType.SUPPORTED,
           ),
@@ -77,6 +80,38 @@ class GeminiConnector(provider_connector.ProviderConnector):
           ),
       ),
   }
+
+  @staticmethod
+  def _content_dict_to_part(
+      part_dict: dict[str, Any],
+  ) -> genai_types.Part | None:
+    content_type = part_dict.get('type')
+
+    if content_type == 'text':
+      return genai_types.Part(text=part_dict['text'])
+
+    if content_type == 'thinking':
+      return genai_types.Part(text=part_dict['text'], thought=True)
+
+    if content_type not in ('image', 'document', 'audio', 'video'):
+      return None
+
+    mime_type = part_dict.get('media_type')
+
+    if 'data' in part_dict:
+      raw_bytes = base64.b64decode(part_dict['data'])
+      return genai_types.Part.from_bytes(data=raw_bytes, mime_type=mime_type)
+
+    if 'source' in part_dict:
+      return genai_types.Part.from_uri(
+          file_uri=part_dict['source'], mime_type=mime_type)
+
+    if 'path' in part_dict:
+      with open(part_dict['path'], 'rb') as f:
+        raw_bytes = f.read()
+      return genai_types.Part.from_bytes(data=raw_bytes, mime_type=mime_type)
+
+    return None
   
   def _models_generate_content_executor(
       self, query_record: types.QueryRecord) -> types.Response:
@@ -103,9 +138,10 @@ class GeminiConnector(provider_connector.ProviderConnector):
         if isinstance(message['content'], str):
           parts.append(genai_types.Part(text=message['content']))
         elif isinstance(message['content'], list):
-          for part in message['content']:
-            if part['type'] == 'text':
-              parts.append(genai_types.Part(text=part['text']))
+          for part_dict in message['content']:
+            gemini_part = self._content_dict_to_part(part_dict)
+            if gemini_part is not None:
+              parts.append(gemini_part)
         contents.append(genai_types.Content(parts=parts, role=role))
 
       if 'system_prompt' in query_record.chat:

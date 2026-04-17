@@ -180,6 +180,41 @@ class ModelConnector:
         model=model,
     )
 
+  def get_model_config(
+      self,
+      provider: str,
+      model: str,
+  ) -> types.ProviderModelConfig:
+    """Gets the full config for a specific model.
+
+    Returns the ProviderModelConfig including provider model info,
+    pricing, features, and metadata.
+
+    Args:
+        provider: The provider name (e.g., 'openai', 'gemini').
+        model: The model name (e.g., 'gpt-4o', 'gemini-2.5-flash').
+
+    Returns:
+        types.ProviderModelConfig: The full model configuration.
+
+    Raises:
+        KeyError: If the model doesn't exist.
+
+    Example:
+        >>> import proxai as px
+        >>> config = px.models.get_model_config("gemini", "gemini-2.5-flash")
+        >>> print(config.features.input_format.image)
+        SUPPORTED
+
+        >>> # Using a specific client
+        >>> client = px.Client()
+        >>> config = client.models.get_model_config("gemini", "gemini-2.5-flash")
+    """
+    return self._client_getter().available_models_instance.get_model_config(
+        provider=provider,
+        model=model,
+    )
+
   def list_working_models(
       self,
       model_size: types.ModelSizeIdentifierType | None = None,

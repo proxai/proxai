@@ -71,6 +71,8 @@ def _get_model_config(
               document=S if 'document' in input_format else NS,
               audio=S if 'audio' in input_format else NS,
               video=S if 'video' in input_format else NS,
+              json=S if 'json' in input_format else NS,
+              pydantic=S if 'pydantic' in input_format else NS,
           ),
           output_format=types.OutputFormatConfigType(
               text=text_supported,

@@ -71,7 +71,11 @@ class Message:
     if isinstance(content, str):
       content = [MessageContent(type=ContentType.TEXT, text=content)]
     elif isinstance(content, list):
-      content = [MessageContent.from_dict(item) for item in content]
+      content = [
+          item if isinstance(item, MessageContent)
+          else MessageContent.from_dict(item)
+          for item in content
+      ]
     return cls(role=data["role"], content=content)
 
   def copy(self) -> "Message":
