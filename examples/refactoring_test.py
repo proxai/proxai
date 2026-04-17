@@ -112,11 +112,11 @@ _MODEL_CONFIGS = {
     },
     'databricks': {
         'main_model': (
-            'databricks', 'databricks-meta-llama-3-3-70b-instruct'),
+            'databricks', 'databricks-gemma-3-12b'),
         'main_model_web_search_supported': False,
         'main_model_image_input_supported': True,
-        'main_model_audio_input_supported': True,
-        'main_model_video_input_supported': True,
+        'main_model_audio_input_supported': False,
+        'main_model_video_input_supported': False,
         'thinking_model': ('databricks', 'databricks-gpt-oss-20b'),
         'failing_model': ('mock_failing_provider', 'mock_failing_model'),
         'image_model': (None, None),
