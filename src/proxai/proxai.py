@@ -14,7 +14,7 @@ Chat = chat_session.Chat
 ProviderModelType = types.ProviderModelType
 ParameterType = types.ParameterType
 Tools = types.Tools
-ResponseFormatType = types.ResponseFormatType
+OutputFormatType = types.OutputFormatType
 ConnectionOptions = types.ConnectionOptions
 MessageRoleType = types.MessageRoleType
 ContentType = types.ContentType
@@ -112,7 +112,7 @@ def generate(
     provider_model: types.ProviderModelParam | None = None,
     parameters: types.ParameterType | None = None,
     tools: List[types.ToolType] | None = None,
-    response_format: types.ResponseFormatParam | None = None,
+    output_format: types.OutputFormatParam | None = None,
     connection_options: types.ConnectionOptions | None = None,
 ) -> types.CallRecord:
   return get_default_proxai_client().generate(
@@ -122,7 +122,7 @@ def generate(
       provider_model=provider_model,
       parameters=parameters,
       tools=tools,
-      response_format=response_format,
+      output_format=output_format,
       connection_options=connection_options,
   )
 
@@ -188,7 +188,7 @@ def generate_json(
   """Generates a JSON response using the configured AI model.
 
   Thin alias for generate() that resolves the default model, sets
-  response_format to JSON, and returns the parsed dict directly.
+  output_format to JSON, and returns the parsed dict directly.
 
   Args:
       prompt: Simple text prompt for the AI model. Cannot be used together
@@ -231,7 +231,7 @@ def generate_pydantic(
     provider_model: types.ProviderModelParam | None = None,
     parameters: types.ParameterType | None = None,
     tools: List[types.ToolType] | None = None,
-    response_format: types.ResponseFormatParam | None = None,
+    output_format: types.OutputFormatParam | None = None,
     connection_options: types.ConnectionOptions | None = None,
 ) -> 'pydantic.BaseModel':
   """Generates a structured pydantic response using the configured AI model.
@@ -247,11 +247,11 @@ def generate_pydantic(
       provider_model: Specific provider and model to use for this request.
       parameters: Generation parameters (temperature, max_tokens, etc.).
       tools: Tools to enable for this request.
-      response_format: The pydantic model class to validate against.
+      output_format: The pydantic model class to validate against.
       connection_options: Connection options.
 
   Returns:
-      An instance of the pydantic model specified in response_format.
+      An instance of the pydantic model specified in output_format.
       If the provider returns an error and suppress_provider_errors is
       True, returns the error message string.
 
@@ -263,7 +263,7 @@ def generate_pydantic(
       >>> import proxai as px
       >>> result = px.generate_pydantic(
       ...   prompt="What is the capital of France?",
-      ...   response_format=City
+      ...   output_format=City
       ... )
       >>> print(result.name)
       'Paris'
@@ -275,7 +275,7 @@ def generate_pydantic(
       provider_model=provider_model,
       parameters=parameters,
       tools=tools,
-      response_format=response_format,
+      output_format=output_format,
       connection_options=connection_options,
   )
 
@@ -292,7 +292,7 @@ def generate_image(
   """Generates an image using the configured AI model.
 
   Thin alias for generate() that resolves the default model, sets
-  response_format to IMAGE, and returns the image content directly.
+  output_format to IMAGE, and returns the image content directly.
   """
   return get_default_proxai_client().generate_image(
       prompt=prompt,
@@ -317,7 +317,7 @@ def generate_audio(
   """Generates audio using the configured AI model.
 
   Thin alias for generate() that resolves the default model, sets
-  response_format to AUDIO, and returns the audio content directly.
+  output_format to AUDIO, and returns the audio content directly.
   """
   return get_default_proxai_client().generate_audio(
       prompt=prompt,
@@ -342,7 +342,7 @@ def generate_video(
   """Generates video using the configured AI model.
 
   Thin alias for generate() that resolves the default model, sets
-  response_format to VIDEO, and returns the video content directly.
+  output_format to VIDEO, and returns the video content directly.
   """
   return get_default_proxai_client().generate_video(
       prompt=prompt,

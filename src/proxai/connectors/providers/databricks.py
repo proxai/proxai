@@ -11,7 +11,7 @@ FeatureConfigType = types.FeatureConfigType
 FeatureSupportType = types.FeatureSupportType
 ParameterConfigType = types.ParameterConfigType
 ToolConfigType = types.ToolConfigType
-ResponseFormatConfigType = types.ResponseFormatConfigType
+OutputFormatConfigType = types.OutputFormatConfigType
 
 
 class DatabricksConnector(provider_connector.ProviderConnector):
@@ -72,7 +72,7 @@ class DatabricksConnector(provider_connector.ProviderConnector):
               tools=ToolConfigType(
                   web_search=FeatureSupportType.NOT_SUPPORTED,
               ),
-              response_format=ResponseFormatConfigType(
+              output_format=OutputFormatConfigType(
                   text=FeatureSupportType.SUPPORTED,
                   json=FeatureSupportType.SUPPORTED,
                   pydantic=FeatureSupportType.BEST_EFFORT,
@@ -94,7 +94,7 @@ class DatabricksConnector(provider_connector.ProviderConnector):
               tools=ToolConfigType(
                   web_search=FeatureSupportType.NOT_SUPPORTED,
               ),
-              response_format=ResponseFormatConfigType(
+              output_format=OutputFormatConfigType(
                   text=FeatureSupportType.NOT_SUPPORTED,
                   json=FeatureSupportType.NOT_SUPPORTED,
                   pydantic=FeatureSupportType.SUPPORTED,
@@ -217,9 +217,9 @@ class DatabricksConnector(provider_connector.ProviderConnector):
     # BEST_EFFORT but we flip on json_object when a schema was requested so
     # the framework's downstream json.loads + model_validate step is
     # reliable.
-    if query_record.response_format.type in (
-        types.ResponseFormatType.JSON,
-        types.ResponseFormatType.PYDANTIC,
+    if query_record.output_format.type in (
+        types.OutputFormatType.JSON,
+        types.OutputFormatType.PYDANTIC,
     ):
       create = functools.partial(
           create, response_format={'type': 'json_object'}
@@ -288,14 +288,14 @@ class DatabricksConnector(provider_connector.ProviderConnector):
         )
 
     create = functools.partial(
-        create, response_format=query_record.response_format.pydantic_class
+        create, response_format=query_record.output_format.pydantic_class
     )
 
     response, result_record = self._safe_provider_query(create)
     if result_record.error is not None:
       return types.ExecutorResult(result_record=result_record)
 
-    pydantic_class = query_record.response_format.pydantic_class
+    pydantic_class = query_record.output_format.pydantic_class
     result_record.content = [
         message_content.MessageContent(
             type=message_content.ContentType.PYDANTIC_INSTANCE,

@@ -22,57 +22,57 @@ def messages_param_to_chat(
   return messages
 
 
-def response_format_param_to_response_format(
-    response_format: types.ResponseFormatParam | None
-) -> types.ResponseFormat:
-  if not response_format:
-    return types.ResponseFormat(
-        type=types.ResponseFormatType.TEXT)
-    
-  if isinstance(response_format, types.ResponseFormat):
-    return response_format
+def output_format_param_to_output_format(
+    output_format: types.OutputFormatParam | None
+) -> types.OutputFormat:
+  if not output_format:
+    return types.OutputFormat(
+        type=types.OutputFormatType.TEXT)
 
-  if type(response_format) == str:
-    if response_format == 'text':
-      return types.ResponseFormat(
-          type=types.ResponseFormatType.TEXT)
-    elif response_format == 'json':
-      return types.ResponseFormat(
-          type=types.ResponseFormatType.JSON)
-    elif response_format == 'image':
-      return types.ResponseFormat(
-          type=types.ResponseFormatType.IMAGE)
-    elif response_format == 'audio':
-      return types.ResponseFormat(
-          type=types.ResponseFormatType.AUDIO)
-    elif response_format == 'video':
-      return types.ResponseFormat(
-          type=types.ResponseFormatType.VIDEO)
+  if isinstance(output_format, types.OutputFormat):
+    return output_format
+
+  if type(output_format) == str:
+    if output_format == 'text':
+      return types.OutputFormat(
+          type=types.OutputFormatType.TEXT)
+    elif output_format == 'json':
+      return types.OutputFormat(
+          type=types.OutputFormatType.JSON)
+    elif output_format == 'image':
+      return types.OutputFormat(
+          type=types.OutputFormatType.IMAGE)
+    elif output_format == 'audio':
+      return types.OutputFormat(
+          type=types.OutputFormatType.AUDIO)
+    elif output_format == 'video':
+      return types.OutputFormat(
+          type=types.OutputFormatType.VIDEO)
     else:
-      raise ValueError(f'Invalid response format: {response_format}')
-  elif (inspect.isclass(response_format) and
-        issubclass(response_format, pydantic.BaseModel)):
-    return types.ResponseFormat(
-        type=types.ResponseFormatType.PYDANTIC,
-        pydantic_class=response_format)
+      raise ValueError(f'Invalid output format: {output_format}')
+  elif (inspect.isclass(output_format) and
+        issubclass(output_format, pydantic.BaseModel)):
+    return types.OutputFormat(
+        type=types.OutputFormatType.PYDANTIC,
+        pydantic_class=output_format)
 
-  raise ValueError(f'Invalid response format: {response_format}')
+  raise ValueError(f'Invalid output format: {output_format}')
 
 
-def _raise_invalid_response_format_value_error(
-    response_format: types.ResponseFormatParam
+def _raise_invalid_output_format_value_error(
+    output_format: types.OutputFormatParam
 ) -> None:
   raise ValueError(
       'Please provide one of the followings:\n'
-      ' - "json" as string for JSON response format\n'
-      ' - dict for JSON schema response format\n'
-      ' - pydantic.BaseModel for Pydantic response format\n'
-      ' - proxai.types.ResponseFormat for custom more advanced response '
+      ' - "json" as string for JSON output format\n'
+      ' - dict for JSON schema output format\n'
+      ' - pydantic.BaseModel for Pydantic output format\n'
+      ' - proxai.types.OutputFormat for custom more advanced output '
       'format\n'
       'Check https://www.proxai.co/proxai-docs/advanced/response-format '
       'for more information.\n'
-      f'Response format type: {type(response_format)}\n'
-      f'Response format value: {response_format}'
+      f'Output format type: {type(output_format)}\n'
+      f'Output format value: {output_format}'
   )
 
 
@@ -181,50 +181,50 @@ def check_input_format_type_param(
   )
 
 
-def create_response_format(
-    response_format: types.ResponseFormatParam | None = None
-) -> types.ResponseFormat:
-  """Convert various input formats to a standardized ResponseFormat."""
-  if response_format is None:
-    return types.ResponseFormat(type=types.ResponseFormatType.TEXT)
-  elif isinstance(response_format, str):
-    if response_format == 'text':
-      return types.ResponseFormat(type=types.ResponseFormatType.TEXT)
-    if response_format == 'json':
-      return types.ResponseFormat(type=types.ResponseFormatType.JSON)
-    _raise_invalid_response_format_value_error(response_format)
-  elif isinstance(response_format, dict):
-    return types.ResponseFormat(
-        value=response_format, type=types.ResponseFormatType.JSON_SCHEMA
+def create_output_format(
+    output_format: types.OutputFormatParam | None = None
+) -> types.OutputFormat:
+  """Convert various input formats to a standardized OutputFormat."""
+  if output_format is None:
+    return types.OutputFormat(type=types.OutputFormatType.TEXT)
+  elif isinstance(output_format, str):
+    if output_format == 'text':
+      return types.OutputFormat(type=types.OutputFormatType.TEXT)
+    if output_format == 'json':
+      return types.OutputFormat(type=types.OutputFormatType.JSON)
+    _raise_invalid_output_format_value_error(output_format)
+  elif isinstance(output_format, dict):
+    return types.OutputFormat(
+        value=output_format, type=types.OutputFormatType.JSON_SCHEMA
     )
   elif (
-      isinstance(response_format, type) and
-      issubclass(response_format, pydantic.BaseModel)
+      isinstance(output_format, type) and
+      issubclass(output_format, pydantic.BaseModel)
   ):
-    return types.ResponseFormat(
+    return types.OutputFormat(
         value=types.ResponseFormatPydanticValue(
-            class_name=response_format.__name__, class_value=response_format
-        ), type=types.ResponseFormatType.PYDANTIC
+            class_name=output_format.__name__, class_value=output_format
+        ), type=types.OutputFormatType.PYDANTIC
     )
-  elif isinstance(response_format, types.StructuredResponseFormat):
-    if response_format.type == types.ResponseFormatType.TEXT:
-      return types.ResponseFormat(type=types.ResponseFormatType.TEXT)
-    elif response_format.type == types.ResponseFormatType.JSON:
-      return types.ResponseFormat(type=types.ResponseFormatType.JSON)
-    elif response_format.type == types.ResponseFormatType.JSON_SCHEMA:
-      return types.ResponseFormat(
-          value=response_format.schema,
-          type=types.ResponseFormatType.JSON_SCHEMA
+  elif isinstance(output_format, types.StructuredResponseFormat):
+    if output_format.type == types.OutputFormatType.TEXT:
+      return types.OutputFormat(type=types.OutputFormatType.TEXT)
+    elif output_format.type == types.OutputFormatType.JSON:
+      return types.OutputFormat(type=types.OutputFormatType.JSON)
+    elif output_format.type == types.OutputFormatType.JSON_SCHEMA:
+      return types.OutputFormat(
+          value=output_format.schema,
+          type=types.OutputFormatType.JSON_SCHEMA
       )
-    elif response_format.type == types.ResponseFormatType.PYDANTIC:
-      return types.ResponseFormat(
+    elif output_format.type == types.OutputFormatType.PYDANTIC:
+      return types.OutputFormat(
           value=types.ResponseFormatPydanticValue(
-              class_name=response_format.schema.__name__,
-              class_value=response_format.schema
-          ), type=types.ResponseFormatType.PYDANTIC
+              class_name=output_format.schema.__name__,
+              class_value=output_format.schema
+          ), type=types.OutputFormatType.PYDANTIC
       )
 
-  _raise_invalid_response_format_value_error(response_format)
+  _raise_invalid_output_format_value_error(output_format)
 
 
 def is_query_record_equal(
@@ -232,32 +232,32 @@ def is_query_record_equal(
 ) -> bool:
   """Compare two query records, handling Pydantic schemas specially."""
   if (
-      query_record_1.response_format is not None and
-      query_record_1.response_format.type == types.ResponseFormatType.PYDANTIC
+      query_record_1.output_format is not None and
+      query_record_1.output_format.type == types.OutputFormatType.PYDANTIC
   ):
-    pydantic_value_1 = query_record_1.response_format.value
+    pydantic_value_1 = query_record_1.output_format.value
     if pydantic_value_1.class_value is not None:
       query_record_1 = copy.deepcopy(query_record_1)
-      query_record_1.response_format.value = types.ResponseFormatPydanticValue(
+      query_record_1.output_format.value = types.ResponseFormatPydanticValue(
           class_name=pydantic_value_1.class_name, class_json_schema_value=(
               pydantic_value_1.class_value.model_json_schema()
           )
       )
-      del query_record_1.response_format.value.class_value
+      del query_record_1.output_format.value.class_value
 
   if (
-      query_record_2.response_format is not None and
-      query_record_2.response_format.type == types.ResponseFormatType.PYDANTIC
+      query_record_2.output_format is not None and
+      query_record_2.output_format.type == types.OutputFormatType.PYDANTIC
   ):
-    pydantic_value_2 = query_record_2.response_format.value
+    pydantic_value_2 = query_record_2.output_format.value
     if pydantic_value_2.class_value is not None:
       query_record_2 = copy.deepcopy(query_record_2)
-      query_record_2.response_format.value = types.ResponseFormatPydanticValue(
+      query_record_2.output_format.value = types.ResponseFormatPydanticValue(
           class_name=pydantic_value_2.class_name, class_json_schema_value=(
               pydantic_value_2.class_value.model_json_schema()
           )
       )
-      del query_record_2.response_format.value.class_value
+      del query_record_2.output_format.value.class_value
 
   # Normalize connection_options so equality mirrors the hash: only
   # `endpoint` is part of the query identity (see
@@ -280,7 +280,7 @@ def is_query_record_equal(
 
 
 def create_pydantic_instance_from_response(
-    response_format: types.ResponseFormat, response: types.Response
+    output_format: types.OutputFormat, response: types.Response
 ) -> pydantic.BaseModel:
   """Create pydantic instance from Response.
 
@@ -293,7 +293,7 @@ def create_pydantic_instance_from_response(
       response.pydantic_metadata is not None and
       response.pydantic_metadata.instance_json_value is not None
   ):
-    return response_format.value.class_value.model_validate(
+    return output_format.value.class_value.model_validate(
         response.pydantic_metadata.instance_json_value
     )
   else:

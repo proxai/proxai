@@ -41,7 +41,7 @@ def _adapter(
               thinking=thinking,
           ),
           tools=types.ToolConfigType(web_search=web_search),
-          response_format=types.ResponseFormatConfigType(
+          output_format=types.OutputFormatConfigType(
               text=text, image=image, audio=audio, video=video,
               json=json_fmt, pydantic=pydantic_fmt, multi_modal=multi_modal,
           ),
@@ -52,7 +52,7 @@ def _adapter(
 def _query(
     prompt=None, chat=None, system_prompt=None,
     temperature=None, max_tokens=None, stop=None, n=None, thinking=None,
-    tools=None, response_format_type=None, pydantic_class=None,
+    tools=None, output_format_type=None, pydantic_class=None,
 ) -> types.QueryRecord:
   """Build a QueryRecord with the given values."""
   parameters = None
@@ -61,14 +61,14 @@ def _query(
         temperature=temperature, max_tokens=max_tokens,
         stop=stop, n=n, thinking=thinking,
     )
-  response_format = None
-  if response_format_type is not None:
-    response_format = types.ResponseFormat(
-        type=response_format_type, pydantic_class=pydantic_class,
+  output_format = None
+  if output_format_type is not None:
+    output_format = types.OutputFormat(
+        type=output_format_type, pydantic_class=pydantic_class,
     )
   return types.QueryRecord(
       prompt=prompt, chat=chat, system_prompt=system_prompt,
-      parameters=parameters, tools=tools, response_format=response_format,
+      parameters=parameters, tools=tools, output_format=output_format,
   )
 
 
@@ -90,16 +90,16 @@ class _TestModel(pydantic.BaseModel):
 # ===================================================================
 
 class TestGetQueryRecordSupportLevelEmpty:
-  """Empty query with only response_format returns SUPPORTED."""
+  """Empty query with only output_format returns SUPPORTED."""
 
   def test_empty_query(self):
     adapter = _adapter(text=S)
     assert adapter.get_query_record_support_level(
-        _query(response_format_type=types.ResponseFormatType.TEXT)) == S
+        _query(output_format_type=types.OutputFormatType.TEXT)) == S
 
-  def test_no_response_format_raises(self):
+  def test_no_output_format_raises(self):
     adapter = _adapter()
-    with pytest.raises(ValueError, match="response_format.type.*must be set"):
+    with pytest.raises(ValueError, match="output_format.type.*must be set"):
       adapter.get_query_record_support_level(_query())
 
 
@@ -110,25 +110,25 @@ class TestGetQueryRecordSupportLevelPrompt:
     adapter = _adapter(prompt=S, text=S)
     assert adapter.get_query_record_support_level(
         _query(prompt="hi",
-               response_format_type=types.ResponseFormatType.TEXT)) == S
+               output_format_type=types.OutputFormatType.TEXT)) == S
 
   def test_best_effort(self):
     adapter = _adapter(prompt=BE, text=S)
     assert adapter.get_query_record_support_level(
         _query(prompt="hi",
-               response_format_type=types.ResponseFormatType.TEXT)) == BE
+               output_format_type=types.OutputFormatType.TEXT)) == BE
 
   def test_not_supported(self):
     adapter = _adapter(prompt=NS, text=S)
     assert adapter.get_query_record_support_level(
         _query(prompt="hi",
-               response_format_type=types.ResponseFormatType.TEXT)) == NS
+               output_format_type=types.OutputFormatType.TEXT)) == NS
 
   def test_none_config_treated_as_not_supported(self):
     adapter = _adapter(prompt=None, text=S)
     assert adapter.get_query_record_support_level(
         _query(prompt="hi",
-               response_format_type=types.ResponseFormatType.TEXT)) == NS
+               output_format_type=types.OutputFormatType.TEXT)) == NS
 
 
 class TestGetQueryRecordSupportLevelMessages:
@@ -138,25 +138,25 @@ class TestGetQueryRecordSupportLevelMessages:
     adapter = _adapter(messages=S, text=S)
     assert adapter.get_query_record_support_level(
         _query(chat=_chat(),
-               response_format_type=types.ResponseFormatType.TEXT)) == S
+               output_format_type=types.OutputFormatType.TEXT)) == S
 
   def test_best_effort(self):
     adapter = _adapter(messages=BE, text=S)
     assert adapter.get_query_record_support_level(
         _query(chat=_chat(),
-               response_format_type=types.ResponseFormatType.TEXT)) == BE
+               output_format_type=types.OutputFormatType.TEXT)) == BE
 
   def test_chat_with_system_prompt_checks_both(self):
     adapter = _adapter(messages=S, system_prompt=BE, text=S)
     assert adapter.get_query_record_support_level(
         _query(chat=_chat("Be helpful"),
-               response_format_type=types.ResponseFormatType.TEXT)) == BE
+               output_format_type=types.OutputFormatType.TEXT)) == BE
 
   def test_chat_without_system_prompt_ignores_system(self):
     adapter = _adapter(messages=S, system_prompt=NS, text=S)
     assert adapter.get_query_record_support_level(
         _query(chat=_chat(),
-               response_format_type=types.ResponseFormatType.TEXT)) == S
+               output_format_type=types.OutputFormatType.TEXT)) == S
 
 
 class TestGetQueryRecordSupportLevelSystemPrompt:
@@ -166,14 +166,14 @@ class TestGetQueryRecordSupportLevelSystemPrompt:
     adapter = _adapter(prompt=S, system_prompt=S, text=S)
     result = adapter.get_query_record_support_level(
         _query(prompt="hi", system_prompt="Be nice",
-               response_format_type=types.ResponseFormatType.TEXT))
+               output_format_type=types.OutputFormatType.TEXT))
     assert result == S
 
   def test_best_effort_is_minimum(self):
     adapter = _adapter(prompt=S, system_prompt=BE, text=S)
     result = adapter.get_query_record_support_level(
         _query(prompt="hi", system_prompt="Be nice",
-               response_format_type=types.ResponseFormatType.TEXT))
+               output_format_type=types.OutputFormatType.TEXT))
     assert result == BE
 
 
@@ -184,21 +184,21 @@ class TestGetQueryRecordSupportLevelParameters:
     adapter = _adapter(prompt=S, temperature=S, max_tokens=S, text=S)
     result = adapter.get_query_record_support_level(
         _query(prompt="hi", temperature=0.5, max_tokens=100,
-               response_format_type=types.ResponseFormatType.TEXT))
+               output_format_type=types.OutputFormatType.TEXT))
     assert result == S
 
   def test_one_best_effort_is_minimum(self):
     adapter = _adapter(prompt=S, temperature=S, max_tokens=BE, text=S)
     result = adapter.get_query_record_support_level(
         _query(prompt="hi", temperature=0.5, max_tokens=100,
-               response_format_type=types.ResponseFormatType.TEXT))
+               output_format_type=types.OutputFormatType.TEXT))
     assert result == BE
 
   def test_unset_params_ignored(self):
     adapter = _adapter(prompt=S, temperature=NS, max_tokens=S, text=S)
     result = adapter.get_query_record_support_level(
         _query(prompt="hi", max_tokens=100,
-               response_format_type=types.ResponseFormatType.TEXT))
+               output_format_type=types.OutputFormatType.TEXT))
     assert result == S
 
   def test_all_param_types(self):
@@ -208,7 +208,7 @@ class TestGetQueryRecordSupportLevelParameters:
     result = adapter.get_query_record_support_level(_query(
         prompt="hi", temperature=0.5, max_tokens=100,
         stop="end", n=2, thinking=types.ThinkingType.LOW,
-        response_format_type=types.ResponseFormatType.TEXT))
+        output_format_type=types.OutputFormatType.TEXT))
     assert result == S
 
 
@@ -219,35 +219,35 @@ class TestGetQueryRecordSupportLevelTools:
     adapter = _adapter(prompt=S, web_search=S, text=S)
     result = adapter.get_query_record_support_level(
         _query(prompt="hi", tools=[types.Tools.WEB_SEARCH],
-               response_format_type=types.ResponseFormatType.TEXT))
+               output_format_type=types.OutputFormatType.TEXT))
     assert result == S
 
   def test_web_search_not_supported(self):
     adapter = _adapter(prompt=S, web_search=NS, text=S)
     result = adapter.get_query_record_support_level(
         _query(prompt="hi", tools=[types.Tools.WEB_SEARCH],
-               response_format_type=types.ResponseFormatType.TEXT))
+               output_format_type=types.OutputFormatType.TEXT))
     assert result == NS
 
 
-class TestGetQueryRecordSupportLevelResponseFormat:
-  """Support level for response format features."""
+class TestGetQueryRecordSupportLevelOutputFormat:
+  """Support level for output format features."""
 
   def test_text_supported(self):
     adapter = _adapter(prompt=S, text=S)
     result = adapter.get_query_record_support_level(
-        _query(prompt="hi", response_format_type=types.ResponseFormatType.TEXT))
+        _query(prompt="hi", output_format_type=types.OutputFormatType.TEXT))
     assert result == S
 
   def test_json_best_effort(self):
     adapter = _adapter(prompt=S, json_fmt=BE)
     result = adapter.get_query_record_support_level(
-        _query(prompt="hi", response_format_type=types.ResponseFormatType.JSON))
+        _query(prompt="hi", output_format_type=types.OutputFormatType.JSON))
     assert result == BE
 
-  def test_no_response_format_raises(self):
+  def test_no_output_format_raises(self):
     adapter = _adapter(prompt=S)
-    with pytest.raises(ValueError, match="response_format.type.*must be set"):
+    with pytest.raises(ValueError, match="output_format.type.*must be set"):
       adapter.get_query_record_support_level(_query(prompt="hi"))
 
 
@@ -258,14 +258,14 @@ class TestGetQueryRecordSupportLevelMinimumAcrossFeatures:
     adapter = _adapter(prompt=S, temperature=S, max_tokens=NS, text=S)
     result = adapter.get_query_record_support_level(
         _query(prompt="hi", temperature=0.5, max_tokens=100,
-               response_format_type=types.ResponseFormatType.TEXT))
+               output_format_type=types.OutputFormatType.TEXT))
     assert result == NS
 
   def test_best_effort_below_supported(self):
     adapter = _adapter(prompt=S, temperature=BE, text=S)
     result = adapter.get_query_record_support_level(
         _query(prompt="hi", temperature=0.5,
-               response_format_type=types.ResponseFormatType.TEXT))
+               output_format_type=types.OutputFormatType.TEXT))
     assert result == BE
 
 
@@ -360,7 +360,7 @@ class TestAdaptPromptAddSystemToMessages:
     result = adapter.adapt_query_record(
         _query(
             prompt="hi", system_prompt="Be nice",
-            response_format_type=types.ResponseFormatType.JSON))
+            output_format_type=types.OutputFormatType.JSON))
     assert result.chat["messages"][0] == {
         "role": "system", "content": "Be nice"}
     assert "valid JSON" in result.chat["messages"][1]["content"]
@@ -373,7 +373,7 @@ class TestAdaptPromptAddSystemToMessages:
     result = adapter.adapt_query_record(
         _query(
             prompt="hi", system_prompt="Be nice",
-            response_format_type=types.ResponseFormatType.PYDANTIC,
+            output_format_type=types.OutputFormatType.PYDANTIC,
             pydantic_class=_TestModel))
     user_content = result.chat["messages"][1]["content"]
     assert user_content.startswith("hi")
@@ -544,99 +544,99 @@ class TestAdaptTools:
 
 
 # ===================================================================
-# adapt_query_record — response format: text/image/audio/video
+# adapt_query_record — output format: text/image/audio/video
 # ===================================================================
 
-class TestAdaptResponseFormatSimple:
-  """Response format handling for text, image, audio, video."""
+class TestAdaptOutputFormatSimple:
+  """Output format handling for text, image, audio, video."""
 
   def test_text_supported(self):
     adapter = _adapter(prompt=S, text=S)
     result = adapter.adapt_query_record(
-        _query(prompt="hi", response_format_type=types.ResponseFormatType.TEXT))
-    assert result.response_format.type == types.ResponseFormatType.TEXT
+        _query(prompt="hi", output_format_type=types.OutputFormatType.TEXT))
+    assert result.output_format.type == types.OutputFormatType.TEXT
 
   def test_text_not_supported_raises(self):
     adapter = _adapter(prompt=S, text=NS)
-    with pytest.raises(ValueError, match="response_format.*not supported"):
+    with pytest.raises(ValueError, match="output_format.*not supported"):
       adapter.adapt_query_record(
           _query(prompt="hi",
-                 response_format_type=types.ResponseFormatType.TEXT))
+                 output_format_type=types.OutputFormatType.TEXT))
 
   def test_text_best_effort_raises_developer_error(self):
     adapter = _adapter(prompt=S, text=BE)
     with pytest.raises(Exception, match="cannot be best effort"):
       adapter.adapt_query_record(
           _query(prompt="hi",
-                 response_format_type=types.ResponseFormatType.TEXT))
+                 output_format_type=types.OutputFormatType.TEXT))
 
   def test_image_best_effort_raises_developer_error(self):
     adapter = _adapter(prompt=S, image=BE)
     with pytest.raises(Exception, match="cannot be best effort"):
       adapter.adapt_query_record(
           _query(prompt="hi",
-                 response_format_type=types.ResponseFormatType.IMAGE))
+                 output_format_type=types.OutputFormatType.IMAGE))
 
   def test_audio_best_effort_raises_developer_error(self):
     adapter = _adapter(prompt=S, audio=BE)
     with pytest.raises(Exception, match="cannot be best effort"):
       adapter.adapt_query_record(
           _query(prompt="hi",
-                 response_format_type=types.ResponseFormatType.AUDIO))
+                 output_format_type=types.OutputFormatType.AUDIO))
 
   def test_video_best_effort_raises_developer_error(self):
     adapter = _adapter(prompt=S, video=BE)
     with pytest.raises(Exception, match="cannot be best effort"):
       adapter.adapt_query_record(
           _query(prompt="hi",
-                 response_format_type=types.ResponseFormatType.VIDEO))
+                 output_format_type=types.OutputFormatType.VIDEO))
 
   def test_multi_modal_best_effort_raises_developer_error(self):
     adapter = _adapter(prompt=S, multi_modal=BE)
     with pytest.raises(Exception, match="cannot be best effort"):
       adapter.adapt_query_record(
           _query(prompt="hi",
-                 response_format_type=types.ResponseFormatType.MULTI_MODAL))
+                 output_format_type=types.OutputFormatType.MULTI_MODAL))
 
-  def test_no_response_format_does_nothing(self):
+  def test_no_output_format_does_nothing(self):
     adapter = _adapter(prompt=S)
     result = adapter.adapt_query_record(_query(prompt="hi"))
-    assert result.response_format is None
+    assert result.output_format is None
 
 
 # ===================================================================
-# adapt_query_record — response format: JSON
+# adapt_query_record — output format: JSON
 # ===================================================================
 
-class TestAdaptResponseFormatJSON:
-  """JSON response format adds guidance to prompt or chat."""
+class TestAdaptOutputFormatJSON:
+  """JSON output format adds guidance to prompt or chat."""
 
   def test_json_supported_adds_guidance_to_prompt(self):
     adapter = _adapter(prompt=S, json_fmt=S)
     result = adapter.adapt_query_record(
         _query(prompt="hi",
-               response_format_type=types.ResponseFormatType.JSON))
+               output_format_type=types.OutputFormatType.JSON))
     assert "You must respond with valid JSON." in result.prompt
 
   def test_json_best_effort_adds_guidance_to_prompt(self):
     adapter = _adapter(prompt=S, json_fmt=BE)
     result = adapter.adapt_query_record(
         _query(prompt="hi",
-               response_format_type=types.ResponseFormatType.JSON))
+               output_format_type=types.OutputFormatType.JSON))
     assert "You must respond with valid JSON." in result.prompt
 
   def test_json_not_supported_raises(self):
     adapter = _adapter(prompt=S, json_fmt=NS)
-    with pytest.raises(ValueError, match="response_format.*not supported"):
+    with pytest.raises(ValueError, match="output_format.*not supported"):
       adapter.adapt_query_record(
           _query(prompt="hi",
-                 response_format_type=types.ResponseFormatType.JSON))
+                 output_format_type=types.OutputFormatType.JSON))
 
   def test_json_supported_adds_guidance_to_chat_export(self):
     adapter = _adapter(messages=S, json_fmt=S)
     result = adapter.adapt_query_record(
         _query(chat=_chat(),
-               response_format_type=types.ResponseFormatType.JSON))
+               output_format_type=types.OutputFormatType.JSON))
     system = result.chat.get("system_prompt", "")
     messages_text = str(result.chat["messages"])
     assert "valid JSON" in system or "valid JSON" in messages_text
@@ -646,24 +646,24 @@ class TestAdaptResponseFormatJSON:
     adapter = _adapter(prompt=S, system_prompt=BE, json_fmt=S)
     result = adapter.adapt_query_record(
         _query(prompt="hi", system_prompt="Be nice",
-               response_format_type=types.ResponseFormatType.JSON))
+               output_format_type=types.OutputFormatType.JSON))
     assert result.system_prompt is None
     assert result.prompt.startswith("Be nice\n\nhi")
     assert result.prompt.endswith("You must respond with valid JSON.")
 
 
 # ===================================================================
-# adapt_query_record — response format: Pydantic
+# adapt_query_record — output format: Pydantic
 # ===================================================================
 
-class TestAdaptResponseFormatPydantic:
-  """Pydantic response format handling."""
+class TestAdaptOutputFormatPydantic:
+  """Pydantic output format handling."""
 
   def test_pydantic_supported_does_nothing(self):
     adapter = _adapter(prompt=S, pydantic_fmt=S)
     result = adapter.adapt_query_record(
         _query(prompt="hi",
-               response_format_type=types.ResponseFormatType.PYDANTIC,
+               output_format_type=types.OutputFormatType.PYDANTIC,
                pydantic_class=_TestModel))
     assert result.prompt == "hi"
 
@@ -671,7 +671,7 @@ class TestAdaptResponseFormatPydantic:
     adapter = _adapter(prompt=S, pydantic_fmt=BE)
     result = adapter.adapt_query_record(
         _query(prompt="hi",
-               response_format_type=types.ResponseFormatType.PYDANTIC,
+               output_format_type=types.OutputFormatType.PYDANTIC,
                pydantic_class=_TestModel))
     assert "You must respond with valid JSON that follows this schema:" \
         in result.prompt
@@ -682,17 +682,17 @@ class TestAdaptResponseFormatPydantic:
     adapter = _adapter(messages=S, pydantic_fmt=BE)
     result = adapter.adapt_query_record(
         _query(chat=_chat(),
-               response_format_type=types.ResponseFormatType.PYDANTIC,
+               output_format_type=types.OutputFormatType.PYDANTIC,
                pydantic_class=_TestModel))
     exported = str(result.chat)
     assert "schema" in exported.lower() or "name" in exported
 
   def test_pydantic_not_supported_raises(self):
     adapter = _adapter(prompt=S, pydantic_fmt=NS)
-    with pytest.raises(ValueError, match="response_format.*not supported"):
+    with pytest.raises(ValueError, match="output_format.*not supported"):
       adapter.adapt_query_record(
           _query(prompt="hi",
-                 response_format_type=types.ResponseFormatType.PYDANTIC,
+                 output_format_type=types.OutputFormatType.PYDANTIC,
                  pydantic_class=_TestModel))
 
   def test_pydantic_with_system_prompt_best_effort_ordering(self):
@@ -700,7 +700,7 @@ class TestAdaptResponseFormatPydantic:
     adapter = _adapter(prompt=S, system_prompt=BE, pydantic_fmt=BE)
     result = adapter.adapt_query_record(
         _query(prompt="hi", system_prompt="Be nice",
-               response_format_type=types.ResponseFormatType.PYDANTIC,
+               output_format_type=types.OutputFormatType.PYDANTIC,
                pydantic_class=_TestModel))
     assert result.system_prompt is None
     assert result.prompt.startswith("Be nice\n\nhi")
@@ -722,7 +722,7 @@ class TestAdaptCombined:
         prompt="hi", system_prompt="Be nice",
         temperature=0.7, max_tokens=100,
         tools=[types.Tools.WEB_SEARCH],
-        response_format_type=types.ResponseFormatType.TEXT))
+        output_format_type=types.OutputFormatType.TEXT))
     assert result.prompt == "hi"
     assert result.system_prompt == "Be nice"
     assert result.parameters.temperature == 0.7
@@ -732,7 +732,7 @@ class TestAdaptCombined:
     adapter = _adapter(messages=BE, json_fmt=BE)
     result = adapter.adapt_query_record(
         _query(chat=_chat(),
-               response_format_type=types.ResponseFormatType.JSON))
+               output_format_type=types.OutputFormatType.JSON))
     assert result.chat is None
     assert isinstance(result.prompt, str)
     assert "Hello" in result.prompt
@@ -796,12 +796,12 @@ class TestFeatureAdapterWithModelConfig:
     ep_config = types.FeatureConfigType(
         prompt=S,
         parameters=types.ParameterConfigType(temperature=S),
-        response_format=types.ResponseFormatConfigType(text=S),
+        output_format=types.OutputFormatConfigType(text=S),
     )
     model_config = types.FeatureConfigType(
         prompt=S,
         parameters=types.ParameterConfigType(temperature=NS),
-        response_format=types.ResponseFormatConfigType(text=S),
+        output_format=types.OutputFormatConfigType(text=S),
     )
     adapter = FeatureAdapter(
         endpoint="test",
@@ -810,7 +810,7 @@ class TestFeatureAdapterWithModelConfig:
     )
     result = adapter.get_query_record_support_level(
         _query(prompt="hi", temperature=0.5,
-               response_format_type=types.ResponseFormatType.TEXT))
+               output_format_type=types.OutputFormatType.TEXT))
     assert result == NS
 
   def test_originals_stored(self):

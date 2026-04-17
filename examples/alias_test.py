@@ -14,7 +14,7 @@ def _get_model_config(
     provider_model_identifier: str,
     web_search: bool = False,
     input_format: list[str] | None = None,
-    response_format: list[types.ResponseFormatType] = [types.ResponseFormatType.TEXT],
+    output_format: list[types.OutputFormatType] = [types.OutputFormatType.TEXT],
 ):
   """Get a model config for a given parameters."""
   S = types.FeatureSupportType.SUPPORTED
@@ -24,19 +24,19 @@ def _get_model_config(
 
   web_search_supported = S if web_search else NS
   text_supported = (
-      S if types.ResponseFormatType.TEXT in response_format else NS)
+      S if types.OutputFormatType.TEXT in output_format else NS)
   json_supported = (
-      S if types.ResponseFormatType.JSON in response_format else NS)
+      S if types.OutputFormatType.JSON in output_format else NS)
   pydantic_supported = (
-      S if types.ResponseFormatType.PYDANTIC in response_format else NS)
+      S if types.OutputFormatType.PYDANTIC in output_format else NS)
   image_supported = (
-      S if types.ResponseFormatType.IMAGE in response_format else NS)
+      S if types.OutputFormatType.IMAGE in output_format else NS)
   audio_supported = (
-      S if types.ResponseFormatType.AUDIO in response_format else NS)
+      S if types.OutputFormatType.AUDIO in output_format else NS)
   video_supported = (
-      S if types.ResponseFormatType.VIDEO in response_format else NS)
+      S if types.OutputFormatType.VIDEO in output_format else NS)
   multi_modal_supported = (
-      S if types.ResponseFormatType.MULTI_MODAL in response_format
+      S if types.OutputFormatType.MULTI_MODAL in output_format
       else NS)
   return types.ProviderModelConfig(
       provider_model=types.ProviderModelType(
@@ -72,7 +72,7 @@ def _get_model_config(
               audio=S if 'audio' in input_format else NS,
               video=S if 'video' in input_format else NS,
           ),
-          response_format=types.ResponseFormatConfigType(
+          output_format=types.OutputFormatConfigType(
               text=text_supported,
               json=json_supported,
               pydantic=pydantic_supported,
@@ -94,10 +94,10 @@ def register_models(client: px.Client):
           model='mock_failing_model',
           provider_model_identifier='mock_failing_model',
           web_search=False,
-          response_format=[
-              types.ResponseFormatType.TEXT,
-              types.ResponseFormatType.JSON,
-              types.ResponseFormatType.PYDANTIC],
+          output_format=[
+              types.OutputFormatType.TEXT,
+              types.OutputFormatType.JSON,
+              types.OutputFormatType.PYDANTIC],
       )
   )
 
@@ -108,10 +108,10 @@ def register_models(client: px.Client):
           provider_model_identifier='gpt-4o',
           web_search=True,
           input_format=['text', 'image', 'document'],
-          response_format=[
-              types.ResponseFormatType.TEXT,
-              types.ResponseFormatType.JSON,
-              types.ResponseFormatType.PYDANTIC],
+          output_format=[
+              types.OutputFormatType.TEXT,
+              types.OutputFormatType.JSON,
+              types.OutputFormatType.PYDANTIC],
       )
   )
   client.model_configs_instance.register_provider_model_config(
@@ -121,10 +121,10 @@ def register_models(client: px.Client):
           provider_model_identifier='o3',
           web_search=False,
           input_format=['text', 'image', 'document'],
-          response_format=[
-              types.ResponseFormatType.TEXT,
-              types.ResponseFormatType.JSON,
-              types.ResponseFormatType.PYDANTIC],
+          output_format=[
+              types.OutputFormatType.TEXT,
+              types.OutputFormatType.JSON,
+              types.OutputFormatType.PYDANTIC],
       )
   )
 
@@ -134,7 +134,7 @@ def register_models(client: px.Client):
           model='dall-e-3',
           provider_model_identifier='dall-e-3',
           web_search=False,
-          response_format=[types.ResponseFormatType.IMAGE],
+          output_format=[types.OutputFormatType.IMAGE],
       )
   )
 
@@ -144,7 +144,7 @@ def register_models(client: px.Client):
           model='tts-1',
           provider_model_identifier='tts-1',
           web_search=False,
-          response_format=[types.ResponseFormatType.AUDIO],
+          output_format=[types.OutputFormatType.AUDIO],
       )
   )
 
@@ -154,7 +154,7 @@ def register_models(client: px.Client):
           model='sora-2',
           provider_model_identifier='sora-2',
           web_search=False,
-          response_format=[types.ResponseFormatType.VIDEO],
+          output_format=[types.OutputFormatType.VIDEO],
       )
   )
 
@@ -165,10 +165,10 @@ def register_models(client: px.Client):
           provider_model_identifier='gemini-3-flash-preview',
           web_search=True,
           input_format=['text', 'image', 'document', 'audio', 'video'],
-          response_format=[
-              types.ResponseFormatType.TEXT,
-              types.ResponseFormatType.JSON,
-              types.ResponseFormatType.PYDANTIC],
+          output_format=[
+              types.OutputFormatType.TEXT,
+              types.OutputFormatType.JSON,
+              types.OutputFormatType.PYDANTIC],
       )
   )
 
@@ -179,10 +179,10 @@ def register_models(client: px.Client):
           provider_model_identifier='gemini-2.5-flash',
           web_search=False,
           input_format=['text', 'image', 'document', 'audio', 'video'],
-          response_format=[
-              types.ResponseFormatType.TEXT,
-              types.ResponseFormatType.JSON,
-              types.ResponseFormatType.PYDANTIC],
+          output_format=[
+              types.OutputFormatType.TEXT,
+              types.OutputFormatType.JSON,
+              types.OutputFormatType.PYDANTIC],
       )
   )
 
@@ -192,7 +192,7 @@ def register_models(client: px.Client):
           model='gemini-2.5-flash-image',
           provider_model_identifier='gemini-2.5-flash-image',
           web_search=False,
-          response_format=[types.ResponseFormatType.IMAGE],
+          output_format=[types.OutputFormatType.IMAGE],
       )
   )
 
@@ -202,7 +202,7 @@ def register_models(client: px.Client):
           model='gemini-2.5-flash-preview-tts',
           provider_model_identifier='gemini-2.5-flash-preview-tts',
           web_search=False,
-          response_format=[types.ResponseFormatType.AUDIO],
+          output_format=[types.OutputFormatType.AUDIO],
       )
   )
 
@@ -212,7 +212,7 @@ def register_models(client: px.Client):
           model='veo-3.1-generate-preview',
           provider_model_identifier='veo-3.1-generate-preview',
           web_search=False,
-          response_format=[types.ResponseFormatType.VIDEO],
+          output_format=[types.OutputFormatType.VIDEO],
       )
   )
 
@@ -223,10 +223,10 @@ def register_models(client: px.Client):
           provider_model_identifier='claude-sonnet-4-6',
           web_search=True,
           input_format=['text', 'image', 'document'],
-          response_format=[
-              types.ResponseFormatType.TEXT,
-              types.ResponseFormatType.JSON,
-              types.ResponseFormatType.PYDANTIC],
+          output_format=[
+              types.OutputFormatType.TEXT,
+              types.OutputFormatType.JSON,
+              types.OutputFormatType.PYDANTIC],
       )
   )
 
@@ -237,10 +237,10 @@ def register_models(client: px.Client):
           provider_model_identifier='claude-opus-4-6',
           web_search=False,
           input_format=['text', 'image', 'document'],
-          response_format=[
-              types.ResponseFormatType.TEXT,
-              types.ResponseFormatType.JSON,
-              types.ResponseFormatType.PYDANTIC],
+          output_format=[
+              types.OutputFormatType.TEXT,
+              types.OutputFormatType.JSON,
+              types.OutputFormatType.PYDANTIC],
       )
   )
 
@@ -250,10 +250,10 @@ def register_models(client: px.Client):
           model='deepseek-chat',
           provider_model_identifier='deepseek-chat',
           web_search=False,
-          response_format=[
-              types.ResponseFormatType.TEXT,
-              types.ResponseFormatType.JSON,
-              types.ResponseFormatType.PYDANTIC],
+          output_format=[
+              types.OutputFormatType.TEXT,
+              types.OutputFormatType.JSON,
+              types.OutputFormatType.PYDANTIC],
       )
   )
 
@@ -263,10 +263,10 @@ def register_models(client: px.Client):
           model='deepseek-reasoner',
           provider_model_identifier='deepseek-reasoner',
           web_search=False,
-          response_format=[
-              types.ResponseFormatType.TEXT,
-              types.ResponseFormatType.JSON,
-              types.ResponseFormatType.PYDANTIC],
+          output_format=[
+              types.OutputFormatType.TEXT,
+              types.OutputFormatType.JSON,
+              types.OutputFormatType.PYDANTIC],
       )
   )
 
@@ -458,14 +458,14 @@ def plain_alias_function_use():
   print('OpenAI:')
   response = px.generate_pydantic(
       prompt='Give me the list of biggest cities in France.',
-      response_format=BiggestCities,
+      output_format=BiggestCities,
       provider_model=('openai', 'gpt-4o'))
   print(response)
 
   print('Gemini:')
   response = px.generate_pydantic(
       prompt='Give me the list of biggest cities in France.',
-      response_format=BiggestCities,
+      output_format=BiggestCities,
       provider_model=('gemini', 'gemini-3-flash-preview'))
   print(response)
 

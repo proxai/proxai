@@ -101,7 +101,7 @@ class CohereConnector(provider_connector.ProviderConnector):
   def json_schema_feature_mapping(
       self, query_function: Callable, query_record: types.QueryRecord
   ):
-    schema_value = query_record.response_format.value
+    schema_value = query_record.output_format.value
     json_schema_obj = schema_value['json_schema']
     raw_schema = json_schema_obj.get('schema', json_schema_obj)
     return functools.partial(
@@ -116,7 +116,7 @@ class CohereConnector(provider_connector.ProviderConnector):
   ):
     # Note: Cohere doesn't have native pydantic support like OpenAI's parse.
     # We use json_object with schema and parse manually.
-    pydantic_class = query_record.response_format.value.class_value
+    pydantic_class = query_record.output_format.value.class_value
     schema = pydantic_class.model_json_schema()
     return functools.partial(
         query_function, response_format={
@@ -181,7 +181,7 @@ class CohereConnector(provider_connector.ProviderConnector):
       self, response: Any, query_record: types.QueryRecord
   ) -> Any:
     text = self._extract_text_from_content(response.message.content)
-    pydantic_class = query_record.response_format.value.class_value
+    pydantic_class = query_record.output_format.value.class_value
     return pydantic_class.model_validate_json(text)
 
   def generate_text_proc(

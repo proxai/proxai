@@ -13,7 +13,7 @@ FeatureSupportType = types.FeatureSupportType
 InputFormatConfigType = types.InputFormatConfigType
 ParameterConfigType = types.ParameterConfigType
 ToolConfigType = types.ToolConfigType
-ResponseFormatConfigType = types.ResponseFormatConfigType
+OutputFormatConfigType = types.OutputFormatConfigType
 
 
 class MistralConnector(provider_connector.ProviderConnector):
@@ -54,7 +54,7 @@ class MistralConnector(provider_connector.ProviderConnector):
           input_format=InputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
           ),
-          response_format=ResponseFormatConfigType(
+          output_format=OutputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
               json=FeatureSupportType.SUPPORTED,
               pydantic=FeatureSupportType.BEST_EFFORT,
@@ -78,7 +78,7 @@ class MistralConnector(provider_connector.ProviderConnector):
           input_format=InputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
           ),
-          response_format=ResponseFormatConfigType(
+          output_format=OutputFormatConfigType(
               pydantic=FeatureSupportType.SUPPORTED,
           ),
       ),
@@ -99,7 +99,7 @@ class MistralConnector(provider_connector.ProviderConnector):
           input_format=InputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
           ),
-          response_format=ResponseFormatConfigType(
+          output_format=OutputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
               json=FeatureSupportType.BEST_EFFORT,
               pydantic=FeatureSupportType.BEST_EFFORT,
@@ -184,7 +184,7 @@ class MistralConnector(provider_connector.ProviderConnector):
 
     create = self._add_common_params(create, query_record)
 
-    if query_record.response_format.type == types.ResponseFormatType.JSON:
+    if query_record.output_format.type == types.OutputFormatType.JSON:
       create = functools.partial(
           create, response_format={'type': 'json_object'})
 
@@ -217,7 +217,7 @@ class MistralConnector(provider_connector.ProviderConnector):
     create = self._add_common_params(create, query_record)
 
     create = functools.partial(
-        create, response_format=query_record.response_format.pydantic_class)
+        create, response_format=query_record.output_format.pydantic_class)
 
     response, result_record = self._safe_provider_query(create)
     if result_record.error is not None:
@@ -227,8 +227,8 @@ class MistralConnector(provider_connector.ProviderConnector):
         message_content.MessageContent(
             type=message_content.ContentType.PYDANTIC_INSTANCE,
             pydantic_content=message_content.PydanticContent(
-                class_name=query_record.response_format.pydantic_class.__name__,
-                class_value=query_record.response_format.pydantic_class,
+                class_name=query_record.output_format.pydantic_class.__name__,
+                class_value=query_record.output_format.pydantic_class,
                 instance_value=response.choices[0].message.parsed,
             ),
         )
@@ -243,8 +243,8 @@ class MistralConnector(provider_connector.ProviderConnector):
                     message_content.MessageContent(
                         type=message_content.ContentType.PYDANTIC_INSTANCE,
                         pydantic_content=message_content.PydanticContent(
-                            class_name=query_record.response_format.pydantic_class.__name__,
-                            class_value=query_record.response_format.pydantic_class,
+                            class_name=query_record.output_format.pydantic_class.__name__,
+                            class_value=query_record.output_format.pydantic_class,
                             instance_value=choice.message.parsed,
                         ),
                     )
@@ -358,10 +358,10 @@ class MistralConnector(provider_connector.ProviderConnector):
     # TEXT blocks through the base-class helper so result_adapter receives a
     # JSON block it can pass through (for JSON) or validate (for PYDANTIC).
     needs_json_extract = (
-        query_record.response_format is not None
-        and query_record.response_format.type in (
-            types.ResponseFormatType.JSON,
-            types.ResponseFormatType.PYDANTIC,
+        query_record.output_format is not None
+        and query_record.output_format.type in (
+            types.OutputFormatType.JSON,
+            types.OutputFormatType.PYDANTIC,
         )
     )
     if needs_json_extract:

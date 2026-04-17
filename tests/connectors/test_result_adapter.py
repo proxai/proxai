@@ -39,16 +39,16 @@ class TestResultAdapterInitConfig:
 
   def test_both_configs_merges(self):
     ep_config = types.FeatureConfigType(
-        response_format=types.ResponseFormatConfigType(text=S, json=S))
+        output_format=types.OutputFormatConfigType(text=S, json=S))
     model_config = types.FeatureConfigType(
-        response_format=types.ResponseFormatConfigType(text=S, json=BE))
+        output_format=types.OutputFormatConfigType(text=S, json=BE))
     adapter = ResultAdapter(
         endpoint="test",
         endpoint_feature_config=ep_config,
         model_feature_config=model_config,
     )
-    assert adapter.feature_config.response_format.json == BE
-    assert adapter.feature_config.response_format.text == S
+    assert adapter.feature_config.output_format.json == BE
+    assert adapter.feature_config.output_format.text == S
 
   def test_originals_stored(self):
     ep_config = types.FeatureConfigType(prompt=S)
@@ -88,7 +88,7 @@ def _adapter(
               thinking=thinking,
           ),
           tools=types.ToolConfigType(web_search=web_search),
-          response_format=types.ResponseFormatConfigType(
+          output_format=types.OutputFormatConfigType(
               text=text, image=image, audio=audio, video=video,
               json=json_fmt, pydantic=pydantic_fmt, multi_modal=multi_modal,
           ),

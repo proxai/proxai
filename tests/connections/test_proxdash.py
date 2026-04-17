@@ -53,7 +53,7 @@ def _create_test_logging_record(
     messages: list[dict[str, str]] | None | object = _UNSET,
     response: str | dict | pydantic.BaseModel = "test response",
     output_format_type: types.OutputFormatType = types.OutputFormatType.TEXT,
-    response_format: types.ResponseFormat | None = None,
+    output_format: types.OutputFormat | None = None,
     error: str | None = None, error_traceback: str | None = None,
     stop: str | list[str] | None = None, hash_value: str = "test_hash"
 ) -> types.LoggingRecord:
@@ -74,7 +74,7 @@ def _create_test_logging_record(
           ('mock_provider', 'mock_model')
       ), output_format_type=types.OutputFormatType.TEXT, max_tokens=100,
       temperature=0.7, stop=stop, hash_value=hash_value,
-      response_format=response_format
+      output_format=output_format
   )
 
   response_record = types.QueryResponseRecord(
@@ -1620,14 +1620,14 @@ class TestProxDashConnectionGetFormattedQueryPydanticValues:
   def test_get_pydantic_values_with_pydantic_format(self):
     """Tests extraction of pydantic class name and schema."""
     connection, _, _ = _create_connection()
-    response_format = types.ResponseFormat(
-        type=types.ResponseFormatType.PYDANTIC,
-        value=types.ResponseFormatPydanticValue(
+    output_format = types.OutputFormat(
+        type=types.OutputFormatType.PYDANTIC,
+        value=types.OutputFormatPydanticValue(
             class_name="SamplePydanticModel", class_value=SamplePydanticModel
         )
     )
     logging_record = _create_test_logging_record(
-        response_format=response_format
+        output_format=output_format
     )
     class_name, json_schema = connection._get_formatted_query_pydantic_values(
         logging_record
@@ -1642,11 +1642,11 @@ class TestProxDashConnectionGetFormattedQueryPydanticValues:
   def test_get_pydantic_values_with_non_pydantic_format(self):
     """Tests that None is returned for non-pydantic response format."""
     connection, _, _ = _create_connection()
-    response_format = types.ResponseFormat(
-        type=types.ResponseFormatType.JSON, value=None
+    output_format = types.OutputFormat(
+        type=types.OutputFormatType.JSON, value=None
     )
     logging_record = _create_test_logging_record(
-        response_format=response_format
+        output_format=output_format
     )
     class_name, json_schema = connection._get_formatted_query_pydantic_values(
         logging_record
@@ -1655,10 +1655,10 @@ class TestProxDashConnectionGetFormattedQueryPydanticValues:
     assert class_name is None
     assert json_schema is None
 
-  def test_get_pydantic_values_with_no_response_format(self):
-    """Tests that None is returned when response_format is None."""
+  def test_get_pydantic_values_with_no_output_format(self):
+    """Tests that None is returned when output_format is None."""
     connection, _, _ = _create_connection()
-    logging_record = _create_test_logging_record(response_format=None)
+    logging_record = _create_test_logging_record(output_format=None)
     class_name, json_schema = connection._get_formatted_query_pydantic_values(
         logging_record
     )
@@ -1669,14 +1669,14 @@ class TestProxDashConnectionGetFormattedQueryPydanticValues:
   def test_get_pydantic_values_with_no_class_name(self):
     """Tests that None is returned when class_name is None."""
     connection, _, _ = _create_connection()
-    response_format = types.ResponseFormat(
-        type=types.ResponseFormatType.PYDANTIC,
-        value=types.ResponseFormatPydanticValue(
+    output_format = types.OutputFormat(
+        type=types.OutputFormatType.PYDANTIC,
+        value=types.OutputFormatPydanticValue(
             class_name=None, class_value=SamplePydanticModel
         )
     )
     logging_record = _create_test_logging_record(
-        response_format=response_format
+        output_format=output_format
     )
     class_name, json_schema = connection._get_formatted_query_pydantic_values(
         logging_record
@@ -1706,7 +1706,7 @@ class TestProxDashConnectionUploadLoggingRecordResponseTypes:
   def test_upload_with_pydantic_response_type(self, requests_mock):
     """Tests upload with PYDANTIC response type.
 
-    When response_type is PYDANTIC but no response_format is set,
+    When response_type is PYDANTIC but no output_format is set,
     both response and responsePydanticJsonValue are None because
     _format_response returns None for PYDANTIC type.
     """
@@ -1728,23 +1728,23 @@ class TestProxDashConnectionUploadLoggingRecordResponseTypes:
     )
 
   def test_upload_with_pydantic_query_format_and_response(self, requests_mock):
-    """Tests upload with pydantic response_format and pydantic response.
+    """Tests upload with pydantic output_format and pydantic response.
 
-    When response_format.type is PYDANTIC, the response field is None
+    When output_format.type is PYDANTIC, the response field is None
     (because _format_response returns None for PYDANTIC type), but
     responsePydanticJsonValue contains the JSON representation.
     """
     connection, temp_dir, _ = _create_connection()
     pydantic_response = SamplePydanticModel(name="result", value=100)
-    response_format = types.ResponseFormat(
-        type=types.ResponseFormatType.PYDANTIC,
-        value=types.ResponseFormatPydanticValue(
+    output_format = types.OutputFormat(
+        type=types.OutputFormatType.PYDANTIC,
+        value=types.OutputFormatPydanticValue(
             class_name="SamplePydanticModel", class_value=SamplePydanticModel
         )
     )
     logging_record = _create_test_logging_record(
         response=pydantic_response, output_format_type=types.OutputFormatType.PYDANTIC,
-        response_format=response_format
+        output_format=output_format
     )
     requests_mock.post(
         'https://proxainest-production.up.railway.app/ingestion/logging-records',
@@ -1767,15 +1767,15 @@ class TestProxDashConnectionUploadLoggingRecordResponseTypes:
     """Tests upload with pydantic format when sensitive content is hidden."""
     connection, temp_dir, _ = _create_connection(hide_sensitive_content=True)
     pydantic_response = SamplePydanticModel(name="secret", value=999)
-    response_format = types.ResponseFormat(
-        type=types.ResponseFormatType.PYDANTIC,
-        value=types.ResponseFormatPydanticValue(
+    output_format = types.OutputFormat(
+        type=types.OutputFormatType.PYDANTIC,
+        value=types.OutputFormatPydanticValue(
             class_name="SamplePydanticModel", class_value=SamplePydanticModel
         )
     )
     logging_record = _create_test_logging_record(
         response=pydantic_response, output_format_type=types.OutputFormatType.PYDANTIC,
-        response_format=response_format
+        output_format=output_format
     )
     requests_mock.post(
         'https://proxainest-production.up.railway.app/ingestion/logging-records',
@@ -1793,16 +1793,16 @@ class TestProxDashConnectionUploadLoggingRecordResponseTypes:
         }
     )
 
-  def test_upload_with_json_response_format(self, requests_mock):
-    """Tests upload with JSON response_format (not pydantic)."""
+  def test_upload_with_json_output_format(self, requests_mock):
+    """Tests upload with JSON output_format (not pydantic)."""
     connection, temp_dir, _ = _create_connection()
     json_response = {"data": "value"}
-    response_format = types.ResponseFormat(
-        type=types.ResponseFormatType.JSON, value=None
+    output_format = types.OutputFormat(
+        type=types.OutputFormatType.JSON, value=None
     )
     logging_record = _create_test_logging_record(
         response=json_response, output_format_type=types.OutputFormatType.JSON,
-        response_format=response_format
+        output_format=output_format
     )
     requests_mock.post(
         'https://proxainest-production.up.railway.app/ingestion/logging-records',

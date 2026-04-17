@@ -16,7 +16,7 @@ FeatureSupportType = types.FeatureSupportType
 InputFormatConfigType = types.InputFormatConfigType
 ParameterConfigType = types.ParameterConfigType
 ToolConfigType = types.ToolConfigType
-ResponseFormatConfigType = types.ResponseFormatConfigType
+OutputFormatConfigType = types.OutputFormatConfigType
 
 
 class GeminiConnector(provider_connector.ProviderConnector):
@@ -59,7 +59,7 @@ class GeminiConnector(provider_connector.ProviderConnector):
               audio=FeatureSupportType.SUPPORTED,
               video=FeatureSupportType.SUPPORTED,
           ),
-          response_format=ResponseFormatConfigType(
+          output_format=OutputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
               json=FeatureSupportType.SUPPORTED,
               pydantic=FeatureSupportType.BEST_EFFORT,
@@ -72,7 +72,7 @@ class GeminiConnector(provider_connector.ProviderConnector):
           input_format=InputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
           ),
-          response_format=ResponseFormatConfigType(
+          output_format=OutputFormatConfigType(
               video=FeatureSupportType.SUPPORTED,
           ),
       ),
@@ -143,17 +143,17 @@ class GeminiConnector(provider_connector.ProviderConnector):
         config.tools = [genai_types.Tool(
             google_search=genai_types.GoogleSearch())]
     
-    if query_record.response_format.type == types.ResponseFormatType.JSON:
+    if query_record.output_format.type == types.OutputFormatType.JSON:
       config.response_mime_type = 'application/json'
     
-    if query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
+    if query_record.output_format.type == types.OutputFormatType.PYDANTIC:
       config.response_mime_type = 'application/json'
-      config.response_schema = query_record.response_format.pydantic_class_json_schema
+      config.response_schema = query_record.output_format.pydantic_class_json_schema
 
-    if query_record.response_format.type == types.ResponseFormatType.IMAGE:
+    if query_record.output_format.type == types.OutputFormatType.IMAGE:
       config.response_modalities=['IMAGE']
 
-    if query_record.response_format.type == types.ResponseFormatType.AUDIO:
+    if query_record.output_format.type == types.OutputFormatType.AUDIO:
       config.response_modalities=['AUDIO']
       config.speech_config=genai_types.SpeechConfig(
           voice_config=genai_types.VoiceConfig(
@@ -196,14 +196,14 @@ class GeminiConnector(provider_connector.ProviderConnector):
             )
 
           if part.inline_data is not None:
-            if query_record.response_format.type == types.ResponseFormatType.IMAGE:
+            if query_record.output_format.type == types.OutputFormatType.IMAGE:
               result_record.content.append(
                   message_content.MessageContent(
                       type=message_content.ContentType.IMAGE,
                       data=part.inline_data.data,
                   )
               )
-            elif query_record.response_format.type == types.ResponseFormatType.AUDIO:
+            elif query_record.output_format.type == types.OutputFormatType.AUDIO:
               result_record.content.append(
                   message_content.MessageContent(
                       type=message_content.ContentType.AUDIO,

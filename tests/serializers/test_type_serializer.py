@@ -116,7 +116,7 @@ def _get_tool_config_type_options():
   ]
 
 
-def _get_response_format_config_type_options():
+def _get_output_format_config_type_options():
   return [
       {},
       {
@@ -172,7 +172,7 @@ def _get_feature_config_type_options():
           )
       },
       {
-          'response_format': types.ResponseFormatConfigType(
+          'output_format': types.OutputFormatConfigType(
               text=types.FeatureSupportType.SUPPORTED,
               json=types.FeatureSupportType.SUPPORTED
           )
@@ -192,7 +192,7 @@ def _get_feature_config_type_options():
           'tools': types.ToolConfigType(
               web_search=types.FeatureSupportType.SUPPORTED
           ),
-          'response_format': types.ResponseFormatConfigType(
+          'output_format': types.OutputFormatConfigType(
               text=types.FeatureSupportType.SUPPORTED,
               image=types.FeatureSupportType.NOT_SUPPORTED,
               audio=types.FeatureSupportType.NOT_SUPPORTED,
@@ -563,26 +563,26 @@ class _UserWithAddressModel(pydantic.BaseModel):
   tags: list[str] = []
 
 
-def _get_response_format_options():
+def _get_output_format_options():
   return [
       {
-          'type': types.ResponseFormatType.TEXT
+          'type': types.OutputFormatType.TEXT
       },
       {
-          'type': types.ResponseFormatType.IMAGE
+          'type': types.OutputFormatType.IMAGE
       },
       {
-          'type': types.ResponseFormatType.JSON
+          'type': types.OutputFormatType.JSON
       },
       {
-          'type': types.ResponseFormatType.PYDANTIC
+          'type': types.OutputFormatType.PYDANTIC
       },
       {
-          'type': types.ResponseFormatType.PYDANTIC,
+          'type': types.OutputFormatType.PYDANTIC,
           'pydantic_class': _UserModel
       },
       {
-          'type': types.ResponseFormatType.PYDANTIC,
+          'type': types.OutputFormatType.PYDANTIC,
           'pydantic_class': _UserWithAddressModel
       },
   ]
@@ -905,16 +905,16 @@ def _get_query_record_options():
           'tools': [types.Tools.WEB_SEARCH]
       },
       {
-          'response_format':
-              types.ResponseFormat(type=types.ResponseFormatType.TEXT)
+          'output_format':
+              types.OutputFormat(type=types.OutputFormatType.TEXT)
       },
       {
-          'response_format':
-              types.ResponseFormat(type=types.ResponseFormatType.JSON)
+          'output_format':
+              types.OutputFormat(type=types.OutputFormatType.JSON)
       },
       {
-          'response_format':
-              types.ResponseFormat(type=types.ResponseFormatType.PYDANTIC)
+          'output_format':
+              types.OutputFormat(type=types.OutputFormatType.PYDANTIC)
       },
       {
           'connection_options':
@@ -955,8 +955,8 @@ def _get_query_record_options():
                   temperature=0.7, max_tokens=200, stop=['stop1'], n=2
               ),
           'tools': [types.Tools.WEB_SEARCH],
-          'response_format':
-              types.ResponseFormat(type=types.ResponseFormatType.TEXT),
+          'output_format':
+              types.OutputFormat(type=types.OutputFormatType.TEXT),
           'connection_options':
               types.ConnectionOptions(
                   fallback_models=[_MODEL_1, _MODEL_2],
@@ -1576,26 +1576,26 @@ class TestTypeSerializer:
     assert tool_config_type == decoded_tool_config_type
 
   @pytest.mark.parametrize(
-      'response_format_config_type_options',
-      _get_response_format_config_type_options()
+      'output_format_config_type_options',
+      _get_output_format_config_type_options()
   )
-  def test_encode_decode_response_format_config_type(
-      self, response_format_config_type_options
+  def test_encode_decode_output_format_config_type(
+      self, output_format_config_type_options
   ):
-    response_format_config_type = types.ResponseFormatConfigType(
-        **response_format_config_type_options
+    output_format_config_type = types.OutputFormatConfigType(
+        **output_format_config_type_options
     )
-    encoded_response_format_config_type = (
-        type_serializer.encode_response_format_config_type(
-            response_format_config_type=response_format_config_type
+    encoded_output_format_config_type = (
+        type_serializer.encode_output_format_config_type(
+            output_format_config_type=output_format_config_type
         )
     )
-    decoded_response_format_config_type = (
-        type_serializer.decode_response_format_config_type(
-            record=encoded_response_format_config_type
+    decoded_output_format_config_type = (
+        type_serializer.decode_output_format_config_type(
+            record=encoded_output_format_config_type
         )
     )
-    assert response_format_config_type == decoded_response_format_config_type
+    assert output_format_config_type == decoded_output_format_config_type
 
   @pytest.mark.parametrize(
       'feature_config_type_options', _get_feature_config_type_options()
@@ -1833,29 +1833,29 @@ class TestTypeSerializer:
     assert connection_options == decoded_connection_options
 
   @pytest.mark.parametrize(
-      'response_format_options', _get_response_format_options()
+      'output_format_options', _get_output_format_options()
   )
-  def test_encode_decode_response_format(self, response_format_options):
-    response_format = types.ResponseFormat(**response_format_options)
-    encoded = type_serializer.encode_response_format(
-        response_format=response_format
+  def test_encode_decode_output_format(self, output_format_options):
+    output_format = types.OutputFormat(**output_format_options)
+    encoded = type_serializer.encode_output_format(
+        output_format=output_format
     )
-    decoded = type_serializer.decode_response_format(record=encoded)
-    assert decoded.type == response_format.type
+    decoded = type_serializer.decode_output_format(record=encoded)
+    assert decoded.type == output_format.type
     # pydantic_class cannot be reconstructed from serialized form
     assert decoded.pydantic_class is None
-    if response_format.pydantic_class is not None:
+    if output_format.pydantic_class is not None:
       assert 'pydantic_class_name' in encoded
       assert encoded['pydantic_class_name'] == (
-          response_format.pydantic_class.__name__
+          output_format.pydantic_class.__name__
       )
       assert 'pydantic_class_json_schema' in encoded
       # Verify metadata survives round-trip
       assert decoded.pydantic_class_name == (
-          response_format.pydantic_class.__name__
+          output_format.pydantic_class.__name__
       )
       assert decoded.pydantic_class_json_schema == (
-          response_format.pydantic_class.model_json_schema()
+          output_format.pydantic_class.model_json_schema()
       )
 
   @pytest.mark.parametrize(
@@ -2149,13 +2149,13 @@ class TestTypeSerializer:
         hash_serializer.get_query_record_hash(query_record=query_record)
     )
 
-  def test_encode_decode_response_format_hash_consistency(self):
-    response_format = types.ResponseFormat(
-        type=types.ResponseFormatType.PYDANTIC,
+  def test_encode_decode_output_format_hash_consistency(self):
+    output_format = types.OutputFormat(
+        type=types.OutputFormatType.PYDANTIC,
         pydantic_class=_UserModel
     )
     query_record = types.QueryRecord(
-        prompt='test', response_format=response_format
+        prompt='test', output_format=output_format
     )
     hash_before = hash_serializer.get_query_record_hash(query_record)
 

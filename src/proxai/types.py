@@ -160,8 +160,8 @@ class ToolConfigType:
 
 
 @dataclasses.dataclass
-class ResponseFormatConfigType:
-  """Response format configuration for a provider endpoint."""
+class OutputFormatConfigType:
+  """Output format configuration for a provider endpoint."""
 
   text: FeatureSupportType | None = None
   image: FeatureSupportType | None = None
@@ -193,7 +193,7 @@ class FeatureConfigType:
   add_system_to_messages: bool | None = None
   parameters: ParameterConfigType | None = None
   tools: ToolConfigType | None = None
-  response_format: ResponseFormatConfigType | None = None
+  output_format: OutputFormatConfigType | None = None
   input_format: InputFormatConfigType | None = None
 
 
@@ -448,42 +448,17 @@ class RunOptions:
   keep_raw_provider_response: bool | None = None
 
 
-class ResponseFormatType(str, enum.Enum):
-  """Expected format of the model response.
-
-  Specifies how the AI model's response should be formatted
-  and parsed.
-
-  Attributes:
-    TEXT: Plain text response (default).
-    IMAGE: Image response.
-    AUDIO: Audio response.
-    VIDEO: Video response.
-    JSON: Response parsed as JSON object.
-    PYDANTIC: Response parsed into a Pydantic model instance.
-    MULTI_MODAL: Multi-modal response.
-  """
-
-  TEXT = "TEXT"
-  IMAGE = "IMAGE"
-  AUDIO = "AUDIO"
-  VIDEO = "VIDEO"
-  JSON = "JSON"
-  PYDANTIC = "PYDANTIC"
-  MULTI_MODAL = "MULTI_MODAL"
-
-
 @dataclasses.dataclass
-class ResponseFormat:
-  """Specification for the desired response format."""
+class OutputFormat:
+  """Specification for the desired output format."""
 
-  type: ResponseFormatType | None = None
+  type: OutputFormatType | None = None
   pydantic_class: type[pydantic.BaseModel] | None = None
   pydantic_class_name: str | None = None
   pydantic_class_json_schema: dict | None = None
 
 
-ResponseFormatParam = str | type[pydantic.BaseModel] | ResponseFormat
+OutputFormatParam = str | type[pydantic.BaseModel] | OutputFormat
 
 
 @dataclasses.dataclass
@@ -545,7 +520,7 @@ class QueryRecord:
   provider_model: ProviderModelType | None = None
   parameters: ParameterType | None = None
   tools: list[Tools] | None = None
-  response_format: ResponseFormat | None = None
+  output_format: OutputFormat | None = None
   connection_options: ConnectionOptions | None = None
   hash_value: str | None = None
 

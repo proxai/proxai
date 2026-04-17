@@ -12,7 +12,7 @@ FeatureSupportType = types.FeatureSupportType
 InputFormatConfigType = types.InputFormatConfigType
 ParameterConfigType = types.ParameterConfigType
 ToolConfigType = types.ToolConfigType
-ResponseFormatConfigType = types.ResponseFormatConfigType
+OutputFormatConfigType = types.OutputFormatConfigType
 
 
 class CohereConnector(provider_connector.ProviderConnector):
@@ -66,7 +66,7 @@ class CohereConnector(provider_connector.ProviderConnector):
           input_format=InputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
           ),
-          response_format=ResponseFormatConfigType(
+          output_format=OutputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
               # `response_format={'type': 'json_object'}` is a native flag.
               json=FeatureSupportType.SUPPORTED,
@@ -122,11 +122,11 @@ class CohereConnector(provider_connector.ProviderConnector):
             })
 
     needs_pydantic = (
-        query_record.response_format is not None
-        and query_record.response_format.type
-        == types.ResponseFormatType.PYDANTIC)
+        query_record.output_format is not None
+        and query_record.output_format.type
+        == types.OutputFormatType.PYDANTIC)
 
-    if query_record.response_format.type == types.ResponseFormatType.JSON:
+    if query_record.output_format.type == types.OutputFormatType.JSON:
       create = functools.partial(
           create, response_format={'type': 'json_object'})
 
@@ -135,7 +135,7 @@ class CohereConnector(provider_connector.ProviderConnector):
           create,
           response_format={
               'type': 'json_object',
-              'json_schema': query_record.response_format.pydantic_class
+              'json_schema': query_record.output_format.pydantic_class
                   .model_json_schema(),
           })
 
@@ -165,7 +165,7 @@ class CohereConnector(provider_connector.ProviderConnector):
         )
 
     if needs_pydantic:
-      pydantic_class = query_record.response_format.pydantic_class
+      pydantic_class = query_record.output_format.pydantic_class
       joined_text = ''.join(text_buffer)
       instance = pydantic_class.model_validate_json(joined_text)
       # Replace TEXT blocks with a single PYDANTIC_INSTANCE block, keeping

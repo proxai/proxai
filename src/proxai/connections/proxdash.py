@@ -389,10 +389,10 @@ class ProxDashConnection(state_controller.StateControlled):
     ):
       return _SENSITIVE_CONTENT_HIDDEN_STRING
 
-    if response_type == types.ResponseFormatType.TEXT:
+    if response_type == types.OutputFormatType.TEXT:
       return str(logging_record.response_record.response.value)
 
-    if response_type == types.ResponseFormatType.JSON:
+    if response_type == types.OutputFormatType.JSON:
       try:
         return json.dumps(
             logging_record.response_record.response.value, indent=2,
@@ -409,7 +409,7 @@ class ProxDashConnection(state_controller.StateControlled):
         )
         return None
 
-    if response_type == types.ResponseFormatType.PYDANTIC:
+    if response_type == types.OutputFormatType.PYDANTIC:
       return None
 
     logging_utils.log_proxdash_message(
@@ -429,7 +429,7 @@ class ProxDashConnection(state_controller.StateControlled):
       return None
     if (
         logging_record.response_record.response.type
-        != types.ResponseFormatType.PYDANTIC
+        != types.OutputFormatType.PYDANTIC
     ):
       return None
     if (
@@ -486,16 +486,16 @@ class ProxDashConnection(state_controller.StateControlled):
   def _get_formatted_query_pydantic_values(
       self, logging_record: types.LoggingRecord
   ) -> tuple[str | None, str | None]:
-    response_format = logging_record.query_record.response_format
+    output_format = logging_record.query_record.output_format
     if (
-        response_format and
-        response_format.type == types.ResponseFormatType.PYDANTIC and
-        response_format.value.class_name
+        output_format and
+        output_format.type == types.OutputFormatType.PYDANTIC and
+        output_format.value.class_name
     ):
-      query_pydantic_class_name = response_format.value.class_name
+      query_pydantic_class_name = output_format.value.class_name
       try:
         query_pydantic_class_json_schema = (
-            response_format.value.class_value.model_json_schema()
+            output_format.value.class_value.model_json_schema()
         )
         return query_pydantic_class_name, query_pydantic_class_json_schema
       except Exception:
@@ -504,10 +504,10 @@ class ProxDashConnection(state_controller.StateControlled):
             proxdash_options=self.proxdash_options, message=(
                 'Failed to get formatted query pydantic values. Please create '
                 'an issue at https://github.com/proxai/proxai/issues.\n'
-                f'Response: {logging_record.query_record.response_format}'
+                f'Response: {logging_record.query_record.output_format}'
             ), type=types.LoggingType.WARNING
         )
-        return query_pydantic_class_name, str(response_format.value.class_value)
+        return query_pydantic_class_name, str(output_format.value.class_value)
     return None, None
 
   def upload_logging_record(self, logging_record: types.LoggingRecord):
@@ -528,9 +528,9 @@ class ProxDashConnection(state_controller.StateControlled):
     query_pydantic_class_json_schema = None
     response_pydantic_json_value = None
     if (
-        logging_record.query_record.response_format and
-        logging_record.query_record.response_format.type
-        == types.ResponseFormatType.PYDANTIC
+        logging_record.query_record.output_format and
+        logging_record.query_record.output_format.type
+        == types.OutputFormatType.PYDANTIC
     ):
       query_pydantic_class_name, query_pydantic_class_json_schema = (
           self._get_formatted_query_pydantic_values(logging_record)

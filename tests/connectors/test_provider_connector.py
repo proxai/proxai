@@ -468,22 +468,22 @@ class TestCheckFeatureExists:
     query_record = types.QueryRecord(system='Be helpful')
     assert connector._check_feature_exists('system', query_record) is True
 
-  def test_response_format_json_exists(self):
+  def test_output_format_json_exists(self):
     connector = get_mock_provider_model_connector()
     query_record = types.QueryRecord(
-        response_format=types.ResponseFormat(
-            type=types.ResponseFormatType.JSON
+        output_format=types.OutputFormat(
+            type=types.OutputFormatType.JSON
         )
     )
     assert connector._check_feature_exists(
         'response_format::json', query_record
     ) is True
 
-  def test_response_format_json_not_exists_for_text(self):
+  def test_output_format_json_not_exists_for_text(self):
     connector = get_mock_provider_model_connector()
     query_record = types.QueryRecord(
-        response_format=types.ResponseFormat(
-            type=types.ResponseFormatType.TEXT
+        output_format=types.OutputFormat(
+            type=types.OutputFormatType.TEXT
         )
     )
     assert connector._check_feature_exists(
@@ -512,23 +512,23 @@ class TestGetFeaturesFromQueryRecord:
     assert types.FeatureNameType.MAX_TOKENS in features
     assert len(features) == 3
 
-  def test_response_format_json(self):
+  def test_output_format_json(self):
     connector = get_mock_provider_model_connector()
     query_record = types.QueryRecord(
-        prompt='Hello', response_format=types.ResponseFormat(
-            type=types.ResponseFormatType.JSON
+        prompt='Hello', output_format=types.OutputFormat(
+            type=types.OutputFormatType.JSON
         )
     )
     features = connector._get_features_from_query_record(query_record)
     assert types.FeatureNameType.PROMPT in features
     assert types.FeatureNameType.RESPONSE_FORMAT_JSON in features
 
-  def test_response_format_pydantic(self):
+  def test_output_format_pydantic(self):
     connector = get_mock_provider_model_connector()
     query_record = types.QueryRecord(
-        prompt='Hello', response_format=types.ResponseFormat(
-            type=types.ResponseFormatType.PYDANTIC,
-            value=types.ResponseFormatPydanticValue(
+        prompt='Hello', output_format=types.OutputFormat(
+            type=types.OutputFormatType.PYDANTIC,
+            value=types.OutputFormatPydanticValue(
                 class_name='TestModel', class_value=SamplePydanticModel
             )
         )
@@ -1027,8 +1027,8 @@ class TestGetSchemaGuidance:
   def test_json_format_guidance(self):
     connector = get_mock_provider_model_connector()
     query_record = types.QueryRecord(
-        response_format=types.ResponseFormat(
-            type=types.ResponseFormatType.JSON
+        output_format=types.OutputFormat(
+            type=types.OutputFormatType.JSON
         )
     )
 
@@ -1051,8 +1051,8 @@ class TestGetSchemaGuidance:
         }
     }
     query_record = types.QueryRecord(
-        response_format=types.
-        ResponseFormat(type=types.ResponseFormatType.JSON_SCHEMA, value=schema)
+        output_format=types.
+        OutputFormat(type=types.OutputFormatType.JSON_SCHEMA, value=schema)
     )
 
     result = connector._get_schema_guidance(query_record)
@@ -1061,14 +1061,14 @@ class TestGetSchemaGuidance:
     assert 'schema' in result
 
 
-class TestSanitizeResponseFormatFeature:
-  """Tests for _sanitize_response_format_feature method."""
+class TestSanitizeOutputFormatFeature:
+  """Tests for _sanitize_output_format_feature method."""
 
   def test_adds_schema_guidance_to_prompt(self):
     connector = get_mock_provider_model_connector()
     query_record = types.QueryRecord(
-        prompt='Get user data', response_format=types.ResponseFormat(
-            type=types.ResponseFormatType.JSON
+        prompt='Get user data', output_format=types.OutputFormat(
+            type=types.OutputFormatType.JSON
         )
     )
 
@@ -1080,8 +1080,8 @@ class TestSanitizeResponseFormatFeature:
   def test_creates_prompt_if_none(self):
     connector = get_mock_provider_model_connector()
     query_record = types.QueryRecord(
-        response_format=types.ResponseFormat(
-            type=types.ResponseFormatType.JSON
+        output_format=types.OutputFormat(
+            type=types.OutputFormatType.JSON
         )
     )
 
@@ -1181,11 +1181,11 @@ class TestGetFeatureSignature:
 
     assert 'STRICT' in result
 
-  def test_signature_with_response_format_json(self):
+  def test_signature_with_output_format_json(self):
     connector = get_mock_provider_model_connector()
     query_record = types.QueryRecord(
-        prompt='Hello', response_format=types.ResponseFormat(
-            type=types.ResponseFormatType.JSON
+        prompt='Hello', output_format=types.OutputFormat(
+            type=types.OutputFormatType.JSON
         )
     )
     features = connector._get_features_from_query_record(query_record)
@@ -1198,7 +1198,7 @@ class TestGetFeatureSignature:
     assert 'response_format::json' in result
     assert 'prompt' in result
 
-  def test_signature_without_response_format(self):
+  def test_signature_without_output_format(self):
     connector = get_mock_provider_model_connector()
     query_record = types.QueryRecord(prompt='Hello')
     features = connector._get_features_from_query_record(query_record)
@@ -1208,7 +1208,7 @@ class TestGetFeatureSignature:
         features=features
     )
 
-    # Should not raise error and should not include response_format
+    # Should not raise error and should not include output_format
     assert 'response_format::json' not in result
     assert 'prompt' in result
 
@@ -1365,8 +1365,8 @@ class SamplePydanticModel(pydantic.BaseModel):
   age: int
 
 
-class TestHandleJsonResponseFormat:
-  """Tests for _handle_json_response_format method."""
+class TestHandleJsonOutputFormat:
+  """Tests for _handle_json_output_format method."""
 
   def test_supported_endpoint_uses_provider_format(self):
     config = _create_config_with_features({
@@ -1377,8 +1377,8 @@ class TestHandleJsonResponseFormat:
     })
     connector = get_mock_provider_model_connector(provider_model_config=config)
     query_record = types.QueryRecord(
-        response_format=types.ResponseFormat(
-            type=types.ResponseFormatType.JSON
+        output_format=types.OutputFormat(
+            type=types.OutputFormatType.JSON
         ), chosen_endpoint='chat'
     )
 
@@ -1396,8 +1396,8 @@ class TestHandleJsonResponseFormat:
     })
     connector = get_mock_provider_model_connector(provider_model_config=config)
     query_record = types.QueryRecord(
-        response_format=types.ResponseFormat(
-            type=types.ResponseFormatType.JSON
+        output_format=types.OutputFormat(
+            type=types.OutputFormatType.JSON
         ), chosen_endpoint='chat'
     )
 
@@ -1409,8 +1409,8 @@ class TestHandleJsonResponseFormat:
     assert result.value == {'key': 'value'}
 
 
-class TestHandleJsonSchemaResponseFormat:
-  """Tests for _handle_json_schema_response_format method."""
+class TestHandleJsonSchemaOutputFormat:
+  """Tests for _handle_json_schema_output_format method."""
 
   def test_supported_endpoint_uses_provider_format(self):
     config = _create_config_with_features({
@@ -1421,8 +1421,8 @@ class TestHandleJsonSchemaResponseFormat:
     })
     connector = get_mock_provider_model_connector(provider_model_config=config)
     query_record = types.QueryRecord(
-        response_format=types.ResponseFormat(
-            type=types.ResponseFormatType.JSON_SCHEMA
+        output_format=types.OutputFormat(
+            type=types.OutputFormatType.JSON_SCHEMA
         ), chosen_endpoint='chat'
     )
 
@@ -1440,8 +1440,8 @@ class TestHandleJsonSchemaResponseFormat:
     })
     connector = get_mock_provider_model_connector(provider_model_config=config)
     query_record = types.QueryRecord(
-        response_format=types.ResponseFormat(
-            type=types.ResponseFormatType.JSON_SCHEMA
+        output_format=types.OutputFormat(
+            type=types.OutputFormatType.JSON_SCHEMA
         ), chosen_endpoint='chat'
     )
 
@@ -1453,8 +1453,8 @@ class TestHandleJsonSchemaResponseFormat:
     assert result.value == {'name': 'John'}
 
 
-class TestHandlePydanticResponseFormat:
-  """Tests for _handle_pydantic_response_format method."""
+class TestHandlePydanticOutputFormat:
+  """Tests for _handle_pydantic_output_format method."""
 
   def test_supported_endpoint_returns_pydantic_instance(self):
     config = _create_config_with_features({
@@ -1465,9 +1465,9 @@ class TestHandlePydanticResponseFormat:
     })
     connector = get_mock_provider_model_connector(provider_model_config=config)
     query_record = types.QueryRecord(
-        response_format=types.ResponseFormat(
-            type=types.ResponseFormatType.PYDANTIC,
-            value=types.ResponseFormatPydanticValue(
+        output_format=types.OutputFormat(
+            type=types.OutputFormatType.PYDANTIC,
+            value=types.OutputFormatPydanticValue(
                 class_name='SamplePydanticModel',
                 class_value=SamplePydanticModel
             )
@@ -1491,9 +1491,9 @@ class TestHandlePydanticResponseFormat:
     })
     connector = get_mock_provider_model_connector(provider_model_config=config)
     query_record = types.QueryRecord(
-        response_format=types.ResponseFormat(
-            type=types.ResponseFormatType.PYDANTIC,
-            value=types.ResponseFormatPydanticValue(
+        output_format=types.OutputFormat(
+            type=types.OutputFormatType.PYDANTIC,
+            value=types.OutputFormatPydanticValue(
                 class_name='SamplePydanticModel',
                 class_value=SamplePydanticModel
             )
@@ -1701,8 +1701,8 @@ class TestGetSystemContentWithSchemaGuidance:
   def test_json_without_system(self):
     connector = get_mock_provider_model_connector()
     query_record = types.QueryRecord(
-        response_format=types.ResponseFormat(
-            type=types.ResponseFormatType.JSON
+        output_format=types.OutputFormat(
+            type=types.OutputFormatType.JSON
         )
     )
     result = connector._get_system_content_with_schema_guidance(query_record)
@@ -1711,8 +1711,8 @@ class TestGetSystemContentWithSchemaGuidance:
   def test_json_with_system(self):
     connector = get_mock_provider_model_connector()
     query_record = types.QueryRecord(
-        system='Be helpful.', response_format=types.ResponseFormat(
-            type=types.ResponseFormatType.JSON
+        system='Be helpful.', output_format=types.OutputFormat(
+            type=types.OutputFormatType.JSON
         )
     )
     result = connector._get_system_content_with_schema_guidance(query_record)
@@ -1722,8 +1722,8 @@ class TestGetSystemContentWithSchemaGuidance:
     connector = get_mock_provider_model_connector()
     schema = {'json_schema': {'schema': {'type': 'object'}}}
     query_record = types.QueryRecord(
-        response_format=types.
-        ResponseFormat(type=types.ResponseFormatType.JSON_SCHEMA, value=schema)
+        output_format=types.
+        OutputFormat(type=types.OutputFormatType.JSON_SCHEMA, value=schema)
     )
     result = connector._get_system_content_with_schema_guidance(query_record)
     assert 'You must respond with valid JSON that follows this schema:' in result
@@ -1732,9 +1732,9 @@ class TestGetSystemContentWithSchemaGuidance:
   def test_pydantic_includes_schema(self):
     connector = get_mock_provider_model_connector()
     query_record = types.QueryRecord(
-        response_format=types.ResponseFormat(
-            type=types.ResponseFormatType.PYDANTIC, value=types.
-            ResponseFormatPydanticValue(class_value=SamplePydanticModel)
+        output_format=types.OutputFormat(
+            type=types.OutputFormatType.PYDANTIC, value=types.
+            OutputFormatPydanticValue(class_value=SamplePydanticModel)
         )
     )
     result = connector._get_system_content_with_schema_guidance(query_record)
@@ -1761,8 +1761,8 @@ class TestFormatResponseFromProviders:
     })
     connector = get_mock_provider_model_connector(provider_model_config=config)
     query_record = types.QueryRecord(
-        response_format=types.ResponseFormat(
-            type=types.ResponseFormatType.JSON
+        output_format=types.OutputFormat(
+            type=types.OutputFormatType.JSON
         ), chosen_endpoint='chat'
     )
     response = connector.format_response_from_providers({'key': 'value'},
@@ -1781,9 +1781,9 @@ class TestFormatResponseFromProviders:
         provider_model_config=config
     )
     query_record = types.QueryRecord(
-        response_format=types.ResponseFormat(
-            type=types.ResponseFormatType.PYDANTIC,
-            value=types.ResponseFormatPydanticValue(
+        output_format=types.OutputFormat(
+            type=types.OutputFormatType.PYDANTIC,
+            value=types.OutputFormatPydanticValue(
                 class_name='SamplePydanticModel'
             )
         ), feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
