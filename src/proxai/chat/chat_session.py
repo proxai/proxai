@@ -6,8 +6,13 @@ import dataclasses
 from collections.abc import Iterator
 from typing import Any
 
-from proxai.chat.message import Message
-from proxai.chat.message_content import MessageContent, ContentType, MessageRoleType
+import proxai.chat.message as message_module
+import proxai.chat.message_content as message_content
+
+Message = message_module.Message
+MessageContent = message_content.MessageContent
+ContentType = message_content.ContentType
+MessageRoleType = message_content.MessageRoleType
 
 MessageInput = Message | dict | str | list[MessageContent]
 
@@ -33,7 +38,8 @@ class Chat:
   """
 
   _system_prompt: str | None = dataclasses.field(default=None, repr=False)
-  messages: list[Message] = dataclasses.field(default_factory=list)
+  messages: list[Message] = dataclasses.field(
+      default_factory=list)
 
   @property
   def system_prompt(self) -> str | None:
@@ -76,7 +82,8 @@ class Chat:
     if isinstance(msg, str):
       return Message(
           role=MessageRoleType.ASSISTANT,
-          content=[MessageContent(type=ContentType.TEXT, text=msg)])
+          content=[MessageContent(
+              type=ContentType.TEXT, text=msg)])
     if isinstance(msg, list):
       content = []
       for item in msg:
@@ -85,12 +92,14 @@ class Chat:
         elif isinstance(item, dict):
           content.append(MessageContent.from_dict(item))
         elif isinstance(item, str):
-          content.append(MessageContent(type=ContentType.TEXT, text=item))
+          content.append(MessageContent(
+              type=ContentType.TEXT, text=item))
         else:
           raise TypeError(
             f"Expected MessageContent, dict, or str, "
             "got {type(item).__name__}.")
-      return Message(role=MessageRoleType.ASSISTANT, content=content)
+      return Message(
+          role=MessageRoleType.ASSISTANT, content=content)
     raise TypeError(
         f"Expected Message or dict, got {type(msg).__name__}."
     )
@@ -120,7 +129,9 @@ class Chat:
     """Return a deep copy of this Chat."""
     return copy.deepcopy(self)
 
-  def __getitem__(self, index: int | slice) -> "Chat | Message":
+  def __getitem__(
+      self, index: int | slice
+  ) -> "Chat | Message":
     if isinstance(index, slice):
       new_chat = Chat(system_prompt=self.system_prompt)
       new_chat.messages = self.messages[index]
@@ -177,7 +188,8 @@ class Chat:
       self,
       merge_consecutive_roles: bool = True,
       omit_thinking: bool = True,
-      allowed_types: list[ContentType | str] | None = None,
+      allowed_types: (
+          list[ContentType | str] | None) = None,
       add_json_guidance_to_system: bool = False,
       add_json_schema_guidance_to_system: dict | str | None = None,
       add_json_guidance_to_user_prompt: bool = False,
@@ -239,7 +251,8 @@ class Chat:
     # 1. Validate params and normalize (fail fast, before deep copy).
     self._validate_export_params(
         add_json_guidance_to_system, add_json_schema_guidance_to_system,
-        add_json_guidance_to_user_prompt, add_json_schema_guidance_to_user_prompt,
+        add_json_guidance_to_user_prompt,
+        add_json_schema_guidance_to_user_prompt,
         add_system_to_messages, add_system_to_first_user_message,
     )
     allowed_set = self._normalize_allowed_types(allowed_types)
@@ -295,12 +308,14 @@ class Chat:
       add_system_to_first_user: bool,
   ) -> None:
     """Validate mutually exclusive export parameters."""
-    if add_json_guidance_system and add_json_schema_guidance_system is not None:
+    if add_json_guidance_system and (
+        add_json_schema_guidance_system is not None):
       raise ValueError(
           "add_json_guidance_to_system and "
           "add_json_schema_guidance_to_system are mutually exclusive."
       )
-    if add_json_guidance_user and add_json_schema_guidance_user is not None:
+    if add_json_guidance_user and (
+        add_json_schema_guidance_user is not None):
       raise ValueError(
           "add_json_guidance_to_user_prompt and "
           "add_json_schema_guidance_to_user_prompt are mutually exclusive."
@@ -365,12 +380,16 @@ class Chat:
       if msg.role == MessageRoleType.USER:
         if isinstance(msg.content, str):
           msg.content = f"{msg.content}\n\n{suffix}"
-        elif msg.content and msg.content[-1].type == ContentType.TEXT:
-          msg.content[-1].text = f"{msg.content[-1].text}\n\n{suffix}"
+        elif (msg.content
+              and msg.content[-1].type == ContentType.TEXT):
+          msg.content[-1].text = (
+              f"{msg.content[-1].text}\n\n{suffix}")
         else:
-          msg.content.append(MessageContent(type="text", text=suffix))
+          msg.content.append(
+              MessageContent(type="text", text=suffix))
         return
-    messages.append(Message(role="user", content=suffix))
+    messages.append(
+        Message(role="user", content=suffix))
 
   @staticmethod
   def _prepend_system_to_first_user(
@@ -381,19 +400,23 @@ class Chat:
       if msg.role == MessageRoleType.USER:
         if isinstance(msg.content, str):
           msg.content = f"{system_prompt}\n\n{msg.content}"
-        elif msg.content and msg.content[0].type == ContentType.TEXT:
+        elif (msg.content
+              and msg.content[0].type == ContentType.TEXT):
           msg.content[0].text = (
               f"{system_prompt}\n\n{msg.content[0].text}"
           )
         else:
           msg.content.insert(
-              0, MessageContent(type="text", text=system_prompt)
-          )
+              0, MessageContent(
+                  type="text", text=system_prompt))
         return
-    messages.insert(0, Message(role="user", content=system_prompt))
+    messages.insert(
+        0, Message(role="user", content=system_prompt))
 
   @staticmethod
-  def _filter_thinking(messages: list[Message]) -> list[Message]:
+  def _filter_thinking(
+      messages: list[Message],
+  ) -> list[Message]:
     """Remove thinking content blocks, dropping empty messages."""
     filtered = []
     for msg in messages:
@@ -410,7 +433,8 @@ class Chat:
 
   @staticmethod
   def _normalize_allowed_types(
-      allowed_types: list[ContentType | str] | None,
+      allowed_types: (
+          list[ContentType | str] | None),
   ) -> set[ContentType] | None:
     """Normalize allowed_types to a ContentType set, or None."""
     if allowed_types is None:
@@ -444,11 +468,14 @@ class Chat:
         for c in msg.content:
           if c.type not in allowed_set:
             raise ValueError(
-                f"Content type '{c.type.value}' is not in allowed_types."
+                f"Content type '{c.type.value}' is not in "
+                f"allowed_types."
             )
 
   @staticmethod
-  def _merge_consecutive(messages: list[Message]) -> list[Message]:
+  def _merge_consecutive(
+      messages: list[Message],
+  ) -> list[Message]:
     """Merge consecutive messages with the same role."""
     if not messages:
       return messages
@@ -458,9 +485,11 @@ class Chat:
       last = merged[-1]
       if msg.role == last.role:
         if isinstance(last.content, str):
-          last.content = [MessageContent(type="text", text=last.content)]
+          last.content = [MessageContent(
+              type="text", text=last.content)]
         if isinstance(msg.content, str):
-          last.content.append(MessageContent(type="text", text=msg.content))
+          last.content.append(MessageContent(
+              type="text", text=msg.content))
         else:
           last.content.extend(msg.content)
       else:
@@ -468,7 +497,9 @@ class Chat:
     return merged
 
   @staticmethod
-  def _validate_single_prompt_content(messages: list[Message]) -> None:
+  def _validate_single_prompt_content(
+      messages: list[Message],
+  ) -> None:
     """Raise ValueError if any content uses data or path fields."""
     for msg in messages:
       if not isinstance(msg.content, list):
@@ -506,7 +537,8 @@ class Chat:
 
   @staticmethod
   def _format_as_single_prompt(
-      system_prompt: str | None, messages: list[Message],
+      system_prompt: str | None,
+      messages: list[Message],
   ) -> str:
     """Format system prompt and messages as a single prompt string."""
     parts = []
@@ -530,7 +562,10 @@ class Chat:
   @classmethod
   def from_dict(cls, data: dict) -> "Chat":
     """Create a Chat from a dictionary."""
-    messages = [Message.from_dict(m) for m in data.get("messages", [])]
+    messages = [
+        Message.from_dict(m)
+        for m in data.get("messages", [])
+    ]
     return cls(
         messages=messages,
         system_prompt=data.get("system_prompt"),

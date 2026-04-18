@@ -2,7 +2,6 @@ from typing import Dict, Any, List
 import proxai.chat.chat_session as chat_session
 import proxai.client as client
 import proxai.types as types
-from proxai.client import ModelConnector
 
 # Re-export for easy access
 CacheOptions = types.CacheOptions
@@ -437,7 +436,7 @@ def reset_state() -> None:
   _DEFAULT_CLIENT = None
 
 
-class DefaultModelsConnector(ModelConnector):
+class DefaultModelsConnector(client.ModelConnector):
   """Provides access to model discovery for the default global client.
 
   This class extends ModelConnector to work with the default global ProxAI

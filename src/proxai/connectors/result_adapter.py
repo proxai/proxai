@@ -6,17 +6,13 @@ from typing import List
 
 import pydantic
 
-from proxai.chat.message_content import ContentType
-from proxai.chat.message_content import MessageContent
-from proxai.chat.message_content import PydanticContent
+import proxai.chat.message_content as message_content
+import proxai.connectors.adapter_utils as adapter_utils
 import proxai.types as types
-from proxai.connectors.adapter_utils import (
-    OUTPUT_FORMAT_FIELD_MAP,
-    SUPPORT_RANK,
-    merge_feature_configs,
-    resolve_feature_tag_support,
-    resolve_support,
-)
+
+ContentType = message_content.ContentType
+MessageContent = message_content.MessageContent
+PydanticContent = message_content.PydanticContent
 
 _OUTPUT_FORMAT_TO_CONTENT_TYPE = {
     types.OutputFormatType.IMAGE: ContentType.IMAGE,
@@ -44,7 +40,7 @@ class ResultAdapter:
     self.model_feature_config = model_feature_config
     if (endpoint_feature_config is not None
         and model_feature_config is not None):
-      self.feature_config = merge_feature_configs(
+      self.feature_config = adapter_utils.merge_feature_configs(
           endpoint_feature_config, model_feature_config)
     elif model_feature_config is not None:
       self.feature_config = model_feature_config
@@ -61,10 +57,10 @@ class ResultAdapter:
     if not feature_tags:
       return types.FeatureSupportType.SUPPORTED
     levels = [
-        resolve_feature_tag_support(self.feature_config, tag)
+        adapter_utils.resolve_feature_tag_support(self.feature_config, tag)
         for tag in feature_tags
     ]
-    return min(levels, key=lambda l: SUPPORT_RANK[l])
+    return min(levels, key=lambda l: adapter_utils.SUPPORT_RANK[l])
 
   def get_query_record_support_level(
       self, query_record: types.QueryRecord,
@@ -80,10 +76,10 @@ class ResultAdapter:
       raise ValueError("'output_format.type' must be set.")
 
     rf_config = self.feature_config.output_format
-    field_name = OUTPUT_FORMAT_FIELD_MAP.get(
+    field_name = adapter_utils.OUTPUT_FORMAT_FIELD_MAP.get(
         query_record.output_format.type)
     if field_name and rf_config:
-      return resolve_support(getattr(rf_config, field_name, None))
+      return adapter_utils.resolve_support(getattr(rf_config, field_name, None))
     return types.FeatureSupportType.NOT_SUPPORTED
 
   def adapt_result_record(
@@ -109,18 +105,18 @@ class ResultAdapter:
       content: list[MessageContent],
   ) -> list[MessageContent]:
     result = []
-    for message_content in content:
-      result.append(self._adapt_message_content(query_record, message_content))
+    for content_item in content:
+      result.append(self._adapt_message_content(query_record, content_item))
     return result
 
   def _adapt_message_content(
       self,
       query_record: types.QueryRecord,
-      message_content: MessageContent,
+      content_item: MessageContent,
   ) -> MessageContent:
     """Adapt content value to the expected response format."""
     output_format = query_record.output_format
-    if message_content.type in [
+    if content_item.type in [
         ContentType.THINKING,
         ContentType.IMAGE,
         ContentType.DOCUMENT,
@@ -128,18 +124,18 @@ class ResultAdapter:
         ContentType.VIDEO,
         ContentType.TOOL,
     ]:
-      return message_content
+      return content_item
 
-    if message_content.type == ContentType.TEXT:
+    if content_item.type == ContentType.TEXT:
       if output_format.type == types.OutputFormatType.TEXT:
-        return message_content
+        return content_item
       if output_format.type == types.OutputFormatType.JSON:
         return MessageContent(
             type=ContentType.JSON,
-            json=json.loads(message_content.text))
+            json=json.loads(content_item.text))
       if output_format.type == types.OutputFormatType.PYDANTIC:
-        json_value = json.loads(message_content.text)
-        pydantic_content = PydanticContent(
+        json_value = json.loads(content_item.text)
+        pydantic = PydanticContent(
             class_name=output_format.pydantic_class.__name__,
             class_value=output_format.pydantic_class,
             instance_value=output_format.pydantic_class.model_validate(
@@ -148,14 +144,14 @@ class ResultAdapter:
         )
         return MessageContent(
             type=ContentType.PYDANTIC_INSTANCE,
-            pydantic_content=pydantic_content)
+            pydantic_content=pydantic)
 
-    if message_content.type == ContentType.JSON:
+    if content_item.type == ContentType.JSON:
       if output_format.type == types.OutputFormatType.JSON:
-        return message_content
+        return content_item
       if output_format.type == types.OutputFormatType.PYDANTIC:
-        json_value = message_content.json
-        pydantic_content = PydanticContent(
+        json_value = content_item.json
+        pydantic = PydanticContent(
             class_name=output_format.pydantic_class.__name__,
             class_value=output_format.pydantic_class,
             instance_value=output_format.pydantic_class.model_validate(
@@ -164,26 +160,26 @@ class ResultAdapter:
         )
         return MessageContent(
             type=ContentType.PYDANTIC_INSTANCE,
-            pydantic_content=pydantic_content)
-        
-    return message_content
+            pydantic_content=pydantic)
+
+    return content_item
 
   def _adapt_output_values(
       self,
       result_obj: types.ResultRecord,
   ):
-    for message_content in reversed(result_obj.content):
-      if message_content.type == ContentType.TEXT:
-        result_obj.output_text = message_content.text
-      elif message_content.type == ContentType.JSON:
-        result_obj.output_json = message_content.json
-      elif message_content.type == ContentType.PYDANTIC_INSTANCE:
+    for content_item in reversed(result_obj.content):
+      if content_item.type == ContentType.TEXT:
+        result_obj.output_text = content_item.text
+      elif content_item.type == ContentType.JSON:
+        result_obj.output_json = content_item.json
+      elif content_item.type == ContentType.PYDANTIC_INSTANCE:
         result_obj.output_pydantic = (
-            message_content.pydantic_content.instance_value)
-      elif message_content.type == ContentType.IMAGE:
-        result_obj.output_image = message_content
-      elif message_content.type == ContentType.AUDIO:
-        result_obj.output_audio = message_content
-      elif message_content.type == ContentType.VIDEO:
-        result_obj.output_video = message_content
+            content_item.pydantic_content.instance_value)
+      elif content_item.type == ContentType.IMAGE:
+        result_obj.output_image = content_item
+      elif content_item.type == ContentType.AUDIO:
+        result_obj.output_audio = content_item
+      elif content_item.type == ContentType.VIDEO:
+        result_obj.output_video = content_item
 

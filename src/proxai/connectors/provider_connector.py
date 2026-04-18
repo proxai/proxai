@@ -20,6 +20,7 @@ import proxai.state_controllers.state_controller as state_controller
 import proxai.type_utils as type_utils
 import proxai.types as types
 import proxai.chat.chat_session as chat_session
+import proxai.connectors.adapter_utils as adapter_utils
 import proxai.connectors.feature_adapter as feature_adapter
 import proxai.connectors.result_adapter as result_adapter
 import proxai.chat.message_content as message_content
@@ -427,17 +428,14 @@ class ProviderConnector(state_controller.StateControlled):
       model_feature_config: types.FeatureConfigType,
   ) -> types.FeatureSupportType:
     """Return the best support level for generic tags across endpoints."""
-    from proxai.connectors.adapter_utils import (
-        SUPPORT_RANK, merge_feature_configs
-    )
     has_best_effort = False
     for endpoint in self.ENDPOINT_PRIORITY:
-      merged = merge_feature_configs(
+      merged = adapter_utils.merge_feature_configs(
           self.ENDPOINT_CONFIG[endpoint],
           model_feature_config,
       )
       levels = [resolve_fn(merged, tag) for tag in tags]
-      min_level = min(levels, key=lambda l: SUPPORT_RANK[l])
+      min_level = min(levels, key=lambda l: adapter_utils.SUPPORT_RANK[l])
       if min_level == types.FeatureSupportType.SUPPORTED:
         return types.FeatureSupportType.SUPPORTED
       elif min_level == types.FeatureSupportType.BEST_EFFORT:
@@ -451,11 +449,10 @@ class ProviderConnector(state_controller.StateControlled):
       query_record: types.QueryRecord,
       provider_model_config: types.ProviderModelConfig,
   ):
-    import json as _json
     signature = feature_adapter.FeatureAdapter.get_query_signature(query_record)
     provider = query_record.provider_model.provider
     model = query_record.provider_model.model
-    signature_str = _json.dumps(signature)
+    signature_str = json.dumps(signature)
 
     endpoint_lines = []
     for endpoint in self.ENDPOINT_PRIORITY:
@@ -465,7 +462,7 @@ class ProviderConnector(state_controller.StateControlled):
           model_feature_config=provider_model_config.features,
       )
       details = adapter.get_query_support_details(query_record)
-      details_str = _json.dumps(details)
+      details_str = json.dumps(details)
       endpoint_lines.append(f"- {endpoint}:\n  {details_str}")
 
     raise ValueError(
