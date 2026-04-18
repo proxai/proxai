@@ -29,15 +29,14 @@ class AvailableModelsParams:
   """Initialization parameters for AvailableModels."""
 
   run_type: types.RunType | None = None
-  feature_mapping_strategy: types.FeatureMappingStrategy | None = None
+  provider_call_options: types.ProviderCallOptions | None = None
   model_configs_instance: model_configs.ModelConfigs | None = None
   model_cache_manager: model_cache.ModelCacheManager | None = None
   query_cache_manager: query_cache.QueryCacheManager | None = None
   logging_options: types.LoggingOptions | None = None
   proxdash_connection: proxdash.ProxDashConnection | None = None
-  allow_multiprocessing: bool | None = None
-  model_test_timeout: int | None = None
-  keep_raw_provider_response: bool | None = None
+  model_probe_options: types.ModelProbeOptions | None = None
+  debug_options: types.DebugOptions | None = None
 
 
 class AvailableModels(state_controller.StateControlled):
@@ -48,8 +47,9 @@ class AvailableModels(state_controller.StateControlled):
   _model_configs_instance: model_configs.ModelConfigs
   _cache_options: types.CacheOptions
   _logging_options: types.LoggingOptions
-  _allow_multiprocessing: bool
-  _model_test_timeout: int
+  _provider_call_options: types.ProviderCallOptions
+  _model_probe_options: types.ModelProbeOptions
+  _debug_options: types.DebugOptions
   _proxdash_connection: proxdash.ProxDashConnection
   _proxdash_provider_api_keys: types.ProviderTokenValueMap | None
   _providers_with_key: dict[types.ProviderNameType,
@@ -72,18 +72,15 @@ class AvailableModels(state_controller.StateControlled):
       self.load_state(init_from_state)
     else:
       self.run_type = init_from_params.run_type
-      self.feature_mapping_strategy = init_from_params.feature_mapping_strategy
+      self.provider_call_options = init_from_params.provider_call_options
       self.model_configs_instance = init_from_params.model_configs_instance
 
       self.model_cache_manager = init_from_params.model_cache_manager
       self.query_cache_manager = init_from_params.query_cache_manager
       self.logging_options = init_from_params.logging_options
       # self.proxdash_connection = init_from_params.proxdash_connection
-      self.allow_multiprocessing = init_from_params.allow_multiprocessing
-      self.model_test_timeout = init_from_params.model_test_timeout
-      self.keep_raw_provider_response = (
-          init_from_params.keep_raw_provider_response
-      )
+      self.model_probe_options = init_from_params.model_probe_options
+      self.debug_options = init_from_params.debug_options
       self.proxdash_provider_api_keys = (
           self.proxdash_connection.get_provider_api_keys()
           if self.proxdash_connection else {}
@@ -116,7 +113,8 @@ class AvailableModels(state_controller.StateControlled):
           self.providers_with_key[provider][key_name] = os.environ[key_name]
 
   def get_model_connector(
-      self, provider_model_identifier: types.ProviderModelIdentifierType,
+      self,
+      provider_model_identifier: types.ProviderModelIdentifierType,
   ) -> provider_connector.ProviderConnector:
     """Get or create a provider-scoped connector for the specified model."""
     provider_model = self.model_configs_instance.get_provider_model(
@@ -130,16 +128,14 @@ class AvailableModels(state_controller.StateControlled):
 
     init_from_params = connector.keywords['init_from_params']
     init_from_params.run_type = self.run_type
-    init_from_params.feature_mapping_strategy = self.feature_mapping_strategy
+    init_from_params.provider_call_options = self.provider_call_options
     init_from_params.query_cache_manager = self.query_cache_manager
     init_from_params.logging_options = self.logging_options
     init_from_params.proxdash_connection = self.proxdash_connection
     init_from_params.provider_token_value_map = self.providers_with_key.get(
         provider, {}
     )
-    init_from_params.keep_raw_provider_response = (
-        getattr(self, 'keep_raw_provider_response', None)
-    )
+    init_from_params.debug_options = self.debug_options
 
     self.provider_connectors[provider] = connector()
     return self.provider_connectors[provider]
@@ -214,28 +210,20 @@ class AvailableModels(state_controller.StateControlled):
     return proxdash.ProxDashConnection(init_state=state_value)
 
   @property
-  def allow_multiprocessing(self) -> bool:
-    return self.get_property_value('allow_multiprocessing')
+  def provider_call_options(self) -> types.ProviderCallOptions:
+    return self.get_property_value('provider_call_options')
 
-  @allow_multiprocessing.setter
-  def allow_multiprocessing(self, value: bool):
-    self.set_property_value('allow_multiprocessing', value)
-
-  @property
-  def model_test_timeout(self) -> int:
-    return self.get_property_value('model_test_timeout')
-
-  @model_test_timeout.setter
-  def model_test_timeout(self, value: int):
-    self.set_property_value('model_test_timeout', value)
+  @provider_call_options.setter
+  def provider_call_options(self, value: types.ProviderCallOptions):
+    self.set_property_value('provider_call_options', value)
 
   @property
-  def feature_mapping_strategy(self) -> types.FeatureMappingStrategy:
-    return self.get_property_value('feature_mapping_strategy')
+  def model_probe_options(self) -> types.ModelProbeOptions:
+    return self.get_property_value('model_probe_options')
 
-  @feature_mapping_strategy.setter
-  def feature_mapping_strategy(self, value: types.FeatureMappingStrategy):
-    self.set_property_value('feature_mapping_strategy', value)
+  @model_probe_options.setter
+  def model_probe_options(self, value: types.ModelProbeOptions):
+    self.set_property_value('model_probe_options', value)
 
   @property
   def query_cache_manager(self) -> query_cache.QueryCacheManager:
@@ -251,12 +239,12 @@ class AvailableModels(state_controller.StateControlled):
     return query_cache.QueryCacheManager(init_from_state=state_value)
 
   @property
-  def keep_raw_provider_response(self) -> bool:
-    return self.get_property_value('keep_raw_provider_response')
+  def debug_options(self) -> types.DebugOptions:
+    return self.get_property_value('debug_options')
 
-  @keep_raw_provider_response.setter
-  def keep_raw_provider_response(self, value: bool):
-    self.set_property_value('keep_raw_provider_response', value)
+  @debug_options.setter
+  def debug_options(self, value: types.DebugOptions):
+    self.set_property_value('debug_options', value)
 
   @property
   def providers_with_key(
@@ -279,8 +267,7 @@ class AvailableModels(state_controller.StateControlled):
     self.set_property_value('latest_model_cache_path_used_for_update', value)
 
   def _get_all_models(
-      self, models: types.ModelStatus,
-      recommended_only: bool = True
+      self, models: types.ModelStatus, recommended_only: bool = True
   ):
     provider_models = self.model_configs_instance.get_all_models(
         recommended_only=recommended_only
@@ -357,8 +344,7 @@ class AvailableModels(state_controller.StateControlled):
       return
 
     allowed_models = self.model_configs_instance.get_all_models(
-        model_size=model_size,
-        recommended_only=recommended_only
+        model_size=model_size, recommended_only=recommended_only
     )
 
     def _filter_set(
@@ -383,8 +369,9 @@ class AvailableModels(state_controller.StateControlled):
       return True
     if support_level == types.FeatureSupportType.BEST_EFFORT:
       return (
-          self.feature_mapping_strategy == types.FeatureMappingStrategy.BEST_EFFORT
-          or self.feature_mapping_strategy is None
+          self.provider_call_options.feature_mapping_strategy
+          == types.FeatureMappingStrategy.BEST_EFFORT or
+          self.provider_call_options.feature_mapping_strategy is None
       )
     return False
 
@@ -401,13 +388,15 @@ class AvailableModels(state_controller.StateControlled):
       not_filtered_models = set()
       for provider_model in provider_model_set:
         provider_model_config = (
-            self.model_configs_instance.get_provider_model_config(
-                provider_model))
+            self.model_configs_instance.
+            get_provider_model_config(provider_model)
+        )
         support_level = self.get_model_connector(
             provider_model
         ).get_feature_tags_support_level(
             feature_tags=features,
-            model_feature_config=provider_model_config.features)
+            model_feature_config=provider_model_config.features
+        )
         if self._is_feature_compatible(support_level):
           not_filtered_models.add(provider_model)
         else:
@@ -419,7 +408,8 @@ class AvailableModels(state_controller.StateControlled):
     models.failed_models = _filter_set(models.failed_models)
 
   def _filter_by_tag_list(
-      self, models: types.ModelStatus,
+      self,
+      models: types.ModelStatus,
       tags: list,
       resolve_fn: Callable,
   ) -> None:
@@ -430,14 +420,15 @@ class AvailableModels(state_controller.StateControlled):
       not_filtered_models = set()
       for provider_model in provider_model_set:
         provider_model_config = (
-            self.model_configs_instance.get_provider_model_config(
-                provider_model))
+            self.model_configs_instance.
+            get_provider_model_config(provider_model)
+        )
         support_level = self.get_model_connector(
             provider_model
         ).get_tag_support_level(
-            tags=tags,
-            resolve_fn=resolve_fn,
-            model_feature_config=provider_model_config.features)
+            tags=tags, resolve_fn=resolve_fn,
+            model_feature_config=provider_model_config.features
+        )
         if self._is_feature_compatible(support_level):
           not_filtered_models.add(provider_model)
         else:
@@ -455,9 +446,11 @@ class AvailableModels(state_controller.StateControlled):
     if input_format_types is None:
       return
     from proxai.connectors.adapter_utils import (
-        resolve_input_format_type_support)
+        resolve_input_format_type_support
+    )
     self._filter_by_tag_list(
-        models, input_format_types, resolve_input_format_type_support)
+        models, input_format_types, resolve_input_format_type_support
+    )
 
   def _filter_by_output_format(
       self, models: types.ModelStatus,
@@ -466,9 +459,11 @@ class AvailableModels(state_controller.StateControlled):
     if output_format_types is None:
       return
     from proxai.connectors.adapter_utils import (
-        resolve_output_format_type_support)
+        resolve_output_format_type_support
+    )
     self._filter_by_tag_list(
-        models, output_format_types, resolve_output_format_type_support)
+        models, output_format_types, resolve_output_format_type_support
+    )
 
   def _filter_by_feature_tags(
       self, models: types.ModelStatus,
@@ -485,8 +480,7 @@ class AvailableModels(state_controller.StateControlled):
     if tool_tags is None:
       return
     from proxai.connectors.adapter_utils import resolve_tool_tag_support
-    self._filter_by_tag_list(
-        models, tool_tags, resolve_tool_tag_support)
+    self._filter_by_tag_list(models, tool_tags, resolve_tool_tag_support)
 
   def _filter_by_cache(
       self, models: types.ModelStatus,
@@ -494,14 +488,14 @@ class AvailableModels(state_controller.StateControlled):
   ):
     if (
         not self.model_cache_manager or
-        self.model_cache_manager.status
-        != types.ModelCacheManagerStatus.WORKING
+        self.model_cache_manager.status != types.ModelCacheManagerStatus.WORKING
     ):
       return
     cache_model_status = types.ModelStatus()
     if self.model_cache_manager:
       cache_model_status = self.model_cache_manager.get(
-          output_format_type=output_format_type)
+          output_format_type=output_format_type
+      )
       self._place_filtered_models_back_to_working_or_failed_models(
           cache_model_status
       )
@@ -520,8 +514,7 @@ class AvailableModels(state_controller.StateControlled):
   @staticmethod
   def _test_generate_text(
       provider_state: types.ProviderState,
-      provider_model: types.ProviderModelType,
-      verbose: bool = False,
+      provider_model: types.ProviderModelType, verbose: bool = False,
       model_configs_state: types.ModelConfigsState | None = None,
       model_configs_instance: model_configs.ModelConfigs | None = None
   ) -> types.CallRecord:
@@ -536,8 +529,7 @@ class AvailableModels(state_controller.StateControlled):
         provider_model
     )
     connector = model_registry.get_model_connector(
-        provider=provider_model.provider,
-        without_additional_args=True
+        provider=provider_model.provider, without_additional_args=True
     )
     connector = connector(init_from_state=provider_state)
     try:
@@ -546,9 +538,11 @@ class AvailableModels(state_controller.StateControlled):
           provider_model=provider_model,
           provider_model_config=provider_model_config,
           parameters=types.ParameterType(
-              max_tokens=_GENERATE_TEXT_TEST_MAX_TOKENS),
+              max_tokens=_GENERATE_TEXT_TEST_MAX_TOKENS
+          ),
           connection_options=types.ConnectionOptions(
-              skip_cache=True, suppress_provider_errors=True),
+              skip_cache=True, suppress_provider_errors=True
+          ),
       )
       return call_record
     except Exception as e:
@@ -558,43 +552,53 @@ class AvailableModels(state_controller.StateControlled):
               provider_model=provider_model,
               prompt=_GENERATE_TEXT_TEST_PROMPT,
               parameters=types.ParameterType(
-                  max_tokens=_GENERATE_TEXT_TEST_MAX_TOKENS),
-          ), result=types.ResultRecord(
+                  max_tokens=_GENERATE_TEXT_TEST_MAX_TOKENS
+              ),
+          ),
+          result=types.ResultRecord(
               status=types.ResultStatusType.FAILED,
-              error=str(e), error_traceback=traceback.format_exc(),
+              error=str(e),
+              error_traceback=traceback.format_exc(),
               timestamp=types.TimeStampType(
                   start_utc_date=start_utc_date,
                   end_utc_date=end_utc_date,
                   response_time=(end_utc_date - start_utc_date),
               ),
-          ), connection=types.ConnectionMetadata(
-              result_source=types.ResultSource.PROVIDER),
+          ),
+          connection=types.ConnectionMetadata(
+              result_source=types.ResultSource.PROVIDER
+          ),
       )
 
-  def _get_timeout_call_record(
-      self, provider_model: types.ProviderModelType
-  ):
+  def _get_timeout_call_record(self, provider_model: types.ProviderModelType):
     end_utc_date = datetime.datetime.now(datetime.timezone.utc)
     start_utc_date = end_utc_date - datetime.timedelta(
-        seconds=self.model_test_timeout
+        seconds=self.model_probe_options.timeout
     )
     return types.CallRecord(
         query=types.QueryRecord(
-            provider_model=provider_model, prompt=_GENERATE_TEXT_TEST_PROMPT,
+            provider_model=provider_model,
+            prompt=_GENERATE_TEXT_TEST_PROMPT,
             parameters=types.ParameterType(
-                max_tokens=_GENERATE_TEXT_TEST_MAX_TOKENS),
-        ), result=types.ResultRecord(
+                max_tokens=_GENERATE_TEXT_TEST_MAX_TOKENS
+            ),
+        ),
+        result=types.ResultRecord(
             status=types.ResultStatusType.FAILED,
             error=(
                 f'Model {provider_model} took longer than '
-                f'{self.model_test_timeout} seconds to respond'
-            ), error_traceback=traceback.format_exc(),
+                f'{self.model_probe_options.timeout} seconds to respond'
+            ),
+            error_traceback=traceback.format_exc(),
             timestamp=types.TimeStampType(
-                start_utc_date=start_utc_date, end_utc_date=end_utc_date,
+                start_utc_date=start_utc_date,
+                end_utc_date=end_utc_date,
                 response_time=(end_utc_date - start_utc_date),
             ),
-        ), connection=types.ConnectionMetadata(
-            result_source=types.ResultSource.PROVIDER),
+        ),
+        connection=types.ConnectionMetadata(
+            result_source=types.ResultSource.PROVIDER
+        ),
     )
 
   def _get_bootstrap_error(self, e: Exception):
@@ -612,7 +616,8 @@ class AvailableModels(state_controller.StateControlled):
           '1. Move your proxai code inside a "if __name__ == \'__main__\':"'
           ' block, or\n'
           '2. Disable multiprocessing by setting '
-          'allow_multiprocessing=False on px.connect()\n'
+          'model_probe_options=px.ModelProbeOptions('
+          'allow_multiprocessing=False) on px.connect()\n'
           'For more details, see followings:\n'
           '- https://www.proxai.co/proxai-docs/advanced/multiprocessing\n'
           '- https://docs.python.org/3/library/multiprocessing.html#the-'
@@ -621,11 +626,9 @@ class AvailableModels(state_controller.StateControlled):
     return None
 
   def _test_models_with_multiprocessing(
-      self,
-      test_tasks: list[tuple[types.ProviderModelType,
-                             provider_connector.ProviderConnector]],
-      output_format_type: types.OutputFormatType,
-      verbose: bool = False
+      self, test_tasks: list[tuple[types.ProviderModelType,
+                                   provider_connector.ProviderConnector]],
+      output_format_type: types.OutputFormatType, verbose: bool = False
   ):
     process_count = max(1, multiprocessing.cpu_count() - 1)
     test_func = None
@@ -643,8 +646,7 @@ class AvailableModels(state_controller.StateControlled):
       model_configs_state = self.model_configs_instance.get_state()
       for provider_model, connector in test_tasks:
         pool_result = pool.apply_async(
-            test_func,
-            args=(connector.get_state(), provider_model, verbose),
+            test_func, args=(connector.get_state(), provider_model, verbose),
             kwds={
                 'model_configs_state': model_configs_state,
             }
@@ -653,12 +655,14 @@ class AvailableModels(state_controller.StateControlled):
       pool.close()
       for provider_model, pool_result in pool_results:
         try:
-          test_results.append(pool_result.get(timeout=self.model_test_timeout))
+          test_results.append(
+              pool_result.get(timeout=self.model_probe_options.timeout)
+          )
         except multiprocessing.TimeoutError:
           if verbose:
             print(
                 f"> {provider_model} query took longer than "
-                f'{self.model_test_timeout} seconds to respond'
+                f'{self.model_probe_options.timeout} seconds to respond'
             )
           test_results.append(self._get_timeout_call_record(provider_model))
       pool.terminate()
@@ -672,11 +676,9 @@ class AvailableModels(state_controller.StateControlled):
     return test_results
 
   def _test_models_sequentially(
-      self,
-      test_tasks: list[tuple[types.ProviderModelType,
-                             provider_connector.ProviderConnector]],
-      output_format_type: types.OutputFormatType,
-      verbose: bool = False
+      self, test_tasks: list[tuple[types.ProviderModelType,
+                                   provider_connector.ProviderConnector]],
+      output_format_type: types.OutputFormatType, verbose: bool = False
   ):
     """Tests provider models sequentially.
 
@@ -696,7 +698,8 @@ class AvailableModels(state_controller.StateControlled):
         'Testing models sequentially can take a while because it '
         'is not possible to handle model timeouts without multiprocessing.\n'
         'Some models may take very long time to respond. '
-        'To speed up the test, set allow_multiprocessing=True.'
+        'To speed up the test, set model_probe_options='
+        'ModelProbeOptions(allow_multiprocessing=True).'
     )
     logging_utils.log_message(
         logging_options=self.logging_options, message=warning_message,
@@ -720,8 +723,7 @@ class AvailableModels(state_controller.StateControlled):
 
   def _test_models(
       self, models: types.ModelStatus,
-      output_format_type: types.OutputFormatType,
-      verbose: bool = False
+      output_format_type: types.OutputFormatType, verbose: bool = False
   ):
     if not models.unprocessed_models:
       return
@@ -731,23 +733,19 @@ class AvailableModels(state_controller.StateControlled):
       connector = self.get_model_connector(provider_model)
       test_tasks.append((provider_model, connector))
 
-    if self.allow_multiprocessing:
+    if self.model_probe_options.allow_multiprocessing:
       test_results = self._test_models_with_multiprocessing(
-          test_tasks=test_tasks,
-          output_format_type=output_format_type,
+          test_tasks=test_tasks, output_format_type=output_format_type,
           verbose=verbose
       )
     else:
       test_results = self._test_models_sequentially(
-          test_tasks=test_tasks,
-          output_format_type=output_format_type,
+          test_tasks=test_tasks, output_format_type=output_format_type,
           verbose=verbose
       )
 
     for call_record in test_results:
-      models.unprocessed_models.discard(
-          call_record.query.provider_model
-      )
+      models.unprocessed_models.discard(call_record.query.provider_model)
       if call_record.result.status == types.ResultStatusType.SUCCESS:
         models.working_models.add(call_record.query.provider_model)
       else:
@@ -780,8 +778,7 @@ class AvailableModels(state_controller.StateControlled):
       output_format: types.OutputFormatTypeParam | None = None,
       input_format: types.InputFormatTypeParam | None = None,
       feature_tags: list[types.FeatureTag] | None = None,
-      tool_tags: list[types.ToolTag] | None = None,
-      verbose: bool = False,
+      tool_tags: list[types.ToolTag] | None = None, verbose: bool = False,
       clear_model_cache: bool = False,
       raw_config_results_without_test: bool = False,
       recommended_only: bool = True
@@ -799,21 +796,20 @@ class AvailableModels(state_controller.StateControlled):
           'https://www.proxai.co/proxai-docs/provider-integrations '
           'to set the environment variables.'
       )
-    self._get_all_models(
-        models, recommended_only=recommended_only)
+    self._get_all_models(models, recommended_only=recommended_only)
     self._filter_by_provider_api_key(models)
     self._filter_by_providers(models, providers=selected_providers)
     self._filter_by_provider_models(
         models, provider_models=selected_provider_models
     )
     self._filter_by_model_size(
-        models, model_size=model_size,
-        recommended_only=recommended_only)
+        models, model_size=model_size, recommended_only=recommended_only
+    )
     self._filter_by_features(models, features=features)
     output_format_tags = type_utils.create_output_format_type_list(
-        output_format)
-    input_format_tags = type_utils.create_input_format_type_list(
-        input_format)
+        output_format
+    )
+    input_format_tags = type_utils.create_input_format_type_list(input_format)
     self._filter_by_output_format(models, output_format_tags)
     self._filter_by_input_format(models, input_format_tags)
     self._filter_by_feature_tags(models, feature_tags)
@@ -823,8 +819,8 @@ class AvailableModels(state_controller.StateControlled):
       return models
 
     self._filter_by_cache(
-        models,
-        output_format_type=types.OutputFormatType.TEXT)
+        models, output_format_type=types.OutputFormatType.TEXT
+    )
 
     print_flag = bool(verbose and models.unprocessed_models)
     verbose_print = print if print_flag else lambda *args, **kwargs: None
@@ -840,8 +836,7 @@ class AvailableModels(state_controller.StateControlled):
           f'Running test for {len(models.unprocessed_models)} models.'
       )
       self._test_models(
-          models,
-          output_format_type=types.OutputFormatType.TEXT,
+          models, output_format_type=types.OutputFormatType.TEXT,
           verbose=verbose
       )
       verbose_print(
@@ -852,8 +847,8 @@ class AvailableModels(state_controller.StateControlled):
 
     if self.model_cache_manager:
       self.model_cache_manager.save(
-          model_status=models,
-          output_format_type=types.OutputFormatType.TEXT)
+          model_status=models, output_format_type=types.OutputFormatType.TEXT
+      )
       self.latest_model_cache_path_used_for_update = (
           self.model_cache_manager.cache_path
       )
@@ -877,10 +872,9 @@ class AvailableModels(state_controller.StateControlled):
       features: types.FeatureTagParam | None = None,
       input_format: types.InputFormatTypeParam | None = None,
       output_format: types.OutputFormatTypeParam = (
-          types.OutputFormatType.TEXT),
-      feature_tags: types.FeatureTagParam | None = None,
-      tool_tags: types.ToolTagParam | None = None,
-      recommended_only: bool = True
+          types.OutputFormatType.TEXT
+      ), feature_tags: types.FeatureTagParam | None = None,
+      tool_tags: types.ToolTagParam | None = None, recommended_only: bool = True
   ) -> list[types.ProviderModelType]:
     """List all configured models matching the filters."""
     if model_size is not None:
@@ -890,29 +884,27 @@ class AvailableModels(state_controller.StateControlled):
     feature_tag_list = None
     if feature_tags is not None:
       feature_tag_list = type_utils.create_feature_tag_list(
-          features=feature_tags)
+          features=feature_tags
+      )
     tool_tag_list = type_utils.create_tool_tag_list(tool_tags)
 
     model_status = self._fetch_all_models(
-        model_size=model_size, features=features,
-        output_format=output_format, input_format=input_format,
-        feature_tags=feature_tag_list, tool_tags=tool_tag_list,
-        raw_config_results_without_test=True,
+        model_size=model_size, features=features, output_format=output_format,
+        input_format=input_format, feature_tags=feature_tag_list,
+        tool_tags=tool_tag_list, raw_config_results_without_test=True,
         recommended_only=recommended_only
     )
 
     return self._format_set(model_status.unprocessed_models)
 
   def list_providers(
-      self,
-      output_format: types.OutputFormatTypeParam = (
-          types.OutputFormatType.TEXT),
+      self, output_format: types.
+      OutputFormatTypeParam = (types.OutputFormatType.TEXT),
       recommended_only: bool = True
   ) -> list[str]:
     """List all providers with available API keys."""
     model_status = self._fetch_all_models(
-        output_format=output_format,
-        raw_config_results_without_test=True,
+        output_format=output_format, raw_config_results_without_test=True,
         recommended_only=recommended_only
     )
     providers_with_key = {
@@ -927,8 +919,8 @@ class AvailableModels(state_controller.StateControlled):
       model_size: types.ModelSizeIdentifierType | None = None,
       features: types.FeatureTagParam | None = None,
       input_format: types.InputFormatTypeParam | None = None,
-      output_format: types.OutputFormatTypeParam = (
-          types.OutputFormatType.TEXT),
+      output_format: types.
+      OutputFormatTypeParam = (types.OutputFormatType.TEXT),
       feature_tags: types.FeatureTagParam | None = None,
       tool_tags: types.ToolTagParam | None = None,
       recommended_only: bool = True,
@@ -941,7 +933,8 @@ class AvailableModels(state_controller.StateControlled):
     feature_tag_list = None
     if feature_tags is not None:
       feature_tag_list = type_utils.create_feature_tag_list(
-          features=feature_tags)
+          features=feature_tags
+      )
     tool_tag_list = type_utils.create_tool_tag_list(tool_tags)
 
     self._load_provider_keys()
@@ -952,18 +945,18 @@ class AvailableModels(state_controller.StateControlled):
       )
 
     model_status = self._fetch_all_models(
-        selected_providers={provider},
-        model_size=model_size, features=features,
+        selected_providers={provider}, model_size=model_size, features=features,
         output_format=output_format, input_format=input_format,
         feature_tags=feature_tag_list, tool_tags=tool_tag_list,
-        raw_config_results_without_test=True,
-        recommended_only=recommended_only
+        raw_config_results_without_test=True, recommended_only=recommended_only
     )
 
     return self._format_set(model_status.unprocessed_models)
 
   def get_model(
-      self, provider: str, model: str,
+      self,
+      provider: str,
+      model: str,
   ) -> types.ProviderModelType:
     """Get a specific model by provider and model name."""
     provider_model_config = (
@@ -983,21 +976,22 @@ class AvailableModels(state_controller.StateControlled):
     return provider_model
 
   def get_model_config(
-      self, provider: str, model: str,
+      self,
+      provider: str,
+      model: str,
   ) -> types.ProviderModelConfig:
     """Get the full config for a specific model."""
     return self.model_configs_instance.get_provider_model_config(
-        (provider, model))
+        (provider, model)
+    )
 
   def list_working_models(
-      self,
-      model_size: types.ModelSizeIdentifierType | None = None,
-      features: types.FeatureTagParam | None = None,
-      verbose: bool = True,
+      self, model_size: types.ModelSizeIdentifierType | None = None,
+      features: types.FeatureTagParam | None = None, verbose: bool = True,
       return_all: bool = False, clear_model_cache: bool = False,
       output_format: types.OutputFormatTypeParam = (
-          types.OutputFormatType.TEXT),
-      recommended_only: bool = True
+          types.OutputFormatType.TEXT
+      ), recommended_only: bool = True
   ) -> list[types.ProviderModelType] | types.ModelStatus:
     """List models verified to be working through API tests."""
     if model_size is not None:
@@ -1014,21 +1008,18 @@ class AvailableModels(state_controller.StateControlled):
           type=types.LoggingType.WARNING
       )
       model_status = self._fetch_all_models(
-          model_size=model_size, features=features,
-          output_format=output_format,
+          model_size=model_size, features=features, output_format=output_format,
           verbose=verbose, recommended_only=recommended_only
       )
-    elif (clear_model_cache or
-          not self._check_model_cache_path_same()):
+    elif (clear_model_cache or not self._check_model_cache_path_same()):
       model_status = self._fetch_all_models(
           model_size=model_size, clear_model_cache=clear_model_cache,
-          features=features, output_format=output_format,
-          verbose=verbose, recommended_only=recommended_only
+          features=features, output_format=output_format, verbose=verbose,
+          recommended_only=recommended_only
       )
     else:
       model_status = self._fetch_all_models(
-          model_size=model_size, features=features,
-          output_format=output_format,
+          model_size=model_size, features=features, output_format=output_format,
           verbose=verbose, recommended_only=recommended_only
       )
 
@@ -1036,10 +1027,84 @@ class AvailableModels(state_controller.StateControlled):
       return model_status
     return self._format_set(model_status.working_models)
 
+  def check_health(
+      self,
+      verbose: bool = True,
+  ) -> types.ModelStatus:
+    """Tests all models and reports health status.
+
+    Always clears the model cache and retests every model. Use
+    list_working_models() for cached results.
+
+    Args:
+        verbose: If True, prints progress and per-model results.
+
+    Returns:
+        ModelStatus with working_models, failed_models, and
+        provider_queries.
+    """
+    if verbose:
+      print("> Starting to test each model...")
+    model_status = self.list_working_models(
+        clear_model_cache=True, verbose=verbose, return_all=True
+    )
+    if verbose:
+      self._print_health_check_results(model_status)
+    return model_status
+
+  def _print_health_check_results(
+      self,
+      model_status: types.ModelStatus,
+  ) -> None:
+    providers = set([m.provider for m in model_status.working_models] +
+                    [m.provider for m in model_status.failed_models])
+    result_table = {
+        provider: {
+            "working": [],
+            "failed": []
+        } for provider in providers
+    }
+    for model in model_status.working_models:
+      result_table[model.provider]["working"].append(model.model)
+    for model in model_status.failed_models:
+      result_table[model.provider]["failed"].append(model.model)
+    print(
+        "> Finished testing.\n"
+        f"   Registered Providers: {len(providers)}\n"
+        f"   Succeeded Models: {len(model_status.working_models)}\n"
+        f"   Failed Models: {len(model_status.failed_models)}"
+    )
+    for provider in sorted(providers):
+      print(f"> {provider}:")
+      for model in sorted(result_table[provider]["working"]):
+        provider_model = self.model_configs_instance.get_provider_model(
+            (provider, model)
+        )
+        duration = (
+            model_status.provider_queries[provider_model].result.timestamp.
+            response_time
+        )
+        print(
+            f"   [ WORKING | {duration.total_seconds():6.2f}s ]"
+            f": {model}"
+        )
+      for model in sorted(result_table[provider]["failed"]):
+        provider_model = self.model_configs_instance.get_provider_model(
+            (provider, model)
+        )
+        duration = (
+            model_status.provider_queries[provider_model].result.timestamp.
+            response_time
+        )
+        print(
+            f"   [ FAILED  | {duration.total_seconds():6.2f}s ]"
+            f": {model}"
+        )
+
   def list_working_providers(
       self, verbose: bool = True, clear_model_cache: bool = False,
-      output_format: types.OutputFormatTypeParam = (
-          types.OutputFormatType.TEXT),
+      output_format: types.
+      OutputFormatTypeParam = (types.OutputFormatType.TEXT),
       recommended_only: bool = True
   ) -> list[str]:
     """List providers with at least one working model."""
@@ -1050,16 +1115,13 @@ class AvailableModels(state_controller.StateControlled):
       # model cache is not enabled instead of fetching all models.
       self._load_provider_keys()
       providers_with_key = set(self.providers_with_key.keys())
-    elif (clear_model_cache or
-          not self._check_model_cache_path_same()):
+    elif (clear_model_cache or not self._check_model_cache_path_same()):
       model_status = self._fetch_all_models(
           verbose=verbose, clear_model_cache=clear_model_cache,
-          output_format=output_format,
-          recommended_only=recommended_only
+          output_format=output_format, recommended_only=recommended_only
       )
       providers_with_key = {
-          model.provider
-          for model in model_status.working_models
+          model.provider for model in model_status.working_models
       }
     else:
       model_status = self._fetch_all_models(
@@ -1067,8 +1129,7 @@ class AvailableModels(state_controller.StateControlled):
           recommended_only=recommended_only
       )
       providers_with_key = {
-          model.provider
-          for model in model_status.working_models
+          model.provider for model in model_status.working_models
       }
 
     return sorted(providers_with_key)
@@ -1081,8 +1142,8 @@ class AvailableModels(state_controller.StateControlled):
       verbose: bool = True,
       return_all: bool = False,
       clear_model_cache: bool = False,
-      output_format: types.OutputFormatTypeParam = (
-          types.OutputFormatType.TEXT),
+      output_format: types.
+      OutputFormatTypeParam = (types.OutputFormatType.TEXT),
       recommended_only: bool = True,
   ) -> list[types.ProviderModelType] | types.ModelStatus:
     """List working models for a specific provider."""
@@ -1093,8 +1154,8 @@ class AvailableModels(state_controller.StateControlled):
       features = type_utils.create_feature_tag_list(features=features)
 
     provider_models = self.model_configs_instance.get_all_models(
-        provider=provider,
-        model_size=model_size, recommended_only=recommended_only
+        provider=provider, model_size=model_size,
+        recommended_only=recommended_only
     )
 
     model_status: types.ModelStatus | None = None
@@ -1109,22 +1170,20 @@ class AvailableModels(state_controller.StateControlled):
       for provider_model in provider_models:
         model_status.working_models.add(provider_model)
       self._filter_by_model_size(
-          model_status, model_size=model_size,
-          recommended_only=recommended_only)
+          model_status, model_size=model_size, recommended_only=recommended_only
+      )
       self._filter_by_features(model_status, features=features)
-    elif (clear_model_cache or
-          not self._check_model_cache_path_same()):
+    elif (clear_model_cache or not self._check_model_cache_path_same()):
       model_status = self._fetch_all_models(
           selected_providers={provider}, model_size=model_size,
-          features=features, output_format=output_format,
-          verbose=verbose, clear_model_cache=clear_model_cache,
-          recommended_only=recommended_only
+          features=features, output_format=output_format, verbose=verbose,
+          clear_model_cache=clear_model_cache, recommended_only=recommended_only
       )
     else:
       model_status = self._fetch_all_models(
           selected_providers={provider}, model_size=model_size,
-          features=features, output_format=output_format,
-          verbose=verbose, recommended_only=recommended_only
+          features=features, output_format=output_format, verbose=verbose,
+          recommended_only=recommended_only
       )
 
     if return_all:
@@ -1133,15 +1192,13 @@ class AvailableModels(state_controller.StateControlled):
 
   def get_working_model(
       self, provider: str, model: str, verbose: bool = False,
-      clear_model_cache: bool = False,
-      output_format: types.OutputFormatTypeParam = (
-          types.OutputFormatType.TEXT)
+      clear_model_cache: bool = False, output_format: types.
+      OutputFormatTypeParam = (types.OutputFormatType.TEXT)
   ) -> types.ProviderModelType:
     """Get a specific model after verifying it works."""
     type_utils.create_output_format_type_list(output_format)
     provider_model_config = (
-        self.model_configs_instance.get_provider_model_config(
-            (provider, model))
+        self.model_configs_instance.get_provider_model_config((provider, model))
     )
 
     provider_model = provider_model_config.provider_model
@@ -1159,17 +1216,14 @@ class AvailableModels(state_controller.StateControlled):
             f'{model_configs.PROVIDER_KEY_MAP[provider_model.provider]}'
         )
       return provider_model
-    elif (clear_model_cache or
-          not self._check_model_cache_path_same()):
+    elif (clear_model_cache or not self._check_model_cache_path_same()):
       model_status = self._fetch_all_models(
-          selected_provider_models={provider_model},
-          verbose=verbose,
+          selected_provider_models={provider_model}, verbose=verbose,
           clear_model_cache=clear_model_cache
       )
     else:
       model_status = self._fetch_all_models(
-          selected_provider_models={provider_model},
-          verbose=verbose
+          selected_provider_models={provider_model}, verbose=verbose
       )
 
     if provider_model in model_status.working_models:
@@ -1177,7 +1231,6 @@ class AvailableModels(state_controller.StateControlled):
 
     raise ValueError(
         'Provider model not found in working models: '
-        f'({provider}, {model})\n' +
-        'Logging Record: ' +
+        f'({provider}, {model})\n' + 'Logging Record: ' +
         f'{model_status.provider_queries.get(provider_model, "")}'
     )

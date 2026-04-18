@@ -8,6 +8,9 @@ from proxai.client import ModelConnector
 CacheOptions = types.CacheOptions
 LoggingOptions = types.LoggingOptions
 ProxDashOptions = types.ProxDashOptions
+ProviderCallOptions = types.ProviderCallOptions
+ModelProbeOptions = types.ModelProbeOptions
+DebugOptions = types.DebugOptions
 FeatureMappingStrategy = types.FeatureMappingStrategy
 
 Chat = chat_session.Chat
@@ -18,7 +21,6 @@ OutputFormatType = types.OutputFormatType
 ConnectionOptions = types.ConnectionOptions
 MessageRoleType = types.MessageRoleType
 ContentType = types.ContentType
-
 
 _DEFAULT_CLIENT: client.ProxAIClient | None = None
 Client = client.ProxAIClient
@@ -38,12 +40,9 @@ def connect(
     cache_options: types.CacheOptions | None = None,
     logging_options: types.LoggingOptions | None = None,
     proxdash_options: types.ProxDashOptions | None = None,
-    allow_multiprocessing: bool | None = True,
-    model_test_timeout: int | None = 25,
-    feature_mapping_strategy: (types.FeatureMappingStrategy |
-                               None) = types.FeatureMappingStrategy.BEST_EFFORT,
-    suppress_provider_errors: bool | None = False,
-    keep_raw_provider_response: bool | None = False,
+    provider_call_options: types.ProviderCallOptions | None = None,
+    model_probe_options: types.ModelProbeOptions | None = None,
+    debug_options: types.DebugOptions | None = None,
 ) -> None:
   """Initializes the default ProxAI client with the specified configuration.
 
@@ -60,25 +59,14 @@ def connect(
           paths, stdout output, and sensitive content handling.
       proxdash_options: Configuration for ProxDash monitoring integration.
           Controls API key, base URL, and output options.
-      allow_multiprocessing: Whether to test models in parallel using
-          multiprocessing. Disable if you encounter process spawning errors
-          (common in Jupyter notebooks, AWS Lambda, or on Windows/macOS
-          without proper multiprocessing guards). Defaults to True.
-      model_test_timeout: Timeout in seconds for individual model tests
-          during health checks. Defaults to 25.
-      feature_mapping_strategy: Strategy for handling feature compatibility
-          between requests and model capabilities. BEST_EFFORT attempts to
-          map features even if not fully supported, STRICT requires exact
-          matches. Defaults to BEST_EFFORT.
-      suppress_provider_errors: If True, provider errors are returned as
-          strings instead of raising exceptions. Defaults to False.
-      keep_raw_provider_response: Debug-only escape hatch. If True, attaches
-          the raw provider SDK response object to
-          ``call_record.debug.raw_provider_response`` for every successful
-          call. The field is not part of ProxAI's stable contract, is not
-          serialized to the query cache or ProxDash, and is mutually
-          exclusive with ``cache_options`` (constructing a client with
-          both raises ``ValueError``). Defaults to False.
+      provider_call_options: Client-wide defaults for provider call
+          behaviour. Controls feature mapping strategy and error
+          suppression. See ProviderCallOptions for available settings.
+      model_probe_options: Configuration for model probing (health
+          checks, model discovery). Controls multiprocessing and
+          timeout. See ModelProbeOptions for available settings.
+      debug_options: Developer-only diagnostic options. See DebugOptions
+          for available settings.
 
   Returns:
       None
@@ -96,11 +84,9 @@ def connect(
       cache_options=cache_options,
       logging_options=logging_options,
       proxdash_options=proxdash_options,
-      allow_multiprocessing=allow_multiprocessing,
-      model_test_timeout=model_test_timeout,
-      feature_mapping_strategy=feature_mapping_strategy,
-      suppress_provider_errors=suppress_provider_errors,
-      keep_raw_provider_response=keep_raw_provider_response,
+      provider_call_options=provider_call_options,
+      model_probe_options=model_probe_options,
+      debug_options=debug_options,
   )
   _DEFAULT_CLIENT = client.ProxAIClient(init_from_params=proxai_client_params)
 
@@ -391,107 +377,6 @@ def set_model(
       generate_audio=generate_audio,
       generate_video=generate_video,
   )
-
-
-def check_health(
-    experiment_path: str | None = None,
-    verbose: bool = True,
-    allow_multiprocessing: bool = True,
-    model_test_timeout: int = 25,
-    extensive_return: bool = False,
-) -> types.ModelStatus | None:
-  """Tests connectivity and response times for all available AI models.
-
-  Performs a health check by sending test requests to each configured AI
-  model and reporting which models are working and which have failed.
-  Results are cached to speed up subsequent checks.
-
-  Args:
-      experiment_path: Path identifier for organizing the health check
-          experiment logs.
-      verbose: If True, prints detailed progress and results to stdout
-          including per-model response times. Defaults to True.
-      allow_multiprocessing: Whether to test models in parallel using
-          multiprocessing. Disable if you encounter process spawning errors
-          (common in Jupyter notebooks, AWS Lambda, or on Windows/macOS
-          without proper multiprocessing guards). Defaults to True.
-      model_test_timeout: Maximum time in seconds to wait for each model
-          to respond before marking it as failed. Defaults to 25.
-      extensive_return: If True, returns the full ModelStatus object
-          containing detailed information about all tested models.
-          Defaults to False.
-
-  Returns:
-      Optional[types.ModelStatus]: If extensive_return is True, returns
-          a ModelStatus object containing working_models, failed_models,
-          and provider_queries with detailed logging records. Returns
-          None if extensive_return is False.
-
-  Example:
-      >>> import proxai as px
-      >>> # Quick health check with console output
-      >>> px.check_health()
-      > Starting to test each model...
-      > Finished testing.
-         Registered Providers: 3
-         Succeeded Models: 5
-         Failed Models: 1
-      > anthropic:
-         [ WORKING |   1.23s ]: claude-3-opus
-         ...
-
-      >>> # Get detailed results programmatically
-      >>> status = px.check_health(verbose=False, extensive_return=True)
-      >>> print(len(status.working_models))
-      5
-  """
-  state = get_default_proxai_client().clone_state()
-  state.allow_multiprocessing = allow_multiprocessing
-  state.model_test_timeout = model_test_timeout
-  state.experiment_path = experiment_path
-  px_client = client.ProxAIClient(init_from_state=state)
-  if verbose:
-    print("> Starting to test each model...")
-  model_status = px_client.available_models_instance.list_working_models(
-      clear_model_cache=True, verbose=verbose, return_all=True
-  )
-  if verbose:
-    providers = set([model.provider for model in model_status.working_models] +
-                    [model.provider for model in model_status.failed_models])
-    result_table = {
-        provider: {
-            "working": [],
-            "failed": []
-        } for provider in providers
-    }
-    for model in model_status.working_models:
-      result_table[model.provider]["working"].append(model.model)
-    for model in model_status.failed_models:
-      result_table[model.provider]["failed"].append(model.model)
-    print(
-        "> Finished testing.\n"
-        f"   Registered Providers: {len(providers)}\n"
-        f"   Succeeded Models: {len(model_status.working_models)}\n"
-        f"   Failed Models: {len(model_status.failed_models)}"
-    )
-    for provider in sorted(providers):
-      print(f"> {provider}:")
-      for model in sorted(result_table[provider]["working"]):
-        provider_model = px_client.model_configs_instance.get_provider_model(
-            (provider, model)
-        )
-        duration = model_status.provider_queries[provider_model
-                                                ].result.timestamp.response_time
-        print(f"   [ WORKING | {duration.total_seconds():6.2f}s ]: {model}")
-      for model in sorted(result_table[provider]["failed"]):
-        provider_model = px_client.model_configs_instance.get_provider_model(
-            (provider, model)
-        )
-        duration = model_status.provider_queries[provider_model
-                                                ].result.timestamp.response_time
-        print(f"   [ FAILED  | {duration.total_seconds():6.2f}s ]: {model}")
-  if extensive_return:
-    return model_status
 
 
 def get_current_options(json: bool = False,) -> types.RunOptions | dict:

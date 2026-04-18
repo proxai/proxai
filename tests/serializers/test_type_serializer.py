@@ -20,8 +20,7 @@ _MODEL_2 = types.ProviderModelType(
     provider='openai', model='o3-mini', provider_model_identifier='o3-mini'
 )
 _MODEL_3 = types.ProviderModelType(
-    provider='claude', model='opus-4',
-    provider_model_identifier='claude-opus-4'
+    provider='claude', model='opus-4', provider_model_identifier='claude-opus-4'
 )
 _MODEL_4 = types.ProviderModelType(
     provider='claude', model='sonnet-4',
@@ -41,7 +40,6 @@ def _get_provider_model_type_options():
           'provider_model_identifier': 'gpt-4'
       },
   ]
-
 
 
 def _get_provider_model_pricing_type_options():
@@ -189,62 +187,70 @@ def _get_feature_config_type_options():
           'add_system_to_messages': False
       },
       {
-          'parameters': types.ParameterConfigType(
-              temperature=types.FeatureSupportType.SUPPORTED
-          )
+          'parameters':
+              types.ParameterConfigType(
+                  temperature=types.FeatureSupportType.SUPPORTED
+              )
       },
       {
-          'tools': types.ToolConfigType(
-              web_search=types.FeatureSupportType.SUPPORTED
-          )
+          'tools':
+              types.ToolConfigType(
+                  web_search=types.FeatureSupportType.SUPPORTED
+              )
       },
       {
-          'output_format': types.OutputFormatConfigType(
-              text=types.FeatureSupportType.SUPPORTED,
-              json=types.FeatureSupportType.SUPPORTED
-          )
+          'output_format':
+              types.OutputFormatConfigType(
+                  text=types.FeatureSupportType.SUPPORTED,
+                  json=types.FeatureSupportType.SUPPORTED
+              )
       },
       {
-          'input_format': types.InputFormatConfigType(
-              text=types.FeatureSupportType.SUPPORTED,
-              image=types.FeatureSupportType.SUPPORTED,
-              json=types.FeatureSupportType.BEST_EFFORT,
-              pydantic=types.FeatureSupportType.BEST_EFFORT
-          )
+          'input_format':
+              types.InputFormatConfigType(
+                  text=types.FeatureSupportType.SUPPORTED,
+                  image=types.FeatureSupportType.SUPPORTED,
+                  json=types.FeatureSupportType.BEST_EFFORT,
+                  pydantic=types.FeatureSupportType.BEST_EFFORT
+              )
       },
       {
           'prompt': types.FeatureSupportType.SUPPORTED,
           'messages': types.FeatureSupportType.SUPPORTED,
           'system_prompt': types.FeatureSupportType.BEST_EFFORT,
           'add_system_to_messages': True,
-          'parameters': types.ParameterConfigType(
-              temperature=types.FeatureSupportType.SUPPORTED,
-              max_tokens=types.FeatureSupportType.SUPPORTED,
-              stop=types.FeatureSupportType.BEST_EFFORT,
-              n=types.FeatureSupportType.NOT_SUPPORTED,
-              thinking=types.FeatureSupportType.SUPPORTED
-          ),
-          'tools': types.ToolConfigType(
-              web_search=types.FeatureSupportType.SUPPORTED
-          ),
-          'output_format': types.OutputFormatConfigType(
-              text=types.FeatureSupportType.SUPPORTED,
-              image=types.FeatureSupportType.NOT_SUPPORTED,
-              audio=types.FeatureSupportType.NOT_SUPPORTED,
-              video=types.FeatureSupportType.NOT_SUPPORTED,
-              json=types.FeatureSupportType.SUPPORTED,
-              pydantic=types.FeatureSupportType.BEST_EFFORT,
-              multi_modal=types.FeatureSupportType.NOT_SUPPORTED
-          ),
-          'input_format': types.InputFormatConfigType(
-              text=types.FeatureSupportType.SUPPORTED,
-              image=types.FeatureSupportType.SUPPORTED,
-              document=types.FeatureSupportType.SUPPORTED,
-              audio=types.FeatureSupportType.SUPPORTED,
-              video=types.FeatureSupportType.SUPPORTED,
-              json=types.FeatureSupportType.BEST_EFFORT,
-              pydantic=types.FeatureSupportType.BEST_EFFORT
-          )
+          'parameters':
+              types.ParameterConfigType(
+                  temperature=types.FeatureSupportType.SUPPORTED,
+                  max_tokens=types.FeatureSupportType.SUPPORTED,
+                  stop=types.FeatureSupportType.BEST_EFFORT,
+                  n=types.FeatureSupportType.NOT_SUPPORTED,
+                  thinking=types.FeatureSupportType.SUPPORTED
+              ),
+          'tools':
+              types.ToolConfigType(
+                  web_search=types.FeatureSupportType.SUPPORTED
+              ),
+          'output_format':
+              types.OutputFormatConfigType(
+                  text=types.FeatureSupportType.SUPPORTED,
+                  image=types.FeatureSupportType.NOT_SUPPORTED,
+                  audio=types.FeatureSupportType.NOT_SUPPORTED,
+                  video=types.FeatureSupportType.NOT_SUPPORTED,
+                  json=types.FeatureSupportType.SUPPORTED,
+                  pydantic=types.FeatureSupportType.BEST_EFFORT,
+                  multi_modal=types.FeatureSupportType.NOT_SUPPORTED
+              ),
+          'input_format':
+              types.InputFormatConfigType(
+                  text=types.FeatureSupportType.SUPPORTED,
+                  image=types.FeatureSupportType.SUPPORTED,
+                  document=types.FeatureSupportType.SUPPORTED,
+                  audio=types.FeatureSupportType.SUPPORTED,
+                  video=types.FeatureSupportType.SUPPORTED,
+                  json=types.FeatureSupportType.BEST_EFFORT,
+                  pydantic=types.FeatureSupportType.BEST_EFFORT
+              )
       },
   ]
 
@@ -321,19 +327,17 @@ def _get_provider_model_config_options():
       {
           'provider_model': _MODEL_1,
           'pricing': types.ProviderModelPricingType(),
-          'features': types.FeatureConfigType(
-              prompt=types.FeatureSupportType.SUPPORTED
-          ),
+          'features':
+              types.FeatureConfigType(
+                  prompt=types.FeatureSupportType.SUPPORTED
+              ),
           'metadata': types.ProviderModelMetadataType()
       },
       {
           'provider_model': _MODEL_1,
           'pricing': types.ProviderModelPricingType(),
           'features': types.FeatureConfigType(),
-          'metadata':
-              types.ProviderModelMetadataType(
-                  is_recommended=True
-              )
+          'metadata': types.ProviderModelMetadataType(is_recommended=True)
       },
       {
           'provider_model': _MODEL_3,
@@ -341,15 +345,16 @@ def _get_provider_model_config_options():
               types.ProviderModelPricingType(
                   input_token_cost=0.003, output_token_cost=0.001
               ),
-          'features': types.FeatureConfigType(
-              prompt=types.FeatureSupportType.SUPPORTED,
-              messages=types.FeatureSupportType.SUPPORTED,
-              system_prompt=types.FeatureSupportType.BEST_EFFORT,
-              parameters=types.ParameterConfigType(
-                  temperature=types.FeatureSupportType.SUPPORTED,
-                  max_tokens=types.FeatureSupportType.SUPPORTED
-              )
-          ),
+          'features':
+              types.FeatureConfigType(
+                  prompt=types.FeatureSupportType.SUPPORTED,
+                  messages=types.FeatureSupportType.SUPPORTED,
+                  system_prompt=types.FeatureSupportType.BEST_EFFORT,
+                  parameters=types.ParameterConfigType(
+                      temperature=types.FeatureSupportType.SUPPORTED,
+                      max_tokens=types.FeatureSupportType.SUPPORTED
+                  )
+              ),
           'metadata':
               types.ProviderModelMetadataType(
                   is_recommended=True,
@@ -399,8 +404,7 @@ def _get_model_configs_schema_metadata_type_options():
 
 def _get_model_registry_options():
   _default_config = types.ProviderModelConfig(
-      provider_model=_MODEL_1,
-      pricing=types.ProviderModelPricingType(),
+      provider_model=_MODEL_1, pricing=types.ProviderModelPricingType(),
       features=types.FeatureConfigType(),
       metadata=types.ProviderModelMetadataType()
   )
@@ -436,12 +440,10 @@ def _get_model_registry_options():
                       provider_model=_MODEL_1,
                       pricing=types.ProviderModelPricingType(
                           input_token_cost=0.001, output_token_cost=0.002
-                      ),
-                      features=types.FeatureConfigType(
+                      ), features=types.FeatureConfigType(
                           prompt=types.FeatureSupportType.SUPPORTED,
                           messages=types.FeatureSupportType.SUPPORTED
-                      ),
-                      metadata=types.ProviderModelMetadataType(
+                      ), metadata=types.ProviderModelMetadataType(
                           is_recommended=True,
                           model_size_tags=[types.ModelSizeType.LARGE]
                       )
@@ -465,16 +467,14 @@ def _get_model_registry_options():
                       provider_model=_MODEL_1,
                       pricing=types.ProviderModelPricingType(
                           input_token_cost=0.001, output_token_cost=0.002
-                      ),
-                      features=types.FeatureConfigType(
+                      ), features=types.FeatureConfigType(
                           prompt=types.FeatureSupportType.SUPPORTED,
                           messages=types.FeatureSupportType.SUPPORTED,
                           parameters=types.ParameterConfigType(
                               temperature=types.FeatureSupportType.SUPPORTED,
                               max_tokens=types.FeatureSupportType.SUPPORTED
                           )
-                      ),
-                      metadata=types.ProviderModelMetadataType(
+                      ), metadata=types.ProviderModelMetadataType(
                           is_recommended=True,
                           model_size_tags=[types.ModelSizeType.LARGE]
                       )
@@ -685,10 +685,15 @@ def _get_choice_type_options():
               )
       },
       {
-          'output_json': {'key': 'value'}
+          'output_json': {
+              'key': 'value'
+          }
       },
       {
-          'output_json': {'name': 'test', 'items': [1, 2, 3]}
+          'output_json': {
+              'name': 'test',
+              'items': [1, 2, 3]
+          }
       },
       {
           'content': 'Hello, world!'
@@ -713,7 +718,9 @@ def _get_choice_type_options():
       },
       {
           'output_text': 'text result',
-          'output_json': {'key': 'value'},
+          'output_json': {
+              'key': 'value'
+          },
           'content': [
               message_content.MessageContent(
                   type=message_content.ContentType.TEXT, text='hello'
@@ -758,9 +765,7 @@ def _get_tool_usage_type_options():
       },
       {
           'web_search_count': 5,
-          'web_search_citations': [
-              'https://example.com', 'https://test.com'
-          ]
+          'web_search_citations': ['https://example.com', 'https://test.com']
       },
   ]
 
@@ -830,10 +835,15 @@ def _get_result_record_options():
               )
       },
       {
-          'output_json': {'key': 'value'}
+          'output_json': {
+              'key': 'value'
+          }
       },
       {
-          'output_json': {'name': 'test', 'items': [1, 2, 3]}
+          'output_json': {
+              'name': 'test',
+              'items': [1, 2, 3]
+          }
       },
       {
           'content': 'Hello, world!'
@@ -883,7 +893,9 @@ def _get_result_record_options():
                   type=message_content.ContentType.IMAGE,
                   source='https://example.com/img.png',
               ),
-          'output_json': {'result': 'ok'},
+          'output_json': {
+              'result': 'ok'
+          },
           'content': [
               message_content.MessageContent(
                   type=message_content.ContentType.TEXT, text='hello'
@@ -892,8 +904,8 @@ def _get_result_record_options():
           'choices': [types.ChoiceType(content='choice 1')],
           'usage':
               types.UsageType(
-                  input_tokens=100, output_tokens=200,
-                  total_tokens=300, estimated_cost=50
+                  input_tokens=100, output_tokens=200, total_tokens=300,
+                  estimated_cost=50
               ),
           'tool_usage':
               types.ToolUsageType(
@@ -919,16 +931,16 @@ def _get_query_record_options():
       },
       {
           'chat':
-              chat_session.Chat(messages=[
-                  message.Message(
-                      role=message_content.MessageRoleType.USER,
-                      content=[
-                          message_content.MessageContent(
-                              type='text', text='Hello'
-                          )
-                      ]
-                  )
-              ])
+              chat_session.Chat(
+                  messages=[
+                      message.Message(
+                          role=message_content.MessageRoleType.USER, content=[
+                              message_content.
+                              MessageContent(type='text', text='Hello')
+                          ]
+                      )
+                  ]
+              )
       },
       {
           'system_prompt': 'You are a helpful assistant.'
@@ -949,12 +961,10 @@ def _get_query_record_options():
           'tools': [types.Tools.WEB_SEARCH]
       },
       {
-          'output_format':
-              types.OutputFormat(type=types.OutputFormatType.TEXT)
+          'output_format': types.OutputFormat(type=types.OutputFormatType.TEXT)
       },
       {
-          'output_format':
-              types.OutputFormat(type=types.OutputFormatType.JSON)
+          'output_format': types.OutputFormat(type=types.OutputFormatType.JSON)
       },
       {
           'output_format':
@@ -963,8 +973,7 @@ def _get_query_record_options():
       {
           'connection_options':
               types.ConnectionOptions(
-                  fallback_models=[_MODEL_1],
-                  suppress_provider_errors=True,
+                  fallback_models=[_MODEL_1], suppress_provider_errors=True,
                   endpoint='some_endpoint'
               )
       },
@@ -974,24 +983,23 @@ def _get_query_record_options():
       {
           'prompt': 'Hello, world!',
           'chat':
-              chat_session.Chat(messages=[
-                  message.Message(
-                      role=message_content.MessageRoleType.USER,
-                      content=[
-                          message_content.MessageContent(
-                              type='text', text='Hi'
-                          )
-                      ]
-                  ),
-                  message.Message(
-                      role=message_content.MessageRoleType.ASSISTANT,
-                      content=[
-                          message_content.MessageContent(
-                              type='text', text='Hello!'
-                          )
-                      ]
-                  )
-              ]),
+              chat_session.Chat(
+                  messages=[
+                      message.Message(
+                          role=message_content.MessageRoleType.USER, content=[
+                              message_content.
+                              MessageContent(type='text', text='Hi')
+                          ]
+                      ),
+                      message.Message(
+                          role=message_content.MessageRoleType.ASSISTANT,
+                          content=[
+                              message_content.
+                              MessageContent(type='text', text='Hello!')
+                          ]
+                      )
+                  ]
+              ),
           'system_prompt': 'Be helpful.',
           'provider_model': _MODEL_1,
           'parameters':
@@ -999,15 +1007,12 @@ def _get_query_record_options():
                   temperature=0.7, max_tokens=200, stop=['stop1'], n=2
               ),
           'tools': [types.Tools.WEB_SEARCH],
-          'output_format':
-              types.OutputFormat(type=types.OutputFormatType.TEXT),
+          'output_format': types.OutputFormat(type=types.OutputFormatType.TEXT),
           'connection_options':
               types.ConnectionOptions(
                   fallback_models=[_MODEL_1, _MODEL_2],
-                  suppress_provider_errors=True,
-                  endpoint='test_endpoint',
-                  skip_cache=False,
-                  override_cache_value=True
+                  suppress_provider_errors=True, endpoint='test_endpoint',
+                  skip_cache=False, override_cache_value=True
               ),
           'hash_value': 'test_hash'
       },
@@ -1024,8 +1029,7 @@ def _get_connection_metadata_options():
           'result_source': types.ResultSource.PROVIDER
       },
       {
-          'cache_look_fail_reason':
-              types.CacheLookFailReason.CACHE_NOT_FOUND
+          'cache_look_fail_reason': types.CacheLookFailReason.CACHE_NOT_FOUND
       },
       {
           'cache_look_fail_reason':
@@ -1048,8 +1052,7 @@ def _get_connection_metadata_options():
       },
       {
           'result_source': types.ResultSource.PROVIDER,
-          'cache_look_fail_reason':
-              types.CacheLookFailReason.CACHE_NOT_MATCHED,
+          'cache_look_fail_reason': types.CacheLookFailReason.CACHE_NOT_MATCHED,
           'endpoint_used': 'test_endpoint',
           'failed_fallback_models': [_MODEL_2, _MODEL_4],
           'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT
@@ -1065,23 +1068,19 @@ def _get_call_record_options():
       {
           'result':
               types.ResultRecord(
-                  status=types.ResultStatusType.SUCCESS,
-                  content='Hello'
+                  status=types.ResultStatusType.SUCCESS, content='Hello'
               )
       },
       {
           'connection':
-              types.ConnectionMetadata(
-                  result_source=types.ResultSource.CACHE
-              )
+              types.ConnectionMetadata(result_source=types.ResultSource.CACHE)
       },
       {
           'connection':
               types.ConnectionMetadata(
                   result_source=types.ResultSource.PROVIDER,
                   endpoint_used='test_endpoint',
-                  failed_fallback_models=[_MODEL_2],
-                  feature_mapping_strategy=(
+                  failed_fallback_models=[_MODEL_2], feature_mapping_strategy=(
                       types.FeatureMappingStrategy.BEST_EFFORT
                   )
               )
@@ -1090,13 +1089,10 @@ def _get_call_record_options():
           'query': types.QueryRecord(prompt='test'),
           'result':
               types.ResultRecord(
-                  status=types.ResultStatusType.SUCCESS,
-                  content='Hello'
+                  status=types.ResultStatusType.SUCCESS, content='Hello'
               ),
           'connection':
-              types.ConnectionMetadata(
-                  result_source=types.ResultSource.CACHE
-              )
+              types.ConnectionMetadata(result_source=types.ResultSource.CACHE)
       },
   ]
 
@@ -1109,8 +1105,7 @@ def _get_cache_record_options():
       {
           'results': [
               types.ResultRecord(
-                  status=types.ResultStatusType.SUCCESS,
-                  content='Hello, world!'
+                  status=types.ResultStatusType.SUCCESS, content='Hello, world!'
               )
           ]
       },
@@ -1130,8 +1125,7 @@ def _get_cache_record_options():
           'query': types.QueryRecord(prompt='test'),
           'results': [
               types.ResultRecord(
-                  status=types.ResultStatusType.SUCCESS,
-                  content='Hello, world!'
+                  status=types.ResultStatusType.SUCCESS, content='Hello, world!'
               )
           ],
           'shard_id': 0,
@@ -1172,10 +1166,11 @@ def _get_cache_look_result_options():
   return [
       {},
       {
-          'result': types.ResultRecord(
-              status=types.ResultStatusType.SUCCESS,
-              output_text='cached response'
-          )
+          'result':
+              types.ResultRecord(
+                  status=types.ResultStatusType.SUCCESS,
+                  output_text='cached response'
+              )
       },
       {
           'cache_look_fail_reason': types.CacheLookFailReason.CACHE_NOT_FOUND
@@ -1192,10 +1187,10 @@ def _get_cache_look_result_options():
               types.CacheLookFailReason.PROVIDER_ERROR_CACHED
       },
       {
-          'result': types.ResultRecord(
-              status=types.ResultStatusType.FAILED,
-              error='provider error'
-          ),
+          'result':
+              types.ResultRecord(
+                  status=types.ResultStatusType.FAILED, error='provider error'
+              ),
           'cache_look_fail_reason':
               types.CacheLookFailReason.PROVIDER_ERROR_CACHED
       },
@@ -1293,6 +1288,62 @@ def _get_summary_options_options():
   ]
 
 
+def _get_provider_call_options_options():
+  return [
+      {},
+      {
+          'feature_mapping_strategy': types.FeatureMappingStrategy.BEST_EFFORT
+      },
+      {
+          'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT
+      },
+      {
+          'suppress_provider_errors': True
+      },
+      {
+          'suppress_provider_errors': False
+      },
+      {
+          'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT,
+          'suppress_provider_errors': True
+      },
+  ]
+
+
+def _get_model_probe_options_options():
+  return [
+      {},
+      {
+          'allow_multiprocessing': True
+      },
+      {
+          'allow_multiprocessing': False
+      },
+      {
+          'timeout': 10
+      },
+      {
+          'timeout': 60
+      },
+      {
+          'allow_multiprocessing': False,
+          'timeout': 30
+      },
+  ]
+
+
+def _get_debug_options_options():
+  return [
+      {},
+      {
+          'keep_raw_provider_response': True
+      },
+      {
+          'keep_raw_provider_response': False
+      },
+  ]
+
+
 def _get_run_options_options():
   return [
       {},
@@ -1334,19 +1385,27 @@ def _get_run_options_options():
               )
       },
       {
-          'allow_multiprocessing': True
+          'provider_call_options':
+              types.ProviderCallOptions(
+                  feature_mapping_strategy=(
+                      types.FeatureMappingStrategy.BEST_EFFORT
+                  )
+              )
       },
       {
-          'model_test_timeout': 25
+          'provider_call_options':
+              types.ProviderCallOptions(
+                  feature_mapping_strategy=(
+                      types.FeatureMappingStrategy.STRICT
+                  ), suppress_provider_errors=True
+              )
       },
       {
-          'feature_mapping_strategy': types.FeatureMappingStrategy.BEST_EFFORT
+          'model_probe_options':
+              types.ModelProbeOptions(allow_multiprocessing=False, timeout=30)
       },
       {
-          'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT
-      },
-      {
-          'suppress_provider_errors': True
+          'debug_options': types.DebugOptions(keep_raw_provider_response=True)
       },
       {
           'run_type': types.RunType.TEST,
@@ -1370,9 +1429,15 @@ def _get_run_options_options():
                   stdout=True, hide_sensitive_content=True,
                   disable_proxdash=True
               ),
-          'allow_multiprocessing': True,
-          'model_test_timeout': 25,
-          'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT
+          'provider_call_options':
+              types.ProviderCallOptions(
+                  feature_mapping_strategy=(
+                      types.FeatureMappingStrategy.STRICT
+                  ), suppress_provider_errors=True
+              ),
+          'model_probe_options':
+              types.ModelProbeOptions(allow_multiprocessing=False, timeout=30),
+          'debug_options': types.DebugOptions(keep_raw_provider_response=True)
       },
   ]
 
@@ -1440,8 +1505,7 @@ def _get_provider_model_configs_mapping_type_options():
                       provider_model=_MODEL_1,
                       pricing=types.ProviderModelPricingType(
                           input_token_cost=0.001, output_token_cost=0.002
-                      ),
-                      features=types.FeatureConfigType(),
+                      ), features=types.FeatureConfigType(),
                       metadata=types.ProviderModelMetadataType()
                   )
           },
@@ -1496,11 +1560,7 @@ def _get_model_size_mapping_type_options():
 
 
 def _get_default_model_priority_list_options():
-  return [
-      [_MODEL_1],
-      [_MODEL_1, _MODEL_3],
-      [_MODEL_1, _MODEL_3, _MODEL_2]
-  ]
+  return [[_MODEL_1], [_MODEL_1, _MODEL_3], [_MODEL_1, _MODEL_3, _MODEL_2]]
 
 
 class TestTypeSerializer:
@@ -1510,9 +1570,7 @@ class TestTypeSerializer:
   )
   def test_encode_decode_provider_model_type(self, provider_model_type_options):
     # Test successful encode/decode round-trip
-    provider_model_type = types.ProviderModelType(
-        **provider_model_type_options
-    )
+    provider_model_type = types.ProviderModelType(**provider_model_type_options)
     encoded_provider_model_type = type_serializer.encode_provider_model_type(
         provider_model_type=provider_model_type
     )
@@ -1666,12 +1724,8 @@ class TestTypeSerializer:
   @pytest.mark.parametrize(
       'feature_config_type_options', _get_feature_config_type_options()
   )
-  def test_encode_decode_feature_config_type(
-      self, feature_config_type_options
-  ):
-    feature_config_type = types.FeatureConfigType(
-        **feature_config_type_options
-    )
+  def test_encode_decode_feature_config_type(self, feature_config_type_options):
+    feature_config_type = types.FeatureConfigType(**feature_config_type_options)
     encoded_feature_config_type = (
         type_serializer.encode_feature_config_type(
             feature_config_type=feature_config_type
@@ -1707,8 +1761,7 @@ class TestTypeSerializer:
     assert provider_model_metadata_type == decoded_provider_model_metadata_type
 
   @pytest.mark.parametrize(
-      'provider_model_config_options',
-      _get_provider_model_config_options()
+      'provider_model_config_options', _get_provider_model_config_options()
   )
   def test_encode_decode_provider_model_config(
       self, provider_model_config_options
@@ -1760,14 +1813,10 @@ class TestTypeSerializer:
   def test_encode_decode_model_registry(self, model_registry_options):
     model_registry = types.ModelRegistry(**model_registry_options)
     encoded_model_registry = (
-        type_serializer.encode_model_registry(
-            model_registry=model_registry
-        )
+        type_serializer.encode_model_registry(model_registry=model_registry)
     )
     decoded_model_registry = (
-        type_serializer.decode_model_registry(
-            record=encoded_model_registry
-        )
+        type_serializer.decode_model_registry(record=encoded_model_registry)
     )
     assert model_registry == decoded_model_registry
 
@@ -1833,8 +1882,7 @@ class TestTypeSerializer:
     assert output_format_type_mapping_type_options == decoded_output_format_type_mapping_type
 
   @pytest.mark.parametrize(
-      'model_size_mapping_type_options',
-      _get_model_size_mapping_type_options()
+      'model_size_mapping_type_options', _get_model_size_mapping_type_options()
   )
   def test_encode_decode_model_size_mapping_type(
       self, model_size_mapping_type_options
@@ -1903,9 +1951,7 @@ class TestTypeSerializer:
   )
   def test_encode_decode_output_format(self, output_format_options):
     output_format = types.OutputFormat(**output_format_options)
-    encoded = type_serializer.encode_output_format(
-        output_format=output_format
-    )
+    encoded = type_serializer.encode_output_format(output_format=output_format)
     decoded = type_serializer.decode_output_format(record=encoded)
     assert decoded.type == output_format.type
     # pydantic_class cannot be reconstructed from serialized form
@@ -2034,9 +2080,7 @@ class TestTypeSerializer:
   @pytest.mark.parametrize(
       'connection_metadata_options', _get_connection_metadata_options()
   )
-  def test_encode_decode_connection_metadata(
-      self, connection_metadata_options
-  ):
+  def test_encode_decode_connection_metadata(self, connection_metadata_options):
     connection_metadata = types.ConnectionMetadata(
         **connection_metadata_options
     )
@@ -2170,6 +2214,57 @@ class TestTypeSerializer:
     )
     assert summary_options == decoded_summary_options
 
+  @pytest.mark.parametrize(
+      'provider_call_options_options', _get_provider_call_options_options()
+  )
+  def test_encode_decode_provider_call_options(
+      self, provider_call_options_options
+  ):
+    provider_call_options = types.ProviderCallOptions(
+        **provider_call_options_options
+    )
+    encoded_provider_call_options = (
+        type_serializer.encode_provider_call_options(
+            provider_call_options=provider_call_options
+        )
+    )
+    decoded_provider_call_options = (
+        type_serializer.decode_provider_call_options(
+            record=encoded_provider_call_options
+        )
+    )
+    assert provider_call_options == decoded_provider_call_options
+
+  @pytest.mark.parametrize(
+      'model_probe_options_options', _get_model_probe_options_options()
+  )
+  def test_encode_decode_model_probe_options(self, model_probe_options_options):
+    model_probe_options = types.ModelProbeOptions(**model_probe_options_options)
+    encoded_model_probe_options = (
+        type_serializer.encode_model_probe_options(
+            model_probe_options=model_probe_options
+        )
+    )
+    decoded_model_probe_options = (
+        type_serializer.decode_model_probe_options(
+            record=encoded_model_probe_options
+        )
+    )
+    assert model_probe_options == decoded_model_probe_options
+
+  @pytest.mark.parametrize(
+      'debug_options_options', _get_debug_options_options()
+  )
+  def test_encode_decode_debug_options(self, debug_options_options):
+    debug_options = types.DebugOptions(**debug_options_options)
+    encoded_debug_options = type_serializer.encode_debug_options(
+        debug_options=debug_options
+    )
+    decoded_debug_options = type_serializer.decode_debug_options(
+        record=encoded_debug_options
+    )
+    assert debug_options == decoded_debug_options
+
   @pytest.mark.parametrize('run_options_options', _get_run_options_options())
   def test_encode_decode_run_options(self, run_options_options):
     run_options = types.RunOptions(**run_options_options)
@@ -2180,10 +2275,9 @@ class TestTypeSerializer:
         record=encoded_run_options
     )
     assert run_options == decoded_run_options
-    # Regression guard: feature_mapping_strategy must be JSON-serializable,
-    # i.e. stored as a string, not an enum instance.
-    if run_options.feature_mapping_strategy is not None:
-      assert isinstance(encoded_run_options['feature_mapping_strategy'], str)
+    if run_options.provider_call_options is not None:
+      encoded_pco = encoded_run_options['provider_call_options']
+      assert isinstance(encoded_pco['feature_mapping_strategy'], str)
 
   @pytest.mark.parametrize('model_status_options', _get_model_status_options())
   def test_encode_decode_model_status(self, model_status_options):
@@ -2217,12 +2311,9 @@ class TestTypeSerializer:
 
   def test_encode_decode_output_format_hash_consistency(self):
     output_format = types.OutputFormat(
-        type=types.OutputFormatType.PYDANTIC,
-        pydantic_class=_UserModel
+        type=types.OutputFormatType.PYDANTIC, pydantic_class=_UserModel
     )
-    query_record = types.QueryRecord(
-        prompt='test', output_format=output_format
-    )
+    query_record = types.QueryRecord(prompt='test', output_format=output_format)
     hash_before = hash_serializer.get_query_record_hash(query_record)
 
     encoded = type_serializer.encode_query_record(query_record)
@@ -2234,9 +2325,7 @@ class TestTypeSerializer:
   def test_encode_decode_choice_type_with_pydantic(self):
     user = _UserModel(name='John', age=30)
     choice_type = types.ChoiceType(
-        output_text='John is 30',
-        output_pydantic=user,
-        content=[
+        output_text='John is 30', output_pydantic=user, content=[
             message_content.MessageContent(
                 type=message_content.ContentType.TEXT, text='John is 30'
             )
@@ -2252,19 +2341,17 @@ class TestTypeSerializer:
     assert 'output_pydantic' in encoded
     assert encoded['output_pydantic']['class_name'] == '_UserModel'
     assert encoded['output_pydantic']['instance_json_value'] == {
-        'name': 'John', 'age': 30
+        'name': 'John',
+        'age': 30
     }
 
   def test_encode_decode_result_record_with_pydantic(self):
     user = _UserModel(name='Jane', age=25)
     result_record = types.ResultRecord(
-        status=types.ResultStatusType.SUCCESS,
-        output_text='Jane is 25',
+        status=types.ResultStatusType.SUCCESS, output_text='Jane is 25',
         output_pydantic=user
     )
-    encoded = type_serializer.encode_result_record(
-        result_record=result_record
-    )
+    encoded = type_serializer.encode_result_record(result_record=result_record)
     decoded = type_serializer.decode_result_record(record=encoded)
     # output_pydantic cannot be reconstructed from serialized form
     assert decoded.output_pydantic is None
@@ -2274,7 +2361,8 @@ class TestTypeSerializer:
     assert 'output_pydantic' in encoded
     assert encoded['output_pydantic']['class_name'] == '_UserModel'
     assert encoded['output_pydantic']['instance_json_value'] == {
-        'name': 'Jane', 'age': 25
+        'name': 'Jane',
+        'age': 25
     }
 
 
@@ -2293,19 +2381,21 @@ class TestPydanticDatetimeRoundTrip:
     )
 
   def _build_chat_with_event(self, event):
-    return chat_session.Chat(messages=[
-        message.Message(
-            role=message_content.MessageRoleType.ASSISTANT,
-            content=[
-                message_content.MessageContent(
-                    type=message_content.ContentType.PYDANTIC_INSTANCE,
-                    pydantic_content=message_content.PydanticContent(
-                        class_value=_EventModel, instance_value=event
+    return chat_session.Chat(
+        messages=[
+            message.Message(
+                role=message_content.MessageRoleType.ASSISTANT,
+                content=[
+                    message_content.MessageContent(
+                        type=message_content.ContentType.PYDANTIC_INSTANCE,
+                        pydantic_content=message_content.PydanticContent(
+                            class_value=_EventModel, instance_value=event
+                        ),
                     ),
-                ),
-            ],
-        )
-    ])
+                ],
+            )
+        ]
+    )
 
   def test_hash_does_not_crash_on_datetime_pydantic(self):
     chat = self._build_chat_with_event(self._build_event())
@@ -2319,7 +2409,9 @@ class TestPydanticDatetimeRoundTrip:
     event_2 = _EventModel(
         name='launch',
         # One second later.
-        when=datetime.datetime(2024, 1, 1, 12, 0, 1, tzinfo=datetime.timezone.utc),
+        when=datetime.datetime(
+            2024, 1, 1, 12, 0, 1, tzinfo=datetime.timezone.utc
+        ),
         id=uuid.UUID('12345678-1234-5678-1234-567812345678'),
         amount=Decimal('1.5'),
     )

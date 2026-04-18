@@ -61,8 +61,8 @@ class ModelConnector:
       model_size: types.ModelSizeIdentifierType | None = None,
       features: types.FeatureTagParam | None = None,
       input_format: types.InputFormatTypeParam | None = None,
-      output_format: types.OutputFormatTypeParam = (
-          types.OutputFormatType.TEXT),
+      output_format: types.
+      OutputFormatTypeParam = (types.OutputFormatType.TEXT),
       feature_tags: types.FeatureTagParam | None = None,
       tool_tags: types.ToolTagParam | None = None,
       recommended_only: bool = True,
@@ -90,8 +90,8 @@ class ModelConnector:
 
   def list_providers(
       self,
-      output_format: types.OutputFormatTypeParam = (
-          types.OutputFormatType.TEXT),
+      output_format: types.
+      OutputFormatTypeParam = (types.OutputFormatType.TEXT),
       recommended_only: bool = True,
   ) -> list[str]:
     """Lists all providers that have API keys configured.
@@ -112,8 +112,8 @@ class ModelConnector:
       model_size: types.ModelSizeIdentifierType | None = None,
       features: types.FeatureTagParam | None = None,
       input_format: types.InputFormatTypeParam | None = None,
-      output_format: types.OutputFormatTypeParam = (
-          types.OutputFormatType.TEXT),
+      output_format: types.
+      OutputFormatTypeParam = (types.OutputFormatType.TEXT),
       feature_tags: types.FeatureTagParam | None = None,
       tool_tags: types.ToolTagParam | None = None,
       recommended_only: bool = True,
@@ -131,8 +131,7 @@ class ModelConnector:
         recommended_only: If True, returns only recommended models.
     """
     return (
-        self._client_getter().available_models_instance
-        .list_provider_models(
+        self._client_getter().available_models_instance.list_provider_models(
             provider=provider,
             model_size=model_size,
             features=features,
@@ -223,8 +222,8 @@ class ModelConnector:
       verbose: bool = True,
       return_all: bool = False,
       clear_model_cache: bool = False,
-      output_format: types.OutputFormatTypeParam = (
-          types.OutputFormatType.TEXT),
+      output_format: types.
+      OutputFormatTypeParam = (types.OutputFormatType.TEXT),
       recommended_only: bool = True,
   ) -> list[types.ProviderModelType] | types.ModelStatus:
     """Lists models that have been verified to be working.
@@ -249,8 +248,7 @@ class ModelConnector:
         ...   verbose=False)
     """
     return (
-        self._client_getter().available_models_instance
-        .list_working_models(
+        self._client_getter().available_models_instance.list_working_models(
             model_size=model_size,
             features=features,
             verbose=verbose,
@@ -265,8 +263,8 @@ class ModelConnector:
       self,
       verbose: bool = True,
       clear_model_cache: bool = False,
-      output_format: types.OutputFormatTypeParam = (
-          types.OutputFormatType.TEXT),
+      output_format: types.
+      OutputFormatTypeParam = (types.OutputFormatType.TEXT),
       recommended_only: bool = True,
   ) -> list[str]:
     """Lists providers that have at least one working model.
@@ -302,8 +300,7 @@ class ModelConnector:
         ...   verbose=False)
     """
     return (
-        self._client_getter().available_models_instance
-        .list_working_providers(
+        self._client_getter().available_models_instance.list_working_providers(
             verbose=verbose,
             clear_model_cache=clear_model_cache,
             output_format=output_format,
@@ -319,8 +316,8 @@ class ModelConnector:
       verbose: bool = True,
       return_all: bool = False,
       clear_model_cache: bool = False,
-      output_format: types.OutputFormatTypeParam = (
-          types.OutputFormatType.TEXT),
+      output_format: types.
+      OutputFormatTypeParam = (types.OutputFormatType.TEXT),
       recommended_only: bool = True,
   ) -> list[types.ProviderModelType] | types.ModelStatus:
     """Lists working models from a specific provider.
@@ -369,8 +366,7 @@ class ModelConnector:
         ...   )
         ... )
     """
-    available_models = (
-        self._client_getter().available_models_instance)
+    available_models = (self._client_getter().available_models_instance)
     return available_models.list_working_provider_models(
         provider=provider,
         model_size=model_size,
@@ -388,8 +384,8 @@ class ModelConnector:
       model: str,
       verbose: bool = False,
       clear_model_cache: bool = False,
-      output_format: types.OutputFormatTypeParam = (
-          types.OutputFormatType.TEXT),
+      output_format: types.
+      OutputFormatTypeParam = (types.OutputFormatType.TEXT),
   ) -> types.ProviderModelType:
     """Verifies and returns a specific model if it's working.
 
@@ -428,13 +424,44 @@ class ModelConnector:
         ...   "openai", "gpt-4")
     """
     return (
-        self._client_getter().available_models_instance
-        .get_working_model(
+        self._client_getter().available_models_instance.get_working_model(
             provider=provider,
             model=model,
             verbose=verbose,
             clear_model_cache=clear_model_cache,
             output_format=output_format,
+        )
+    )
+
+  def check_health(
+      self,
+      verbose: bool = True,
+  ) -> types.ModelStatus:
+    """Tests all models and reports health status.
+
+    Always clears the model cache and retests every model. Uses the
+    client's configured model_probe_options for timeout and
+    multiprocessing settings.
+
+    Args:
+        verbose: If True, prints progress and per-model results.
+
+    Returns:
+        ModelStatus with working_models, failed_models, and
+        provider_queries.
+
+    Example:
+        >>> import proxai as px
+        >>> status = px.models.check_health(verbose=False)
+        >>> print(f"Working: {len(status.working_models)}")
+
+        >>> client = px.Client(
+        ...   model_probe_options=px.ModelProbeOptions(timeout=10))
+        >>> status = client.models.check_health()
+    """
+    return (
+        self._client_getter().available_models_instance.check_health(
+            verbose=verbose
         )
     )
 
@@ -456,8 +483,8 @@ class ModelConnector:
         >>> models = client.models.get_default_model_list()
     """
     return (
-        self._client_getter().model_configs_instance
-        .get_default_model_priority_list()
+        self._client_getter().model_configs_instance.
+        get_default_model_priority_list()
     )
 
 
@@ -469,13 +496,9 @@ class ProxAIClientParams:
   cache_options: types.CacheOptions | None = None
   logging_options: types.LoggingOptions | None = None
   proxdash_options: types.ProxDashOptions | None = None
-  allow_multiprocessing: bool | None = True
-  model_test_timeout: int | None = 25
-  feature_mapping_strategy: types.FeatureMappingStrategy | None = (
-      types.FeatureMappingStrategy.BEST_EFFORT
-  )
-  suppress_provider_errors: bool | None = False
-  keep_raw_provider_response: bool | None = False
+  provider_call_options: types.ProviderCallOptions | None = None
+  model_probe_options: types.ModelProbeOptions | None = None
+  debug_options: types.DebugOptions | None = None
 
 
 class ProxAIClient(state_controller.StateControlled):
@@ -509,12 +532,9 @@ class ProxAIClient(state_controller.StateControlled):
       cache_options: types.CacheOptions | None = None,
       logging_options: types.LoggingOptions | None = None,
       proxdash_options: types.ProxDashOptions | None = None,
-      allow_multiprocessing: bool | None = True,
-      model_test_timeout: int | None = 25,
-      feature_mapping_strategy: (types.FeatureMappingStrategy | None
-                                ) = types.FeatureMappingStrategy.BEST_EFFORT,
-      suppress_provider_errors: bool | None = False,
-      keep_raw_provider_response: bool | None = False,
+      provider_call_options: types.ProviderCallOptions | None = None,
+      model_probe_options: types.ModelProbeOptions | None = None,
+      debug_options: types.DebugOptions | None = None,
       init_from_params: ProxAIClientParams | None = None,
       init_from_state: types.ProxAIClientState | None = None,
   ) -> None:
@@ -536,28 +556,14 @@ class ProxAIClient(state_controller.StateControlled):
         proxdash_options: Configuration for ProxDash monitoring integration.
             Controls API key, base URL, and output options.
             See ProxDashOptions for available settings.
-        allow_multiprocessing: Whether to test models in parallel using
-            multiprocessing. Disable if you encounter process spawning errors
-            (common in Jupyter notebooks, AWS Lambda, or on Windows/macOS
-            without proper multiprocessing guards). Defaults to True.
-        model_test_timeout: Timeout in seconds for individual model tests
-            during health checks. Models that don't respond within this time
-            are marked as failed. Defaults to 25.
-        feature_mapping_strategy: Strategy for handling feature compatibility
-            between requests and model capabilities. BEST_EFFORT attempts to
-            map features even if not fully supported (e.g., simulating system
-            messages), STRICT requires exact feature support and raises errors
-            otherwise. Defaults to BEST_EFFORT.
-        suppress_provider_errors: If True, provider errors are returned as
-            error strings instead of raising exceptions. Useful for graceful
-            error handling in production. Defaults to False.
-        keep_raw_provider_response: Debug-only escape hatch. If True, the
-            raw provider SDK response object is attached to
-            ``call_record.debug.raw_provider_response`` for every successful
-            call. The field is not part of ProxAI's stable contract, is not
-            serialized to the query cache or ProxDash, and is mutually
-            exclusive with ``cache_options`` (constructing a client with
-            both raises ``ValueError``). Defaults to False.
+        provider_call_options: Client-wide defaults for provider call
+            behaviour. Controls feature mapping strategy and error
+            suppression. See ProviderCallOptions for available settings.
+        model_probe_options: Configuration for model probing (health
+            checks, model discovery). Controls multiprocessing and
+            timeout. See ModelProbeOptions for available settings.
+        debug_options: Developer-only diagnostic options. See DebugOptions
+            for available settings.
         init_from_params: Internal parameter for initializing from a
             ProxAIClientParams object. Cannot be used together with other
             parameters.
@@ -580,7 +586,9 @@ class ProxAIClient(state_controller.StateControlled):
         ...     logging_path="/tmp/proxai_logs",
         ...     stdout=True,
         ...   ),
-        ...   suppress_provider_errors=True,
+        ...   provider_call_options=px.ProviderCallOptions(
+        ...     suppress_provider_errors=True,
+        ...   ),
         ... )
         >>> response = client.generate_text(
         ...   prompt="What is the capital of France?"
@@ -590,26 +598,22 @@ class ProxAIClient(state_controller.StateControlled):
       if (
           experiment_path is not None or cache_options is not None or
           logging_options is not None or proxdash_options is not None or
-          not allow_multiprocessing or model_test_timeout != 25 or (
-              feature_mapping_strategy
-              != types.FeatureMappingStrategy.BEST_EFFORT
-          ) or suppress_provider_errors or keep_raw_provider_response
+          provider_call_options is not None or
+          model_probe_options is not None or debug_options is not None
       ):
         raise ValueError(
             "init_from_params or init_from_state cannot be set at with "
             "direct arguments. Please use one of init_from_params, "
             "init_from_state, or direct arguments.\n"
-            "experiment_path: {experiment_path}\n"
-            "cache_options: {cache_options}\n"
-            "logging_options: {logging_options}\n"
-            "proxdash_options: {proxdash_options}\n"
-            "allow_multiprocessing: {allow_multiprocessing}\n"
-            "model_test_timeout: {model_test_timeout}\n"
-            "feature_mapping_strategy: {feature_mapping_strategy}\n"
-            "suppress_provider_errors: {suppress_provider_errors}\n"
-            "keep_raw_provider_response: {keep_raw_provider_response}\n"
-            "init_from_params: {init_from_params}\n"
-            "init_from_state: {init_from_state}\n"
+            f"experiment_path: {experiment_path}\n"
+            f"cache_options: {cache_options}\n"
+            f"logging_options: {logging_options}\n"
+            f"proxdash_options: {proxdash_options}\n"
+            f"provider_call_options: {provider_call_options}\n"
+            f"model_probe_options: {model_probe_options}\n"
+            f"debug_options: {debug_options}\n"
+            f"init_from_params: {init_from_params}\n"
+            f"init_from_state: {init_from_state}\n"
         )
     else:
       init_from_params = ProxAIClientParams(
@@ -617,11 +621,9 @@ class ProxAIClient(state_controller.StateControlled):
           cache_options=cache_options,
           logging_options=logging_options,
           proxdash_options=proxdash_options,
-          allow_multiprocessing=allow_multiprocessing,
-          model_test_timeout=model_test_timeout,
-          feature_mapping_strategy=feature_mapping_strategy,
-          suppress_provider_errors=suppress_provider_errors,
-          keep_raw_provider_response=keep_raw_provider_response,
+          provider_call_options=provider_call_options,
+          model_probe_options=model_probe_options,
+          debug_options=debug_options,
       )
 
     super().__init__(
@@ -637,20 +639,15 @@ class ProxAIClient(state_controller.StateControlled):
       self.cache_options = init_from_params.cache_options
       self.logging_options = init_from_params.logging_options
       self.proxdash_options = init_from_params.proxdash_options
-      self.allow_multiprocessing = init_from_params.allow_multiprocessing
-      self.model_test_timeout = init_from_params.model_test_timeout
-      self.feature_mapping_strategy = init_from_params.feature_mapping_strategy
-      self.suppress_provider_errors = init_from_params.suppress_provider_errors
-      self.keep_raw_provider_response = (
-          init_from_params.keep_raw_provider_response
-      )
+      self.provider_call_options = init_from_params.provider_call_options
+      self.model_probe_options = init_from_params.model_probe_options
+      self.debug_options = init_from_params.debug_options
 
       _ = self.model_cache_manager
       _ = self.query_cache_manager
       # BEGIN: Refactoring: Revert this after testing
       # self._init_proxdash_connection()
       # END: Refactoring
-
 
       if self.cache_options and self.cache_options.clear_model_cache_on_connect:
         self.model_cache_manager.clear_cache()
@@ -659,15 +656,14 @@ class ProxAIClient(state_controller.StateControlled):
 
       available_models_params = available_models.AvailableModelsParams(
           run_type=self.run_type,
-          feature_mapping_strategy=self.feature_mapping_strategy,
+          provider_call_options=self.provider_call_options,
           model_configs_instance=self.model_configs_instance,
           model_cache_manager=self.model_cache_manager,
           query_cache_manager=self.query_cache_manager,
           logging_options=self.logging_options,
           proxdash_connection=self.proxdash_connection,
-          allow_multiprocessing=self.allow_multiprocessing,
-          model_test_timeout=self.model_test_timeout,
-          keep_raw_provider_response=self.keep_raw_provider_response,
+          model_probe_options=self.model_probe_options,
+          debug_options=self.debug_options,
       )
       self._available_models_instance = available_models.AvailableModels(
           init_from_params=available_models_params
@@ -733,11 +729,9 @@ class ProxAIClient(state_controller.StateControlled):
     self.proxdash_connection = None
     self._init_default_model_cache_manager()
 
-    self.feature_mapping_strategy = types.FeatureMappingStrategy.BEST_EFFORT
-    self.suppress_provider_errors = False
-    self.keep_raw_provider_response = False
-    self.allow_multiprocessing = True
-    self.model_test_timeout = 25
+    self.provider_call_options = None
+    self.model_probe_options = None
+    self.debug_options = None
 
     self.available_models_instance = None
 
@@ -750,7 +744,10 @@ class ProxAIClient(state_controller.StateControlled):
     set_property_value_without_triggering_getters and would otherwise
     bypass any validation living in the property setter.
     """
-    if (self.keep_raw_provider_response and self.cache_options is not None):
+    if (
+        self.debug_options.keep_raw_provider_response and
+        self.cache_options is not None
+    ):
       raise ValueError(
           "keep_raw_provider_response=True is incompatible with "
           "cache_options. The query cache cannot reconstruct provider "
@@ -761,7 +758,7 @@ class ProxAIClient(state_controller.StateControlled):
       )
 
   def _maybe_emit_raw_provider_response_warning(self):
-    if not self.keep_raw_provider_response:
+    if not self.debug_options.keep_raw_provider_response:
       return
     logging_utils.log_message(
         logging_options=self.logging_options,
@@ -927,49 +924,47 @@ class ProxAIClient(state_controller.StateControlled):
     self.set_property_value("registered_model_connectors", value)
 
   @property
-  def allow_multiprocessing(self) -> bool:
-    return self.get_property_value("allow_multiprocessing")
+  def provider_call_options(self) -> types.ProviderCallOptions:
+    return self.get_property_value("provider_call_options")
 
-  @allow_multiprocessing.setter
-  def allow_multiprocessing(self, value: bool):
-    self.set_property_value("allow_multiprocessing", value)
-
-  @property
-  def model_test_timeout(self) -> int:
-    return self.get_property_value("model_test_timeout")
-
-  @model_test_timeout.setter
-  def model_test_timeout(self, value: int):
-    if value < 1:
-      raise ValueError("model_test_timeout must be greater than 0.")
-    self.set_property_value("model_test_timeout", value)
+  @provider_call_options.setter
+  def provider_call_options(
+      self,
+      value: types.ProviderCallOptions | None,
+  ):
+    result = types.ProviderCallOptions()
+    if value is not None:
+      result.feature_mapping_strategy = value.feature_mapping_strategy
+      result.suppress_provider_errors = value.suppress_provider_errors
+    self.set_property_value("provider_call_options", result)
 
   @property
-  def feature_mapping_strategy(self) -> types.FeatureMappingStrategy:
-    return self.get_property_value("feature_mapping_strategy")
+  def model_probe_options(self) -> types.ModelProbeOptions:
+    return self.get_property_value("model_probe_options")
 
-  @feature_mapping_strategy.setter
-  def feature_mapping_strategy(self, value: types.FeatureMappingStrategy):
-    self.set_property_value("feature_mapping_strategy", value)
+  @model_probe_options.setter
+  def model_probe_options(
+      self,
+      value: types.ModelProbeOptions | None,
+  ):
+    result = types.ModelProbeOptions()
+    if value is not None:
+      result.allow_multiprocessing = value.allow_multiprocessing
+      if value.timeout < 1:
+        raise ValueError("ModelProbeOptions.timeout must be >= 1.")
+      result.timeout = value.timeout
+    self.set_property_value("model_probe_options", result)
 
   @property
-  def suppress_provider_errors(self) -> bool:
-    return self.get_property_value("suppress_provider_errors")
+  def debug_options(self) -> types.DebugOptions:
+    return self.get_property_value("debug_options")
 
-  @suppress_provider_errors.setter
-  def suppress_provider_errors(self, value: bool):
-    self.set_property_value("suppress_provider_errors", value)
-
-  @property
-  def keep_raw_provider_response(self) -> bool:
-    return self.get_property_value("keep_raw_provider_response")
-
-  @keep_raw_provider_response.setter
-  def keep_raw_provider_response(self, value: bool):
-    # Validation lives in _validate_raw_provider_response_options() so that
-    # it runs on every construction path, including the load_state path
-    # which bypasses property setters.
-    self.set_property_value("keep_raw_provider_response", value)
+  @debug_options.setter
+  def debug_options(self, value: types.DebugOptions | None):
+    result = types.DebugOptions()
+    if value is not None:
+      result.keep_raw_provider_response = value.keep_raw_provider_response
+    self.set_property_value("debug_options", result)
 
   @property
   def model_configs_instance(self) -> model_configs.ModelConfigs:
@@ -1112,8 +1107,8 @@ class ProxAIClient(state_controller.StateControlled):
 
   _OUTPUT_FORMAT_TYPE_FALLBACK = {
       types.OutputFormatType.PYDANTIC: [
-          types.OutputFormatType.JSON,
-          types.OutputFormatType.TEXT],
+          types.OutputFormatType.JSON, types.OutputFormatType.TEXT
+      ],
       types.OutputFormatType.JSON: [types.OutputFormatType.TEXT],
   }
 
@@ -1128,36 +1123,31 @@ class ProxAIClient(state_controller.StateControlled):
     if output_format_type in self.registered_models:
       return self.registered_models[output_format_type]
 
-    fallbacks = self._OUTPUT_FORMAT_TYPE_FALLBACK.get(
-        output_format_type, [])
+    fallbacks = self._OUTPUT_FORMAT_TYPE_FALLBACK.get(output_format_type, [])
     for fallback_type in fallbacks:
       if fallback_type in self.registered_models:
         return self.registered_models[fallback_type]
 
     if output_format_type not in (
-        types.OutputFormatType.TEXT,
-        types.OutputFormatType.JSON,
-        types.OutputFormatType.PYDANTIC):
+        types.OutputFormatType.TEXT, types.OutputFormatType.JSON,
+        types.OutputFormatType.PYDANTIC
+    ):
       raise ValueError(
           f"Output format type not supported: "
-          f"{output_format_type}")
+          f"{output_format_type}"
+      )
 
     default_models = (
-        self.model_configs_instance
-        .get_default_model_priority_list()
+        self.model_configs_instance.get_default_model_priority_list()
     )
     for provider_model in default_models:
       try:
         self.available_models_instance.get_working_model(
-            provider=provider_model.provider,
-            model=provider_model.model
+            provider=provider_model.provider, model=provider_model.model
         )
-        self.registered_models[
-            types.OutputFormatType.TEXT] = provider_model
-        self.registered_model_connectors[
-            types.OutputFormatType.TEXT] = (
-            self.available_models_instance
-            .get_model_connector(provider_model)
+        self.registered_models[types.OutputFormatType.TEXT] = provider_model
+        self.registered_model_connectors[types.OutputFormatType.TEXT] = (
+            self.available_models_instance.get_model_connector(provider_model)
         )
         return provider_model
       except ValueError:
@@ -1166,20 +1156,17 @@ class ProxAIClient(state_controller.StateControlled):
     models = self.available_models_instance.list_working_models()
     if len(models.working_models) > 0:
       provider_model = models.working_models.pop()
-      self.registered_models[
-          types.OutputFormatType.TEXT] = provider_model
+      self.registered_models[types.OutputFormatType.TEXT] = provider_model
       self.registered_model_connectors[
-          types.OutputFormatType.TEXT] = (
-          self.available_models_instance
-          .get_model_connector(provider_model)
-      )
+          types.OutputFormatType.TEXT
+      ] = (self.available_models_instance.get_model_connector(provider_model))
       return provider_model
 
     raise ValueError(
         "No working models found in current environment:\n"
         "* Please check your environment variables and try "
         "again.\n"
-        "* You can use px.check_health() method as instructed "
+        "* You can use px.models.check_health() method as instructed "
         "in https://www.proxai.co/proxai-docs/check-health"
     )
 
@@ -1190,19 +1177,18 @@ class ProxAIClient(state_controller.StateControlled):
     """Get or create a connector for the default model."""
     if output_format_type is None:
       output_format_type = types.OutputFormatType.TEXT
-    self.get_default_provider_model(
-        output_format_type=output_format_type)
+    self.get_default_provider_model(output_format_type=output_format_type)
 
     if output_format_type in self.registered_model_connectors:
       return self.registered_model_connectors[output_format_type]
-    fallbacks = self._OUTPUT_FORMAT_TYPE_FALLBACK.get(
-        output_format_type, [])
+    fallbacks = self._OUTPUT_FORMAT_TYPE_FALLBACK.get(output_format_type, [])
     for fallback_type in fallbacks:
       if fallback_type in self.registered_model_connectors:
         return self.registered_model_connectors[fallback_type]
     raise ValueError(
         "No registered model connector for output format "
-        f"type: {output_format_type}")
+        f"type: {output_format_type}"
+    )
 
   def _register_model_for_output_format_type(
       self,
@@ -1212,12 +1198,11 @@ class ProxAIClient(state_controller.StateControlled):
     self.model_configs_instance.check_provider_model_identifier_type(
         provider_model
     )
-    resolved = self.model_configs_instance.get_provider_model(
-        provider_model)
+    resolved = self.model_configs_instance.get_provider_model(provider_model)
     self.registered_models[output_format_type] = resolved
     self.registered_model_connectors[output_format_type] = (
-        self.available_models_instance.get_model_connector(
-            provider_model))
+        self.available_models_instance.get_model_connector(provider_model)
+    )
 
   def set_model(
       self,
@@ -1254,8 +1239,9 @@ class ProxAIClient(state_controller.StateControlled):
       generate_text = provider_model
 
     has_any = any([
-        generate_text, generate_json, generate_pydantic,
-        generate_image, generate_audio, generate_video])
+        generate_text, generate_json, generate_pydantic, generate_image,
+        generate_audio, generate_video
+    ])
     if not has_any:
       raise ValueError(
           "At least one model must be specified. Use provider_model, "
@@ -1273,8 +1259,7 @@ class ProxAIClient(state_controller.StateControlled):
     }
     for fmt_type, model in mapping.items():
       if model is not None:
-        self._register_model_for_output_format_type(
-            fmt_type, model)
+        self._register_model_for_output_format_type(fmt_type, model)
 
   def generate(
       self,
@@ -1298,59 +1283,75 @@ class ProxAIClient(state_controller.StateControlled):
           '    messages=[\n'
           '        {"role": "system",\n'
           '         "content": "You are a helpful assistant."},\n'
-          '        ...])')
+          '        ...])'
+      )
 
-    if (connection_options and
-        connection_options.fallback_models and
-        connection_options.suppress_provider_errors):
+    if (
+        connection_options and connection_options.fallback_models and
+        connection_options.suppress_provider_errors
+    ):
       raise ValueError(
           'suppress_provider_errors and fallback_models cannot be '
           'used together.\n'
-          f'connection_options: {connection_options}')
+          f'connection_options: {connection_options}'
+      )
 
-    if (connection_options and
-        connection_options.endpoint and
-        connection_options.fallback_models):
+    if (
+        connection_options and connection_options.endpoint and
+        connection_options.fallback_models
+    ):
       raise ValueError(
           'endpoint and fallback_models cannot be used together.\n'
-          f'connection_options: {connection_options}')
+          f'connection_options: {connection_options}'
+      )
 
     if connection_options is None:
       connection_options = types.ConnectionOptions()
     if connection_options.suppress_provider_errors is None:
       connection_options.suppress_provider_errors = (
-          self.suppress_provider_errors)
+          self.provider_call_options.suppress_provider_errors
+      )
 
-    if (connection_options.override_cache_value and (
-        self.query_cache_manager is None or
-        self.query_cache_manager.status
-        != types.QueryCacheManagerStatus.WORKING)):
+    if (
+        connection_options.override_cache_value and (
+            self.query_cache_manager is None or self.query_cache_manager.status
+            != types.QueryCacheManagerStatus.WORKING
+        )
+    ):
       raise ValueError(
           "override_cache_value is True but query cache is not configured.\n"
-          "Please set cache_options to enable query cache.")
+          "Please set cache_options to enable query cache."
+      )
 
     messages = type_utils.messages_param_to_chat(messages)
     output_format = type_utils.output_format_param_to_output_format(
-        output_format)
+        output_format
+    )
 
     provider_models = [
-        self.model_configs_instance.get_provider_model(provider_model)]
+        self.model_configs_instance.get_provider_model(provider_model)
+    ]
 
     if connection_options.fallback_models:
       for fallback_model in connection_options.fallback_models:
         provider_models.append(
-            self.model_configs_instance.get_provider_model(fallback_model))
+            self.model_configs_instance.get_provider_model(fallback_model)
+        )
       connection_options.suppress_provider_errors = True
       connection_options.fallback_models = None
 
     connection_metadata = types.ConnectionMetadata(
-        feature_mapping_strategy=self.feature_mapping_strategy)
+        feature_mapping_strategy=(
+            self.provider_call_options.feature_mapping_strategy
+        )
+    )
     for idx, provider_model in enumerate(provider_models):
       model_connector = self.available_models_instance.get_model_connector(
           provider_model_identifier=provider_model
       )
       provider_model_config = (
-          self.model_configs_instance.get_provider_model_config(provider_model))
+          self.model_configs_instance.get_provider_model_config(provider_model)
+      )
       result_record = model_connector.generate(
           prompt=prompt,
           messages=messages,
@@ -1413,7 +1414,8 @@ class ProxAIClient(state_controller.StateControlled):
     """
     if provider_model is None:
       provider_model = self.get_default_provider_model(
-          output_format_type=types.OutputFormatType.TEXT)
+          output_format_type=types.OutputFormatType.TEXT
+      )
 
     call_record = self.generate(
         prompt=prompt,
@@ -1470,10 +1472,10 @@ class ProxAIClient(state_controller.StateControlled):
     """
     if provider_model is None:
       provider_model = self.get_default_provider_model(
-          output_format_type=types.OutputFormatType.JSON)
+          output_format_type=types.OutputFormatType.JSON
+      )
 
-    output_format = types.OutputFormat(
-        type=types.OutputFormatType.JSON)
+    output_format = types.OutputFormat(type=types.OutputFormatType.JSON)
 
     call_record = self.generate(
         prompt=prompt,
@@ -1538,7 +1540,8 @@ class ProxAIClient(state_controller.StateControlled):
     """
     if provider_model is None:
       provider_model = self.get_default_provider_model(
-          output_format_type=types.OutputFormatType.PYDANTIC)
+          output_format_type=types.OutputFormatType.PYDANTIC
+      )
 
     call_record = self.generate(
         prompt=prompt,
@@ -1587,10 +1590,10 @@ class ProxAIClient(state_controller.StateControlled):
     """
     if provider_model is None:
       provider_model = self.get_default_provider_model(
-          output_format_type=types.OutputFormatType.IMAGE)
+          output_format_type=types.OutputFormatType.IMAGE
+      )
 
-    output_format = types.OutputFormat(
-        type=types.OutputFormatType.IMAGE)
+    output_format = types.OutputFormat(type=types.OutputFormatType.IMAGE)
 
     call_record = self.generate(
         prompt=prompt,
@@ -1639,10 +1642,10 @@ class ProxAIClient(state_controller.StateControlled):
     """
     if provider_model is None:
       provider_model = self.get_default_provider_model(
-          output_format_type=types.OutputFormatType.AUDIO)
+          output_format_type=types.OutputFormatType.AUDIO
+      )
 
-    output_format = types.OutputFormat(
-        type=types.OutputFormatType.AUDIO)
+    output_format = types.OutputFormat(type=types.OutputFormatType.AUDIO)
 
     call_record = self.generate(
         prompt=prompt,
@@ -1691,10 +1694,10 @@ class ProxAIClient(state_controller.StateControlled):
     """
     if provider_model is None:
       provider_model = self.get_default_provider_model(
-          output_format_type=types.OutputFormatType.VIDEO)
+          output_format_type=types.OutputFormatType.VIDEO
+      )
 
-    output_format = types.OutputFormat(
-        type=types.OutputFormatType.VIDEO)
+    output_format = types.OutputFormat(type=types.OutputFormatType.VIDEO)
 
     call_record = self.generate(
         prompt=prompt,
@@ -1750,11 +1753,9 @@ class ProxAIClient(state_controller.StateControlled):
         logging_options=self.logging_options,
         cache_options=self.cache_options,
         proxdash_options=self.proxdash_options,
-        feature_mapping_strategy=self.feature_mapping_strategy,
-        suppress_provider_errors=self.suppress_provider_errors,
-        keep_raw_provider_response=self.keep_raw_provider_response,
-        allow_multiprocessing=self.allow_multiprocessing,
-        model_test_timeout=self.model_test_timeout,
+        provider_call_options=self.provider_call_options,
+        model_probe_options=self.model_probe_options,
+        debug_options=self.debug_options,
     )
     if json:
       return type_serializer.encode_run_options(run_options=run_options)

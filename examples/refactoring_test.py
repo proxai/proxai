@@ -1030,7 +1030,8 @@ def list_models_test():
     assert len(models) > 0
 
     client = px.Client(
-        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT)
+        provider_call_options=px.ProviderCallOptions(
+            feature_mapping_strategy=types.FeatureMappingStrategy.STRICT))
     register_models(client)
     models = client.models.list_models(
         tool_tags=[types.ToolTag.WEB_SEARCH],
@@ -1046,7 +1047,8 @@ def list_models_test():
     assert len(models) > 0
 
     client = px.Client(
-        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT)
+        provider_call_options=px.ProviderCallOptions(
+            feature_mapping_strategy=types.FeatureMappingStrategy.STRICT))
     register_models(client)
     models = client.models.list_models(
         tool_tags=[types.ToolTag.WEB_SEARCH],
@@ -1061,7 +1063,8 @@ def list_models_test():
     assert len(models) > 0
 
     client = px.Client(
-        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT)
+        provider_call_options=px.ProviderCallOptions(
+            feature_mapping_strategy=types.FeatureMappingStrategy.STRICT))
     register_models(client)
     models = client.models.list_models(
         input_format=[types.InputFormatType.JSON])
