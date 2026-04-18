@@ -3,7 +3,11 @@
 import copy
 import dataclasses
 
-from proxai.chat.message_content import MessageContent, MessageRoleType, ContentType
+import proxai.chat.message_content as message_content
+
+MessageContent = message_content.MessageContent
+MessageRoleType = message_content.MessageRoleType
+ContentType = message_content.ContentType
 
 
 @dataclasses.dataclass

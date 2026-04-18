@@ -3,15 +3,8 @@
 import copy
 import json
 
+import proxai.connectors.adapter_utils as adapter_utils
 import proxai.types as types
-from proxai.connectors.adapter_utils import (
-    OUTPUT_FORMAT_FIELD_MAP,
-    SUPPORT_RANK,
-    merge_feature_configs,
-    resolve_feature_tag_support,
-    resolve_input_format_type_support,
-    resolve_support,
-)
 
 
 class FeatureAdapter:
@@ -77,7 +70,7 @@ class FeatureAdapter:
     self.model_feature_config = model_feature_config
     if (endpoint_feature_config is not None
         and model_feature_config is not None):
-      self.feature_config = merge_feature_configs(
+      self.feature_config = adapter_utils.merge_feature_configs(
           endpoint_feature_config, model_feature_config)
     elif model_feature_config is not None:
       self.feature_config = model_feature_config
@@ -94,10 +87,10 @@ class FeatureAdapter:
     if not feature_tags:
       return types.FeatureSupportType.SUPPORTED
     levels = [
-        resolve_feature_tag_support(self.feature_config, tag)
+        adapter_utils.resolve_feature_tag_support(self.feature_config, tag)
         for tag in feature_tags
     ]
-    return min(levels, key=lambda l: SUPPORT_RANK[l])
+    return min(levels, key=lambda l: adapter_utils.SUPPORT_RANK[l])
 
   def get_query_support_details(
       self, query_record: types.QueryRecord,
@@ -107,13 +100,13 @@ class FeatureAdapter:
     S = types.FeatureSupportType
 
     if query_record.prompt is not None:
-      details['prompt'] = resolve_support(
+      details['prompt'] = adapter_utils.resolve_support(
           self.feature_config.prompt).value.lower()
     if query_record.chat is not None:
-      details['messages'] = resolve_support(
+      details['messages'] = adapter_utils.resolve_support(
           self.feature_config.messages).value.lower()
       if query_record.chat.system_prompt is not None:
-        details['system_prompt'] = resolve_support(
+        details['system_prompt'] = adapter_utils.resolve_support(
             self.feature_config.system_prompt).value.lower()
       seen = set()
       for message in query_record.chat.messages:
@@ -125,42 +118,42 @@ class FeatureAdapter:
             seen.add(ct)
             fmt_type = self._CONTENT_TYPE_TO_INPUT_FORMAT_TYPE.get(ct)
             if fmt_type is not None:
-              level = resolve_input_format_type_support(
+              level = adapter_utils.resolve_input_format_type_support(
                   self.feature_config, fmt_type)
               details[f'input:{ct}'] = level.value.lower()
     if query_record.system_prompt is not None:
-      details['system_prompt'] = resolve_support(
+      details['system_prompt'] = adapter_utils.resolve_support(
           self.feature_config.system_prompt).value.lower()
     if query_record.parameters is not None:
       p = query_record.parameters
       pc = self.feature_config.parameters
       if p.temperature is not None:
-        details['temperature'] = resolve_support(
+        details['temperature'] = adapter_utils.resolve_support(
             pc.temperature if pc else None).value.lower()
       if p.max_tokens is not None:
-        details['max_tokens'] = resolve_support(
+        details['max_tokens'] = adapter_utils.resolve_support(
             pc.max_tokens if pc else None).value.lower()
       if p.stop is not None:
-        details['stop'] = resolve_support(
+        details['stop'] = adapter_utils.resolve_support(
             pc.stop if pc else None).value.lower()
       if p.n is not None:
-        details['n'] = resolve_support(
+        details['n'] = adapter_utils.resolve_support(
             pc.n if pc else None).value.lower()
       if p.thinking is not None:
-        details['thinking'] = resolve_support(
+        details['thinking'] = adapter_utils.resolve_support(
             pc.thinking if pc else None).value.lower()
     if query_record.tools:
       tc = self.feature_config.tools
       for tool in query_record.tools:
         if tool == types.Tools.WEB_SEARCH:
-          details['web_search'] = resolve_support(
+          details['web_search'] = adapter_utils.resolve_support(
               tc.web_search if tc else None).value.lower()
     if query_record.output_format and query_record.output_format.type:
       rf_config = self.feature_config.output_format
-      field_name = OUTPUT_FORMAT_FIELD_MAP.get(
+      field_name = adapter_utils.OUTPUT_FORMAT_FIELD_MAP.get(
           query_record.output_format.type)
       if field_name and rf_config:
-        details['output_format'] = resolve_support(
+        details['output_format'] = adapter_utils.resolve_support(
             getattr(rf_config, field_name, None)).value.lower()
       else:
         details['output_format'] = 'not_supported'
@@ -178,14 +171,14 @@ class FeatureAdapter:
     levels = []
 
     if query_record.prompt is not None:
-      levels.append(resolve_support(self.feature_config.prompt))
+      levels.append(adapter_utils.resolve_support(self.feature_config.prompt))
     if query_record.chat is not None:
-      levels.append(resolve_support(self.feature_config.messages))
+      levels.append(adapter_utils.resolve_support(self.feature_config.messages))
       if query_record.chat.system_prompt is not None:
-        levels.append(resolve_support(self.feature_config.system_prompt))
+        levels.append(adapter_utils.resolve_support(self.feature_config.system_prompt))
       self._collect_input_format_levels(query_record.chat, levels)
     if query_record.system_prompt is not None:
-      levels.append(resolve_support(self.feature_config.system_prompt))
+      levels.append(adapter_utils.resolve_support(self.feature_config.system_prompt))
 
     if query_record.parameters is not None:
       self._collect_parameter_levels(query_record.parameters, levels)
@@ -202,7 +195,7 @@ class FeatureAdapter:
     if not levels:
       return types.FeatureSupportType.SUPPORTED
 
-    return min(levels, key=lambda l: SUPPORT_RANK[l])
+    return min(levels, key=lambda l: adapter_utils.SUPPORT_RANK[l])
 
   def _collect_parameter_levels(
       self,
@@ -211,19 +204,19 @@ class FeatureAdapter:
   ):
     param_config = self.feature_config.parameters
     if parameters.temperature is not None:
-      levels.append(resolve_support(
+      levels.append(adapter_utils.resolve_support(
           param_config.temperature if param_config else None))
     if parameters.max_tokens is not None:
-      levels.append(resolve_support(
+      levels.append(adapter_utils.resolve_support(
           param_config.max_tokens if param_config else None))
     if parameters.stop is not None:
-      levels.append(resolve_support(
+      levels.append(adapter_utils.resolve_support(
           param_config.stop if param_config else None))
     if parameters.n is not None:
-      levels.append(resolve_support(
+      levels.append(adapter_utils.resolve_support(
           param_config.n if param_config else None))
     if parameters.thinking is not None:
-      levels.append(resolve_support(
+      levels.append(adapter_utils.resolve_support(
           param_config.thinking if param_config else None))
 
   _CONTENT_TYPE_TO_INPUT_FORMAT_TYPE = {
@@ -255,7 +248,7 @@ class FeatureAdapter:
             content_type_value)
         if input_format_type is None:
           continue
-        levels.append(resolve_input_format_type_support(
+        levels.append(adapter_utils.resolve_input_format_type_support(
             self.feature_config, input_format_type))
 
   def _collect_tool_levels(
@@ -266,7 +259,7 @@ class FeatureAdapter:
     tool_config = self.feature_config.tools
     for tool in tools:
       if tool == types.Tools.WEB_SEARCH:
-        levels.append(resolve_support(
+        levels.append(adapter_utils.resolve_support(
             tool_config.web_search if tool_config else None))
 
   def _collect_output_format_level(
@@ -275,9 +268,9 @@ class FeatureAdapter:
       levels: list[types.FeatureSupportType],
   ):
     rf_config = self.feature_config.output_format
-    field_name = OUTPUT_FORMAT_FIELD_MAP.get(output_format.type)
+    field_name = adapter_utils.OUTPUT_FORMAT_FIELD_MAP.get(output_format.type)
     if field_name and rf_config:
-      levels.append(resolve_support(getattr(rf_config, field_name, None)))
+      levels.append(adapter_utils.resolve_support(getattr(rf_config, field_name, None)))
     else:
       levels.append(types.FeatureSupportType.NOT_SUPPORTED)
 
@@ -286,7 +279,7 @@ class FeatureAdapter:
                     pydantic_schema: dict | None = None):
     """Adapt system_prompt and response format guidance for prompt queries."""
     if query_record.system_prompt is not None:
-      level = resolve_support(self.feature_config.system_prompt)
+      level = adapter_utils.resolve_support(self.feature_config.system_prompt)
       if level == types.FeatureSupportType.BEST_EFFORT:
         query_record.prompt = (
             f"{query_record.system_prompt}\n\n{query_record.prompt}")
@@ -330,7 +323,7 @@ class FeatureAdapter:
     system_best_effort = False
     add_system_to_messages = False
     if query_record.chat.system_prompt is not None:
-      level = resolve_support(self.feature_config.system_prompt)
+      level = adapter_utils.resolve_support(self.feature_config.system_prompt)
       if level == types.FeatureSupportType.SUPPORTED:
         if self.feature_config.add_system_to_messages:
           add_system_to_messages = True
@@ -345,7 +338,7 @@ class FeatureAdapter:
 
     # Resolve messages support and export.
     messages_best_effort = False
-    messages_level = resolve_support(self.feature_config.messages)
+    messages_level = adapter_utils.resolve_support(self.feature_config.messages)
     if messages_level == types.FeatureSupportType.BEST_EFFORT:
       messages_best_effort = True
     elif messages_level == types.FeatureSupportType.NOT_SUPPORTED:
@@ -376,7 +369,7 @@ class FeatureAdapter:
             f"Unknown tool: {tool}. Only 'WEB_SEARCH' is supported."
         )
     tool_config = self.feature_config.tools
-    level = resolve_support(
+    level = adapter_utils.resolve_support(
         tool_config.web_search if tool_config else None)
     if level == types.FeatureSupportType.SUPPORTED:
       return
@@ -406,11 +399,11 @@ class FeatureAdapter:
 
     rf_config = self.feature_config.output_format
     rf_type = query_record.output_format.type
-    field_name = OUTPUT_FORMAT_FIELD_MAP.get(rf_type)
+    field_name = adapter_utils.OUTPUT_FORMAT_FIELD_MAP.get(rf_type)
     if not field_name or not rf_config:
       level = types.FeatureSupportType.NOT_SUPPORTED
     else:
-      level = resolve_support(getattr(rf_config, field_name, None))
+      level = adapter_utils.resolve_support(getattr(rf_config, field_name, None))
 
     if field_name in self._NO_BEST_EFFORT_RESPONSE_FORMATS:
       if level == types.FeatureSupportType.BEST_EFFORT:
@@ -470,7 +463,7 @@ class FeatureAdapter:
 
     Raises ValueError if the feature is not supported.
     """
-    level = resolve_support(support)
+    level = adapter_utils.resolve_support(support)
     if level == types.FeatureSupportType.SUPPORTED:
       return False
     if level == types.FeatureSupportType.BEST_EFFORT:
@@ -529,7 +522,7 @@ class FeatureAdapter:
     if entry is None:
       return block
     input_format_type, converter_name = entry
-    level = resolve_input_format_type_support(
+    level = adapter_utils.resolve_input_format_type_support(
         self.feature_config, input_format_type)
     if level == types.FeatureSupportType.NOT_SUPPORTED:
       raise ValueError(

@@ -16,6 +16,7 @@ import proxai.connectors.model_registry as model_registry
 import proxai.connectors.provider_connector as provider_connector
 import proxai.logging.utils as logging_utils
 import proxai.state_controllers.state_controller as state_controller
+import proxai.connectors.adapter_utils as adapter_utils
 import proxai.type_utils as type_utils
 import proxai.types as types
 
@@ -445,11 +446,9 @@ class AvailableModels(state_controller.StateControlled):
   ):
     if input_format_types is None:
       return
-    from proxai.connectors.adapter_utils import (
-        resolve_input_format_type_support
-    )
     self._filter_by_tag_list(
-        models, input_format_types, resolve_input_format_type_support
+        models, input_format_types,
+        adapter_utils.resolve_input_format_type_support
     )
 
   def _filter_by_output_format(
@@ -458,11 +457,9 @@ class AvailableModels(state_controller.StateControlled):
   ):
     if output_format_types is None:
       return
-    from proxai.connectors.adapter_utils import (
-        resolve_output_format_type_support
-    )
     self._filter_by_tag_list(
-        models, output_format_types, resolve_output_format_type_support
+        models, output_format_types,
+        adapter_utils.resolve_output_format_type_support
     )
 
   def _filter_by_feature_tags(
@@ -479,8 +476,9 @@ class AvailableModels(state_controller.StateControlled):
   ):
     if tool_tags is None:
       return
-    from proxai.connectors.adapter_utils import resolve_tool_tag_support
-    self._filter_by_tag_list(models, tool_tags, resolve_tool_tag_support)
+    self._filter_by_tag_list(
+        models, tool_tags, adapter_utils.resolve_tool_tag_support
+    )
 
   def _filter_by_cache(
       self, models: types.ModelStatus,
