@@ -438,6 +438,28 @@ class ModelConnector:
         )
     )
 
+  def get_default_model_list(self) -> list[types.ProviderModelType]:
+    """Returns the default model priority list used for fallback selection.
+
+    Returns:
+        list[types.ProviderModelType]: An ordered list of models used
+            as the default fallback priority.
+
+    Example:
+        >>> import proxai as px
+        >>> models = px.models.get_default_model_list()
+        >>> print(models[0])
+        (openai, gpt-4o)
+
+        >>> # Using a specific client
+        >>> client = px.Client()
+        >>> models = client.models.get_default_model_list()
+    """
+    return (
+        self._client_getter().model_configs_instance
+        .get_default_model_priority_list()
+    )
+
 
 @dataclasses.dataclass
 class ProxAIClientParams:
