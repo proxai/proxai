@@ -32,25 +32,25 @@ class ProviderConnectorParams:
   """Initialization parameters for ProviderConnector."""
 
   run_type: types.RunType | None = None
-  feature_mapping_strategy: types.FeatureMappingStrategy | None = None
+  provider_call_options: types.ProviderCallOptions | None = None
   query_cache_manager: types.QueryCacheManagerState | None = None
   logging_options: types.LoggingOptions | None = None
   proxdash_connection: proxdash.ProxDashConnection | None = None
   provider_token_value_map: types.ProviderTokenValueMap | None = None
-  keep_raw_provider_response: bool | None = None
+  debug_options: types.DebugOptions | None = None
 
 
 class ProviderConnector(state_controller.StateControlled):
   """Base class for provider-specific connectors (provider-scoped)."""
 
   _run_type: types.RunType | None
-  _feature_mapping_strategy: types.FeatureMappingStrategy | None
+  _provider_call_options: types.ProviderCallOptions | None
   _query_cache_manager: query_cache.QueryCacheManager | None
   _api: Any | None
   _logging_options: types.LoggingOptions | None
   _proxdash_connection: proxdash.ProxDashConnection | None
   _provider_state: types.ProviderState | None
-  _keep_raw_provider_response: bool | None
+  _debug_options: types.DebugOptions | None
 
   _chosen_endpoint_cached_result: dict[str, bool] | None
 
@@ -75,14 +75,12 @@ class ProviderConnector(state_controller.StateControlled):
       self.load_state(init_from_state)
     else:
       self.run_type = init_from_params.run_type
-      self.feature_mapping_strategy = init_from_params.feature_mapping_strategy
+      self.provider_call_options = init_from_params.provider_call_options
       self.query_cache_manager = init_from_params.query_cache_manager
       self.logging_options = init_from_params.logging_options
       self.proxdash_connection = init_from_params.proxdash_connection
       self.provider_token_value_map = init_from_params.provider_token_value_map
-      self.keep_raw_provider_response = (
-          init_from_params.keep_raw_provider_response
-      )
+      self.debug_options = init_from_params.debug_options
       self._validate_provider_token_value_map()
 
   def __init_subclass__(cls, **kwargs):
@@ -95,8 +93,7 @@ class ProviderConnector(state_controller.StateControlled):
         'ENDPOINT_EXECUTORS',
     ):
       if attr not in cls.__dict__:
-        raise TypeError(
-          f"{cls.__name__} must define {attr}")
+        raise TypeError(f"{cls.__name__} must define {attr}")
     priority_keys = set(cls.__dict__['ENDPOINT_PRIORITY'])
     config_keys = set(cls.__dict__['ENDPOINT_CONFIG'])
     executor_keys = set(cls.__dict__['ENDPOINT_EXECUTORS'])
@@ -107,7 +104,8 @@ class ProviderConnector(state_controller.StateControlled):
           f'{cls.__name__}: ENDPOINT_PRIORITY and ENDPOINT_CONFIG keys '
           f'do not match.\n'
           f'  Missing in ENDPOINT_CONFIG: {missing_in_config or "none"}\n'
-          f'  Extra in ENDPOINT_CONFIG: {extra_in_config or "none"}')
+          f'  Extra in ENDPOINT_CONFIG: {extra_in_config or "none"}'
+      )
     if priority_keys != executor_keys:
       missing_in_executors = priority_keys - executor_keys
       extra_in_executors = executor_keys - priority_keys
@@ -115,7 +113,8 @@ class ProviderConnector(state_controller.StateControlled):
           f'{cls.__name__}: ENDPOINT_PRIORITY and ENDPOINT_EXECUTORS keys '
           f'do not match.\n'
           f'  Missing in ENDPOINT_EXECUTORS: {missing_in_executors or "none"}\n'
-          f'  Extra in ENDPOINT_EXECUTORS: {extra_in_executors or "none"}')
+          f'  Extra in ENDPOINT_EXECUTORS: {extra_in_executors or "none"}'
+      )
 
   def get_internal_state_property_name(self) -> str:
     """Return the name of the internal state property."""
@@ -157,14 +156,15 @@ class ProviderConnector(state_controller.StateControlled):
     self.set_property_value('run_type', value)
 
   @property
-  def feature_mapping_strategy(self) -> types.FeatureMappingStrategy:
-    return self.get_property_value('feature_mapping_strategy')
+  def provider_call_options(self) -> types.ProviderCallOptions:
+    return self.get_property_value('provider_call_options')
 
-  @feature_mapping_strategy.setter
-  def feature_mapping_strategy(
-      self, value: types.FeatureMappingStrategy | None,
+  @provider_call_options.setter
+  def provider_call_options(
+      self,
+      value: types.ProviderCallOptions | None,
   ) -> None:
-    self.set_property_value('feature_mapping_strategy', value)
+    self.set_property_value('provider_call_options', value)
 
   @property
   def query_cache_manager(self) -> query_cache.QueryCacheManager:
@@ -172,7 +172,8 @@ class ProviderConnector(state_controller.StateControlled):
 
   @query_cache_manager.setter
   def query_cache_manager(
-      self, value: query_cache.QueryCacheManager | None,
+      self,
+      value: query_cache.QueryCacheManager | None,
   ) -> None:
     self.set_state_controlled_property_value('query_cache_manager', value)
 
@@ -196,7 +197,8 @@ class ProviderConnector(state_controller.StateControlled):
 
   @proxdash_connection.setter
   def proxdash_connection(
-      self, value: proxdash.ProxDashConnection | None,
+      self,
+      value: proxdash.ProxDashConnection | None,
   ) -> None:
     self.set_state_controlled_property_value('proxdash_connection', value)
 
@@ -212,17 +214,18 @@ class ProviderConnector(state_controller.StateControlled):
 
   @provider_token_value_map.setter
   def provider_token_value_map(
-      self, value: types.ProviderTokenValueMap | None,
+      self,
+      value: types.ProviderTokenValueMap | None,
   ) -> None:
     self.set_property_value('provider_token_value_map', value)
 
   @property
-  def keep_raw_provider_response(self) -> bool:
-    return self.get_property_value('keep_raw_provider_response')
+  def debug_options(self) -> types.DebugOptions:
+    return self.get_property_value('debug_options')
 
-  @keep_raw_provider_response.setter
-  def keep_raw_provider_response(self, value: bool | None) -> None:
-    self.set_property_value('keep_raw_provider_response', value)
+  @debug_options.setter
+  def debug_options(self, value: types.DebugOptions | None) -> None:
+    self.set_property_value('debug_options', value)
 
   def _extract_json_from_text(self, text: str) -> dict:
     """Helper function for extracting JSON from text.
@@ -274,9 +277,8 @@ class ProviderConnector(state_controller.StateControlled):
     )
 
   def get_token_count_estimate(
-      self,
-      messages: Dict | chat_session.Chat | List[
-          message_content.MessageContent] | None = None
+      self, messages: Dict | chat_session.Chat |
+      List[message_content.MessageContent] | None = None
   ) -> int:
     """Estimate the token count for a prompt, response, or messages."""
     if not messages:
@@ -286,10 +288,10 @@ class ProviderConnector(state_controller.StateControlled):
 
     def _get_token_count_estimate_from_str(input: str) -> int:
       return math.ceil(max(len(input) / 4, len(input.strip().split()) * 1.3))
-    
+
     if isinstance(messages, dict):
       return _get_token_count_estimate_from_str(json.dumps(messages))
-      
+
     for message in messages:
       if message.type == message_content.ContentType.TEXT:
         total += _get_token_count_estimate_from_str(message.text)
@@ -299,7 +301,8 @@ class ProviderConnector(state_controller.StateControlled):
         total += _get_token_count_estimate_from_str(json.dumps(message.json))
       elif message.type == message_content.ContentType.PYDANTIC_INSTANCE:
         total += _get_token_count_estimate_from_str(
-            json.dumps(message.pydantic_content.instance_json_value))
+            json.dumps(message.pydantic_content.instance_json_value)
+        )
       elif message.type == message_content.ContentType.IMAGE:
         pass
       elif message.type == message_content.ContentType.AUDIO:
@@ -363,7 +366,8 @@ class ProviderConnector(state_controller.StateControlled):
     if endpoint not in self.ENDPOINT_CONFIG:
       raise ValueError(
           f'endpoint {endpoint} is not a valid endpoint.\n'
-          f'Valid endpoints: {self.ENDPOINT_CONFIG.keys()}')
+          f'Valid endpoints: {self.ENDPOINT_CONFIG.keys()}'
+      )
     adapter = feature_adapter.FeatureAdapter(
         endpoint=endpoint,
         endpoint_feature_config=self.ENDPOINT_CONFIG[endpoint],
@@ -380,12 +384,14 @@ class ProviderConnector(state_controller.StateControlled):
     if support_level == types.FeatureSupportType.NOT_SUPPORTED:
       raise ValueError(
           f'endpoint {endpoint} is not supported.\n'
-          f'query_record: {query_record}')
+          f'query_record: {query_record}'
+      )
     elif support_level == types.FeatureSupportType.BEST_EFFORT:
-      if self.feature_mapping_strategy == types.FeatureMappingStrategy.STRICT:
+      if self.provider_call_options.feature_mapping_strategy == types.FeatureMappingStrategy.STRICT:
         raise ValueError(
             f'endpoint {endpoint} is not supported in STRICT mode.\n'
-            f'query_record: {query_record}')
+            f'query_record: {query_record}'
+        )
 
   def get_feature_tags_support_level(
       self,
@@ -422,7 +428,8 @@ class ProviderConnector(state_controller.StateControlled):
   ) -> types.FeatureSupportType:
     """Return the best support level for generic tags across endpoints."""
     from proxai.connectors.adapter_utils import (
-        SUPPORT_RANK, merge_feature_configs)
+        SUPPORT_RANK, merge_feature_configs
+    )
     has_best_effort = False
     for endpoint in self.ENDPOINT_PRIORITY:
       merged = merge_feature_configs(
@@ -445,8 +452,7 @@ class ProviderConnector(state_controller.StateControlled):
       provider_model_config: types.ProviderModelConfig,
   ):
     import json as _json
-    signature = feature_adapter.FeatureAdapter.get_query_signature(
-        query_record)
+    signature = feature_adapter.FeatureAdapter.get_query_signature(query_record)
     provider = query_record.provider_model.provider
     model = query_record.provider_model.model
     signature_str = _json.dumps(signature)
@@ -469,7 +475,6 @@ class ProviderConnector(state_controller.StateControlled):
         'different model that supports the requested features.\n'
         f"Query signature:\n  {signature_str}\n"
         f"Endpoints support configs:\n" + '\n'.join(endpoint_lines)
-        
     )
 
   def _find_compatible_endpoint(
@@ -481,9 +486,9 @@ class ProviderConnector(state_controller.StateControlled):
     best_effort_endpoints = []
     for endpoint in self.ENDPOINT_PRIORITY:
       support_level = self._get_endpoint_support_level(
-          endpoint=endpoint,
-          query_record=query_record,
-          provider_model_config=provider_model_config)
+          endpoint=endpoint, query_record=query_record,
+          provider_model_config=provider_model_config
+      )
       if support_level == types.FeatureSupportType.SUPPORTED:
         return endpoint
       elif support_level == types.FeatureSupportType.BEST_EFFORT:
@@ -491,33 +496,35 @@ class ProviderConnector(state_controller.StateControlled):
 
     if (
         len(best_effort_endpoints) > 0 and
-        self.feature_mapping_strategy == types.FeatureMappingStrategy.BEST_EFFORT
+        self.provider_call_options.feature_mapping_strategy
+        == types.FeatureMappingStrategy.BEST_EFFORT
     ):
       return best_effort_endpoints[0]
 
-    self._raise_no_compatible_endpoint(
-        query_record, provider_model_config)
+    self._raise_no_compatible_endpoint(query_record, provider_model_config)
 
   def _prepare_execution(
       self,
       query_record: types.QueryRecord,
       provider_model_config: types.ProviderModelConfig,
   ) -> tuple[Callable, types.QueryRecord]:
-    if (query_record.connection_options and
-        query_record.connection_options.endpoint is not None):
+    if (
+        query_record.connection_options and
+        query_record.connection_options.endpoint is not None
+    ):
       chosen_endpoint = query_record.connection_options.endpoint
       support_level = self._get_endpoint_support_level(
-          endpoint=chosen_endpoint,
-          query_record=query_record,
-          provider_model_config=provider_model_config)
+          endpoint=chosen_endpoint, query_record=query_record,
+          provider_model_config=provider_model_config
+      )
       self._check_endpoint_support_compatibility(
-          endpoint=chosen_endpoint,
-          support_level=support_level,
-          query_record=query_record)
+          endpoint=chosen_endpoint, support_level=support_level,
+          query_record=query_record
+      )
     else:
       chosen_endpoint = self._find_compatible_endpoint(
-          query_record=query_record,
-          provider_model_config=provider_model_config)
+          query_record=query_record, provider_model_config=provider_model_config
+      )
 
     chosen_feature_adapter = feature_adapter.FeatureAdapter(
         endpoint=chosen_endpoint,
@@ -528,7 +535,8 @@ class ProviderConnector(state_controller.StateControlled):
     chosen_executor = getattr(self, executor_name)
 
     modified_query_record = chosen_feature_adapter.adapt_query_record(
-        query_record=query_record)
+        query_record=query_record
+    )
 
     return chosen_executor, chosen_endpoint, modified_query_record
 
@@ -540,13 +548,14 @@ class ProviderConnector(state_controller.StateControlled):
       response = execution_function()
       return response, types.ResultRecord(
           status=types.ResultStatusType.SUCCESS,
-          role=types.MessageRoleType.ASSISTANT)
+          role=types.MessageRoleType.ASSISTANT
+      )
     except Exception as e:
       return None, types.ResultRecord(
           status=types.ResultStatusType.FAILED,
-          role=types.MessageRoleType.ASSISTANT,
-          error=e,
-          error_traceback=traceback.format_exc())
+          role=types.MessageRoleType.ASSISTANT, error=e,
+          error_traceback=traceback.format_exc()
+      )
 
   def _execute_call(
       self,
@@ -556,7 +565,8 @@ class ProviderConnector(state_controller.StateControlled):
       provider_model_config: types.ProviderModelConfig,
   ) -> types.ExecutorResult:
     executor_result: types.ExecutorResult = chosen_executor(
-        query_record=query_record)
+        query_record=query_record
+    )
 
     if not executor_result.result_record.error:
       chosen_result_adapter = result_adapter.ResultAdapter(
@@ -565,25 +575,30 @@ class ProviderConnector(state_controller.StateControlled):
           model_feature_config=provider_model_config.features,
       )
       chosen_result_adapter.adapt_result_record(
-          query_record=query_record,
-          result_record=executor_result.result_record)
+          query_record=query_record, result_record=executor_result.result_record
+      )
     return executor_result
 
   def _compute_usage(
       self,
       query_record: types.CallRecord,
       result_record: types.ResultRecord,
-) -> types.UsageType:
+  ) -> types.UsageType:
     if query_record.prompt is not None:
       input_tokens = self.get_token_count_estimate(
-          messages=[message_content.MessageContent(
-              type=message_content.ContentType.TEXT,
-              text=query_record.prompt)])
+          messages=[
+              message_content.MessageContent(
+                  type=message_content.ContentType.TEXT,
+                  text=query_record.prompt
+              )
+          ]
+      )
     else:
       input_tokens = self.get_token_count_estimate(messages=query_record.chat)
     if result_record.content is not None:
       output_tokens = self.get_token_count_estimate(
-          messages=result_record.content)
+          messages=result_record.content
+      )
     else:
       output_tokens = 0
     return types.UsageType(
@@ -593,17 +608,14 @@ class ProviderConnector(state_controller.StateControlled):
     )
 
   def _compute_timestamp(
-      self,
-      start_utc_date: datetime.datetime
+      self, start_utc_date: datetime.datetime
   ) -> types.TimeStampType:
-    end_utc_date=datetime.datetime.now(datetime.timezone.utc)
+    end_utc_date = datetime.datetime.now(datetime.timezone.utc)
     local_time_offset_minute = (
-        datetime.datetime.now().astimezone().utcoffset().total_seconds() //
-        60
+        datetime.datetime.now().astimezone().utcoffset().total_seconds() // 60
     ) * -1
     return types.TimeStampType(
-        start_utc_date=start_utc_date,
-        end_utc_date=end_utc_date,
+        start_utc_date=start_utc_date, end_utc_date=end_utc_date,
         local_time_offset_minute=local_time_offset_minute,
         response_time=end_utc_date - start_utc_date
     )
@@ -617,16 +629,17 @@ class ProviderConnector(state_controller.StateControlled):
     # provider is called, and then _update_cache() wipes any existing
     # cached bucket for this query and replaces it with the fresh result.
     # NOTE: skip_cache disables cache completely (no read, no write).
-    if (connection_options.skip_cache or
-        connection_options.override_cache_value or
-        not self.query_cache_manager):
+    if (
+        connection_options.skip_cache or
+        connection_options.override_cache_value or not self.query_cache_manager
+    ):
       return None
     cache_look_result: types.CacheLookResult | None = None
     try:
       cache_look_result = self.query_cache_manager.look(query_record)
     except Exception:
       pass
-    
+
     if not cache_look_result.result:
       return cache_look_result.cache_look_fail_reason
 
@@ -636,8 +649,7 @@ class ProviderConnector(state_controller.StateControlled):
         result.timestamp.end_utc_date - result.timestamp.response_time
     )
     result.timestamp.local_time_offset_minute = (
-        datetime.datetime.now().astimezone().utcoffset().total_seconds() //
-        60
+        datetime.datetime.now().astimezone().utcoffset().total_seconds() // 60
     ) * -1
     return result
 
@@ -655,9 +667,9 @@ class ProviderConnector(state_controller.StateControlled):
     if connection_options.skip_cache or not self.query_cache_manager:
       return
     self.query_cache_manager.cache(
-        query_record=call_record.query,
-        result_record=call_record.result,
-        override_cache_value=connection_options.override_cache_value)
+        query_record=call_record.query, result_record=call_record.result,
+        override_cache_value=connection_options.override_cache_value
+    )
 
   def _reconstruct_pydantic_from_cache(
       self,
@@ -665,28 +677,33 @@ class ProviderConnector(state_controller.StateControlled):
       result_record: types.ResultRecord,
   ) -> None:
     """Reconstruct pydantic instances on a cached ResultRecord."""
-    if (not query_record.output_format or
-        query_record.output_format.type
-        != types.OutputFormatType.PYDANTIC or
-        not query_record.output_format.pydantic_class):
+    if (
+        not query_record.output_format or
+        query_record.output_format.type != types.OutputFormatType.PYDANTIC or
+        not query_record.output_format.pydantic_class
+    ):
       return
     pydantic_class = query_record.output_format.pydantic_class
     if result_record.content:
       for mc in result_record.content:
-        if (mc.pydantic_content and
+        if (
+            mc.pydantic_content and
             mc.pydantic_content.instance_json_value is not None and
-            mc.pydantic_content.instance_value is None):
+            mc.pydantic_content.instance_value is None
+        ):
           mc.pydantic_content.instance_value = (
               pydantic_class.model_validate(
-                  mc.pydantic_content.instance_json_value))
+                  mc.pydantic_content.instance_json_value
+              )
+          )
           mc.pydantic_content.class_value = pydantic_class
-    if (result_record.output_pydantic is None and
-        result_record.content):
+    if (result_record.output_pydantic is None and result_record.content):
       for mc in reversed(result_record.content):
-        if (mc.pydantic_content and
-            mc.pydantic_content.instance_value is not None):
-          result_record.output_pydantic = (
-              mc.pydantic_content.instance_value)
+        if (
+            mc.pydantic_content and
+            mc.pydantic_content.instance_value is not None
+        ):
+          result_record.output_pydantic = (mc.pydantic_content.instance_value)
           break
 
   def generate(
@@ -715,7 +732,8 @@ class ProviderConnector(state_controller.StateControlled):
           '    messages=[\n'
           '        {"role": "system",\n'
           '         "content": "You are a helpful assistant."},\n'
-          '        ...])')
+          '        ...])'
+      )
 
     if output_format is None:
       output_format = types.OutputFormat(type=types.OutputFormatType.TEXT)
@@ -746,11 +764,10 @@ class ProviderConnector(state_controller.StateControlled):
         connection_options=connection_options,
     )
 
-    (chosen_executor,
-     chosen_endpoint,
+    (chosen_executor, chosen_endpoint,
      modified_query_record) = self._prepare_execution(
-         query_record=query_record,
-         provider_model_config=provider_model_config)
+         query_record=query_record, provider_model_config=provider_model_config
+     )
 
     cached_result = self._get_cached_result(
         query_record=query_record,
@@ -758,7 +775,8 @@ class ProviderConnector(state_controller.StateControlled):
     )
     if isinstance(cached_result, types.ResultRecord):
       self._reconstruct_pydantic_from_cache(
-          query_record=query_record, result_record=cached_result)
+          query_record=query_record, result_record=cached_result
+      )
       connection_metadata.result_source = types.ResultSource.CACHE
       call_record = types.CallRecord(
           query=query_record,
@@ -777,10 +795,11 @@ class ProviderConnector(state_controller.StateControlled):
     )
     result_record = executor_result.result_record
     result_record.usage = self._compute_usage(
-        query_record=modified_query_record,
-        result_record=result_record)
+        query_record=modified_query_record, result_record=result_record
+    )
     result_record.timestamp = self._compute_timestamp(
-        start_utc_date=start_utc_date)
+        start_utc_date=start_utc_date
+    )
 
     connection_metadata.endpoint_used = chosen_endpoint
     connection_metadata.result_source = types.ResultSource.PROVIDER
@@ -797,20 +816,22 @@ class ProviderConnector(state_controller.StateControlled):
         debug=debug_info,
     )
     estimated_cost = self.get_estimated_cost(
-        call_record=call_record,
-        provider_model_config=provider_model_config)
+        call_record=call_record, provider_model_config=provider_model_config
+    )
     result_record.usage.estimated_cost = estimated_cost
 
     if call_record.result.status == types.ResultStatusType.FAILED:
-      if (not connection_options or
-          not connection_options.suppress_provider_errors):
+      if (
+          not connection_options or
+          not connection_options.suppress_provider_errors
+      ):
         raise call_record.result.error
       else:
         call_record.result.error = str(call_record.result.error)
     else:
       self._update_cache(
-          call_record=call_record,
-          connection_options=connection_options)
+          call_record=call_record, connection_options=connection_options
+      )
 
     return call_record
 

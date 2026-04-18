@@ -52,7 +52,6 @@ class InputFormatType(str, enum.Enum):
 OutputFormatTypeParam = OutputFormatType | str
 InputFormatTypeParam = InputFormatType | str
 
-
 ProviderNameType = str
 ModelNameType = str
 RawProviderModelIdentifierType = str
@@ -221,9 +220,11 @@ class FeatureTag(str, enum.Enum):
 
 
 InputFormatTypeParam = (
-    list[InputFormatType] | list[str] | InputFormatType | str | None)
+    list[InputFormatType] | list[str] | InputFormatType | str | None
+)
 OutputFormatTypeParam = (
-    list[OutputFormatType] | list[str] | OutputFormatType | str | None)
+    list[OutputFormatType] | list[str] | OutputFormatType | str | None
+)
 ToolTagParam = list[ToolTag] | list[str] | ToolTag | str | None
 FeatureTagParam = list[FeatureTag] | list[str] | FeatureTag | str | None
 
@@ -284,8 +285,8 @@ class ProviderModelConfig:
 OutputFormatTypeMappingType = dict[OutputFormatType, list[ProviderModelType]]
 ModelSizeMappingType = dict[ModelSizeType, list[ProviderModelType]]
 RecommendedModelsMappingType = dict[ProviderNameType, list[ProviderModelType]]
-ProviderModelConfigsMappingType = dict[
-    ProviderNameType, dict[ModelNameType, ProviderModelConfig]]
+ProviderModelConfigsMappingType = dict[ProviderNameType,
+                                       dict[ModelNameType, ProviderModelConfig]]
 
 
 @dataclasses.dataclass
@@ -420,17 +421,40 @@ class FeatureMappingStrategy(str, enum.Enum):
 
   Example:
     >>> import proxai as px
-    >>> # Use strict mode to ensure full feature support
-    >>> px.connect(feature_mapping_strategy=px.FeatureMappingStrategy.STRICT)
-    >>> # Or per-request
-    >>> px.generate_text(
-    ...   prompt="Hello",
-    ...   feature_mapping_strategy=px.FeatureMappingStrategy.STRICT,
+    >>> px.connect(
+    ...   provider_call_options=px.ProviderCallOptions(
+    ...     feature_mapping_strategy=px.FeatureMappingStrategy.STRICT,
+    ...   ),
     ... )
   """
 
   BEST_EFFORT = "BEST_EFFORT"
   STRICT = "STRICT"
+
+
+@dataclasses.dataclass
+class ProviderCallOptions:
+  """Client-wide defaults for provider call behaviour."""
+
+  feature_mapping_strategy: FeatureMappingStrategy = (
+      FeatureMappingStrategy.BEST_EFFORT
+  )
+  suppress_provider_errors: bool = False
+
+
+@dataclasses.dataclass
+class ModelProbeOptions:
+  """Configuration for model probing (health checks, model discovery)."""
+
+  allow_multiprocessing: bool = True
+  timeout: int = 25
+
+
+@dataclasses.dataclass
+class DebugOptions:
+  """Developer-only diagnostic options."""
+
+  keep_raw_provider_response: bool = False
 
 
 @dataclasses.dataclass
@@ -445,11 +469,9 @@ class RunOptions:
   logging_options: LoggingOptions | None = None
   cache_options: CacheOptions | None = None
   proxdash_options: ProxDashOptions | None = None
-  allow_multiprocessing: bool | None = None
-  model_test_timeout: int | None = None
-  feature_mapping_strategy: FeatureMappingStrategy | None = None
-  suppress_provider_errors: bool | None = None
-  keep_raw_provider_response: bool | None = None
+  provider_call_options: ProviderCallOptions | None = None
+  model_probe_options: ModelProbeOptions | None = None
+  debug_options: DebugOptions | None = None
 
 
 @dataclasses.dataclass
@@ -707,9 +729,8 @@ class ModelStatus:
   filtered_models: set[ProviderModelType] = dataclasses.field(
       default_factory=set
   )
-  provider_queries: dict[ProviderModelType, CallRecord] = dataclasses.field(
-      default_factory=dict
-  )
+  provider_queries: dict[ProviderModelType,
+                         CallRecord] = dataclasses.field(default_factory=dict)
 
 
 ModelStatusByOutputFormatType = dict[OutputFormatType, ModelStatus]
@@ -803,12 +824,12 @@ class ProviderState(StateContainer):
   """Persisted state for a provider connector (provider-scoped, not per model)."""
 
   run_type: RunType | None = None
-  feature_mapping_strategy: FeatureMappingStrategy | None = None
+  provider_call_options: ProviderCallOptions | None = None
   query_cache_manager: QueryCacheManagerState | None = None
   logging_options: LoggingOptions | None = None
   proxdash_connection: ProxDashConnectionState | None = None
   provider_token_value_map: ProviderTokenValueMap | None = None
-  keep_raw_provider_response: bool | None = None
+  debug_options: DebugOptions | None = None
 
 
 @dataclasses.dataclass
@@ -816,16 +837,15 @@ class AvailableModelsState(StateContainer):
   """Persisted state for available models discovery."""
 
   run_type: RunType | None = None
-  feature_mapping_strategy: FeatureMappingStrategy | None = None
+  provider_call_options: ProviderCallOptions | None = None
   model_configs_instance: ModelConfigsState | None = None
   model_cache_manager: ModelCacheManagerState | None = None
   query_cache_manager: QueryCacheManagerState | None = None
   logging_options: LoggingOptions | None = None
   proxdash_connection: ProxDashConnectionState | None = None
   proxdash_provider_api_keys: ProviderTokenValueMap | None = None
-  allow_multiprocessing: bool | None = None
-  model_test_timeout: int | None = None
-  keep_raw_provider_response: bool | None = None
+  model_probe_options: ModelProbeOptions | None = None
+  debug_options: DebugOptions | None = None
   providers_with_key: dict[ProviderNameType,
                            ProviderTokenValueMap] | None = (None)
   latest_model_cache_path_used_for_update: str | None = None
@@ -849,16 +869,15 @@ class ProxAIClientState(StateContainer):
   model_configs_instance: ModelConfigsState | None = None
   model_configs_requested_from_proxdash: bool | None = None
 
-  registered_model_connectors: dict[OutputFormatType, ProviderState] | None = None
+  registered_model_connectors: dict[OutputFormatType,
+                                    ProviderState] | None = None
   default_model_cache_manager: ModelCacheManagerState | None = None
   model_cache_manager: ModelCacheManagerState | None = None
   query_cache_manager: QueryCacheManagerState | None = None
   proxdash_connection: ProxDashConnectionState | None = None
 
-  feature_mapping_strategy: FeatureMappingStrategy | None = None
-  suppress_provider_errors: bool | None = None
-  keep_raw_provider_response: bool | None = None
-  allow_multiprocessing: bool | None = None
-  model_test_timeout: int | None = None
+  provider_call_options: ProviderCallOptions | None = None
+  model_probe_options: ModelProbeOptions | None = None
+  debug_options: DebugOptions | None = None
 
   available_models_instance: AvailableModelsState | None = None

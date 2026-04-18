@@ -1,5 +1,6 @@
 import os
 import subprocess
+from tabnanny import verbose
 import tempfile
 import urllib.request
 from pprint import pprint
@@ -23,34 +24,24 @@ def _get_model_config(
     input_format = ['text']
 
   web_search_supported = S if web_search else NS
-  text_supported = (
-      S if types.OutputFormatType.TEXT in output_format else NS)
-  json_supported = (
-      S if types.OutputFormatType.JSON in output_format else NS)
+  text_supported = (S if types.OutputFormatType.TEXT in output_format else NS)
+  json_supported = (S if types.OutputFormatType.JSON in output_format else NS)
   pydantic_supported = (
-      S if types.OutputFormatType.PYDANTIC in output_format else NS)
-  image_supported = (
-      S if types.OutputFormatType.IMAGE in output_format else NS)
-  audio_supported = (
-      S if types.OutputFormatType.AUDIO in output_format else NS)
-  video_supported = (
-      S if types.OutputFormatType.VIDEO in output_format else NS)
+      S if types.OutputFormatType.PYDANTIC in output_format else NS
+  )
+  image_supported = (S if types.OutputFormatType.IMAGE in output_format else NS)
+  audio_supported = (S if types.OutputFormatType.AUDIO in output_format else NS)
+  video_supported = (S if types.OutputFormatType.VIDEO in output_format else NS)
   multi_modal_supported = (
-      S if types.OutputFormatType.MULTI_MODAL in output_format
-      else NS)
+      S if types.OutputFormatType.MULTI_MODAL in output_format else NS
+  )
   return types.ProviderModelConfig(
       provider_model=types.ProviderModelType(
-          provider=provider,
-          model=model,
+          provider=provider, model=model,
           provider_model_identifier=provider_model_identifier
-      ),
-      pricing=types.ProviderModelPricingType(
-          input_token_cost=1.0,
-          output_token_cost=2.0
-      ),
-      metadata=types.ProviderModelMetadataType(
-          is_recommended=True
-      ),
+      ), pricing=types.ProviderModelPricingType(
+          input_token_cost=1.0, output_token_cost=2.0
+      ), metadata=types.ProviderModelMetadataType(is_recommended=True),
       features=types.FeatureConfigType(
           prompt=types.FeatureSupportType.SUPPORTED,
           messages=types.FeatureSupportType.SUPPORTED,
@@ -62,9 +53,7 @@ def _get_model_config(
               n=types.FeatureSupportType.NOT_SUPPORTED,
               thinking=types.FeatureSupportType.SUPPORTED,
           ),
-          tools=types.ToolConfigType(
-              web_search=web_search_supported,
-          ),
+          tools=types.ToolConfigType(web_search=web_search_supported,),
           input_format=types.InputFormatConfigType(
               text=S if 'text' in input_format else NS,
               image=S if 'image' in input_format else NS,
@@ -97,9 +86,9 @@ def register_models(client: px.Client):
           provider_model_identifier='mock_failing_model',
           web_search=False,
           output_format=[
-              types.OutputFormatType.TEXT,
-              types.OutputFormatType.JSON,
-              types.OutputFormatType.PYDANTIC],
+              types.OutputFormatType.TEXT, types.OutputFormatType.JSON,
+              types.OutputFormatType.PYDANTIC
+          ],
       )
   )
 
@@ -111,9 +100,9 @@ def register_models(client: px.Client):
           web_search=True,
           input_format=['text', 'image', 'document'],
           output_format=[
-              types.OutputFormatType.TEXT,
-              types.OutputFormatType.JSON,
-              types.OutputFormatType.PYDANTIC],
+              types.OutputFormatType.TEXT, types.OutputFormatType.JSON,
+              types.OutputFormatType.PYDANTIC
+          ],
       )
   )
   client.model_configs_instance.register_provider_model_config(
@@ -124,9 +113,9 @@ def register_models(client: px.Client):
           web_search=False,
           input_format=['text', 'image', 'document'],
           output_format=[
-              types.OutputFormatType.TEXT,
-              types.OutputFormatType.JSON,
-              types.OutputFormatType.PYDANTIC],
+              types.OutputFormatType.TEXT, types.OutputFormatType.JSON,
+              types.OutputFormatType.PYDANTIC
+          ],
       )
   )
 
@@ -168,9 +157,9 @@ def register_models(client: px.Client):
           web_search=True,
           input_format=['text', 'image', 'document', 'audio', 'video'],
           output_format=[
-              types.OutputFormatType.TEXT,
-              types.OutputFormatType.JSON,
-              types.OutputFormatType.PYDANTIC],
+              types.OutputFormatType.TEXT, types.OutputFormatType.JSON,
+              types.OutputFormatType.PYDANTIC
+          ],
       )
   )
 
@@ -182,9 +171,9 @@ def register_models(client: px.Client):
           web_search=False,
           input_format=['text', 'image', 'document', 'audio', 'video'],
           output_format=[
-              types.OutputFormatType.TEXT,
-              types.OutputFormatType.JSON,
-              types.OutputFormatType.PYDANTIC],
+              types.OutputFormatType.TEXT, types.OutputFormatType.JSON,
+              types.OutputFormatType.PYDANTIC
+          ],
       )
   )
 
@@ -226,9 +215,9 @@ def register_models(client: px.Client):
           web_search=True,
           input_format=['text', 'image', 'document'],
           output_format=[
-              types.OutputFormatType.TEXT,
-              types.OutputFormatType.JSON,
-              types.OutputFormatType.PYDANTIC],
+              types.OutputFormatType.TEXT, types.OutputFormatType.JSON,
+              types.OutputFormatType.PYDANTIC
+          ],
       )
   )
 
@@ -240,9 +229,9 @@ def register_models(client: px.Client):
           web_search=False,
           input_format=['text', 'image', 'document'],
           output_format=[
-              types.OutputFormatType.TEXT,
-              types.OutputFormatType.JSON,
-              types.OutputFormatType.PYDANTIC],
+              types.OutputFormatType.TEXT, types.OutputFormatType.JSON,
+              types.OutputFormatType.PYDANTIC
+          ],
       )
   )
 
@@ -253,9 +242,9 @@ def register_models(client: px.Client):
           provider_model_identifier='deepseek-chat',
           web_search=False,
           output_format=[
-              types.OutputFormatType.TEXT,
-              types.OutputFormatType.JSON,
-              types.OutputFormatType.PYDANTIC],
+              types.OutputFormatType.TEXT, types.OutputFormatType.JSON,
+              types.OutputFormatType.PYDANTIC
+          ],
       )
   )
 
@@ -266,9 +255,9 @@ def register_models(client: px.Client):
           provider_model_identifier='deepseek-reasoner',
           web_search=False,
           output_format=[
-              types.OutputFormatType.TEXT,
-              types.OutputFormatType.JSON,
-              types.OutputFormatType.PYDANTIC],
+              types.OutputFormatType.TEXT, types.OutputFormatType.JSON,
+              types.OutputFormatType.PYDANTIC
+          ],
       )
   )
 
@@ -280,6 +269,7 @@ def register_models(client: px.Client):
 
 
 def list_models_examples():
+
   def _names(models):
     return {m.model for m in models}
 
@@ -303,7 +293,8 @@ def list_models_examples():
   print()
   print('>> px.models.list_models(output_format=...)')
   image_models = px.models.list_models(
-      output_format=types.OutputFormatType.IMAGE)
+      output_format=types.OutputFormatType.IMAGE
+  )
   print(f'    IMAGE:    {_model_names(image_models)}')
   image_names = _names(image_models)
   assert 'dall-e-3' in image_names
@@ -311,19 +302,20 @@ def list_models_examples():
   assert 'gpt-4o' not in image_names
 
   audio_models = px.models.list_models(
-      output_format=types.OutputFormatType.AUDIO)
+      output_format=types.OutputFormatType.AUDIO
+  )
   print(f'    AUDIO:    {_model_names(audio_models)}')
   assert 'tts-1' in _names(audio_models)
   assert 'gpt-4o' not in _names(audio_models)
 
   video_models = px.models.list_models(
-      output_format=types.OutputFormatType.VIDEO)
+      output_format=types.OutputFormatType.VIDEO
+  )
   print(f'    VIDEO:    {_model_names(video_models)}')
   assert 'sora-2' in _names(video_models)
   assert 'gpt-4o' not in _names(video_models)
 
-  json_models = px.models.list_models(
-      output_format=types.OutputFormatType.JSON)
+  json_models = px.models.list_models(output_format=types.OutputFormatType.JSON)
   print(f'    JSON:     {_model_names(json_models)}')
   json_names = _names(json_models)
   assert 'gpt-4o' in json_names
@@ -333,8 +325,7 @@ def list_models_examples():
   # --- input_format filtering ---
   print()
   print('>> px.models.list_models(input_format=...)')
-  image_input = px.models.list_models(
-      input_format=types.InputFormatType.IMAGE)
+  image_input = px.models.list_models(input_format=types.InputFormatType.IMAGE)
   print(f'    IMAGE:    {_model_names(image_input)}')
   image_input_names = _names(image_input)
   assert 'gpt-4o' in image_input_names
@@ -343,15 +334,13 @@ def list_models_examples():
   assert 'deepseek-chat' not in image_input_names
   assert 'dall-e-3' not in image_input_names
 
-  audio_input = px.models.list_models(
-      input_format=types.InputFormatType.AUDIO)
+  audio_input = px.models.list_models(input_format=types.InputFormatType.AUDIO)
   print(f'    AUDIO:    {_model_names(audio_input)}')
   audio_input_names = _names(audio_input)
   assert 'gemini-3-flash-preview' in audio_input_names
   assert 'gpt-4o' not in audio_input_names
 
-  doc_input = px.models.list_models(
-      input_format=types.InputFormatType.DOCUMENT)
+  doc_input = px.models.list_models(input_format=types.InputFormatType.DOCUMENT)
   print(f'    DOCUMENT: {_model_names(doc_input)}')
   assert _names(doc_input) == image_input_names
 
@@ -361,7 +350,8 @@ def list_models_examples():
         ' output_format=JSON)')
   image_in_json_out = px.models.list_models(
       input_format=types.InputFormatType.IMAGE,
-      output_format=types.OutputFormatType.JSON)
+      output_format=types.OutputFormatType.JSON
+  )
   print(f'    Result:   {_model_names(image_in_json_out)}')
   combined_names = _names(image_in_json_out)
   assert 'gpt-4o' in combined_names
@@ -372,8 +362,7 @@ def list_models_examples():
   # --- tool_tags filtering ---
   print()
   print('>> px.models.list_models(tool_tags=...)')
-  web_search_models = px.models.list_models(
-      tool_tags=types.ToolTag.WEB_SEARCH)
+  web_search_models = px.models.list_models(tool_tags=types.ToolTag.WEB_SEARCH)
   print(f'    WEB_SEARCH: {_model_names(web_search_models)}')
   ws_names = _names(web_search_models)
   assert 'gpt-4o' in ws_names
@@ -386,7 +375,8 @@ def list_models_examples():
   print()
   print('>> px.models.list_models(feature_tags=...)')
   thinking_models = px.models.list_models(
-      feature_tags=types.FeatureTag.THINKING)
+      feature_tags=types.FeatureTag.THINKING
+  )
   print(f'    THINKING: {_model_names(thinking_models)}')
   assert len(thinking_models) > 0
   assert 'gpt-4o' in _names(thinking_models)
@@ -425,7 +415,18 @@ def list_models_examples():
 
 
 def check_health_use():
-  px.check_health(verbose=True)
+  print('> Default client check health')
+  px.models.check_health(verbose=True)
+
+  print('> Custom client check health with no multi processing and timeout=1')
+  client = px.Client(
+      model_probe_options=px.ModelProbeOptions(
+          allow_multiprocessing=False,
+          timeout=1,
+      ),
+  )
+  register_models(client)
+  client.models.check_health(verbose=True)
 
 
 def plain_alias_function_use():
@@ -435,44 +436,50 @@ def plain_alias_function_use():
   print('OpenAI:')
   response = px.generate_text(
       prompt='What is the capital of France and which AI provider are you?',
-      provider_model=('openai', 'gpt-4o'))
+      provider_model=('openai', 'gpt-4o')
+  )
   print(response)
 
   print('Gemini:')
   response = px.generate_text(
       prompt='What is the capital of France and which AI provider are you?',
-      provider_model=('gemini', 'gemini-3-flash-preview'))
+      provider_model=('gemini', 'gemini-3-flash-preview')
+  )
   print(response)
 
   print('* generate_json:')
   print('OpenAI:')
   response = px.generate_json(
       prompt='Give me the list of biggest cities in France.',
-      provider_model=('openai', 'gpt-4o'))
+      provider_model=('openai', 'gpt-4o')
+  )
   pprint(response)
 
   print('Gemini:')
   response = px.generate_json(
       prompt='Give me the list of biggest cities in France.',
-      provider_model=('gemini', 'gemini-3-flash-preview'))
+      provider_model=('gemini', 'gemini-3-flash-preview')
+  )
   pprint(response)
 
   print('* generate_pydantic:')
+
   class BiggestCities(BaseModel):
     cities: list[str]
 
   print('OpenAI:')
   response = px.generate_pydantic(
       prompt='Give me the list of biggest cities in France.',
-      output_format=BiggestCities,
-      provider_model=('openai', 'gpt-4o'))
+      output_format=BiggestCities, provider_model=('openai', 'gpt-4o')
+  )
   print(response)
 
   print('Gemini:')
   response = px.generate_pydantic(
       prompt='Give me the list of biggest cities in France.',
       output_format=BiggestCities,
-      provider_model=('gemini', 'gemini-3-flash-preview'))
+      provider_model=('gemini', 'gemini-3-flash-preview')
+  )
   print(response)
 
 
@@ -491,13 +498,11 @@ def _open_image_response(response: types.MessageContent | None):
   tmp_path = None
   try:
     if response.data:
-      with tempfile.NamedTemporaryFile(
-          delete=False, suffix=suffix) as tmp:
+      with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
         tmp.write(response.data)
         tmp_path = tmp.name
     elif response.source:
-      with tempfile.NamedTemporaryFile(
-          delete=False, suffix=suffix) as tmp:
+      with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
         with urllib.request.urlopen(response.source) as http_resp:
           tmp.write(http_resp.read())
         tmp_path = tmp.name
@@ -506,11 +511,8 @@ def _open_image_response(response: types.MessageContent | None):
       return
 
     print(f'> Opening image preview: {tmp_path}')
-    subprocess.run(
-        ['qlmanage', '-p', tmp_path],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        check=False)
+    subprocess.run(['qlmanage', '-p', tmp_path], stdout=subprocess.DEVNULL,
+                   stderr=subprocess.DEVNULL, check=False)
   finally:
     if tmp_path and os.path.exists(tmp_path):
       os.unlink(tmp_path)
@@ -523,13 +525,15 @@ def image_alias_function_use():
   print('OpenAI:')
   response = px.generate_image(
       prompt='Make funny cartoon cat in living room.',
-      provider_model=('openai', 'dall-e-3'))
+      provider_model=('openai', 'dall-e-3')
+  )
   _open_image_response(response)
 
   print('Gemini:')
   response = px.generate_image(
       prompt='Make funny cartoon cat in living room.',
-      provider_model=('gemini', 'gemini-2.5-flash-image'))
+      provider_model=('gemini', 'gemini-2.5-flash-image')
+  )
   _open_image_response(response)
 
 
@@ -540,40 +544,35 @@ def set_model_use():
 
   print('OpenAI:')
   px.set_model(('openai', 'gpt-4o'))
-  response = px.generate_text(
-      prompt='Which provider model are you?')
+  response = px.generate_text(prompt='Which provider model are you?')
   print(response)
   assert 'openai' in response.lower()
 
   print('Gemini:')
   px.set_model(('gemini', 'gemini-3-flash-preview'))
-  response = px.generate_text(
-      prompt='Which provider model are you?')
+  response = px.generate_text(prompt='Which provider model are you?')
   print(response)
   assert 'gemini' in response.lower() or 'google' in response.lower()
 
   print('* set_model image models:')
   print('OpenAI:')
   px.set_model(generate_image=('openai', 'dall-e-3'))
-  response = px.generate_image(
-      prompt='Make funny cartoon cat in living room.')
+  response = px.generate_image(prompt='Make funny cartoon cat in living room.')
   _open_image_response(response)
 
   print('Gemini:')
   px.set_model(generate_image=('gemini', 'gemini-2.5-flash-image'))
-  response = px.generate_image(
-      prompt='Make funny cartoon cat in living room.')
+  response = px.generate_image(prompt='Make funny cartoon cat in living room.')
   _open_image_response(response)
 
 
 def main():
   register_models(px.get_default_proxai_client())
-  list_models_examples()
+  # list_models_examples()
   check_health_use()
-  plain_alias_function_use()
-  image_alias_function_use()
-  set_model_use()
-
+  # plain_alias_function_use()
+  # image_alias_function_use()
+  # set_model_use()
 
 if __name__ == "__main__":
   main()
