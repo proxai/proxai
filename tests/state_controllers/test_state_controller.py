@@ -427,6 +427,133 @@ class TestStateControlled:
     )
 
 
+class TestCloneState:
+
+  def test_clone_state_returns_equal_state(self):
+    example_params = ExampleStateParams(
+        property_1='test', property_2='test_2', property_3='test_3'
+    )
+    example_obj = ExampleStateControlledClass(init_from_params=example_params)
+    cloned = example_obj.clone_state()
+    assert cloned == example_obj.get_state()
+
+  def test_clone_state_scalar_independence(self):
+    example_params = ExampleStateParams(
+        property_1='test', property_2='test_2', property_3='test_3'
+    )
+    example_obj = ExampleStateControlledClass(init_from_params=example_params)
+    cloned = example_obj.clone_state()
+    cloned.property_1 = 'modified'
+    assert example_obj.property_1 == 'test'
+
+  def test_clone_state_mutable_dict_independence(self):
+
+    @dataclass
+    class DictState(types.StateContainer):
+      data: dict | None = None
+
+    class DictStateControlledClass(state_controller.StateControlled):
+
+      def __init__(self, init_from_state=None):
+        super().__init__(init_from_state=init_from_state)
+        if init_from_state:
+          self.load_state(init_from_state)
+
+      def get_internal_state_property_name(self):
+        return '_state'
+
+      def get_internal_state_type(self):
+        return DictState
+
+      @property
+      def data(self):
+        return self.get_property_value('data')
+
+      @data.setter
+      def data(self, value):
+        self.set_property_value('data', value)
+
+    obj = DictStateControlledClass()
+    obj.data = {'key_a': 'value_a', 'nested': {'inner': 'original'}}
+    cloned = obj.clone_state()
+    cloned.data['key_a'] = 'modified'
+    cloned.data['nested']['inner'] = 'modified'
+    assert obj.data['key_a'] == 'value_a'
+    assert obj.data['nested']['inner'] == 'original'
+
+  def test_clone_state_mutable_list_independence(self):
+
+    @dataclass
+    class ListState(types.StateContainer):
+      items: list | None = None
+
+    class ListStateControlledClass(state_controller.StateControlled):
+
+      def __init__(self, init_from_state=None):
+        super().__init__(init_from_state=init_from_state)
+        if init_from_state:
+          self.load_state(init_from_state)
+
+      def get_internal_state_property_name(self):
+        return '_state'
+
+      def get_internal_state_type(self):
+        return ListState
+
+      @property
+      def items(self):
+        return self.get_property_value('items')
+
+      @items.setter
+      def items(self, value):
+        self.set_property_value('items', value)
+
+    obj = ListStateControlledClass()
+    obj.items = [1, 2, [3, 4]]
+    cloned = obj.clone_state()
+    cloned.items.append(5)
+    cloned.items[2].append(99)
+    assert obj.items == [1, 2, [3, 4]]
+
+  def test_clone_state_sub_state_independence(self):
+    example_sub_state_params = ExampleSubStateParams(
+        sub_property_1='original'
+    )
+    example_sub_state_obj = ExampleSubStateControlledClass(
+        init_from_params=example_sub_state_params
+    )
+    example_obj = ExampleStateControlledClass(
+        init_from_params=ExampleStateParams(
+            property_1='test', sub_state=example_sub_state_obj
+        )
+    )
+    cloned = example_obj.clone_state()
+    cloned.sub_state.sub_property_1 = 'modified'
+    assert example_obj.sub_state.sub_property_1 == 'original'
+
+  def test_clone_state_none_fields(self):
+    example_obj = ExampleStateControlledClass()
+    cloned = example_obj.clone_state()
+    assert cloned == ExampleState(
+        property_1=None, property_2=None, property_3=None
+    )
+
+  def test_clone_state_can_be_used_with_load_state(self):
+    example_params = ExampleStateParams(
+        property_1='test', property_2='test_2', property_3='test_3'
+    )
+    example_obj = ExampleStateControlledClass(init_from_params=example_params)
+    cloned = example_obj.clone_state()
+    cloned.property_1 = 'overridden'
+
+    example_obj_2 = ExampleStateControlledClass()
+    example_obj_2.load_state(cloned)
+    assert example_obj_2.property_1 == 'overridden'
+    assert example_obj_2.property_2 == 'test_2'
+    assert example_obj_2.property_3 == 'test_3'
+    assert example_obj.property_1 == 'test'
+
+
 class TestSubState:
 
   def test_sub_state_literal(self):

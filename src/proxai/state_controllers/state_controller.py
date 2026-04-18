@@ -26,6 +26,7 @@ user = User()
 user.name = "Alice"  # Sets name and automatically updates internal state
 print(user._user_state)  # {'name': 'Alice'}
 """
+import copy
 import dataclasses
 from abc import abstractmethod
 from typing import Any
@@ -202,6 +203,15 @@ class StateControlled(BaseStateControlled):
       if value is not None:
         setattr(result, field.name, value)
     return result
+
+  def clone_state(self) -> Any:
+    """Return a deep-copied snapshot of the current state.
+
+    Unlike get_state(), the returned dataclass shares no mutable references
+    with the original object, so callers can mutate it freely without
+    affecting this instance.
+    """
+    return copy.deepcopy(self.get_state())
 
   def get_internal_state(self) -> Any:
     """Return the raw internal state object."""
