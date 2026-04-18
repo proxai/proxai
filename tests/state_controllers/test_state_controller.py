@@ -251,8 +251,13 @@ class TestStateControlled:
       def get_internal_state_type(self):
         return MinimalState
 
-      def handle_changes(self, old_state, current_state):
-        pass
+      @property
+      def value(self):
+        return self.get_property_value('value')
+
+      @value.setter
+      def value(self, val):
+        self.set_property_value('value', val)
 
     # If parent didn't call init_state(), this would fail
     obj = MinimalClass()
@@ -633,3 +638,118 @@ class TestSubState:
         sub_state=ExampleSubState(sub_property_1='sub_property_1_value_1')
     )
     assert example_obj_2.sub_state.sub_property_1 == 'sub_property_1_value_1'
+
+
+class TestStateContractValidation:
+
+  def test_missing_property_raises(self):
+
+    @dataclass
+    class BadState(types.StateContainer):
+      value: str | None = None
+
+    class BadClass(state_controller.StateControlled):
+
+      def get_internal_state_property_name(self):
+        return '_state'
+
+      def get_internal_state_type(self):
+        return BadState
+
+    with pytest.raises(
+        TypeError,
+        match=r"State field 'value'.*has no @property on BadClass"
+    ):
+      BadClass()
+
+  def test_missing_deserializer_raises(self):
+
+    @dataclass
+    class InnerState(types.StateContainer):
+      data: str | None = None
+
+    @dataclass
+    class OuterState(types.StateContainer):
+      inner: InnerState | None = None
+
+    class OuterClass(state_controller.StateControlled):
+
+      def get_internal_state_property_name(self):
+        return '_state'
+
+      def get_internal_state_type(self):
+        return OuterState
+
+      @property
+      def inner(self):
+        return self.get_state_controlled_property_value('inner')
+
+      @inner.setter
+      def inner(self, value):
+        self.set_state_controlled_property_value('inner', value)
+
+    with pytest.raises(
+        TypeError,
+        match=(
+            r"State field 'inner'.*is a StateContainer but OuterClass "
+            r"has no 'inner_deserializer' method"
+        )
+    ):
+      OuterClass()
+
+  def test_valid_class_passes(self):
+    example_obj = ExampleStateControlledClass()
+    assert example_obj is not None
+
+  def test_multiple_violations_reported(self):
+
+    @dataclass
+    class InnerState(types.StateContainer):
+      data: str | None = None
+
+    @dataclass
+    class MultiState(types.StateContainer):
+      field_a: str | None = None
+      field_b: InnerState | None = None
+
+    class MultiClass(state_controller.StateControlled):
+
+      def get_internal_state_property_name(self):
+        return '_state'
+
+      def get_internal_state_type(self):
+        return MultiState
+
+    with pytest.raises(TypeError) as exc_info:
+      MultiClass()
+    msg = str(exc_info.value)
+    assert "field_a" in msg
+    assert "field_b" in msg
+    assert "has no @property" in msg
+    assert "has no 'field_b_deserializer'" in msg
+
+  def test_validation_runs_on_every_instantiation(self):
+
+    @dataclass
+    class GoodState(types.StateContainer):
+      value: str | None = None
+
+    class GoodClass(state_controller.StateControlled):
+
+      def get_internal_state_property_name(self):
+        return '_state'
+
+      def get_internal_state_type(self):
+        return GoodState
+
+      @property
+      def value(self):
+        return self.get_property_value('value')
+
+      @value.setter
+      def value(self, val):
+        self.set_property_value('value', val)
+
+    obj1 = GoodClass()
+    obj2 = GoodClass()
+    assert obj1 is not obj2

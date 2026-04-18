@@ -792,6 +792,14 @@ class ProxAIClient(state_controller.StateControlled):
     self.set_property_value("default_model_cache_path", value)
 
   @property
+  def platform_used_for_default_model_cache(self) -> bool | None:
+    return self.get_property_value("platform_used_for_default_model_cache")
+
+  @platform_used_for_default_model_cache.setter
+  def platform_used_for_default_model_cache(self, value: bool | None):
+    self.set_property_value("platform_used_for_default_model_cache", value)
+
+  @property
   def root_logging_path(self) -> str | None:
     return self.get_property_value("root_logging_path")
 
@@ -887,6 +895,14 @@ class ProxAIClient(state_controller.StateControlled):
   @model_configs_requested_from_proxdash.setter
   def model_configs_requested_from_proxdash(self, value: bool):
     self.set_property_value("model_configs_requested_from_proxdash", value)
+
+  @property
+  def registered_model_connectors(self) -> dict | None:
+    return self.get_property_value("registered_model_connectors")
+
+  @registered_model_connectors.setter
+  def registered_model_connectors(self, value: dict | None):
+    self.set_property_value("registered_model_connectors", value)
 
   @property
   def allow_multiprocessing(self) -> bool:
