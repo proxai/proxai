@@ -230,6 +230,35 @@ class AvailableModels(state_controller.StateControlled):
     self.set_property_value('model_test_timeout', value)
 
   @property
+  def feature_mapping_strategy(self) -> types.FeatureMappingStrategy:
+    return self.get_property_value('feature_mapping_strategy')
+
+  @feature_mapping_strategy.setter
+  def feature_mapping_strategy(self, value: types.FeatureMappingStrategy):
+    self.set_property_value('feature_mapping_strategy', value)
+
+  @property
+  def query_cache_manager(self) -> query_cache.QueryCacheManager:
+    return self.get_state_controlled_property_value('query_cache_manager')
+
+  @query_cache_manager.setter
+  def query_cache_manager(self, value: query_cache.QueryCacheManager):
+    self.set_state_controlled_property_value('query_cache_manager', value)
+
+  def query_cache_manager_deserializer(
+      self, state_value: types.QueryCacheManagerState
+  ) -> query_cache.QueryCacheManager:
+    return query_cache.QueryCacheManager(init_from_state=state_value)
+
+  @property
+  def keep_raw_provider_response(self) -> bool:
+    return self.get_property_value('keep_raw_provider_response')
+
+  @keep_raw_provider_response.setter
+  def keep_raw_provider_response(self, value: bool):
+    self.set_property_value('keep_raw_provider_response', value)
+
+  @property
   def providers_with_key(
       self
   ) -> dict[types.ProviderNameType, types.ProviderTokenValueMap]:

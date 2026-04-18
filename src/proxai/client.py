@@ -1006,6 +1006,36 @@ class ProxAIClient(state_controller.StateControlled):
   def available_models_instance(self, value: available_models.AvailableModels):
     self.set_state_controlled_property_value("available_models_instance", value)
 
+  def model_configs_instance_deserializer(
+      self, state_value: types.ModelConfigsState
+  ) -> model_configs.ModelConfigs:
+    return model_configs.ModelConfigs(init_from_state=state_value)
+
+  def default_model_cache_manager_deserializer(
+      self, state_value: types.ModelCacheManagerState
+  ) -> model_cache.ModelCacheManager:
+    return model_cache.ModelCacheManager(init_from_state=state_value)
+
+  def model_cache_manager_deserializer(
+      self, state_value: types.ModelCacheManagerState
+  ) -> model_cache.ModelCacheManager:
+    return model_cache.ModelCacheManager(init_from_state=state_value)
+
+  def query_cache_manager_deserializer(
+      self, state_value: types.QueryCacheManagerState
+  ) -> query_cache.QueryCacheManager:
+    return query_cache.QueryCacheManager(init_from_state=state_value)
+
+  def proxdash_connection_deserializer(
+      self, state_value: types.ProxDashConnectionState
+  ) -> proxdash.ProxDashConnection:
+    return proxdash.ProxDashConnection(init_from_state=state_value)
+
+  def available_models_instance_deserializer(
+      self, state_value: types.AvailableModelsState
+  ) -> available_models.AvailableModels:
+    return available_models.AvailableModels(init_from_state=state_value)
+
   @property
   def models(self) -> ModelConnector:
     """Access model discovery and availability information.

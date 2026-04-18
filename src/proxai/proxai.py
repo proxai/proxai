@@ -445,12 +445,11 @@ def check_health(
       >>> print(len(status.working_models))
       5
   """
-  px_client_params = client.ProxAIClientParams(
-      experiment_path=experiment_path,
-      allow_multiprocessing=allow_multiprocessing,
-      model_test_timeout=model_test_timeout,
-  )
-  px_client = client.ProxAIClient(init_from_params=px_client_params)
+  state = get_default_proxai_client().clone_state()
+  state.allow_multiprocessing = allow_multiprocessing
+  state.model_test_timeout = model_test_timeout
+  state.experiment_path = experiment_path
+  px_client = client.ProxAIClient(init_from_state=state)
   if verbose:
     print("> Starting to test each model...")
   model_status = px_client.available_models_instance.list_working_models(

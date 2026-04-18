@@ -816,13 +816,16 @@ class AvailableModelsState(StateContainer):
   """Persisted state for available models discovery."""
 
   run_type: RunType | None = None
+  feature_mapping_strategy: FeatureMappingStrategy | None = None
   model_configs_instance: ModelConfigsState | None = None
   model_cache_manager: ModelCacheManagerState | None = None
+  query_cache_manager: QueryCacheManagerState | None = None
   logging_options: LoggingOptions | None = None
   proxdash_connection: ProxDashConnectionState | None = None
   proxdash_provider_api_keys: ProviderTokenValueMap | None = None
   allow_multiprocessing: bool | None = None
   model_test_timeout: int | None = None
+  keep_raw_provider_response: bool | None = None
   providers_with_key: dict[ProviderNameType,
                            ProviderTokenValueMap] | None = (None)
   has_fetched_all_models: bool | None = None
@@ -844,7 +847,7 @@ class ProxAIClientState(StateContainer):
   cache_options: CacheOptions | None = None
   proxdash_options: ProxDashOptions | None = None
 
-  model_configs: ModelConfigsState | None = None
+  model_configs_instance: ModelConfigsState | None = None
   model_configs_requested_from_proxdash: bool | None = None
 
   registered_model_connectors: dict[OutputFormatType, ProviderState] | None = None
@@ -859,4 +862,4 @@ class ProxAIClientState(StateContainer):
   allow_multiprocessing: bool | None = None
   model_test_timeout: int | None = None
 
-  available_models: AvailableModelsState | None = None
+  available_models_instance: AvailableModelsState | None = None
