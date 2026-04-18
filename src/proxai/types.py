@@ -828,7 +828,6 @@ class AvailableModelsState(StateContainer):
   keep_raw_provider_response: bool | None = None
   providers_with_key: dict[ProviderNameType,
                            ProviderTokenValueMap] | None = (None)
-  has_fetched_all_models: bool | None = None
   latest_model_cache_path_used_for_update: str | None = None
 
 

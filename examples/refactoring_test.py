@@ -1099,7 +1099,7 @@ def _run_all_tests():
   images_generate_test()
   audio_generate_test()
   # NOTE: Video test is too slow. Comment in when needed.
-  video_generate_test()
+  # video_generate_test()
   list_models_test()
 
 

@@ -426,7 +426,6 @@ def list_models_examples():
 
 def check_health_use():
   px.check_health(verbose=True)
-  px.models.list_working_models(verbose=True)
 
 
 def plain_alias_function_use():
@@ -571,9 +570,9 @@ def main():
   register_models(px.get_default_proxai_client())
   list_models_examples()
   check_health_use()
-#   plain_alias_function_use()
-#   image_alias_function_use()
-#   set_model_use()
+  plain_alias_function_use()
+  image_alias_function_use()
+  set_model_use()
 
 
 if __name__ == "__main__":

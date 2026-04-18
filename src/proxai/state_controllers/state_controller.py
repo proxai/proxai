@@ -28,10 +28,20 @@ print(user._user_state)  # {'name': 'Alice'}
 """
 import copy
 import dataclasses
+import inspect
+import typing
 from abc import abstractmethod
 from typing import Any
 
 import proxai.types as types
+
+def _unwrap_optional(type_hint: Any) -> Any | None:
+  """Extract the non-None type from Optional/Union annotations."""
+  origin = typing.get_origin(type_hint)
+  if origin is typing.Union:
+    args = [a for a in typing.get_args(type_hint) if a is not type(None)]
+    return args[0] if len(args) == 1 else None
+  return type_hint
 
 
 class BaseStateControlled:
@@ -56,12 +66,74 @@ class StateControlled(BaseStateControlled):
 
     # Initialize the internal state structure.
     self.init_state_with_default_values()
+    self._validate_state_contract()
 
   def _validate_init_from_state_values(self, init_from_state: Any | None):
     if not isinstance(init_from_state, self.get_internal_state_type()):
       raise ValueError(
           f'Invalid state type.\nExpected: {self.get_internal_state_type()}\n'
           f'Actual: {type(init_from_state)}'
+      )
+
+  def _validate_state_contract(self):
+    """Validate that state fields, properties, and deserializers are in sync.
+
+    Enforces two invariants:
+      1. Every state field must have a @property on the class so that
+         get_state() can read it and load_state() can restore it.
+      2. Every StateContainer-typed state field must have a
+         {field_name}_deserializer method so load_state() can reconstruct
+         the object from serialized state.
+
+    Runs on every instantiation. The cost is negligible (iterating a
+    handful of dataclass fields with getattr checks). If batch or
+    multiprocessing workloads create many instances of the same class,
+    add a per-class cache flag to skip repeated validation:
+        if '_state_contract_validated' in cls.__dict__:
+          return
+        ...
+        cls._state_contract_validated = True
+    """
+    cls = type(self)
+    state_type = self.get_internal_state_type()
+    try:
+      hints = typing.get_type_hints(state_type)
+    except Exception:
+      return
+
+    errors = []
+    for field in dataclasses.fields(state_type):
+      prop = inspect.getattr_static(cls, field.name, None)
+      if not isinstance(prop, property):
+        errors.append(
+            f"State field '{field.name}' (in {state_type.__name__}) "
+            f"has no @property on {cls.__name__}. Without a property, "
+            f"get_state() cannot read this field and load_state() "
+            f"cannot restore it. Add a @property getter/setter pair "
+            f"using get_property_value/set_property_value."
+        )
+
+      field_type = _unwrap_optional(hints.get(field.name))
+      if (
+          isinstance(field_type, type) and
+          issubclass(field_type, types.StateContainer)
+      ):
+        deserializer_name = self.get_state_controlled_deserializer_name(
+            field.name
+        )
+        if not callable(getattr(cls, deserializer_name, None)):
+          errors.append(
+              f"State field '{field.name}' (type: "
+              f"{field_type.__name__}) is a StateContainer but "
+              f"{cls.__name__} has no '{deserializer_name}' method. "
+              f"load_state() will crash when reconstructing from "
+              f"serialized state."
+          )
+
+    if errors:
+      raise TypeError(
+          f"StateControlled contract violations in {cls.__name__}:\n"
+          + "\n".join(f"  - {e}" for e in errors)
       )
 
   @abstractmethod
