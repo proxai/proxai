@@ -12,6 +12,7 @@ import platformdirs
 import proxai.chat.chat_session as chat_session
 import proxai.caching.model_cache as model_cache
 import proxai.caching.query_cache as query_cache
+import proxai.connections.api_key_manager as api_key_manager
 import proxai.connections.available_models as available_models
 import proxai.connectors.files as files_manager
 import proxai.connections.proxdash as proxdash
@@ -689,6 +690,13 @@ class ProxAIClient(state_controller.StateControlled):
       if self.cache_options and self.cache_options.clear_query_cache_on_connect:
         self.query_cache_manager.clear_cache()
 
+      api_key_manager_params = api_key_manager.ApiKeyManagerParams(
+          proxdash_connection=self.proxdash_connection,
+      )
+      self._api_key_manager_instance = api_key_manager.ApiKeyManager(
+          init_from_params=api_key_manager_params
+      )
+
       available_models_params = available_models.AvailableModelsParams(
           run_type=self.run_type,
           provider_call_options=self.provider_call_options,
@@ -697,6 +705,7 @@ class ProxAIClient(state_controller.StateControlled):
           query_cache_manager=self.query_cache_manager,
           logging_options=self.logging_options,
           proxdash_connection=self.proxdash_connection,
+          api_key_manager=self._api_key_manager_instance,
           model_probe_options=self.model_probe_options,
           debug_options=self.debug_options,
       )
@@ -709,6 +718,7 @@ class ProxAIClient(state_controller.StateControlled):
           logging_options=self.logging_options,
           proxdash_connection=self.proxdash_connection,
           provider_call_options=self.provider_call_options,
+          api_key_manager=self._api_key_manager_instance,
       )
       self._files_manager_instance = files_manager.FilesManager(
           init_from_params=files_manager_params
@@ -778,6 +788,7 @@ class ProxAIClient(state_controller.StateControlled):
     self.model_probe_options = None
     self.debug_options = None
 
+    self.api_key_manager_instance = None
     self.available_models_instance = None
     self.files_manager_instance = None
 
@@ -1109,6 +1120,21 @@ class ProxAIClient(state_controller.StateControlled):
       self, state_value: types.ProxDashConnectionState
   ) -> proxdash.ProxDashConnection:
     return proxdash.ProxDashConnection(init_from_state=state_value)
+
+  @property
+  def api_key_manager_instance(self) -> api_key_manager.ApiKeyManager:
+    return self.get_state_controlled_property_value(
+        "api_key_manager_instance")
+
+  @api_key_manager_instance.setter
+  def api_key_manager_instance(self, value: api_key_manager.ApiKeyManager):
+    self.set_state_controlled_property_value(
+        "api_key_manager_instance", value)
+
+  def api_key_manager_instance_deserializer(
+      self, state_value: types.ApiKeyManagerState
+  ) -> api_key_manager.ApiKeyManager:
+    return api_key_manager.ApiKeyManager(init_from_state=state_value)
 
   def available_models_instance_deserializer(
       self, state_value: types.AvailableModelsState

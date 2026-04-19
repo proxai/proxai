@@ -833,6 +833,16 @@ class ProviderState(StateContainer):
 
 
 @dataclasses.dataclass
+class ApiKeyManagerState(StateContainer):
+  """Persisted state for API key management."""
+
+  proxdash_connection: ProxDashConnectionState | None = None
+  proxdash_provider_api_keys: ProviderTokenValueMap | None = None
+  providers_with_key: dict[ProviderNameType,
+                           ProviderTokenValueMap] | None = None
+
+
+@dataclasses.dataclass
 class AvailableModelsState(StateContainer):
   """Persisted state for available models discovery."""
 
@@ -843,11 +853,9 @@ class AvailableModelsState(StateContainer):
   query_cache_manager: QueryCacheManagerState | None = None
   logging_options: LoggingOptions | None = None
   proxdash_connection: ProxDashConnectionState | None = None
-  proxdash_provider_api_keys: ProviderTokenValueMap | None = None
+  api_key_manager: ApiKeyManagerState | None = None
   model_probe_options: ModelProbeOptions | None = None
   debug_options: DebugOptions | None = None
-  providers_with_key: dict[ProviderNameType,
-                           ProviderTokenValueMap] | None = (None)
   latest_model_cache_path_used_for_update: str | None = None
 
 
@@ -859,6 +867,7 @@ class FilesManagerState(StateContainer):
   logging_options: LoggingOptions | None = None
   proxdash_connection: ProxDashConnectionState | None = None
   provider_call_options: ProviderCallOptions | None = None
+  api_key_manager: ApiKeyManagerState | None = None
 
 
 @dataclasses.dataclass
@@ -890,5 +899,6 @@ class ProxAIClientState(StateContainer):
   model_probe_options: ModelProbeOptions | None = None
   debug_options: DebugOptions | None = None
 
+  api_key_manager_instance: ApiKeyManagerState | None = None
   available_models_instance: AvailableModelsState | None = None
   files_manager_instance: FilesManagerState | None = None
