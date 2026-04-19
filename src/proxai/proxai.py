@@ -455,3 +455,21 @@ class DefaultModelsConnector(client.ModelConnector):
   def __init__(self) -> None:
     """Initializes the DefaultModelsConnector with the default client getter."""
     super().__init__(get_default_proxai_client)
+
+
+class DefaultFilesConnector(client.FileConnector):
+  """Provides access to file operations for the default global client.
+
+  This class extends FileConnector to work with the default global ProxAI
+  client. It is typically accessed via the ``px.files`` singleton.
+
+  For client-specific file operations, use ``client.files`` instead.
+
+  Example:
+      >>> import proxai as px
+      >>> px.files.upload(...)
+      >>> px.files.list()
+  """
+
+  def __init__(self) -> None:
+    super().__init__(get_default_proxai_client)

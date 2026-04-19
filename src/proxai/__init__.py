@@ -4,12 +4,14 @@ from importlib.metadata import version
 from proxai.chat import Chat
 from proxai.chat import Message
 from proxai.chat import MessageContent
+from proxai.client import FileConnector
 from proxai.client import ModelConnector
 from proxai.proxai import (
     CacheOptions,
     Chat,
     Client,
     ConnectionOptions,
+    DefaultFilesConnector,
     DefaultModelsConnector,
     FeatureMappingStrategy,
     LoggingOptions,
@@ -50,8 +52,11 @@ __all__ = [
     "Client",
     "ConnectionOptions",
     "DebugOptions",
+    "DefaultFilesConnector",
     "DefaultModelsConnector",
     "FeatureMappingStrategy",
+    "FileConnector",
+    "files",
     "FeatureTag",
     "InputFormatType",
     "LoggingOptions",
@@ -85,4 +90,5 @@ __all__ = [
 ]
 
 __version__ = version("proxai")
+files = DefaultFilesConnector()
 models = DefaultModelsConnector()
