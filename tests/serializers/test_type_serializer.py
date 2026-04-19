@@ -1307,6 +1307,17 @@ def _get_provider_call_options_options():
           'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT,
           'suppress_provider_errors': True
       },
+      {
+          'allow_parallel_file_operations': True
+      },
+      {
+          'allow_parallel_file_operations': False
+      },
+      {
+          'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT,
+          'suppress_provider_errors': True,
+          'allow_parallel_file_operations': False,
+      },
   ]
 
 

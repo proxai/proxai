@@ -140,6 +140,7 @@ class FileUploadMetadata:
   """Metadata from a provider File API upload."""
 
   file_id: str
+  provider: str | None = None
   filename: str | None = None
   size_bytes: int | None = None
   mime_type: str | None = None
@@ -180,7 +181,7 @@ class MessageContent:
     >>> px.MessageContent(type=px.MessageContent.Type.IMAGE, path="./photo.png")
   """
 
-  type: ContentType | str
+  type: ContentType | str | None = None
 
   text: str | None = None
 
@@ -197,6 +198,19 @@ class MessageContent:
   provider_file_api_ids: dict[str, str] | None = None
 
   def __post_init__(self):
+    if self.type is None:
+      if self.media_type is not None:
+        inferred = self._infer_content_type(self.media_type)
+        if inferred is None:
+          raise ValueError(
+              f"Cannot infer content type from media_type "
+              f"{self.media_type!r}. Provide 'type' explicitly."
+          )
+        self.type = inferred
+      else:
+        raise ValueError(
+            "'type' is required when 'media_type' is not provided."
+        )
     if isinstance(self.type, str):
       try:
         self.type = ContentType(self.type)
@@ -204,6 +218,17 @@ class MessageContent:
         raise ValueError(
             f"Invalid content type: {self.type!r}. "
             f"Must be one of: {[t.value for t in ContentType]}"
+        )
+    if self.media_type is not None and self.type in (
+        ContentType.IMAGE, ContentType.DOCUMENT,
+        ContentType.AUDIO, ContentType.VIDEO,
+    ):
+      expected = self._infer_content_type(self.media_type)
+      if expected is not None and expected != self.type:
+        raise ValueError(
+            f"Content type '{self.type.value}' does not match "
+            f"media_type '{self.media_type}' "
+            f"(expected type '{expected.value}')."
         )
     if self.type in (ContentType.TEXT, ContentType.THINKING):
       if self.text is None:
@@ -253,6 +278,33 @@ class MessageContent:
         )
     if self.media_type is not None:
       self._validate_media_type(self.media_type)
+
+  _MIME_PREFIX_TO_CONTENT_TYPE = {
+      'image/': ContentType.IMAGE,
+      'audio/': ContentType.AUDIO,
+      'video/': ContentType.VIDEO,
+  }
+  _MIME_TO_CONTENT_TYPE = {
+      'application/pdf': ContentType.DOCUMENT,
+      'application/vnd.openxmlformats-officedocument'
+      '.wordprocessingml.document': ContentType.DOCUMENT,
+      'application/vnd.openxmlformats-officedocument'
+      '.spreadsheetml.sheet': ContentType.DOCUMENT,
+      'text/csv': ContentType.DOCUMENT,
+      'text/plain': ContentType.DOCUMENT,
+      'text/markdown': ContentType.DOCUMENT,
+  }
+
+  @staticmethod
+  def _infer_content_type(media_type: str) -> ContentType | None:
+    """Infer ContentType from a MIME type string."""
+    if media_type in MessageContent._MIME_TO_CONTENT_TYPE:
+      return MessageContent._MIME_TO_CONTENT_TYPE[media_type]
+    for prefix, content_type in (
+        MessageContent._MIME_PREFIX_TO_CONTENT_TYPE.items()):
+      if media_type.startswith(prefix):
+        return content_type
+    return None
 
   @staticmethod
   def _validate_media_type(media_type: str):
@@ -311,6 +363,8 @@ class MessageContent:
       status_dict = {}
       for provider, meta in self.provider_file_api_status.items():
         meta_dict = {"file_id": meta.file_id}
+        if meta.provider is not None:
+          meta_dict["provider"] = meta.provider
         if meta.filename is not None:
           meta_dict["filename"] = meta.filename
         if meta.size_bytes is not None:
@@ -355,6 +409,7 @@ class MessageContent:
       for provider, meta_dict in data["provider_file_api_status"].items():
         provider_file_api_status[provider] = FileUploadMetadata(
             file_id=meta_dict["file_id"],
+            provider=meta_dict.get("provider"),
             filename=meta_dict.get("filename"),
             size_bytes=meta_dict.get("size_bytes"),
             mime_type=meta_dict.get("mime_type"),

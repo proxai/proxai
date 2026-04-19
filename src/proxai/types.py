@@ -440,6 +440,7 @@ class ProviderCallOptions:
       FeatureMappingStrategy.BEST_EFFORT
   )
   suppress_provider_errors: bool = False
+  allow_parallel_file_operations: bool = True
 
 
 @dataclasses.dataclass

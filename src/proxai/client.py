@@ -994,6 +994,8 @@ class ProxAIClient(state_controller.StateControlled):
     if value is not None:
       result.feature_mapping_strategy = value.feature_mapping_strategy
       result.suppress_provider_errors = value.suppress_provider_errors
+      result.allow_parallel_file_operations = (
+          value.allow_parallel_file_operations)
     self.set_property_value("provider_call_options", result)
 
   @property
