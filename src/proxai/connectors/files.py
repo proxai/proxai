@@ -1,13 +1,29 @@
 """File management for provider File APIs."""
 
 import dataclasses
+import os
 
+import proxai.chat.message_content as message_content
 import proxai.connections.api_key_manager as api_key_manager
 import proxai.connections.proxdash as proxdash
+import proxai.connectors.file_upload_helpers as file_upload_helpers
 import proxai.state_controllers.state_controller as state_controller
 import proxai.types as types
 
 _FILES_MANAGER_STATE_PROPERTY = '_files_manager_state'
+
+
+class FileUploadError(Exception):
+  """Raised when one or more provider uploads fail."""
+
+  def __init__(
+      self, errors: dict[str, Exception],
+      media: message_content.MessageContent
+  ):
+    self.errors = errors
+    self.media = media
+    providers = ', '.join(errors.keys())
+    super().__init__(f"Upload failed for providers: {providers}")
 
 
 @dataclasses.dataclass
@@ -105,8 +121,93 @@ class FilesManager(state_controller.StateControlled):
   ) -> api_key_manager.ApiKeyManager:
     return api_key_manager.ApiKeyManager(init_from_state=state_value)
 
-  def upload(self):
-    pass
+  def upload(
+      self,
+      media: message_content.MessageContent,
+      providers: list[types.ProviderNameType],
+  ) -> message_content.MessageContent:
+    """Upload media to specified provider File APIs.
+
+    Args:
+      media: A MessageContent of a media type (IMAGE, DOCUMENT, AUDIO,
+        VIDEO). Must have at least one of path or data set.
+      providers: List of provider names to upload to (e.g.,
+        ['gemini', 'claude']).
+
+    Returns:
+      The same MessageContent with provider_file_api_status and
+      provider_file_api_ids populated.
+
+    Raises:
+      ValueError: If media type is not a media content type, or if a
+        provider is not supported or has no API key configured.
+      FileUploadError: If one or more provider uploads fail. The
+        media object still contains results from successful uploads.
+    """
+    _MEDIA_TYPES = (
+        message_content.ContentType.IMAGE,
+        message_content.ContentType.DOCUMENT,
+        message_content.ContentType.AUDIO,
+        message_content.ContentType.VIDEO,
+    )
+    if media.type not in _MEDIA_TYPES:
+      raise ValueError(
+          f"upload() requires a media content type "
+          f"(IMAGE, DOCUMENT, AUDIO, VIDEO), got '{media.type.value}'."
+      )
+    if media.path is None and media.data is None:
+      raise ValueError(
+          "MessageContent must have 'path' or 'data' set for upload."
+      )
+
+    file_path = media.path
+    file_data = media.data
+    filename = 'file'
+    if file_path:
+      filename = os.path.basename(file_path)
+    mime_type = media.media_type or 'application/octet-stream'
+
+    if media.provider_file_api_status is None:
+      media.provider_file_api_status = {}
+    if media.provider_file_api_ids is None:
+      media.provider_file_api_ids = {}
+
+    errors: dict[str, Exception] = {}
+    for provider in providers:
+      if provider not in file_upload_helpers.UPLOAD_DISPATCH:
+        raise ValueError(
+            f"Provider '{provider}' does not support the File API. "
+            f"Supported: {list(file_upload_helpers.UPLOAD_DISPATCH.keys())}"
+        )
+      if not self.api_key_manager.has_provider_key(provider):
+        raise ValueError(
+            f"No API key configured for provider '{provider}'."
+        )
+      token_map = self.api_key_manager.get_provider_keys(provider)
+      upload_fn = file_upload_helpers.UPLOAD_DISPATCH[provider]
+      try:
+        metadata = upload_fn(
+            file_path=file_path,
+            file_data=file_data,
+            filename=filename,
+            mime_type=mime_type,
+            token_map=token_map,
+        )
+        media.provider_file_api_status[provider] = metadata
+        media.provider_file_api_ids[provider] = metadata.file_id
+      except Exception as e:
+        media.provider_file_api_status[provider] = (
+            message_content.FileUploadMetadata(
+                file_id='',
+                state=message_content.FileUploadState.FAILED,
+            )
+        )
+        errors[provider] = e
+
+    if errors:
+      raise FileUploadError(errors=errors, media=media)
+
+    return media
 
   def download(self):
     pass

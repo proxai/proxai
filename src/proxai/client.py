@@ -511,8 +511,9 @@ class FileConnector:
   ) -> None:
     self._client_getter = client_getter
 
-  def upload(self):
-    return self._client_getter().files_manager_instance.upload()
+  def upload(self, media, providers):
+    return self._client_getter().files_manager_instance.upload(
+        media=media, providers=providers)
 
   def download(self):
     return self._client_getter().files_manager_instance.download()

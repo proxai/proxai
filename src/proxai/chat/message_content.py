@@ -127,6 +127,29 @@ class ToolContent:
   citations: list[Citation] | None = None
 
 
+class FileUploadState(str, enum.Enum):
+  """Processing state of a file upload."""
+
+  PENDING = "pending"
+  ACTIVE = "active"
+  FAILED = "failed"
+
+
+@dataclasses.dataclass
+class FileUploadMetadata:
+  """Metadata from a provider File API upload."""
+
+  file_id: str
+  filename: str | None = None
+  size_bytes: int | None = None
+  mime_type: str | None = None
+  created_at: str | None = None
+  expires_at: str | None = None
+  uri: str | None = None
+  state: FileUploadState | None = None
+  sha256_hash: str | None = None
+
+
 @dataclasses.dataclass
 class MessageContent:
   """A single content block within a message.
@@ -169,6 +192,9 @@ class MessageContent:
   data: bytes | None = None
   path: str | None = None
   media_type: str | None = None
+
+  provider_file_api_status: dict[str, FileUploadMetadata] | None = None
+  provider_file_api_ids: dict[str, str] | None = None
 
   def __post_init__(self):
     if isinstance(self.type, str):
@@ -279,6 +305,30 @@ class MessageContent:
       result["path"] = self.path
     if self.media_type is not None:
       result["media_type"] = self.media_type
+    if self.provider_file_api_ids is not None:
+      result["provider_file_api_ids"] = self.provider_file_api_ids
+    if self.provider_file_api_status is not None:
+      status_dict = {}
+      for provider, meta in self.provider_file_api_status.items():
+        meta_dict = {"file_id": meta.file_id}
+        if meta.filename is not None:
+          meta_dict["filename"] = meta.filename
+        if meta.size_bytes is not None:
+          meta_dict["size_bytes"] = meta.size_bytes
+        if meta.mime_type is not None:
+          meta_dict["mime_type"] = meta.mime_type
+        if meta.created_at is not None:
+          meta_dict["created_at"] = meta.created_at
+        if meta.expires_at is not None:
+          meta_dict["expires_at"] = meta.expires_at
+        if meta.uri is not None:
+          meta_dict["uri"] = meta.uri
+        if meta.state is not None:
+          meta_dict["state"] = meta.state.value
+        if meta.sha256_hash is not None:
+          meta_dict["sha256_hash"] = meta.sha256_hash
+        status_dict[provider] = meta_dict
+      result["provider_file_api_status"] = status_dict
     return result
 
   @classmethod
@@ -298,6 +348,23 @@ class MessageContent:
           kind=ToolKind(tc_data["kind"]) if tc_data.get("kind") else None,
           citations=citations,
       )
+    provider_file_api_ids = data.get("provider_file_api_ids")
+    provider_file_api_status = None
+    if data.get("provider_file_api_status") is not None:
+      provider_file_api_status = {}
+      for provider, meta_dict in data["provider_file_api_status"].items():
+        provider_file_api_status[provider] = FileUploadMetadata(
+            file_id=meta_dict["file_id"],
+            filename=meta_dict.get("filename"),
+            size_bytes=meta_dict.get("size_bytes"),
+            mime_type=meta_dict.get("mime_type"),
+            created_at=meta_dict.get("created_at"),
+            expires_at=meta_dict.get("expires_at"),
+            uri=meta_dict.get("uri"),
+            state=(FileUploadState(meta_dict["state"])
+                   if meta_dict.get("state") else None),
+            sha256_hash=meta_dict.get("sha256_hash"),
+        )
     return cls(
         type=data["type"],
         text=data.get("text"),
@@ -310,6 +377,8 @@ class MessageContent:
         ),
         path=data.get("path"),
         media_type=data.get("media_type"),
+        provider_file_api_status=provider_file_api_status,
+        provider_file_api_ids=provider_file_api_ids,
     )
 
   def copy(self) -> "MessageContent":

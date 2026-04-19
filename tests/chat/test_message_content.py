@@ -11,6 +11,8 @@ import pydantic
 import proxai.types as types
 from proxai.chat.message_content import (
     Citation,
+    FileUploadMetadata,
+    FileUploadState,
     MessageContent,
     PydanticContent,
     SUPPORTED_MEDIA_TYPES,
@@ -483,3 +485,208 @@ class TestMessageContentCopyAndRepr:
     assert "type='image'" in repr(mc)
     assert "source='https://example.com/img.png'" in repr(mc)
     assert "media_type='image/png'" in repr(mc)
+
+
+class TestFileUploadMetadata:
+
+  def test_minimal_construction(self):
+    meta = FileUploadMetadata(file_id="file-abc123")
+    assert meta.file_id == "file-abc123"
+    assert meta.filename is None
+    assert meta.state is None
+
+  def test_full_construction(self):
+    meta = FileUploadMetadata(
+        file_id="file-abc123",
+        filename="report.pdf",
+        size_bytes=1024000,
+        mime_type="application/pdf",
+        created_at="2026-01-01T00:00:00Z",
+        expires_at="2026-01-03T00:00:00Z",
+        uri="https://storage.example.com/file-abc123",
+        state=FileUploadState.ACTIVE,
+        sha256_hash="abcdef1234567890",
+    )
+    assert meta.file_id == "file-abc123"
+    assert meta.size_bytes == 1024000
+    assert meta.state == FileUploadState.ACTIVE
+    assert meta.uri == "https://storage.example.com/file-abc123"
+
+  def test_state_enum_values(self):
+    assert FileUploadState.PENDING.value == "pending"
+    assert FileUploadState.ACTIVE.value == "active"
+    assert FileUploadState.FAILED.value == "failed"
+
+
+class TestMessageContentFileApiFields:
+
+  def test_fields_none_by_default(self):
+    mc = MessageContent(type="image", source="https://example.com/img.png")
+    assert mc.provider_file_api_status is None
+    assert mc.provider_file_api_ids is None
+
+  def test_to_dict_omits_none_fields(self):
+    mc = MessageContent(type="image", source="https://example.com/img.png")
+    d = mc.to_dict()
+    assert "provider_file_api_status" not in d
+    assert "provider_file_api_ids" not in d
+
+  def test_to_dict_serializes_ids(self):
+    mc = MessageContent(
+        type="document",
+        source="https://example.com/doc.pdf",
+        media_type="application/pdf",
+        provider_file_api_ids={
+            "gemini": "files/abc123",
+            "openai": "file-xyz789",
+        },
+    )
+    d = mc.to_dict()
+    assert d["provider_file_api_ids"] == {
+        "gemini": "files/abc123",
+        "openai": "file-xyz789",
+    }
+
+  def test_to_dict_serializes_status(self):
+    mc = MessageContent(
+        type="document",
+        source="https://example.com/doc.pdf",
+        media_type="application/pdf",
+        provider_file_api_status={
+            "gemini": FileUploadMetadata(
+                file_id="files/abc123",
+                filename="doc.pdf",
+                size_bytes=5000,
+                state=FileUploadState.ACTIVE,
+                uri="https://storage.example.com/abc",
+                sha256_hash="deadbeef",
+            ),
+        },
+    )
+    d = mc.to_dict()
+    status = d["provider_file_api_status"]["gemini"]
+    assert status["file_id"] == "files/abc123"
+    assert status["filename"] == "doc.pdf"
+    assert status["size_bytes"] == 5000
+    assert status["state"] == "active"
+    assert status["uri"] == "https://storage.example.com/abc"
+    assert status["sha256_hash"] == "deadbeef"
+    assert "expires_at" not in status
+    assert "created_at" not in status
+
+  def test_to_dict_status_omits_none_fields(self):
+    mc = MessageContent(
+        type="image",
+        source="https://example.com/img.png",
+        provider_file_api_status={
+            "openai": FileUploadMetadata(file_id="file-xyz"),
+        },
+    )
+    d = mc.to_dict()
+    status = d["provider_file_api_status"]["openai"]
+    assert status == {"file_id": "file-xyz"}
+
+  def test_round_trip(self):
+    mc = MessageContent(
+        type="document",
+        source="https://example.com/doc.pdf",
+        media_type="application/pdf",
+        provider_file_api_ids={
+            "gemini": "files/abc123",
+            "openai": "file-xyz789",
+        },
+        provider_file_api_status={
+            "gemini": FileUploadMetadata(
+                file_id="files/abc123",
+                filename="doc.pdf",
+                size_bytes=5000,
+                mime_type="application/pdf",
+                created_at="2026-01-01T00:00:00Z",
+                expires_at="2026-01-03T00:00:00Z",
+                uri="https://storage.example.com/abc",
+                state=FileUploadState.ACTIVE,
+                sha256_hash="deadbeef",
+            ),
+            "openai": FileUploadMetadata(
+                file_id="file-xyz789",
+                filename="doc.pdf",
+                size_bytes=5000,
+                state=FileUploadState.ACTIVE,
+            ),
+        },
+    )
+    d = mc.to_dict()
+    restored = MessageContent.from_dict(d)
+
+    assert restored.provider_file_api_ids == mc.provider_file_api_ids
+
+    gemini_meta = restored.provider_file_api_status["gemini"]
+    assert gemini_meta.file_id == "files/abc123"
+    assert gemini_meta.filename == "doc.pdf"
+    assert gemini_meta.size_bytes == 5000
+    assert gemini_meta.mime_type == "application/pdf"
+    assert gemini_meta.created_at == "2026-01-01T00:00:00Z"
+    assert gemini_meta.expires_at == "2026-01-03T00:00:00Z"
+    assert gemini_meta.uri == "https://storage.example.com/abc"
+    assert gemini_meta.state == FileUploadState.ACTIVE
+    assert gemini_meta.sha256_hash == "deadbeef"
+
+    openai_meta = restored.provider_file_api_status["openai"]
+    assert openai_meta.file_id == "file-xyz789"
+    assert openai_meta.state == FileUploadState.ACTIVE
+    assert openai_meta.uri is None
+    assert openai_meta.sha256_hash is None
+
+  def test_round_trip_json_safe(self):
+    mc = MessageContent(
+        type="image",
+        source="https://example.com/img.png",
+        provider_file_api_ids={"gemini": "files/abc"},
+        provider_file_api_status={
+            "gemini": FileUploadMetadata(
+                file_id="files/abc",
+                state=FileUploadState.PENDING,
+            ),
+        },
+    )
+    d = mc.to_dict()
+    json_str = json.dumps(d)
+    restored_dict = json.loads(json_str)
+    restored = MessageContent.from_dict(restored_dict)
+    assert restored.provider_file_api_status["gemini"].state == (
+        FileUploadState.PENDING
+    )
+
+  def test_multiple_providers(self):
+    mc = MessageContent(
+        type="document",
+        source="https://example.com/doc.pdf",
+        media_type="application/pdf",
+        provider_file_api_status={
+            "claude": FileUploadMetadata(
+                file_id="file-claude-1",
+                state=FileUploadState.ACTIVE,
+            ),
+            "gemini": FileUploadMetadata(
+                file_id="files/gemini-1",
+                state=FileUploadState.ACTIVE,
+                uri="https://storage.example.com/gemini-1",
+            ),
+            "openai": FileUploadMetadata(
+                file_id="file-openai-1",
+                state=FileUploadState.FAILED,
+            ),
+        },
+        provider_file_api_ids={
+            "claude": "file-claude-1",
+            "gemini": "files/gemini-1",
+            "openai": "file-openai-1",
+        },
+    )
+    d = mc.to_dict()
+    restored = MessageContent.from_dict(d)
+    assert len(restored.provider_file_api_status) == 3
+    assert len(restored.provider_file_api_ids) == 3
+    assert restored.provider_file_api_status["openai"].state == (
+        FileUploadState.FAILED
+    )
