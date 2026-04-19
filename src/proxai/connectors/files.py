@@ -27,6 +27,19 @@ class FileUploadError(Exception):
     super().__init__(f"Upload failed for providers: {providers}")
 
 
+class FileRemoveError(Exception):
+  """Raised when one or more provider file removals fail."""
+
+  def __init__(
+      self, errors: dict[str, Exception],
+      media: message_content.MessageContent
+  ):
+    self.errors = errors
+    self.media = media
+    providers = ', '.join(errors.keys())
+    super().__init__(f"Remove failed for providers: {providers}")
+
+
 @dataclasses.dataclass
 class FilesManagerParams:
   """Initialization parameters for FilesManager."""
@@ -129,6 +142,60 @@ class FilesManager(state_controller.StateControlled):
       message_content.ContentType.VIDEO,
   )
 
+  def _use_parallel(self, providers: list[types.ProviderNameType]) -> bool:
+    return (
+        len(providers) > 1
+        and self.provider_call_options is not None
+        and self.provider_call_options.allow_parallel_file_operations
+    )
+
+  def _validate_provider_support(
+      self,
+      provider: types.ProviderNameType,
+      dispatch: dict,
+  ):
+    if provider not in dispatch:
+      raise ValueError(
+          f"Provider '{provider}' does not support the File API. "
+          f"Supported: {list(dispatch.keys())}"
+      )
+    if not self.api_key_manager.has_provider_key(provider):
+      raise ValueError(
+          f"No API key configured for provider '{provider}'."
+      )
+
+  # --- Upload ---
+
+  def _validate_upload_media(
+      self, media: message_content.MessageContent
+  ):
+    if media.type not in self._MEDIA_TYPES:
+      raise ValueError(
+          f"upload() requires a media content type "
+          f"(IMAGE, DOCUMENT, AUDIO, VIDEO), got '{media.type.value}'."
+      )
+    if media.path is None and media.data is None:
+      raise ValueError(
+          "MessageContent must have 'path' or 'data' set for upload."
+      )
+
+  def _resolve_upload_file_info(
+      self, media: message_content.MessageContent
+  ) -> tuple[str | None, bytes | None, str, str]:
+    file_path = media.path
+    file_data = media.data
+    filename = 'file'
+    if file_path:
+      filename = os.path.basename(file_path)
+    mime_type = media.media_type or 'application/octet-stream'
+    return file_path, file_data, filename, mime_type
+
+  def _init_upload_fields(self, media: message_content.MessageContent):
+    if media.provider_file_api_status is None:
+      media.provider_file_api_status = {}
+    if media.provider_file_api_ids is None:
+      media.provider_file_api_ids = {}
+
   def _upload_single_provider(
       self,
       provider: types.ProviderNameType,
@@ -147,22 +214,7 @@ class FilesManager(state_controller.StateControlled):
         token_map=token_map,
     )
 
-  def _validate_upload_providers(
-      self, providers: list[types.ProviderNameType]
-  ):
-    for provider in providers:
-      if provider not in file_upload_helpers.UPLOAD_DISPATCH:
-        raise ValueError(
-            f"Provider '{provider}' does not support the File API. "
-            f"Supported: "
-            f"{list(file_upload_helpers.UPLOAD_DISPATCH.keys())}"
-        )
-      if not self.api_key_manager.has_provider_key(provider):
-        raise ValueError(
-            f"No API key configured for provider '{provider}'."
-        )
-
-  def _collect_result(
+  def _collect_upload_result(
       self,
       media: message_content.MessageContent,
       provider: types.ProviderNameType,
@@ -172,7 +224,7 @@ class FilesManager(state_controller.StateControlled):
     media.provider_file_api_status[provider] = metadata
     media.provider_file_api_ids[provider] = metadata.file_id
 
-  def _collect_error(
+  def _collect_upload_error(
       self,
       media: message_content.MessageContent,
       provider: types.ProviderNameType,
@@ -187,6 +239,41 @@ class FilesManager(state_controller.StateControlled):
         )
     )
     errors[provider] = error
+
+  def _execute_uploads(
+      self,
+      media: message_content.MessageContent,
+      providers: list[types.ProviderNameType],
+      file_path: str | None,
+      file_data: bytes | None,
+      filename: str,
+      mime_type: str,
+  ) -> dict[str, Exception]:
+    errors: dict[str, Exception] = {}
+    if self._use_parallel(providers):
+      with ThreadPoolExecutor(max_workers=len(providers)) as pool:
+        futures = {
+            provider: pool.submit(
+                self._upload_single_provider,
+                provider, file_path, file_data, filename, mime_type,
+            )
+            for provider in providers
+        }
+        for provider, future in futures.items():
+          try:
+            metadata = future.result()
+            self._collect_upload_result(media, provider, metadata)
+          except Exception as e:
+            self._collect_upload_error(media, provider, errors, e)
+    else:
+      for provider in providers:
+        try:
+          metadata = self._upload_single_provider(
+              provider, file_path, file_data, filename, mime_type)
+          self._collect_upload_result(media, provider, metadata)
+        except Exception as e:
+          self._collect_upload_error(media, provider, errors, e)
+    return errors
 
   def upload(
       self,
@@ -211,65 +298,23 @@ class FilesManager(state_controller.StateControlled):
       FileUploadError: If one or more provider uploads fail. The
         media object still contains results from successful uploads.
     """
-    if media.type not in self._MEDIA_TYPES:
-      raise ValueError(
-          f"upload() requires a media content type "
-          f"(IMAGE, DOCUMENT, AUDIO, VIDEO), got '{media.type.value}'."
-      )
-    if media.path is None and media.data is None:
-      raise ValueError(
-          "MessageContent must have 'path' or 'data' set for upload."
-      )
+    self._validate_upload_media(media)
+    for provider in providers:
+      self._validate_provider_support(
+          provider, file_upload_helpers.UPLOAD_DISPATCH)
 
-    file_path = media.path
-    file_data = media.data
-    filename = 'file'
-    if file_path:
-      filename = os.path.basename(file_path)
-    mime_type = media.media_type or 'application/octet-stream'
+    file_path, file_data, filename, mime_type = (
+        self._resolve_upload_file_info(media))
+    self._init_upload_fields(media)
 
-    self._validate_upload_providers(providers)
-
-    if media.provider_file_api_status is None:
-      media.provider_file_api_status = {}
-    if media.provider_file_api_ids is None:
-      media.provider_file_api_ids = {}
-
-    errors: dict[str, Exception] = {}
-    use_parallel = (
-        len(providers) > 1
-        and self.provider_call_options is not None
-        and self.provider_call_options.allow_parallel_file_operations
-    )
-
-    if use_parallel:
-      with ThreadPoolExecutor(max_workers=len(providers)) as pool:
-        futures = {
-            provider: pool.submit(
-                self._upload_single_provider,
-                provider, file_path, file_data, filename, mime_type,
-            )
-            for provider in providers
-        }
-        for provider, future in futures.items():
-          try:
-            metadata = future.result()
-            self._collect_result(media, provider, metadata)
-          except Exception as e:
-            self._collect_error(media, provider, errors, e)
-    else:
-      for provider in providers:
-        try:
-          metadata = self._upload_single_provider(
-              provider, file_path, file_data, filename, mime_type)
-          self._collect_result(media, provider, metadata)
-        except Exception as e:
-          self._collect_error(media, provider, errors, e)
-
+    errors = self._execute_uploads(
+        media, providers, file_path, file_data, filename, mime_type)
     if errors:
       raise FileUploadError(errors=errors, media=media)
 
     return media
+
+  # --- Download / List ---
 
   def download(self):
     pass
@@ -277,5 +322,119 @@ class FilesManager(state_controller.StateControlled):
   def list(self):
     pass
 
-  def remove(self):
-    pass
+  # --- Remove ---
+
+  def _resolve_remove_providers(
+      self,
+      media: message_content.MessageContent,
+      providers: list[types.ProviderNameType] | None,
+  ) -> list[types.ProviderNameType]:
+    if providers is not None and len(providers) == 0:
+      raise ValueError(
+          "'providers' must contain at least one provider name, "
+          "or be omitted to remove from all uploaded providers."
+      )
+    if providers is None:
+      if (media.provider_file_api_ids is None
+          or not media.provider_file_api_ids):
+        raise ValueError(
+            "No uploaded providers found on this media content."
+        )
+      return list(media.provider_file_api_ids.keys())
+    return providers
+
+  def _validate_remove_providers(
+      self,
+      media: message_content.MessageContent,
+      providers: list[types.ProviderNameType],
+  ):
+    for provider in providers:
+      self._validate_provider_support(
+          provider, file_upload_helpers.REMOVE_DISPATCH)
+      if (media.provider_file_api_ids is None
+          or provider not in media.provider_file_api_ids):
+        raise ValueError(
+            f"No file_id found for provider '{provider}' "
+            f"on this media content."
+        )
+
+  def _remove_single_provider(
+      self,
+      provider: types.ProviderNameType,
+      file_id: str,
+  ):
+    token_map = self.api_key_manager.get_provider_keys(provider)
+    remove_fn = file_upload_helpers.REMOVE_DISPATCH[provider]
+    remove_fn(file_id=file_id, token_map=token_map)
+
+  def _collect_remove_result(
+      self,
+      media: message_content.MessageContent,
+      provider: types.ProviderNameType,
+  ):
+    del media.provider_file_api_status[provider]
+    del media.provider_file_api_ids[provider]
+
+  def _execute_removes(
+      self,
+      media: message_content.MessageContent,
+      providers: list[types.ProviderNameType],
+  ) -> dict[str, Exception]:
+    errors: dict[str, Exception] = {}
+    if self._use_parallel(providers):
+      with ThreadPoolExecutor(max_workers=len(providers)) as pool:
+        futures = {
+            provider: pool.submit(
+                self._remove_single_provider,
+                provider, media.provider_file_api_ids[provider],
+            )
+            for provider in providers
+        }
+        for provider, future in futures.items():
+          try:
+            future.result()
+            self._collect_remove_result(media, provider)
+          except Exception as e:
+            errors[provider] = e
+    else:
+      for provider in providers:
+        try:
+          self._remove_single_provider(
+              provider, media.provider_file_api_ids[provider])
+          self._collect_remove_result(media, provider)
+        except Exception as e:
+          errors[provider] = e
+    return errors
+
+  def remove(
+      self,
+      media: message_content.MessageContent,
+      providers: list[types.ProviderNameType] | None = None,
+  ) -> message_content.MessageContent:
+    """Remove uploaded files from provider File APIs.
+
+    Args:
+      media: A MessageContent with provider_file_api_ids populated
+        from a previous upload.
+      providers: List of provider names to remove from, or None to
+        remove from all uploaded providers.
+
+    Returns:
+      The same MessageContent with removed providers cleared from
+      provider_file_api_status and provider_file_api_ids.
+
+    Raises:
+      ValueError: If providers is an empty list, or if media has no
+        uploaded files.
+      FileRemoveError: If one or more provider removals fail.
+        Successfully removed providers are cleared from the media
+        object; failed providers remain.
+    """
+    providers = self._resolve_remove_providers(media, providers)
+    self._validate_remove_providers(media, providers)
+
+    errors = self._execute_removes(media, providers)
+    if errors:
+      raise FileRemoveError(errors=errors, media=media)
+
+    return media
