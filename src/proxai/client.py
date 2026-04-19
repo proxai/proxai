@@ -518,8 +518,9 @@ class FileConnector:
   def download(self):
     return self._client_getter().files_manager_instance.download()
 
-  def list(self):
-    return self._client_getter().files_manager_instance.list()
+  def list(self, providers=None, limit_per_provider=100):
+    return self._client_getter().files_manager_instance.list(
+        providers=providers, limit_per_provider=limit_per_provider)
 
   def remove(self, media, providers=None):
     return self._client_getter().files_manager_instance.remove(

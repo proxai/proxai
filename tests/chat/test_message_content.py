@@ -819,3 +819,57 @@ class TestTypeMediaTypeConsistency:
   def test_text_type_ignores_consistency_check(self):
     with pytest.raises(ValueError, match="media_type cannot be set"):
       MessageContent(type="text", text="Hello", media_type="image/png")
+
+
+class TestRemoteFileReference:
+
+  def test_media_with_provider_ids_only(self):
+    mc = MessageContent(
+        media_type="application/pdf",
+        filename="report.pdf",
+        provider_file_api_ids={"gemini": "files/abc123"},
+        provider_file_api_status={
+            "gemini": FileUploadMetadata(
+                file_id="files/abc123",
+                state=FileUploadState.ACTIVE),
+        },
+    )
+    assert mc.type == ContentType.DOCUMENT
+    assert mc.source is None
+    assert mc.data is None
+    assert mc.path is None
+    assert mc.filename == "report.pdf"
+
+  def test_media_without_content_or_ids_raises(self):
+    with pytest.raises(ValueError, match="provider_file_api_ids"):
+      MessageContent(media_type="application/pdf")
+
+  def test_filename_in_to_dict(self):
+    mc = MessageContent(
+        path="/tmp/test.pdf", media_type="application/pdf",
+        filename="report.pdf")
+    d = mc.to_dict()
+    assert d["filename"] == "report.pdf"
+
+  def test_filename_omitted_when_none(self):
+    mc = MessageContent(
+        path="/tmp/test.pdf", media_type="application/pdf")
+    d = mc.to_dict()
+    assert "filename" not in d
+
+  def test_filename_round_trip(self):
+    mc = MessageContent(
+        media_type="application/pdf",
+        filename="report.pdf",
+        provider_file_api_ids={"gemini": "files/abc"},
+        provider_file_api_status={
+            "gemini": FileUploadMetadata(
+                file_id="files/abc",
+                state=FileUploadState.ACTIVE),
+        },
+    )
+    d = mc.to_dict()
+    restored = MessageContent.from_dict(d)
+    assert restored.filename == "report.pdf"
+    assert restored.source is None
+    assert restored.provider_file_api_ids == {"gemini": "files/abc"}
