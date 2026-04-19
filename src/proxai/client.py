@@ -521,8 +521,9 @@ class FileConnector:
   def list(self):
     return self._client_getter().files_manager_instance.list()
 
-  def remove(self):
-    return self._client_getter().files_manager_instance.remove()
+  def remove(self, media, providers=None):
+    return self._client_getter().files_manager_instance.remove(
+        media=media, providers=providers)
 
 
 @dataclasses.dataclass

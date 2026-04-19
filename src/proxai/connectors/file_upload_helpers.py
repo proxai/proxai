@@ -145,3 +145,47 @@ UPLOAD_DISPATCH = {
     'gemini': upload_to_gemini,
     'mistral': upload_to_mistral,
 }
+
+
+def remove_from_claude(
+    file_id: str,
+    token_map: ProviderTokenValueMap,
+):
+  import anthropic
+  client = anthropic.Anthropic(api_key=token_map['ANTHROPIC_API_KEY'])
+  client.beta.files.delete(file_id=file_id)
+
+
+def remove_from_openai(
+    file_id: str,
+    token_map: ProviderTokenValueMap,
+):
+  from openai import OpenAI
+  client = OpenAI(api_key=token_map['OPENAI_API_KEY'])
+  client.files.delete(file_id=file_id)
+
+
+def remove_from_gemini(
+    file_id: str,
+    token_map: ProviderTokenValueMap,
+):
+  from google import genai
+  client = genai.Client(api_key=token_map['GEMINI_API_KEY'])
+  client.files.delete(name=file_id)
+
+
+def remove_from_mistral(
+    file_id: str,
+    token_map: ProviderTokenValueMap,
+):
+  from mistralai import Mistral
+  client = Mistral(api_key=token_map['MISTRAL_API_KEY'])
+  client.files.delete(file_id=file_id)
+
+
+REMOVE_DISPATCH = {
+    'claude': remove_from_claude,
+    'openai': remove_from_openai,
+    'gemini': remove_from_gemini,
+    'mistral': remove_from_mistral,
+}

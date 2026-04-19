@@ -215,6 +215,70 @@ def test_multi_parallel_mixed_media():
   px.reset_state()
 
 
+# --- Remove helpers ---
+
+def _test_remove_success(provider, asset_file, mime_type):
+  print(f'\n=== Remove: {provider} {asset_file} ===')
+  media = px.MessageContent(path=_asset(asset_file), media_type=mime_type)
+  px.files.upload(media=media, providers=[provider])
+  file_id = media.provider_file_api_ids[provider]
+  print(f'  Uploaded: {file_id}')
+
+  px.files.remove(media=media, providers=[provider])
+  assert provider not in media.provider_file_api_ids
+  assert provider not in media.provider_file_api_status
+  print(f'  Removed OK')
+
+
+# --- Single provider remove tests ---
+
+def test_remove_gemini():
+  _test_remove_success('gemini', 'cat.pdf', 'application/pdf')
+
+def test_remove_claude():
+  _test_remove_success('claude', 'cat.pdf', 'application/pdf')
+
+def test_remove_openai():
+  _test_remove_success('openai', 'cat.pdf', 'application/pdf')
+
+def test_remove_mistral():
+  _test_remove_success('mistral', 'cat.pdf', 'application/pdf')
+
+
+# --- Multi-provider remove tests ---
+
+def test_remove_all():
+  print('\n=== Remove: All providers (default) ===')
+  media = px.MessageContent(
+      path=_asset('cat.pdf'), media_type='application/pdf')
+  px.files.upload(media=media, providers=['gemini', 'claude', 'openai'])
+  assert len(media.provider_file_api_ids) == 3
+  print(f'  Uploaded to: {list(media.provider_file_api_ids.keys())}')
+
+  px.files.remove(media=media)
+  assert media.provider_file_api_ids == {}
+  assert media.provider_file_api_status == {}
+  print('  Removed all OK')
+
+
+def test_remove_selective():
+  print('\n=== Remove: Selective (gemini only, keep claude) ===')
+  media = px.MessageContent(
+      path=_asset('cat.pdf'), media_type='application/pdf')
+  px.files.upload(media=media, providers=['gemini', 'claude'])
+  assert len(media.provider_file_api_ids) == 2
+  print(f'  Uploaded to: {list(media.provider_file_api_ids.keys())}')
+
+  px.files.remove(media=media, providers=['gemini'])
+  assert 'gemini' not in media.provider_file_api_ids
+  assert 'claude' in media.provider_file_api_ids
+  print(f'  Remaining: {list(media.provider_file_api_ids.keys())}')
+
+  px.files.remove(media=media)
+  assert media.provider_file_api_ids == {}
+  print('  Cleaned up remaining OK')
+
+
 # --- Serialization round-trip test ---
 
 def test_serialization_round_trip():
@@ -234,6 +298,46 @@ def test_serialization_round_trip():
   print('  Round-trip OK')
   print(f'  file_id: {gemini_status.file_id}')
   print(f'  uri: {gemini_status.uri}')
+
+  px.files.remove(media=media)
+  print('  Cleaned up OK')
+
+
+# --- Cleanup ---
+
+def test_cleanup_all():
+  """Best-effort cleanup of all files tracked in the JSON output."""
+  print('\n=== Cleanup: Remove all tracked files ===')
+  if not os.path.exists(OUTPUT_FILE):
+    print('  No output file found, nothing to clean up.')
+    return
+
+  with open(OUTPUT_FILE, 'r') as f:
+    results = json.load(f)
+
+  succeeded = 0
+  failed = 0
+  for entry in results:
+    mc_dict = entry.get('media_content', {})
+    if not mc_dict.get('provider_file_api_ids'):
+      continue
+    media = px.MessageContent.from_dict(mc_dict)
+    providers = list(media.provider_file_api_ids.keys())
+    try:
+      px.files.remove(media=media)
+      print(f'  removed {providers}')
+      succeeded += len(providers)
+    except Exception:
+      removed = [p for p in providers if p not in media.provider_file_api_ids]
+      remaining = [p for p in providers if p in media.provider_file_api_ids]
+      print(f'  removed {removed} failed {remaining}')
+      succeeded += len(removed)
+      failed += len(remaining)
+
+  print(f'  Done: {succeeded} removed, {failed} failed')
+
+  os.remove(OUTPUT_FILE)
+  print(f'  Cleared {OUTPUT_FILE}')
 
 
 # --- Runner ---
@@ -263,7 +367,15 @@ TEST_SEQUENCE = [
     ('multi_parallel', test_multi_parallel),
     ('multi_parallel_mixed_media', test_multi_parallel_mixed_media),
 
+    ('remove_gemini', test_remove_gemini),
+    ('remove_claude', test_remove_claude),
+    ('remove_openai', test_remove_openai),
+    ('remove_mistral', test_remove_mistral),
+    ('remove_all', test_remove_all),
+    ('remove_selective', test_remove_selective),
+
     ('serialization', test_serialization_round_trip),
+    ('cleanup_all', test_cleanup_all),
 ]
 TEST_MAP = dict(TEST_SEQUENCE)
 
@@ -290,7 +402,8 @@ def main():
       return
     TEST_MAP[args.test]()
 
-  print(f'\nResults saved to: {OUTPUT_FILE}')
+  if os.path.exists(OUTPUT_FILE):
+    print(f'\nResults saved to: {OUTPUT_FILE}')
 
 
 if __name__ == '__main__':
