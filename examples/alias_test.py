@@ -566,13 +566,38 @@ def set_model_use():
   _open_image_response(response)
 
 
+TEST_SEQUENCE = [
+    ('list_models_examples', list_models_examples),
+    ('check_health_use', check_health_use),
+    ('plain_alias_function_use', plain_alias_function_use),
+    ('image_alias_function_use', image_alias_function_use),
+    ('set_model_use', set_model_use),
+]
+TEST_MAP = dict(TEST_SEQUENCE)
+
+
 def main():
+  parser = argparse.ArgumentParser(description='Alias API manual test')
+  test_names = [name for name, _ in TEST_SEQUENCE]
+  parser.add_argument(
+      '--test', default='all',
+      help=f'Test to run: {", ".join(test_names)}, or "all"')
+  args = parser.parse_args()
+
   register_models(px.get_default_proxai_client())
-  list_models_examples()
-  check_health_use()
-  plain_alias_function_use()
-  image_alias_function_use()
-  set_model_use()
+
+  if args.test == 'all':
+    for name, test_fn in TEST_SEQUENCE:
+      try:
+        test_fn()
+      except Exception as e:
+        print(f'  FAILED [{name}]: {e}')
+  else:
+    if args.test not in TEST_MAP:
+      print(f'Unknown test: {args.test}')
+      print(f'Available: {", ".join(test_names)}')
+      return
+    TEST_MAP[args.test]()
 
 if __name__ == "__main__":
   main()

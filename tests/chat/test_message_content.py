@@ -11,6 +11,7 @@ import pydantic
 import proxai.types as types
 from proxai.chat.message_content import (
     Citation,
+    ContentType,
     FileUploadMetadata,
     FileUploadState,
     MessageContent,
@@ -180,9 +181,10 @@ class TestMessageContentValidation:
   def test_all_supported_media_types_are_accepted(self):
     for media_type in SUPPORTED_MEDIA_TYPES:
       mc = MessageContent(
-          type="image", source="https://example.com/file", media_type=media_type
+          source="https://example.com/file", media_type=media_type
       )
       assert mc.media_type == media_type
+      assert mc.type is not None
 
 
 class TestMessageContentSerialization:
@@ -690,3 +692,130 @@ class TestMessageContentFileApiFields:
     assert restored.provider_file_api_status["openai"].state == (
         FileUploadState.FAILED
     )
+
+
+class TestTypeInference:
+
+  def test_infer_document_from_pdf(self):
+    mc = MessageContent(
+        path="/tmp/test.pdf", media_type="application/pdf")
+    assert mc.type == ContentType.DOCUMENT
+
+  def test_infer_document_from_csv(self):
+    mc = MessageContent(
+        path="/tmp/test.csv", media_type="text/csv")
+    assert mc.type == ContentType.DOCUMENT
+
+  def test_infer_document_from_plain_text(self):
+    mc = MessageContent(
+        path="/tmp/test.txt", media_type="text/plain")
+    assert mc.type == ContentType.DOCUMENT
+
+  def test_infer_document_from_markdown(self):
+    mc = MessageContent(
+        path="/tmp/test.md", media_type="text/markdown")
+    assert mc.type == ContentType.DOCUMENT
+
+  def test_infer_document_from_docx(self):
+    mc = MessageContent(
+        path="/tmp/test.docx",
+        media_type="application/vnd.openxmlformats-officedocument"
+                   ".wordprocessingml.document")
+    assert mc.type == ContentType.DOCUMENT
+
+  def test_infer_document_from_xlsx(self):
+    mc = MessageContent(
+        path="/tmp/test.xlsx",
+        media_type="application/vnd.openxmlformats-officedocument"
+                   ".spreadsheetml.sheet")
+    assert mc.type == ContentType.DOCUMENT
+
+  def test_infer_image_from_jpeg(self):
+    mc = MessageContent(
+        source="https://example.com/img.jpg", media_type="image/jpeg")
+    assert mc.type == ContentType.IMAGE
+
+  def test_infer_image_from_png(self):
+    mc = MessageContent(
+        data=b'\x89PNG', media_type="image/png")
+    assert mc.type == ContentType.IMAGE
+
+  def test_infer_image_from_webp(self):
+    mc = MessageContent(
+        path="/tmp/test.webp", media_type="image/webp")
+    assert mc.type == ContentType.IMAGE
+
+  def test_infer_audio_from_mp3(self):
+    mc = MessageContent(
+        path="/tmp/test.mp3", media_type="audio/mpeg")
+    assert mc.type == ContentType.AUDIO
+
+  def test_infer_audio_from_wav(self):
+    mc = MessageContent(
+        path="/tmp/test.wav", media_type="audio/wav")
+    assert mc.type == ContentType.AUDIO
+
+  def test_infer_video_from_mp4(self):
+    mc = MessageContent(
+        path="/tmp/test.mp4", media_type="video/mp4")
+    assert mc.type == ContentType.VIDEO
+
+  def test_infer_video_from_webm(self):
+    mc = MessageContent(
+        path="/tmp/test.webm", media_type="video/webm")
+    assert mc.type == ContentType.VIDEO
+
+  def test_explicit_type_still_works(self):
+    mc = MessageContent(
+        type="document", path="/tmp/test.pdf",
+        media_type="application/pdf")
+    assert mc.type == ContentType.DOCUMENT
+
+  def test_explicit_type_without_media_type(self):
+    mc = MessageContent(type="text", text="Hello")
+    assert mc.type == ContentType.TEXT
+
+  def test_no_type_no_media_type_raises(self):
+    with pytest.raises(ValueError, match="'type' is required"):
+      MessageContent(text="Hello")
+
+  def test_unsupported_media_type_inference_raises(self):
+    with pytest.raises(ValueError, match="Cannot infer content type"):
+      MessageContent(path="/tmp/test.xyz", media_type="application/xyz")
+
+
+class TestTypeMediaTypeConsistency:
+
+  def test_image_type_with_pdf_raises(self):
+    with pytest.raises(ValueError, match="does not match"):
+      MessageContent(
+          type="image", path="/tmp/test.pdf",
+          media_type="application/pdf")
+
+  def test_document_type_with_jpeg_raises(self):
+    with pytest.raises(ValueError, match="does not match"):
+      MessageContent(
+          type="document", source="https://example.com/img.jpg",
+          media_type="image/jpeg")
+
+  def test_audio_type_with_video_raises(self):
+    with pytest.raises(ValueError, match="does not match"):
+      MessageContent(
+          type="audio", path="/tmp/test.mp4",
+          media_type="video/mp4")
+
+  def test_video_type_with_audio_raises(self):
+    with pytest.raises(ValueError, match="does not match"):
+      MessageContent(
+          type="video", path="/tmp/test.mp3",
+          media_type="audio/mpeg")
+
+  def test_matching_type_and_media_type_ok(self):
+    mc = MessageContent(
+        type="image", source="https://example.com/img.png",
+        media_type="image/png")
+    assert mc.type == ContentType.IMAGE
+
+  def test_text_type_ignores_consistency_check(self):
+    with pytest.raises(ValueError, match="media_type cannot be set"):
+      MessageContent(type="text", text="Hello", media_type="image/png")

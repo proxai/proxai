@@ -1072,38 +1072,47 @@ def list_models_test():
   
 
 
+TEST_SEQUENCE = [
+    ('prompt', prompt_test),
+    ('messages', messages_test),
+    ('system_prompt', system_prompt_test),
+    ('parameters_temperature', parameters_temperature_test),
+    ('parameters_max_tokens', parameters_max_tokens_test),
+    ('parameters_stop', parameters_stop_test),
+    ('parameters_stop_list', parameters_stop_list_test),
+    ('parameters_thinking', parameters_thinking_test),
+    ('tools_web_search', tools_web_search_test),
+    ('input_format_json', input_format_json_test),
+    ('input_format_md', input_format_md_test),
+    ('input_format_pdf', input_format_pdf_test),
+    ('input_format_image', input_format_image_test),
+    ('input_format_audio', input_format_audio_test),
+    ('input_format_video', input_format_video_test),
+    ('output_format_text', output_format_text_test),
+    ('output_format_json', output_format_json_test),
+    ('output_format_pydantic', output_format_pydantic_test),
+    ('connection_options_fallback', connection_options_fallback_test),
+    ('connection_options_suppress_provider_errors',
+     connection_options_suppress_provider_errors_test),
+    ('connection_options_endpoint', connection_options_endpoint_test),
+    ('cache', cache_test),
+    ('connection_options_skip_cache', connection_options_skip_cache_test),
+    ('connection_options_override_cache_value',
+     connection_options_override_cache_value_test),
+    ('images_generate', images_generate_test),
+    ('audio_generate', audio_generate_test),
+    # NOTE: Video test is too slow. Comment in when needed.
+    # ('video_generate', video_generate_test),
+    ('list_models', list_models_test),
+]
+TEST_MAP = dict(TEST_SEQUENCE)
+
+
 def _run_all_tests():
   """Run the full refactoring test suite against the currently-configured provider."""
   register_models(px.get_default_proxai_client())
-  prompt_test()
-  messages_test()
-  system_prompt_test()
-  parameters_temperature_test()
-  parameters_max_tokens_test()
-  parameters_stop_test()
-  parameters_stop_list_test()
-  parameters_thinking_test()
-  tools_web_search_test()
-  input_format_json_test()
-  input_format_md_test()
-  input_format_pdf_test()
-  input_format_image_test()
-  input_format_audio_test()
-  input_format_video_test()
-  output_format_text_test()
-  output_format_json_test()
-  output_format_pydantic_test()
-  connection_options_fallback_test()
-  connection_options_suppress_provider_errors_test()
-  connection_options_endpoint_test()
-  cache_test()
-  connection_options_skip_cache_test()
-  connection_options_override_cache_value_test()
-  images_generate_test()
-  audio_generate_test()
-  # NOTE: Video test is too slow. Comment in when needed.
-  # video_generate_test()
-  list_models_test()
+  for _, test_fn in TEST_SEQUENCE:
+    test_fn()
 
 
 @dataclasses.dataclass
@@ -1143,6 +1152,7 @@ def _print_summary(results: list[_ProviderResult]) -> None:
 
 def _parse_providers() -> list[str]:
   """Parse CLI args and return the list of providers to run."""
+  test_names = [name for name, _ in TEST_SEQUENCE]
   parser = argparse.ArgumentParser(
       description='Manual refactoring test runner.')
   parser.add_argument(
@@ -1152,20 +1162,40 @@ def _parse_providers() -> list[str]:
       help=(
           'Which provider to run the refactoring test against. '
           'If omitted, every provider in _MODEL_CONFIGS is run sequentially.'))
+  parser.add_argument(
+      '--test', '-t',
+      default=None,
+      help=f'Run a single test: {", ".join(test_names)}')
   args = parser.parse_args()
   if args.provider is not None:
-    return [args.provider]
-  return sorted(_MODEL_CONFIGS.keys())
+    return [args.provider], args.test
+  return sorted(_MODEL_CONFIGS.keys()), args.test
+
+
+def _run_single_test(test_name: str):
+  """Run a single named test. Raises if name is unknown."""
+  if test_name not in TEST_MAP:
+    test_names = [name for name, _ in TEST_SEQUENCE]
+    raise ValueError(
+        f'Unknown test: {test_name}\n'
+        f'Available: {", ".join(test_names)}')
+  TEST_MAP[test_name]()
 
 
 def _run_provider(
-    provider: str, index: int, total: int) -> _ProviderResult:
+    provider: str, index: int, total: int,
+    single_test: str | None = None,
+) -> _ProviderResult:
   """Configure, run, and report on a single provider. Never raises."""
   progress = f' ({index}/{total})' if total > 1 else ''
   _print_banner(f'PROVIDER: {provider}{progress}')
   try:
     _configure_provider(provider)
-    _run_all_tests()
+    if single_test:
+      register_models(px.get_default_proxai_client())
+      _run_single_test(single_test)
+    else:
+      _run_all_tests()
   except Exception as exc:
     traceback.print_exc()
     result = _ProviderResult(
@@ -1178,10 +1208,10 @@ def _run_provider(
 
 
 def main():
-  providers = _parse_providers()
+  providers, single_test = _parse_providers()
   total = len(providers)
   results = [
-      _run_provider(p, i, total)
+      _run_provider(p, i, total, single_test=single_test)
       for i, p in enumerate(providers, start=1)]
   if total > 1:
     _print_summary(results)

@@ -126,7 +126,9 @@ def upload_to_mistral(
       file=MistralFile(
           file_name=filename,
           content=content,
-      ))
+      ),
+      purpose='ocr',
+  )
   return FileUploadMetadata(
       file_id=result.id,
       filename=result.filename,

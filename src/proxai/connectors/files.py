@@ -2,6 +2,7 @@
 
 import dataclasses
 import os
+from concurrent.futures import ThreadPoolExecutor
 
 import proxai.chat.message_content as message_content
 import proxai.connections.api_key_manager as api_key_manager
@@ -121,6 +122,72 @@ class FilesManager(state_controller.StateControlled):
   ) -> api_key_manager.ApiKeyManager:
     return api_key_manager.ApiKeyManager(init_from_state=state_value)
 
+  _MEDIA_TYPES = (
+      message_content.ContentType.IMAGE,
+      message_content.ContentType.DOCUMENT,
+      message_content.ContentType.AUDIO,
+      message_content.ContentType.VIDEO,
+  )
+
+  def _upload_single_provider(
+      self,
+      provider: types.ProviderNameType,
+      file_path: str | None,
+      file_data: bytes | None,
+      filename: str,
+      mime_type: str,
+  ) -> message_content.FileUploadMetadata:
+    token_map = self.api_key_manager.get_provider_keys(provider)
+    upload_fn = file_upload_helpers.UPLOAD_DISPATCH[provider]
+    return upload_fn(
+        file_path=file_path,
+        file_data=file_data,
+        filename=filename,
+        mime_type=mime_type,
+        token_map=token_map,
+    )
+
+  def _validate_upload_providers(
+      self, providers: list[types.ProviderNameType]
+  ):
+    for provider in providers:
+      if provider not in file_upload_helpers.UPLOAD_DISPATCH:
+        raise ValueError(
+            f"Provider '{provider}' does not support the File API. "
+            f"Supported: "
+            f"{list(file_upload_helpers.UPLOAD_DISPATCH.keys())}"
+        )
+      if not self.api_key_manager.has_provider_key(provider):
+        raise ValueError(
+            f"No API key configured for provider '{provider}'."
+        )
+
+  def _collect_result(
+      self,
+      media: message_content.MessageContent,
+      provider: types.ProviderNameType,
+      metadata: message_content.FileUploadMetadata,
+  ):
+    metadata.provider = provider
+    media.provider_file_api_status[provider] = metadata
+    media.provider_file_api_ids[provider] = metadata.file_id
+
+  def _collect_error(
+      self,
+      media: message_content.MessageContent,
+      provider: types.ProviderNameType,
+      errors: dict[str, Exception],
+      error: Exception,
+  ):
+    media.provider_file_api_status[provider] = (
+        message_content.FileUploadMetadata(
+            file_id='',
+            provider=provider,
+            state=message_content.FileUploadState.FAILED,
+        )
+    )
+    errors[provider] = error
+
   def upload(
       self,
       media: message_content.MessageContent,
@@ -144,13 +211,7 @@ class FilesManager(state_controller.StateControlled):
       FileUploadError: If one or more provider uploads fail. The
         media object still contains results from successful uploads.
     """
-    _MEDIA_TYPES = (
-        message_content.ContentType.IMAGE,
-        message_content.ContentType.DOCUMENT,
-        message_content.ContentType.AUDIO,
-        message_content.ContentType.VIDEO,
-    )
-    if media.type not in _MEDIA_TYPES:
+    if media.type not in self._MEDIA_TYPES:
       raise ValueError(
           f"upload() requires a media content type "
           f"(IMAGE, DOCUMENT, AUDIO, VIDEO), got '{media.type.value}'."
@@ -167,42 +228,43 @@ class FilesManager(state_controller.StateControlled):
       filename = os.path.basename(file_path)
     mime_type = media.media_type or 'application/octet-stream'
 
+    self._validate_upload_providers(providers)
+
     if media.provider_file_api_status is None:
       media.provider_file_api_status = {}
     if media.provider_file_api_ids is None:
       media.provider_file_api_ids = {}
 
     errors: dict[str, Exception] = {}
-    for provider in providers:
-      if provider not in file_upload_helpers.UPLOAD_DISPATCH:
-        raise ValueError(
-            f"Provider '{provider}' does not support the File API. "
-            f"Supported: {list(file_upload_helpers.UPLOAD_DISPATCH.keys())}"
-        )
-      if not self.api_key_manager.has_provider_key(provider):
-        raise ValueError(
-            f"No API key configured for provider '{provider}'."
-        )
-      token_map = self.api_key_manager.get_provider_keys(provider)
-      upload_fn = file_upload_helpers.UPLOAD_DISPATCH[provider]
-      try:
-        metadata = upload_fn(
-            file_path=file_path,
-            file_data=file_data,
-            filename=filename,
-            mime_type=mime_type,
-            token_map=token_map,
-        )
-        media.provider_file_api_status[provider] = metadata
-        media.provider_file_api_ids[provider] = metadata.file_id
-      except Exception as e:
-        media.provider_file_api_status[provider] = (
-            message_content.FileUploadMetadata(
-                file_id='',
-                state=message_content.FileUploadState.FAILED,
+    use_parallel = (
+        len(providers) > 1
+        and self.provider_call_options is not None
+        and self.provider_call_options.allow_parallel_file_operations
+    )
+
+    if use_parallel:
+      with ThreadPoolExecutor(max_workers=len(providers)) as pool:
+        futures = {
+            provider: pool.submit(
+                self._upload_single_provider,
+                provider, file_path, file_data, filename, mime_type,
             )
-        )
-        errors[provider] = e
+            for provider in providers
+        }
+        for provider, future in futures.items():
+          try:
+            metadata = future.result()
+            self._collect_result(media, provider, metadata)
+          except Exception as e:
+            self._collect_error(media, provider, errors, e)
+    else:
+      for provider in providers:
+        try:
+          metadata = self._upload_single_provider(
+              provider, file_path, file_data, filename, mime_type)
+          self._collect_result(media, provider, metadata)
+        except Exception as e:
+          self._collect_error(media, provider, errors, e)
 
     if errors:
       raise FileUploadError(errors=errors, media=media)

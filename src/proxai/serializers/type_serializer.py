@@ -1527,6 +1527,9 @@ def encode_provider_call_options(
   if provider_call_options.suppress_provider_errors is not None:
     record['suppress_provider_errors'] = (
         provider_call_options.suppress_provider_errors)
+  if provider_call_options.allow_parallel_file_operations is not None:
+    record['allow_parallel_file_operations'] = (
+        provider_call_options.allow_parallel_file_operations)
   return record
 
 
@@ -1541,6 +1544,9 @@ def decode_provider_call_options(
   if 'suppress_provider_errors' in record:
     provider_call_options.suppress_provider_errors = (
         record['suppress_provider_errors'])
+  if 'allow_parallel_file_operations' in record:
+    provider_call_options.allow_parallel_file_operations = (
+        record['allow_parallel_file_operations'])
   return provider_call_options
 
 
