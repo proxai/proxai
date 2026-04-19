@@ -10,6 +10,7 @@ from collections.abc import Callable
 
 import proxai.caching.model_cache as model_cache
 import proxai.caching.query_cache as query_cache
+import proxai.connections.api_key_manager as api_key_manager
 import proxai.connections.proxdash as proxdash
 import proxai.connectors.model_configs as model_configs
 import proxai.connectors.model_registry as model_registry
@@ -36,6 +37,7 @@ class AvailableModelsParams:
   query_cache_manager: query_cache.QueryCacheManager | None = None
   logging_options: types.LoggingOptions | None = None
   proxdash_connection: proxdash.ProxDashConnection | None = None
+  api_key_manager: api_key_manager.ApiKeyManager | None = None
   model_probe_options: types.ModelProbeOptions | None = None
   debug_options: types.DebugOptions | None = None
 
@@ -52,9 +54,7 @@ class AvailableModels(state_controller.StateControlled):
   _model_probe_options: types.ModelProbeOptions
   _debug_options: types.DebugOptions
   _proxdash_connection: proxdash.ProxDashConnection
-  _proxdash_provider_api_keys: types.ProviderTokenValueMap | None
-  _providers_with_key: dict[types.ProviderNameType,
-                            types.ProviderTokenValueMap] | None
+  _api_key_manager: api_key_manager.ApiKeyManager | None
   _latest_model_cache_path_used_for_update: str | None
   _available_models_state: types.AvailableModelsState
   provider_connectors: dict[str, provider_connector.ProviderConnector]
@@ -80,16 +80,11 @@ class AvailableModels(state_controller.StateControlled):
       self.query_cache_manager = init_from_params.query_cache_manager
       self.logging_options = init_from_params.logging_options
       # self.proxdash_connection = init_from_params.proxdash_connection
+      self.api_key_manager = init_from_params.api_key_manager
       self.model_probe_options = init_from_params.model_probe_options
       self.debug_options = init_from_params.debug_options
-      self.proxdash_provider_api_keys = (
-          self.proxdash_connection.get_provider_api_keys()
-          if self.proxdash_connection else {}
-      )
 
-      self.providers_with_key = {}
       self.latest_model_cache_path_used_for_update = None
-      self._load_provider_keys()
 
   def get_internal_state_property_name(self) -> str:
     """Return the name of the internal state property."""
@@ -98,20 +93,6 @@ class AvailableModels(state_controller.StateControlled):
   def get_internal_state_type(self) -> type:
     """Return the dataclass type used for state storage."""
     return types.AvailableModelsState
-
-  def _load_provider_keys(self):
-    self.providers_with_key = {}
-    for provider, provider_key_names in model_configs.PROVIDER_KEY_MAP.items():
-      for key_name in provider_key_names:
-        if key_name in self.proxdash_provider_api_keys:
-          if provider not in self.providers_with_key:
-            self.providers_with_key[provider] = {}
-          self.providers_with_key[provider][
-              key_name] = self.proxdash_provider_api_keys[key_name]
-        elif key_name in os.environ:
-          if provider not in self.providers_with_key:
-            self.providers_with_key[provider] = {}
-          self.providers_with_key[provider][key_name] = os.environ[key_name]
 
   def get_model_connector(
       self,
@@ -133,8 +114,8 @@ class AvailableModels(state_controller.StateControlled):
     init_from_params.query_cache_manager = self.query_cache_manager
     init_from_params.logging_options = self.logging_options
     init_from_params.proxdash_connection = self.proxdash_connection
-    init_from_params.provider_token_value_map = self.providers_with_key.get(
-        provider, {}
+    init_from_params.provider_token_value_map = (
+        self.api_key_manager.get_provider_keys(provider)
     )
     init_from_params.debug_options = self.debug_options
 
@@ -195,20 +176,23 @@ class AvailableModels(state_controller.StateControlled):
   def proxdash_connection(self, value: proxdash.ProxDashConnection):
     self.set_state_controlled_property_value('proxdash_connection', value)
 
-  @property
-  def proxdash_provider_api_keys(self) -> types.ProviderTokenValueMap:
-    return self.get_property_value('proxdash_provider_api_keys')
-
-  @proxdash_provider_api_keys.setter
-  def proxdash_provider_api_keys(
-      self, value: types.ProviderTokenValueMap | None
-  ):
-    self.set_property_value('proxdash_provider_api_keys', value)
-
   def proxdash_connection_deserializer(
       self, state_value: types.ProxDashConnectionState
   ) -> proxdash.ProxDashConnection:
     return proxdash.ProxDashConnection(init_state=state_value)
+
+  @property
+  def api_key_manager(self) -> api_key_manager.ApiKeyManager:
+    return self.get_state_controlled_property_value('api_key_manager')
+
+  @api_key_manager.setter
+  def api_key_manager(self, value: api_key_manager.ApiKeyManager):
+    self.set_state_controlled_property_value('api_key_manager', value)
+
+  def api_key_manager_deserializer(
+      self, state_value: types.ApiKeyManagerState
+  ) -> api_key_manager.ApiKeyManager:
+    return api_key_manager.ApiKeyManager(init_from_state=state_value)
 
   @property
   def provider_call_options(self) -> types.ProviderCallOptions:
@@ -248,18 +232,6 @@ class AvailableModels(state_controller.StateControlled):
     self.set_property_value('debug_options', value)
 
   @property
-  def providers_with_key(
-      self
-  ) -> dict[types.ProviderNameType, types.ProviderTokenValueMap]:
-    return self.get_property_value('providers_with_key')
-
-  @providers_with_key.setter
-  def providers_with_key(
-      self, value: dict[types.ProviderNameType, types.ProviderTokenValueMap]
-  ):
-    self.set_property_value('providers_with_key', value)
-
-  @property
   def latest_model_cache_path_used_for_update(self) -> str | None:
     return self.get_property_value('latest_model_cache_path_used_for_update')
 
@@ -283,7 +255,7 @@ class AvailableModels(state_controller.StateControlled):
     ) -> tuple[set[types.ProviderModelType], set[types.ProviderModelType]]:
       not_filtered_models = set()
       for provider_model in provider_model_set:
-        if provider_model.provider not in self.providers_with_key:
+        if provider_model.provider not in self.api_key_manager.providers_with_key:
           models.filtered_models.add(provider_model)
         else:
           not_filtered_models.add(provider_model)
@@ -786,8 +758,8 @@ class AvailableModels(state_controller.StateControlled):
 
     start_utc_date = datetime.datetime.now(datetime.timezone.utc)
     models = types.ModelStatus()
-    self._load_provider_keys()
-    if not self.providers_with_key:
+    self.api_key_manager.load_provider_keys()
+    if not self.api_key_manager.providers_with_key:
       raise ValueError(
           'No provider API keys found in environment variables.\n'
           'Please follow the instructions in '
@@ -935,8 +907,8 @@ class AvailableModels(state_controller.StateControlled):
       )
     tool_tag_list = type_utils.create_tool_tag_list(tool_tags)
 
-    self._load_provider_keys()
-    if provider not in self.providers_with_key:
+    self.api_key_manager.load_provider_keys()
+    if provider not in self.api_key_manager.providers_with_key:
       raise ValueError(
           f'Provider key not found in environment variables for {provider}.\n'
           f'Required keys: {model_configs.PROVIDER_KEY_MAP[provider]}'
@@ -962,8 +934,8 @@ class AvailableModels(state_controller.StateControlled):
     )
     provider_model = provider_model_config.provider_model
 
-    self._load_provider_keys()
-    if provider_model.provider not in self.providers_with_key:
+    self.api_key_manager.load_provider_keys()
+    if provider_model.provider not in self.api_key_manager.providers_with_key:
       raise ValueError(
           'Provider key not found in environment variables for '
           f'{provider_model.provider}.\n'
@@ -1111,8 +1083,8 @@ class AvailableModels(state_controller.StateControlled):
     if not self.model_cache_manager:
       # For performance, we only load the provider keys if the
       # model cache is not enabled instead of fetching all models.
-      self._load_provider_keys()
-      providers_with_key = set(self.providers_with_key.keys())
+      self.api_key_manager.load_provider_keys()
+      providers_with_key = set(self.api_key_manager.providers_with_key.keys())
     elif (clear_model_cache or not self._check_model_cache_path_same()):
       model_status = self._fetch_all_models(
           verbose=verbose, clear_model_cache=clear_model_cache,
@@ -1158,8 +1130,8 @@ class AvailableModels(state_controller.StateControlled):
 
     model_status: types.ModelStatus | None = None
     if not self.model_cache_manager:
-      self._load_provider_keys()
-      if provider not in self.providers_with_key:
+      self.api_key_manager.load_provider_keys()
+      if provider not in self.api_key_manager.providers_with_key:
         raise ValueError(
             f'Provider key not found in environment variables for {provider}.\n'
             f'Required keys: {model_configs.PROVIDER_KEY_MAP[provider]}'
@@ -1205,8 +1177,8 @@ class AvailableModels(state_controller.StateControlled):
     if not self.model_cache_manager:
       # For performance, we only load the provider keys if the
       # model cache is not enabled instead of fetching all models.
-      self._load_provider_keys()
-      if provider_model.provider not in self.providers_with_key:
+      self.api_key_manager.load_provider_keys()
+      if provider_model.provider not in self.api_key_manager.providers_with_key:
         raise ValueError(
             'Provider key not found in environment variables '
             f'for {provider_model.provider}.\n'

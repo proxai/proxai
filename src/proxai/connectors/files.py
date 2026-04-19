@@ -2,6 +2,7 @@
 
 import dataclasses
 
+import proxai.connections.api_key_manager as api_key_manager
 import proxai.connections.proxdash as proxdash
 import proxai.state_controllers.state_controller as state_controller
 import proxai.types as types
@@ -17,6 +18,7 @@ class FilesManagerParams:
   logging_options: types.LoggingOptions | None = None
   proxdash_connection: proxdash.ProxDashConnection | None = None
   provider_call_options: types.ProviderCallOptions | None = None
+  api_key_manager: api_key_manager.ApiKeyManager | None = None
 
 
 class FilesManager(state_controller.StateControlled):
@@ -39,6 +41,7 @@ class FilesManager(state_controller.StateControlled):
       self.logging_options = init_from_params.logging_options
       self.proxdash_connection = init_from_params.proxdash_connection
       self.provider_call_options = init_from_params.provider_call_options
+      self.api_key_manager = init_from_params.api_key_manager
 
   def get_internal_state_property_name(self) -> str:
     return _FILES_MANAGER_STATE_PROPERTY
@@ -88,6 +91,19 @@ class FilesManager(state_controller.StateControlled):
       self, provider_call_options: types.ProviderCallOptions
   ):
     self.set_property_value('provider_call_options', provider_call_options)
+
+  @property
+  def api_key_manager(self) -> api_key_manager.ApiKeyManager:
+    return self.get_state_controlled_property_value('api_key_manager')
+
+  @api_key_manager.setter
+  def api_key_manager(self, value: api_key_manager.ApiKeyManager):
+    self.set_state_controlled_property_value('api_key_manager', value)
+
+  def api_key_manager_deserializer(
+      self, state_value: types.ApiKeyManagerState
+  ) -> api_key_manager.ApiKeyManager:
+    return api_key_manager.ApiKeyManager(init_from_state=state_value)
 
   def upload(self):
     pass
