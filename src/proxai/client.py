@@ -13,6 +13,7 @@ import proxai.chat.chat_session as chat_session
 import proxai.caching.model_cache as model_cache
 import proxai.caching.query_cache as query_cache
 import proxai.connections.available_models as available_models
+import proxai.connectors.files as files_manager
 import proxai.connections.proxdash as proxdash
 import proxai.connectors.model_configs as model_configs
 import proxai.connectors.provider_connector as provider_connector
@@ -488,6 +489,40 @@ class ModelConnector:
     )
 
 
+class FileConnector:
+  """Provides access to provider File API operations.
+
+  This class offers methods to upload, download, list, and remove
+  files via provider File APIs. It can be accessed via the ``px.files``
+  singleton for the default client, or via ``client.files`` for a
+  specific client instance.
+
+  Example:
+      >>> import proxai as px
+      >>> px.files.upload(...)
+      >>> client = px.Client()
+      >>> client.files.list()
+  """
+
+  def __init__(
+      self,
+      client_getter: Callable[[], "ProxAIClient"],
+  ) -> None:
+    self._client_getter = client_getter
+
+  def upload(self):
+    return self._client_getter().files_manager_instance.upload()
+
+  def download(self):
+    return self._client_getter().files_manager_instance.download()
+
+  def list(self):
+    return self._client_getter().files_manager_instance.list()
+
+  def remove(self):
+    return self._client_getter().files_manager_instance.remove()
+
+
 @dataclasses.dataclass
 class ProxAIClientParams:
   """Initialization parameters for ProxAIClient."""
@@ -669,6 +704,16 @@ class ProxAIClient(state_controller.StateControlled):
           init_from_params=available_models_params
       )
 
+      files_manager_params = files_manager.FilesManagerParams(
+          run_type=self.run_type,
+          logging_options=self.logging_options,
+          proxdash_connection=self.proxdash_connection,
+          provider_call_options=self.provider_call_options,
+      )
+      self._files_manager_instance = files_manager.FilesManager(
+          init_from_params=files_manager_params
+      )
+
     self._validate_raw_provider_response_options()
     self._maybe_emit_raw_provider_response_warning()
 
@@ -734,6 +779,7 @@ class ProxAIClient(state_controller.StateControlled):
     self.debug_options = None
 
     self.available_models_instance = None
+    self.files_manager_instance = None
 
   def _validate_raw_provider_response_options(self):
     """Reject keep_raw_provider_response=True while a query cache is set.
@@ -1070,6 +1116,21 @@ class ProxAIClient(state_controller.StateControlled):
     return available_models.AvailableModels(init_from_state=state_value)
 
   @property
+  def files_manager_instance(self) -> files_manager.FilesManager:
+    return self.get_state_controlled_property_value(
+        "files_manager_instance")
+
+  @files_manager_instance.setter
+  def files_manager_instance(self, value: files_manager.FilesManager):
+    self.set_state_controlled_property_value(
+        "files_manager_instance", value)
+
+  def files_manager_instance_deserializer(
+      self, state_value: types.FilesManagerState
+  ) -> files_manager.FilesManager:
+    return files_manager.FilesManager(init_from_state=state_value)
+
+  @property
   def models(self) -> ModelConnector:
     """Access model discovery and availability information.
 
@@ -1092,6 +1153,23 @@ class ProxAIClient(state_controller.StateControlled):
     if not hasattr(self, "_models_connector") or self._models_connector is None:
       self._models_connector = ModelConnector(lambda: self)
     return self._models_connector
+
+  @property
+  def files(self) -> FileConnector:
+    """Access provider File API operations.
+
+    Provides an interface for uploading, downloading, listing, and
+    removing files via provider File APIs. This property returns a
+    FileConnector instance bound to this client.
+
+    Example:
+        >>> client = px.Client()
+        >>> client.files.upload(...)
+        >>> client.files.list()
+    """
+    if not hasattr(self, "_files_connector") or self._files_connector is None:
+      self._files_connector = FileConnector(lambda: self)
+    return self._files_connector
 
   def _init_proxdash_connection(self):
     if self._proxdash_connection is None:

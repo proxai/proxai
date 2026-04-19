@@ -852,6 +852,16 @@ class AvailableModelsState(StateContainer):
 
 
 @dataclasses.dataclass
+class FilesManagerState(StateContainer):
+  """Persisted state for the files manager."""
+
+  run_type: RunType | None = None
+  logging_options: LoggingOptions | None = None
+  proxdash_connection: ProxDashConnectionState | None = None
+  provider_call_options: ProviderCallOptions | None = None
+
+
+@dataclasses.dataclass
 class ProxAIClientState(StateContainer):
   """Complete persisted state for a ProxAI client instance."""
 
@@ -881,3 +891,4 @@ class ProxAIClientState(StateContainer):
   debug_options: DebugOptions | None = None
 
   available_models_instance: AvailableModelsState | None = None
+  files_manager_instance: FilesManagerState | None = None
