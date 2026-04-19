@@ -193,6 +193,7 @@ class MessageContent:
   data: bytes | None = None
   path: str | None = None
   media_type: str | None = None
+  filename: str | None = None
 
   provider_file_api_status: dict[str, FileUploadMetadata] | None = None
   provider_file_api_ids: dict[str, str] | None = None
@@ -271,9 +272,19 @@ class MessageContent:
         ContentType.AUDIO,
         ContentType.VIDEO,
     ):
-      if self.source is None and self.data is None and self.path is None:
+      has_local_content = (
+          self.source is not None
+          or self.data is not None
+          or self.path is not None
+      )
+      has_remote_reference = (
+          self.provider_file_api_ids is not None
+          and len(self.provider_file_api_ids) > 0
+      )
+      if not has_local_content and not has_remote_reference:
         raise ValueError(
-            f"At least one of 'source', 'data', or 'path' is required "
+            f"At least one of 'source', 'data', 'path', or "
+            f"'provider_file_api_ids' is required "
             f"when type is '{self.type.value}'."
         )
     if self.media_type is not None:
@@ -357,6 +368,8 @@ class MessageContent:
       result["path"] = self.path
     if self.media_type is not None:
       result["media_type"] = self.media_type
+    if self.filename is not None:
+      result["filename"] = self.filename
     if self.provider_file_api_ids is not None:
       result["provider_file_api_ids"] = self.provider_file_api_ids
     if self.provider_file_api_status is not None:
@@ -432,6 +445,7 @@ class MessageContent:
         ),
         path=data.get("path"),
         media_type=data.get("media_type"),
+        filename=data.get("filename"),
         provider_file_api_status=provider_file_api_status,
         provider_file_api_ids=provider_file_api_ids,
     )

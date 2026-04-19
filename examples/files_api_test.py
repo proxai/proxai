@@ -279,6 +279,126 @@ def test_remove_selective():
   print('  Cleaned up remaining OK')
 
 
+# --- List helpers ---
+
+# Assets each provider supports for upload.
+_PROVIDER_ASSETS = {
+    'gemini': [
+        ('cat.pdf', 'application/pdf'),
+        ('cat.jpeg', 'image/jpeg'),
+        ('cat.webp', 'image/webp'),
+        ('cat.mp3', 'audio/mpeg'),
+        ('cat.mp4', 'video/mp4'),
+    ],
+    'claude': [
+        ('cat.pdf', 'application/pdf'),
+        ('cat.jpeg', 'image/jpeg'),
+        ('cat.webp', 'image/webp'),
+        ('cat.mp3', 'audio/mpeg'),
+        ('cat.mp4', 'video/mp4'),
+    ],
+    'openai': [
+        ('cat.pdf', 'application/pdf'),
+        ('cat.jpeg', 'image/jpeg'),
+        ('cat.webp', 'image/webp'),
+        ('cat.mp3', 'audio/mpeg'),
+        ('cat.mp4', 'video/mp4'),
+    ],
+    'mistral': [
+        ('cat.pdf', 'application/pdf'),
+        ('cat.jpeg', 'image/jpeg'),
+        ('cat.webp', 'image/webp'),
+    ],
+}
+
+
+def _test_list_provider(provider):
+  assets = _PROVIDER_ASSETS[provider]
+  print(f'\n=== List: {provider} ({len(assets)} files) ===')
+
+  medias = []
+  for asset_file, mime_type in assets:
+    media = px.MessageContent(
+        path=_asset(asset_file), media_type=mime_type)
+    px.files.upload(media=media, providers=[provider])
+    medias.append(media)
+  uploaded_ids = {
+      m.provider_file_api_ids[provider] for m in medias}
+  print(f'  Uploaded {len(uploaded_ids)} files')
+
+  files = px.files.list(providers=[provider])
+  listed_ids = {
+      f.provider_file_api_ids[provider] for f in files}
+  for uid in uploaded_ids:
+    assert uid in listed_ids, (
+        f'Uploaded file {uid} not found in list results')
+  print(f'  Listed {len(files)} files, all {len(uploaded_ids)} found')
+
+  for media in medias:
+    px.files.remove(media=media, providers=[provider])
+  print(f'  Cleaned up {len(medias)} files')
+
+
+# --- Single provider list tests ---
+
+def test_list_gemini():
+  _test_list_provider('gemini')
+
+def test_list_claude():
+  _test_list_provider('claude')
+
+def test_list_openai():
+  _test_list_provider('openai')
+
+def test_list_mistral():
+  _test_list_provider('mistral')
+
+
+# --- Multi-provider list tests ---
+
+def test_list_all():
+  print('\n=== List: All providers ===')
+  medias = []
+  for provider, assets in _PROVIDER_ASSETS.items():
+    asset_file, mime_type = assets[0]
+    media = px.MessageContent(
+        path=_asset(asset_file), media_type=mime_type)
+    px.files.upload(media=media, providers=[provider])
+    medias.append((provider, media))
+  print(f'  Uploaded to: {[p for p, _ in medias]}')
+
+  files = px.files.list()
+  providers_in_results = set()
+  for f in files:
+    providers_in_results.update(f.provider_file_api_ids.keys())
+  for provider, _ in medias:
+    assert provider in providers_in_results
+  print(f'  Listed {len(files)} files from {sorted(providers_in_results)}')
+
+  for _, media in medias:
+    px.files.remove(media=media)
+  print('  Cleaned up OK')
+
+
+def test_list_with_limit():
+  print('\n=== List: With limit_per_provider=1 ===')
+  medias = []
+  for asset_file, mime_type in _PROVIDER_ASSETS['gemini'][:2]:
+    media = px.MessageContent(
+        path=_asset(asset_file), media_type=mime_type)
+    px.files.upload(media=media, providers=['gemini'])
+    medias.append(media)
+  print(f'  Uploaded {len(medias)} files to gemini')
+
+  files = px.files.list(providers=['gemini'], limit_per_provider=1)
+  assert len(files) == 1
+  print(f'  Listed {len(files)} file (limit=1)')
+
+  for media in medias:
+    px.files.remove(media=media, providers=['gemini'])
+  print('  Cleaned up OK')
+
+
 # --- Serialization round-trip test ---
 
 def test_serialization_round_trip():
@@ -373,6 +493,13 @@ TEST_SEQUENCE = [
     ('remove_mistral', test_remove_mistral),
     ('remove_all', test_remove_all),
     ('remove_selective', test_remove_selective),
+
+    ('list_gemini', test_list_gemini),
+    ('list_claude', test_list_claude),
+    ('list_openai', test_list_openai),
+    ('list_mistral', test_list_mistral),
+    ('list_all', test_list_all),
+    ('list_with_limit', test_list_with_limit),
 
     ('serialization', test_serialization_round_trip),
     ('cleanup_all', test_cleanup_all),

@@ -189,3 +189,104 @@ REMOVE_DISPATCH = {
     'gemini': remove_from_gemini,
     'mistral': remove_from_mistral,
 }
+
+
+def list_from_claude(
+    token_map: ProviderTokenValueMap,
+    limit: int = 100,
+) -> list[FileUploadMetadata]:
+  import anthropic
+  client = anthropic.Anthropic(api_key=token_map['ANTHROPIC_API_KEY'])
+  page = client.beta.files.list(limit=limit)
+  results = []
+  for f in page.data:
+    results.append(FileUploadMetadata(
+        file_id=f.id,
+        filename=f.filename,
+        size_bytes=f.size_bytes,
+        mime_type=f.mime_type,
+        created_at=str(f.created_at) if f.created_at else None,
+        state=FileUploadState.ACTIVE,
+    ))
+  return results
+
+
+def list_from_openai(
+    token_map: ProviderTokenValueMap,
+    limit: int = 100,
+) -> list[FileUploadMetadata]:
+  from openai import OpenAI
+  client = OpenAI(api_key=token_map['OPENAI_API_KEY'])
+  page = client.files.list(limit=limit, purpose='user_data')
+  results = []
+  for f in page.data:
+    results.append(FileUploadMetadata(
+        file_id=f.id,
+        filename=f.filename,
+        size_bytes=f.bytes,
+        created_at=str(f.created_at) if f.created_at else None,
+        expires_at=(str(f.expires_at)
+                    if getattr(f, 'expires_at', None) else None),
+        state=FileUploadState.ACTIVE,
+    ))
+  return results
+
+
+def list_from_gemini(
+    token_map: ProviderTokenValueMap,
+    limit: int = 100,
+) -> list[FileUploadMetadata]:
+  from google import genai
+  from google.genai import types as genai_types
+  client = genai.Client(api_key=token_map['GEMINI_API_KEY'])
+  pager = client.files.list(
+      config=genai_types.ListFilesConfig(page_size=limit))
+  results = []
+  for f in pager:
+    if len(results) >= limit:
+      break
+    state = FileUploadState.ACTIVE
+    if f.state and f.state.name == 'PROCESSING':
+      state = FileUploadState.PENDING
+    elif f.state and f.state.name != 'ACTIVE':
+      state = FileUploadState.FAILED
+    results.append(FileUploadMetadata(
+        file_id=f.name,
+        filename=f.display_name,
+        size_bytes=f.size_bytes,
+        mime_type=f.mime_type,
+        uri=f.uri,
+        state=state,
+        expires_at=(str(f.expiration_time)
+                    if f.expiration_time else None),
+        sha256_hash=f.sha256_hash,
+    ))
+  return results
+
+
+def list_from_mistral(
+    token_map: ProviderTokenValueMap,
+    limit: int = 100,
+) -> list[FileUploadMetadata]:
+  from mistralai import Mistral
+  client = Mistral(api_key=token_map['MISTRAL_API_KEY'])
+  response = client.files.list(page_size=limit, page=0, purpose='ocr')
+  results = []
+  for f in response.data:
+    results.append(FileUploadMetadata(
+        file_id=f.id,
+        filename=f.filename,
+        size_bytes=f.size_bytes,
+        mime_type=(f.mimetype
+                   if getattr(f, 'mimetype', None) else None),
+        state=FileUploadState.ACTIVE,
+    ))
+  return results
+
+
+LIST_DISPATCH = {
+    'claude': list_from_claude,
+    'openai': list_from_openai,
+    'gemini': list_from_gemini,
+    'mistral': list_from_mistral,
+}

@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 import proxai.chat.message_content as message_content
 import proxai.connections.api_key_manager as api_key_manager
 import proxai.connections.proxdash as proxdash
-import proxai.connectors.file_upload_helpers as file_upload_helpers
+import proxai.connectors.file_helpers as file_helpers
 import proxai.state_controllers.state_controller as state_controller
 import proxai.types as types
 
@@ -205,7 +205,7 @@ class FilesManager(state_controller.StateControlled):
       mime_type: str,
   ) -> message_content.FileUploadMetadata:
     token_map = self.api_key_manager.get_provider_keys(provider)
-    upload_fn = file_upload_helpers.UPLOAD_DISPATCH[provider]
+    upload_fn = file_helpers.UPLOAD_DISPATCH[provider]
     return upload_fn(
         file_path=file_path,
         file_data=file_data,
@@ -301,7 +301,7 @@ class FilesManager(state_controller.StateControlled):
     self._validate_upload_media(media)
     for provider in providers:
       self._validate_provider_support(
-          provider, file_upload_helpers.UPLOAD_DISPATCH)
+          provider, file_helpers.UPLOAD_DISPATCH)
 
     file_path, file_data, filename, mime_type = (
         self._resolve_upload_file_info(media))
@@ -319,8 +319,109 @@ class FilesManager(state_controller.StateControlled):
   def download(self):
     pass
 
-  def list(self):
-    pass
+  # --- List ---
+
+  def _resolve_list_providers(
+      self,
+      providers: list[types.ProviderNameType] | None,
+  ) -> list[types.ProviderNameType]:
+    if providers is not None and len(providers) == 0:
+      raise ValueError(
+          "'providers' must contain at least one provider name, "
+          "or be omitted to list from all available providers."
+      )
+    if providers is None:
+      providers = [
+          p for p in file_helpers.LIST_DISPATCH
+          if self.api_key_manager.has_provider_key(p)
+      ]
+      if not providers:
+        raise ValueError(
+            "No providers with API keys found for file listing."
+        )
+    return providers
+
+  def _list_single_provider(
+      self,
+      provider: types.ProviderNameType,
+      limit: int,
+  ) -> list[message_content.FileUploadMetadata]:
+    token_map = self.api_key_manager.get_provider_keys(provider)
+    list_fn = file_helpers.LIST_DISPATCH[provider]
+    return list_fn(token_map=token_map, limit=limit)
+
+  def _metadata_to_message_content(
+      self,
+      provider: types.ProviderNameType,
+      metadata: message_content.FileUploadMetadata,
+  ) -> message_content.MessageContent:
+    metadata.provider = provider
+    kwargs = {}
+    if metadata.mime_type:
+      kwargs['media_type'] = metadata.mime_type
+    else:
+      kwargs['type'] = message_content.ContentType.DOCUMENT
+    if metadata.uri:
+      kwargs['source'] = metadata.uri
+    return message_content.MessageContent(
+        filename=metadata.filename,
+        provider_file_api_ids={provider: metadata.file_id},
+        provider_file_api_status={provider: metadata},
+        **kwargs,
+    )
+
+  def _execute_lists(
+      self,
+      providers: list[types.ProviderNameType],
+      limit: int,
+  ) -> list[message_content.MessageContent]:
+    results: list[message_content.MessageContent] = []
+    if self._use_parallel(providers):
+      with ThreadPoolExecutor(max_workers=len(providers)) as pool:
+        futures = {
+            provider: pool.submit(
+                self._list_single_provider, provider, limit)
+            for provider in providers
+        }
+        for provider, future in futures.items():
+          for meta in future.result():
+            results.append(
+                self._metadata_to_message_content(provider, meta))
+    else:
+      for provider in providers:
+        for meta in self._list_single_provider(provider, limit):
+          results.append(
+              self._metadata_to_message_content(provider, meta))
+    return results
+
+  def list(
+      self,
+      providers: list[types.ProviderNameType] | None = None,
+      limit_per_provider: int = 100,
+  ) -> list[message_content.MessageContent]:
+    """List files from provider File APIs.
+
+    Args:
+      providers: List of provider names to query, or None to query
+        all providers with API keys configured.
+      limit_per_provider: Maximum number of files to fetch from each
+        provider. Defaults to 100.
+
+    Returns:
+      A list of MessageContent objects, one per file. Each has
+      single-provider metadata in provider_file_api_status and
+      provider_file_api_ids.
+
+    Raises:
+      ValueError: If providers is an empty list or no providers
+        have API keys configured.
+    """
+    providers = self._resolve_list_providers(providers)
+    for provider in providers:
+      self._validate_provider_support(
+          provider, file_helpers.LIST_DISPATCH)
+
+    return self._execute_lists(providers, limit_per_provider)
 
   # --- Remove ---
 
@@ -350,7 +451,7 @@ class FilesManager(state_controller.StateControlled):
   ):
     for provider in providers:
       self._validate_provider_support(
-          provider, file_upload_helpers.REMOVE_DISPATCH)
+          provider, file_helpers.REMOVE_DISPATCH)
       if (media.provider_file_api_ids is None
           or provider not in media.provider_file_api_ids):
         raise ValueError(
@@ -364,7 +465,7 @@ class FilesManager(state_controller.StateControlled):
       file_id: str,
   ):
     token_map = self.api_key_manager.get_provider_keys(provider)
-    remove_fn = file_upload_helpers.REMOVE_DISPATCH[provider]
+    remove_fn = file_helpers.REMOVE_DISPATCH[provider]
     remove_fn(file_id=file_id, token_map=token_map)
 
   def _collect_remove_result(

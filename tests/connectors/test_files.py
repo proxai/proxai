@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 
 import proxai.connections.api_key_manager as api_key_manager
-import proxai.connectors.file_upload_helpers as file_upload_helpers
+import proxai.connectors.file_helpers as file_helpers
 import proxai.connectors.files as files_module
 import proxai.connectors.model_configs as model_configs
 import proxai.types as types
@@ -115,7 +115,7 @@ class TestUploadExecution:
     mgr = _make_files_manager(monkeypatch, ['gemini'])
     media = _make_media()
     dispatch = {'gemini': _fake_upload_fn}
-    with patch.dict(file_upload_helpers.UPLOAD_DISPATCH, dispatch):
+    with patch.dict(file_helpers.UPLOAD_DISPATCH, dispatch):
       mgr.upload(media=media, providers=['gemini'])
     assert 'gemini' in media.provider_file_api_ids
     assert media.provider_file_api_ids['gemini'] == 'file-fake-123'
@@ -127,7 +127,7 @@ class TestUploadExecution:
     mgr = _make_files_manager(monkeypatch, ['gemini', 'claude'])
     media = _make_media()
     dispatch = {'gemini': _fake_upload_fn, 'claude': _fake_upload_fn}
-    with patch.dict(file_upload_helpers.UPLOAD_DISPATCH, dispatch):
+    with patch.dict(file_helpers.UPLOAD_DISPATCH, dispatch):
       mgr.upload(media=media, providers=['gemini', 'claude'])
     assert len(media.provider_file_api_ids) == 2
 
@@ -136,7 +136,7 @@ class TestUploadExecution:
         monkeypatch, ['gemini', 'claude'], parallel=False)
     media = _make_media()
     dispatch = {'gemini': _fake_upload_fn, 'claude': _failing_upload_fn}
-    with patch.dict(file_upload_helpers.UPLOAD_DISPATCH, dispatch):
+    with patch.dict(file_helpers.UPLOAD_DISPATCH, dispatch):
       with pytest.raises(files_module.FileUploadError) as exc_info:
         mgr.upload(media=media, providers=['gemini', 'claude'])
     assert 'claude' in exc_info.value.errors
@@ -148,7 +148,7 @@ class TestUploadExecution:
     mgr = _make_files_manager(monkeypatch, ['gemini'])
     media = MessageContent(data=b'test-data', media_type='application/pdf')
     dispatch = {'gemini': _fake_upload_fn}
-    with patch.dict(file_upload_helpers.UPLOAD_DISPATCH, dispatch):
+    with patch.dict(file_helpers.UPLOAD_DISPATCH, dispatch):
       mgr.upload(media=media, providers=['gemini'])
     assert 'gemini' in media.provider_file_api_ids
 
@@ -196,7 +196,7 @@ class TestRemoveExecution:
     mgr = _make_files_manager(monkeypatch, ['gemini'])
     media = self._make_uploaded_media(['gemini'])
     dispatch = {'gemini': _fake_remove_fn}
-    with patch.dict(file_upload_helpers.REMOVE_DISPATCH, dispatch):
+    with patch.dict(file_helpers.REMOVE_DISPATCH, dispatch):
       mgr.remove(media=media, providers=['gemini'])
     assert media.provider_file_api_ids == {}
     assert media.provider_file_api_status == {}
@@ -205,7 +205,7 @@ class TestRemoveExecution:
     mgr = _make_files_manager(monkeypatch, ['gemini', 'claude'])
     media = self._make_uploaded_media(['gemini', 'claude'])
     dispatch = {'gemini': _fake_remove_fn, 'claude': _fake_remove_fn}
-    with patch.dict(file_upload_helpers.REMOVE_DISPATCH, dispatch):
+    with patch.dict(file_helpers.REMOVE_DISPATCH, dispatch):
       mgr.remove(media=media)
     assert media.provider_file_api_ids == {}
     assert media.provider_file_api_status == {}
@@ -214,7 +214,7 @@ class TestRemoveExecution:
     mgr = _make_files_manager(monkeypatch, ['gemini', 'claude'])
     media = self._make_uploaded_media(['gemini', 'claude'])
     dispatch = {'gemini': _fake_remove_fn, 'claude': _fake_remove_fn}
-    with patch.dict(file_upload_helpers.REMOVE_DISPATCH, dispatch):
+    with patch.dict(file_helpers.REMOVE_DISPATCH, dispatch):
       mgr.remove(media=media, providers=['gemini'])
     assert 'gemini' not in media.provider_file_api_ids
     assert 'claude' in media.provider_file_api_ids
@@ -226,9 +226,110 @@ class TestRemoveExecution:
         monkeypatch, ['gemini', 'claude'], parallel=False)
     media = self._make_uploaded_media(['gemini', 'claude'])
     dispatch = {'gemini': _fake_remove_fn, 'claude': _failing_remove_fn}
-    with patch.dict(file_upload_helpers.REMOVE_DISPATCH, dispatch):
+    with patch.dict(file_helpers.REMOVE_DISPATCH, dispatch):
       with pytest.raises(files_module.FileRemoveError) as exc_info:
         mgr.remove(media=media)
     assert 'claude' in exc_info.value.errors
     assert 'gemini' not in media.provider_file_api_ids
     assert 'claude' in media.provider_file_api_ids
+
+
+# --- List helpers ---
+
+def _fake_list_fn(token_map, limit=100):
+  return [
+      FileUploadMetadata(
+          file_id='file-1', filename='doc.pdf',
+          mime_type='application/pdf',
+          state=FileUploadState.ACTIVE),
+      FileUploadMetadata(
+          file_id='file-2', filename='img.png',
+          mime_type='image/png',
+          state=FileUploadState.ACTIVE),
+  ]
+
+
+def _fake_list_single_fn(token_map, limit=100):
+  return [
+      FileUploadMetadata(
+          file_id='file-single', filename='report.pdf',
+          mime_type='application/pdf',
+          state=FileUploadState.ACTIVE),
+  ]
+
+
+# --- List validation ---
+
+class TestListValidation:
+
+  def test_rejects_empty_providers_list(self, monkeypatch):
+    mgr = _make_files_manager(monkeypatch, ['gemini'])
+    with pytest.raises(ValueError, match='at least one provider'):
+      mgr.list(providers=[])
+
+  def test_rejects_unsupported_provider(self, monkeypatch):
+    mgr = _make_files_manager(monkeypatch, ['gemini'])
+    with pytest.raises(ValueError, match='does not support'):
+      mgr.list(providers=['deepseek'])
+
+  def test_rejects_no_api_keys(self, monkeypatch):
+    mgr = _make_files_manager(monkeypatch, [])
+    with pytest.raises(ValueError, match='No providers with API keys'):
+      mgr.list()
+
+
+# --- List execution ---
+
+class TestListExecution:
+
+  def test_list_single_provider(self, monkeypatch):
+    mgr = _make_files_manager(monkeypatch, ['gemini'])
+    dispatch = {'gemini': _fake_list_fn}
+    with patch.dict(file_helpers.LIST_DISPATCH, dispatch):
+      results = mgr.list(providers=['gemini'])
+    assert len(results) == 2
+    assert all('gemini' in r.provider_file_api_ids for r in results)
+    assert results[0].provider_file_api_ids['gemini'] == 'file-1'
+    assert results[1].provider_file_api_ids['gemini'] == 'file-2'
+
+  def test_list_multi_provider(self, monkeypatch):
+    mgr = _make_files_manager(monkeypatch, ['gemini', 'claude'])
+    dispatch = {
+        'gemini': _fake_list_fn,
+        'claude': _fake_list_single_fn,
+    }
+    with patch.dict(file_helpers.LIST_DISPATCH, dispatch):
+      results = mgr.list(providers=['gemini', 'claude'])
+    assert len(results) == 3
+    gemini_results = [
+        r for r in results if 'gemini' in r.provider_file_api_ids]
+    claude_results = [
+        r for r in results if 'claude' in r.provider_file_api_ids]
+    assert len(gemini_results) == 2
+    assert len(claude_results) == 1
+
+  def test_list_defaults_to_all_providers_with_keys(self, monkeypatch):
+    mgr = _make_files_manager(monkeypatch, ['gemini', 'claude'])
+    dispatch = {
+        'gemini': _fake_list_single_fn,
+        'claude': _fake_list_single_fn,
+    }
+    with patch.dict(file_helpers.LIST_DISPATCH, dispatch):
+      results = mgr.list()
+    providers_in_results = set()
+    for r in results:
+      providers_in_results.update(r.provider_file_api_ids.keys())
+    assert 'gemini' in providers_in_results
+    assert 'claude' in providers_in_results
+
+  def test_list_result_has_correct_metadata(self, monkeypatch):
+    mgr = _make_files_manager(monkeypatch, ['gemini'])
+    dispatch = {'gemini': _fake_list_single_fn}
+    with patch.dict(file_helpers.LIST_DISPATCH, dispatch):
+      results = mgr.list(providers=['gemini'])
+    mc = results[0]
+    assert mc.media_type == 'application/pdf'
+    status = mc.provider_file_api_status['gemini']
+    assert status.file_id == 'file-single'
+    assert status.provider == 'gemini'
+    assert status.state == FileUploadState.ACTIVE
