@@ -701,10 +701,15 @@ def _test_cache_with_file_upload(provider):
   assert result_3.connection.result_source == types.ResultSource.CACHE
   print('  Cache hit with new object OK')
 
-  # Cleanup
-  px.files.remove(media=media, providers=[provider])
-  if provider in (media_new.provider_file_api_ids or {}):
-    px.files.remove(media=media_new, providers=[provider])
+  # Cleanup — some providers (e.g., Mistral) deduplicate uploads,
+  # so media and media_new may share the same file_id.
+  client.files.remove(media=media, providers=[provider])
+  media_new_ids = media_new.provider_file_api_ids or {}
+  already_removed = (
+      provider in media_new_ids
+      and media_new_ids[provider] == file_id)
+  if provider in media_new_ids and not already_removed:
+    client.files.remove(media=media_new, providers=[provider])
   if os.path.exists(_CACHE_PATH):
     shutil.rmtree(_CACHE_PATH)
   print('  Cleaned up OK')
@@ -787,58 +792,58 @@ def test_cleanup_all():
 # --- Runner ---
 
 TEST_SEQUENCE = [
-    # ('gemini_pdf', test_gemini_pdf),
-    # ('claude_pdf', test_claude_pdf),
-    # ('openai_pdf', test_openai_pdf),
-    # ('mistral_pdf', test_mistral_pdf),
+    ('gemini_pdf', test_gemini_pdf),
+    ('claude_pdf', test_claude_pdf),
+    ('openai_pdf', test_openai_pdf),
+    ('mistral_pdf', test_mistral_pdf),
 
-    # ('gemini_image', test_gemini_image),
-    # ('claude_image', test_claude_image),
-    # ('openai_image', test_openai_image),
-    # ('mistral_image', test_mistral_image),
+    ('gemini_image', test_gemini_image),
+    ('claude_image', test_claude_image),
+    ('openai_image', test_openai_image),
+    ('mistral_image', test_mistral_image),
 
-    # ('gemini_audio', test_gemini_audio),
-    # ('claude_audio', test_claude_audio),
-    # ('openai_audio', test_openai_audio),
-    # ('mistral_audio_fail', test_mistral_audio_fail),
+    ('gemini_audio', test_gemini_audio),
+    ('claude_audio', test_claude_audio),
+    ('openai_audio', test_openai_audio),
+    ('mistral_audio_fail', test_mistral_audio_fail),
 
-    # ('gemini_video', test_gemini_video),
-    # ('claude_video', test_claude_video),
-    # ('openai_video', test_openai_video),
-    # ('mistral_video_fail', test_mistral_video_fail),
+    ('gemini_video', test_gemini_video),
+    ('claude_video', test_claude_video),
+    ('openai_video', test_openai_video),
+    ('mistral_video_fail', test_mistral_video_fail),
 
-    # ('multi_sequential', test_multi_sequential),
-    # ('multi_parallel', test_multi_parallel),
-    # ('multi_parallel_mixed_media', test_multi_parallel_mixed_media),
+    ('multi_sequential', test_multi_sequential),
+    ('multi_parallel', test_multi_parallel),
+    ('multi_parallel_mixed_media', test_multi_parallel_mixed_media),
 
-    # ('remove_gemini', test_remove_gemini),
-    # ('remove_claude', test_remove_claude),
-    # ('remove_openai', test_remove_openai),
-    # ('remove_mistral', test_remove_mistral),
-    # ('remove_all', test_remove_all),
-    # ('remove_selective', test_remove_selective),
+    ('remove_gemini', test_remove_gemini),
+    ('remove_claude', test_remove_claude),
+    ('remove_openai', test_remove_openai),
+    ('remove_mistral', test_remove_mistral),
+    ('remove_all', test_remove_all),
+    ('remove_selective', test_remove_selective),
 
-    # ('list_gemini', test_list_gemini),
-    # ('list_claude', test_list_claude),
-    # ('list_openai', test_list_openai),
-    # ('list_mistral', test_list_mistral),
-    # ('list_all', test_list_all),
-    # ('list_with_limit', test_list_with_limit),
+    ('list_gemini', test_list_gemini),
+    ('list_claude', test_list_claude),
+    ('list_openai', test_list_openai),
+    ('list_mistral', test_list_mistral),
+    ('list_all', test_list_all),
+    ('list_with_limit', test_list_with_limit),
 
-    # ('download_gemini_fail', test_download_gemini_fail),
-    # ('download_claude_fail', test_download_claude_fail),
-    # ('download_openai_fail', test_download_openai_fail),
-    # ('download_mistral', test_download_mistral),
+    ('download_gemini_fail', test_download_gemini_fail),
+    ('download_claude_fail', test_download_claude_fail),
+    ('download_openai_fail', test_download_openai_fail),
+    ('download_mistral', test_download_mistral),
 
-    # ('generate_manual_gemini', test_generate_manual_gemini),
-    # ('generate_manual_claude', test_generate_manual_claude),
-    # ('generate_manual_openai', test_generate_manual_openai),
-    # ('generate_manual_mistral', test_generate_manual_mistral),
+    ('generate_manual_gemini', test_generate_manual_gemini),
+    ('generate_manual_claude', test_generate_manual_claude),
+    ('generate_manual_openai', test_generate_manual_openai),
+    ('generate_manual_mistral', test_generate_manual_mistral),
 
-    # ('generate_auto_gemini', test_generate_auto_gemini),
-    # ('generate_auto_claude', test_generate_auto_claude),
-    # ('generate_auto_openai', test_generate_auto_openai),
-    # ('generate_auto_mistral', test_generate_auto_mistral),
+    ('generate_auto_gemini', test_generate_auto_gemini),
+    ('generate_auto_claude', test_generate_auto_claude),
+    ('generate_auto_openai', test_generate_auto_openai),
+    ('generate_auto_mistral', test_generate_auto_mistral),
 
     ('cache_gemini', test_cache_gemini),
     ('cache_claude', test_cache_claude),
