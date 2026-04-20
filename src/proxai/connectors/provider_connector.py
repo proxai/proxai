@@ -22,6 +22,7 @@ import proxai.types as types
 import proxai.chat.chat_session as chat_session
 import proxai.connectors.adapter_utils as adapter_utils
 import proxai.connectors.feature_adapter as feature_adapter
+import proxai.connectors.files as files_module
 import proxai.connectors.result_adapter as result_adapter
 import proxai.chat.message_content as message_content
 
@@ -39,6 +40,7 @@ class ProviderConnectorParams:
   proxdash_connection: proxdash.ProxDashConnection | None = None
   provider_token_value_map: types.ProviderTokenValueMap | None = None
   debug_options: types.DebugOptions | None = None
+  files_manager: files_module.FilesManager | None = None
 
 
 class ProviderConnector(state_controller.StateControlled):
@@ -52,6 +54,7 @@ class ProviderConnector(state_controller.StateControlled):
   _proxdash_connection: proxdash.ProxDashConnection | None
   _provider_state: types.ProviderState | None
   _debug_options: types.DebugOptions | None
+  _files_manager_instance: files_module.FilesManager | None
 
   _chosen_endpoint_cached_result: dict[str, bool] | None
 
@@ -82,6 +85,7 @@ class ProviderConnector(state_controller.StateControlled):
       self.proxdash_connection = init_from_params.proxdash_connection
       self.provider_token_value_map = init_from_params.provider_token_value_map
       self.debug_options = init_from_params.debug_options
+      self.files_manager_instance = init_from_params.files_manager
       self._validate_provider_token_value_map()
 
   def __init_subclass__(cls, **kwargs):
@@ -227,6 +231,23 @@ class ProviderConnector(state_controller.StateControlled):
   @debug_options.setter
   def debug_options(self, value: types.DebugOptions | None) -> None:
     self.set_property_value('debug_options', value)
+
+  @property
+  def files_manager_instance(self) -> files_module.FilesManager:
+    return self.get_state_controlled_property_value(
+        'files_manager_instance')
+
+  @files_manager_instance.setter
+  def files_manager_instance(
+      self, value: files_module.FilesManager | None
+  ) -> None:
+    self.set_state_controlled_property_value(
+        'files_manager_instance', value)
+
+  def files_manager_instance_deserializer(
+      self, state_value: types.FilesManagerState
+  ) -> files_module.FilesManager:
+    return files_module.FilesManager(init_from_state=state_value)
 
   def _extract_json_from_text(self, text: str) -> dict:
     """Helper function for extracting JSON from text.
@@ -703,6 +724,58 @@ class ProviderConnector(state_controller.StateControlled):
           result_record.output_pydantic = (mc.pydantic_content.instance_value)
           break
 
+  _MEDIA_CONTENT_TYPES = {
+      message_content.ContentType.IMAGE,
+      message_content.ContentType.DOCUMENT,
+      message_content.ContentType.AUDIO,
+      message_content.ContentType.VIDEO,
+  }
+
+  def _auto_upload_media(self, query_record: types.QueryRecord):
+    """Upload media files to provider File API before execution.
+
+    Called in generate() before _prepare_execution(). Iterates all
+    MessageContent objects in chat messages and uploads media files
+    (IMAGE, DOCUMENT, AUDIO, VIDEO) that have local content (path
+    or data) but no file_id for the current provider.
+
+    Skips content that:
+    - Is not a media type (text, json, pydantic, tool)
+    - Already has a file_id for this provider (previously uploaded)
+    - Has no local content (remote-only references)
+    - Is not supported by this provider's File API (MIME type check)
+
+    Mutates MessageContent objects in place by populating
+    provider_file_api_ids and provider_file_api_status. This allows
+    downstream _to_*_part() methods to use file_id references
+    instead of inline base64.
+
+    When run_type=TEST, mock dispatches are used — no real API calls
+    are made, but fake file_ids are generated so the file_id
+    reference code path is exercised.
+    """
+    if self.files_manager_instance is None:
+      return
+    if query_record.chat is None:
+      return
+    provider = self.PROVIDER_NAME
+    for msg in query_record.chat.messages:
+      if isinstance(msg.content, str):
+        continue
+      for mc in msg.content:
+        if mc.type not in self._MEDIA_CONTENT_TYPES:
+          continue
+        if (mc.provider_file_api_ids
+            and provider in mc.provider_file_api_ids):
+          continue
+        if mc.path is None and mc.data is None:
+          continue
+        if not self.files_manager_instance.is_upload_supported(
+            mc, provider):
+          continue
+        self.files_manager_instance.upload(
+            media=mc, providers=[provider])
+
   def generate(
       self,
       *,
@@ -760,6 +833,8 @@ class ProviderConnector(state_controller.StateControlled):
         output_format=output_format,
         connection_options=connection_options,
     )
+
+    self._auto_upload_media(query_record)
 
     (chosen_executor, chosen_endpoint,
      modified_query_record) = self._prepare_execution(

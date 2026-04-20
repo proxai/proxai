@@ -142,9 +142,15 @@ class MistralConnector(provider_connector.ProviderConnector):
 
     Returns None for unsupported content types.
     """
+    # File API reference (pre-uploaded via px.files.upload)
+    file_ids = part_dict.get('provider_file_api_ids', {})
+    if 'mistral' in file_ids:
+      return {'type': 'file', 'file_id': file_ids['mistral']}
     content_type = part_dict.get('type')
+    # Text
     if content_type == 'text':
       return {'type': 'text', 'text': part_dict['text']}
+    # Image: URL or inline data URI
     if content_type == 'image':
       if 'source' in part_dict:
         url = part_dict['source']
@@ -153,6 +159,7 @@ class MistralConnector(provider_connector.ProviderConnector):
       if url is None:
         return None
       return {'type': 'image_url', 'image_url': {'url': url}}
+    # Document: URL or inline data URI
     if content_type == 'document':
       if 'source' in part_dict:
         doc_url = part_dict['source']

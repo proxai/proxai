@@ -15,12 +15,58 @@ import tempfile
 import time
 
 import proxai as px
+import proxai.types as types
 from proxai.chat.message_content import FileUploadState
 from proxai.connectors.files import FileUploadError
 
 _ASSETS_DIR = os.path.join(os.path.dirname(__file__), 'refactoring_test_assets')
 OUTPUT_DIR = os.path.expanduser('~/temp')
 OUTPUT_FILE = os.path.join(OUTPUT_DIR, 'uploaded_media_contents.json')
+
+_PROVIDER_MODELS = {
+    'gemini': ('gemini', 'gemini-2.5-flash'),
+    'claude': ('claude', 'claude-sonnet-4-6'),
+    'openai': ('openai', 'gpt-4o'),
+    'mistral': ('mistral', 'mistral-small-latest'),
+}
+
+
+def _get_model_config(provider, model, provider_model_identifier):
+  S = types.FeatureSupportType.SUPPORTED
+  NS = types.FeatureSupportType.NOT_SUPPORTED
+  return types.ProviderModelConfig(
+      provider_model=types.ProviderModelType(
+          provider=provider, model=model,
+          provider_model_identifier=provider_model_identifier),
+      pricing=types.ProviderModelPricingType(
+          input_token_cost=1.0, output_token_cost=2.0),
+      metadata=types.ProviderModelMetadataType(is_recommended=True),
+      features=types.FeatureConfigType(
+          prompt=S, messages=S, system_prompt=S,
+          parameters=types.ParameterConfigType(
+              temperature=S, max_tokens=S, stop=S, n=NS, thinking=S),
+          tools=types.ToolConfigType(web_search=NS),
+          input_format=types.InputFormatConfigType(
+              text=S, image=S, document=S, audio=NS,
+              video=NS, json=NS, pydantic=NS),
+          output_format=types.OutputFormatConfigType(
+              text=S, json=NS, pydantic=NS, image=NS,
+              audio=NS, video=NS, multi_modal=NS),
+      ))
+
+
+def _register_models():
+  client = px.get_default_proxai_client()
+  client.model_configs_instance.unregister_all_models()
+  for provider, (prov, model) in _PROVIDER_MODELS.items():
+    client.model_configs_instance.register_provider_model_config(
+        _get_model_config(prov, model, model))
+
+
+def _assert_cat_in_text(result):
+  output = result.result.output_text.lower()
+  assert any(w in output for w in ('cat', 'kitten', 'feline')), (
+      f"Expected 'cat' in output, got: {output[:100]}")
 
 
 def _asset(filename):
@@ -483,6 +529,93 @@ def test_download_mistral():
   _test_download_provider('mistral')
 
 
+# --- Generate with manual upload tests ---
+
+def _test_generate_manual_upload(provider):
+  prov, model = _PROVIDER_MODELS[provider]
+  print(f'\n=== Generate (manual upload): {provider} ===')
+  _register_models()
+  media = px.MessageContent(
+      path=_asset('cat.pdf'), media_type='application/pdf')
+  px.files.upload(media=media, providers=[provider])
+  _save_result(media, f'generate_manual_{provider}')
+  print(f'  Uploaded: {media.provider_file_api_ids[provider]}')
+
+  result = px.generate(
+      messages=[{
+          'role': 'user',
+          'content': [
+              media,
+              px.MessageContent(
+                  type=px.ContentType.TEXT,
+                  text='What is inside this document?'),
+          ],
+      }],
+      provider_model=(prov, model))
+  print(f'  Response: {result.result.output_text[:80]}...')
+  _assert_cat_in_text(result)
+
+  px.files.remove(media=media, providers=[provider])
+  print('  Cleaned up OK')
+
+
+def test_generate_manual_gemini():
+  _test_generate_manual_upload('gemini')
+
+def test_generate_manual_claude():
+  _test_generate_manual_upload('claude')
+
+def test_generate_manual_openai():
+  _test_generate_manual_upload('openai')
+
+def test_generate_manual_mistral():
+  _test_generate_manual_upload('mistral')
+
+
+# --- Generate with auto upload tests ---
+
+def _test_generate_auto_upload(provider):
+  prov, model = _PROVIDER_MODELS[provider]
+  print(f'\n=== Generate (auto upload): {provider} ===')
+  _register_models()
+  media = px.MessageContent(
+      path=_asset('cat.pdf'), media_type='application/pdf')
+
+  result = px.generate(
+      messages=[{
+          'role': 'user',
+          'content': [
+              media,
+              px.MessageContent(
+                  type=px.ContentType.TEXT,
+                  text='What is inside this document?'),
+          ],
+      }],
+      provider_model=(prov, model))
+  print(f'  Response: {result.result.output_text[:80]}...')
+  _assert_cat_in_text(result)
+
+  assert provider in media.provider_file_api_ids, (
+      f'Auto-upload did not populate file_id for {provider}')
+  print(f'  Auto-uploaded: {media.provider_file_api_ids[provider]}')
+
+  px.files.remove(media=media, providers=[provider])
+  print('  Cleaned up OK')
+
+
+def test_generate_auto_gemini():
+  _test_generate_auto_upload('gemini')
+
+def test_generate_auto_claude():
+  _test_generate_auto_upload('claude')
+
+def test_generate_auto_openai():
+  _test_generate_auto_upload('openai')
+
+def test_generate_auto_mistral():
+  _test_generate_auto_upload('mistral')
+
+
 # --- Serialization round-trip test ---
 
 def test_serialization_round_trip():
@@ -589,6 +722,16 @@ TEST_SEQUENCE = [
     ('download_claude_fail', test_download_claude_fail),
     ('download_openai_fail', test_download_openai_fail),
     ('download_mistral', test_download_mistral),
+
+    ('generate_manual_gemini', test_generate_manual_gemini),
+    ('generate_manual_claude', test_generate_manual_claude),
+    ('generate_manual_openai', test_generate_manual_openai),
+    ('generate_manual_mistral', test_generate_manual_mistral),
+
+    ('generate_auto_gemini', test_generate_auto_gemini),
+    ('generate_auto_claude', test_generate_auto_claude),
+    ('generate_auto_openai', test_generate_auto_openai),
+    ('generate_auto_mistral', test_generate_auto_mistral),
 
     ('serialization', test_serialization_round_trip),
     ('cleanup_all', test_cleanup_all),

@@ -831,6 +831,7 @@ class ProviderState(StateContainer):
   proxdash_connection: ProxDashConnectionState | None = None
   provider_token_value_map: ProviderTokenValueMap | None = None
   debug_options: DebugOptions | None = None
+  files_manager_instance: FilesManagerState | None = None
 
 
 @dataclasses.dataclass
@@ -855,6 +856,7 @@ class AvailableModelsState(StateContainer):
   logging_options: LoggingOptions | None = None
   proxdash_connection: ProxDashConnectionState | None = None
   api_key_manager: ApiKeyManagerState | None = None
+  files_manager_instance: FilesManagerState | None = None
   model_probe_options: ModelProbeOptions | None = None
   debug_options: DebugOptions | None = None
   latest_model_cache_path_used_for_update: str | None = None

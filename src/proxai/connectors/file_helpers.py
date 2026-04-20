@@ -3,6 +3,7 @@
 import io
 import os
 import time
+import uuid
 
 import anthropic
 import google.genai as genai
@@ -352,3 +353,37 @@ UPLOAD_SUPPORTED_MEDIA_TYPES = {
 }
 
 DOWNLOAD_SUPPORTED_PROVIDERS = frozenset({'mistral'})
+
+
+# --- Mock dispatches for run_type=TEST ---
+
+_MOCK_PROVIDERS = ['gemini', 'claude', 'openai', 'mistral']
+
+
+def mock_upload(
+    file_path, file_data, filename, mime_type, token_map
+):
+  return message_content.FileUploadMetadata(
+      file_id=f'mock-file-{uuid.uuid4().hex[:8]}',
+      filename=filename,
+      mime_type=mime_type,
+      state=message_content.FileUploadState.ACTIVE,
+  )
+
+
+def mock_remove(file_id, token_map):
+  pass
+
+
+def mock_list(token_map, limit=100):
+  return []
+
+
+def mock_download(file_id, token_map):
+  return b'mock-file-content'
+
+
+MOCK_UPLOAD_DISPATCH = {p: mock_upload for p in _MOCK_PROVIDERS}
+MOCK_REMOVE_DISPATCH = {p: mock_remove for p in _MOCK_PROVIDERS}
+MOCK_LIST_DISPATCH = {p: mock_list for p in _MOCK_PROVIDERS}
+MOCK_DOWNLOAD_DISPATCH = {p: mock_download for p in _MOCK_PROVIDERS}

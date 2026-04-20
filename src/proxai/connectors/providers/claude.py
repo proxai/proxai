@@ -10,8 +10,9 @@ import proxai.connectors.providers.claude_mock as claude_mock
 import proxai.types as types
 import proxai.chat.message_content as message_content
 
-# Beta header required for structured outputs feature
+# Beta headers
 STRUCTURED_OUTPUTS_BETA = "structured-outputs-2025-11-13"
+FILES_API_BETA = "files-api-2025-04-14"
 
 FeatureConfigType = types.FeatureConfigType
 FeatureSupportType = types.FeatureSupportType
@@ -92,9 +93,18 @@ class ClaudeConnector(provider_connector.ProviderConnector):
 
     Returns None for unsupported content types.
     """
+    # File API reference (pre-uploaded via px.files.upload)
+    file_ids = part_dict.get('provider_file_api_ids', {})
+    if 'claude' in file_ids:
+      content_type = part_dict.get('type')
+      if content_type in ('image', 'document', 'audio', 'video'):
+        return {'type': content_type, 'source': {
+            'type': 'file', 'file_id': file_ids['claude']}}
     content_type = part_dict.get('type')
+    # Text
     if content_type == 'text':
       return {'type': 'text', 'text': part_dict['text']}
+    # Image: URL or inline base64
     if content_type == 'image':
       if 'source' in part_dict:
         return {'type': 'image', 'source': {
@@ -109,6 +119,7 @@ class ClaudeConnector(provider_connector.ProviderConnector):
         return None
       return {'type': 'image', 'source': {
           'type': 'base64', 'media_type': mime_type, 'data': data}}
+    # Document: text-based → text block, PDF → native document block
     if content_type == 'document':
       text_content = content_utils.read_text_document(part_dict)
       if text_content is not None:
@@ -286,6 +297,34 @@ class ClaudeConnector(provider_connector.ProviderConnector):
         )
     return parsed
 
+  def _collect_betas(self, query_record, needs_pydantic):
+    """Collect required beta headers based on query features.
+
+    Claude's beta features require explicit headers per request:
+    - files-api-2025-04-14: Required when any message content
+      references a file_id uploaded via the Files API.
+    - structured-outputs-2025-11-13: Required when output format
+      is Pydantic (structured outputs).
+
+    Returns an empty list if no beta headers are needed.
+    """
+    betas = []
+    if (query_record.chat is not None
+        and isinstance(query_record.chat, dict)):
+      for msg in query_record.chat.get('messages', []):
+        if not isinstance(msg.get('content'), list):
+          continue
+        for block in msg['content']:
+          if (isinstance(block, dict)
+              and 'claude' in block.get('provider_file_api_ids', {})):
+            betas.append(FILES_API_BETA)
+            break
+        if FILES_API_BETA in betas:
+          break
+    if needs_pydantic:
+      betas.append(STRUCTURED_OUTPUTS_BETA)
+    return betas
+
   def _beta_messages_stream_executor(
       self,
       query_record: types.QueryRecord) -> types.ExecutorResult:
@@ -314,11 +353,13 @@ class ClaudeConnector(provider_connector.ProviderConnector):
         and query_record.output_format.type
         == types.OutputFormatType.JSON)
 
+    betas = self._collect_betas(query_record, needs_pydantic)
     if needs_pydantic:
       stream = functools.partial(
           stream,
-          betas=[STRUCTURED_OUTPUTS_BETA],
           output_format=query_record.output_format.pydantic_class)
+    if betas:
+      stream = functools.partial(stream, betas=betas)
 
     response, result_record = self._safe_provider_query(
         functools.partial(self._run_stream, stream))

@@ -166,6 +166,26 @@ class FilesManager(state_controller.StateControlled):
           f"No API key configured for provider '{provider}'."
       )
 
+  def _get_upload_dispatch(self):
+    if self.run_type == types.RunType.TEST:
+      return file_helpers.MOCK_UPLOAD_DISPATCH
+    return file_helpers.UPLOAD_DISPATCH
+
+  def _get_remove_dispatch(self):
+    if self.run_type == types.RunType.TEST:
+      return file_helpers.MOCK_REMOVE_DISPATCH
+    return file_helpers.REMOVE_DISPATCH
+
+  def _get_list_dispatch(self):
+    if self.run_type == types.RunType.TEST:
+      return file_helpers.MOCK_LIST_DISPATCH
+    return file_helpers.LIST_DISPATCH
+
+  def _get_download_dispatch(self):
+    if self.run_type == types.RunType.TEST:
+      return file_helpers.MOCK_DOWNLOAD_DISPATCH
+    return file_helpers.DOWNLOAD_DISPATCH
+
   # --- Capability checks ---
 
   def is_upload_supported(
@@ -244,7 +264,7 @@ class FilesManager(state_controller.StateControlled):
       mime_type: str,
   ) -> message_content.FileUploadMetadata:
     token_map = self.api_key_manager.get_provider_keys(provider)
-    upload_fn = file_helpers.UPLOAD_DISPATCH[provider]
+    upload_fn = self._get_upload_dispatch()[provider]
     return upload_fn(
         file_path=file_path,
         file_data=file_data,
@@ -340,7 +360,7 @@ class FilesManager(state_controller.StateControlled):
     self._validate_upload_media(media)
     for provider in providers:
       self._validate_provider_support(
-          provider, file_helpers.UPLOAD_DISPATCH)
+          provider, self._get_upload_dispatch())
 
     file_path, file_data, filename, mime_type = (
         self._resolve_upload_file_info(media))
@@ -400,11 +420,12 @@ class FilesManager(state_controller.StateControlled):
       ValueError: If provider is not found in media metadata.
     """
     provider = self._resolve_download_provider(media, provider)
-    if provider not in file_helpers.DOWNLOAD_DISPATCH:
+    download_dispatch = self._get_download_dispatch()
+    if provider not in download_dispatch:
       raise ValueError(
           f"Provider '{provider}' does not support file download. "
           f"Supported: "
-          f"{list(file_helpers.DOWNLOAD_DISPATCH.keys())}"
+          f"{list(download_dispatch.keys())}"
       )
     if not self.api_key_manager.has_provider_key(provider):
       raise ValueError(
@@ -413,7 +434,7 @@ class FilesManager(state_controller.StateControlled):
 
     file_id = media.provider_file_api_ids[provider]
     token_map = self.api_key_manager.get_provider_keys(provider)
-    download_fn = file_helpers.DOWNLOAD_DISPATCH[provider]
+    download_fn = download_dispatch[provider]
     data = download_fn(file_id=file_id, token_map=token_map)
 
     if path is not None:
@@ -438,7 +459,7 @@ class FilesManager(state_controller.StateControlled):
       )
     if providers is None:
       providers = [
-          p for p in file_helpers.LIST_DISPATCH
+          p for p in self._get_list_dispatch()
           if self.api_key_manager.has_provider_key(p)
       ]
       if not providers:
@@ -453,7 +474,7 @@ class FilesManager(state_controller.StateControlled):
       limit: int,
   ) -> list[message_content.FileUploadMetadata]:
     token_map = self.api_key_manager.get_provider_keys(provider)
-    list_fn = file_helpers.LIST_DISPATCH[provider]
+    list_fn = self._get_list_dispatch()[provider]
     return list_fn(token_map=token_map, limit=limit)
 
   def _metadata_to_message_content(
@@ -525,7 +546,7 @@ class FilesManager(state_controller.StateControlled):
     providers = self._resolve_list_providers(providers)
     for provider in providers:
       self._validate_provider_support(
-          provider, file_helpers.LIST_DISPATCH)
+          provider, self._get_list_dispatch())
 
     return self._execute_lists(providers, limit_per_provider)
 
@@ -557,7 +578,7 @@ class FilesManager(state_controller.StateControlled):
   ):
     for provider in providers:
       self._validate_provider_support(
-          provider, file_helpers.REMOVE_DISPATCH)
+          provider, self._get_remove_dispatch())
       if (media.provider_file_api_ids is None
           or provider not in media.provider_file_api_ids):
         raise ValueError(
@@ -571,7 +592,7 @@ class FilesManager(state_controller.StateControlled):
       file_id: str,
   ):
     token_map = self.api_key_manager.get_provider_keys(provider)
-    remove_fn = file_helpers.REMOVE_DISPATCH[provider]
+    remove_fn = self._get_remove_dispatch()[provider]
     remove_fn(file_id=file_id, token_map=token_map)
 
   def _collect_remove_result(
