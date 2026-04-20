@@ -119,8 +119,10 @@ class HuggingFaceConnector(provider_connector.ProviderConnector):
     Returns None for unsupported content types.
     """
     content_type = part_dict.get('type')
+    # Text
     if content_type == 'text':
       return {'type': 'text', 'text': part_dict['text']}
+    # Image: URL or inline data URI
     if content_type == 'image':
       if 'source' in part_dict:
         url = part_dict['source']
@@ -129,6 +131,7 @@ class HuggingFaceConnector(provider_connector.ProviderConnector):
       if url is None:
         return None
       return {'type': 'image_url', 'image_url': {'url': url}}
+    # Document: text extraction only (no native document support)
     if content_type == 'document':
       text_content = content_utils.read_text_document(part_dict)
       if text_content is not None:

@@ -201,9 +201,16 @@ class OpenAIConnector(provider_connector.ProviderConnector):
 
     Returns None for unsupported content types.
     """
+    # File API reference (pre-uploaded via px.files.upload)
+    file_ids = part_dict.get('provider_file_api_ids', {})
+    if 'openai' in file_ids:
+      return {'type': 'file', 'file': {
+          'file_id': file_ids['openai']}}
     content_type = part_dict.get('type')
+    # Text
     if content_type == 'text':
       return {'type': 'text', 'text': part_dict['text']}
+    # Image: URL or inline data URI
     if content_type == 'image':
       if 'source' in part_dict:
         url = part_dict['source']
@@ -212,9 +219,8 @@ class OpenAIConnector(provider_connector.ProviderConnector):
       if url is None:
         return None
       return {'type': 'image_url', 'image_url': {'url': url}}
+    # Audio: inline base64 with format mapping
     if content_type == 'audio':
-      # OpenAI expects {"type": "input_audio", "input_audio":
-      #   {"data": "<base64>", "format": "wav"|"mp3"}}
       audio_data = part_dict.get('data')
       if audio_data is None and 'path' in part_dict:
         with open(part_dict['path'], 'rb') as f:
@@ -226,12 +232,11 @@ class OpenAIConnector(provider_connector.ProviderConnector):
           mime_type, 'wav')
       return {'type': 'input_audio', 'input_audio': {
           'data': audio_data, 'format': audio_format}}
+    # Document: text-based → text block, PDF → native file block
     if content_type == 'document':
-      # Text-based documents (md, csv, txt): read content as string.
       text_content = content_utils.read_text_document(part_dict)
       if text_content is not None:
         return {'type': 'text', 'text': text_content}
-      # PDF: send as native file block.
       if part_dict.get('media_type') != 'application/pdf':
         return None
       data_uri = OpenAIConnector._build_data_uri(part_dict)
@@ -259,9 +264,15 @@ class OpenAIConnector(provider_connector.ProviderConnector):
 
     Returns None for unsupported content types.
     """
+    # File API reference (pre-uploaded via px.files.upload)
+    file_ids = part_dict.get('provider_file_api_ids', {})
+    if 'openai' in file_ids:
+      return {'type': 'input_file', 'file_id': file_ids['openai']}
     content_type = part_dict.get('type')
+    # Text
     if content_type == 'text':
       return {'type': 'input_text', 'text': part_dict['text']}
+    # Image: URL or inline data URI
     if content_type == 'image':
       if 'source' in part_dict:
         url = part_dict['source']
@@ -270,6 +281,7 @@ class OpenAIConnector(provider_connector.ProviderConnector):
       if url is None:
         return None
       return {'type': 'input_image', 'image_url': url}
+    # Document: all types natively via data URI
     if content_type == 'document':
       data_uri = OpenAIConnector._build_data_uri(part_dict)
       if data_uri is None:

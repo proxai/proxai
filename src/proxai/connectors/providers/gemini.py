@@ -85,27 +85,37 @@ class GeminiConnector(provider_connector.ProviderConnector):
   def _content_dict_to_part(
       part_dict: dict[str, Any],
   ) -> genai_types.Part | None:
-    content_type = part_dict.get('type')
+    # File API reference (pre-uploaded via px.files.upload)
+    file_ids = part_dict.get('provider_file_api_ids', {})
+    status = part_dict.get('provider_file_api_status', {})
+    if 'gemini' in file_ids and 'gemini' in status:
+      uri = status['gemini'].get('uri')
+      if uri:
+        mime_type = part_dict.get('media_type')
+        return genai_types.Part.from_uri(
+            file_uri=uri, mime_type=mime_type)
 
+    content_type = part_dict.get('type')
+    # Text
     if content_type == 'text':
       return genai_types.Part(text=part_dict['text'])
-
+    # Thinking
     if content_type == 'thinking':
       return genai_types.Part(text=part_dict['text'], thought=True)
-
+    # Media: image, document, audio, video
     if content_type not in ('image', 'document', 'audio', 'video'):
       return None
 
     mime_type = part_dict.get('media_type')
-
+    # Inline bytes
     if 'data' in part_dict:
       raw_bytes = base64.b64decode(part_dict['data'])
       return genai_types.Part.from_bytes(data=raw_bytes, mime_type=mime_type)
-
+    # URL reference
     if 'source' in part_dict:
       return genai_types.Part.from_uri(
           file_uri=part_dict['source'], mime_type=mime_type)
-
+    # Local file path
     if 'path' in part_dict:
       with open(part_dict['path'], 'rb') as f:
         raw_bytes = f.read()

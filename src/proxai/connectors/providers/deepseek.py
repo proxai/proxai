@@ -93,8 +93,10 @@ class DeepSeekConnector(provider_connector.ProviderConnector):
     Returns None for unsupported content types.
     """
     content_type = part_dict.get('type')
+    # Text
     if content_type == 'text':
       return {'type': 'text', 'text': part_dict['text']}
+    # Document: text extraction only (no native document support)
     if content_type == 'document':
       text_content = content_utils.read_text_document(part_dict)
       if text_content is not None:

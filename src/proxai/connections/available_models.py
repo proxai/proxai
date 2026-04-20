@@ -12,6 +12,7 @@ import proxai.caching.model_cache as model_cache
 import proxai.caching.query_cache as query_cache
 import proxai.connections.api_key_manager as api_key_manager
 import proxai.connections.proxdash as proxdash
+import proxai.connectors.files as files_module
 import proxai.connectors.model_configs as model_configs
 import proxai.connectors.model_registry as model_registry
 import proxai.connectors.provider_connector as provider_connector
@@ -38,6 +39,7 @@ class AvailableModelsParams:
   logging_options: types.LoggingOptions | None = None
   proxdash_connection: proxdash.ProxDashConnection | None = None
   api_key_manager: api_key_manager.ApiKeyManager | None = None
+  files_manager: files_module.FilesManager | None = None
   model_probe_options: types.ModelProbeOptions | None = None
   debug_options: types.DebugOptions | None = None
 
@@ -81,6 +83,7 @@ class AvailableModels(state_controller.StateControlled):
       self.logging_options = init_from_params.logging_options
       # self.proxdash_connection = init_from_params.proxdash_connection
       self.api_key_manager = init_from_params.api_key_manager
+      self.files_manager_instance = init_from_params.files_manager
       self.model_probe_options = init_from_params.model_probe_options
       self.debug_options = init_from_params.debug_options
 
@@ -118,6 +121,7 @@ class AvailableModels(state_controller.StateControlled):
         self.api_key_manager.get_provider_keys(provider)
     )
     init_from_params.debug_options = self.debug_options
+    init_from_params.files_manager = self.files_manager_instance
 
     self.provider_connectors[provider] = connector()
     return self.provider_connectors[provider]
@@ -193,6 +197,21 @@ class AvailableModels(state_controller.StateControlled):
       self, state_value: types.ApiKeyManagerState
   ) -> api_key_manager.ApiKeyManager:
     return api_key_manager.ApiKeyManager(init_from_state=state_value)
+
+  @property
+  def files_manager_instance(self) -> files_module.FilesManager:
+    return self.get_state_controlled_property_value(
+        'files_manager_instance')
+
+  @files_manager_instance.setter
+  def files_manager_instance(self, value: files_module.FilesManager):
+    self.set_state_controlled_property_value(
+        'files_manager_instance', value)
+
+  def files_manager_instance_deserializer(
+      self, state_value: types.FilesManagerState
+  ) -> files_module.FilesManager:
+    return files_module.FilesManager(init_from_state=state_value)
 
   @property
   def provider_call_options(self) -> types.ProviderCallOptions:

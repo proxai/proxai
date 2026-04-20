@@ -903,22 +903,6 @@ class ProxAIClient(state_controller.StateControlled):
           init_from_params=api_key_manager_params
       )
 
-      available_models_params = available_models.AvailableModelsParams(
-          run_type=self.run_type,
-          provider_call_options=self.provider_call_options,
-          model_configs_instance=self.model_configs_instance,
-          model_cache_manager=self.model_cache_manager,
-          query_cache_manager=self.query_cache_manager,
-          logging_options=self.logging_options,
-          proxdash_connection=self.proxdash_connection,
-          api_key_manager=self._api_key_manager_instance,
-          model_probe_options=self.model_probe_options,
-          debug_options=self.debug_options,
-      )
-      self._available_models_instance = available_models.AvailableModels(
-          init_from_params=available_models_params
-      )
-
       files_manager_params = files_manager.FilesManagerParams(
           run_type=self.run_type,
           logging_options=self.logging_options,
@@ -928,6 +912,23 @@ class ProxAIClient(state_controller.StateControlled):
       )
       self._files_manager_instance = files_manager.FilesManager(
           init_from_params=files_manager_params
+      )
+
+      available_models_params = available_models.AvailableModelsParams(
+          run_type=self.run_type,
+          provider_call_options=self.provider_call_options,
+          model_configs_instance=self.model_configs_instance,
+          model_cache_manager=self.model_cache_manager,
+          query_cache_manager=self.query_cache_manager,
+          logging_options=self.logging_options,
+          proxdash_connection=self.proxdash_connection,
+          api_key_manager=self._api_key_manager_instance,
+          files_manager=self._files_manager_instance,
+          model_probe_options=self.model_probe_options,
+          debug_options=self.debug_options,
+      )
+      self._available_models_instance = available_models.AvailableModels(
+          init_from_params=available_models_params
       )
 
     self._validate_raw_provider_response_options()
