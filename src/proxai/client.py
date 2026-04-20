@@ -527,6 +527,14 @@ class FileConnector:
     return self._client_getter().files_manager_instance.remove(
         media=media, providers=providers)
 
+  def is_upload_supported(self, media, provider):
+    return self._client_getter().files_manager_instance.is_upload_supported(
+        media=media, provider=provider)
+
+  def is_download_supported(self, provider):
+    return self._client_getter().files_manager_instance.is_download_supported(
+        provider=provider)
+
 
 @dataclasses.dataclass
 class ProxAIClientParams:

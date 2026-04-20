@@ -297,3 +297,58 @@ def download_from_mistral(
 DOWNLOAD_DISPATCH = {
     'mistral': download_from_mistral,
 }
+
+
+_ALL_MEDIA_TYPES = frozenset({
+    'application/pdf',
+    'application/vnd.openxmlformats-officedocument'
+    '.wordprocessingml.document',
+    'application/vnd.openxmlformats-officedocument'
+    '.spreadsheetml.sheet',
+    'text/csv',
+    'text/plain',
+    'text/markdown',
+    'image/png',
+    'image/jpeg',
+    'image/gif',
+    'image/webp',
+    'image/heic',
+    'image/heif',
+    'audio/mpeg',
+    'audio/wav',
+    'audio/flac',
+    'audio/aac',
+    'audio/ogg',
+    'audio/aiff',
+    'video/mp4',
+    'video/webm',
+    'video/quicktime',
+    'video/x-msvideo',
+    'video/mpeg',
+    'video/x-matroska',
+})
+
+_MISTRAL_SUPPORTED = frozenset({
+    'application/pdf',
+    'application/vnd.openxmlformats-officedocument'
+    '.wordprocessingml.document',
+    'application/vnd.openxmlformats-officedocument'
+    '.spreadsheetml.sheet',
+    'text/csv',
+    'text/plain',
+    'image/png',
+    'image/jpeg',
+    'image/gif',
+    'image/webp',
+    'image/heic',
+    'image/heif',
+})
+
+UPLOAD_SUPPORTED_MEDIA_TYPES = {
+    'gemini': _ALL_MEDIA_TYPES,
+    'claude': _ALL_MEDIA_TYPES,
+    'openai': _ALL_MEDIA_TYPES,
+    'mistral': _MISTRAL_SUPPORTED,
+}
+
+DOWNLOAD_SUPPORTED_PROVIDERS = frozenset({'mistral'})

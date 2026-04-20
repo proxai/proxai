@@ -166,6 +166,43 @@ class FilesManager(state_controller.StateControlled):
           f"No API key configured for provider '{provider}'."
       )
 
+  # --- Capability checks ---
+
+  def is_upload_supported(
+      self,
+      media: message_content.MessageContent,
+      provider: types.ProviderNameType,
+  ) -> bool:
+    """Check if a media file can be uploaded to a provider's File API.
+
+    Args:
+      media: A MessageContent with media_type set.
+      provider: Provider name to check.
+
+    Returns:
+      True if the provider supports uploading this media type.
+    """
+    if provider not in file_helpers.UPLOAD_SUPPORTED_MEDIA_TYPES:
+      return False
+    if media.media_type is None:
+      return False
+    return media.media_type in (
+        file_helpers.UPLOAD_SUPPORTED_MEDIA_TYPES[provider])
+
+  def is_download_supported(
+      self,
+      provider: types.ProviderNameType,
+  ) -> bool:
+    """Check if a provider supports downloading uploaded files.
+
+    Args:
+      provider: Provider name to check.
+
+    Returns:
+      True if the provider supports downloading uploaded files.
+    """
+    return provider in file_helpers.DOWNLOAD_SUPPORTED_PROVIDERS
+
   # --- Upload ---
 
   def _validate_upload_media(
