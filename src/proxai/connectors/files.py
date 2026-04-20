@@ -193,21 +193,32 @@ class FilesManager(state_controller.StateControlled):
       media: message_content.MessageContent,
       provider: types.ProviderNameType,
   ) -> bool:
-    """Check if a media file can be uploaded to a provider's File API.
+    """Check if a media file can be uploaded and referenced by file_id.
+
+    Checks both whether the File API accepts the upload AND whether
+    the generate endpoint accepts the file_id reference for this
+    media type. Returns False if either check fails — uploading a
+    file that can't be referenced is wasteful.
 
     Args:
       media: A MessageContent with media_type set.
       provider: Provider name to check.
 
     Returns:
-      True if the provider supports uploading this media type.
+      True if the provider supports uploading and referencing this
+      media type by file_id in generate.
     """
-    if provider not in file_helpers.UPLOAD_SUPPORTED_MEDIA_TYPES:
-      return False
     if media.media_type is None:
       return False
+    if provider not in file_helpers.UPLOAD_SUPPORTED_MEDIA_TYPES:
+      return False
+    if media.media_type not in (
+        file_helpers.UPLOAD_SUPPORTED_MEDIA_TYPES[provider]):
+      return False
+    if provider not in file_helpers.REFERENCE_SUPPORTED_MEDIA_TYPES:
+      return False
     return media.media_type in (
-        file_helpers.UPLOAD_SUPPORTED_MEDIA_TYPES[provider])
+        file_helpers.REFERENCE_SUPPORTED_MEDIA_TYPES[provider])
 
   def is_download_supported(
       self,
@@ -361,6 +372,11 @@ class FilesManager(state_controller.StateControlled):
     for provider in providers:
       self._validate_provider_support(
           provider, self._get_upload_dispatch())
+      if not self.is_upload_supported(media, provider):
+        raise ValueError(
+            f"Media type '{media.media_type}' cannot be uploaded "
+            f"and referenced by file_id on provider '{provider}'."
+        )
 
     file_path, file_data, filename, mime_type = (
         self._resolve_upload_file_info(media))

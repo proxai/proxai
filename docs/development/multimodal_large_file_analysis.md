@@ -1287,3 +1287,61 @@ IDs must be managed externally.
   (`signature`) return content hashes. These can be used to detect
   duplicate uploads, but the providers do not deduplicate
   automatically — each upload consumes storage quota.
+- **Mistral deduplicates by content** — uploading identical file
+  content returns the same file_id. This is server-side behavior
+  based on content hash, not filename.
+
+---
+
+## 8. File_id/URI Reference Support in Generate Endpoints
+
+File upload (§6) and file reference in generate are separate
+capabilities. A provider may accept a file upload but reject the
+file_id reference in chat messages. This table shows which content
+types can be referenced by file_id/URI in generate endpoints,
+verified with raw provider SDKs (April 2026).
+
+| Content Type | Gemini (URI) | Claude (file_id) | OpenAI chat.comp | OpenAI responses | Mistral (file_id) |
+|---|---|---|---|---|---|
+| **PDF** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Plain text** | ✅ | ✅ | ❌ | ✅ | ✅ |
+| **Markdown** | ✅ | ❌ | ❌ | ✅ | ✅ |
+| **CSV** | ✅ | ❌ | ❌ | ✅ | ✅ |
+| **DOCX** | ✅ | ❌ | ❌ | ✅ | ❌ |
+| **XLSX** | ✅ | ❌ | ❌ | ✅ | ❌ |
+| **Image (jpeg/webp)** | ✅ | ✅ | ❌ ¹ | ❌ ¹ | ✅ |
+| **Audio (mp3)** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Video (mp4)** | ✅ | ❌ | ❌ | ❌ | ❌ |
+
+¹ OpenAI images must use inline `image_url` (base64 data URI or
+URL), not file_id reference. Audio must use inline `input_audio`.
+
+### Key observations
+
+- **Gemini** supports all content types via file URI — the only
+  provider with full file reference support.
+- **Claude** supports PDF, plain text, and images via file_id.
+  Markdown, CSV, DOCX, XLSX, audio, and video are rejected.
+  Requires `files-api-2025-04-14` beta header.
+- **OpenAI chat.completions** only accepts PDF via file_id. All
+  other types must be sent inline.
+- **OpenAI responses.create** accepts PDF and text-based formats
+  (markdown, CSV, txt, DOCX, XLSX) but rejects images, audio,
+  and video via file_id.
+- **Mistral** accepts PDF, plain text, markdown, CSV, and images
+  via file_id. Audio and video cannot be uploaded to the File API.
+
+### Implications for auto-upload
+
+The auto-upload feature (`_auto_upload_media` in provider
+connector) must check not just whether the File API accepts the
+upload (§6), but whether the generate endpoint accepts the file_id
+reference for that content type. Uploading a file and referencing
+it by file_id can break queries that would work fine with inline
+base64 — for example, uploading a JPEG to OpenAI and referencing
+by file_id fails, even though inline base64 works.
+
+The `UPLOAD_SUPPORTED_MEDIA_TYPES` map in `file_helpers.py`
+currently reflects File API upload support (§6), not generate
+endpoint file_id reference support. A separate map is needed for
+the auto-upload decision in the generate pipeline.

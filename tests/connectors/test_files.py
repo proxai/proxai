@@ -456,6 +456,36 @@ class TestIsUploadSupported:
         provider_file_api_ids={'gemini': 'file-123'})
     assert not mgr.is_upload_supported(media=media, provider='gemini')
 
+  def test_openai_rejects_image_reference(self, monkeypatch):
+    mgr = _make_files_manager(monkeypatch, ['openai'])
+    media = _make_media(media_type='image/jpeg')
+    assert not mgr.is_upload_supported(media=media, provider='openai')
+
+  def test_openai_accepts_pdf_reference(self, monkeypatch):
+    mgr = _make_files_manager(monkeypatch, ['openai'])
+    media = _make_media(media_type='application/pdf')
+    assert mgr.is_upload_supported(media=media, provider='openai')
+
+  def test_claude_rejects_audio_reference(self, monkeypatch):
+    mgr = _make_files_manager(monkeypatch, ['claude'])
+    media = _make_media(media_type='audio/mpeg')
+    assert not mgr.is_upload_supported(media=media, provider='claude')
+
+  def test_claude_accepts_image_reference(self, monkeypatch):
+    mgr = _make_files_manager(monkeypatch, ['claude'])
+    media = _make_media(media_type='image/jpeg')
+    assert mgr.is_upload_supported(media=media, provider='claude')
+
+  def test_claude_rejects_markdown_reference(self, monkeypatch):
+    mgr = _make_files_manager(monkeypatch, ['claude'])
+    media = _make_media(media_type='text/markdown')
+    assert not mgr.is_upload_supported(media=media, provider='claude')
+
+  def test_gemini_accepts_video_reference(self, monkeypatch):
+    mgr = _make_files_manager(monkeypatch, ['gemini'])
+    media = _make_media(media_type='video/mp4')
+    assert mgr.is_upload_supported(media=media, provider='gemini')
+
 
 class TestIsDownloadSupported:
 
