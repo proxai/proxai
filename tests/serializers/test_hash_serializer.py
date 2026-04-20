@@ -568,6 +568,19 @@ def _image_chat(**image_kwargs):
   ])
 
 
+def _doc_chat(**doc_kwargs):
+  return chat_session.Chat(messages=[
+      message.Message(
+          role=message_content.MessageRoleType.USER,
+          content=[
+              message_content.MessageContent(
+                  media_type='application/pdf', **doc_kwargs
+              ),
+          ],
+      )
+  ])
+
+
 class TestMediaContentAffectsHash:
 
   def test_source_affects_hash(self):
@@ -681,3 +694,280 @@ class TestMediaContentAffectsHash:
             types.QueryRecord(chat=doc_chat)
         )
     )
+
+
+_GEMINI_MODEL = types.ProviderModelType(
+    provider='gemini', model='gemini-2.5-flash',
+    provider_model_identifier='gemini-2.5-flash')
+_CLAUDE_MODEL = types.ProviderModelType(
+    provider='claude', model='claude-sonnet-4-6',
+    provider_model_identifier='claude-sonnet-4-6')
+
+
+class TestFileApiMetadataExcludedFromHash:
+
+  def test_file_ids_excluded_for_path_content(self, tmp_path):
+    file_path = tmp_path / 'doc.pdf'
+    file_path.write_bytes(b'pdf-content')
+
+    qr_without = types.QueryRecord(
+        chat=_doc_chat(path=str(file_path)),
+        provider_model=_GEMINI_MODEL)
+    hash_without = hash_serializer.get_query_record_hash(qr_without)
+
+    mc_with = message_content.MessageContent(
+        path=str(file_path), media_type='application/pdf',
+        provider_file_api_ids={'gemini': 'files/abc123'},
+        provider_file_api_status={
+            'gemini': message_content.FileUploadMetadata(
+                file_id='files/abc123',
+                state=message_content.FileUploadState.ACTIVE)})
+    qr_with = types.QueryRecord(
+        chat=chat_session.Chat(messages=[
+            message.Message(
+                role=message_content.MessageRoleType.USER,
+                content=[mc_with])]),
+        provider_model=_GEMINI_MODEL)
+    hash_with = hash_serializer.get_query_record_hash(qr_with)
+
+    assert hash_without == hash_with
+
+  def test_file_ids_excluded_for_data_content(self):
+    data = b'\x89PNG-test-data'
+
+    qr_without = types.QueryRecord(
+        chat=_image_chat(data=data),
+        provider_model=_GEMINI_MODEL)
+    hash_without = hash_serializer.get_query_record_hash(qr_without)
+
+    mc_with = message_content.MessageContent(
+        type='image', data=data,
+        provider_file_api_ids={'gemini': 'files/abc'},
+        provider_file_api_status={
+            'gemini': message_content.FileUploadMetadata(
+                file_id='files/abc',
+                state=message_content.FileUploadState.ACTIVE)})
+    qr_with = types.QueryRecord(
+        chat=chat_session.Chat(messages=[
+            message.Message(
+                role=message_content.MessageRoleType.USER,
+                content=[mc_with])]),
+        provider_model=_GEMINI_MODEL)
+    hash_with = hash_serializer.get_query_record_hash(qr_with)
+
+    assert hash_without == hash_with
+
+  def test_file_ids_excluded_for_source_content(self):
+    qr_without = types.QueryRecord(
+        chat=_image_chat(source='https://example.com/img.png'),
+        provider_model=_GEMINI_MODEL)
+    hash_without = hash_serializer.get_query_record_hash(qr_without)
+
+    mc_with = message_content.MessageContent(
+        type='image', source='https://example.com/img.png',
+        provider_file_api_ids={'gemini': 'files/abc'},
+        provider_file_api_status={
+            'gemini': message_content.FileUploadMetadata(
+                file_id='files/abc',
+                state=message_content.FileUploadState.ACTIVE)})
+    qr_with = types.QueryRecord(
+        chat=chat_session.Chat(messages=[
+            message.Message(
+                role=message_content.MessageRoleType.USER,
+                content=[mc_with])]),
+        provider_model=_GEMINI_MODEL)
+    hash_with = hash_serializer.get_query_record_hash(qr_with)
+
+    assert hash_without == hash_with
+
+  def test_different_file_ids_same_path_same_hash(self, tmp_path):
+    file_path = tmp_path / 'doc.pdf'
+    file_path.write_bytes(b'same-content')
+
+    mc_1 = message_content.MessageContent(
+        path=str(file_path), media_type='application/pdf',
+        provider_file_api_ids={'gemini': 'files/abc'})
+    mc_2 = message_content.MessageContent(
+        path=str(file_path), media_type='application/pdf',
+        provider_file_api_ids={'gemini': 'files/xyz'})
+
+    qr_1 = types.QueryRecord(
+        chat=chat_session.Chat(messages=[
+            message.Message(
+                role=message_content.MessageRoleType.USER,
+                content=[mc_1])]),
+        provider_model=_GEMINI_MODEL)
+    qr_2 = types.QueryRecord(
+        chat=chat_session.Chat(messages=[
+            message.Message(
+                role=message_content.MessageRoleType.USER,
+                content=[mc_2])]),
+        provider_model=_GEMINI_MODEL)
+
+    assert (hash_serializer.get_query_record_hash(qr_1)
+            == hash_serializer.get_query_record_hash(qr_2))
+
+  def test_adding_provider_file_ids_does_not_change_hash(self, tmp_path):
+    file_path = tmp_path / 'doc.pdf'
+    file_path.write_bytes(b'content')
+
+    mc = message_content.MessageContent(
+        path=str(file_path), media_type='application/pdf')
+    qr = types.QueryRecord(
+        chat=chat_session.Chat(messages=[
+            message.Message(
+                role=message_content.MessageRoleType.USER,
+                content=[mc])]),
+        provider_model=_GEMINI_MODEL)
+    hash_before = hash_serializer.get_query_record_hash(qr)
+
+    mc.provider_file_api_ids = {'gemini': 'files/abc'}
+    mc.provider_file_api_status = {
+        'gemini': message_content.FileUploadMetadata(
+            file_id='files/abc',
+            state=message_content.FileUploadState.ACTIVE)}
+    hash_after = hash_serializer.get_query_record_hash(qr)
+
+    assert hash_before == hash_after
+
+  def test_multi_provider_upload_does_not_change_hash(self, tmp_path):
+    file_path = tmp_path / 'doc.pdf'
+    file_path.write_bytes(b'content')
+
+    mc = message_content.MessageContent(
+        path=str(file_path), media_type='application/pdf')
+    qr = types.QueryRecord(
+        chat=chat_session.Chat(messages=[
+            message.Message(
+                role=message_content.MessageRoleType.USER,
+                content=[mc])]),
+        provider_model=_GEMINI_MODEL)
+
+    mc.provider_file_api_ids = {'gemini': 'files/abc'}
+    hash_gemini_only = hash_serializer.get_query_record_hash(qr)
+
+    mc.provider_file_api_ids = {
+        'gemini': 'files/abc', 'claude': 'file-xyz',
+        'openai': 'file-123'}
+    hash_all_providers = hash_serializer.get_query_record_hash(qr)
+
+    assert hash_gemini_only == hash_all_providers
+
+  def test_filename_excluded_from_hash(self, tmp_path):
+    file_path = tmp_path / 'doc.pdf'
+    file_path.write_bytes(b'content')
+
+    mc_1 = message_content.MessageContent(
+        path=str(file_path), media_type='application/pdf',
+        filename='report.pdf')
+    mc_2 = message_content.MessageContent(
+        path=str(file_path), media_type='application/pdf',
+        filename='document.pdf')
+    mc_3 = message_content.MessageContent(
+        path=str(file_path), media_type='application/pdf')
+
+    def _hash(mc):
+      return hash_serializer.get_query_record_hash(
+          types.QueryRecord(
+              chat=chat_session.Chat(messages=[
+                  message.Message(
+                      role=message_content.MessageRoleType.USER,
+                      content=[mc])]),
+              provider_model=_GEMINI_MODEL))
+
+    assert _hash(mc_1) == _hash(mc_2) == _hash(mc_3)
+
+
+class TestRemoteOnlyContentHash:
+
+  def test_remote_only_uses_provider_file_id(self):
+    mc = message_content.MessageContent(
+        media_type='application/pdf',
+        provider_file_api_ids={'gemini': 'files/abc'})
+    qr = types.QueryRecord(
+        chat=chat_session.Chat(messages=[
+            message.Message(
+                role=message_content.MessageRoleType.USER,
+                content=[mc])]),
+        provider_model=_GEMINI_MODEL)
+    hash_value = hash_serializer.get_query_record_hash(qr)
+    assert len(hash_value) == hash_serializer._HASH_LENGTH
+
+  def test_remote_only_different_files_different_hash(self):
+    mc_1 = message_content.MessageContent(
+        media_type='application/pdf',
+        provider_file_api_ids={'gemini': 'files/abc'})
+    mc_2 = message_content.MessageContent(
+        media_type='application/pdf',
+        provider_file_api_ids={'gemini': 'files/xyz'})
+
+    def _hash(mc):
+      return hash_serializer.get_query_record_hash(
+          types.QueryRecord(
+              chat=chat_session.Chat(messages=[
+                  message.Message(
+                      role=message_content.MessageRoleType.USER,
+                      content=[mc])]),
+              provider_model=_GEMINI_MODEL))
+
+    assert _hash(mc_1) != _hash(mc_2)
+
+  def test_remote_only_same_file_same_hash(self):
+    mc_1 = message_content.MessageContent(
+        media_type='application/pdf',
+        provider_file_api_ids={'gemini': 'files/abc'})
+    mc_2 = message_content.MessageContent(
+        media_type='application/pdf',
+        provider_file_api_ids={'gemini': 'files/abc'})
+
+    def _hash(mc):
+      return hash_serializer.get_query_record_hash(
+          types.QueryRecord(
+              chat=chat_session.Chat(messages=[
+                  message.Message(
+                      role=message_content.MessageRoleType.USER,
+                      content=[mc])]),
+              provider_model=_GEMINI_MODEL))
+
+    assert _hash(mc_1) == _hash(mc_2)
+
+  def test_remote_only_adding_second_provider_stable(self):
+    mc = message_content.MessageContent(
+        media_type='application/pdf',
+        provider_file_api_ids={'gemini': 'files/abc'})
+    qr = types.QueryRecord(
+        chat=chat_session.Chat(messages=[
+            message.Message(
+                role=message_content.MessageRoleType.USER,
+                content=[mc])]),
+        provider_model=_GEMINI_MODEL)
+    hash_before = hash_serializer.get_query_record_hash(qr)
+
+    mc.provider_file_api_ids['claude'] = 'file-xyz'
+    hash_after = hash_serializer.get_query_record_hash(qr)
+
+    assert hash_before == hash_after
+
+  def test_remote_only_different_provider_different_hash(self):
+    mc_gemini = message_content.MessageContent(
+        media_type='application/pdf',
+        provider_file_api_ids={'gemini': 'files/abc'})
+    mc_claude = message_content.MessageContent(
+        media_type='application/pdf',
+        provider_file_api_ids={'claude': 'file-xyz'})
+
+    qr_gemini = types.QueryRecord(
+        chat=chat_session.Chat(messages=[
+            message.Message(
+                role=message_content.MessageRoleType.USER,
+                content=[mc_gemini])]),
+        provider_model=_GEMINI_MODEL)
+    qr_claude = types.QueryRecord(
+        chat=chat_session.Chat(messages=[
+            message.Message(
+                role=message_content.MessageRoleType.USER,
+                content=[mc_claude])]),
+        provider_model=_CLAUDE_MODEL)
+
+    assert (hash_serializer.get_query_record_hash(qr_gemini)
+            != hash_serializer.get_query_record_hash(qr_claude))
