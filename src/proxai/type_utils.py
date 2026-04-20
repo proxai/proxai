@@ -227,10 +227,54 @@ def create_output_format(
   _raise_invalid_output_format_value_error(output_format)
 
 
+def _normalize_chat_for_comparison(
+    query_record: types.QueryRecord
+) -> types.QueryRecord:
+  """Strip file API metadata from chat MessageContent for comparison.
+
+  Creates a shallow copy of the query record with deep-copied chat
+  where provider_file_api_ids, provider_file_api_status, and filename
+  are cleared from all MessageContent blocks. This ensures the
+  equality check mirrors the hash.
+
+  WARNING: Any field excluded here must also be excluded in
+  hash_serializer._content_hash_dict(). These two functions define
+  cache identity together — the hash finds the bucket, the equality
+  check verifies the match. If they diverge, cache lookups will
+  silently fail (hash matches but equality doesn't, or vice versa).
+
+  See: hash_serializer._content_hash_dict()
+  See: hash_serializer module docstring for full list of excluded fields
+  """
+  if query_record.chat is None:
+    return query_record
+  query_record = copy.copy(query_record)
+  query_record.chat = query_record.chat.copy()
+  for msg in query_record.chat.messages:
+    if isinstance(msg.content, str):
+      continue
+    for mc in msg.content:
+      mc.provider_file_api_ids = None
+      mc.provider_file_api_status = None
+      mc.filename = None
+  return query_record
+
+
 def is_query_record_equal(
     query_record_1: types.QueryRecord, query_record_2: types.QueryRecord
 ) -> bool:
-  """Compare two query records, handling Pydantic schemas specially."""
+  """Compare two query records for cache identity.
+
+  Used by the cache pipeline after hash lookup to verify against
+  hash collisions. Normalizes fields that are excluded from cache
+  identity (Pydantic class values, connection_options flags, file
+  API metadata) before comparing.
+
+  WARNING: The normalization here must stay in sync with
+  hash_serializer.get_query_record_hash(). See
+  _normalize_chat_for_comparison() and hash_serializer module
+  docstring for details.
+  """
   if (
       query_record_1.output_format is not None and
       query_record_1.output_format.type == types.OutputFormatType.PYDANTIC
@@ -275,6 +319,13 @@ def is_query_record_equal(
     query_record_2.connection_options = types.ConnectionOptions(
         endpoint=query_record_2.connection_options.endpoint
     )
+
+  # Normalize chat messages: strip file API metadata so equality
+  # mirrors the hash (see hash_serializer._content_hash_dict).
+  # Without this, different provider_file_api_ids on the same content
+  # would break cache lookups.
+  query_record_1 = _normalize_chat_for_comparison(query_record_1)
+  query_record_2 = _normalize_chat_for_comparison(query_record_2)
 
   return query_record_1 == query_record_2
 
