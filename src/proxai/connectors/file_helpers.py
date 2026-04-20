@@ -1,11 +1,18 @@
-"""Per-provider file upload helpers."""
+"""Per-provider file helpers for upload, remove, list, and download."""
 
 import io
 import os
 import time
 
-from proxai.chat.message_content import FileUploadMetadata, FileUploadState
-from proxai.types import ProviderTokenValueMap
+import anthropic
+import google.genai as genai
+import google.genai.types as genai_types
+import mistralai
+import mistralai.models as mistral_models
+import openai
+
+import proxai.chat.message_content as message_content
+import proxai.types as types
 
 
 def upload_to_claude(
@@ -13,9 +20,8 @@ def upload_to_claude(
     file_data: bytes | None,
     filename: str,
     mime_type: str,
-    token_map: ProviderTokenValueMap,
-) -> FileUploadMetadata:
-  import anthropic
+    token_map: types.ProviderTokenValueMap,
+) -> message_content.FileUploadMetadata:
   client = anthropic.Anthropic(api_key=token_map['ANTHROPIC_API_KEY'])
   if file_path:
     with open(file_path, 'rb') as f:
@@ -23,13 +29,13 @@ def upload_to_claude(
   else:
     result = client.beta.files.upload(
         file=(filename, io.BytesIO(file_data)))
-  return FileUploadMetadata(
+  return message_content.FileUploadMetadata(
       file_id=result.id,
       filename=result.filename,
       size_bytes=result.size_bytes,
       mime_type=result.mime_type,
       created_at=str(result.created_at) if result.created_at else None,
-      state=FileUploadState.ACTIVE,
+      state=message_content.FileUploadState.ACTIVE,
   )
 
 
@@ -38,24 +44,23 @@ def upload_to_openai(
     file_data: bytes | None,
     filename: str,
     mime_type: str,
-    token_map: ProviderTokenValueMap,
-) -> FileUploadMetadata:
-  from openai import OpenAI
-  client = OpenAI(api_key=token_map['OPENAI_API_KEY'])
+    token_map: types.ProviderTokenValueMap,
+) -> message_content.FileUploadMetadata:
+  client = openai.OpenAI(api_key=token_map['OPENAI_API_KEY'])
   if file_path:
     with open(file_path, 'rb') as f:
       result = client.files.create(file=f, purpose="user_data")
   else:
     result = client.files.create(
         file=(filename, io.BytesIO(file_data)), purpose="user_data")
-  return FileUploadMetadata(
+  return message_content.FileUploadMetadata(
       file_id=result.id,
       filename=result.filename,
       size_bytes=result.bytes,
       created_at=str(result.created_at) if result.created_at else None,
       expires_at=(str(result.expires_at)
                   if getattr(result, 'expires_at', None) else None),
-      state=FileUploadState.ACTIVE,
+      state=message_content.FileUploadState.ACTIVE,
   )
 
 
@@ -64,12 +69,10 @@ def upload_to_gemini(
     file_data: bytes | None,
     filename: str,
     mime_type: str,
-    token_map: ProviderTokenValueMap,
+    token_map: types.ProviderTokenValueMap,
     poll_interval: float = 2.0,
     max_poll_seconds: float = 300.0,
-) -> FileUploadMetadata:
-  from google import genai
-  from google.genai import types as genai_types
+) -> message_content.FileUploadMetadata:
   client = genai.Client(api_key=token_map['GEMINI_API_KEY'])
   config = genai_types.UploadFileConfig(
       display_name=filename, mime_type=mime_type)
@@ -88,13 +91,13 @@ def upload_to_gemini(
     result = client.files.get(name=result.name)
 
   if result.state and result.state.name == "ACTIVE":
-    state = FileUploadState.ACTIVE
+    state = message_content.FileUploadState.ACTIVE
   elif result.state and result.state.name == "PROCESSING":
-    state = FileUploadState.PENDING
+    state = message_content.FileUploadState.PENDING
   else:
-    state = FileUploadState.FAILED
+    state = message_content.FileUploadState.FAILED
 
-  return FileUploadMetadata(
+  return message_content.FileUploadMetadata(
       file_id=result.name,
       filename=result.display_name,
       size_bytes=result.size_bytes,
@@ -112,30 +115,28 @@ def upload_to_mistral(
     file_data: bytes | None,
     filename: str,
     mime_type: str,
-    token_map: ProviderTokenValueMap,
-) -> FileUploadMetadata:
-  from mistralai import Mistral
-  from mistralai.models import File as MistralFile
-  client = Mistral(api_key=token_map['MISTRAL_API_KEY'])
+    token_map: types.ProviderTokenValueMap,
+) -> message_content.FileUploadMetadata:
+  client = mistralai.Mistral(api_key=token_map['MISTRAL_API_KEY'])
   if file_path:
     with open(file_path, 'rb') as f:
       content = f.read()
   else:
     content = file_data
   result = client.files.upload(
-      file=MistralFile(
+      file=mistral_models.File(
           file_name=filename,
           content=content,
       ),
       purpose='ocr',
   )
-  return FileUploadMetadata(
+  return message_content.FileUploadMetadata(
       file_id=result.id,
       filename=result.filename,
       size_bytes=result.size_bytes,
       mime_type=(result.mimetype
                 if getattr(result, 'mimetype', None) else mime_type),
-      state=FileUploadState.ACTIVE,
+      state=message_content.FileUploadState.ACTIVE,
   )
 
 
@@ -149,37 +150,33 @@ UPLOAD_DISPATCH = {
 
 def remove_from_claude(
     file_id: str,
-    token_map: ProviderTokenValueMap,
+    token_map: types.ProviderTokenValueMap,
 ):
-  import anthropic
   client = anthropic.Anthropic(api_key=token_map['ANTHROPIC_API_KEY'])
   client.beta.files.delete(file_id=file_id)
 
 
 def remove_from_openai(
     file_id: str,
-    token_map: ProviderTokenValueMap,
+    token_map: types.ProviderTokenValueMap,
 ):
-  from openai import OpenAI
-  client = OpenAI(api_key=token_map['OPENAI_API_KEY'])
+  client = openai.OpenAI(api_key=token_map['OPENAI_API_KEY'])
   client.files.delete(file_id=file_id)
 
 
 def remove_from_gemini(
     file_id: str,
-    token_map: ProviderTokenValueMap,
+    token_map: types.ProviderTokenValueMap,
 ):
-  from google import genai
   client = genai.Client(api_key=token_map['GEMINI_API_KEY'])
   client.files.delete(name=file_id)
 
 
 def remove_from_mistral(
     file_id: str,
-    token_map: ProviderTokenValueMap,
+    token_map: types.ProviderTokenValueMap,
 ):
-  from mistralai import Mistral
-  client = Mistral(api_key=token_map['MISTRAL_API_KEY'])
+  client = mistralai.Mistral(api_key=token_map['MISTRAL_API_KEY'])
   client.files.delete(file_id=file_id)
 
 
@@ -192,52 +189,48 @@ REMOVE_DISPATCH = {
 
 
 def list_from_claude(
-    token_map: ProviderTokenValueMap,
+    token_map: types.ProviderTokenValueMap,
     limit: int = 100,
-) -> list[FileUploadMetadata]:
-  import anthropic
+) -> list[message_content.FileUploadMetadata]:
   client = anthropic.Anthropic(api_key=token_map['ANTHROPIC_API_KEY'])
   page = client.beta.files.list(limit=limit)
   results = []
   for f in page.data:
-    results.append(FileUploadMetadata(
+    results.append(message_content.FileUploadMetadata(
         file_id=f.id,
         filename=f.filename,
         size_bytes=f.size_bytes,
         mime_type=f.mime_type,
         created_at=str(f.created_at) if f.created_at else None,
-        state=FileUploadState.ACTIVE,
+        state=message_content.FileUploadState.ACTIVE,
     ))
   return results
 
 
 def list_from_openai(
-    token_map: ProviderTokenValueMap,
+    token_map: types.ProviderTokenValueMap,
     limit: int = 100,
-) -> list[FileUploadMetadata]:
-  from openai import OpenAI
-  client = OpenAI(api_key=token_map['OPENAI_API_KEY'])
+) -> list[message_content.FileUploadMetadata]:
+  client = openai.OpenAI(api_key=token_map['OPENAI_API_KEY'])
   page = client.files.list(limit=limit, purpose='user_data')
   results = []
   for f in page.data:
-    results.append(FileUploadMetadata(
+    results.append(message_content.FileUploadMetadata(
         file_id=f.id,
         filename=f.filename,
         size_bytes=f.bytes,
         created_at=str(f.created_at) if f.created_at else None,
         expires_at=(str(f.expires_at)
                     if getattr(f, 'expires_at', None) else None),
-        state=FileUploadState.ACTIVE,
+        state=message_content.FileUploadState.ACTIVE,
     ))
   return results
 
 
 def list_from_gemini(
-    token_map: ProviderTokenValueMap,
+    token_map: types.ProviderTokenValueMap,
     limit: int = 100,
-) -> list[FileUploadMetadata]:
-  from google import genai
-  from google.genai import types as genai_types
+) -> list[message_content.FileUploadMetadata]:
   client = genai.Client(api_key=token_map['GEMINI_API_KEY'])
   pager = client.files.list(
       config=genai_types.ListFilesConfig(page_size=limit))
@@ -245,12 +238,12 @@ def list_from_gemini(
   for f in pager:
     if len(results) >= limit:
       break
-    state = FileUploadState.ACTIVE
+    state = message_content.FileUploadState.ACTIVE
     if f.state and f.state.name == 'PROCESSING':
-      state = FileUploadState.PENDING
+      state = message_content.FileUploadState.PENDING
     elif f.state and f.state.name != 'ACTIVE':
-      state = FileUploadState.FAILED
-    results.append(FileUploadMetadata(
+      state = message_content.FileUploadState.FAILED
+    results.append(message_content.FileUploadMetadata(
         file_id=f.name,
         filename=f.display_name,
         size_bytes=f.size_bytes,
@@ -265,21 +258,20 @@ def list_from_gemini(
 
 
 def list_from_mistral(
-    token_map: ProviderTokenValueMap,
+    token_map: types.ProviderTokenValueMap,
     limit: int = 100,
-) -> list[FileUploadMetadata]:
-  from mistralai import Mistral
-  client = Mistral(api_key=token_map['MISTRAL_API_KEY'])
+) -> list[message_content.FileUploadMetadata]:
+  client = mistralai.Mistral(api_key=token_map['MISTRAL_API_KEY'])
   response = client.files.list(page_size=limit, page=0, purpose='ocr')
   results = []
   for f in response.data:
-    results.append(FileUploadMetadata(
+    results.append(message_content.FileUploadMetadata(
         file_id=f.id,
         filename=f.filename,
         size_bytes=f.size_bytes,
         mime_type=(f.mimetype
                    if getattr(f, 'mimetype', None) else None),
-        state=FileUploadState.ACTIVE,
+        state=message_content.FileUploadState.ACTIVE,
     ))
   return results
 
@@ -289,4 +281,19 @@ LIST_DISPATCH = {
     'openai': list_from_openai,
     'gemini': list_from_gemini,
     'mistral': list_from_mistral,
+}
+
+
+def download_from_mistral(
+    file_id: str,
+    token_map: types.ProviderTokenValueMap,
+) -> bytes:
+  client = mistralai.Mistral(api_key=token_map['MISTRAL_API_KEY'])
+  response = client.files.download(file_id=file_id)
+  response.read()
+  return response.content
+
+
+DOWNLOAD_DISPATCH = {
+    'mistral': download_from_mistral,
 }

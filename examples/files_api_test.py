@@ -11,6 +11,7 @@ Usage:
 import argparse
 import json
 import os
+import tempfile
 import time
 
 import proxai as px
@@ -399,6 +400,89 @@ def test_list_with_limit():
   print('  Cleaned up OK')
 
 
+# --- Download tests ---
+
+def _test_download_provider(provider):
+  asset_file, mime_type = _PROVIDER_ASSETS[provider][0]
+  original_path = _asset(asset_file)
+  with open(original_path, 'rb') as f:
+    original_bytes = f.read()
+  print(f'\n=== Download: {provider} ({asset_file}) ===')
+
+  media = px.MessageContent(
+      path=original_path, media_type=mime_type)
+  px.files.upload(media=media, providers=[provider])
+  uploaded_id = media.provider_file_api_ids[provider]
+  _save_result(media, f'download_{provider}')
+  print(f'  Uploaded: {uploaded_id}')
+
+  files = px.files.list(providers=[provider])
+  file_ids = [f.provider_file_api_ids[provider] for f in files]
+  assert uploaded_id in file_ids
+  print(f'  Listed {len(files)} files, found uploaded file')
+
+  download_media = px.MessageContent(
+      media_type=mime_type,
+      provider_file_api_ids={provider: uploaded_id},
+      provider_file_api_status=media.provider_file_api_status,
+  )
+  px.files.download(media=download_media, provider=provider)
+  assert download_media.data is not None
+  assert len(download_media.data) == len(original_bytes)
+  print(f'  Downloaded to memory: {len(download_media.data)} bytes')
+
+  with tempfile.NamedTemporaryFile(
+      delete=False, suffix=os.path.splitext(asset_file)[1]) as tmp:
+    tmp_path = tmp.name
+  try:
+    path_media = px.MessageContent(
+        media_type=mime_type,
+        provider_file_api_ids={provider: uploaded_id},
+        provider_file_api_status=media.provider_file_api_status,
+    )
+    px.files.download(media=path_media, provider=provider, path=tmp_path)
+    assert path_media.path == tmp_path
+    with open(tmp_path, 'rb') as f:
+      path_bytes = f.read()
+    assert len(path_bytes) == len(original_bytes)
+    print(f'  Downloaded to path: {tmp_path} ({len(path_bytes)} bytes)')
+  finally:
+    if os.path.exists(tmp_path):
+      os.unlink(tmp_path)
+
+  px.files.remove(media=media, providers=[provider])
+  print('  Cleaned up OK')
+
+
+def _test_download_provider_fail(provider):
+  print(f'\n=== Download: {provider} (expect error) ===')
+  media = px.MessageContent(
+      path=_asset('cat.pdf'), media_type='application/pdf')
+  px.files.upload(media=media, providers=[provider])
+  _save_result(media, f'download_{provider}_fail')
+  print(f'  Uploaded: {media.provider_file_api_ids[provider]}')
+  try:
+    px.files.download(media=media, provider=provider)
+    raise AssertionError(
+        f"Expected error for {provider} download, but succeeded.")
+  except (ValueError, Exception) as e:
+    print(f'  Expected error: {e}')
+  px.files.remove(media=media, providers=[provider])
+  print('  Cleaned up OK')
+
+def test_download_gemini_fail():
+  _test_download_provider_fail('gemini')
+
+def test_download_claude_fail():
+  _test_download_provider_fail('claude')
+
+def test_download_openai_fail():
+  _test_download_provider_fail('openai')
+
+def test_download_mistral():
+  _test_download_provider('mistral')
+
+
 # --- Serialization round-trip test ---
 
 def test_serialization_round_trip():
@@ -500,6 +584,11 @@ TEST_SEQUENCE = [
     ('list_mistral', test_list_mistral),
     ('list_all', test_list_all),
     ('list_with_limit', test_list_with_limit),
+
+    ('download_gemini_fail', test_download_gemini_fail),
+    ('download_claude_fail', test_download_claude_fail),
+    ('download_openai_fail', test_download_openai_fail),
+    ('download_mistral', test_download_mistral),
 
     ('serialization', test_serialization_round_trip),
     ('cleanup_all', test_cleanup_all),

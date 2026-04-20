@@ -333,3 +333,93 @@ class TestListExecution:
     assert status.file_id == 'file-single'
     assert status.provider == 'gemini'
     assert status.state == FileUploadState.ACTIVE
+
+
+# --- Download helpers ---
+
+def _fake_download_fn(file_id, token_map):
+  return b'fake-file-content'
+
+
+# --- Download validation ---
+
+class TestDownloadValidation:
+
+  def test_rejects_no_uploaded_providers(self, monkeypatch):
+    mgr = _make_files_manager(monkeypatch, ['gemini'])
+    media = _make_media()
+    with pytest.raises(ValueError, match='No uploaded providers'):
+      mgr.download(media=media)
+
+  def test_rejects_provider_not_on_media(self, monkeypatch):
+    mgr = _make_files_manager(monkeypatch, ['gemini'])
+    media = _make_media()
+    media.provider_file_api_ids = {'claude': 'file-123'}
+    media.provider_file_api_status = {
+        'claude': _fake_upload_metadata('claude')}
+    with pytest.raises(ValueError, match='No file_id found'):
+      mgr.download(media=media, provider='gemini')
+
+  def test_rejects_unsupported_provider(self, monkeypatch):
+    mgr = _make_files_manager(monkeypatch, ['gemini'])
+    media = _make_media()
+    media.provider_file_api_ids = {'deepseek': 'file-123'}
+    media.provider_file_api_status = {
+        'deepseek': _fake_upload_metadata('deepseek')}
+    with pytest.raises(ValueError, match='does not support'):
+      mgr.download(media=media, provider='deepseek')
+
+
+# --- Download execution ---
+
+class TestDownloadExecution:
+
+  def _make_uploaded_media(self, providers):
+    media = _make_media()
+    media.provider_file_api_ids = {}
+    media.provider_file_api_status = {}
+    for p in providers:
+      media.provider_file_api_ids[p] = f'file-{p}-123'
+      media.provider_file_api_status[p] = _fake_upload_metadata(p)
+    return media
+
+  def test_download_to_memory(self, monkeypatch):
+    mgr = _make_files_manager(monkeypatch, ['gemini'])
+    media = self._make_uploaded_media(['gemini'])
+    dispatch = {'gemini': _fake_download_fn}
+    with patch.dict(file_helpers.DOWNLOAD_DISPATCH, dispatch):
+      mgr.download(media=media, provider='gemini')
+    assert media.data == b'fake-file-content'
+    assert media.path is not None  # original path still set
+
+  def test_download_to_path(self, monkeypatch, tmp_path):
+    mgr = _make_files_manager(monkeypatch, ['gemini'])
+    media = self._make_uploaded_media(['gemini'])
+    out_path = str(tmp_path / 'downloaded.pdf')
+    dispatch = {'gemini': _fake_download_fn}
+    with patch.dict(file_helpers.DOWNLOAD_DISPATCH, dispatch):
+      mgr.download(media=media, provider='gemini', path=out_path)
+    assert media.path == out_path
+    with open(out_path, 'rb') as f:
+      assert f.read() == b'fake-file-content'
+
+  def test_download_uses_priority_when_no_provider(self, monkeypatch):
+    mgr = _make_files_manager(monkeypatch, ['claude', 'mistral'])
+    media = self._make_uploaded_media(['claude', 'mistral'])
+    calls = []
+    def tracking_download(file_id, token_map):
+      calls.append(file_id)
+      return b'data'
+    dispatch = {'mistral': tracking_download, 'claude': tracking_download}
+    with patch.dict(file_helpers.DOWNLOAD_DISPATCH, dispatch):
+      mgr.download(media=media)
+    assert len(calls) == 1
+    assert calls[0] == 'file-mistral-123'
+
+  def test_download_falls_back_to_any_available(self, monkeypatch):
+    mgr = _make_files_manager(monkeypatch, ['claude'])
+    media = self._make_uploaded_media(['claude'])
+    dispatch = {'claude': _fake_download_fn}
+    with patch.dict(file_helpers.DOWNLOAD_DISPATCH, dispatch):
+      mgr.download(media=media)
+    assert media.data == b'fake-file-content'
