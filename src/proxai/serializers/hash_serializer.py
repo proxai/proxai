@@ -15,13 +15,52 @@ def _add_field(hasher: hashlib._Hash, name: str, value: str):
   hasher.update((name + '=' + value + _SEPARATOR_CHAR).encode())
 
 
-def _hash_chat(hasher: hashlib._Hash, chat: chat_session.Chat):
+def _content_hash_dict(
+    content_item: message_content.MessageContent,
+    provider: str | None,
+) -> dict:
+  """Build a hash-safe dict from a MessageContent.
+
+  For content with local data (path, data, or source), excludes
+  provider_file_api_ids and provider_file_api_status since the
+  content identity comes from the local data, not the upload
+  metadata. For remote-only content (no local data), includes
+  only the current provider's file_id as the content identity.
+  """
+  d = content_item.to_dict()
+  d.pop('filename', None)
+  has_local_content = (
+      'path' in d or 'data' in d or 'source' in d
+  )
+  if has_local_content:
+    d.pop('provider_file_api_ids', None)
+    d.pop('provider_file_api_status', None)
+  else:
+    file_ids = d.pop('provider_file_api_ids', None)
+    d.pop('provider_file_api_status', None)
+    if file_ids and provider and provider in file_ids:
+      d['provider_file_id'] = file_ids[provider]
+    elif file_ids:
+      d['provider_file_ids'] = file_ids
+  return d
+
+
+def _hash_chat(
+    hasher: hashlib._Hash,
+    chat: chat_session.Chat,
+    provider: str | None = None,
+):
   """Hash a Chat into the running hasher.
 
   Hashes system_prompt (if set), then each message's role and content. For
   MessageContent blocks whose `path` is set, the file's mtime_ns and size
   are folded in so in-place edits invalidate the cache (see MessageContent
   docstring for semantics and limits).
+
+  File API metadata (provider_file_api_ids, provider_file_api_status) is
+  excluded from the hash for content with local data, since the content
+  identity comes from path/data/source. For remote-only content, the
+  current provider's file_id is used as the content identity.
   """
   if chat.system_prompt is not None:
     _add_field(hasher, 'chat.system_prompt', chat.system_prompt)
@@ -33,9 +72,10 @@ def _hash_chat(hasher: hashlib._Hash, chat: chat_session.Chat):
       continue
     for j, content_item in enumerate(msg.content):
       content_key = f'{prefix}content[{j}]'
+      hash_dict = _content_hash_dict(content_item, provider)
       _add_field(
           hasher, content_key,
-          json.dumps(content_item.to_dict(), sort_keys=True)
+          json.dumps(hash_dict, sort_keys=True)
       )
       if content_item.path is not None:
         try:
@@ -106,7 +146,10 @@ def get_query_record_hash(query_record: types.QueryRecord) -> str:
   if query_record.system_prompt is not None:
     _add_field(hasher, 'system_prompt', query_record.system_prompt)
   if query_record.chat is not None:
-    _hash_chat(hasher, query_record.chat)
+    provider = None
+    if query_record.provider_model is not None:
+      provider = query_record.provider_model.provider
+    _hash_chat(hasher, query_record.chat, provider=provider)
   if query_record.provider_model is not None:
     pm = query_record.provider_model
     _add_field(hasher, 'provider', pm.provider)
