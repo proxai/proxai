@@ -1,3 +1,22 @@
+"""Cache hash generation for query records.
+
+WARNING: The hash logic in this file MUST stay in sync with the
+equality check in type_utils.is_query_record_equal(). Both functions
+determine cache identity — the hash finds the cache bucket, the
+equality check verifies against hash collisions. If one excludes a
+field from comparison, the other must also exclude it, otherwise
+cache lookups will silently fail (hash matches but equality doesn't).
+
+Currently excluded from cache identity:
+- MessageContent.provider_file_api_ids (transport metadata)
+- MessageContent.provider_file_api_status (transport metadata)
+- MessageContent.filename (informational label)
+- ConnectionOptions fields other than endpoint
+
+See: type_utils._normalize_chat_for_comparison()
+See: _content_hash_dict() in this file
+"""
+
 import hashlib
 import json
 import os
@@ -26,6 +45,11 @@ def _content_hash_dict(
   content identity comes from the local data, not the upload
   metadata. For remote-only content (no local data), includes
   only the current provider's file_id as the content identity.
+
+  WARNING: Any field excluded here must also be excluded in
+  type_utils._normalize_chat_for_comparison(). These two
+  functions define cache identity together — the hash finds the
+  bucket, the equality check verifies the match.
   """
   d = content_item.to_dict()
   d.pop('filename', None)

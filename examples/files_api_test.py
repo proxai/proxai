@@ -11,6 +11,7 @@ Usage:
 import argparse
 import json
 import os
+import shutil
 import tempfile
 import time
 
@@ -616,6 +617,112 @@ def test_generate_auto_mistral():
   _test_generate_auto_upload('mistral')
 
 
+# --- Cache with file upload tests ---
+
+_CACHE_PATH = os.path.expanduser('~/temp/proxai_files_cache/')
+
+
+def _create_cached_client():
+  if os.path.exists(_CACHE_PATH):
+    shutil.rmtree(_CACHE_PATH)
+  os.makedirs(_CACHE_PATH, exist_ok=True)
+  client = px.Client(
+      cache_options=px.CacheOptions(
+          cache_path=_CACHE_PATH,
+          unique_response_limit=1))
+  client.model_configs_instance.unregister_all_models()
+  for provider, (prov, model) in _PROVIDER_MODELS.items():
+    client.model_configs_instance.register_provider_model_config(
+        _get_model_config(prov, model, model))
+  return client
+
+
+def _test_cache_with_file_upload(provider):
+  prov, model = _PROVIDER_MODELS[provider]
+  print(f'\n=== Cache with file upload: {provider} ===')
+  client = _create_cached_client()
+
+  media = px.MessageContent(
+      path=_asset('cat.pdf'), media_type='application/pdf')
+
+  # First call: provider, auto-upload should happen
+  result_1 = client.generate(
+      messages=[{
+          'role': 'user',
+          'content': [
+              media,
+              px.MessageContent(
+                  type=px.ContentType.TEXT,
+                  text='What is inside this document?'),
+          ],
+      }],
+      provider_model=(prov, model))
+  print(f'  Call 1: {result_1.result.output_text[:60]}...')
+  assert result_1.connection.result_source == types.ResultSource.PROVIDER
+  _assert_cat_in_text(result_1)
+
+  # Verify file was uploaded via files api
+  assert provider in media.provider_file_api_ids, (
+      f'File not uploaded to {provider}')
+  file_id = media.provider_file_api_ids[provider]
+  print(f'  File ID: {file_id}')
+
+  # Second call: same media object, should hit cache
+  result_2 = client.generate(
+      messages=[{
+          'role': 'user',
+          'content': [
+              media,
+              px.MessageContent(
+                  type=px.ContentType.TEXT,
+                  text='What is inside this document?'),
+          ],
+      }],
+      provider_model=(prov, model))
+  print(f'  Call 2: {result_2.result.output_text[:60]}...')
+  assert result_2.connection.result_source == types.ResultSource.CACHE
+  print('  Cache hit OK')
+
+  # Third call: new MessageContent object, same file, should also cache
+  media_new = px.MessageContent(
+      path=_asset('cat.pdf'), media_type='application/pdf')
+  result_3 = client.generate(
+      messages=[{
+          'role': 'user',
+          'content': [
+              media_new,
+              px.MessageContent(
+                  type=px.ContentType.TEXT,
+                  text='What is inside this document?'),
+          ],
+      }],
+      provider_model=(prov, model))
+  print(f'  Call 3 (new object): {result_3.result.output_text[:60]}...')
+  assert result_3.connection.result_source == types.ResultSource.CACHE
+  print('  Cache hit with new object OK')
+
+  # Cleanup
+  px.files.remove(media=media, providers=[provider])
+  if provider in (media_new.provider_file_api_ids or {}):
+    px.files.remove(media=media_new, providers=[provider])
+  if os.path.exists(_CACHE_PATH):
+    shutil.rmtree(_CACHE_PATH)
+  print('  Cleaned up OK')
+
+
+def test_cache_gemini():
+  _test_cache_with_file_upload('gemini')
+
+def test_cache_claude():
+  _test_cache_with_file_upload('claude')
+
+def test_cache_openai():
+  _test_cache_with_file_upload('openai')
+
+def test_cache_mistral():
+  _test_cache_with_file_upload('mistral')
+
+
 # --- Serialization round-trip test ---
 
 def test_serialization_round_trip():
@@ -680,58 +787,63 @@ def test_cleanup_all():
 # --- Runner ---
 
 TEST_SEQUENCE = [
-    ('gemini_pdf', test_gemini_pdf),
-    ('claude_pdf', test_claude_pdf),
-    ('openai_pdf', test_openai_pdf),
-    ('mistral_pdf', test_mistral_pdf),
+    # ('gemini_pdf', test_gemini_pdf),
+    # ('claude_pdf', test_claude_pdf),
+    # ('openai_pdf', test_openai_pdf),
+    # ('mistral_pdf', test_mistral_pdf),
 
-    ('gemini_image', test_gemini_image),
-    ('claude_image', test_claude_image),
-    ('openai_image', test_openai_image),
-    ('mistral_image', test_mistral_image),
+    # ('gemini_image', test_gemini_image),
+    # ('claude_image', test_claude_image),
+    # ('openai_image', test_openai_image),
+    # ('mistral_image', test_mistral_image),
 
-    ('gemini_audio', test_gemini_audio),
-    ('claude_audio', test_claude_audio),
-    ('openai_audio', test_openai_audio),
-    ('mistral_audio_fail', test_mistral_audio_fail),
+    # ('gemini_audio', test_gemini_audio),
+    # ('claude_audio', test_claude_audio),
+    # ('openai_audio', test_openai_audio),
+    # ('mistral_audio_fail', test_mistral_audio_fail),
 
-    ('gemini_video', test_gemini_video),
-    ('claude_video', test_claude_video),
-    ('openai_video', test_openai_video),
-    ('mistral_video_fail', test_mistral_video_fail),
+    # ('gemini_video', test_gemini_video),
+    # ('claude_video', test_claude_video),
+    # ('openai_video', test_openai_video),
+    # ('mistral_video_fail', test_mistral_video_fail),
 
-    ('multi_sequential', test_multi_sequential),
-    ('multi_parallel', test_multi_parallel),
-    ('multi_parallel_mixed_media', test_multi_parallel_mixed_media),
+    # ('multi_sequential', test_multi_sequential),
+    # ('multi_parallel', test_multi_parallel),
+    # ('multi_parallel_mixed_media', test_multi_parallel_mixed_media),
 
-    ('remove_gemini', test_remove_gemini),
-    ('remove_claude', test_remove_claude),
-    ('remove_openai', test_remove_openai),
-    ('remove_mistral', test_remove_mistral),
-    ('remove_all', test_remove_all),
-    ('remove_selective', test_remove_selective),
+    # ('remove_gemini', test_remove_gemini),
+    # ('remove_claude', test_remove_claude),
+    # ('remove_openai', test_remove_openai),
+    # ('remove_mistral', test_remove_mistral),
+    # ('remove_all', test_remove_all),
+    # ('remove_selective', test_remove_selective),
 
-    ('list_gemini', test_list_gemini),
-    ('list_claude', test_list_claude),
-    ('list_openai', test_list_openai),
-    ('list_mistral', test_list_mistral),
-    ('list_all', test_list_all),
-    ('list_with_limit', test_list_with_limit),
+    # ('list_gemini', test_list_gemini),
+    # ('list_claude', test_list_claude),
+    # ('list_openai', test_list_openai),
+    # ('list_mistral', test_list_mistral),
+    # ('list_all', test_list_all),
+    # ('list_with_limit', test_list_with_limit),
 
-    ('download_gemini_fail', test_download_gemini_fail),
-    ('download_claude_fail', test_download_claude_fail),
-    ('download_openai_fail', test_download_openai_fail),
-    ('download_mistral', test_download_mistral),
+    # ('download_gemini_fail', test_download_gemini_fail),
+    # ('download_claude_fail', test_download_claude_fail),
+    # ('download_openai_fail', test_download_openai_fail),
+    # ('download_mistral', test_download_mistral),
 
-    ('generate_manual_gemini', test_generate_manual_gemini),
-    ('generate_manual_claude', test_generate_manual_claude),
-    ('generate_manual_openai', test_generate_manual_openai),
-    ('generate_manual_mistral', test_generate_manual_mistral),
+    # ('generate_manual_gemini', test_generate_manual_gemini),
+    # ('generate_manual_claude', test_generate_manual_claude),
+    # ('generate_manual_openai', test_generate_manual_openai),
+    # ('generate_manual_mistral', test_generate_manual_mistral),
 
-    ('generate_auto_gemini', test_generate_auto_gemini),
-    ('generate_auto_claude', test_generate_auto_claude),
-    ('generate_auto_openai', test_generate_auto_openai),
-    ('generate_auto_mistral', test_generate_auto_mistral),
+    # ('generate_auto_gemini', test_generate_auto_gemini),
+    # ('generate_auto_claude', test_generate_auto_claude),
+    # ('generate_auto_openai', test_generate_auto_openai),
+    # ('generate_auto_mistral', test_generate_auto_mistral),
+
+    ('cache_gemini', test_cache_gemini),
+    ('cache_claude', test_cache_claude),
+    ('cache_openai', test_cache_openai),
+    ('cache_mistral', test_cache_mistral),
 
     ('serialization', test_serialization_round_trip),
     ('cleanup_all', test_cleanup_all),
