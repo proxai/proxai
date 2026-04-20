@@ -54,6 +54,8 @@ class FilesManagerParams:
 class FilesManager(state_controller.StateControlled):
   """Manages file uploads and references across provider File APIs."""
 
+  _DOWNLOAD_PROVIDER_PRIORITY = ['mistral']
+
   _files_manager_state: types.FilesManagerState
 
   def __init__(
@@ -314,10 +316,77 @@ class FilesManager(state_controller.StateControlled):
 
     return media
 
-  # --- Download / List ---
+  # --- Download ---
 
-  def download(self):
-    pass
+  def _resolve_download_provider(
+      self,
+      media: message_content.MessageContent,
+      provider: types.ProviderNameType | None,
+  ) -> types.ProviderNameType:
+    if provider is not None:
+      if (media.provider_file_api_ids is None
+          or provider not in media.provider_file_api_ids):
+        raise ValueError(
+            f"No file_id found for provider '{provider}' "
+            f"on this media content."
+        )
+      return provider
+    if (media.provider_file_api_ids is None
+        or not media.provider_file_api_ids):
+      raise ValueError(
+          "No uploaded providers found on this media content."
+      )
+    for p in self._DOWNLOAD_PROVIDER_PRIORITY:
+      if p in media.provider_file_api_ids:
+        return p
+    return next(iter(media.provider_file_api_ids))
+
+  def download(
+      self,
+      media: message_content.MessageContent,
+      provider: types.ProviderNameType | None = None,
+      path: str | None = None,
+  ) -> message_content.MessageContent:
+    """Download a file from a provider File API.
+
+    Args:
+      media: A MessageContent with provider_file_api_ids populated.
+      provider: Provider to download from. If None, uses priority
+        order: gemini, openai, claude, mistral.
+      path: Local file path to save to. If None, stores bytes in
+        media.data instead.
+
+    Returns:
+      The same MessageContent with path or data populated.
+
+    Raises:
+      ValueError: If provider is not found in media metadata.
+    """
+    provider = self._resolve_download_provider(media, provider)
+    if provider not in file_helpers.DOWNLOAD_DISPATCH:
+      raise ValueError(
+          f"Provider '{provider}' does not support file download. "
+          f"Supported: "
+          f"{list(file_helpers.DOWNLOAD_DISPATCH.keys())}"
+      )
+    if not self.api_key_manager.has_provider_key(provider):
+      raise ValueError(
+          f"No API key configured for provider '{provider}'."
+      )
+
+    file_id = media.provider_file_api_ids[provider]
+    token_map = self.api_key_manager.get_provider_keys(provider)
+    download_fn = file_helpers.DOWNLOAD_DISPATCH[provider]
+    data = download_fn(file_id=file_id, token_map=token_map)
+
+    if path is not None:
+      with open(path, 'wb') as f:
+        f.write(data)
+      media.path = path
+    else:
+      media.data = data
+
+    return media
 
   # --- List ---
 
