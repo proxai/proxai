@@ -10,6 +10,7 @@ from typing import Dict, Any, List
 import platformdirs
 
 import proxai.chat.chat_session as chat_session
+import proxai.chat.message_content as message_content
 import proxai.caching.model_cache as model_cache
 import proxai.caching.query_cache as query_cache
 import proxai.connections.api_key_manager as api_key_manager
@@ -511,27 +512,220 @@ class FileConnector:
   ) -> None:
     self._client_getter = client_getter
 
-  def upload(self, media, providers):
+  def upload(
+      self,
+      media: message_content.MessageContent,
+      providers: list[str],
+  ) -> message_content.MessageContent:
+    """Upload media to specified provider File APIs.
+
+    Uploads the file to each provider in parallel (controlled by
+    ``ProviderCallOptions.allow_parallel_file_operations``). On
+    success, populates ``media.provider_file_api_status`` and
+    ``media.provider_file_api_ids`` with upload metadata and file
+    IDs for each provider.
+
+    Supported providers: gemini, claude, openai, mistral.
+    Use ``is_upload_supported()`` to check MIME type compatibility.
+
+    Args:
+        media: A MessageContent of a media type (IMAGE, DOCUMENT,
+            AUDIO, VIDEO). Must have at least ``path`` or ``data``
+            set.
+        providers: Provider names to upload to (e.g.,
+            ``['gemini', 'claude']``).
+
+    Returns:
+        The same MessageContent with provider_file_api_status and
+        provider_file_api_ids populated.
+
+    Raises:
+        ValueError: If media type is not a media content type, if
+            ``path``/``data`` are both None, or if a provider is
+            not supported or has no API key configured.
+        FileUploadError: If one or more provider uploads fail. The
+            media object still contains results from successful
+            uploads accessible via ``error.media``.
+
+    Example:
+        >>> media = px.MessageContent(
+        ...     path='report.pdf', media_type='application/pdf')
+        >>> px.files.upload(media=media, providers=['gemini', 'claude'])
+        >>> print(media.provider_file_api_ids)
+        {'gemini': 'files/abc123', 'claude': 'file_xyz789'}
+    """
     return self._client_getter().files_manager_instance.upload(
         media=media, providers=providers)
 
-  def download(self, media, provider=None, path=None):
+  def download(
+      self,
+      media: message_content.MessageContent,
+      provider: str | None = None,
+      path: str | None = None,
+  ) -> message_content.MessageContent:
+    """Download a file from a provider File API.
+
+    Currently only Mistral supports downloading uploaded files.
+    Gemini, Claude, and OpenAI do not support downloading
+    user-uploaded files. Use ``is_download_supported()`` to check.
+
+    When ``path`` is provided, the file is saved to disk and
+    ``media.path`` is set. When ``path`` is None, the file bytes
+    are stored in ``media.data``.
+
+    Args:
+        media: A MessageContent with provider_file_api_ids
+            populated from a previous ``upload()`` or ``list()``
+            call.
+        provider: Provider to download from. If None, uses
+            priority order (mistral first). Falls back to any
+            available provider in media metadata.
+        path: Local file path to save to. If None, stores bytes
+            in ``media.data`` instead.
+
+    Returns:
+        The same MessageContent with ``path`` or ``data``
+        populated.
+
+    Raises:
+        ValueError: If provider is not found in media metadata,
+            or if the provider does not support downloading
+            uploaded files.
+
+    Example:
+        >>> files = px.files.list(providers=['mistral'])
+        >>> px.files.download(media=files[0], path='/tmp/doc.pdf')
+        >>> print(files[0].path)
+        /tmp/doc.pdf
+    """
     return self._client_getter().files_manager_instance.download(
         media=media, provider=provider, path=path)
 
-  def list(self, providers=None, limit_per_provider=100):
+  def list(
+      self,
+      providers: list[str] | None = None,
+      limit_per_provider: int = 100,
+  ) -> list[message_content.MessageContent]:
+    """List files from provider File APIs.
+
+    Queries each provider in parallel (controlled by
+    ``ProviderCallOptions.allow_parallel_file_operations``) and
+    returns a combined flat list. Each returned MessageContent
+    represents one file with single-provider metadata.
+
+    The returned MessageContent objects have ``filename``,
+    ``media_type``, ``provider_file_api_ids``, and
+    ``provider_file_api_status`` populated. ``path`` and ``data``
+    are None (use ``download()`` to fetch file contents).
+
+    Args:
+        providers: Provider names to query (e.g.,
+            ``['gemini', 'openai']``). None queries all providers
+            with API keys configured.
+        limit_per_provider: Max files to fetch from each provider.
+            Defaults to 100. Total results can be up to
+            ``limit_per_provider * len(providers)``.
+
+    Returns:
+        list[MessageContent]: One per file, each with
+        single-provider metadata.
+
+    Raises:
+        ValueError: If providers is an empty list or no providers
+            have API keys configured.
+
+    Example:
+        >>> files = px.files.list(providers=['gemini'])
+        >>> for f in files:
+        ...     print(f.filename, f.provider_file_api_ids)
+        >>> files = px.files.list(limit_per_provider=10)
+    """
     return self._client_getter().files_manager_instance.list(
         providers=providers, limit_per_provider=limit_per_provider)
 
-  def remove(self, media, providers=None):
+  def remove(
+      self,
+      media: message_content.MessageContent,
+      providers: list[str] | None = None,
+  ) -> message_content.MessageContent:
+    """Remove uploaded files from provider File APIs.
+
+    Removes files from each provider in parallel (controlled by
+    ``ProviderCallOptions.allow_parallel_file_operations``). On
+    success, clears the provider's entries from
+    ``media.provider_file_api_status`` and
+    ``media.provider_file_api_ids``.
+
+    Args:
+        media: A MessageContent with provider_file_api_ids
+            populated from a previous ``upload()`` call.
+        providers: Provider names to remove from (e.g.,
+            ``['gemini']``). None removes from all uploaded
+            providers. Empty list raises ValueError.
+
+    Returns:
+        The same MessageContent with removed providers cleared.
+
+    Raises:
+        ValueError: If providers is an empty list, if media has
+            no uploaded files, or if a provider has no file_id on
+            this media.
+        FileRemoveError: If one or more provider removals fail.
+            Successfully removed providers are cleared; failed
+            providers remain on the media object. Access partial
+            results via ``error.media``.
+
+    Example:
+        >>> px.files.remove(media=media, providers=['gemini'])
+        >>> px.files.remove(media=media)  # removes from all
+        >>> print(media.provider_file_api_ids)  # {}
+    """
     return self._client_getter().files_manager_instance.remove(
         media=media, providers=providers)
 
-  def is_upload_supported(self, media, provider):
+  def is_upload_supported(
+      self,
+      media: message_content.MessageContent,
+      provider: str,
+  ) -> bool:
+    """Check if a media file can be uploaded to a provider's File API.
+
+    Gemini, Claude, and OpenAI support all media types. Mistral
+    supports documents (PDF, DOCX, XLSX, CSV, TXT) and images only.
+
+    Args:
+        media: A MessageContent with media_type set.
+        provider: Provider name (e.g., 'gemini', 'mistral').
+
+    Returns:
+        True if the provider supports uploading this media type.
+
+    Example:
+        >>> media = px.MessageContent(
+        ...     path='video.mp4', media_type='video/mp4')
+        >>> px.files.is_upload_supported(media, 'gemini')   # True
+        >>> px.files.is_upload_supported(media, 'mistral')  # False
+    """
     return self._client_getter().files_manager_instance.is_upload_supported(
         media=media, provider=provider)
 
-  def is_download_supported(self, provider):
+  def is_download_supported(self, provider: str) -> bool:
+    """Check if a provider supports downloading uploaded files.
+
+    Currently only Mistral supports downloading user-uploaded
+    files. Gemini, Claude, and OpenAI do not allow downloading
+    files that were uploaded via their File APIs.
+
+    Args:
+        provider: Provider name (e.g., 'gemini', 'mistral').
+
+    Returns:
+        True if the provider supports downloading uploaded files.
+
+    Example:
+        >>> px.files.is_download_supported('mistral')  # True
+        >>> px.files.is_download_supported('gemini')   # False
+    """
     return self._client_getter().files_manager_instance.is_download_supported(
         provider=provider)
 

@@ -389,7 +389,7 @@ class FilesManager(state_controller.StateControlled):
     Args:
       media: A MessageContent with provider_file_api_ids populated.
       provider: Provider to download from. If None, uses priority
-        order: gemini, openai, claude, mistral.
+        order: mistral. Falls back to any provider in metadata.
       path: Local file path to save to. If None, stores bytes in
         media.data instead.
 
