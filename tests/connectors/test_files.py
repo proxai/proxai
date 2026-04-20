@@ -423,3 +423,54 @@ class TestDownloadExecution:
     with patch.dict(file_helpers.DOWNLOAD_DISPATCH, dispatch):
       mgr.download(media=media)
     assert media.data == b'fake-file-content'
+
+
+# --- Capability checks ---
+
+class TestIsUploadSupported:
+
+  def test_gemini_supports_all(self, monkeypatch):
+    mgr = _make_files_manager(monkeypatch, ['gemini'])
+    media = _make_media(media_type='video/mp4')
+    assert mgr.is_upload_supported(media=media, provider='gemini')
+
+  def test_mistral_rejects_audio(self, monkeypatch):
+    mgr = _make_files_manager(monkeypatch, ['mistral'])
+    media = _make_media(media_type='audio/mpeg')
+    assert not mgr.is_upload_supported(media=media, provider='mistral')
+
+  def test_mistral_accepts_pdf(self, monkeypatch):
+    mgr = _make_files_manager(monkeypatch, ['mistral'])
+    media = _make_media(media_type='application/pdf')
+    assert mgr.is_upload_supported(media=media, provider='mistral')
+
+  def test_unsupported_provider(self, monkeypatch):
+    mgr = _make_files_manager(monkeypatch, ['gemini'])
+    media = _make_media(media_type='application/pdf')
+    assert not mgr.is_upload_supported(media=media, provider='deepseek')
+
+  def test_no_media_type(self, monkeypatch):
+    mgr = _make_files_manager(monkeypatch, ['gemini'])
+    media = MessageContent(
+        type='document', path='/tmp/test.pdf',
+        provider_file_api_ids={'gemini': 'file-123'})
+    assert not mgr.is_upload_supported(media=media, provider='gemini')
+
+
+class TestIsDownloadSupported:
+
+  def test_mistral_supported(self, monkeypatch):
+    mgr = _make_files_manager(monkeypatch, ['mistral'])
+    assert mgr.is_download_supported(provider='mistral')
+
+  def test_gemini_not_supported(self, monkeypatch):
+    mgr = _make_files_manager(monkeypatch, ['gemini'])
+    assert not mgr.is_download_supported(provider='gemini')
+
+  def test_claude_not_supported(self, monkeypatch):
+    mgr = _make_files_manager(monkeypatch, ['claude'])
+    assert not mgr.is_download_supported(provider='claude')
+
+  def test_openai_not_supported(self, monkeypatch):
+    mgr = _make_files_manager(monkeypatch, ['openai'])
+    assert not mgr.is_download_supported(provider='openai')
