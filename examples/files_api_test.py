@@ -32,9 +32,14 @@ _PROVIDER_MODELS = {
 }
 
 
-def _get_model_config(provider, model, provider_model_identifier):
+def _get_model_config(
+    provider, model, provider_model_identifier,
+    input_format=None,
+):
   S = types.FeatureSupportType.SUPPORTED
   NS = types.FeatureSupportType.NOT_SUPPORTED
+  if input_format is None:
+    input_format = ['text', 'document']
   return types.ProviderModelConfig(
       provider_model=types.ProviderModelType(
           provider=provider, model=model,
@@ -48,8 +53,12 @@ def _get_model_config(provider, model, provider_model_identifier):
               temperature=S, max_tokens=S, stop=S, n=NS, thinking=S),
           tools=types.ToolConfigType(web_search=NS),
           input_format=types.InputFormatConfigType(
-              text=S, image=S, document=S, audio=NS,
-              video=NS, json=NS, pydantic=NS),
+              text=S if 'text' in input_format else NS,
+              image=S if 'image' in input_format else NS,
+              document=S if 'document' in input_format else NS,
+              audio=S if 'audio' in input_format else NS,
+              video=S if 'video' in input_format else NS,
+              json=NS, pydantic=NS),
           output_format=types.OutputFormatConfigType(
               text=S, json=NS, pydantic=NS, image=NS,
               audio=NS, video=NS, multi_modal=NS),
@@ -60,8 +69,12 @@ def _register_models():
   client = px.get_default_proxai_client()
   client.model_configs_instance.unregister_all_models()
   for provider, (prov, model) in _PROVIDER_MODELS.items():
+    if provider == 'gemini':
+      fmt = ['text', 'document', 'image', 'audio', 'video']
+    else:
+      fmt = ['text', 'document', 'image']
     client.model_configs_instance.register_provider_model_config(
-        _get_model_config(prov, model, model))
+        _get_model_config(prov, model, model, input_format=fmt))
 
 
 def _assert_cat_in_text(result):
@@ -131,12 +144,10 @@ def _test_upload_expect_error(provider, asset_file, mime_type, label):
     px.files.upload(media=media, providers=[provider])
     _save_result(media, label + '_unexpected_success')
     raise AssertionError(
-        f"Expected FileUploadError for {provider} with "
+        f"Expected error for {provider} with "
         f"{asset_file}, but upload succeeded.")
-  except FileUploadError as e:
+  except (ValueError, FileUploadError) as e:
     print(f'  Expected error: {e}')
-    assert provider in e.errors
-    assert media.provider_file_api_status[provider].state == FileUploadState.FAILED
 
 
 # --- Single provider: document tests (all 4 should succeed) ---
@@ -162,11 +173,12 @@ def test_gemini_image():
 def test_claude_image():
   _test_upload_success('claude', 'cat.jpeg', 'image/jpeg', 'claude_image')
 
-def test_openai_image():
-  _test_upload_success('openai', 'cat.jpeg', 'image/jpeg', 'openai_image')
-
 def test_mistral_image():
   _test_upload_success('mistral', 'cat.jpeg', 'image/jpeg', 'mistral_image')
+
+def test_openai_image_fail():
+  _test_upload_expect_error(
+      'openai', 'cat.jpeg', 'image/jpeg', 'openai_image_fail')
 
 
 # --- Single provider: audio tests ---
@@ -174,11 +186,13 @@ def test_mistral_image():
 def test_gemini_audio():
   _test_upload_success('gemini', 'cat.mp3', 'audio/mpeg', 'gemini_audio')
 
-def test_claude_audio():
-  _test_upload_success('claude', 'cat.mp3', 'audio/mpeg', 'claude_audio')
+def test_claude_audio_fail():
+  _test_upload_expect_error(
+      'claude', 'cat.mp3', 'audio/mpeg', 'claude_audio_fail')
 
-def test_openai_audio():
-  _test_upload_success('openai', 'cat.mp3', 'audio/mpeg', 'openai_audio')
+def test_openai_audio_fail():
+  _test_upload_expect_error(
+      'openai', 'cat.mp3', 'audio/mpeg', 'openai_audio_fail')
 
 def test_mistral_audio_fail():
   _test_upload_expect_error(
@@ -190,11 +204,13 @@ def test_mistral_audio_fail():
 def test_gemini_video():
   _test_upload_success('gemini', 'cat.mp4', 'video/mp4', 'gemini_video')
 
-def test_claude_video():
-  _test_upload_success('claude', 'cat.mp4', 'video/mp4', 'claude_video')
+def test_claude_video_fail():
+  _test_upload_expect_error(
+      'claude', 'cat.mp4', 'video/mp4', 'claude_video_fail')
 
-def test_openai_video():
-  _test_upload_success('openai', 'cat.mp4', 'video/mp4', 'openai_video')
+def test_openai_video_fail():
+  _test_upload_expect_error(
+      'openai', 'cat.mp4', 'video/mp4', 'openai_video_fail')
 
 def test_mistral_video_fail():
   _test_upload_expect_error(
@@ -241,25 +257,18 @@ def test_multi_parallel():
   px.reset_state()
 
 
-def test_multi_parallel_mixed_media():
-  print('\n=== Multi Upload: Parallel mixed (gemini OK, mistral error) ===')
+def test_multi_parallel_mixed_media_fail():
+  print('\n=== Multi Upload: Mixed media validation error ===')
   px.connect()
   media = px.MessageContent(
       path=_asset('cat.mp3'), media_type='audio/mpeg')
   try:
     px.files.upload(media=media, providers=['gemini', 'mistral'])
-    _save_result(media, 'multi_parallel_mixed_unexpected_success')
     raise AssertionError(
-        "Expected FileUploadError for partial failure, "
-        "but all uploads succeeded.")
-  except FileUploadError as e:
-    print(f'  Partial failure (expected): {e}')
-    assert 'mistral' in e.errors
-    assert e.media.provider_file_api_status['gemini'].state == FileUploadState.ACTIVE
-    assert e.media.provider_file_api_status['mistral'].state == FileUploadState.FAILED
-    _save_result(e.media, 'multi_parallel_mixed_partial')
-    print(f'  gemini: OK (id={e.media.provider_file_api_ids.get("gemini")})')
-    print(f'  mistral: FAILED')
+        "Expected ValueError for unsupported media type, "
+        "but upload succeeded.")
+  except ValueError as e:
+    print(f'  Expected error: {e}')
   px.reset_state()
 
 
@@ -342,15 +351,10 @@ _PROVIDER_ASSETS = {
         ('cat.pdf', 'application/pdf'),
         ('cat.jpeg', 'image/jpeg'),
         ('cat.webp', 'image/webp'),
-        ('cat.mp3', 'audio/mpeg'),
-        ('cat.mp4', 'video/mp4'),
     ],
     'openai': [
         ('cat.pdf', 'application/pdf'),
-        ('cat.jpeg', 'image/jpeg'),
-        ('cat.webp', 'image/webp'),
-        ('cat.mp3', 'audio/mpeg'),
-        ('cat.mp4', 'video/mp4'),
+        ('cat.md', 'text/markdown'),
     ],
     'mistral': [
         ('cat.pdf', 'application/pdf'),
@@ -532,14 +536,13 @@ def test_download_mistral():
 
 # --- Generate with manual upload tests ---
 
-def _test_generate_manual_upload(provider):
+def _test_generate_manual(provider, asset_file, mime_type, prompt, label):
   prov, model = _PROVIDER_MODELS[provider]
-  print(f'\n=== Generate (manual upload): {provider} ===')
+  print(f'\n=== Generate (manual upload): {provider} {asset_file} ===')
   _register_models()
-  media = px.MessageContent(
-      path=_asset('cat.pdf'), media_type='application/pdf')
+  media = px.MessageContent(path=_asset(asset_file), media_type=mime_type)
   px.files.upload(media=media, providers=[provider])
-  _save_result(media, f'generate_manual_{provider}')
+  _save_result(media, label)
   print(f'  Uploaded: {media.provider_file_api_ids[provider]}')
 
   result = px.generate(
@@ -547,9 +550,7 @@ def _test_generate_manual_upload(provider):
           'role': 'user',
           'content': [
               media,
-              px.MessageContent(
-                  type=px.ContentType.TEXT,
-                  text='What is inside this document?'),
+              px.MessageContent(type=px.ContentType.TEXT, text=prompt),
           ],
       }],
       provider_model=(prov, model))
@@ -560,36 +561,131 @@ def _test_generate_manual_upload(provider):
   print('  Cleaned up OK')
 
 
-def test_generate_manual_gemini():
-  _test_generate_manual_upload('gemini')
+def _test_generate_manual_upload_fail(provider, asset_file, mime_type):
+  print(f'\n=== Generate (manual upload fail): '
+        f'{provider} {asset_file} ===')
+  media = px.MessageContent(path=_asset(asset_file), media_type=mime_type)
+  try:
+    px.files.upload(media=media, providers=[provider])
+    raise AssertionError(
+        f"Expected ValueError for {provider} with "
+        f"{asset_file}, but upload succeeded.")
+  except ValueError as e:
+    print(f'  Expected error: {e}')
 
-def test_generate_manual_claude():
-  _test_generate_manual_upload('claude')
 
-def test_generate_manual_openai():
-  _test_generate_manual_upload('openai')
+# PDF: all 4 providers
+def test_generate_manual_gemini_pdf():
+  _test_generate_manual(
+      'gemini', 'cat.pdf', 'application/pdf',
+      'What is inside this document?', 'generate_manual_gemini_pdf')
 
-def test_generate_manual_mistral():
-  _test_generate_manual_upload('mistral')
+def test_generate_manual_claude_pdf():
+  _test_generate_manual(
+      'claude', 'cat.pdf', 'application/pdf',
+      'What is inside this document?', 'generate_manual_claude_pdf')
+
+def test_generate_manual_openai_pdf():
+  _test_generate_manual(
+      'openai', 'cat.pdf', 'application/pdf',
+      'What is inside this document?', 'generate_manual_openai_pdf')
+
+def test_generate_manual_mistral_pdf():
+  _test_generate_manual(
+      'mistral', 'cat.pdf', 'application/pdf',
+      'What is inside this document?', 'generate_manual_mistral_pdf')
+
+# Markdown: gemini, openai, mistral succeed; claude fails
+def test_generate_manual_gemini_md():
+  _test_generate_manual(
+      'gemini', 'cat.md', 'text/markdown',
+      'What is inside this document?', 'generate_manual_gemini_md')
+
+def test_generate_manual_openai_md():
+  _test_generate_manual(
+      'openai', 'cat.md', 'text/markdown',
+      'What is inside this document?', 'generate_manual_openai_md')
+
+def test_generate_manual_mistral_md():
+  _test_generate_manual(
+      'mistral', 'cat.md', 'text/markdown',
+      'What is inside this document?', 'generate_manual_mistral_md')
+
+def test_generate_manual_claude_md_fail():
+  _test_generate_manual_upload_fail(
+      'claude', 'cat.md', 'text/markdown')
+
+# Image: gemini, claude, mistral succeed; openai fails
+def test_generate_manual_gemini_image():
+  _test_generate_manual(
+      'gemini', 'cat.jpeg', 'image/jpeg',
+      'What is in this image?', 'generate_manual_gemini_image')
+
+def test_generate_manual_claude_image():
+  _test_generate_manual(
+      'claude', 'cat.jpeg', 'image/jpeg',
+      'What is in this image?', 'generate_manual_claude_image')
+
+def test_generate_manual_mistral_image():
+  _test_generate_manual(
+      'mistral', 'cat.jpeg', 'image/jpeg',
+      'What is in this image?', 'generate_manual_mistral_image')
+
+def test_generate_manual_openai_image_fail():
+  _test_generate_manual_upload_fail(
+      'openai', 'cat.jpeg', 'image/jpeg')
+
+# Audio: gemini succeeds; claude, openai, mistral fail
+def test_generate_manual_gemini_audio():
+  _test_generate_manual(
+      'gemini', 'cat.mp3', 'audio/mpeg',
+      'What is this audio about?', 'generate_manual_gemini_audio')
+
+def test_generate_manual_claude_audio_fail():
+  _test_generate_manual_upload_fail(
+      'claude', 'cat.mp3', 'audio/mpeg')
+
+def test_generate_manual_openai_audio_fail():
+  _test_generate_manual_upload_fail(
+      'openai', 'cat.mp3', 'audio/mpeg')
+
+def test_generate_manual_mistral_audio_fail():
+  _test_generate_manual_upload_fail(
+      'mistral', 'cat.mp3', 'audio/mpeg')
+
+# Video: gemini succeeds; claude, openai, mistral fail
+def test_generate_manual_gemini_video():
+  _test_generate_manual(
+      'gemini', 'cat.mp4', 'video/mp4',
+      'What is in this video?', 'generate_manual_gemini_video')
+
+def test_generate_manual_claude_video_fail():
+  _test_generate_manual_upload_fail(
+      'claude', 'cat.mp4', 'video/mp4')
+
+def test_generate_manual_openai_video_fail():
+  _test_generate_manual_upload_fail(
+      'openai', 'cat.mp4', 'video/mp4')
+
+def test_generate_manual_mistral_video_fail():
+  _test_generate_manual_upload_fail(
+      'mistral', 'cat.mp4', 'video/mp4')
 
 
 # --- Generate with auto upload tests ---
 
-def _test_generate_auto_upload(provider):
+def _test_generate_auto(provider, asset_file, mime_type, prompt):
   prov, model = _PROVIDER_MODELS[provider]
-  print(f'\n=== Generate (auto upload): {provider} ===')
+  print(f'\n=== Generate (auto upload): {provider} {asset_file} ===')
   _register_models()
-  media = px.MessageContent(
-      path=_asset('cat.pdf'), media_type='application/pdf')
+  media = px.MessageContent(path=_asset(asset_file), media_type=mime_type)
 
   result = px.generate(
       messages=[{
           'role': 'user',
           'content': [
               media,
-              px.MessageContent(
-                  type=px.ContentType.TEXT,
-                  text='What is inside this document?'),
+              px.MessageContent(type=px.ContentType.TEXT, text=prompt),
           ],
       }],
       provider_model=(prov, model))
@@ -604,17 +700,25 @@ def _test_generate_auto_upload(provider):
   print('  Cleaned up OK')
 
 
-def test_generate_auto_gemini():
-  _test_generate_auto_upload('gemini')
+def test_generate_auto_gemini_pdf():
+  _test_generate_auto(
+      'gemini', 'cat.pdf', 'application/pdf',
+      'What is inside this document?')
 
-def test_generate_auto_claude():
-  _test_generate_auto_upload('claude')
+def test_generate_auto_claude_pdf():
+  _test_generate_auto(
+      'claude', 'cat.pdf', 'application/pdf',
+      'What is inside this document?')
 
-def test_generate_auto_openai():
-  _test_generate_auto_upload('openai')
+def test_generate_auto_openai_pdf():
+  _test_generate_auto(
+      'openai', 'cat.pdf', 'application/pdf',
+      'What is inside this document?')
 
-def test_generate_auto_mistral():
-  _test_generate_auto_upload('mistral')
+def test_generate_auto_mistral_pdf():
+  _test_generate_auto(
+      'mistral', 'cat.pdf', 'application/pdf',
+      'What is inside this document?')
 
 
 # --- Cache with file upload tests ---
@@ -799,22 +903,22 @@ TEST_SEQUENCE = [
 
     ('gemini_image', test_gemini_image),
     ('claude_image', test_claude_image),
-    ('openai_image', test_openai_image),
     ('mistral_image', test_mistral_image),
+    ('openai_image_fail', test_openai_image_fail),
 
     ('gemini_audio', test_gemini_audio),
-    ('claude_audio', test_claude_audio),
-    ('openai_audio', test_openai_audio),
+    ('claude_audio_fail', test_claude_audio_fail),
+    ('openai_audio_fail', test_openai_audio_fail),
     ('mistral_audio_fail', test_mistral_audio_fail),
 
     ('gemini_video', test_gemini_video),
-    ('claude_video', test_claude_video),
-    ('openai_video', test_openai_video),
+    ('claude_video_fail', test_claude_video_fail),
+    ('openai_video_fail', test_openai_video_fail),
     ('mistral_video_fail', test_mistral_video_fail),
 
     ('multi_sequential', test_multi_sequential),
     ('multi_parallel', test_multi_parallel),
-    ('multi_parallel_mixed_media', test_multi_parallel_mixed_media),
+    ('multi_parallel_mixed_media_fail', test_multi_parallel_mixed_media_fail),
 
     ('remove_gemini', test_remove_gemini),
     ('remove_claude', test_remove_claude),
@@ -835,15 +939,35 @@ TEST_SEQUENCE = [
     ('download_openai_fail', test_download_openai_fail),
     ('download_mistral', test_download_mistral),
 
-    ('generate_manual_gemini', test_generate_manual_gemini),
-    ('generate_manual_claude', test_generate_manual_claude),
-    ('generate_manual_openai', test_generate_manual_openai),
-    ('generate_manual_mistral', test_generate_manual_mistral),
+    ('generate_manual_gemini_pdf', test_generate_manual_gemini_pdf),
+    ('generate_manual_claude_pdf', test_generate_manual_claude_pdf),
+    ('generate_manual_openai_pdf', test_generate_manual_openai_pdf),
+    ('generate_manual_mistral_pdf', test_generate_manual_mistral_pdf),
 
-    ('generate_auto_gemini', test_generate_auto_gemini),
-    ('generate_auto_claude', test_generate_auto_claude),
-    ('generate_auto_openai', test_generate_auto_openai),
-    ('generate_auto_mistral', test_generate_auto_mistral),
+    ('generate_manual_gemini_md', test_generate_manual_gemini_md),
+    ('generate_manual_openai_md', test_generate_manual_openai_md),
+    ('generate_manual_mistral_md', test_generate_manual_mistral_md),
+    ('generate_manual_claude_md_fail', test_generate_manual_claude_md_fail),
+
+    ('generate_manual_gemini_image', test_generate_manual_gemini_image),
+    ('generate_manual_claude_image', test_generate_manual_claude_image),
+    ('generate_manual_mistral_image', test_generate_manual_mistral_image),
+    ('generate_manual_openai_image_fail', test_generate_manual_openai_image_fail),
+
+    ('generate_manual_gemini_audio', test_generate_manual_gemini_audio),
+    ('generate_manual_claude_audio_fail', test_generate_manual_claude_audio_fail),
+    ('generate_manual_openai_audio_fail', test_generate_manual_openai_audio_fail),
+    ('generate_manual_mistral_audio_fail', test_generate_manual_mistral_audio_fail),
+
+    ('generate_manual_gemini_video', test_generate_manual_gemini_video),
+    ('generate_manual_claude_video_fail', test_generate_manual_claude_video_fail),
+    ('generate_manual_openai_video_fail', test_generate_manual_openai_video_fail),
+    ('generate_manual_mistral_video_fail', test_generate_manual_mistral_video_fail),
+
+    ('generate_auto_gemini_pdf', test_generate_auto_gemini_pdf),
+    ('generate_auto_claude_pdf', test_generate_auto_claude_pdf),
+    ('generate_auto_openai_pdf', test_generate_auto_openai_pdf),
+    ('generate_auto_mistral_pdf', test_generate_auto_mistral_pdf),
 
     ('cache_gemini', test_cache_gemini),
     ('cache_claude', test_cache_claude),

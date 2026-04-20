@@ -34,9 +34,9 @@ class OpenAIConnector(provider_connector.ProviderConnector):
   PROVIDER_API_KEYS = ['OPENAI_API_KEY']
 
   ENDPOINT_PRIORITY = [
+      'responses.create',
       'chat.completions.create',
       'beta.chat.completions.parse',
-      'responses.create',
       'images.generate',
       'audio.speech.create',
       'videos.create',
@@ -202,8 +202,13 @@ class OpenAIConnector(provider_connector.ProviderConnector):
     Returns None for unsupported content types.
     """
     # File API reference (pre-uploaded via px.files.upload)
+    # chat.completions only accepts PDF via file_id reference.
+    _CHAT_COMPLETIONS_FILE_REF_TYPES = frozenset({
+        'application/pdf',
+    })
     file_ids = part_dict.get('provider_file_api_ids', {})
-    if 'openai' in file_ids:
+    if ('openai' in file_ids
+        and part_dict.get('media_type') in _CHAT_COMPLETIONS_FILE_REF_TYPES):
       return {'type': 'file', 'file': {
           'file_id': file_ids['openai']}}
     content_type = part_dict.get('type')

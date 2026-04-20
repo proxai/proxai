@@ -300,6 +300,9 @@ DOWNLOAD_DISPATCH = {
 }
 
 
+# --- File API upload support (what the File API accepts) ---
+# See docs/development/multimodal_large_file_analysis.md §6
+
 _ALL_MEDIA_TYPES = frozenset({
     'application/pdf',
     'application/vnd.openxmlformats-officedocument'
@@ -329,7 +332,7 @@ _ALL_MEDIA_TYPES = frozenset({
     'video/x-matroska',
 })
 
-_MISTRAL_SUPPORTED = frozenset({
+_MISTRAL_UPLOAD_SUPPORTED = frozenset({
     'application/pdf',
     'application/vnd.openxmlformats-officedocument'
     '.wordprocessingml.document',
@@ -337,6 +340,7 @@ _MISTRAL_SUPPORTED = frozenset({
     '.spreadsheetml.sheet',
     'text/csv',
     'text/plain',
+    'text/markdown',
     'image/png',
     'image/jpeg',
     'image/gif',
@@ -349,7 +353,76 @@ UPLOAD_SUPPORTED_MEDIA_TYPES = {
     'gemini': _ALL_MEDIA_TYPES,
     'claude': _ALL_MEDIA_TYPES,
     'openai': _ALL_MEDIA_TYPES,
-    'mistral': _MISTRAL_SUPPORTED,
+    'mistral': _MISTRAL_UPLOAD_SUPPORTED,
+}
+
+# --- File_id/URI reference support in generate endpoints ---
+# What the generate endpoint accepts as file_id reference.
+# This is stricter than upload support — a provider may accept
+# a file upload but reject the file_id in chat messages.
+# See docs/development/multimodal_large_file_analysis.md §8
+
+REFERENCE_SUPPORTED_MEDIA_TYPES = {
+    'gemini': frozenset({
+        'application/pdf',
+        'application/vnd.openxmlformats-officedocument'
+        '.wordprocessingml.document',
+        'application/vnd.openxmlformats-officedocument'
+        '.spreadsheetml.sheet',
+        'text/csv',
+        'text/plain',
+        'text/markdown',
+        'image/png',
+        'image/jpeg',
+        'image/gif',
+        'image/webp',
+        'image/heic',
+        'image/heif',
+        'audio/mpeg',
+        'audio/wav',
+        'audio/flac',
+        'audio/aac',
+        'audio/ogg',
+        'audio/aiff',
+        'video/mp4',
+        'video/webm',
+        'video/quicktime',
+        'video/x-msvideo',
+        'video/mpeg',
+        'video/x-matroska',
+    }),
+    'claude': frozenset({
+        'application/pdf',
+        'text/plain',
+        'image/png',
+        'image/jpeg',
+        'image/gif',
+        'image/webp',
+        'image/heic',
+        'image/heif',
+    }),
+    'openai': frozenset({
+        'application/pdf',
+        'application/vnd.openxmlformats-officedocument'
+        '.wordprocessingml.document',
+        'application/vnd.openxmlformats-officedocument'
+        '.spreadsheetml.sheet',
+        'text/csv',
+        'text/plain',
+        'text/markdown',
+    }),
+    'mistral': frozenset({
+        'application/pdf',
+        'text/plain',
+        'text/markdown',
+        'text/csv',
+        'image/png',
+        'image/jpeg',
+        'image/gif',
+        'image/webp',
+        'image/heic',
+        'image/heif',
+    }),
 }
 
 DOWNLOAD_SUPPORTED_PROVIDERS = frozenset({'mistral'})
