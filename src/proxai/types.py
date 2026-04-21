@@ -12,6 +12,7 @@ import proxai.chat.chat_session as chat_session
 ContentType = message_content.ContentType
 MessageRoleType = message_content.MessageRoleType
 PydanticContent = message_content.PydanticContent
+ProxDashFileStatus = message_content.ProxDashFileStatus
 MessageContent = message_content.MessageContent
 Message = message.Message
 Chat = chat_session.Chat

@@ -15,6 +15,7 @@ from proxai.chat.message_content import (
     FileUploadMetadata,
     FileUploadState,
     MessageContent,
+    ProxDashFileStatus,
     PydanticContent,
     SUPPORTED_MEDIA_TYPES,
     ToolContent,
@@ -692,6 +693,75 @@ class TestMessageContentFileApiFields:
     assert restored.provider_file_api_status["openai"].state == (
         FileUploadState.FAILED
     )
+
+
+class TestProxDashFileFields:
+
+  def test_fields_none_by_default(self):
+    mc = MessageContent(type="image", source="https://example.com/img.png")
+    assert mc.proxdash_file_id is None
+    assert mc.proxdash_file_status is None
+
+  def test_to_dict_omits_none_fields(self):
+    mc = MessageContent(type="image", source="https://example.com/img.png")
+    d = mc.to_dict()
+    assert "proxdash_file_id" not in d
+    assert "proxdash_file_status" not in d
+
+  def test_round_trip(self):
+    mc = MessageContent(
+        type="document",
+        source="https://example.com/doc.pdf",
+        media_type="application/pdf",
+        proxdash_file_id="clxyz123",
+        proxdash_file_status=ProxDashFileStatus(
+            file_id="clxyz123",
+            s3_key="files/user1/clxyz123",
+            upload_confirmed=True,
+            source="https://s3.example.com/presigned-url",
+            created_at="2024-01-01T12:00:00Z",
+            updated_at="2024-01-01T12:01:00Z",
+        ),
+    )
+    d = mc.to_dict()
+    assert d["proxdash_file_id"] == "clxyz123"
+    assert d["proxdash_file_status"]["file_id"] == "clxyz123"
+    assert d["proxdash_file_status"]["s3_key"] == "files/user1/clxyz123"
+    assert d["proxdash_file_status"]["upload_confirmed"] is True
+    assert d["proxdash_file_status"]["source"] == (
+        "https://s3.example.com/presigned-url"
+    )
+
+    restored = MessageContent.from_dict(d)
+    assert restored.proxdash_file_id == "clxyz123"
+    assert restored.proxdash_file_status.file_id == "clxyz123"
+    assert restored.proxdash_file_status.s3_key == "files/user1/clxyz123"
+    assert restored.proxdash_file_status.upload_confirmed is True
+    assert restored.proxdash_file_status.created_at == "2024-01-01T12:00:00Z"
+    assert restored.proxdash_file_status.updated_at == "2024-01-01T12:01:00Z"
+
+  def test_round_trip_coexists_with_provider_fields(self):
+    mc = MessageContent(
+        type="image",
+        source="https://example.com/img.png",
+        provider_file_api_ids={"gemini": "files/abc"},
+        provider_file_api_status={
+            "gemini": FileUploadMetadata(
+                file_id="files/abc",
+                state=FileUploadState.ACTIVE,
+            ),
+        },
+        proxdash_file_id="clxyz123",
+        proxdash_file_status=ProxDashFileStatus(
+            file_id="clxyz123",
+            upload_confirmed=True,
+        ),
+    )
+    d = mc.to_dict()
+    restored = MessageContent.from_dict(d)
+    assert restored.provider_file_api_ids == {"gemini": "files/abc"}
+    assert restored.proxdash_file_id == "clxyz123"
+    assert restored.proxdash_file_status.upload_confirmed is True
 
 
 class TestTypeInference:

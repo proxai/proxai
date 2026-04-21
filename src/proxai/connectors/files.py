@@ -18,8 +18,7 @@ class FileUploadError(Exception):
   """Raised when one or more provider uploads fail."""
 
   def __init__(
-      self, errors: dict[str, Exception],
-      media: message_content.MessageContent
+      self, errors: dict[str, Exception], media: message_content.MessageContent
   ):
     self.errors = errors
     self.media = media
@@ -31,8 +30,7 @@ class FileRemoveError(Exception):
   """Raised when one or more provider file removals fail."""
 
   def __init__(
-      self, errors: dict[str, Exception],
-      media: message_content.MessageContent
+      self, errors: dict[str, Exception], media: message_content.MessageContent
   ):
     self.errors = errors
     self.media = media
@@ -146,9 +144,8 @@ class FilesManager(state_controller.StateControlled):
 
   def _use_parallel(self, providers: list[types.ProviderNameType]) -> bool:
     return (
-        len(providers) > 1
-        and self.provider_call_options is not None
-        and self.provider_call_options.allow_parallel_file_operations
+        len(providers) > 1 and self.provider_call_options is not None and
+        self.provider_call_options.allow_parallel_file_operations
     )
 
   def _validate_provider_support(
@@ -162,9 +159,7 @@ class FilesManager(state_controller.StateControlled):
           f"Supported: {list(dispatch.keys())}"
       )
     if not self.api_key_manager.has_provider_key(provider):
-      raise ValueError(
-          f"No API key configured for provider '{provider}'."
-      )
+      raise ValueError(f"No API key configured for provider '{provider}'.")
 
   def _get_upload_dispatch(self):
     if self.run_type == types.RunType.TEST:
@@ -213,12 +208,14 @@ class FilesManager(state_controller.StateControlled):
     if provider not in file_helpers.UPLOAD_SUPPORTED_MEDIA_TYPES:
       return False
     if media.media_type not in (
-        file_helpers.UPLOAD_SUPPORTED_MEDIA_TYPES[provider]):
+        file_helpers.UPLOAD_SUPPORTED_MEDIA_TYPES[provider]
+    ):
       return False
     if provider not in file_helpers.REFERENCE_SUPPORTED_MEDIA_TYPES:
       return False
     return media.media_type in (
-        file_helpers.REFERENCE_SUPPORTED_MEDIA_TYPES[provider])
+        file_helpers.REFERENCE_SUPPORTED_MEDIA_TYPES[provider]
+    )
 
   def is_download_supported(
       self,
@@ -236,9 +233,7 @@ class FilesManager(state_controller.StateControlled):
 
   # --- Upload ---
 
-  def _validate_upload_media(
-      self, media: message_content.MessageContent
-  ):
+  def _validate_upload_media(self, media: message_content.MessageContent):
     if media.type not in self._MEDIA_TYPES:
       raise ValueError(
           f"upload() requires a media content type "
@@ -310,6 +305,13 @@ class FilesManager(state_controller.StateControlled):
     )
     errors[provider] = error
 
+  def _proxdash_connected(self) -> bool:
+    return (
+        self.proxdash_connection is not None
+        and self.proxdash_connection.status
+        == types.ProxDashConnectionStatus.CONNECTED
+    )
+
   def _execute_uploads(
       self,
       media: message_content.MessageContent,
@@ -319,31 +321,72 @@ class FilesManager(state_controller.StateControlled):
       filename: str,
       mime_type: str,
   ) -> dict[str, Exception]:
+    """Upload to all providers and ProxDash in parallel."""
     errors: dict[str, Exception] = {}
-    if self._use_parallel(providers):
-      with ThreadPoolExecutor(max_workers=len(providers)) as pool:
-        futures = {
-            provider: pool.submit(
-                self._upload_single_provider,
-                provider, file_path, file_data, filename, mime_type,
-            )
-            for provider in providers
+    include_proxdash = self._proxdash_connected()
+    use_parallel = self._use_parallel(providers) or include_proxdash
+
+    if use_parallel:
+      max_workers = len(providers) + (1 if include_proxdash else 0)
+      with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        provider_futures = {
+            provider:
+                pool.submit(
+                    self._upload_single_provider,
+                    provider,
+                    file_path,
+                    file_data,
+                    filename,
+                    mime_type,
+                ) for provider in providers
         }
-        for provider, future in futures.items():
+        proxdash_future = None
+        if include_proxdash:
+          proxdash_future = pool.submit(
+              self.proxdash_connection.upload_file, media
+          )
+
+        for provider, future in provider_futures.items():
           try:
             metadata = future.result()
             self._collect_upload_result(media, provider, metadata)
           except Exception as e:
             self._collect_upload_error(media, provider, errors, e)
+
+        if proxdash_future is not None:
+          try:
+            proxdash_future.result()
+          except Exception:
+            pass
     else:
       for provider in providers:
         try:
           metadata = self._upload_single_provider(
-              provider, file_path, file_data, filename, mime_type)
+              provider, file_path, file_data, filename, mime_type
+          )
           self._collect_upload_result(media, provider, metadata)
         except Exception as e:
           self._collect_upload_error(media, provider, errors, e)
+
+    self._sync_provider_metadata_to_proxdash(media)
     return errors
+
+  def _sync_provider_metadata_to_proxdash(
+      self, media: message_content.MessageContent
+  ):
+    if not self._proxdash_connected() or media.proxdash_file_id is None:
+      return
+    media_dict = media.to_dict()
+    try:
+      self.proxdash_connection.update_file(
+          file_id=media.proxdash_file_id,
+          provider_file_api_ids=media_dict.get('provider_file_api_ids'),
+          provider_file_api_status=media_dict.get(
+              'provider_file_api_status'
+          ),
+      )
+    except Exception:
+      pass
 
   def upload(
       self,
@@ -370,8 +413,7 @@ class FilesManager(state_controller.StateControlled):
     """
     self._validate_upload_media(media)
     for provider in providers:
-      self._validate_provider_support(
-          provider, self._get_upload_dispatch())
+      self._validate_provider_support(provider, self._get_upload_dispatch())
       if not self.is_upload_supported(media, provider):
         raise ValueError(
             f"Media type '{media.media_type}' cannot be uploaded "
@@ -379,11 +421,13 @@ class FilesManager(state_controller.StateControlled):
         )
 
     file_path, file_data, filename, mime_type = (
-        self._resolve_upload_file_info(media))
+        self._resolve_upload_file_info(media)
+    )
     self._init_upload_fields(media)
 
     errors = self._execute_uploads(
-        media, providers, file_path, file_data, filename, mime_type)
+        media, providers, file_path, file_data, filename, mime_type
+    )
     if errors:
       raise FileUploadError(errors=errors, media=media)
 
@@ -397,18 +441,17 @@ class FilesManager(state_controller.StateControlled):
       provider: types.ProviderNameType | None,
   ) -> types.ProviderNameType:
     if provider is not None:
-      if (media.provider_file_api_ids is None
-          or provider not in media.provider_file_api_ids):
+      if (
+          media.provider_file_api_ids is None or
+          provider not in media.provider_file_api_ids
+      ):
         raise ValueError(
             f"No file_id found for provider '{provider}' "
             f"on this media content."
         )
       return provider
-    if (media.provider_file_api_ids is None
-        or not media.provider_file_api_ids):
-      raise ValueError(
-          "No uploaded providers found on this media content."
-      )
+    if (media.provider_file_api_ids is None or not media.provider_file_api_ids):
+      raise ValueError("No uploaded providers found on this media content.")
     for p in self._DOWNLOAD_PROVIDER_PRIORITY:
       if p in media.provider_file_api_ids:
         return p
@@ -444,9 +487,7 @@ class FilesManager(state_controller.StateControlled):
           f"{list(download_dispatch.keys())}"
       )
     if not self.api_key_manager.has_provider_key(provider):
-      raise ValueError(
-          f"No API key configured for provider '{provider}'."
-      )
+      raise ValueError(f"No API key configured for provider '{provider}'.")
 
     file_id = media.provider_file_api_ids[provider]
     token_map = self.api_key_manager.get_provider_keys(provider)
@@ -479,9 +520,7 @@ class FilesManager(state_controller.StateControlled):
           if self.api_key_manager.has_provider_key(p)
       ]
       if not providers:
-        raise ValueError(
-            "No providers with API keys found for file listing."
-        )
+        raise ValueError("No providers with API keys found for file listing.")
     return providers
 
   def _list_single_provider(
@@ -522,19 +561,16 @@ class FilesManager(state_controller.StateControlled):
     if self._use_parallel(providers):
       with ThreadPoolExecutor(max_workers=len(providers)) as pool:
         futures = {
-            provider: pool.submit(
-                self._list_single_provider, provider, limit)
+            provider: pool.submit(self._list_single_provider, provider, limit)
             for provider in providers
         }
         for provider, future in futures.items():
           for meta in future.result():
-            results.append(
-                self._metadata_to_message_content(provider, meta))
+            results.append(self._metadata_to_message_content(provider, meta))
     else:
       for provider in providers:
         for meta in self._list_single_provider(provider, limit):
-          results.append(
-              self._metadata_to_message_content(provider, meta))
+          results.append(self._metadata_to_message_content(provider, meta))
     return results
 
   def list(
@@ -561,8 +597,7 @@ class FilesManager(state_controller.StateControlled):
     """
     providers = self._resolve_list_providers(providers)
     for provider in providers:
-      self._validate_provider_support(
-          provider, self._get_list_dispatch())
+      self._validate_provider_support(provider, self._get_list_dispatch())
 
     return self._execute_lists(providers, limit_per_provider)
 
@@ -579,11 +614,10 @@ class FilesManager(state_controller.StateControlled):
           "or be omitted to remove from all uploaded providers."
       )
     if providers is None:
-      if (media.provider_file_api_ids is None
-          or not media.provider_file_api_ids):
-        raise ValueError(
-            "No uploaded providers found on this media content."
-        )
+      if (
+          media.provider_file_api_ids is None or not media.provider_file_api_ids
+      ):
+        raise ValueError("No uploaded providers found on this media content.")
       return list(media.provider_file_api_ids.keys())
     return providers
 
@@ -593,10 +627,11 @@ class FilesManager(state_controller.StateControlled):
       providers: list[types.ProviderNameType],
   ):
     for provider in providers:
-      self._validate_provider_support(
-          provider, self._get_remove_dispatch())
-      if (media.provider_file_api_ids is None
-          or provider not in media.provider_file_api_ids):
+      self._validate_provider_support(provider, self._get_remove_dispatch())
+      if (
+          media.provider_file_api_ids is None or
+          provider not in media.provider_file_api_ids
+      ):
         raise ValueError(
             f"No file_id found for provider '{provider}' "
             f"on this media content."
@@ -628,11 +663,12 @@ class FilesManager(state_controller.StateControlled):
     if self._use_parallel(providers):
       with ThreadPoolExecutor(max_workers=len(providers)) as pool:
         futures = {
-            provider: pool.submit(
-                self._remove_single_provider,
-                provider, media.provider_file_api_ids[provider],
-            )
-            for provider in providers
+            provider:
+                pool.submit(
+                    self._remove_single_provider,
+                    provider,
+                    media.provider_file_api_ids[provider],
+                ) for provider in providers
         }
         for provider, future in futures.items():
           try:
@@ -644,7 +680,8 @@ class FilesManager(state_controller.StateControlled):
       for provider in providers:
         try:
           self._remove_single_provider(
-              provider, media.provider_file_api_ids[provider])
+              provider, media.provider_file_api_ids[provider]
+          )
           self._collect_remove_result(media, provider)
         except Exception as e:
           errors[provider] = e

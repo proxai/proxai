@@ -53,6 +53,8 @@ def _content_hash_dict(
   """
   d = content_item.to_dict()
   d.pop('filename', None)
+  d.pop('proxdash_file_id', None)
+  d.pop('proxdash_file_status', None)
   has_local_content = (
       'path' in d or 'data' in d or 'source' in d
   )

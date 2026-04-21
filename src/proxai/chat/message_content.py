@@ -116,7 +116,7 @@ class ToolKind(str, enum.Enum):
 class Citation:
   title: str | None = None
   url: str | None = None
-    
+
 
 @dataclasses.dataclass
 class ToolContent:
@@ -149,6 +149,24 @@ class FileUploadMetadata:
   uri: str | None = None
   state: FileUploadState | None = None
   sha256_hash: str | None = None
+
+
+@dataclasses.dataclass
+class ProxDashFileStatus:
+  """Metadata from a ProxDash file upload.
+
+  ProxDash is the central file control center, separate from provider
+  file APIs. Provider file IDs are ephemeral transport metadata that
+  expire and get cleaned up. The ProxDash file ID is the permanent
+  reference to the canonical copy stored in ProxDash's S3 bucket.
+  """
+
+  file_id: str
+  s3_key: str | None = None
+  upload_confirmed: bool = False
+  source: str | None = None
+  created_at: str | None = None
+  updated_at: str | None = None
 
 
 @dataclasses.dataclass
@@ -188,7 +206,7 @@ class MessageContent:
   json: dict[str, Any] | None = None
   pydantic_content: PydanticContent | None = None
   tool_content: ToolContent | None = None
-  
+
   source: str | None = None
   data: bytes | None = None
   path: str | None = None
@@ -197,6 +215,9 @@ class MessageContent:
 
   provider_file_api_status: dict[str, FileUploadMetadata] | None = None
   provider_file_api_ids: dict[str, str] | None = None
+
+  proxdash_file_id: str | None = None
+  proxdash_file_status: ProxDashFileStatus | None = None
 
   def __post_init__(self):
     if self.type is None:
@@ -221,8 +242,10 @@ class MessageContent:
             f"Must be one of: {[t.value for t in ContentType]}"
         )
     if self.media_type is not None and self.type in (
-        ContentType.IMAGE, ContentType.DOCUMENT,
-        ContentType.AUDIO, ContentType.VIDEO,
+        ContentType.IMAGE,
+        ContentType.DOCUMENT,
+        ContentType.AUDIO,
+        ContentType.VIDEO,
     ):
       expected = self._infer_content_type(self.media_type)
       if expected is not None and expected != self.type:
@@ -252,9 +275,7 @@ class MessageContent:
         )
     elif self.type == ContentType.JSON:
       if self.json is None:
-        raise ValueError(
-            "'json' field is required when type is 'json'."
-        )
+        raise ValueError("'json' field is required when type is 'json'.")
     elif self.type == ContentType.PYDANTIC_INSTANCE:
       if self.pydantic_content is None:
         raise ValueError(
@@ -273,13 +294,12 @@ class MessageContent:
         ContentType.VIDEO,
     ):
       has_local_content = (
-          self.source is not None
-          or self.data is not None
-          or self.path is not None
+          self.source is not None or self.data is not None or
+          self.path is not None
       )
       has_remote_reference = (
-          self.provider_file_api_ids is not None
-          and len(self.provider_file_api_ids) > 0
+          self.provider_file_api_ids is not None and
+          len(self.provider_file_api_ids) > 0
       )
       if not has_local_content and not has_remote_reference:
         raise ValueError(
@@ -312,7 +332,8 @@ class MessageContent:
     if media_type in MessageContent._MIME_TO_CONTENT_TYPE:
       return MessageContent._MIME_TO_CONTENT_TYPE[media_type]
     for prefix, content_type in (
-        MessageContent._MIME_PREFIX_TO_CONTENT_TYPE.items()):
+        MessageContent._MIME_PREFIX_TO_CONTENT_TYPE.items()
+    ):
       if media_type.startswith(prefix):
         return content_type
     return None
@@ -396,6 +417,20 @@ class MessageContent:
           meta_dict["sha256_hash"] = meta.sha256_hash
         status_dict[provider] = meta_dict
       result["provider_file_api_status"] = status_dict
+    if self.proxdash_file_id is not None:
+      result["proxdash_file_id"] = self.proxdash_file_id
+    if self.proxdash_file_status is not None:
+      pd_dict = {"file_id": self.proxdash_file_status.file_id}
+      if self.proxdash_file_status.s3_key is not None:
+        pd_dict["s3_key"] = self.proxdash_file_status.s3_key
+      pd_dict["upload_confirmed"] = (self.proxdash_file_status.upload_confirmed)
+      if self.proxdash_file_status.source is not None:
+        pd_dict["source"] = self.proxdash_file_status.source
+      if self.proxdash_file_status.created_at is not None:
+        pd_dict["created_at"] = self.proxdash_file_status.created_at
+      if self.proxdash_file_status.updated_at is not None:
+        pd_dict["updated_at"] = self.proxdash_file_status.updated_at
+      result["proxdash_file_status"] = pd_dict
     return result
 
   @classmethod
@@ -429,10 +464,24 @@ class MessageContent:
             created_at=meta_dict.get("created_at"),
             expires_at=meta_dict.get("expires_at"),
             uri=meta_dict.get("uri"),
-            state=(FileUploadState(meta_dict["state"])
-                   if meta_dict.get("state") else None),
+            state=(
+                FileUploadState(meta_dict["state"])
+                if meta_dict.get("state") else None
+            ),
             sha256_hash=meta_dict.get("sha256_hash"),
         )
+    proxdash_file_id = data.get("proxdash_file_id")
+    proxdash_file_status = None
+    if data.get("proxdash_file_status") is not None:
+      pd_data = data["proxdash_file_status"]
+      proxdash_file_status = ProxDashFileStatus(
+          file_id=pd_data["file_id"],
+          s3_key=pd_data.get("s3_key"),
+          upload_confirmed=pd_data.get("upload_confirmed", False),
+          source=pd_data.get("source"),
+          created_at=pd_data.get("created_at"),
+          updated_at=pd_data.get("updated_at"),
+      )
     return cls(
         type=data["type"],
         text=data.get("text"),
@@ -440,14 +489,14 @@ class MessageContent:
         pydantic_content=pydantic_content,
         tool_content=tool_content,
         source=data.get("source"),
-        data=(
-            base64.b64decode(data["data"]) if "data" in data else None
-        ),
+        data=(base64.b64decode(data["data"]) if "data" in data else None),
         path=data.get("path"),
         media_type=data.get("media_type"),
         filename=data.get("filename"),
         provider_file_api_status=provider_file_api_status,
         provider_file_api_ids=provider_file_api_ids,
+        proxdash_file_id=proxdash_file_id,
+        proxdash_file_status=proxdash_file_status,
     )
 
   def copy(self) -> "MessageContent":
@@ -457,15 +506,16 @@ class MessageContent:
   def __repr__(self) -> str:
     parts = [f"type='{self.type.value}'"]
     if self.text is not None:
-      display_text = self.text if len(self.text) <= 50 else self.text[:47] + "..."
+      display_text = self.text if len(self.text
+                                     ) <= 50 else self.text[:47] + "..."
       parts.append(f"text='{display_text}'")
     if self.source is not None:
       parts.append(f"source='{self.source}'")
     if self.data is not None:
       preview = (
-          base64.b64encode(self.data[:20]).decode('utf-8') + "..."
-          if len(self.data) > 20
-          else base64.b64encode(self.data).decode('utf-8'))
+          base64.b64encode(self.data[:20]).decode('utf-8') + "..." if
+          len(self.data) > 20 else base64.b64encode(self.data).decode('utf-8')
+      )
       parts.append(f"data='{preview}'")
     if self.path is not None:
       parts.append(f"path='{self.path}'")

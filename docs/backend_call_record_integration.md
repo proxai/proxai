@@ -10,3 +10,8 @@
 ```
 
 The backend should `JSON.parse()` this field before storing or processing it.
+
+# Files API Note
+
+`/files/update/:id` could be renamed to just `POST /files/:id` or
+`PATCH /files/:id` to be more RESTful.

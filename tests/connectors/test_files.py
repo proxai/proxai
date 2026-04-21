@@ -1,10 +1,11 @@
 """Tests for FilesManager upload and remove orchestration logic."""
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 import proxai.connections.api_key_manager as api_key_manager
+import proxai.connections.proxdash as proxdash
 import proxai.connectors.file_helpers as file_helpers
 import proxai.connectors.files as files_module
 import proxai.connectors.model_configs as model_configs
@@ -13,6 +14,7 @@ from proxai.chat.message_content import (
     FileUploadMetadata,
     FileUploadState,
     MessageContent,
+    ProxDashFileStatus,
 )
 
 
@@ -32,7 +34,9 @@ def _make_api_key_manager(monkeypatch, providers):
       init_from_params=api_key_manager.ApiKeyManagerParams())
 
 
-def _make_files_manager(monkeypatch, providers, parallel=True):
+def _make_files_manager(
+    monkeypatch, providers, parallel=True, proxdash_connection=None
+):
   akm = _make_api_key_manager(monkeypatch, providers)
   return files_module.FilesManager(
       init_from_params=files_module.FilesManagerParams(
@@ -40,6 +44,7 @@ def _make_files_manager(monkeypatch, providers, parallel=True):
           provider_call_options=types.ProviderCallOptions(
               allow_parallel_file_operations=parallel,
           ),
+          proxdash_connection=proxdash_connection,
       ))
 
 
@@ -485,6 +490,63 @@ class TestIsUploadSupported:
     mgr = _make_files_manager(monkeypatch, ['gemini'])
     media = _make_media(media_type='video/mp4')
     assert mgr.is_upload_supported(media=media, provider='gemini')
+
+
+# --- ProxDash integration ---
+
+
+def _make_mock_proxdash(upload_file_id='proxdash-file-123'):
+  """Create a mock ProxDashConnection that's CONNECTED."""
+  mock = MagicMock(spec=proxdash.ProxDashConnection)
+  mock.status = types.ProxDashConnectionStatus.CONNECTED
+
+  def _upload_file(media):
+    media.proxdash_file_id = upload_file_id
+    media.proxdash_file_status = ProxDashFileStatus(
+        file_id=upload_file_id, upload_confirmed=True)
+    return upload_file_id
+
+  mock.upload_file.side_effect = _upload_file
+  return mock
+
+
+class TestProxDashUploadIntegration:
+
+  def test_proxdash_upload_runs_with_provider_uploads(self, monkeypatch):
+    mock_pd = _make_mock_proxdash()
+    mgr = _make_files_manager(
+        monkeypatch, ['gemini'], proxdash_connection=mock_pd)
+    media = _make_media()
+    dispatch = {'gemini': _fake_upload_fn}
+    with patch.dict(file_helpers.UPLOAD_DISPATCH, dispatch):
+      mgr.upload(media=media, providers=['gemini'])
+    assert 'gemini' in media.provider_file_api_ids
+    assert media.proxdash_file_id == 'proxdash-file-123'
+    mock_pd.upload_file.assert_called_once_with(media)
+    mock_pd.update_file.assert_called_once()
+
+  def test_proxdash_failure_does_not_break_provider_uploads(
+      self, monkeypatch
+  ):
+    mock_pd = _make_mock_proxdash()
+    mock_pd.upload_file.side_effect = RuntimeError('proxdash down')
+    mgr = _make_files_manager(
+        monkeypatch, ['gemini'], proxdash_connection=mock_pd)
+    media = _make_media()
+    dispatch = {'gemini': _fake_upload_fn}
+    with patch.dict(file_helpers.UPLOAD_DISPATCH, dispatch):
+      mgr.upload(media=media, providers=['gemini'])
+    assert 'gemini' in media.provider_file_api_ids
+    assert media.proxdash_file_id is None
+
+  def test_no_proxdash_connection_skips_silently(self, monkeypatch):
+    mgr = _make_files_manager(monkeypatch, ['gemini'])
+    media = _make_media()
+    dispatch = {'gemini': _fake_upload_fn}
+    with patch.dict(file_helpers.UPLOAD_DISPATCH, dispatch):
+      mgr.upload(media=media, providers=['gemini'])
+    assert 'gemini' in media.provider_file_api_ids
+    assert media.proxdash_file_id is None
 
 
 class TestIsDownloadSupported:

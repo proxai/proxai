@@ -256,6 +256,8 @@ def _normalize_chat_for_comparison(
     for mc in msg.content:
       mc.provider_file_api_ids = None
       mc.provider_file_api_status = None
+      mc.proxdash_file_id = None
+      mc.proxdash_file_status = None
       mc.filename = None
   return query_record
 

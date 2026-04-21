@@ -2,15 +2,22 @@
 
 Usage:
   poetry run python3 examples/proxdash_test.py
-  poetry run python3 examples/proxdash_test.py --test upload_text
+  poetry run python3 examples/proxdash_test.py --test text_input
   poetry run python3 examples/proxdash_test.py --test all
 """
 
 import argparse
+import os
 from pprint import pprint
 
+import pydantic
+
 import proxai as px
+import proxai.serializers.type_serializer as type_serializer
 import proxai.types as types
+
+_ASSETS_DIR = os.path.join(os.path.dirname(__file__), 'refactoring_test_assets')
+_MAIN_MODEL = ('gemini', 'gemini-3-flash-preview')
 
 
 def _get_model_config(
@@ -24,7 +31,7 @@ def _get_model_config(
   S = types.FeatureSupportType.SUPPORTED
   NS = types.FeatureSupportType.NOT_SUPPORTED
   if input_format is None:
-    input_format = ['text']
+    input_format = ['text', 'json', 'pydantic']
   if output_format is None:
     output_format = [types.OutputFormatType.TEXT]
 
@@ -41,11 +48,14 @@ def _get_model_config(
       S if types.OutputFormatType.MULTI_MODAL in output_format else NS
   )
 
+  BE = types.FeatureSupportType.BEST_EFFORT
   text_input = S if 'text' in input_format else NS
   image_input = S if 'image' in input_format else NS
   document_input = S if 'document' in input_format else NS
   audio_input = S if 'audio' in input_format else NS
   video_input = S if 'video' in input_format else NS
+  json_input = BE if 'json' in input_format else NS
+  pydantic_input = BE if 'pydantic' in input_format else NS
 
   return types.ProviderModelConfig(
       provider_model=types.ProviderModelType(
@@ -77,6 +87,8 @@ def _get_model_config(
               document=document_input,
               audio=audio_input,
               video=video_input,
+              json=json_input,
+              pydantic=pydantic_input,
           ),
       )
   )
@@ -104,7 +116,7 @@ def register_models(client: px.Client):
           model='gpt-4o',
           provider_model_identifier='gpt-4o',
           web_search=True,
-          input_format=['text', 'image', 'document'],
+          input_format=['text', 'image', 'document', 'json', 'pydantic'],
           output_format=[
               types.OutputFormatType.TEXT, types.OutputFormatType.JSON,
               types.OutputFormatType.PYDANTIC
@@ -117,7 +129,7 @@ def register_models(client: px.Client):
           model='o3',
           provider_model_identifier='o3',
           web_search=False,
-          input_format=['text', 'image', 'document'],
+          input_format=['text', 'image', 'document', 'json', 'pydantic'],
           output_format=[
               types.OutputFormatType.TEXT, types.OutputFormatType.JSON,
               types.OutputFormatType.PYDANTIC
@@ -161,7 +173,9 @@ def register_models(client: px.Client):
           model='gemini-3-flash-preview',
           provider_model_identifier='gemini-3-flash-preview',
           web_search=True,
-          input_format=['text', 'image', 'document', 'audio', 'video'],
+          input_format=[
+              'text', 'image', 'json', 'pydantic', 'document', 'audio', 'video'
+          ],
           output_format=[
               types.OutputFormatType.TEXT, types.OutputFormatType.JSON,
               types.OutputFormatType.PYDANTIC
@@ -175,7 +189,9 @@ def register_models(client: px.Client):
           model='gemini-2.5-flash',
           provider_model_identifier='gemini-2.5-flash',
           web_search=False,
-          input_format=['text', 'image', 'document', 'audio', 'video'],
+          input_format=[
+              'text', 'image', 'document', 'audio', 'video', 'json', 'pydantic'
+          ],
           output_format=[
               types.OutputFormatType.TEXT, types.OutputFormatType.JSON,
               types.OutputFormatType.PYDANTIC
@@ -219,7 +235,7 @@ def register_models(client: px.Client):
           model='claude-sonnet-4-6',
           provider_model_identifier='claude-sonnet-4-6',
           web_search=True,
-          input_format=['text', 'image', 'document'],
+          input_format=['text', 'image', 'document', 'json', 'pydantic'],
           output_format=[
               types.OutputFormatType.TEXT, types.OutputFormatType.JSON,
               types.OutputFormatType.PYDANTIC
@@ -233,7 +249,7 @@ def register_models(client: px.Client):
           model='claude-opus-4-6',
           provider_model_identifier='claude-opus-4-6',
           web_search=False,
-          input_format=['text', 'image', 'document'],
+          input_format=['text', 'image', 'document', 'json', 'pydantic'],
           output_format=[
               types.OutputFormatType.TEXT, types.OutputFormatType.JSON,
               types.OutputFormatType.PYDANTIC
@@ -247,6 +263,7 @@ def register_models(client: px.Client):
           model='deepseek-chat',
           provider_model_identifier='deepseek-chat',
           web_search=False,
+          input_format=['text', 'json', 'pydantic'],
           output_format=[
               types.OutputFormatType.TEXT, types.OutputFormatType.JSON,
               types.OutputFormatType.PYDANTIC
@@ -260,6 +277,7 @@ def register_models(client: px.Client):
           model='deepseek-reasoner',
           provider_model_identifier='deepseek-reasoner',
           web_search=False,
+          input_format=['text', 'json', 'pydantic'],
           output_format=[
               types.OutputFormatType.TEXT, types.OutputFormatType.JSON,
               types.OutputFormatType.PYDANTIC
@@ -274,22 +292,259 @@ def register_models(client: px.Client):
   ])
 
 
-# --- Tests ---
+def _asset(filename):
+  return os.path.join(_ASSETS_DIR, filename)
 
 
-def test_upload_text():
-  """Test uploading a simple text generation call record."""
-  print('> test_upload_text')
-  px.generate(prompt='Say hello in one word.', provider_model=('openai', 'gpt-4o'))
-  # px.models.check_health()
-  # # pprint(px.models.list_working_models(verbose=True))
-  # result = px.generate_text('Say hello in one word.')
-  # pprint(result)
-  # print('  PASSED')
+def _truncate_data(obj, max_len=80):
+  """Truncate long string/bytes values in nested dicts/lists for display."""
+  if isinstance(obj, dict):
+    return {k: _truncate_data(v, max_len) for k, v in obj.items()}
+  if isinstance(obj, list):
+    return [_truncate_data(v, max_len) for v in obj]
+  if isinstance(obj, str) and len(obj) > max_len:
+    return obj[:max_len] + f'... ({len(obj)} chars)'
+  return obj
+
+
+def _print_result(call_record):
+  data = type_serializer.encode_call_record(call_record)
+  pprint(_truncate_data(data))
+  print(
+      '> Check latest request in ProxDash: '
+      'http://localhost:3000/dashboard/requests'
+  )
+  input('> Press Enter to continue...')
+
+
+# --- Input format tests ---
+
+
+def test_text_input():
+  """Test text prompt input."""
+  print('\n=== test_text_input ===')
+  call_record = px.generate(
+      prompt='Say hello in one word.', provider_model=_MAIN_MODEL
+  )
+  _print_result(call_record)
+
+
+def test_json_input():
+  """Test JSON content input."""
+  print('\n=== test_json_input ===')
+  call_record = px.generate(
+      messages=[{
+          'role': 'user',
+          'content': [
+              px.MessageContent(
+                  type=px.ContentType.JSON,
+                  json={
+                      'title': 'This is a love letter to cats!',
+                      'description':
+                          ('I want to explain my feelings in json format.'),
+                  },
+              ),
+              px.MessageContent(
+                  type=px.ContentType.TEXT,
+                  text='What is this about?',
+              ),
+          ],
+      }], provider_model=_MAIN_MODEL
+  )
+  _print_result(call_record)
+
+
+def test_pydantic_input():
+  """Test pydantic content input."""
+  print('\n=== test_pydantic_input ===')
+
+  class CatDescription(pydantic.BaseModel):
+    name: str = 'Whiskers'
+    color: str = 'orange'
+    favorite_food: str = 'tuna'
+
+  call_record = px.generate(
+      messages=[{
+          'role': 'user',
+          'content': [
+              px.MessageContent(
+                  type=px.ContentType.PYDANTIC_INSTANCE,
+                  pydantic_content=types.PydanticContent(
+                      instance_value=CatDescription(),
+                  ),
+              ),
+              px.MessageContent(
+                  type=px.ContentType.TEXT,
+                  text='What is this about?',
+              ),
+          ],
+      }], provider_model=_MAIN_MODEL
+  )
+  _print_result(call_record)
+
+
+def test_markdown_input():
+  """Test markdown document input."""
+  print('\n=== test_markdown_input ===')
+  call_record = px.generate(
+      messages=[{
+          'role': 'user',
+          'content': [
+              px.MessageContent(
+                  type=px.ContentType.DOCUMENT,
+                  path=_asset('cat.md'),
+                  media_type='text/markdown',
+              ),
+              px.MessageContent(
+                  type=px.ContentType.TEXT,
+                  text='What is inside this document?',
+              ),
+          ],
+      }], provider_model=_MAIN_MODEL
+  )
+  _print_result(call_record)
+
+
+def test_image_input():
+  """Test image input."""
+  print('\n=== test_image_input ===')
+  call_record = px.generate(
+      messages=[{
+          'role': 'user',
+          'content': [
+              px.MessageContent(
+                  type=px.ContentType.IMAGE,
+                  path=_asset('cat.jpeg'),
+                  media_type='image/jpeg',
+              ),
+              px.MessageContent(
+                  type=px.ContentType.TEXT,
+                  text='What is in this image?',
+              ),
+          ],
+      }], provider_model=_MAIN_MODEL
+  )
+  _print_result(call_record)
+
+
+def test_audio_input():
+  """Test audio input."""
+  print('\n=== test_audio_input ===')
+  call_record = px.generate(
+      messages=[{
+          'role': 'user',
+          'content': [
+              px.MessageContent(
+                  type=px.ContentType.AUDIO,
+                  path=_asset('cat.mp3'),
+                  media_type='audio/mpeg',
+              ),
+              px.MessageContent(
+                  type=px.ContentType.TEXT,
+                  text='What is this audio about?',
+              ),
+          ],
+      }], provider_model=_MAIN_MODEL
+  )
+  _print_result(call_record)
+
+
+def test_video_input():
+  """Test video input."""
+  print('\n=== test_video_input ===')
+  call_record = px.generate(
+      messages=[{
+          'role': 'user',
+          'content': [
+              px.MessageContent(
+                  type=px.ContentType.VIDEO,
+                  path=_asset('cat.mp4'),
+                  media_type='video/mp4',
+              ),
+              px.MessageContent(
+                  type=px.ContentType.TEXT,
+                  text='What is in this video?',
+              ),
+          ],
+      }], provider_model=_MAIN_MODEL
+  )
+  _print_result(call_record)
+
+
+# --- Output format tests ---
+
+
+def test_json_output():
+  """Test JSON output format."""
+  print('\n=== test_json_output ===')
+  call_record = px.generate(
+      prompt='Return a JSON with key "answer" and value 4.',
+      provider_model=_MAIN_MODEL, output_format='json'
+  )
+  _print_result(call_record)
+
+
+def test_pydantic_output():
+  """Test pydantic output format."""
+  print('\n=== test_pydantic_output ===')
+
+  class MathAnswer(pydantic.BaseModel):
+    question: str
+    answer: int
+
+  call_record = px.generate(
+      prompt='What is 2 + 2?', provider_model=_MAIN_MODEL,
+      output_format=MathAnswer
+  )
+  _print_result(call_record)
+
+
+def test_image_output():
+  """Test image output format."""
+  print('\n=== test_image_output ===')
+  call_record = px.generate(
+      prompt='Make a funny cartoon cat in a living room.',
+      provider_model=('gemini', 'gemini-2.5-flash-image'),
+      output_format='image',
+  )
+  _print_result(call_record)
+
+
+def test_audio_output():
+  """Test audio output format."""
+  print('\n=== test_audio_output ===')
+  call_record = px.generate(
+      prompt='Say hello world in a cheerful voice.',
+      provider_model=('gemini', 'gemini-2.5-flash-preview-tts'),
+      output_format='audio',
+  )
+  _print_result(call_record)
+
+
+def test_video_output():
+  """Test video output format."""
+  print('\n=== test_video_output ===')
+  call_record = px.generate(
+      prompt='A cat playing with a ball of yarn.',
+      provider_model=('gemini', 'veo-3.1-generate-preview'),
+      output_format='video',
+  )
+  _print_result(call_record)
 
 
 TEST_SEQUENCE = [
-    ('upload_text', test_upload_text),
+    # ('text_input', test_text_input),
+    # ('json_input', test_json_input),
+    # ('pydantic_input', test_pydantic_input),
+    # ('markdown_input', test_markdown_input),
+    # ('image_input', test_image_input),
+    # ('audio_input', test_audio_input),
+    # ('video_input', test_video_input),
+    # ('json_output', test_json_output),
+    # ('pydantic_output', test_pydantic_output),
+    ('image_output', test_image_output),
+    # ('audio_output', test_audio_output),
+    # ('video_output', test_video_output),
 ]
 TEST_MAP = dict(TEST_SEQUENCE)
 
@@ -307,16 +562,14 @@ def main():
       proxdash_options=px.ProxDashOptions(
           stdout=True,
           base_url='http://localhost:3001',
-          api_key='bj8leip-mo7q9fzn-mb8di2v5wb7',
+          api_key='pjlfi0h-mo8mrm56-fgsvgftdk78',
       ),
-      cache_options=px.CacheOptions(
-          cache_path='/tmp/proxai_cache',
-      ),
+      cache_options=px.CacheOptions(cache_path='/tmp/proxai_cache',),
   )
   register_models(px.get_default_proxai_client())
 
   if args.test == 'all':
-    for name, test_fn in TEST_SEQUENCE:
+    for _name, test_fn in TEST_SEQUENCE:
       test_fn()
   else:
     if args.test not in TEST_MAP:

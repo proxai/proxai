@@ -31,6 +31,13 @@ class ProxDashConnectionParams:
 class ProxDashConnection(state_controller.StateControlled):
   """Manages connection and data upload to the ProxDash service."""
 
+  _UPLOADABLE_MEDIA_TYPES = (
+      types.ContentType.IMAGE,
+      types.ContentType.DOCUMENT,
+      types.ContentType.AUDIO,
+      types.ContentType.VIDEO,
+  )
+
   _status: types.ProxDashConnectionStatus | None
   _hidden_run_key: str | None
   _experiment_path: str | None
@@ -421,6 +428,221 @@ class ProxDashConnection(state_controller.StateControlled):
               f'{response.text}'
           ), type=types.LoggingType.ERROR
       )
+
+  def _resolve_file_bytes(
+      self, media: types.MessageContent
+  ) -> bytes | None:
+    if media.data is not None:
+      return media.data
+    if media.path is not None:
+      with open(media.path, 'rb') as f:
+        return f.read()
+    return None
+
+  def _request_presigned_upload_url(
+      self, filename: str, mime_type: str, size_bytes: int
+  ) -> tuple[str, str, str] | None:
+    """Returns (file_id, presigned_url, s3_key) or None on failure."""
+    try:
+      resp = requests.post(
+          f'{self.proxdash_options.base_url}/files/upload', json={
+              'filename': filename,
+              'mimeType': mime_type,
+              'sizeBytes': size_bytes,
+          }, headers={'X-API-Key': self.proxdash_options.api_key}
+      )
+    except Exception as e:
+      logging_utils.log_proxdash_message(
+          logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
+          message=f'ProxDash file upload request failed. Error: {e}',
+          type=types.LoggingType.ERROR
+      )
+      return None
+
+    if resp.status_code != 201:
+      logging_utils.log_proxdash_message(
+          logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options, message=(
+              'ProxDash file upload request failed. '
+              f'Status: {resp.status_code}, Response: {resp.text}'
+          ), type=types.LoggingType.ERROR
+      )
+      return None
+
+    try:
+      upload_result = json.loads(resp.text)
+      if not upload_result.get('success'):
+        logging_utils.log_proxdash_message(
+            logging_options=self.logging_options,
+            proxdash_options=self.proxdash_options, message=(
+                'ProxDash file upload request failed. '
+                f'Response: {resp.text}'
+            ), type=types.LoggingType.ERROR
+        )
+        return None
+      data = upload_result['data']
+      return data['id'], data['presignedUploadUrl'], data['s3Key']
+    except Exception as e:
+      logging_utils.log_proxdash_message(
+          logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options, message=(
+              'ProxDash file upload response parse failed. '
+              f'Error: {e}'
+          ), type=types.LoggingType.ERROR
+      )
+      return None
+
+  def _put_file_to_s3(
+      self, presigned_url: str, file_bytes: bytes, mime_type: str
+  ) -> bool:
+    try:
+      resp = requests.put(
+          presigned_url, data=file_bytes,
+          headers={'Content-Type': mime_type}
+      )
+      if resp.status_code not in (200, 204):
+        logging_utils.log_proxdash_message(
+            logging_options=self.logging_options,
+            proxdash_options=self.proxdash_options, message=(
+                'ProxDash S3 upload failed. '
+                f'Status: {resp.status_code}'
+            ), type=types.LoggingType.ERROR
+        )
+        return False
+      return True
+    except Exception as e:
+      logging_utils.log_proxdash_message(
+          logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
+          message=f'ProxDash S3 upload failed. Error: {e}',
+          type=types.LoggingType.ERROR
+      )
+      return False
+
+  def _confirm_file_upload(self, file_id: str):
+    try:
+      resp = requests.post(
+          f'{self.proxdash_options.base_url}/files/update/{file_id}',
+          json={'uploadConfirmed': True},
+          headers={'X-API-Key': self.proxdash_options.api_key}
+      )
+      if resp.status_code != 200:
+        logging_utils.log_proxdash_message(
+            logging_options=self.logging_options,
+            proxdash_options=self.proxdash_options, message=(
+                'ProxDash file confirm failed. '
+                f'Status: {resp.status_code}, '
+                f'Response: {resp.text}'
+            ), type=types.LoggingType.ERROR
+        )
+    except Exception as e:
+      logging_utils.log_proxdash_message(
+          logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
+          message=f'ProxDash file confirm failed. Error: {e}',
+          type=types.LoggingType.ERROR
+      )
+
+  def upload_file(self, media: types.MessageContent) -> str | None:
+    """Upload a file to ProxDash via presigned S3 URL.
+
+    Returns the ProxDash file ID on success, None on failure.
+    Sets media.proxdash_file_id and media.proxdash_file_status.
+    """
+    if self.status != types.ProxDashConnectionStatus.CONNECTED:
+      return None
+    if media.type not in self._UPLOADABLE_MEDIA_TYPES:
+      return None
+
+    file_bytes = self._resolve_file_bytes(media)
+    if file_bytes is None:
+      return None
+
+    filename = (
+        media.filename
+        or (os.path.basename(media.path) if media.path else None)
+        or '(no_filename_set)'
+    )
+    mime_type = media.media_type or 'application/octet-stream'
+
+    upload_info = self._request_presigned_upload_url(
+        filename, mime_type, len(file_bytes)
+    )
+    if upload_info is None:
+      return None
+    file_id, presigned_url, s3_key = upload_info
+
+    if not self._put_file_to_s3(presigned_url, file_bytes, mime_type):
+      return None
+
+    self._confirm_file_upload(file_id)
+
+    media.proxdash_file_id = file_id
+    media.proxdash_file_status = types.ProxDashFileStatus(
+        file_id=file_id,
+        s3_key=s3_key,
+        upload_confirmed=True,
+    )
+    return file_id
+
+  def update_file(
+      self,
+      file_id: str,
+      provider_file_api_ids: dict | None = None,
+      provider_file_api_status: dict | None = None,
+  ):
+    """Update a ProxDash file record with provider metadata."""
+    if self.status != types.ProxDashConnectionStatus.CONNECTED:
+      return
+    update_data = {}
+    if provider_file_api_ids is not None:
+      update_data['providerFileApiIds'] = provider_file_api_ids
+    if provider_file_api_status is not None:
+      update_data['providerFileApiStatus'] = provider_file_api_status
+    if not update_data:
+      return
+
+    try:
+      resp = requests.post(
+          (f'{self.proxdash_options.base_url}'
+           f'/files/update/{file_id}'), json=update_data,
+          headers={'X-API-Key': self.proxdash_options.api_key}
+      )
+      if resp.status_code != 200:
+        logging_utils.log_proxdash_message(
+            logging_options=self.logging_options,
+            proxdash_options=self.proxdash_options, message=(
+                'ProxDash file update failed. '
+                f'Status: {resp.status_code}, '
+                f'Response: {resp.text}'
+            ), type=types.LoggingType.ERROR
+        )
+    except Exception as e:
+      logging_utils.log_proxdash_message(
+          logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
+          message=f'ProxDash file update failed. Error: {e}',
+          type=types.LoggingType.ERROR
+      )
+
+  def get_file(self, file_id: str) -> dict | None:
+    """Get file info from ProxDash."""
+    if self.status != types.ProxDashConnectionStatus.CONNECTED:
+      return None
+    try:
+      resp = requests.get(
+          f'{self.proxdash_options.base_url}/files/{file_id}',
+          headers={'X-API-Key': self.proxdash_options.api_key}
+      )
+      if resp.status_code != 200:
+        return None
+      result = json.loads(resp.text)
+      if result.get('success') and result.get('data'):
+        return result['data']
+      return None
+    except Exception:
+      return None
 
   def get_model_configs_schema(self,) -> types.ModelConfigsSchemaType | None:
     """Fetch the latest model configurations from ProxDash."""
