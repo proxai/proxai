@@ -664,6 +664,58 @@ def _make_mock_proxdash_for_list(message_contents):
   return mock
 
 
+class TestProxDashRemoveIntegration:
+
+  def _make_proxdash_media(self, providers):
+    media = _make_media()
+    media.proxdash_file_id = 'pd-file-1'
+    media.proxdash_file_status = ProxDashFileStatus(
+        file_id='pd-file-1', upload_confirmed=True)
+    media.provider_file_api_ids = {}
+    media.provider_file_api_status = {}
+    for p in providers:
+      media.provider_file_api_ids[p] = f'file-{p}-123'
+      media.provider_file_api_status[p] = _fake_upload_metadata(p)
+    return media
+
+  def test_proxdash_deleted_alongside_providers(self, monkeypatch):
+    mock_pd = MagicMock(spec=proxdash.ProxDashConnection)
+    mock_pd.status = types.ProxDashConnectionStatus.CONNECTED
+    mock_pd.delete_file.return_value = True
+    mgr = _make_files_manager(
+        monkeypatch, ['gemini'], proxdash_connection=mock_pd)
+    media = self._make_proxdash_media(['gemini'])
+    dispatch = {'gemini': _fake_remove_fn}
+    with patch.dict(file_helpers.REMOVE_DISPATCH, dispatch):
+      mgr.remove(media=media, providers=['gemini'])
+    mock_pd.delete_file.assert_called_once_with('pd-file-1')
+    assert media.proxdash_file_id is None
+    assert media.proxdash_file_status is None
+    assert media.provider_file_api_ids == {}
+
+  def test_proxdash_failure_does_not_break_provider_remove(self, monkeypatch):
+    mock_pd = MagicMock(spec=proxdash.ProxDashConnection)
+    mock_pd.status = types.ProxDashConnectionStatus.CONNECTED
+    mock_pd.delete_file.side_effect = RuntimeError('proxdash down')
+    mgr = _make_files_manager(
+        monkeypatch, ['gemini'], proxdash_connection=mock_pd)
+    media = self._make_proxdash_media(['gemini'])
+    dispatch = {'gemini': _fake_remove_fn}
+    with patch.dict(file_helpers.REMOVE_DISPATCH, dispatch):
+      mgr.remove(media=media, providers=['gemini'])
+    assert media.provider_file_api_ids == {}
+    assert media.proxdash_file_id is None
+
+  def test_no_proxdash_removes_providers_only(self, monkeypatch):
+    mgr = _make_files_manager(monkeypatch, ['gemini'])
+    media = self._make_proxdash_media(['gemini'])
+    dispatch = {'gemini': _fake_remove_fn}
+    with patch.dict(file_helpers.REMOVE_DISPATCH, dispatch):
+      mgr.remove(media=media, providers=['gemini'])
+    assert media.provider_file_api_ids == {}
+    assert media.proxdash_file_id == 'pd-file-1'  # untouched
+
+
 class TestProxDashListIntegration:
 
   def test_proxdash_results_come_first(self, monkeypatch):

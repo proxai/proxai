@@ -743,10 +743,17 @@ class FilesManager(state_controller.StateControlled):
       media: message_content.MessageContent,
       providers: list[types.ProviderNameType],
   ) -> dict[str, Exception]:
+    """Remove from all providers and ProxDash in parallel."""
     errors: dict[str, Exception] = {}
-    if self._use_parallel(providers):
-      with ThreadPoolExecutor(max_workers=len(providers)) as pool:
-        futures = {
+    include_proxdash = (
+        self._proxdash_connected() and media.proxdash_file_id is not None
+    )
+    use_parallel = self._use_parallel(providers) or include_proxdash
+
+    if use_parallel:
+      max_workers = len(providers) + (1 if include_proxdash else 0)
+      with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        provider_futures = {
             provider:
                 pool.submit(
                     self._remove_single_provider,
@@ -754,12 +761,26 @@ class FilesManager(state_controller.StateControlled):
                     media.provider_file_api_ids[provider],
                 ) for provider in providers
         }
-        for provider, future in futures.items():
+        proxdash_future = None
+        if include_proxdash:
+          proxdash_future = pool.submit(
+              self.proxdash_connection.delete_file, media.proxdash_file_id
+          )
+
+        for provider, future in provider_futures.items():
           try:
             future.result()
             self._collect_remove_result(media, provider)
           except Exception as e:
             errors[provider] = e
+
+        if proxdash_future is not None:
+          try:
+            proxdash_future.result()
+          except Exception:
+            pass
+          media.proxdash_file_id = None
+          media.proxdash_file_status = None
     else:
       for provider in providers:
         try:
@@ -776,7 +797,11 @@ class FilesManager(state_controller.StateControlled):
       media: message_content.MessageContent,
       providers: list[types.ProviderNameType] | None = None,
   ) -> message_content.MessageContent:
-    """Remove uploaded files from provider File APIs.
+    """Remove uploaded files from provider File APIs and ProxDash.
+
+    When ProxDash is connected and the media has a proxdash_file_id,
+    also deletes the file from ProxDash. ProxDash deletion failure
+    is silent and does not affect provider removals.
 
     Args:
       media: A MessageContent with provider_file_api_ids populated
@@ -786,7 +811,8 @@ class FilesManager(state_controller.StateControlled):
 
     Returns:
       The same MessageContent with removed providers cleared from
-      provider_file_api_status and provider_file_api_ids.
+      provider_file_api_status and provider_file_api_ids, and
+      proxdash fields cleared.
 
     Raises:
       ValueError: If providers is an empty list, or if media has no
