@@ -564,7 +564,13 @@ def main():
           base_url='http://localhost:3001',
           api_key='pjlfi0h-mo8mrm56-fgsvgftdk78',
       ),
-      cache_options=px.CacheOptions(cache_path='/tmp/proxai_cache',),
+      cache_options=px.CacheOptions(
+          cache_path='/tmp/proxai_cache',
+          # clear_query_cache_on_connect=True,
+      ),
+      provider_call_options=px.ProviderCallOptions(
+          # allow_parallel_file_operations=False,
+      ),
   )
   register_models(px.get_default_proxai_client())
 
