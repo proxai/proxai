@@ -2,6 +2,7 @@ import copy
 import dataclasses
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor
 from importlib.metadata import version
 from typing import Union
 
@@ -367,7 +368,98 @@ class ProxDashConnection(state_controller.StateControlled):
       call_record.result.choices = None
     return call_record
 
-  def upload_call_record(self, call_record: types.CallRecord):
+  def _collect_media_contents(
+      self, call_record: types.CallRecord
+  ) -> list[types.MessageContent]:
+    """Collect all media MessageContent blocks from a CallRecord."""
+    media_contents = []
+    if call_record.query and call_record.query.chat:
+      for msg in call_record.query.chat.messages:
+        if isinstance(msg.content, list):
+          media_contents.extend(msg.content)
+    if call_record.result:
+      for field in ('output_image', 'output_audio', 'output_video'):
+        mc = getattr(call_record.result, field, None)
+        if mc is not None:
+          media_contents.append(mc)
+      if call_record.result.content:
+        media_contents.extend(call_record.result.content)
+      if call_record.result.choices:
+        for choice in call_record.result.choices:
+          for field in ('output_image', 'output_audio', 'output_video'):
+            mc = getattr(choice, field, None)
+            if mc is not None:
+              media_contents.append(mc)
+          if choice.content:
+            media_contents.extend(choice.content)
+    return [
+        mc for mc in media_contents
+        if mc.type in self._UPLOADABLE_MEDIA_TYPES
+    ]
+
+  def _upload_pending_media(
+      self,
+      media_contents: list[types.MessageContent],
+      allow_parallel_file_upload: bool = True,
+  ):
+    """Upload media contents that don't have a proxdash_file_id yet."""
+    pending = [
+        mc for mc in media_contents if mc.proxdash_file_id is None
+        and (mc.data is not None or mc.path is not None)
+    ]
+    if not pending:
+      return
+    if allow_parallel_file_upload and len(pending) > 1:
+      with ThreadPoolExecutor(max_workers=len(pending)) as pool:
+        futures = {mc: pool.submit(self.upload_file, mc) for mc in pending}
+        for mc, future in futures.items():
+          try:
+            future.result()
+          except Exception:
+            pass
+    else:
+      for mc in pending:
+        try:
+          self.upload_file(mc)
+        except Exception:
+          pass
+
+  def _strip_media_bytes_from_encoded(self, data: dict):
+    """Remove data and path from media content blocks in encoded dict."""
+    def strip_content_list(content_list):
+      if not content_list:
+        return
+      for item in content_list:
+        if not isinstance(item, dict):
+          continue
+        if item.get('type') in ('image', 'document', 'audio', 'video'):
+          item.pop('data', None)
+          item.pop('path', None)
+
+    if 'query' in data and 'chat' in data['query']:
+      chat = data['query']['chat']
+      for msg in chat.get('messages', []):
+        strip_content_list(msg.get('content'))
+
+    if 'result' in data:
+      result = data['result']
+      for field in ('output_image', 'output_audio', 'output_video'):
+        if field in result and isinstance(result[field], dict):
+          result[field].pop('data', None)
+          result[field].pop('path', None)
+      strip_content_list(result.get('content'))
+      for choice in result.get('choices', []):
+        for field in ('output_image', 'output_audio', 'output_video'):
+          if field in choice and isinstance(choice[field], dict):
+            choice[field].pop('data', None)
+            choice[field].pop('path', None)
+        strip_content_list(choice.get('content'))
+
+  def upload_call_record(
+      self,
+      call_record: types.CallRecord,
+      allow_parallel_file_upload: bool = True,
+  ):
     """Upload a call record to ProxDash."""
     if self.status != types.ProxDashConnectionStatus.CONNECTED:
       return
@@ -376,6 +468,9 @@ class ProxDashConnection(state_controller.StateControlled):
     ) or self._key_info_from_proxdash['permission'] == 'NO_PROMPT'):
       call_record = self._hide_sensitive_content(call_record)
 
+    media_contents = self._collect_media_contents(call_record)
+    self._upload_pending_media(media_contents, allow_parallel_file_upload)
+
     data = type_serializer.encode_call_record(call_record)
     data['schema_version'] = 2
     data['experiment_path'] = self.experiment_path
@@ -383,6 +478,7 @@ class ProxDashConnection(state_controller.StateControlled):
     data.setdefault('connection', {})['caller_app'] = 'PYTHON_SDK'
     if 'result' in data and 'role' in data['result']:
       data['result']['role'] = data['result']['role'].upper()
+    self._strip_media_bytes_from_encoded(data)
 
     try:
       response = requests.post(

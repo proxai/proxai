@@ -8,6 +8,9 @@ import pytest
 import requests
 import requests_mock as requests_mock_module
 
+import proxai.chat.chat_session as chat_session
+import proxai.chat.message as message
+import proxai.chat.message_content as message_content
 import proxai.connections.proxdash as proxdash
 import proxai.connectors.model_configs as model_configs
 import proxai.types as types
@@ -1351,6 +1354,141 @@ class TestProxDashConnectionGetProviderApiKeys:
     ]
     assert len(provider_key_requests) == 1
     assert provider_key_requests[0].headers['X-API-Key'] == 'test_api_key'
+
+
+class TestFileInfoToMessageContent:
+
+  def test_converts_backend_response_to_message_content(self):
+    """Backend FileInfo (camelCase) converts to MessageContent correctly."""
+    connection, _, _ = _create_connection()
+    info = {
+        'id': 'pd-123',
+        'type': 'image',
+        'filename': 'cat.jpeg',
+        'mimeType': 'image/jpeg',
+        'sizeBytes': 5000,
+        'uploadConfirmed': True,
+        'providerFileApiIds': {
+            'gemini': 'files/g-1',
+            'openai': 'file-o-1',
+        },
+        'providerFileApiStatus': {
+            'gemini': {
+                'file_id': 'files/g-1',
+                'provider': 'gemini',
+                'state': 'active',
+            },
+        },
+        'source': 'https://s3.example.com/presigned-url',
+        'createdAt': '2024-01-01T00:00:00Z',
+        'updatedAt': '2024-01-01T00:01:00Z',
+    }
+    mc = connection._file_info_to_message_content(info)
+    assert mc is not None
+    assert mc.type == message_content.ContentType.IMAGE
+    assert mc.media_type == 'image/jpeg'
+    assert mc.filename == 'cat.jpeg'
+    assert mc.source == 'https://s3.example.com/presigned-url'
+    assert mc.proxdash_file_id == 'pd-123'
+    assert mc.proxdash_file_status.file_id == 'pd-123'
+    assert mc.proxdash_file_status.upload_confirmed is True
+    assert mc.provider_file_api_ids == {
+        'gemini': 'files/g-1',
+        'openai': 'file-o-1',
+    }
+    assert mc.provider_file_api_status['gemini'].file_id == 'files/g-1'
+    assert mc.provider_file_api_status['gemini'].state == (
+        message_content.FileUploadState.ACTIVE
+    )
+
+
+class TestUploadCallRecordMediaHandling:
+
+  def test_media_uploaded_and_bytes_stripped(self, requests_mock):
+    """Media content is uploaded to ProxDash file API before the call
+    record is sent, and data/path are stripped from the payload."""
+    connection, temp_dir, temp_dir_obj = _create_connection()
+
+    # Build a call record with an image in query chat.
+    img = message_content.MessageContent(
+        type=message_content.ContentType.IMAGE,
+        data=b'\x89PNG-fake-image-bytes',
+        media_type='image/png',
+    )
+    model_configs_instance = model_configs.ModelConfigs()
+    call_record = types.CallRecord(
+        query=types.QueryRecord(
+            chat=chat_session.Chat(messages=[
+                message.Message(
+                    role='user',
+                    content=[
+                        img,
+                        message_content.MessageContent(
+                            type='text', text='What is this?'),
+                    ])
+            ]),
+            provider_model=model_configs_instance.get_provider_model(
+                ('mock_provider', 'mock_model')),
+        ),
+        result=types.ResultRecord(
+            status=types.ResultStatusType.SUCCESS,
+            output_text='A cat.',
+            timestamp=types.TimeStampType(
+                start_utc_date=datetime.datetime(2024, 1, 1, 12, 0),
+                end_utc_date=datetime.datetime(2024, 1, 1, 12, 1),
+                response_time=datetime.timedelta(seconds=1),
+            ),
+        ),
+        connection=types.ConnectionMetadata(
+            result_source=types.ResultSource.PROVIDER),
+    )
+
+    # Mock ProxDash file upload (3 requests: upload, S3 PUT, confirm).
+    requests_mock.post(
+        'https://proxainest-production.up.railway.app/files/upload',
+        json={
+            'success': True,
+            'data': {
+                'id': 'pd-img-1',
+                'presignedUploadUrl': 'https://s3.example.com/put-here',
+                's3Key': 'files/user1/pd-img-1',
+            }
+        },
+        status_code=201,
+    )
+    requests_mock.put('https://s3.example.com/put-here', status_code=200)
+    requests_mock.post(
+        'https://proxainest-production.up.railway.app/files/update/pd-img-1',
+        json={'success': True},
+        status_code=200,
+    )
+    # Mock call record upload.
+    requests_mock.post(
+        'https://proxainest-production.up.railway.app/ingestion/call-records',
+        json={'success': True},
+        status_code=201,
+    )
+
+    connection.upload_call_record(call_record)
+
+    # Verify: image got a proxdash_file_id.
+    assert img.proxdash_file_id == 'pd-img-1'
+
+    # Verify: call record payload has no data/path on the image block.
+    call_record_requests = [
+        r for r in requests_mock.request_history
+        if 'call-records' in r.url
+    ]
+    assert len(call_record_requests) == 1
+    payload = json.loads(call_record_requests[0].text)
+    chat_messages = payload['query']['chat']['messages']
+    img_block = [
+        c for c in chat_messages[0]['content']
+        if c.get('type') == 'image'
+    ][0]
+    assert 'data' not in img_block
+    assert 'path' not in img_block
+    assert img_block.get('proxdash_file_id') == 'pd-img-1'
 
 
 class TestProxDashConnectionUploadCallRecordResponseTypes:
