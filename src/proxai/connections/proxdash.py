@@ -392,10 +392,16 @@ class ProxDashConnection(state_controller.StateControlled):
               media_contents.append(mc)
           if choice.content:
             media_contents.extend(choice.content)
-    return [
-        mc for mc in media_contents
-        if mc.type in self._UPLOADABLE_MEDIA_TYPES
-    ]
+    seen = set()
+    unique = []
+    for mc in media_contents:
+      if mc.type not in self._UPLOADABLE_MEDIA_TYPES:
+        continue
+      if id(mc) in seen:
+        continue
+      seen.add(id(mc))
+      unique.append(mc)
+    return unique
 
   def _upload_pending_media(
       self,
@@ -411,8 +417,8 @@ class ProxDashConnection(state_controller.StateControlled):
       return
     if allow_parallel_file_upload and len(pending) > 1:
       with ThreadPoolExecutor(max_workers=len(pending)) as pool:
-        futures = {mc: pool.submit(self.upload_file, mc) for mc in pending}
-        for mc, future in futures.items():
+        futures = [pool.submit(self.upload_file, mc) for mc in pending]
+        for future in futures:
           try:
             future.result()
           except Exception:
@@ -620,7 +626,7 @@ class ProxDashConnection(state_controller.StateControlled):
           json={'uploadConfirmed': True},
           headers={'X-API-Key': self.proxdash_options.api_key}
       )
-      if resp.status_code != 200:
+      if resp.status_code not in (200, 201):
         logging_utils.log_proxdash_message(
             logging_options=self.logging_options,
             proxdash_options=self.proxdash_options, message=(
