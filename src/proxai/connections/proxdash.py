@@ -681,6 +681,22 @@ class ProxDashConnection(state_controller.StateControlled):
     except Exception:
       return None
 
+  def delete_file(self, file_id: str) -> bool:
+    """Delete a file from ProxDash (S3 + DB record).
+
+    Returns True on success, False on failure.
+    """
+    if self.status != types.ProxDashConnectionStatus.CONNECTED:
+      return False
+    try:
+      resp = requests.delete(
+          f'{self.proxdash_options.base_url}/files/{file_id}',
+          headers={'X-API-Key': self.proxdash_options.api_key}
+      )
+      return resp.status_code == 200
+    except Exception:
+      return False
+
   def download_file(self, file_id: str) -> bytes | None:
     """Download file bytes from ProxDash via presigned S3 URL.
 
