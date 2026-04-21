@@ -429,9 +429,7 @@ class ProxDashConnection(state_controller.StateControlled):
           ), type=types.LoggingType.ERROR
       )
 
-  def _resolve_file_bytes(
-      self, media: types.MessageContent
-  ) -> bytes | None:
+  def _resolve_file_bytes(self, media: types.MessageContent) -> bytes | None:
     if media.data is not None:
       return media.data
     if media.path is not None:
@@ -498,8 +496,7 @@ class ProxDashConnection(state_controller.StateControlled):
   ) -> bool:
     try:
       resp = requests.put(
-          presigned_url, data=file_bytes,
-          headers={'Content-Type': mime_type}
+          presigned_url, data=file_bytes, headers={'Content-Type': mime_type}
       )
       if resp.status_code not in (200, 204):
         logging_utils.log_proxdash_message(
@@ -560,9 +557,9 @@ class ProxDashConnection(state_controller.StateControlled):
       return None
 
     filename = (
-        media.filename
-        or (os.path.basename(media.path) if media.path else None)
-        or '(no_filename_set)'
+        media.filename or
+        (os.path.basename(media.path) if media.path else None) or
+        '(no_filename_set)'
     )
     mime_type = media.media_type or 'application/octet-stream'
 
@@ -586,22 +583,23 @@ class ProxDashConnection(state_controller.StateControlled):
     )
     return file_id
 
-  def update_file(
-      self,
-      file_id: str,
-      provider_file_api_ids: dict | None = None,
-      provider_file_api_status: dict | None = None,
-  ):
+  def update_file(self, media: types.MessageContent):
     """Update a ProxDash file record with provider metadata."""
     if self.status != types.ProxDashConnectionStatus.CONNECTED:
       return
+    if media.proxdash_file_id is None:
+      return
     update_data = {}
-    if provider_file_api_ids is not None:
-      update_data['providerFileApiIds'] = provider_file_api_ids
-    if provider_file_api_status is not None:
-      update_data['providerFileApiStatus'] = provider_file_api_status
+    if media.provider_file_api_ids:
+      update_data['providerFileApiIds'] = media.provider_file_api_ids
+    if media.provider_file_api_status:
+      update_data['providerFileApiStatus'] = {
+          prov: meta.to_dict()
+          for prov, meta in media.provider_file_api_status.items()
+      }
     if not update_data:
       return
+    file_id = media.proxdash_file_id
 
     try:
       resp = requests.post(
@@ -626,8 +624,47 @@ class ProxDashConnection(state_controller.StateControlled):
           type=types.LoggingType.ERROR
       )
 
-  def get_file(self, file_id: str) -> dict | None:
-    """Get file info from ProxDash."""
+  def _file_info_to_message_content(
+      self, info: dict
+  ) -> types.MessageContent | None:
+    """Convert a ProxDash FileInfo response to a MessageContent.
+
+    Maps camelCase backend keys to the snake_case dict that
+    MessageContent.from_dict() expects.
+    """
+    try:
+      data = {
+          'type': info.get('type', 'document'),
+          'filename': info.get('filename'),
+          'provider_file_api_ids': info.get('providerFileApiIds'),
+          'provider_file_api_status': info.get('providerFileApiStatus'),
+          'proxdash_file_id': info.get('id'),
+          'proxdash_file_status': {
+              'file_id': info.get('id', ''),
+              'upload_confirmed': info.get('uploadConfirmed', False),
+              'source': info.get('source'),
+              'created_at': (
+                  str(info['createdAt'])
+                  if info.get('createdAt') else None
+              ),
+              'updated_at': (
+                  str(info['updatedAt'])
+                  if info.get('updatedAt') else None
+              ),
+          },
+      }
+      if info.get('mimeType'):
+        data['media_type'] = info['mimeType']
+      if info.get('source'):
+        data['source'] = info['source']
+      return types.MessageContent.from_dict(data)
+    except Exception:
+      return None
+
+  def get_file(
+      self, file_id: str
+  ) -> types.MessageContent | None:
+    """Get file info from ProxDash as a MessageContent."""
     if self.status != types.ProxDashConnectionStatus.CONNECTED:
       return None
     try:
@@ -639,10 +676,42 @@ class ProxDashConnection(state_controller.StateControlled):
         return None
       result = json.loads(resp.text)
       if result.get('success') and result.get('data'):
-        return result['data']
+        return self._file_info_to_message_content(result['data'])
       return None
     except Exception:
       return None
+
+  def list_files(
+      self, limit: int = 100
+  ) -> list[types.MessageContent]:
+    """List files from ProxDash as MessageContent objects.
+
+    Returns a list of MessageContent with proxdash_file_id,
+    proxdash_file_status, and any synced provider metadata.
+    Empty list on failure.
+    """
+    if self.status != types.ProxDashConnectionStatus.CONNECTED:
+      return []
+    try:
+      resp = requests.get(
+          f'{self.proxdash_options.base_url}/files/list', params={
+              'pageSize': limit,
+              'includeSource': 'true',
+          }, headers={'X-API-Key': self.proxdash_options.api_key}
+      )
+      if resp.status_code != 200:
+        return []
+      result = json.loads(resp.text)
+      if not result.get('success') or not result.get('data'):
+        return []
+      results = []
+      for info in result['data'].get('items', []):
+        mc = self._file_info_to_message_content(info)
+        if mc is not None:
+          results.append(mc)
+      return results
+    except Exception:
+      return []
 
   def get_model_configs_schema(self,) -> types.ModelConfigsSchemaType | None:
     """Fetch the latest model configurations from ProxDash."""

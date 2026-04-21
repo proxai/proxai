@@ -521,6 +521,55 @@ class TestFileUploadMetadata:
     assert FileUploadState.FAILED.value == "failed"
 
 
+class TestFileUploadMetadataSerialize:
+
+  def test_round_trip(self):
+    meta = FileUploadMetadata(
+        file_id="files/abc123",
+        provider="gemini",
+        filename="report.pdf",
+        size_bytes=1024,
+        mime_type="application/pdf",
+        created_at="2024-01-01T00:00:00Z",
+        expires_at="2024-01-02T00:00:00Z",
+        uri="https://storage.example.com/abc123",
+        state=FileUploadState.ACTIVE,
+        sha256_hash="deadbeef",
+    )
+    d = meta.to_dict()
+    restored = FileUploadMetadata.from_dict(d)
+    assert restored == meta
+
+  def test_round_trip_minimal(self):
+    meta = FileUploadMetadata(file_id="file-123")
+    d = meta.to_dict()
+    restored = FileUploadMetadata.from_dict(d)
+    assert restored == meta
+    assert d == {"file_id": "file-123"}
+
+
+class TestProxDashFileStatusSerialize:
+
+  def test_round_trip(self):
+    status = ProxDashFileStatus(
+        file_id="clxyz123",
+        s3_key="files/user1/clxyz123",
+        upload_confirmed=True,
+        source="https://s3.example.com/presigned",
+        created_at="2024-01-01T12:00:00Z",
+        updated_at="2024-01-01T12:01:00Z",
+    )
+    d = status.to_dict()
+    restored = ProxDashFileStatus.from_dict(d)
+    assert restored == status
+
+  def test_round_trip_minimal(self):
+    status = ProxDashFileStatus(file_id="pd-1")
+    d = status.to_dict()
+    restored = ProxDashFileStatus.from_dict(d)
+    assert restored == status
+
+
 class TestMessageContentFileApiFields:
 
   def test_fields_none_by_default(self):
