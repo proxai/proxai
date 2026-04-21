@@ -150,6 +150,46 @@ class FileUploadMetadata:
   state: FileUploadState | None = None
   sha256_hash: str | None = None
 
+  def to_dict(self) -> dict:
+    result = {'file_id': self.file_id}
+    if self.provider is not None:
+      result['provider'] = self.provider
+    if self.filename is not None:
+      result['filename'] = self.filename
+    if self.size_bytes is not None:
+      result['size_bytes'] = self.size_bytes
+    if self.mime_type is not None:
+      result['mime_type'] = self.mime_type
+    if self.created_at is not None:
+      result['created_at'] = self.created_at
+    if self.expires_at is not None:
+      result['expires_at'] = self.expires_at
+    if self.uri is not None:
+      result['uri'] = self.uri
+    if self.state is not None:
+      result['state'] = self.state.value
+    if self.sha256_hash is not None:
+      result['sha256_hash'] = self.sha256_hash
+    return result
+
+  @classmethod
+  def from_dict(cls, data: dict) -> "FileUploadMetadata":
+    return cls(
+        file_id=data["file_id"],
+        provider=data.get("provider"),
+        filename=data.get("filename"),
+        size_bytes=data.get("size_bytes"),
+        mime_type=data.get("mime_type"),
+        created_at=data.get("created_at"),
+        expires_at=data.get("expires_at"),
+        uri=data.get("uri"),
+        state=(
+            FileUploadState(data["state"])
+            if data.get("state") else None
+        ),
+        sha256_hash=data.get("sha256_hash"),
+    )
+
 
 @dataclasses.dataclass
 class ProxDashFileStatus:
@@ -167,6 +207,30 @@ class ProxDashFileStatus:
   source: str | None = None
   created_at: str | None = None
   updated_at: str | None = None
+
+  def to_dict(self) -> dict:
+    result = {'file_id': self.file_id}
+    if self.s3_key is not None:
+      result['s3_key'] = self.s3_key
+    result['upload_confirmed'] = self.upload_confirmed
+    if self.source is not None:
+      result['source'] = self.source
+    if self.created_at is not None:
+      result['created_at'] = self.created_at
+    if self.updated_at is not None:
+      result['updated_at'] = self.updated_at
+    return result
+
+  @classmethod
+  def from_dict(cls, data: dict) -> "ProxDashFileStatus":
+    return cls(
+        file_id=data["file_id"],
+        s3_key=data.get("s3_key"),
+        upload_confirmed=data.get("upload_confirmed", False),
+        source=data.get("source"),
+        created_at=data.get("created_at"),
+        updated_at=data.get("updated_at"),
+    )
 
 
 @dataclasses.dataclass
@@ -396,41 +460,12 @@ class MessageContent:
     if self.provider_file_api_status is not None:
       status_dict = {}
       for provider, meta in self.provider_file_api_status.items():
-        meta_dict = {"file_id": meta.file_id}
-        if meta.provider is not None:
-          meta_dict["provider"] = meta.provider
-        if meta.filename is not None:
-          meta_dict["filename"] = meta.filename
-        if meta.size_bytes is not None:
-          meta_dict["size_bytes"] = meta.size_bytes
-        if meta.mime_type is not None:
-          meta_dict["mime_type"] = meta.mime_type
-        if meta.created_at is not None:
-          meta_dict["created_at"] = meta.created_at
-        if meta.expires_at is not None:
-          meta_dict["expires_at"] = meta.expires_at
-        if meta.uri is not None:
-          meta_dict["uri"] = meta.uri
-        if meta.state is not None:
-          meta_dict["state"] = meta.state.value
-        if meta.sha256_hash is not None:
-          meta_dict["sha256_hash"] = meta.sha256_hash
-        status_dict[provider] = meta_dict
+        status_dict[provider] = meta.to_dict()
       result["provider_file_api_status"] = status_dict
     if self.proxdash_file_id is not None:
       result["proxdash_file_id"] = self.proxdash_file_id
     if self.proxdash_file_status is not None:
-      pd_dict = {"file_id": self.proxdash_file_status.file_id}
-      if self.proxdash_file_status.s3_key is not None:
-        pd_dict["s3_key"] = self.proxdash_file_status.s3_key
-      pd_dict["upload_confirmed"] = (self.proxdash_file_status.upload_confirmed)
-      if self.proxdash_file_status.source is not None:
-        pd_dict["source"] = self.proxdash_file_status.source
-      if self.proxdash_file_status.created_at is not None:
-        pd_dict["created_at"] = self.proxdash_file_status.created_at
-      if self.proxdash_file_status.updated_at is not None:
-        pd_dict["updated_at"] = self.proxdash_file_status.updated_at
-      result["proxdash_file_status"] = pd_dict
+      result["proxdash_file_status"] = self.proxdash_file_status.to_dict()
     return result
 
   @classmethod
@@ -453,34 +488,15 @@ class MessageContent:
     provider_file_api_ids = data.get("provider_file_api_ids")
     provider_file_api_status = None
     if data.get("provider_file_api_status") is not None:
-      provider_file_api_status = {}
-      for provider, meta_dict in data["provider_file_api_status"].items():
-        provider_file_api_status[provider] = FileUploadMetadata(
-            file_id=meta_dict["file_id"],
-            provider=meta_dict.get("provider"),
-            filename=meta_dict.get("filename"),
-            size_bytes=meta_dict.get("size_bytes"),
-            mime_type=meta_dict.get("mime_type"),
-            created_at=meta_dict.get("created_at"),
-            expires_at=meta_dict.get("expires_at"),
-            uri=meta_dict.get("uri"),
-            state=(
-                FileUploadState(meta_dict["state"])
-                if meta_dict.get("state") else None
-            ),
-            sha256_hash=meta_dict.get("sha256_hash"),
-        )
+      provider_file_api_status = {
+          provider: FileUploadMetadata.from_dict(meta_dict)
+          for provider, meta_dict in data["provider_file_api_status"].items()
+      }
     proxdash_file_id = data.get("proxdash_file_id")
     proxdash_file_status = None
     if data.get("proxdash_file_status") is not None:
-      pd_data = data["proxdash_file_status"]
-      proxdash_file_status = ProxDashFileStatus(
-          file_id=pd_data["file_id"],
-          s3_key=pd_data.get("s3_key"),
-          upload_confirmed=pd_data.get("upload_confirmed", False),
-          source=pd_data.get("source"),
-          created_at=pd_data.get("created_at"),
-          updated_at=pd_data.get("updated_at"),
+      proxdash_file_status = ProxDashFileStatus.from_dict(
+          data["proxdash_file_status"]
       )
     return cls(
         type=data["type"],

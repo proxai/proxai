@@ -307,8 +307,7 @@ class FilesManager(state_controller.StateControlled):
 
   def _proxdash_connected(self) -> bool:
     return (
-        self.proxdash_connection is not None
-        and self.proxdash_connection.status
+        self.proxdash_connection is not None and self.proxdash_connection.status
         == types.ProxDashConnectionStatus.CONNECTED
     )
 
@@ -376,15 +375,8 @@ class FilesManager(state_controller.StateControlled):
   ):
     if not self._proxdash_connected() or media.proxdash_file_id is None:
       return
-    media_dict = media.to_dict()
     try:
-      self.proxdash_connection.update_file(
-          file_id=media.proxdash_file_id,
-          provider_file_api_ids=media_dict.get('provider_file_api_ids'),
-          provider_file_api_status=media_dict.get(
-              'provider_file_api_status'
-          ),
-      )
+      self.proxdash_connection.update_file(media)
     except Exception:
       pass
 
@@ -552,33 +544,96 @@ class FilesManager(state_controller.StateControlled):
         **kwargs,
     )
 
+  def _list_from_proxdash(self,
+                          limit: int) -> list[message_content.MessageContent]:
+    if not self._proxdash_connected():
+      return []
+    try:
+      return self.proxdash_connection.list_files(limit=limit)
+    except Exception:
+      return []
+
+  def _build_covered_file_ids(
+      self, proxdash_results: list[message_content.MessageContent]
+  ) -> dict[str, set[str]]:
+    covered: dict[str, set[str]] = {}
+    for mc in proxdash_results:
+      if mc.provider_file_api_ids is None:
+        continue
+      for provider, file_id in mc.provider_file_api_ids.items():
+        if provider not in covered:
+          covered[provider] = set()
+        covered[provider].add(file_id)
+    return covered
+
   def _execute_lists(
       self,
       providers: list[types.ProviderNameType],
       limit: int,
   ) -> list[message_content.MessageContent]:
-    results: list[message_content.MessageContent] = []
-    if self._use_parallel(providers):
-      with ThreadPoolExecutor(max_workers=len(providers)) as pool:
-        futures = {
+    """List from ProxDash and providers in parallel, deduplicate."""
+    include_proxdash = self._proxdash_connected()
+    use_parallel = self._use_parallel(providers) or include_proxdash
+
+    provider_results_raw: dict[str,
+                               list[message_content.FileUploadMetadata]] = {}
+    proxdash_results: list[message_content.MessageContent] = []
+
+    if use_parallel:
+      max_workers = len(providers) + (1 if include_proxdash else 0)
+      with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        provider_futures = {
             provider: pool.submit(self._list_single_provider, provider, limit)
             for provider in providers
         }
-        for provider, future in futures.items():
-          for meta in future.result():
-            results.append(self._metadata_to_message_content(provider, meta))
+        proxdash_future = None
+        if include_proxdash:
+          proxdash_future = pool.submit(self._list_from_proxdash, limit)
+
+        for provider, future in provider_futures.items():
+          try:
+            provider_results_raw[provider] = future.result()
+          except Exception:
+            provider_results_raw[provider] = []
+
+        if proxdash_future is not None:
+          try:
+            proxdash_results = proxdash_future.result()
+          except Exception:
+            proxdash_results = []
     else:
       for provider in providers:
-        for meta in self._list_single_provider(provider, limit):
-          results.append(self._metadata_to_message_content(provider, meta))
-    return results
+        try:
+          provider_results_raw[provider] = (
+              self._list_single_provider(provider, limit)
+          )
+        except Exception:
+          provider_results_raw[provider] = []
+
+    covered = self._build_covered_file_ids(proxdash_results)
+
+    provider_results: list[message_content.MessageContent] = []
+    for provider, metadatas in provider_results_raw.items():
+      provider_covered = covered.get(provider, set())
+      for meta in metadatas:
+        if meta.file_id in provider_covered:
+          continue
+        provider_results.append(
+            self._metadata_to_message_content(provider, meta)
+        )
+
+    return proxdash_results + provider_results
 
   def list(
       self,
       providers: list[types.ProviderNameType] | None = None,
       limit_per_provider: int = 100,
   ) -> list[message_content.MessageContent]:
-    """List files from provider File APIs.
+    """List files from ProxDash and provider File APIs.
+
+    When ProxDash is connected, fetches files from ProxDash first
+    (which contain combined provider metadata), then fetches from
+    individual providers and skips files already covered by ProxDash.
 
     Args:
       providers: List of provider names to query, or None to query
@@ -587,9 +642,9 @@ class FilesManager(state_controller.StateControlled):
         provider. Defaults to 100.
 
     Returns:
-      A list of MessageContent objects, one per file. Each has
-      single-provider metadata in provider_file_api_status and
-      provider_file_api_ids.
+      A list of MessageContent objects. ProxDash results come first
+      (with combined provider metadata), followed by provider-only
+      files not tracked by ProxDash.
 
     Raises:
       ValueError: If providers is an empty list or no providers
