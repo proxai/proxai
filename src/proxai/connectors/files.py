@@ -706,6 +706,8 @@ class FilesManager(state_controller.StateControlled):
       if (
           media.provider_file_api_ids is None or not media.provider_file_api_ids
       ):
+        if self._proxdash_connected() and media.proxdash_file_id is not None:
+          return []
         raise ValueError("No uploaded providers found on this media content.")
       return list(media.provider_file_api_ids.keys())
     return providers

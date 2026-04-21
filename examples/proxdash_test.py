@@ -632,21 +632,21 @@ def test_video_output():
 
 
 TEST_SEQUENCE = [
-    # ('text_input', test_text_input),
-    # ('json_input', test_json_input),
-    # ('pydantic_input', test_pydantic_input),
-    # ('markdown_input', test_markdown_input),
-    # ('markdown_input_grok', test_markdown_input_grok),
+    ('text_input', test_text_input),
+    ('json_input', test_json_input),
+    ('pydantic_input', test_pydantic_input),
+    ('markdown_input', test_markdown_input),
+    ('markdown_input_grok', test_markdown_input_grok),
     ('markdown_input_mock', test_markdown_input_mock),
     ('markdown_input_mock_failing', test_markdown_input_mock_failing),
-    # ('image_input', test_image_input),
-    # ('audio_input', test_audio_input),
-    # ('video_input', test_video_input),
-    # ('json_output', test_json_output),
-    # ('pydantic_output', test_pydantic_output),
-    # ('image_output', test_image_output),
-    # ('audio_output', test_audio_output),
-    # ('video_output', test_video_output),
+    ('image_input', test_image_input),
+    ('audio_input', test_audio_input),
+    ('video_input', test_video_input),
+    ('json_output', test_json_output),
+    ('pydantic_output', test_pydantic_output),
+    ('image_output', test_image_output),
+    ('audio_output', test_audio_output),
+    ('video_output', test_video_output),
 ]
 TEST_MAP = dict(TEST_SEQUENCE)
 
