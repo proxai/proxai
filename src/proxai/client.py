@@ -887,9 +887,7 @@ class ProxAIClient(state_controller.StateControlled):
 
       _ = self.model_cache_manager
       _ = self.query_cache_manager
-      # BEGIN: Refactoring: Revert this after testing
-      # self._init_proxdash_connection()
-      # END: Refactoring
+      self._init_proxdash_connection()
 
       if self.cache_options and self.cache_options.clear_model_cache_on_connect:
         self.model_cache_manager.clear_cache()
@@ -1466,7 +1464,7 @@ class ProxAIClient(state_controller.StateControlled):
       except ValueError:
         continue
 
-    models = self.available_models_instance.list_working_models()
+    models = self.available_models_instance.list_working_models(return_all=True)
     if len(models.working_models) > 0:
       provider_model = models.working_models.pop()
       self.registered_models[types.OutputFormatType.TEXT] = provider_model

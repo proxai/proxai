@@ -337,253 +337,50 @@ class ProxDashConnection(state_controller.StateControlled):
     except Exception:
       return types.ProxDashConnectionStatus.PROXDASH_INVALID_RETURN, None
 
-  def _hide_sensitive_content_logging_record(
-      self, logging_record: types.LoggingRecord
-  ) -> types.LoggingRecord:
-    logging_record = copy.deepcopy(logging_record)
-    if logging_record.query_record and logging_record.query_record.prompt:
-      logging_record.query_record.prompt = _SENSITIVE_CONTENT_HIDDEN_STRING
-    if logging_record.query_record and logging_record.query_record.system:
-      logging_record.query_record.system = _SENSITIVE_CONTENT_HIDDEN_STRING
-    if logging_record.query_record and logging_record.query_record.messages:
-      logging_record.query_record.messages = [{
-          'role': 'assistant',
-          'content': _SENSITIVE_CONTENT_HIDDEN_STRING
-      }]
-    if (
-        logging_record.response_record and
-        logging_record.response_record.response
-    ):
-      logging_record.response_record.response.value = (
-          _SENSITIVE_CONTENT_HIDDEN_STRING
-      )
+  def _hide_sensitive_content(
+      self, call_record: types.CallRecord
+  ) -> types.CallRecord:
+    call_record = copy.deepcopy(call_record)
+    if call_record.query:
+      if call_record.query.prompt:
+        call_record.query.prompt = _SENSITIVE_CONTENT_HIDDEN_STRING
+      if call_record.query.system_prompt:
+        call_record.query.system_prompt = _SENSITIVE_CONTENT_HIDDEN_STRING
+      if call_record.query.chat:
+        call_record.query.chat = None
+    if call_record.result:
+      if call_record.result.output_text:
+        call_record.result.output_text = _SENSITIVE_CONTENT_HIDDEN_STRING
+      call_record.result.output_image = None
+      call_record.result.output_audio = None
+      call_record.result.output_video = None
+      call_record.result.output_json = None
+      call_record.result.output_pydantic = None
+      call_record.result.content = None
+      call_record.result.choices = None
+    return call_record
 
-    return logging_record
-
-  def _format_messages(self, logging_record: types.LoggingRecord) -> str:
-    if not logging_record.query_record.messages:
-      return None
-    return json.dumps(
-        logging_record.query_record.messages, indent=2, sort_keys=True
-    )
-
-  def _format_stop(self, logging_record: types.LoggingRecord) -> str:
-    if logging_record.query_record.stop is not None:
-      stop = logging_record.query_record.stop
-      if isinstance(stop, str):
-        stop = [stop]
-      return json.dumps(stop, indent=2, sort_keys=True)
-    return None
-
-  def _format_response(self, logging_record: types.LoggingRecord) -> str:
-    if logging_record.response_record.response is None:
-      return None
-    response_type = logging_record.response_record.response.type
-
-    if logging_record.response_record.response.value is None:
-      return None
-
-    if (
-        logging_record.response_record.response.value ==
-        _SENSITIVE_CONTENT_HIDDEN_STRING
-    ):
-      return _SENSITIVE_CONTENT_HIDDEN_STRING
-
-    if response_type == types.OutputFormatType.TEXT:
-      return str(logging_record.response_record.response.value)
-
-    if response_type == types.OutputFormatType.JSON:
-      try:
-        return json.dumps(
-            logging_record.response_record.response.value, indent=2,
-            sort_keys=True
-        )
-      except Exception:
-        logging_utils.log_proxdash_message(
-            logging_options=self.logging_options,
-            proxdash_options=self.proxdash_options, message=(
-                'Response is not a JSON object. Please create an issue at '
-                'https://github.com/proxai/proxai/issues.\n'
-                f'Response: {logging_record.response_record.response}'
-            ), type=types.LoggingType.WARNING
-        )
-        return None
-
-    if response_type == types.OutputFormatType.PYDANTIC:
-      return None
-
-    logging_utils.log_proxdash_message(
-        logging_options=self.logging_options,
-        proxdash_options=self.proxdash_options, message=(
-            'Unknown response type. Please create an issue at '
-            'https://github.com/proxai/proxai/issues.\n'
-            f'Response: {logging_record.response_record.response}'
-        ), type=types.LoggingType.WARNING
-    )
-    return None
-
-  def _format_response_pydantic_json_value(
-      self, logging_record: types.LoggingRecord
-  ) -> str:
-    if logging_record.response_record.response is None:
-      return None
-    if (
-        logging_record.response_record.response.type
-        != types.OutputFormatType.PYDANTIC
-    ):
-      return None
-    if (
-        logging_record.response_record.response.value ==
-        _SENSITIVE_CONTENT_HIDDEN_STRING
-    ):
-      return _SENSITIVE_CONTENT_HIDDEN_STRING
-
-    if logging_record.response_record.response.pydantic_metadata is not None:
-      instance_json_value = (
-          logging_record.response_record.response.pydantic_metadata.
-          instance_json_value
-      )
-    elif logging_record.response_record.response.value is not None:
-      try:
-        instance_json_value = (
-            logging_record.response_record.response.value.model_dump()
-        )
-      except Exception:
-        logging_utils.log_proxdash_message(
-            logging_options=self.logging_options,
-            proxdash_options=self.proxdash_options, message=(
-                'Response value is not a pydantic instance. Please report '
-                'this issue to the https://github.com/proxai/proxai/issues.\n'
-                f'Response: {logging_record.response_record.response}'
-            ), type=types.LoggingType.WARNING
-        )
-        return None
-    else:
-      logging_utils.log_proxdash_message(
-          logging_options=self.logging_options,
-          proxdash_options=self.proxdash_options, message=(
-              'Response has no pydantic_metadata or value. Please report '
-              'this issue to the https://github.com/proxai/proxai/issues.\n'
-              f'Response: {logging_record.response_record.response}'
-          ), type=types.LoggingType.WARNING
-      )
-      return None
-
-    try:
-      return json.dumps(instance_json_value, indent=2, sort_keys=True)
-    except Exception:
-      logging_utils.log_proxdash_message(
-          logging_options=self.logging_options,
-          proxdash_options=self.proxdash_options, message=(
-              'Response pydantic_metadata.instance_json_value is not a JSON '
-              'object. Please report this issue to the '
-              'https://github.com/proxai/proxai/issues.\n'
-              f'Response: {instance_json_value}'
-          ), type=types.LoggingType.WARNING
-      )
-      return None
-
-  def _get_formatted_query_pydantic_values(
-      self, logging_record: types.LoggingRecord
-  ) -> tuple[str | None, str | None]:
-    output_format = logging_record.query_record.output_format
-    if (
-        output_format and
-        output_format.type == types.OutputFormatType.PYDANTIC and
-        output_format.value.class_name
-    ):
-      query_pydantic_class_name = output_format.value.class_name
-      try:
-        query_pydantic_class_json_schema = (
-            output_format.value.class_value.model_json_schema()
-        )
-        return query_pydantic_class_name, query_pydantic_class_json_schema
-      except Exception:
-        logging_utils.log_proxdash_message(
-            logging_options=self.logging_options,
-            proxdash_options=self.proxdash_options, message=(
-                'Failed to get formatted query pydantic values. Please create '
-                'an issue at https://github.com/proxai/proxai/issues.\n'
-                f'Response: {logging_record.query_record.output_format}'
-            ), type=types.LoggingType.WARNING
-        )
-        return query_pydantic_class_name, str(output_format.value.class_value)
-    return None, None
-
-  def upload_logging_record(self, logging_record: types.LoggingRecord):
-    """Upload a logging record to ProxDash."""
+  def upload_call_record(self, call_record: types.CallRecord):
+    """Upload a call record to ProxDash."""
     if self.status != types.ProxDashConnectionStatus.CONNECTED:
       return
     if ((
         self.proxdash_options and self.proxdash_options.hide_sensitive_content
     ) or self._key_info_from_proxdash['permission'] == 'NO_PROMPT'):
-      logging_record = self._hide_sensitive_content_logging_record(
-          logging_record
-      )
+      call_record = self._hide_sensitive_content(call_record)
 
-    messages = self._format_messages(logging_record)
-    response = self._format_response(logging_record)
-    stop = self._format_stop(logging_record)
-    query_pydantic_class_name = None
-    query_pydantic_class_json_schema = None
-    response_pydantic_json_value = None
-    if (
-        logging_record.query_record.output_format and
-        logging_record.query_record.output_format.type
-        == types.OutputFormatType.PYDANTIC
-    ):
-      query_pydantic_class_name, query_pydantic_class_json_schema = (
-          self._get_formatted_query_pydantic_values(logging_record)
-      )
-      response_pydantic_json_value = (
-          self._format_response_pydantic_json_value(logging_record)
-      )
-
-    data = {
-        'hiddenRunKey': self.hidden_run_key,
-        'experimentPath': self.experiment_path,
-        'callType': logging_record.query_record.call_type,
-        'provider': logging_record.query_record.provider_model.provider,
-        'model': logging_record.query_record.provider_model.model,
-        'providerModelIdentifier': (
-            logging_record.query_record.provider_model.provider_model_identifier
-        ),
-        'prompt': logging_record.query_record.prompt,
-        'system': logging_record.query_record.system,
-        'messages': messages,
-        'maxTokens': logging_record.query_record.max_tokens,
-        'temperature': logging_record.query_record.temperature,
-        'stop': stop,
-        'webSearch': logging_record.query_record.web_search,
-        'queryPydanticClassName': query_pydantic_class_name,
-        'queryPydanticJsonSchema': query_pydantic_class_json_schema,
-        'hashValue': logging_record.query_record.hash_value,
-        'queryTokens': logging_record.query_record.token_count,
-        'response': response,
-        'error': logging_record.response_record.error,
-        'errorTraceback': logging_record.response_record.error_traceback,
-        'responsePydanticJsonValue': response_pydantic_json_value,
-        'startUTCDate':
-            logging_record.response_record.start_utc_date.isoformat(),
-        'endUTCDate': logging_record.response_record.end_utc_date.isoformat(),
-        'localTimeOffsetMinute':
-            (logging_record.response_record.local_time_offset_minute),
-        'responseTime': (
-            int(
-                logging_record.response_record.response_time.total_seconds() *
-                1000
-            )
-        ),
-        'estimatedCost': logging_record.response_record.estimated_cost,
-        'responseTokens': logging_record.response_record.token_count,
-        'responseSource': logging_record.response_source,
-        'lookFailReason': logging_record.look_fail_reason,
-    }
+    data = type_serializer.encode_call_record(call_record)
+    data['schema_version'] = 2
+    data['experiment_path'] = self.experiment_path
+    data.setdefault('connection', {})['caller_type'] = 'SDK'
+    data.setdefault('connection', {})['caller_app'] = 'PYTHON_SDK'
+    if 'result' in data and 'role' in data['result']:
+      data['result']['role'] = data['result']['role'].upper()
 
     try:
       response = requests.post(
-          f'{self.proxdash_options.base_url}/ingestion/logging-records',
-          json=data, headers={'X-API-Key': self.proxdash_options.api_key}
+          f'{self.proxdash_options.base_url}/ingestion/call-records', json=data,
+          headers={'X-API-Key': self.proxdash_options.api_key}
       )
     except Exception as e:
       logging_utils.log_proxdash_message(

@@ -364,16 +364,16 @@ class ProviderConnector(state_controller.StateControlled):
         output_token_count * response_token_cost
     )
 
-  def _update_proxdash(self, call_record: types.CallRecord):
+  def _upload_call_record_to_proxdash(self, call_record: types.CallRecord):
     if not self.proxdash_connection:
       return
     try:
-      self.proxdash_connection.upload_logging_record(call_record)
+      self.proxdash_connection.upload_call_record(call_record)
     except Exception as e:
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
           proxdash_options=self.proxdash_connection.proxdash_options, message=(
-              'ProxDash upload_logging_record failed.\n'
+              'ProxDash upload_call_record failed.\n'
               f'Error message: {e}\n'
               f'Traceback: {traceback.format_exc()}'
           ), type=types.LoggingType.ERROR
@@ -855,6 +855,7 @@ class ProviderConnector(state_controller.StateControlled):
           result=cached_result,
           connection=connection_metadata,
       )
+      self._upload_call_record_to_proxdash(call_record)
       return call_record
     elif isinstance(cached_result, types.CacheLookFailReason):
       connection_metadata.cache_look_fail_reason = cached_result
@@ -897,6 +898,7 @@ class ProviderConnector(state_controller.StateControlled):
           not connection_options or
           not connection_options.suppress_provider_errors
       ):
+        self._upload_call_record_to_proxdash(call_record)
         raise call_record.result.error
       else:
         call_record.result.error = str(call_record.result.error)
@@ -905,6 +907,7 @@ class ProviderConnector(state_controller.StateControlled):
           call_record=call_record, connection_options=connection_options
       )
 
+    self._upload_call_record_to_proxdash(call_record)
     return call_record
 
   def init_model(self) -> Any:

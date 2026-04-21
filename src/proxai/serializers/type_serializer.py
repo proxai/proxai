@@ -674,13 +674,13 @@ def encode_parameter_type(
   """Serialize ParameterType to a dictionary."""
   record = {}
   if parameter_type.temperature is not None:
-    record['temperature'] = str(parameter_type.temperature)
+    record['temperature'] = parameter_type.temperature
   if parameter_type.max_tokens is not None:
-    record['max_tokens'] = str(parameter_type.max_tokens)
+    record['max_tokens'] = parameter_type.max_tokens
   if parameter_type.stop is not None:
     record['stop'] = parameter_type.stop
   if parameter_type.n is not None:
-    record['n'] = str(parameter_type.n)
+    record['n'] = parameter_type.n
   if parameter_type.thinking is not None:
     record['thinking'] = parameter_type.thinking.value
   return record
@@ -897,13 +897,13 @@ def encode_usage_type(usage_type: types.UsageType) -> dict[str, Any]:
   """Serialize UsageType to a dictionary."""
   record = {}
   if usage_type.input_tokens is not None:
-    record['input_tokens'] = str(usage_type.input_tokens)
+    record['input_tokens'] = usage_type.input_tokens
   if usage_type.output_tokens is not None:
-    record['output_tokens'] = str(usage_type.output_tokens)
+    record['output_tokens'] = usage_type.output_tokens
   if usage_type.total_tokens is not None:
-    record['total_tokens'] = str(usage_type.total_tokens)
+    record['total_tokens'] = usage_type.total_tokens
   if usage_type.estimated_cost is not None:
-    record['estimated_cost'] = str(usage_type.estimated_cost)
+    record['estimated_cost'] = usage_type.estimated_cost
   return record
 
 
@@ -927,7 +927,7 @@ def encode_tool_usage_type(
   """Serialize ToolUsageType to a dictionary."""
   record = {}
   if tool_usage_type.web_search_count is not None:
-    record['web_search_count'] = str(tool_usage_type.web_search_count)
+    record['web_search_count'] = tool_usage_type.web_search_count
   if tool_usage_type.web_search_citations is not None:
     record['web_search_citations'] = tool_usage_type.web_search_citations
   return record
@@ -955,11 +955,14 @@ def encode_timestamp_type(
     record['local_time_offset_minute'] = (
         timestamp_type.local_time_offset_minute
     )
+  # Milliseconds (int) to match ProxDash DTO @IsInt() constraint.
   if timestamp_type.response_time is not None:
-    record['response_time'] = timestamp_type.response_time.total_seconds()
+    record['response_time'] = int(
+        timestamp_type.response_time.total_seconds() * 1000
+    )
   if timestamp_type.cache_response_time is not None:
-    record['cache_response_time'] = (
-        timestamp_type.cache_response_time.total_seconds()
+    record['cache_response_time'] = int(
+        timestamp_type.cache_response_time.total_seconds() * 1000
     )
   return record
 
@@ -981,11 +984,11 @@ def decode_timestamp_type(record: dict[str, Any]) -> types.TimeStampType:
     )
   if 'response_time' in record:
     timestamp_type.response_time = datetime.timedelta(
-        seconds=record['response_time']
+        milliseconds=record['response_time']
     )
   if 'cache_response_time' in record:
     timestamp_type.cache_response_time = datetime.timedelta(
-        seconds=record['cache_response_time']
+        milliseconds=record['cache_response_time']
     )
   return timestamp_type
 
