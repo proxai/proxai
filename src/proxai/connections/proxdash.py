@@ -681,6 +681,37 @@ class ProxDashConnection(state_controller.StateControlled):
     except Exception:
       return None
 
+  def download_file(self, file_id: str) -> bytes | None:
+    """Download file bytes from ProxDash via presigned S3 URL.
+
+    Returns the file bytes on success, None on failure.
+    """
+    if self.status != types.ProxDashConnectionStatus.CONNECTED:
+      return None
+    try:
+      resp = requests.get(
+          f'{self.proxdash_options.base_url}/files/download/{file_id}',
+          headers={'X-API-Key': self.proxdash_options.api_key}
+      )
+      if resp.status_code != 200:
+        return None
+      result = json.loads(resp.text)
+      if not result.get('success') or not result.get('data'):
+        return None
+      presigned_url = result['data'].get('url')
+      if not presigned_url:
+        return None
+    except Exception:
+      return None
+
+    try:
+      download_resp = requests.get(presigned_url)
+      if download_resp.status_code != 200:
+        return None
+      return download_resp.content
+    except Exception:
+      return None
+
   def list_files(
       self, limit: int = 100
   ) -> list[types.MessageContent]:
