@@ -709,7 +709,7 @@ class ProxDashConnection(state_controller.StateControlled):
            f'/files/update/{file_id}'), json=update_data,
           headers={'X-API-Key': self.proxdash_options.api_key}
       )
-      if resp.status_code != 200:
+      if resp.status_code not in (200, 201):
         logging_utils.log_proxdash_message(
             logging_options=self.logging_options,
             proxdash_options=self.proxdash_options, message=(

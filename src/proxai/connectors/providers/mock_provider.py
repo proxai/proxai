@@ -9,8 +9,10 @@ import proxai.chat.message_content as message_content
 
 FeatureConfigType = types.FeatureConfigType
 FeatureSupportType = types.FeatureSupportType
-ParameterConfigType = types.ParameterConfigType
+InputFormatConfigType = types.InputFormatConfigType
 OutputFormatConfigType = types.OutputFormatConfigType
+ParameterConfigType = types.ParameterConfigType
+ToolConfigType = types.ToolConfigType
 
 
 class SamplePydanticModel(pydantic.BaseModel):
@@ -39,6 +41,19 @@ class MockProviderModelConnector(provider_connector.ProviderConnector):
           parameters=ParameterConfigType(
               max_tokens=FeatureSupportType.SUPPORTED,
               temperature=FeatureSupportType.SUPPORTED,
+              stop=FeatureSupportType.SUPPORTED,
+              n=FeatureSupportType.NOT_SUPPORTED,
+              thinking=FeatureSupportType.SUPPORTED,
+          ),
+          tools=ToolConfigType(
+              web_search=FeatureSupportType.SUPPORTED,
+          ),
+          input_format=InputFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
+              image=FeatureSupportType.SUPPORTED,
+              document=FeatureSupportType.BEST_EFFORT,
+              json=FeatureSupportType.BEST_EFFORT,
+              pydantic=FeatureSupportType.BEST_EFFORT,
           ),
           output_format=OutputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
@@ -122,8 +137,27 @@ class MockFailingProviderModelConnector(provider_connector.ProviderConnector):
           prompt=FeatureSupportType.SUPPORTED,
           messages=FeatureSupportType.SUPPORTED,
           system_prompt=FeatureSupportType.SUPPORTED,
+          parameters=ParameterConfigType(
+              max_tokens=FeatureSupportType.SUPPORTED,
+              temperature=FeatureSupportType.SUPPORTED,
+              stop=FeatureSupportType.SUPPORTED,
+              n=FeatureSupportType.NOT_SUPPORTED,
+              thinking=FeatureSupportType.SUPPORTED,
+          ),
+          tools=ToolConfigType(
+              web_search=FeatureSupportType.SUPPORTED,
+          ),
+          input_format=InputFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
+              image=FeatureSupportType.SUPPORTED,
+              document=FeatureSupportType.BEST_EFFORT,
+              json=FeatureSupportType.BEST_EFFORT,
+              pydantic=FeatureSupportType.BEST_EFFORT,
+          ),
           output_format=OutputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,
+              json=FeatureSupportType.SUPPORTED,
+              pydantic=FeatureSupportType.SUPPORTED,
           ),
       ),
   }
@@ -166,6 +200,19 @@ class MockSlowProviderModelConnector(provider_connector.ProviderConnector):
           parameters=ParameterConfigType(
               max_tokens=FeatureSupportType.SUPPORTED,
               temperature=FeatureSupportType.SUPPORTED,
+              stop=FeatureSupportType.SUPPORTED,
+              n=FeatureSupportType.NOT_SUPPORTED,
+              thinking=FeatureSupportType.SUPPORTED,
+          ),
+          tools=ToolConfigType(
+              web_search=FeatureSupportType.SUPPORTED,
+          ),
+          input_format=InputFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
+              image=FeatureSupportType.SUPPORTED,
+              document=FeatureSupportType.BEST_EFFORT,
+              json=FeatureSupportType.BEST_EFFORT,
+              pydantic=FeatureSupportType.BEST_EFFORT,
           ),
           output_format=OutputFormatConfigType(
               text=FeatureSupportType.SUPPORTED,

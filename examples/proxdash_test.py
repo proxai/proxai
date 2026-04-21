@@ -99,10 +99,25 @@ def register_models(client: px.Client):
 
   client.model_configs_instance.register_provider_model_config(
       _get_model_config(
+          provider='mock_provider',
+          model='mock_model',
+          provider_model_identifier='mock_model',
+          web_search=False,
+          input_format=['text', 'image', 'document', 'json', 'pydantic'],
+          output_format=[
+              types.OutputFormatType.TEXT, types.OutputFormatType.JSON,
+              types.OutputFormatType.PYDANTIC
+          ],
+      )
+  )
+
+  client.model_configs_instance.register_provider_model_config(
+      _get_model_config(
           provider='mock_failing_provider',
           model='mock_failing_model',
           provider_model_identifier='mock_failing_model',
           web_search=False,
+          input_format=['text', 'image', 'document', 'json', 'pydantic'],
           output_format=[
               types.OutputFormatType.TEXT, types.OutputFormatType.JSON,
               types.OutputFormatType.PYDANTIC
@@ -285,6 +300,20 @@ def register_models(client: px.Client):
       )
   )
 
+  client.model_configs_instance.register_provider_model_config(
+      _get_model_config(
+          provider='grok',
+          model='grok-3',
+          provider_model_identifier='grok-3',
+          web_search=False,
+          input_format=['text', 'json', 'pydantic', 'document'],
+          output_format=[
+              types.OutputFormatType.TEXT, types.OutputFormatType.JSON,
+              types.OutputFormatType.PYDANTIC
+          ],
+      )
+  )
+
   client.model_configs_instance.override_default_model_priority_list([
       px.models.get_model('gemini', 'gemini-3-flash-preview'),
       px.models.get_model('openai', 'gpt-4o'),
@@ -401,6 +430,76 @@ def test_markdown_input():
               ),
           ],
       }], provider_model=_MAIN_MODEL
+  )
+  _print_result(call_record)
+
+
+def test_markdown_input_grok():
+  """Test markdown input with grok (best effort - reads file as inline text)."""
+  print('\n=== test_markdown_input_grok ===')
+  call_record = px.generate(
+      messages=[{
+          'role': 'user',
+          'content': [
+              px.MessageContent(
+                  type=px.ContentType.DOCUMENT,
+                  path=_asset('cat.md'),
+                  media_type='text/markdown',
+              ),
+              px.MessageContent(
+                  type=px.ContentType.TEXT,
+                  text='What is inside this document?',
+              ),
+          ],
+      }], provider_model=('grok', 'grok-3')
+  )
+  _print_result(call_record)
+
+
+def test_markdown_input_mock():
+  """Test markdown input with mock provider (best effort)."""
+  print('\n=== test_markdown_input_mock ===')
+  call_record = px.generate(
+      messages=[{
+          'role': 'user',
+          'content': [
+              px.MessageContent(
+                  type=px.ContentType.DOCUMENT,
+                  path=_asset('cat.md'),
+                  media_type='text/markdown',
+              ),
+              px.MessageContent(
+                  type=px.ContentType.TEXT,
+                  text='What is inside this document?',
+              ),
+          ],
+      }], provider_model=('mock_provider', 'mock_model')
+  )
+  _print_result(call_record)
+
+
+def test_markdown_input_mock_failing():
+  """Test markdown input with mock failing provider."""
+  print('\n=== test_markdown_input_mock_failing ===')
+  call_record = px.generate(
+      messages=[{
+          'role': 'user',
+          'content': [
+              px.MessageContent(
+                  type=px.ContentType.DOCUMENT,
+                  path=_asset('cat.md'),
+                  media_type='text/markdown',
+              ),
+              px.MessageContent(
+                  type=px.ContentType.TEXT,
+                  text='What is inside this document?',
+              ),
+          ],
+      }],
+      provider_model=('mock_failing_provider', 'mock_failing_model'),
+      connection_options=px.ConnectionOptions(
+          suppress_provider_errors=True,
+      ),
   )
   _print_result(call_record)
 
@@ -537,12 +636,15 @@ TEST_SEQUENCE = [
     # ('json_input', test_json_input),
     # ('pydantic_input', test_pydantic_input),
     # ('markdown_input', test_markdown_input),
+    # ('markdown_input_grok', test_markdown_input_grok),
+    ('markdown_input_mock', test_markdown_input_mock),
+    ('markdown_input_mock_failing', test_markdown_input_mock_failing),
     # ('image_input', test_image_input),
     # ('audio_input', test_audio_input),
     # ('video_input', test_video_input),
     # ('json_output', test_json_output),
     # ('pydantic_output', test_pydantic_output),
-    ('image_output', test_image_output),
+    # ('image_output', test_image_output),
     # ('audio_output', test_audio_output),
     # ('video_output', test_video_output),
 ]
@@ -569,7 +671,7 @@ def main():
           # clear_query_cache_on_connect=True,
       ),
       provider_call_options=px.ProviderCallOptions(
-          # allow_parallel_file_operations=False,
+          allow_parallel_file_operations=False,
       ),
   )
   register_models(px.get_default_proxai_client())
