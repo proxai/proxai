@@ -81,7 +81,7 @@ class AvailableModels(state_controller.StateControlled):
       self.model_cache_manager = init_from_params.model_cache_manager
       self.query_cache_manager = init_from_params.query_cache_manager
       self.logging_options = init_from_params.logging_options
-      # self.proxdash_connection = init_from_params.proxdash_connection
+      self.proxdash_connection = init_from_params.proxdash_connection
       self.api_key_manager = init_from_params.api_key_manager
       self.files_manager_instance = init_from_params.files_manager
       self.model_probe_options = init_from_params.model_probe_options
