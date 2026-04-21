@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Dict, Any, List
 import copy
+from concurrent.futures import ThreadPoolExecutor
 import dataclasses
 import datetime
 import functools
@@ -764,10 +765,15 @@ class ProviderConnector(state_controller.StateControlled):
     if query_record.chat is None:
       return
     provider = self.PROVIDER_NAME
+    pending = []
+    seen = set()
     for msg in query_record.chat.messages:
       if isinstance(msg.content, str):
         continue
       for mc in msg.content:
+        if id(mc) in seen:
+          continue
+        seen.add(id(mc))
         if mc.type not in self._MEDIA_CONTENT_TYPES:
           continue
         if (mc.provider_file_api_ids
@@ -778,6 +784,29 @@ class ProviderConnector(state_controller.StateControlled):
         if not self.files_manager_instance.is_upload_supported(
             mc, provider):
           continue
+        pending.append(mc)
+
+    if not pending:
+      return
+    allow_parallel = (
+        self.provider_call_options is not None
+        and self.provider_call_options.allow_parallel_file_operations
+    )
+    if allow_parallel and len(pending) > 1:
+      with ThreadPoolExecutor(max_workers=len(pending)) as pool:
+        futures = [
+            pool.submit(
+                self.files_manager_instance.upload,
+                media=mc, providers=[provider])
+            for mc in pending
+        ]
+        for future in futures:
+          try:
+            future.result()
+          except Exception:
+            pass
+    else:
+      for mc in pending:
         self.files_manager_instance.upload(
             media=mc, providers=[provider])
 
