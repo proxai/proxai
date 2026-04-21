@@ -623,6 +623,27 @@ class TestProxDashUploadIntegration:
     assert media.proxdash_file_id is None
 
 
+class TestUploadProxDashOnly:
+
+  def test_empty_providers_with_proxdash_uploads_to_proxdash(
+      self, monkeypatch
+  ):
+    mock_pd = _make_mock_proxdash()
+    mgr = _make_files_manager(
+        monkeypatch, ['gemini'], proxdash_connection=mock_pd
+    )
+    media = _make_media()
+    mgr.upload(media=media, providers=[])
+    assert media.proxdash_file_id == 'proxdash-file-123'
+    mock_pd.upload_file.assert_called_once()
+
+  def test_empty_providers_without_proxdash_raises(self, monkeypatch):
+    mgr = _make_files_manager(monkeypatch, ['gemini'])
+    media = _make_media()
+    with pytest.raises(ValueError, match='No providers specified'):
+      mgr.upload(media=media, providers=[])
+
+
 class TestIsDownloadSupported:
 
   def test_mistral_supported(self, monkeypatch):

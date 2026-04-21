@@ -404,6 +404,11 @@ class FilesManager(state_controller.StateControlled):
         media object still contains results from successful uploads.
     """
     self._validate_upload_media(media)
+    if not providers and not self._proxdash_connected():
+      raise ValueError(
+          "No providers specified and ProxDash is not connected. "
+          "Provide at least one provider or connect to ProxDash."
+      )
     for provider in providers:
       self._validate_provider_support(provider, self._get_upload_dispatch())
       if not self.is_upload_supported(media, provider):

@@ -368,7 +368,12 @@ class ProviderConnector(state_controller.StateControlled):
     if not self.proxdash_connection:
       return
     try:
-      self.proxdash_connection.upload_call_record(call_record)
+      self.proxdash_connection.upload_call_record(
+          call_record,
+          allow_parallel_file_upload=(
+              self.provider_call_options.allow_parallel_file_operations
+          ),
+      )
     except Exception as e:
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
