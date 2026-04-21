@@ -878,6 +878,69 @@ class TestFileApiMetadataExcludedFromHash:
     assert _hash(mc_1) == _hash(mc_2) == _hash(mc_3)
 
 
+class TestProxDashFieldsExcludedFromHash:
+
+  def test_proxdash_fields_excluded_for_path_content(self, tmp_path):
+    file_path = tmp_path / 'doc.pdf'
+    file_path.write_bytes(b'pdf-content')
+
+    mc_without = message_content.MessageContent(
+        path=str(file_path), media_type='application/pdf')
+    qr_without = types.QueryRecord(
+        chat=chat_session.Chat(messages=[
+            message.Message(
+                role=message_content.MessageRoleType.USER,
+                content=[mc_without])]),
+        provider_model=_GEMINI_MODEL)
+    hash_without = hash_serializer.get_query_record_hash(qr_without)
+
+    mc_with = message_content.MessageContent(
+        path=str(file_path), media_type='application/pdf',
+        proxdash_file_id='clxyz123',
+        proxdash_file_status=message_content.ProxDashFileStatus(
+            file_id='clxyz123',
+            s3_key='files/user1/clxyz123',
+            upload_confirmed=True))
+    qr_with = types.QueryRecord(
+        chat=chat_session.Chat(messages=[
+            message.Message(
+                role=message_content.MessageRoleType.USER,
+                content=[mc_with])]),
+        provider_model=_GEMINI_MODEL)
+    hash_with = hash_serializer.get_query_record_hash(qr_with)
+
+    assert hash_without == hash_with
+
+  def test_proxdash_fields_excluded_for_remote_only_content(self):
+    mc_without = message_content.MessageContent(
+        media_type='application/pdf',
+        provider_file_api_ids={'gemini': 'files/abc'})
+    qr_without = types.QueryRecord(
+        chat=chat_session.Chat(messages=[
+            message.Message(
+                role=message_content.MessageRoleType.USER,
+                content=[mc_without])]),
+        provider_model=_GEMINI_MODEL)
+    hash_without = hash_serializer.get_query_record_hash(qr_without)
+
+    mc_with = message_content.MessageContent(
+        media_type='application/pdf',
+        provider_file_api_ids={'gemini': 'files/abc'},
+        proxdash_file_id='clxyz123',
+        proxdash_file_status=message_content.ProxDashFileStatus(
+            file_id='clxyz123',
+            upload_confirmed=True))
+    qr_with = types.QueryRecord(
+        chat=chat_session.Chat(messages=[
+            message.Message(
+                role=message_content.MessageRoleType.USER,
+                content=[mc_with])]),
+        provider_model=_GEMINI_MODEL)
+    hash_with = hash_serializer.get_query_record_hash(qr_with)
+
+    assert hash_without == hash_with
+
+
 class TestRemoteOnlyContentHash:
 
   def test_remote_only_uses_provider_file_id(self):
