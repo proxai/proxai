@@ -449,18 +449,47 @@ class FilesManager(state_controller.StateControlled):
         return p
     return next(iter(media.provider_file_api_ids))
 
+  def _download_from_proxdash(
+      self, media: message_content.MessageContent
+  ) -> bytes | None:
+    if not self._proxdash_connected() or media.proxdash_file_id is None:
+      return None
+    try:
+      return self.proxdash_connection.download_file(media.proxdash_file_id)
+    except Exception:
+      return None
+
+  def _write_download_result(
+      self,
+      media: message_content.MessageContent,
+      data: bytes,
+      path: str | None,
+  ):
+    if path is not None:
+      with open(path, 'wb') as f:
+        f.write(data)
+      media.path = path
+    else:
+      media.data = data
+
   def download(
       self,
       media: message_content.MessageContent,
       provider: types.ProviderNameType | None = None,
       path: str | None = None,
   ) -> message_content.MessageContent:
-    """Download a file from a provider File API.
+    """Download a file, trying ProxDash first then provider File APIs.
+
+    When ProxDash is connected and the media has a proxdash_file_id,
+    downloads from ProxDash's S3 storage first. Falls back to provider
+    download if ProxDash is unavailable or fails.
 
     Args:
-      media: A MessageContent with provider_file_api_ids populated.
-      provider: Provider to download from. If None, uses priority
-        order: mistral. Falls back to any provider in metadata.
+      media: A MessageContent with proxdash_file_id or
+        provider_file_api_ids populated.
+      provider: Provider to download from. If None, tries ProxDash
+        first, then provider priority order (mistral first, then any
+        available provider).
       path: Local file path to save to. If None, stores bytes in
         media.data instead.
 
@@ -468,8 +497,14 @@ class FilesManager(state_controller.StateControlled):
       The same MessageContent with path or data populated.
 
     Raises:
-      ValueError: If provider is not found in media metadata.
+      ValueError: If no download source is available.
     """
+    if provider is None:
+      data = self._download_from_proxdash(media)
+      if data is not None:
+        self._write_download_result(media, data, path)
+        return media
+
     provider = self._resolve_download_provider(media, provider)
     download_dispatch = self._get_download_dispatch()
     if provider not in download_dispatch:
@@ -486,13 +521,7 @@ class FilesManager(state_controller.StateControlled):
     download_fn = download_dispatch[provider]
     data = download_fn(file_id=file_id, token_map=token_map)
 
-    if path is not None:
-      with open(path, 'wb') as f:
-        f.write(data)
-      media.path = path
-    else:
-      media.data = data
-
+    self._write_download_result(media, data, path)
     return media
 
   # --- List ---

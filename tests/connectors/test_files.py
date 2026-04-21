@@ -441,6 +441,66 @@ class TestDownloadExecution:
     assert media.data == b'fake-file-content'
 
 
+# --- ProxDash download integration ---
+
+
+class TestProxDashDownloadIntegration:
+
+  def _make_proxdash_media(self):
+    media = _make_media()
+    media.proxdash_file_id = 'pd-file-1'
+    media.proxdash_file_status = ProxDashFileStatus(
+        file_id='pd-file-1', upload_confirmed=True)
+    media.provider_file_api_ids = {'mistral': 'file-mistral-123'}
+    media.provider_file_api_status = {
+        'mistral': _fake_upload_metadata('mistral')
+    }
+    return media
+
+  def test_proxdash_used_first_when_no_provider_specified(self, monkeypatch):
+    mock_pd = MagicMock(spec=proxdash.ProxDashConnection)
+    mock_pd.status = types.ProxDashConnectionStatus.CONNECTED
+    mock_pd.download_file.return_value = b'proxdash-bytes'
+    mgr = _make_files_manager(
+        monkeypatch, ['mistral'], proxdash_connection=mock_pd)
+    media = self._make_proxdash_media()
+    mgr.download(media=media)
+    assert media.data == b'proxdash-bytes'
+    mock_pd.download_file.assert_called_once_with('pd-file-1')
+
+  def test_falls_back_to_provider_when_proxdash_fails(self, monkeypatch):
+    mock_pd = MagicMock(spec=proxdash.ProxDashConnection)
+    mock_pd.status = types.ProxDashConnectionStatus.CONNECTED
+    mock_pd.download_file.return_value = None
+    mgr = _make_files_manager(
+        monkeypatch, ['mistral'], proxdash_connection=mock_pd)
+    media = self._make_proxdash_media()
+    dispatch = {'mistral': _fake_download_fn}
+    with patch.dict(file_helpers.DOWNLOAD_DISPATCH, dispatch):
+      mgr.download(media=media)
+    assert media.data == b'fake-file-content'
+
+  def test_explicit_provider_skips_proxdash(self, monkeypatch):
+    mock_pd = MagicMock(spec=proxdash.ProxDashConnection)
+    mock_pd.status = types.ProxDashConnectionStatus.CONNECTED
+    mgr = _make_files_manager(
+        monkeypatch, ['mistral'], proxdash_connection=mock_pd)
+    media = self._make_proxdash_media()
+    dispatch = {'mistral': _fake_download_fn}
+    with patch.dict(file_helpers.DOWNLOAD_DISPATCH, dispatch):
+      mgr.download(media=media, provider='mistral')
+    assert media.data == b'fake-file-content'
+    mock_pd.download_file.assert_not_called()
+
+  def test_no_proxdash_uses_provider(self, monkeypatch):
+    mgr = _make_files_manager(monkeypatch, ['mistral'])
+    media = self._make_proxdash_media()
+    dispatch = {'mistral': _fake_download_fn}
+    with patch.dict(file_helpers.DOWNLOAD_DISPATCH, dispatch):
+      mgr.download(media=media)
+    assert media.data == b'fake-file-content'
+
+
 # --- Capability checks ---
 
 
