@@ -1093,160 +1093,136 @@ class TestProxDashConnectionUploadCallRecord:
     _verify_log_messages(temp_dir, [])
 
 
-class TestProxDashConnectionGetModelConfigsSchema:
+def _valid_registry_config():
+  """Valid ModelRegistry payload (flat shape, ≥2 providers for validation)."""
+  return json.dumps({
+      'metadata': {
+          'version': '1.0.0',
+          'config_origin': 'PROXDASH',
+          'release_notes': 'TEST CONFIG',
+      },
+      'default_model_priority_list': [],
+      'provider_model_configs': {
+          'openai': {
+              'gpt-4': {
+                  'provider_model': {
+                      'provider': 'openai',
+                      'model': 'gpt-4',
+                      'provider_model_identifier': 'gpt-4',
+                  },
+              },
+          },
+          'claude': {
+              'claude-3': {
+                  'provider_model': {
+                      'provider': 'claude',
+                      'model': 'claude-3',
+                      'provider_model_identifier': 'claude-3',
+                  },
+              },
+          },
+      },
+  })
 
-  @pytest.fixture(autouse=True)
-  def setup_get_model_configs_schema(self, monkeypatch):
-    monkeypatch.delenv('PROXDASH_API_KEY', raising=False)
-    self.base_url = 'https://proxainest-production.up.railway.app'
-    # Create a valid config with 4+ providers for validation
-    self.valid_config = json.dumps({
-        "metadata": {
-            "version": "1.0.0",
-            "config_origin": "PROXDASH",
-            "release_notes": "TEST CONFIG"
-        },
-        "version_config": {
-            "provider_model_configs": {
-                "openai": {
-                    "gpt-4": {}
-                },
-                "claude": {
-                    "claude-3": {}
-                },
-                "gemini": {
-                    "gemini-pro": {}
-                },
-                "mistral": {
-                    "mistral-large": {}
-                }
-            }
-        }
-    })
-    yield
+
+class TestGetModelRegistry:
+  """Tests for get_model_registry — fetches ModelRegistry from ProxDash.
+
+  Single HTTP GET; validates response (200, success=true, decodes to
+  ModelRegistry, at least 2 providers). Returns None on any failure.
+  """
+
+  base_url = 'https://proxainest-production.up.railway.app'
 
   def _create_connection(
-      self, connected: bool = True, requests_mock=None
+      self, connected: bool = True,
   ) -> proxdash.ProxDashConnection:
-    if connected and requests_mock:
-      requests_mock.get(
-          f'{self.base_url}/ingestion/verify-key',
-          text='{"success": true, "data": {"permission": "ALL"}}',
-          status_code=200
-      )
     connection_params = proxdash.ProxDashConnectionParams(
         logging_options=types.LoggingOptions(),
         proxdash_options=types.ProxDashOptions(
             api_key='test_api_key' if connected else None,
-            disable_proxdash=not connected
-        )
+            disable_proxdash=not connected,
+        ),
     )
     return proxdash.ProxDashConnection(init_from_params=connection_params)
 
   def test_successful_fetch_when_connected(self, requests_mock):
-    """Tests successful fetch with API key authentication."""
-    requests_mock.get(
-        f'{self.base_url}/ingestion/verify-key',
-        text='{"success": true, "data": {"permission": "ALL"}}', status_code=200
-    )
-    connection = self._create_connection(
-        connected=True, requests_mock=requests_mock
-    )
-
+    connection = self._create_connection(connected=True)
     requests_mock.get(
         requests_mock_module.ANY,
-        text='{"success": true, "data": ' + self.valid_config + '}',
-        status_code=200
+        text='{"success": true, "data": ' + _valid_registry_config() + '}',
+        status_code=200,
     )
 
-    result = connection.get_model_configs_schema()
-
+    result = connection.get_model_registry()
     assert result is not None
+    assert isinstance(result, types.ModelRegistry)
     assert result.metadata.config_origin == types.ConfigOriginType.PROXDASH
     assert result.metadata.release_notes == 'TEST CONFIG'
+    # API key header must be sent when connected.
+    assert requests_mock.last_request.headers.get('X-API-Key') == 'test_api_key'
 
   def test_successful_fetch_when_not_connected(self, requests_mock):
-    """Tests successful fetch without API key (public endpoint)."""
     connection = self._create_connection(connected=False)
-
     requests_mock.get(
         requests_mock_module.ANY,
-        text='{"success": true, "data": ' + self.valid_config + '}',
-        status_code=200
+        text='{"success": true, "data": ' + _valid_registry_config() + '}',
+        status_code=200,
     )
 
-    result = connection.get_model_configs_schema()
-
+    result = connection.get_model_registry()
     assert result is not None
-    assert result.metadata.config_origin == types.ConfigOriginType.PROXDASH
+    # Public-endpoint path — no API-key header.
+    assert 'X-API-Key' not in requests_mock.last_request.headers
 
   def test_returns_none_on_non_200_status(self, requests_mock):
-    """Tests that None is returned when API returns non-200 status."""
     connection = self._create_connection(connected=False)
-
     requests_mock.get(
-        requests_mock_module.ANY, text='Server Error', status_code=500
+        requests_mock_module.ANY, text='Server Error', status_code=500,
     )
-
-    result = connection.get_model_configs_schema()
-
-    assert result is None
+    assert connection.get_model_registry() is None
 
   def test_returns_none_on_unsuccessful_response(self, requests_mock):
-    """Tests that None is returned when success is false."""
     connection = self._create_connection(connected=False)
-
     requests_mock.get(
         requests_mock_module.ANY,
-        text='{"success": false, "error": "Some error"}', status_code=200
+        text='{"success": false, "error": "Some error"}', status_code=200,
     )
-
-    result = connection.get_model_configs_schema()
-
-    assert result is None
+    assert connection.get_model_registry() is None
 
   def test_returns_none_on_decode_error(self, requests_mock):
-    """Tests that None is returned when response data cannot be decoded."""
     connection = self._create_connection(connected=False)
-
-    # Use invalid enum value for config_origin to trigger decode error
+    # Invalid enum value for config_origin → decode error in type_serializer.
     invalid_config = '{"metadata": {"config_origin": "INVALID_ORIGIN"}}'
     requests_mock.get(
         requests_mock_module.ANY,
         text='{"success": true, "data": ' + invalid_config + '}',
-        status_code=200
+        status_code=200,
     )
-
-    result = connection.get_model_configs_schema()
-
-    assert result is None
+    assert connection.get_model_registry() is None
 
   def test_returns_none_on_insufficient_providers(self, requests_mock):
-    """Tests that None is returned when schema has fewer than 4 providers."""
     connection = self._create_connection(connected=False)
-
-    # Config with only 2 providers (less than required 4)
-    insufficient_config = json.dumps({
-        "metadata": {
-            "config_origin": "PROXDASH"
-        },
-        "version_config": {
-            "provider_model_configs": {
-                "openai": {
-                    "gpt-4": {}
+    insufficient = json.dumps({
+        'metadata': {'config_origin': 'PROXDASH'},
+        'default_model_priority_list': [],
+        'provider_model_configs': {
+            'openai': {
+                'gpt-4': {
+                    'provider_model': {
+                        'provider': 'openai', 'model': 'gpt-4',
+                        'provider_model_identifier': 'gpt-4',
+                    },
                 },
-            }
-        }
+            },
+        },
     })
     requests_mock.get(
         requests_mock_module.ANY,
-        text='{"success": true, "data": ' + insufficient_config + '}',
-        status_code=200
+        text='{"success": true, "data": ' + insufficient + '}',
+        status_code=200,
     )
-
-    result = connection.get_model_configs_schema()
-
-    assert result is None
+    assert connection.get_model_registry() is None
 
 
 class TestProxDashConnectionGetProviderApiKeys:
@@ -1610,3 +1586,368 @@ class TestProxDashConnectionUploadCallRecordResponseTypes:
             },
         }
     )
+
+
+# =============================================================================
+# File API — public methods (upload_file, update_file, download_file,
+# delete_file, get_file, list_files)
+#
+# Each method is tested for its happy path plus its relevant HTTP failure
+# modes. Multi-step methods (upload_file, download_file) get one test per
+# step's failure, since the orchestrator's behavior differs by which step
+# failed.
+# =============================================================================
+
+
+_BASE_URL = 'https://proxainest-production.up.railway.app'
+
+
+def _make_connected_proxdash(api_key='test_api_key'):
+  """Construct a CONNECTED ProxDashConnection. Assumes the autouse fixture
+  has already stubbed /ingestion/verify-key."""
+  return proxdash.ProxDashConnection(
+      init_from_params=proxdash.ProxDashConnectionParams(
+          logging_options=types.LoggingOptions(),
+          proxdash_options=types.ProxDashOptions(api_key=api_key),
+      )
+  )
+
+
+def _make_disconnected_proxdash():
+  return proxdash.ProxDashConnection(
+      init_from_params=proxdash.ProxDashConnectionParams(
+          logging_options=types.LoggingOptions(),
+          proxdash_options=types.ProxDashOptions(disable_proxdash=True),
+      )
+  )
+
+
+def _make_upload_media(data=b'test_file_bytes', media_type='application/pdf'):
+  return message_content.MessageContent(
+      type=message_content.ContentType.DOCUMENT,
+      data=data, media_type=media_type, filename='test.pdf',
+  )
+
+
+# -----------------------------------------------------------------------------
+# upload_file — 3 HTTP steps: request presigned URL → PUT S3 → confirm.
+# -----------------------------------------------------------------------------
+
+
+_PRESIGNED_URL = 'https://s3.example.com/presigned-upload?token=abc'
+
+
+def _stub_presigned_upload_success(requests_mock, file_id='file-123'):
+  """Step 1 success: POST /files/upload returns 201 with presigned URL."""
+  requests_mock.post(
+      f'{_BASE_URL}/files/upload',
+      text=json.dumps({
+          'success': True,
+          'data': {
+              'id': file_id,
+              'presignedUploadUrl': _PRESIGNED_URL,
+              's3Key': f'files/{file_id}',
+          },
+      }),
+      status_code=201,
+  )
+
+
+def _stub_s3_put_success(requests_mock, status_code=200):
+  requests_mock.put(_PRESIGNED_URL, status_code=status_code)
+
+
+def _stub_confirm_success(requests_mock, file_id='file-123'):
+  requests_mock.patch(f'{_BASE_URL}/files/{file_id}', status_code=200)
+
+
+class TestUploadFile:
+
+  def test_happy_path_all_three_steps_succeed(self, requests_mock):
+    _stub_presigned_upload_success(requests_mock, file_id='file-abc')
+    _stub_s3_put_success(requests_mock)
+    _stub_confirm_success(requests_mock, file_id='file-abc')
+
+    connection = _make_connected_proxdash()
+    media = _make_upload_media()
+    file_id = connection.upload_file(media)
+
+    assert file_id == 'file-abc'
+    assert media.proxdash_file_id == 'file-abc'
+    assert media.proxdash_file_status.upload_confirmed is True
+    assert media.proxdash_file_status.s3_key == 'files/file-abc'
+
+  def test_returns_none_when_not_connected(self, requests_mock):
+    connection = _make_disconnected_proxdash()
+    media = _make_upload_media()
+    assert connection.upload_file(media) is None
+
+  def test_returns_none_when_media_type_not_uploadable(self, requests_mock):
+    connection = _make_connected_proxdash()
+    # TEXT is not an uploadable content type.
+    media = message_content.MessageContent(
+        type=message_content.ContentType.TEXT, text='hello',
+    )
+    assert connection.upload_file(media) is None
+
+  def test_step1_presigned_url_500_returns_none(self, requests_mock):
+    # Step 1 fails → no S3 upload attempted, no orphan state.
+    requests_mock.post(
+        f'{_BASE_URL}/files/upload', text='Server Error', status_code=500,
+    )
+    connection = _make_connected_proxdash()
+    media = _make_upload_media()
+    assert connection.upload_file(media) is None
+    assert media.proxdash_file_id is None
+
+  def test_step2_s3_upload_500_returns_none(self, requests_mock):
+    # Step 1 succeeds, step 2 (S3 PUT) fails → return None, media
+    # fields NOT set because confirm step never ran.
+    _stub_presigned_upload_success(requests_mock)
+    requests_mock.put(_PRESIGNED_URL, status_code=500)
+
+    connection = _make_connected_proxdash()
+    media = _make_upload_media()
+    assert connection.upload_file(media) is None
+    assert media.proxdash_file_id is None
+
+  def test_step3_confirm_fails_still_returns_file_id(self, requests_mock):
+    # Subtle: confirm is best-effort. Step 3 failing logs an error but
+    # upload_file still returns the file_id and populates media fields,
+    # because the file IS in S3 — just not marked confirmed on the
+    # backend. This is a real invariant users rely on.
+    _stub_presigned_upload_success(requests_mock, file_id='file-xyz')
+    _stub_s3_put_success(requests_mock)
+    requests_mock.patch(
+        f'{_BASE_URL}/files/file-xyz', text='Server Error', status_code=500,
+    )
+
+    connection = _make_connected_proxdash()
+    media = _make_upload_media()
+    file_id = connection.upload_file(media)
+    assert file_id == 'file-xyz'
+    assert media.proxdash_file_id == 'file-xyz'
+    # Status still marked confirmed client-side — source does this
+    # unconditionally after PUT succeeds.
+    assert media.proxdash_file_status.upload_confirmed is True
+
+
+# -----------------------------------------------------------------------------
+# update_file — single PATCH to /files/{id} with provider metadata.
+# -----------------------------------------------------------------------------
+
+
+class TestUpdateFile:
+
+  def test_happy_path_sends_provider_metadata(self, requests_mock):
+    requests_mock.patch(f'{_BASE_URL}/files/file-123', status_code=200)
+
+    connection = _make_connected_proxdash()
+    media = message_content.MessageContent(
+        type=message_content.ContentType.DOCUMENT,
+        data=b'x', media_type='application/pdf',
+        proxdash_file_id='file-123',
+        provider_file_api_ids={'gemini': 'files/abc'},
+    )
+    connection.update_file(media)
+
+    assert requests_mock.last_request.method == 'PATCH'
+    body = requests_mock.last_request.json()
+    assert body['providerFileApiIds'] == {'gemini': 'files/abc'}
+
+  def test_noop_when_no_proxdash_file_id(self, requests_mock):
+    connection = _make_connected_proxdash()
+    media = message_content.MessageContent(
+        type=message_content.ContentType.DOCUMENT,
+        data=b'x', media_type='application/pdf',
+        proxdash_file_id=None,
+        provider_file_api_ids={'gemini': 'files/abc'},
+    )
+    # No HTTP call; doesn't raise.
+    connection.update_file(media)
+    # Only the autouse verify-key call was recorded — no PATCH.
+    assert all(r.method != 'PATCH' for r in requests_mock.request_history)
+
+  def test_500_is_silent_no_raise(self, requests_mock):
+    # update_file swallows errors and logs. Users rely on it never breaking
+    # the upload pipeline.
+    requests_mock.patch(
+        f'{_BASE_URL}/files/file-123', text='Server Error', status_code=500,
+    )
+    connection = _make_connected_proxdash()
+    media = message_content.MessageContent(
+        type=message_content.ContentType.DOCUMENT,
+        data=b'x', media_type='application/pdf',
+        proxdash_file_id='file-123',
+        provider_file_api_ids={'gemini': 'files/abc'},
+    )
+    # Does not raise.
+    connection.update_file(media)
+
+
+# -----------------------------------------------------------------------------
+# download_file — 2 HTTP steps: get presigned download URL → GET S3.
+# -----------------------------------------------------------------------------
+
+
+_DOWNLOAD_PRESIGNED_URL = 'https://s3.example.com/presigned-download?token=xyz'
+
+
+class TestDownloadFile:
+
+  def test_happy_path_both_steps_succeed(self, requests_mock):
+    requests_mock.get(
+        f'{_BASE_URL}/files/download/file-123',
+        text=json.dumps({
+            'success': True, 'data': {'url': _DOWNLOAD_PRESIGNED_URL},
+        }),
+        status_code=200,
+    )
+    requests_mock.get(
+        _DOWNLOAD_PRESIGNED_URL, content=b'file_content_bytes',
+        status_code=200,
+    )
+
+    connection = _make_connected_proxdash()
+    result = connection.download_file('file-123')
+    assert result == b'file_content_bytes'
+
+  def test_returns_none_when_not_connected(self, requests_mock):
+    connection = _make_disconnected_proxdash()
+    assert connection.download_file('file-123') is None
+
+  def test_step1_500_returns_none(self, requests_mock):
+    requests_mock.get(
+        f'{_BASE_URL}/files/download/file-123',
+        text='Server Error', status_code=500,
+    )
+    connection = _make_connected_proxdash()
+    assert connection.download_file('file-123') is None
+
+  def test_step2_s3_500_returns_none(self, requests_mock):
+    # Step 1 succeeds (presigned URL returned), step 2 fails (S3 500).
+    requests_mock.get(
+        f'{_BASE_URL}/files/download/file-123',
+        text=json.dumps({
+            'success': True, 'data': {'url': _DOWNLOAD_PRESIGNED_URL},
+        }),
+        status_code=200,
+    )
+    requests_mock.get(_DOWNLOAD_PRESIGNED_URL, status_code=500)
+
+    connection = _make_connected_proxdash()
+    assert connection.download_file('file-123') is None
+
+
+# -----------------------------------------------------------------------------
+# delete_file — single DELETE to /files/{id}.
+# -----------------------------------------------------------------------------
+
+
+class TestDeleteFile:
+
+  def test_happy_path_returns_true_on_200(self, requests_mock):
+    requests_mock.delete(f'{_BASE_URL}/files/file-123', status_code=200)
+    connection = _make_connected_proxdash()
+    assert connection.delete_file('file-123') is True
+
+  def test_returns_false_when_not_connected(self, requests_mock):
+    connection = _make_disconnected_proxdash()
+    assert connection.delete_file('file-123') is False
+
+  def test_returns_false_on_500(self, requests_mock):
+    requests_mock.delete(
+        f'{_BASE_URL}/files/file-123', text='Error', status_code=500,
+    )
+    connection = _make_connected_proxdash()
+    assert connection.delete_file('file-123') is False
+
+
+# -----------------------------------------------------------------------------
+# get_file — single GET to /files/{id}, returns MessageContent.
+# -----------------------------------------------------------------------------
+
+
+class TestGetFile:
+
+  def test_happy_path_returns_message_content(self, requests_mock):
+    requests_mock.get(
+        f'{_BASE_URL}/files/file-123',
+        text=json.dumps({
+            'success': True,
+            'data': {
+                'id': 'file-123',
+                'type': 'document',
+                'filename': 'report.pdf',
+                'mimeType': 'application/pdf',
+                'uploadConfirmed': True,
+                'providerFileApiIds': {'gemini': 'files/abc'},
+            },
+        }),
+        status_code=200,
+    )
+    connection = _make_connected_proxdash()
+    mc = connection.get_file('file-123')
+    assert isinstance(mc, message_content.MessageContent)
+    assert mc.proxdash_file_id == 'file-123'
+    assert mc.filename == 'report.pdf'
+
+  def test_returns_none_when_not_connected(self, requests_mock):
+    connection = _make_disconnected_proxdash()
+    assert connection.get_file('file-123') is None
+
+  def test_returns_none_on_500(self, requests_mock):
+    requests_mock.get(
+        f'{_BASE_URL}/files/file-123', text='Error', status_code=500,
+    )
+    connection = _make_connected_proxdash()
+    assert connection.get_file('file-123') is None
+
+
+# -----------------------------------------------------------------------------
+# list_files — single GET to /files/list, returns list[MessageContent].
+# -----------------------------------------------------------------------------
+
+
+class TestListFiles:
+
+  def test_happy_path_returns_list_of_message_content(self, requests_mock):
+    requests_mock.get(
+        f'{_BASE_URL}/files/list',
+        text=json.dumps({
+            'success': True,
+            'data': {
+                'items': [
+                    {
+                        'id': 'file-1', 'type': 'document',
+                        'filename': 'a.pdf', 'mimeType': 'application/pdf',
+                        'uploadConfirmed': True,
+                        'source': 'https://example.com/a.pdf',
+                    },
+                    {
+                        'id': 'file-2', 'type': 'image',
+                        'filename': 'b.png', 'mimeType': 'image/png',
+                        'uploadConfirmed': True,
+                        'source': 'https://example.com/b.png',
+                    },
+                ],
+            },
+        }),
+        status_code=200,
+    )
+    connection = _make_connected_proxdash()
+    results = connection.list_files(limit=50)
+    assert len(results) == 2
+    assert results[0].proxdash_file_id == 'file-1'
+    assert results[1].proxdash_file_id == 'file-2'
+
+  def test_returns_empty_when_not_connected(self, requests_mock):
+    connection = _make_disconnected_proxdash()
+    assert connection.list_files() == []
+
+  def test_returns_empty_on_500(self, requests_mock):
+    requests_mock.get(
+        f'{_BASE_URL}/files/list', text='Error', status_code=500,
+    )
+    connection = _make_connected_proxdash()
+    assert connection.list_files() == []
