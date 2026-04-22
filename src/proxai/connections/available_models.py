@@ -367,38 +367,6 @@ class AvailableModels(state_controller.StateControlled):
       )
     return False
 
-  def _filter_by_features(
-      self, models: types.ModelStatus,
-      features: list[types.FeatureTag] | None = None
-  ):
-    if features is None:
-      return
-
-    def _filter_set(
-        provider_model_set: set[types.ProviderModelType]
-    ) -> tuple[set[types.ProviderModelType], set[types.ProviderModelType]]:
-      not_filtered_models = set()
-      for provider_model in provider_model_set:
-        provider_model_config = (
-            self.model_configs_instance.
-            get_provider_model_config(provider_model)
-        )
-        support_level = self.get_model_connector(
-            provider_model
-        ).get_feature_tags_support_level(
-            feature_tags=features,
-            model_feature_config=provider_model_config.features
-        )
-        if self._is_feature_compatible(support_level):
-          not_filtered_models.add(provider_model)
-        else:
-          models.filtered_models.add(provider_model)
-      return not_filtered_models
-
-    models.unprocessed_models = _filter_set(models.unprocessed_models)
-    models.working_models = _filter_set(models.working_models)
-    models.failed_models = _filter_set(models.failed_models)
-
   def _filter_by_tag_list(
       self,
       models: types.ModelStatus,
@@ -459,7 +427,31 @@ class AvailableModels(state_controller.StateControlled):
   ):
     if feature_tags is None:
       return
-    self._filter_by_features(models, features=feature_tags)
+
+    def _filter_set(
+        provider_model_set: set[types.ProviderModelType]
+    ) -> set[types.ProviderModelType]:
+      not_filtered_models = set()
+      for provider_model in provider_model_set:
+        provider_model_config = (
+            self.model_configs_instance.
+            get_provider_model_config(provider_model)
+        )
+        support_level = self.get_model_connector(
+            provider_model
+        ).get_feature_tags_support_level(
+            feature_tags=feature_tags,
+            model_feature_config=provider_model_config.features
+        )
+        if self._is_feature_compatible(support_level):
+          not_filtered_models.add(provider_model)
+        else:
+          models.filtered_models.add(provider_model)
+      return not_filtered_models
+
+    models.unprocessed_models = _filter_set(models.unprocessed_models)
+    models.working_models = _filter_set(models.working_models)
+    models.failed_models = _filter_set(models.failed_models)
 
   def _filter_by_tool_tags(
       self, models: types.ModelStatus,
@@ -763,7 +755,6 @@ class AvailableModels(state_controller.StateControlled):
       self, selected_providers: set[str] | None = None,
       selected_provider_models: set[types.ProviderModelType] | None = None,
       model_size: types.ModelSizeType | None = None,
-      features: list[types.FeatureTag] | None = None,
       output_format: types.OutputFormatTypeParam | None = None,
       input_format: types.InputFormatTypeParam | None = None,
       feature_tags: list[types.FeatureTag] | None = None,
@@ -794,7 +785,6 @@ class AvailableModels(state_controller.StateControlled):
     self._filter_by_model_size(
         models, model_size=model_size, recommended_only=recommended_only
     )
-    self._filter_by_features(models, features=features)
     output_format_tags = type_utils.create_output_format_type_list(
         output_format
     )
@@ -858,7 +848,6 @@ class AvailableModels(state_controller.StateControlled):
 
   def list_models(
       self, model_size: types.ModelSizeIdentifierType | None = None,
-      features: types.FeatureTagParam | None = None,
       input_format: types.InputFormatTypeParam | None = None,
       output_format: types.OutputFormatTypeParam = (
           types.OutputFormatType.TEXT
@@ -868,8 +857,6 @@ class AvailableModels(state_controller.StateControlled):
     """List all configured models matching the filters."""
     if model_size is not None:
       model_size = type_utils.check_model_size_identifier_type(model_size)
-    if features is not None:
-      features = type_utils.create_feature_tag_list(features=features)
     feature_tag_list = None
     if feature_tags is not None:
       feature_tag_list = type_utils.create_feature_tag_list(
@@ -878,7 +865,7 @@ class AvailableModels(state_controller.StateControlled):
     tool_tag_list = type_utils.create_tool_tag_list(tool_tags)
 
     model_status = self._fetch_all_models(
-        model_size=model_size, features=features, output_format=output_format,
+        model_size=model_size, output_format=output_format,
         input_format=input_format, feature_tags=feature_tag_list,
         tool_tags=tool_tag_list, raw_config_results_without_test=True,
         recommended_only=recommended_only
@@ -906,7 +893,6 @@ class AvailableModels(state_controller.StateControlled):
       self,
       provider: str,
       model_size: types.ModelSizeIdentifierType | None = None,
-      features: types.FeatureTagParam | None = None,
       input_format: types.InputFormatTypeParam | None = None,
       output_format: types.
       OutputFormatTypeParam = (types.OutputFormatType.TEXT),
@@ -917,8 +903,6 @@ class AvailableModels(state_controller.StateControlled):
     """List all models for a specific provider."""
     if model_size is not None:
       model_size = type_utils.check_model_size_identifier_type(model_size)
-    if features is not None:
-      features = type_utils.create_feature_tag_list(features=features)
     feature_tag_list = None
     if feature_tags is not None:
       feature_tag_list = type_utils.create_feature_tag_list(
@@ -934,7 +918,7 @@ class AvailableModels(state_controller.StateControlled):
       )
 
     model_status = self._fetch_all_models(
-        selected_providers={provider}, model_size=model_size, features=features,
+        selected_providers={provider}, model_size=model_size,
         output_format=output_format, input_format=input_format,
         feature_tags=feature_tag_list, tool_tags=tool_tag_list,
         raw_config_results_without_test=True, recommended_only=recommended_only
@@ -976,7 +960,7 @@ class AvailableModels(state_controller.StateControlled):
 
   def list_working_models(
       self, model_size: types.ModelSizeIdentifierType | None = None,
-      features: types.FeatureTagParam | None = None, verbose: bool = True,
+      verbose: bool = True,
       return_all: bool = False, clear_model_cache: bool = False,
       output_format: types.OutputFormatTypeParam = (
           types.OutputFormatType.TEXT
@@ -985,8 +969,6 @@ class AvailableModels(state_controller.StateControlled):
     """List models verified to be working through API tests."""
     if model_size is not None:
       model_size = type_utils.check_model_size_identifier_type(model_size)
-    if features is not None:
-      features = type_utils.create_feature_tag_list(features=features)
 
     model_status: types.ModelStatus | None = None
     if not self.model_cache_manager:
@@ -997,18 +979,18 @@ class AvailableModels(state_controller.StateControlled):
           type=types.LoggingType.WARNING
       )
       model_status = self._fetch_all_models(
-          model_size=model_size, features=features, output_format=output_format,
+          model_size=model_size, output_format=output_format,
           verbose=verbose, recommended_only=recommended_only
       )
     elif (clear_model_cache or not self._check_model_cache_path_same()):
       model_status = self._fetch_all_models(
           model_size=model_size, clear_model_cache=clear_model_cache,
-          features=features, output_format=output_format, verbose=verbose,
+          output_format=output_format, verbose=verbose,
           recommended_only=recommended_only
       )
     else:
       model_status = self._fetch_all_models(
-          model_size=model_size, features=features, output_format=output_format,
+          model_size=model_size, output_format=output_format,
           verbose=verbose, recommended_only=recommended_only
       )
 
@@ -1127,7 +1109,6 @@ class AvailableModels(state_controller.StateControlled):
       self,
       provider: str,
       model_size: types.ModelSizeIdentifierType | None = None,
-      features: types.FeatureTagParam | None = None,
       verbose: bool = True,
       return_all: bool = False,
       clear_model_cache: bool = False,
@@ -1139,8 +1120,6 @@ class AvailableModels(state_controller.StateControlled):
     type_utils.create_output_format_type_list(output_format)
     if model_size is not None:
       model_size = type_utils.check_model_size_identifier_type(model_size)
-    if features is not None:
-      features = type_utils.create_feature_tag_list(features=features)
 
     provider_models = self.model_configs_instance.get_all_models(
         provider=provider, model_size=model_size,
@@ -1161,17 +1140,16 @@ class AvailableModels(state_controller.StateControlled):
       self._filter_by_model_size(
           model_status, model_size=model_size, recommended_only=recommended_only
       )
-      self._filter_by_features(model_status, features=features)
     elif (clear_model_cache or not self._check_model_cache_path_same()):
       model_status = self._fetch_all_models(
           selected_providers={provider}, model_size=model_size,
-          features=features, output_format=output_format, verbose=verbose,
+          output_format=output_format, verbose=verbose,
           clear_model_cache=clear_model_cache, recommended_only=recommended_only
       )
     else:
       model_status = self._fetch_all_models(
           selected_providers={provider}, model_size=model_size,
-          features=features, output_format=output_format, verbose=verbose,
+          output_format=output_format, verbose=verbose,
           recommended_only=recommended_only
       )
 
