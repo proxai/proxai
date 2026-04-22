@@ -25,7 +25,7 @@ def _get_query_record_examples():
       {
           'provider_model':
               pytest.model_configs_instance.get_provider_model(
-                  ('openai', 'gpt-4')
+                  ('openai', 'gpt-4o')
               ),
           'prompt': 'Test prompt',
           'system': 'Test system',
