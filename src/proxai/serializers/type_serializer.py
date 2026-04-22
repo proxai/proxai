@@ -345,10 +345,6 @@ def decode_feature_config_type(
     feature_config_type.output_format = decode_output_format_config_type(
         record['output_format']
     )
-  elif 'response_format' in record:
-    feature_config_type.output_format = decode_output_format_config_type(
-        record['response_format']
-    )
   if 'input_format' in record:
     feature_config_type.input_format = decode_input_format_config_type(
         record['input_format']
@@ -1119,8 +1115,6 @@ def decode_query_record(record: dict[str, Any]) -> types.QueryRecord:
     query_record.tools = [types.Tools(tool) for tool in record['tools']]
   if 'output_format' in record:
     query_record.output_format = decode_output_format(record['output_format'])
-  elif 'response_format' in record:
-    query_record.output_format = decode_output_format(record['response_format'])
   if 'connection_options' in record:
     query_record.connection_options = decode_connection_options(
         record['connection_options']

@@ -695,7 +695,7 @@ class CacheRecord:
 
   query: QueryRecord | None = None
   results: list[ResultRecord] = dataclasses.field(default_factory=list)
-  shard_id: str | None = None
+  shard_id: int | str | None = None
   last_access_time: datetime.datetime | None = None
   call_count: int | None = None
 
@@ -706,7 +706,7 @@ class LightCacheRecord:
 
   query_hash: str | None = None
   results_count: int | None = None
-  shard_id: int | None = None
+  shard_id: int | str | None = None
   last_access_time: datetime.datetime | None = None
   call_count: int | None = None
 
