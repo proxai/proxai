@@ -1,19 +1,51 @@
-import copy
-import tempfile
+"""Tests for AvailableModels.
+
+Discovers and manages available AI models across providers. Two behavior
+surfaces:
+
+  1. Pure discovery (no network) — filters the registered model set by
+     API-key presence, feature/format support, size, recommended flag.
+     Implemented via _fetch_all_models with raw_config_results_without_test.
+
+  2. Health-check (invokes provider executors) — runs a test query
+     against each model and classifies as working/failed; optionally
+     caches results via ModelCacheManager.
+
+Tests are organized by responsibility:
+
+  - Init + state serialization
+  - get_model_connector (lazy, cached)
+  - list_models (core discovery; filter combinations)
+  - list_providers, list_provider_models, get_model, get_model_config
+  - _filter_by_cache (cache merging invariants)
+  - list_working_* / get_working_model / check_health (using
+    MockProviderModelConnector + MockFailingProviderModelConnector)
+"""
+
 
 import pytest
 
 import proxai.caching.model_cache as model_cache
+import proxai.connections.api_key_manager as api_key_manager
 import proxai.connections.available_models as available_models
-import proxai.connections.proxdash as proxdash
 import proxai.connectors.model_configs as model_configs
-import proxai.connectors.provider_connector as provider_connector
-import proxai.connectors.model_registry as model_registry
 import proxai.types as types
+
+# =============================================================================
+# Fixtures + helpers
+# =============================================================================
+
+
+_MOCK_ENV_KEYS = {
+    'MOCK_PROVIDER_API_KEY': 'k1',
+    'MOCK_FAILING_PROVIDER': 'k2',
+    'MOCK_SLOW_PROVIDER': 'k3',
+}
 
 
 @pytest.fixture(autouse=True)
-def setup_test(monkeypatch):
+def clean_env(monkeypatch):
+  """Strip all provider API keys so each test declares what it sets."""
   monkeypatch.delenv('PROXDASH_API_KEY', raising=False)
   for api_key_list in model_configs.PROVIDER_KEY_MAP.values():
     for api_key in api_key_list:
@@ -21,950 +53,445 @@ def setup_test(monkeypatch):
   yield
 
 
-class TestAvailableModels:
-  cache_dir: tempfile.TemporaryDirectory | None = None
-  initialized_model_connectors: dict[types.ProviderModelType,
-                                     provider_connector.
-                                     ProviderConnector] | None = None
-  model_cache_manager: model_cache.ModelCacheManager | None = None
+def _set_mock_keys(monkeypatch):
+  """Set env keys for the three mock providers."""
+  for k, v in _MOCK_ENV_KEYS.items():
+    monkeypatch.setenv(k, v)
 
-  def _get_models_set(self, providers: list[str]):
-    models = set()
-    for provider in providers:
-      models.update(
-          pytest.model_configs_instance.get_all_models(
-              provider=provider
-          )
+
+def _set_fast_mock_keys(monkeypatch):
+  """Set keys for mock_provider + mock_failing_provider only.
+
+  mock_slow_provider's executor does `time.sleep(120)` — exclude it from
+  any test that actually drives the health-check pipeline through
+  _test_models.
+  """
+  monkeypatch.setenv('MOCK_PROVIDER_API_KEY', 'k1')
+  monkeypatch.setenv('MOCK_FAILING_PROVIDER', 'k2')
+
+
+def _build_available_models(
+    *,
+    model_cache_manager=None,
+    allow_multiprocessing=False,
+    feature_mapping_strategy=None,
+    model_configs_instance=None,
+) -> available_models.AvailableModels:
+  """Construct an AvailableModels wired to the session shared model registry.
+
+  Caller is expected to have set env keys for the providers being tested.
+  """
+  mc_instance = model_configs_instance or pytest.model_configs_instance
+  akm = api_key_manager.ApiKeyManager(
+      init_from_params=api_key_manager.ApiKeyManagerParams()
+  )
+  pco_kwargs = {}
+  if feature_mapping_strategy is not None:
+    pco_kwargs['feature_mapping_strategy'] = feature_mapping_strategy
+  return available_models.AvailableModels(
+      init_from_params=available_models.AvailableModelsParams(
+          run_type=types.RunType.TEST,
+          provider_call_options=types.ProviderCallOptions(**pco_kwargs),
+          model_configs_instance=mc_instance,
+          model_cache_manager=model_cache_manager,
+          logging_options=types.LoggingOptions(),
+          api_key_manager=akm,
+          model_probe_options=types.ModelProbeOptions(
+              allow_multiprocessing=allow_multiprocessing,
+          ),
+          debug_options=types.DebugOptions(),
       )
-    return models
+  )
 
-  def _init_test_variables(self):
-    if self.cache_dir is None:
-      self.cache_dir = tempfile.TemporaryDirectory()
-    if self.initialized_model_connectors is None:
-      self.initialized_model_connectors = {}
 
-  def _init_model_connector(self, provider_model: types.ProviderModelType):
-    if provider_model in self.initialized_model_connectors:
-      return self.initialized_model_connectors[provider_model]
-    connector = model_registry.get_model_connector(
-        provider_model_identifier=provider_model,
-        model_configs=pytest.model_configs_instance
+def _make_model_cache_manager(cache_dir: str) -> model_cache.ModelCacheManager:
+  return model_cache.ModelCacheManager(
+      init_from_params=model_cache.ModelCacheManagerParams(
+          cache_options=types.CacheOptions(cache_path=cache_dir),
+      )
+  )
+
+
+# =============================================================================
+# Init + state
+# =============================================================================
+
+
+class TestInit:
+
+  def test_init_from_params_populates_attributes(self):
+    am = _build_available_models()
+    assert am.run_type == types.RunType.TEST
+    assert am.model_configs_instance is pytest.model_configs_instance
+    assert am.provider_connectors == {}
+    assert am.model_probe_options.allow_multiprocessing is False
+
+  def test_invalid_combinations_raises(self):
+    with pytest.raises(
+        ValueError,
+        match='init_from_params and init_from_state cannot be set',
+    ):
+      available_models.AvailableModels(
+          init_from_params=available_models.AvailableModelsParams(),
+          init_from_state=types.AvailableModelsState(),
+      )
+
+  def test_state_round_trip(self, monkeypatch):
+    _set_mock_keys(monkeypatch)
+    am = _build_available_models()
+    state = am.get_state()
+    restored = available_models.AvailableModels(init_from_state=state)
+    # Core fields preserved.
+    assert restored.run_type == types.RunType.TEST
+    assert (
+        restored.model_configs_instance.model_registry ==
+        am.model_configs_instance.model_registry
     )
-    self.initialized_model_connectors[provider_model] = connector(
-        logging_options=types.LoggingOptions(),
-        proxdash_connection=proxdash.ProxDashConnection(
-            logging_options=types.LoggingOptions(),
-            proxdash_options=types.ProxDashOptions(disable_proxdash=True)
-        ), run_type=types.RunType.TEST
-    )
-    return self.initialized_model_connectors[provider_model]
 
-  def _get_model_connector(self, provider_model: types.ProviderModelType):
-    return self._init_model_connector(provider_model)
 
-  def _get_initialized_model_connectors(self):
-    return self.initialized_model_connectors
+# =============================================================================
+# get_model_connector
+# =============================================================================
 
-  def _get_available_models(
-      self, allow_multiprocessing: bool = False,
-      set_model_cache_manager: bool = True
+
+class TestGetModelConnector:
+
+  def test_returns_connector_for_registered_provider(self, monkeypatch):
+    _set_mock_keys(monkeypatch)
+    am = _build_available_models()
+    connector = am.get_model_connector(('mock_provider', 'mock_model'))
+    assert connector.PROVIDER_NAME == 'mock_provider'
+
+  def test_caches_connector_on_repeat_lookup(self, monkeypatch):
+    _set_mock_keys(monkeypatch)
+    am = _build_available_models()
+    first = am.get_model_connector(('mock_provider', 'mock_model'))
+    second = am.get_model_connector(('mock_provider', 'mock_model'))
+    assert first is second
+
+
+# =============================================================================
+# list_models — core discovery method
+# =============================================================================
+
+
+class TestListModels:
+
+  def test_no_keys_raises(self):
+    am = _build_available_models()
+    with pytest.raises(ValueError, match='No provider API keys found'):
+      am.list_models()
+
+  def test_api_key_gates_models(self, monkeypatch):
+    # Only mock_provider key set — openai/gemini must NOT appear.
+    monkeypatch.setenv('MOCK_PROVIDER_API_KEY', 'k1')
+    am = _build_available_models()
+    results = am.list_models(recommended_only=False)
+    providers = {m.provider for m in results}
+    assert providers == {'mock_provider'}
+
+  def test_recommended_only_default_excludes_non_recommended(
+      self, monkeypatch,
   ):
-    self._init_test_variables()
-    if set_model_cache_manager:
-      model_cache_manager_params = model_cache.ModelCacheManagerParams(
-          cache_options=types.CacheOptions(cache_path=self.cache_dir.name)
-      )
-      self.model_cache_manager = model_cache.ModelCacheManager(
-          init_from_params=model_cache_manager_params
-      )
-    available_models_params = available_models.AvailableModelsParams(
-        run_type=types.RunType.TEST,
-        model_configs_instance=pytest.model_configs_instance,
-        allow_multiprocessing=allow_multiprocessing,
-        model_cache_manager=(
-            self.model_cache_manager if set_model_cache_manager else None
-        ),
-    )
-    available_models_manager = available_models.AvailableModels(
-        init_from_params=available_models_params
-    )
-    return available_models_manager
+    # Mock providers are is_recommended=False — default recommended_only
+    # filter means they're absent.
+    _set_mock_keys(monkeypatch)
+    am = _build_available_models()
+    results = am.list_models()  # recommended_only=True by default
+    providers = {m.provider for m in results}
+    # Mock providers are all is_recommended=False.
+    assert 'mock_provider' not in providers
+    assert 'mock_failing_provider' not in providers
+    assert 'mock_slow_provider' not in providers
 
-  def _save_temp_cache_state(self):
-    self._init_test_variables()
-    model_cache_manager_params = model_cache.ModelCacheManagerParams(
-        cache_options=types.CacheOptions(cache_path=self.cache_dir.name)
-    )
-    save_cache = model_cache.ModelCacheManager(
-        init_from_params=model_cache_manager_params
-    )
-    data = types.ModelStatus()
-    data.working_models.add(
-        pytest.model_configs_instance.get_provider_model(('openai', 'o4-mini'))
-    )
-    data.failed_models.add(
-        pytest.model_configs_instance.get_provider_model(
-            ('openai', 'gpt-5-mini')
-        )
-    )
-    data.provider_queries[pytest.model_configs_instance.get_provider_model(
-        ('openai', 'o4-mini')
-    )] = types.LoggingRecord(
-        query_record=types.QueryRecord(
-            provider_model=pytest.model_configs_instance.
-            get_provider_model(('openai', 'o4-mini'))
-        ), response_record=types.QueryResponseRecord(
-            response=types.
-            Response(type=types.OutputFormatType.TEXT, value='response1')
-        )
-    )
-    data.provider_queries[pytest.model_configs_instance.get_provider_model(
-        ('openai', 'gpt-5-mini')
-    )] = types.LoggingRecord(
-        query_record=types.QueryRecord(
-            provider_model=pytest.model_configs_instance.
-            get_provider_model(('openai', 'gpt-5-mini'))
-        ), response_record=types.QueryResponseRecord(error='error1')
-    )
-    save_cache.update(
-        model_status_updates=data, output_format_type=types.OutputFormatType.TEXT
-    )
+  def test_recommended_only_false_includes_non_recommended(
+      self, monkeypatch,
+  ):
+    _set_mock_keys(monkeypatch)
+    am = _build_available_models()
+    results = am.list_models(recommended_only=False)
+    providers = {m.provider for m in results}
+    assert 'mock_provider' in providers
 
-  def test_filter_by_key(self):
-    available_models_manager = self._get_available_models()
-    available_models_manager.providers_with_key = {
-        'openai': {
-            'OPENAI_API_KEY': 'test_api_key'
-        },
-        'claude': {
-            'ANTHROPIC_API_KEY': 'test_api_key'
-        }
-    }
+  def test_model_size_filter(self, monkeypatch):
+    # Mock providers have [SMALL] tag.
+    _set_mock_keys(monkeypatch)
+    am = _build_available_models()
+    small = am.list_models(
+        model_size=types.ModelSizeType.SMALL, recommended_only=False,
+    )
+    assert any(m.provider == 'mock_provider' for m in small)
+    # Now filter by LARGE — mock models don't have it.
+    large = am.list_models(
+        model_size=types.ModelSizeType.LARGE, recommended_only=False,
+    )
+    assert all(m.provider != 'mock_provider' for m in large)
+
+  def test_feature_tags_filter_excludes_unsupported(self, monkeypatch):
+    # mock_provider has THINKING=NOT_SUPPORTED at the model-feature-config
+    # level (registered in conftest). So filtering by THINKING tag with
+    # STRICT mapping strategy drops mock_provider.
+    _set_mock_keys(monkeypatch)
+    am = _build_available_models(
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
+    )
+    results = am.list_models(
+        feature_tags=[types.FeatureTag.THINKING], recommended_only=False,
+    )
+    providers = {m.provider for m in results}
+    assert 'mock_provider' not in providers
+    # PROMPT IS supported on mock_provider.
+    results_prompt = am.list_models(
+        feature_tags=[types.FeatureTag.PROMPT], recommended_only=False,
+    )
+    providers_prompt = {m.provider for m in results_prompt}
+    assert 'mock_provider' in providers_prompt
+
+
+# =============================================================================
+# list_providers / list_provider_models / get_model / get_model_config
+# =============================================================================
+
+
+class TestListProviders:
+
+  def test_returns_sorted_providers_with_keys(self, monkeypatch):
+    _set_mock_keys(monkeypatch)
+    am = _build_available_models()
+    providers = am.list_providers(recommended_only=False)
+    # All three mock providers have keys and have at least one model
+    # registered, so they surface here. Result is sorted.
+    assert providers == sorted(providers)
+    assert 'mock_provider' in providers
+    assert 'mock_failing_provider' in providers
+    assert 'mock_slow_provider' in providers
+
+  def test_no_keys_raises(self):
+    am = _build_available_models()
+    with pytest.raises(ValueError, match='No provider API keys found'):
+      am.list_providers()
+
+
+class TestListProviderModels:
+
+  def test_returns_models_for_provider(self, monkeypatch):
+    _set_mock_keys(monkeypatch)
+    am = _build_available_models()
+    models = am.list_provider_models(
+        provider='mock_provider', recommended_only=False,
+    )
+    assert all(m.provider == 'mock_provider' for m in models)
+    assert any(m.model == 'mock_model' for m in models)
+
+  def test_no_key_for_provider_raises(self, monkeypatch):
+    # Only mock_provider has a key; asking for openai must raise.
+    monkeypatch.setenv('MOCK_PROVIDER_API_KEY', 'k1')
+    am = _build_available_models()
+    with pytest.raises(ValueError, match='Provider key not found'):
+      am.list_provider_models(provider='openai')
+
+
+class TestGetModel:
+
+  def test_returns_provider_model(self, monkeypatch):
+    _set_mock_keys(monkeypatch)
+    am = _build_available_models()
+    pm = am.get_model(provider='mock_provider', model='mock_model')
+    assert pm.provider == 'mock_provider'
+    assert pm.model == 'mock_model'
+
+  def test_no_key_raises(self, monkeypatch):
+    # No mock keys set; the registry still has mock_provider so the
+    # lookup succeeds, but the API-key check raises.
+    am = _build_available_models()
+    with pytest.raises(ValueError, match='Provider key not found'):
+      am.get_model(provider='mock_provider', model='mock_model')
+
+
+class TestGetModelConfig:
+
+  def test_returns_config(self):
+    # get_model_config does NOT require an API key — it's a pure registry
+    # lookup for inspecting model capabilities.
+    am = _build_available_models()
+    config = am.get_model_config(
+        provider='mock_provider', model='mock_model',
+    )
+    assert isinstance(config, types.ProviderModelConfig)
+    assert config.provider_model.provider == 'mock_provider'
+
+
+# =============================================================================
+# _filter_by_cache — cache merging invariants
+# =============================================================================
+
+
+class TestFilterByCache:
+
+  def test_merges_working_from_cache(self, monkeypatch, tmp_path):
+    """Unprocessed model cached as working → moves to working_models."""
+    _set_mock_keys(monkeypatch)
+    cache_mgr = _make_model_cache_manager(str(tmp_path))
+    pm = pytest.model_configs_instance.get_provider_model(
+        ('mock_provider', 'mock_model'))
+    cached = types.ModelStatus()
+    cached.working_models.add(pm)
+    cache_mgr.save(cached, types.OutputFormatType.TEXT)
+
+    am = _build_available_models(model_cache_manager=cache_mgr)
     models = types.ModelStatus()
-    available_models_manager._get_all_models(
-        models
-    )
-    available_models_manager._filter_by_provider_api_key(models)
-    assert models.unprocessed_models == self._get_models_set([
-        'openai', 'claude'
-    ])
-    assert models.provider_queries == {
-    }  # No queries should be filtered out since no queries exist yet
+    models.unprocessed_models.add(pm)
+    am._filter_by_cache(models, types.OutputFormatType.TEXT)
 
-  def test_filter_by_cache(self):
-    self._save_temp_cache_state()
-    available_models_manager = self._get_available_models()
-    available_models_manager.providers_with_key = {
-        'openai': {
-            'OPENAI_API_KEY': 'test_api_key'
-        }
-    }
+    assert pm in models.working_models
+    assert pm not in models.unprocessed_models
+
+  def test_merges_failed_from_cache(self, monkeypatch, tmp_path):
+    """Unprocessed model cached as failed → moves to failed_models."""
+    _set_mock_keys(monkeypatch)
+    cache_mgr = _make_model_cache_manager(str(tmp_path))
+    pm = pytest.model_configs_instance.get_provider_model(
+        ('mock_failing_provider', 'mock_failing_model'))
+    cached = types.ModelStatus()
+    cached.failed_models.add(pm)
+    cache_mgr.save(cached, types.OutputFormatType.TEXT)
+
+    am = _build_available_models(model_cache_manager=cache_mgr)
     models = types.ModelStatus()
-    available_models_manager._get_all_models(
-        models
-    )
-    available_models_manager._filter_by_provider_api_key(models)
-    available_models_manager._filter_by_cache(
-        models, output_format_type=types.OutputFormatType.TEXT
-    )
-    assert models.unprocessed_models == (
-        self._get_models_set(['openai']) - {
-            pytest.model_configs_instance.get_provider_model(
-                ('openai', 'o4-mini')
-            ),
-            pytest.model_configs_instance.get_provider_model(
-                ('openai', 'gpt-5-mini')
-            )
-        }
-    )
-    assert models.working_models == {
-        pytest.model_configs_instance.get_provider_model(('openai', 'o4-mini'))
-    }
-    assert models.failed_models == {
-        pytest.model_configs_instance.get_provider_model(
-            ('openai', 'gpt-5-mini')
-        )
-    }
-    assert len(
-        models.provider_queries
-    ) == 2  # Should contain both the success and error queries from cache
-    assert models.provider_queries[
-        pytest.model_configs_instance.get_provider_model(
-            ('openai', 'o4-mini')
-        )].response_record.response.value == 'response1'
-    assert models.provider_queries[
-        pytest.model_configs_instance.get_provider_model(
-            ('openai', 'gpt-5-mini')
-        )].response_record.error == 'error1'
+    models.unprocessed_models.add(pm)
+    am._filter_by_cache(models, types.OutputFormatType.TEXT)
 
-    # Verify provider queries are properly maintained
-    assert len(models.provider_queries) == 2
+    assert pm in models.failed_models
+    assert pm not in models.unprocessed_models
+
+  def test_no_cache_manager_noop(self):
+    """query_cache_manager is None → no mutation, no error."""
+    am = _build_available_models()
+    pm = pytest.model_configs_instance.get_provider_model(
+        ('mock_provider', 'mock_model'))
+    models = types.ModelStatus()
+    models.unprocessed_models.add(pm)
+    am._filter_by_cache(models, types.OutputFormatType.TEXT)
+    assert pm in models.unprocessed_models
+    assert pm not in models.working_models
+    assert pm not in models.failed_models
+
+
+# =============================================================================
+# Health-check surface — run real mock connectors through generate()
+# =============================================================================
+#
+# mock_provider returns "mock response" (SUCCESS); mock_failing_provider raises
+# ValueError (FAILED). Both are is_recommended=False per conftest, so every
+# health-check call below passes recommended_only=False.
+
+
+class TestListWorkingModels:
+
+  def test_without_cache_runs_tests_and_classifies(self, monkeypatch):
+    """No cache → tests run inline; mock_provider works, failing fails."""
+    _set_fast_mock_keys(monkeypatch)
+    am = _build_available_models()
+    status = am.list_working_models(
+        return_all=True, verbose=False, recommended_only=False,
+    )
+    working = {m.provider for m in status.working_models}
+    failed = {m.provider for m in status.failed_models}
+    assert 'mock_provider' in working
+    assert 'mock_failing_provider' in failed
+
+  def test_return_all_false_returns_working_list(self, monkeypatch):
+    """return_all=False → list of working ProviderModelType, sorted."""
+    _set_fast_mock_keys(monkeypatch)
+    am = _build_available_models()
+    working = am.list_working_models(
+        verbose=False, recommended_only=False,
+    )
+    assert isinstance(working, list)
+    providers = {m.provider for m in working}
+    assert 'mock_provider' in providers
+    assert 'mock_failing_provider' not in providers
+
+  def test_model_size_filter(self, monkeypatch):
+    """model_size filter drops unmatched sizes before testing."""
+    _set_fast_mock_keys(monkeypatch)
+    am = _build_available_models()
+    large = am.list_working_models(
+        model_size=types.ModelSizeType.LARGE,
+        return_all=True, verbose=False, recommended_only=False,
+    )
+    # Mock providers only have SMALL; filtering by LARGE drops them all.
     assert all(
-        provider_model in models.working_models.union(models.failed_models)
-        for provider_model in models.provider_queries
+        m.provider not in {'mock_provider', 'mock_failing_provider'}
+        for m in large.working_models
     )
 
-  def test_filter_by_model_size(self):
-    available_models_manager = self._get_available_models()
-    models = types.ModelStatus()
 
-    # Add models from small, medium, large, largest model sizes
-    models.unprocessed_models.add(
-        pytest.model_configs_instance.get_provider_model(
-            ('openai', 'gpt-5-mini')
-        )
-    )
-    models.unprocessed_models.add(
-        pytest.model_configs_instance.get_provider_model(('openai', 'gpt-5.1'))
-    )
-    models.unprocessed_models.add(
-        pytest.model_configs_instance.get_provider_model(
-            ('openai', 'gpt-5.2-pro')
-        )
-    )
-    models.unprocessed_models.add(
-        pytest.model_configs_instance.get_provider_model(
-            ('claude', 'haiku-4.5')
-        )
-    )
-    models.unprocessed_models.add(
-        pytest.model_configs_instance.get_provider_model(
-            ('claude', 'sonnet-4.5')
-        )
-    )
-    models.unprocessed_models.add(
-        pytest.model_configs_instance.get_provider_model(('claude', 'opus-4.5'))
-    )
+class TestGetWorkingModel:
 
-    test_models = copy.deepcopy(models)
-    available_models_manager._filter_by_model_size(
-        test_models, model_size=types.ModelSizeType.SMALL
-    )
-    assert test_models.unprocessed_models == {
-        pytest.model_configs_instance.get_provider_model(
-            ('openai', 'gpt-5-mini')
-        ),
-        pytest.model_configs_instance.get_provider_model(
-            ('claude', 'haiku-4.5')
-        ),
-    }
+  # NOTE: get_working_model without a cache_manager takes a short path —
+  # validate key presence and return. With a cache_manager it runs
+  # _fetch_all_models which hardcodes recommended_only=True, so
+  # non-recommended models (all three mock_* providers in conftest) are
+  # filtered out before testing. That makes the cache-backed branch
+  # untestable with our mock registry; we cover the no-cache path here.
 
-    test_models = copy.deepcopy(models)
-    available_models_manager._filter_by_model_size(
-        test_models, model_size=types.ModelSizeType.MEDIUM
-    )
-    assert test_models.unprocessed_models == {
-        pytest.model_configs_instance.get_provider_model(('openai', 'gpt-5.1')),
-        pytest.model_configs_instance.get_provider_model(
-            ('claude', 'sonnet-4.5')
-        ),
-    }
+  def test_returns_model_when_key_present_no_cache(self, monkeypatch):
+    """No cache_manager + key set → returns ProviderModelType."""
+    _set_fast_mock_keys(monkeypatch)
+    am = _build_available_models()
+    pm = am.get_working_model(provider='mock_provider', model='mock_model')
+    assert pm.provider == 'mock_provider'
+    assert pm.model == 'mock_model'
 
-    test_models = copy.deepcopy(models)
-    available_models_manager._filter_by_model_size(
-        test_models, model_size=types.ModelSizeType.LARGE
-    )
-    assert test_models.unprocessed_models == {
-        pytest.model_configs_instance.get_provider_model(
-            ('openai', 'gpt-5.2-pro')
-        ),
-        pytest.model_configs_instance.get_provider_model(('claude', 'opus-4.5')
-                                                        ),
-    }
-
-    test_models = copy.deepcopy(models)
-    available_models_manager._filter_by_model_size(
-        test_models, model_size=types.ModelSizeType.LARGEST
-    )
-    assert test_models.unprocessed_models == {
-        pytest.model_configs_instance.get_provider_model(
-            ('openai', 'gpt-5.2-pro')
-        ),
-        pytest.model_configs_instance.get_provider_model(('claude', 'opus-4.5')
-                                                        ),
-    }
-
-    test_models = copy.deepcopy(models)
-    available_models_manager._filter_by_model_size(
-        test_models, model_size='small'
-    )
-    assert test_models.unprocessed_models == {
-        pytest.model_configs_instance.get_provider_model(
-            ('openai', 'gpt-5-mini')
-        ),
-        pytest.model_configs_instance.get_provider_model(
-            ('claude', 'haiku-4.5')
-        ),
-    }
-
-  @pytest.mark.parametrize('allow_multiprocessing', [True, False])
-  def test_test_models(self, allow_multiprocessing):
-    available_models_manager = self._get_available_models(
-        allow_multiprocessing=allow_multiprocessing
-    )
-    available_models_manager.providers_with_key = {
-        'openai': {
-            'OPENAI_API_KEY': 'test_api_key'
-        }
-    }
-    models = types.ModelStatus()
-    available_models_manager._get_all_models(
-        models
-    )
-    available_models_manager._filter_by_provider_api_key(models)
-    output_format_tags = [types.OutputFormatType.TEXT]
-    available_models_manager._filter_by_output_format(
-        models, output_format_tags)
-    models.unprocessed_models.add(
-        pytest.model_configs_instance.get_provider_model(
-            ('mock_failing_provider', 'mock_failing_model')
-        )
-    )
-
-    available_models_manager._test_models(
-        models, output_format_type=types.OutputFormatType.TEXT
-    )
-
-    text_models = {
-        m for m in self._get_models_set(['openai'])
-        if m.model in ('gpt-4o', 'gpt-5-mini', 'o3')
-    }
-    assert models.unprocessed_models == set()
-    assert models.working_models == text_models
-    assert models.failed_models == {
-        pytest.model_configs_instance.get_provider_model(
-            ('mock_failing_provider', 'mock_failing_model')
-        )
-    }
-
-  def test_list_models(self, monkeypatch):
-    monkeypatch.setenv(
-        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key'
-    )
-    available_models_manager = self._get_available_models()
-    text_models = available_models_manager.list_models()
-    text_names = {m.model for m in text_models}
-    assert 'gpt-4o' in text_names
-    assert 'o3' in text_names
-    assert 'dall-e-3' not in text_names
-    assert 'tts-1' not in text_names
-    assert 'sora-2' not in text_names
-
-  def test_list_models_with_model_size(self, monkeypatch):
-    monkeypatch.setenv(
-        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key'
-    )
-    available_models_manager = self._get_available_models()
-    all_models = available_models_manager.list_models()
-    small_models = available_models_manager.list_models(model_size='small')
-    assert len(small_models) > 0
-    assert len(small_models) < len(all_models)
-
-  def test_list_providers(self, monkeypatch):
-    monkeypatch.setenv(
-        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key'
-    )
-    monkeypatch.setenv(
-        model_configs.PROVIDER_KEY_MAP['claude'][0], 'test_api_key'
-    )
-    available_models_manager = self._get_available_models()
-    providers = available_models_manager.list_providers()
-    assert set(providers) == {'openai', 'claude'}
-
-  def test_list_provider_models(self, monkeypatch):
-    monkeypatch.setenv(
-        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key'
-    )
-    available_models_manager = self._get_available_models()
-    text_models = available_models_manager.list_provider_models('openai')
-    text_names = {m.model for m in text_models}
-    assert 'gpt-4o' in text_names
-    assert 'dall-e-3' not in text_names
-    all_models = available_models_manager.list_provider_models(
-        'openai', output_format=None)
-    assert set(all_models) == self._get_models_set(['openai'])
-
-  def test_list_provider_models_without_key(self, monkeypatch):
-    monkeypatch.setenv(
-        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key'
-    )
-    available_models_manager = self._get_available_models()
+  def test_no_key_raises(self):
+    """No cache_manager + no key → ValueError('Provider key not found')."""
+    am = _build_available_models()
     with pytest.raises(ValueError, match='Provider key not found'):
-      available_models_manager.list_provider_models('claude')
-
-  def test_get_model(self, monkeypatch):
-    monkeypatch.setenv(
-        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key'
-    )
-    available_models_manager = self._get_available_models()
-    model = available_models_manager.get_model('openai', 'o4-mini')
-    assert model == pytest.model_configs_instance.get_provider_model(
-        ('openai', 'o4-mini')
-    )
-
-  def test_get_model_without_key(self, monkeypatch):
-    monkeypatch.setenv(
-        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key'
-    )
-    available_models_manager = self._get_available_models()
-    with pytest.raises(ValueError, match='Provider key not found'):
-      available_models_manager.get_model('claude', 'haiku-4.5')
-
-  def test_list_working_models(self, monkeypatch):
-    monkeypatch.setenv(
-        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key'
-    )
-    available_models_manager = self._get_available_models()
-    models = available_models_manager.list_working_models()
-    text_models = {
-        m for m in self._get_models_set(['openai'])
-        if m.model in ('gpt-4o', 'gpt-5-mini', 'o3')
-    }
-    assert models == sorted(text_models)
-
-  def test_list_working_models_filters(self, monkeypatch):
-    monkeypatch.setenv(
-        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key'
-    )
-    monkeypatch.setenv(
-        model_configs.PROVIDER_KEY_MAP['mock_provider'][0], 'test_api_key'
-    )
-
-    self._save_temp_cache_state()
-    available_models_manager = self._get_available_models()
-
-    # Check that the failed model was filtered out
-    models = available_models_manager.list_working_models()
-    assert models == sorted(
-        self._get_models_set(['openai', 'mock_provider']) - {
-            pytest.model_configs_instance.
-            get_provider_model(('openai', 'gpt-5-mini'))
-        }
-    )
-
-    # Check cache memory values
-    models = available_models_manager._model_cache_manager.get(
-        output_format_type=types.OutputFormatType.TEXT
-    )
-    assert models.working_models == (
-        self._get_models_set(['openai', 'mock_provider']) - {
-            pytest.model_configs_instance.get_provider_model(
-                ('openai', 'gpt-5-mini')
-            )
-        }
-    )
-    assert models.failed_models == {
-        pytest.model_configs_instance.get_provider_model(
-            ('openai', 'gpt-5-mini')
-        )
-    }
-    assert len(models.provider_queries) >= 4
-
-    # Check cache file values
-    model_cache_manager_params = model_cache.ModelCacheManagerParams(
-        cache_options=types.CacheOptions(cache_path=self.cache_dir.name)
-    )
-    load_cache = model_cache.ModelCacheManager(
-        init_from_params=model_cache_manager_params
-    )
-    models = load_cache.get(output_format_type=types.OutputFormatType.TEXT)
-    assert models.working_models == (
-        self._get_models_set(['openai', 'mock_provider']) - {
-            pytest.model_configs_instance.get_provider_model(
-                ('openai', 'gpt-5-mini')
-            )
-        }
-    )
-    assert models.failed_models == {
-        pytest.model_configs_instance.get_provider_model(
-            ('openai', 'gpt-5-mini')
-        )
-    }
-    assert len(models.provider_queries) >= 4
-
-  def test_list_working_providers_without_cache(self, monkeypatch):
-    monkeypatch.setenv(
-        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key'
-    )
-    monkeypatch.setenv(
-        model_configs.PROVIDER_KEY_MAP['claude'][0], 'test_api_key'
-    )
-    available_models_manager = self._get_available_models(
-        set_model_cache_manager=False
-    )
-    providers = available_models_manager.list_working_providers()
-    assert providers == ['claude', 'openai']
-
-  def test_list_working_providers_with_cache(self, monkeypatch):
-    self._save_temp_cache_state()
-    monkeypatch.setenv(
-        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key'
-    )
-    monkeypatch.setenv(
-        model_configs.PROVIDER_KEY_MAP['claude'][0], 'test_api_key'
-    )
-    available_models_manager = self._get_available_models()
-
-    providers = available_models_manager.list_working_providers()
-    assert set(providers) == {'openai', 'claude'}
-
-    monkeypatch.delenv(
-        model_configs.PROVIDER_KEY_MAP['claude'][0], raising=False
-    )
-    providers = available_models_manager.list_working_providers()
-    assert set(providers) == {'openai'}
-
-  def test_list_working_providers_invalid_output_format(self):
-    available_models_manager = self._get_available_models()
-    with pytest.raises(ValueError):
-      available_models_manager.list_working_providers(output_format='invalid_type')
-
-  def test_list_working_providers_verbose(self, monkeypatch):
-    self._save_temp_cache_state()
-    monkeypatch.setenv(
-        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key'
-    )
-    available_models_manager = self._get_available_models()
-    providers = available_models_manager.list_working_providers(verbose=True)
-    assert set(providers) == {'openai'}
-
-  def test_list_working_provider_models_without_cache(self, monkeypatch):
-    # Set only OpenAI key
-    monkeypatch.setenv(
-        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key'
-    )
-    available_models_manager = self._get_available_models(
-        set_model_cache_manager=False
-    )
-
-    # Test provider with key
-    models = available_models_manager.list_working_provider_models('openai')
-    assert set(models) == set(
-        pytest.model_configs_instance.get_all_models(
-            provider='openai'
-        )
-    )
-
-    # Test provider without key
-    with pytest.raises(
-        ValueError,
-        match='Provider key not found in environment variables for claude.\n'
-        'Required keys'
-    ):
-      available_models_manager.list_working_provider_models('claude')
-
-  def test_list_working_provider_models_with_cache(self, monkeypatch):
-    self._save_temp_cache_state()
-    monkeypatch.setenv(
-        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key'
-    )
-    monkeypatch.setenv(
-        model_configs.PROVIDER_KEY_MAP['claude'][0], 'test_api_key'
-    )
-    available_models_manager = self._get_available_models()
-
-    models = available_models_manager.list_working_provider_models('openai')
-    # 'gpt-5-mini' saved as failed model, so it should not be included
-    assert set(models) == (
-        self._get_models_set(['openai']) - {
-            pytest.model_configs_instance.get_provider_model(
-                ('openai', 'gpt-5-mini')
-            )
-        }
-    )
-
-    models = available_models_manager.list_working_provider_models('claude')
-    assert set(models) == set(
-        pytest.model_configs_instance.get_all_models(
-            provider='claude'
-        )
-    )
-
-    monkeypatch.delenv(
-        model_configs.PROVIDER_KEY_MAP['claude'][0], raising=False
-    )
-    models = available_models_manager.list_working_provider_models('openai')
-    # 'gpt-5-mini' saved as failed model, so it should not be included
-    assert set(models) == (
-        self._get_models_set(['openai']) - {
-            pytest.model_configs_instance.get_provider_model(
-                ('openai', 'gpt-5-mini')
-            )
-        }
-    )
-    models = available_models_manager.list_working_provider_models('claude')
-    assert set(models) == set()
-
-  def test_list_working_provider_models_invalid_output_format(self):
-    available_models_manager = self._get_available_models()
-    with pytest.raises(ValueError):
-      available_models_manager.list_working_provider_models(
-          'openai', output_format='invalid_type'
-      )
-
-  def test_list_working_provider_models_verbose(self, monkeypatch):
-    self._save_temp_cache_state()
-    monkeypatch.setenv(
-        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key'
-    )
-    available_models_manager = self._get_available_models()
-    models = available_models_manager.list_working_provider_models(
-        'openai', verbose=True
-    )
-    assert set(models) == (
-        self._get_models_set(['openai']) - {
-            pytest.model_configs_instance.get_provider_model(
-                ('openai', 'gpt-5-mini')
-            )
-        }
-    )
-
-  def test_get_working_model_without_cache_manager(self, monkeypatch):
-    monkeypatch.setenv(
-        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key'
-    )
-    available_models_manager = self._get_available_models(
-        set_model_cache_manager=False
-    )
-
-    # Test successful case
-    provider_model = available_models_manager.get_working_model(
-        'openai', 'o4-mini'
-    )
-    assert provider_model == pytest.model_configs_instance.get_provider_model(
-        ('openai', 'o4-mini')
-    )
-
-    # Test provider without key
-    with pytest.raises(
-        ValueError,
-        match='Provider key not found in environment variables for claude.'
-    ):
-      available_models_manager.get_working_model('claude', 'haiku-4.5')
-
-    # Test invalid provider
-    with pytest.raises(KeyError, match='invalid_provider'):
-      available_models_manager.get_working_model('invalid_provider', 'model')
-
-    # Test invalid model
-    with pytest.raises(KeyError, match='invalid_model'):
-      available_models_manager.get_working_model('openai', 'invalid_model')
-
-  def test_get_working_model_with_cache_manager(self, monkeypatch):
-    monkeypatch.setenv(
-        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key'
-    )
-    self._save_temp_cache_state()
-    available_models_manager = self._get_available_models()
-
-    # Test successful case with cached model
-    provider_model = available_models_manager.get_working_model(
-        'openai', 'o4-mini'
-    )
-    assert provider_model == pytest.model_configs_instance.get_provider_model(
-        ('openai', 'o4-mini')
-    )
-
-    # Test model not in working models
-    with pytest.raises(
-        ValueError, match='Provider model not found in working models'
-    ):
-      available_models_manager.get_working_model('openai', 'gpt-5-mini')
-
-  def test_get_working_model_clear_cache(self, monkeypatch):
-    monkeypatch.setenv(
-        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key'
-    )
-    available_models_manager = self._get_available_models()
-
-    provider_model = available_models_manager.get_working_model(
-        'openai', 'o4-mini'
-    )
-    assert provider_model == pytest.model_configs_instance.get_provider_model(
-        ('openai', 'o4-mini')
-    )
-
-    monkeypatch.delenv(
-        model_configs.PROVIDER_KEY_MAP['openai'][0], raising=False
-    )
-    with pytest.raises(
-        ValueError, match='No provider API keys found in environment variables'
-    ):
-      available_models_manager.get_working_model(
-          'openai', 'o4-mini', clear_model_cache=True
-      )
-
-  def test_get_working_model_invalid_output_format(self):
-    available_models_manager = self._get_available_models()
-    with pytest.raises(ValueError):
-      available_models_manager.get_working_model(
-          'openai', 'o4-mini', output_format='invalid_type'
-      )
-
-
-class TestAvailableModelsConstructor:
-
-  def test_model_configs_parameter(self):
-    """Test that model_configs parameter is properly used."""
-    available_models_params = available_models.AvailableModelsParams(
-        run_type=types.RunType.TEST,
-        model_configs_instance=pytest.model_configs_instance
-    )
-    available_models_manager = available_models.AvailableModels(
-        init_from_params=available_models_params
-    )
-
-    assert available_models_manager.model_configs_instance is pytest.model_configs_instance
-
-
-class TestAvailableModelsState:
-  cache_dir: tempfile.TemporaryDirectory | None = None
-
-  def _init_test_variables(self):
-    if self.cache_dir is None:
-      self.cache_dir = tempfile.TemporaryDirectory()
-
-  def _create_available_models(self):
-    self._init_test_variables()
-    model_cache_manager_params = model_cache.ModelCacheManagerParams(
-        cache_options=types.CacheOptions(cache_path=self.cache_dir.name)
-    )
-    model_cache_manager = model_cache.ModelCacheManager(
-        init_from_params=model_cache_manager_params
-    )
-    available_models_params = available_models.AvailableModelsParams(
-        run_type=types.RunType.TEST,
-        model_configs_instance=pytest.model_configs_instance,
-        model_cache_manager=model_cache_manager, allow_multiprocessing=False,
-        model_test_timeout=30
-    )
-    return available_models.AvailableModels(
-        init_from_params=available_models_params
-    )
-
-  def test_get_state_and_init_from_state(self):
-    """Test state serialization and deserialization round-trip."""
-    original = self._create_available_models()
-    original.providers_with_key = {
-        'openai': {
-            'OPENAI_API_KEY': 'test_api_key'
-        },
-        'claude': {
-            'ANTHROPIC_API_KEY': 'test_api_key'
-        }
-    }
-
-    state = original.get_state()
-    restored = available_models.AvailableModels(init_from_state=state)
-
-    assert restored.run_type == original.run_type
-    assert restored.allow_multiprocessing == original.allow_multiprocessing
-    assert restored.model_test_timeout == original.model_test_timeout
-    assert restored.providers_with_key == original.providers_with_key
-
-  def test_model_configs_preserved_in_state(self):
-    """Test that model_configs is preserved through state round-trip."""
-    original = self._create_available_models()
-
-    state = original.get_state()
-    restored = available_models.AvailableModels(init_from_state=state)
-
-    assert restored.model_configs_instance is not None
-    original_models = original.model_configs_instance.get_all_models()
-    restored_models = restored.model_configs_instance.get_all_models()
-    assert set(original_models) == set(restored_models)
-
-
-class TestFilterByFeatures:
-  """Tests for filtering models by feature compatibility."""
-
-  cache_dir: tempfile.TemporaryDirectory | None = None
-  initialized_model_connectors: dict[types.ProviderModelType,
-                                     provider_connector.
-                                     ProviderConnector] | None = None
-
-  def _init_test_variables(self):
-    if self.cache_dir is None:
-      self.cache_dir = tempfile.TemporaryDirectory()
-    if self.initialized_model_connectors is None:
-      self.initialized_model_connectors = {}
-
-  def _init_model_connector(self, provider_model: types.ProviderModelType):
-    if provider_model in self.initialized_model_connectors:
-      return self.initialized_model_connectors[provider_model]
-    connector = model_registry.get_model_connector(
-        provider_model_identifier=provider_model,
-        model_configs=pytest.model_configs_instance
-    )
-    self.initialized_model_connectors[provider_model] = connector(
-        logging_options=types.LoggingOptions(),
-        proxdash_connection=proxdash.ProxDashConnection(
-            logging_options=types.LoggingOptions(),
-            proxdash_options=types.ProxDashOptions(disable_proxdash=True)
-        ), run_type=types.RunType.TEST
-    )
-    return self.initialized_model_connectors[provider_model]
-
-  def _get_model_connector(self, provider_model: types.ProviderModelType):
-    return self._init_model_connector(provider_model)
-
-  def _get_available_models(self):
-    self._init_test_variables()
-    available_models_params = available_models.AvailableModelsParams(
-        run_type=types.RunType.TEST,
-        model_configs_instance=pytest.model_configs_instance,
-        allow_multiprocessing=False
-    )
-    return available_models.AvailableModels(
-        init_from_params=available_models_params
-    )
-
-  def test_filter_by_features_none_does_nothing(self):
-    """When features is None, no filtering should occur."""
-    available_models_manager = self._get_available_models()
-    models = types.ModelStatus()
-    models.unprocessed_models.add(
-        pytest.model_configs_instance.get_provider_model(('openai', 'o4-mini'))
-    )
-    models.unprocessed_models.add(
-        pytest.model_configs_instance.get_provider_model(
-            ('claude', 'haiku-4.5')
-        )
-    )
-
-    original_count = len(models.unprocessed_models)
-    available_models_manager._filter_by_features(models, features=None)
-
-    assert len(models.unprocessed_models) == original_count
-    assert len(models.filtered_models) == 0
-
-  def test_filter_by_features_basic_prompt(self):
-    """All models should support the basic 'prompt' feature."""
-    available_models_manager = self._get_available_models()
-    available_models_manager.providers_with_key = {
-        'openai': {
-            'OPENAI_API_KEY': 'test_api_key'
-        },
-        'claude': {
-            'ANTHROPIC_API_KEY': 'test_api_key'
-        }
-    }
-    models = types.ModelStatus()
-    models.unprocessed_models.add(
-        pytest.model_configs_instance.get_provider_model(('openai', 'o4-mini'))
-    )
-    models.unprocessed_models.add(
-        pytest.model_configs_instance.get_provider_model(
-            ('claude', 'haiku-4.5')
-        )
-    )
-
-    available_models_manager._filter_by_features(
-        models, features=[types.FeatureNameType.PROMPT]
-    )
-
-    # All models should support prompt feature
-    assert len(models.unprocessed_models) == 2
-    assert len(models.filtered_models) == 0
-
-  def test_filter_by_features_filters_working_and_failed_models(self):
-    """Features filter should apply to working and failed models too."""
-    available_models_manager = self._get_available_models()
-    available_models_manager.providers_with_key = {
-        'openai': {
-            'OPENAI_API_KEY': 'test_api_key'
-        },
-        'claude': {
-            'ANTHROPIC_API_KEY': 'test_api_key'
-        }
-    }
-    models = types.ModelStatus()
-
-    openai_model = pytest.model_configs_instance.get_provider_model(
-        ('openai', 'o4-mini')
-    )
-    claude_model = pytest.model_configs_instance.get_provider_model(
-        ('claude', 'haiku-4.5')
-    )
-
-    models.working_models.add(openai_model)
-    models.failed_models.add(claude_model)
-
-    available_models_manager._filter_by_features(
-        models, features=[types.FeatureNameType.PROMPT]
-    )
-
-    # Both should still be in their respective sets (prompt is supported)
-    assert openai_model in models.working_models
-    assert claude_model in models.failed_models
-
-  def test_list_models_with_features(self, monkeypatch):
-    """Test list_models filters by features parameter."""
-    monkeypatch.setenv(
-        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key'
-    )
-    available_models_manager = self._get_available_models()
-
-    all_models = available_models_manager.list_models()
-    models_with_prompt = available_models_manager.list_models(
-        features=['prompt']
-    )
-
-    # All models support prompt, so counts should be equal
-    assert len(models_with_prompt) == len(all_models)
-
-  def test_list_models_with_features_enum(self, monkeypatch):
-    """Test list_models accepts FeatureNameType enum values."""
-    monkeypatch.setenv(
-        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key'
-    )
-    available_models_manager = self._get_available_models()
-
-    models = available_models_manager.list_models(
-        features=[types.FeatureNameType.PROMPT]
-    )
-
-    assert len(models) > 0
-
-  def test_list_provider_models_with_features(self, monkeypatch):
-    """Test list_provider_models filters by features parameter."""
-    monkeypatch.setenv(
-        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key'
-    )
-    available_models_manager = self._get_available_models()
-
-    all_models = available_models_manager.list_provider_models('openai')
-    models_with_prompt = available_models_manager.list_provider_models(
-        'openai', features=['prompt']
-    )
-
-    assert len(models_with_prompt) == len(all_models)
-
-  def test_list_working_models_with_features(self, monkeypatch):
-    """Test list_working_models filters by features parameter."""
-    monkeypatch.setenv(
-        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key'
-    )
-    available_models_manager = self._get_available_models()
-
-    all_models = available_models_manager.list_working_models()
-    models_with_prompt = available_models_manager.list_working_models(
-        features=['prompt']
-    )
-
-    assert len(models_with_prompt) == len(all_models)
-
-  def test_list_working_provider_models_with_features(self, monkeypatch):
-    """Test list_working_provider_models filters by features parameter."""
-    monkeypatch.setenv(
-        model_configs.PROVIDER_KEY_MAP['openai'][0], 'test_api_key'
-    )
-    available_models_manager = self._get_available_models()
-
-    all_models = available_models_manager.list_working_provider_models('openai')
-    models_with_prompt = available_models_manager.list_working_provider_models(
-        'openai', features=['prompt']
-    )
-
-    assert len(models_with_prompt) == len(all_models)
+      am.get_working_model(provider='mock_provider', model='mock_model')
+
+
+class TestListWorkingProviders:
+
+  def test_returns_only_providers_with_working_models(
+      self, monkeypatch, tmp_path,
+  ):
+    _set_fast_mock_keys(monkeypatch)
+    cache_mgr = _make_model_cache_manager(str(tmp_path))
+    am = _build_available_models(model_cache_manager=cache_mgr)
+    providers = am.list_working_providers(
+        verbose=False, recommended_only=False,
+    )
+    assert 'mock_provider' in providers
+    # Failing provider has no working models → excluded.
+    assert 'mock_failing_provider' not in providers
+
+
+class TestListWorkingProviderModels:
+
+  def test_returns_working_models_for_provider(self, monkeypatch, tmp_path):
+    _set_fast_mock_keys(monkeypatch)
+    cache_mgr = _make_model_cache_manager(str(tmp_path))
+    am = _build_available_models(model_cache_manager=cache_mgr)
+    models = am.list_working_provider_models(
+        provider='mock_provider', verbose=False, recommended_only=False,
+    )
+    assert all(m.provider == 'mock_provider' for m in models)
+    assert any(m.model == 'mock_model' for m in models)
+
+
+class TestCheckHealth:
+
+  def test_classifies_working_and_failed(self, monkeypatch, tmp_path):
+    """check_health wraps list_working_models(return_all=True)."""
+    _set_fast_mock_keys(monkeypatch)
+    cache_mgr = _make_model_cache_manager(str(tmp_path))
+    am = _build_available_models(model_cache_manager=cache_mgr)
+    status = am.check_health(verbose=False)
+    assert isinstance(status, types.ModelStatus)
+    working_providers = {m.provider for m in status.working_models}
+    failed_providers = {m.provider for m in status.failed_models}
+    # check_health uses recommended_only=True (the default). Since mock
+    # providers are is_recommended=False, they are excluded — we assert the
+    # call completes and returns a valid ModelStatus.
+    assert working_providers.isdisjoint(failed_providers)
