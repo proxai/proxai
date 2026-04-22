@@ -746,6 +746,12 @@ def _get_usage_type_options():
           'estimated_cost': 50
       },
       {
+          'input_tokens': 0,
+          'output_tokens': 0,
+          'total_tokens': 0,
+          'estimated_cost': 0
+      },
+      {
           'input_tokens': 100,
           'output_tokens': 200,
           'total_tokens': 300,
@@ -808,6 +814,9 @@ def _get_result_record_options():
       },
       {
           'role': types.MessageRoleType.ASSISTANT
+      },
+      {
+          'role': types.MessageRoleType.USER
       },
       {
           'output_text': 'Hello, world!'
@@ -1036,6 +1045,9 @@ def _get_connection_metadata_options():
               types.CacheLookFailReason.UNIQUE_RESPONSE_LIMIT_NOT_REACHED
       },
       {
+          'cache_look_fail_reason': types.CacheLookFailReason.CACHE_UNAVAILABLE
+      },
+      {
           'endpoint_used': 'some_endpoint'
       },
       {
@@ -1147,6 +1159,9 @@ def _get_light_cache_record_options():
           'shard_id': 0
       },
       {
+          'shard_id': 'backlog'
+      },
+      {
           'last_access_time': datetime.datetime.now()
       },
       {
@@ -1185,6 +1200,9 @@ def _get_cache_look_result_options():
       {
           'cache_look_fail_reason':
               types.CacheLookFailReason.PROVIDER_ERROR_CACHED
+      },
+      {
+          'cache_look_fail_reason': types.CacheLookFailReason.CACHE_UNAVAILABLE
       },
       {
           'result':
@@ -1360,6 +1378,9 @@ def _get_run_options_options():
       {},
       {
           'run_type': types.RunType.TEST
+      },
+      {
+          'run_type': types.RunType.PRODUCTION
       },
       {
           'hidden_run_key': 'hidden_run_key'
