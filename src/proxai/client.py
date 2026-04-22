@@ -1276,7 +1276,8 @@ class ProxAIClient(state_controller.StateControlled):
   def query_cache_manager(self) -> query_cache.QueryCacheManager:
     if self._query_cache_manager is None and self.cache_options is not None:
       query_cache_manager_params = query_cache.QueryCacheManagerParams(
-          cache_options=self.cache_options
+          cache_options=self.cache_options,
+          logging_options=self.logging_options,
       )
       self._query_cache_manager = query_cache.QueryCacheManager(
           init_from_params=query_cache_manager_params

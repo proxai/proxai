@@ -2904,6 +2904,13 @@ class TestQueryCacheState:
       )
 
   def test_not_working_state_calls(self):
+    """Operational failures produce structured results, never raise.
+
+    A cache is an optimization: when it can't service a request
+    (no path configured, not writable, etc.) callers get a
+    CACHE_UNAVAILABLE lookup result and cache() is a silent no-op.
+    clear_cache() is user-facing and still raises.
+    """
     with tempfile.TemporaryDirectory():
       query_cache_manager_params = query_cache.QueryCacheManagerParams(
           cache_options=types.CacheOptions()
@@ -2916,29 +2923,51 @@ class TestQueryCacheState:
           types.QueryCacheManagerStatus.CACHE_PATH_NOT_FOUND
       )
 
+      # clear_cache() is user-facing — still raises.
       with pytest.raises(
           ValueError, match='QueryCacheManager status is .*CACHE_PATH_NOT_FOUND'
       ):
         query_cache_manager.clear_cache()
 
-      with pytest.raises(
-          ValueError, match='QueryCacheManager status is .*CACHE_PATH_NOT_FOUND'
-      ):
-        query_cache_manager.look(types.QueryRecord(prompt='p1'))
+      # look() returns CACHE_UNAVAILABLE instead of raising.
+      look_result = query_cache_manager.look(types.QueryRecord(prompt='p1'))
+      assert look_result.result is None
+      assert (
+          look_result.cache_look_fail_reason ==
+          types.CacheLookFailReason.CACHE_UNAVAILABLE
+      )
 
-      with pytest.raises(
-          ValueError, match='QueryCacheManager status is .*CACHE_PATH_NOT_FOUND'
-      ):
-        query_cache_manager.cache(
-            types.QueryRecord(prompt='p1'),
-            types.ResultRecord(output_text='r1')
-        )
+      # cache() is a silent no-op (does not raise, does not store).
+      query_cache_manager.cache(
+          types.QueryRecord(prompt='p1'),
+          types.ResultRecord(output_text='r1')
+      )
+      query_cache_manager.cache(
+          types.QueryRecord(prompt='p1'),
+          types.ResultRecord(output_text='r1'),
+          override_cache_value=True
+      )
 
-      with pytest.raises(
-          ValueError, match='QueryCacheManager status is .*CACHE_PATH_NOT_FOUND'
-      ):
-        query_cache_manager.cache(
-            types.QueryRecord(prompt='p1'),
-            types.ResultRecord(output_text='r1'),
-            override_cache_value=True
-        )
+  def test_init_creates_missing_cache_directory(self):
+    """A missing cache directory is created automatically on init.
+
+    Previously, if the cache path didn't exist, status would be
+    CACHE_PATH_NOT_WRITABLE because os.access() fails on missing
+    paths. Now init creates the directory first.
+    """
+    with tempfile.TemporaryDirectory() as parent:
+      nonexistent = os.path.join(parent, 'does_not_exist_yet')
+      assert not os.path.exists(nonexistent)
+
+      query_cache_manager_params = query_cache.QueryCacheManagerParams(
+          cache_options=types.CacheOptions(cache_path=nonexistent)
+      )
+      query_cache_manager = query_cache.QueryCacheManager(
+          init_from_params=query_cache_manager_params
+      )
+
+      assert os.path.exists(nonexistent)
+      assert (
+          query_cache_manager.status ==
+          types.QueryCacheManagerStatus.WORKING
+      )

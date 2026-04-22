@@ -405,10 +405,7 @@ def main():
 
   if args.test == 'all':
     for _name, test_fn in TEST_SEQUENCE:
-      try:
-        test_fn()
-      except Exception as e:
-        print(f'  FAILED: {e}')
+      test_fn()
   else:
     if args.test not in TEST_MAP:
       print(f'Unknown test: {args.test}')

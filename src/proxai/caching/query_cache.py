@@ -9,6 +9,8 @@ import os
 import shutil
 from collections.abc import Callable
 
+import proxai.logging.utils as logging_utils
+
 import proxai.serializers.hash_serializer as hash_serializer
 import proxai.serializers.type_serializer as type_serializer
 import proxai.state_controllers.state_controller as state_controller
@@ -450,6 +452,7 @@ class QueryCacheManagerParams:
   shard_count: int | None = None
   response_per_file: int | None = None
   cache_response_size: int | None = None
+  logging_options: types.LoggingOptions | None = None
 
 
 class QueryCacheManager(state_controller.StateControlled):
@@ -459,6 +462,7 @@ class QueryCacheManager(state_controller.StateControlled):
   _shard_count: int
   _response_per_file: int
   _cache_response_size: int
+  _logging_options: types.LoggingOptions | None
   _query_cache_manager_state: types.QueryCacheManagerState
   _shard_manager: ShardManager
   _record_heap: HeapManager
@@ -475,6 +479,7 @@ class QueryCacheManager(state_controller.StateControlled):
         'status', types.QueryCacheManagerStatus.INITIALIZING
     )
 
+    self._logging_options = None
     if init_from_state:
       self.load_state(init_from_state)
       self._init_dir()
@@ -488,6 +493,7 @@ class QueryCacheManager(state_controller.StateControlled):
         self.shard_count = init_from_params.shard_count
       if init_from_params.cache_response_size is not None:
         self.cache_response_size = init_from_params.cache_response_size
+      self._logging_options = init_from_params.logging_options
     self.init_status()
 
   def get_internal_state_property_name(self):
@@ -508,7 +514,28 @@ class QueryCacheManager(state_controller.StateControlled):
       self.status = types.QueryCacheManagerStatus.CACHE_PATH_NOT_FOUND
       return
 
+    try:
+      os.makedirs(self.cache_options.cache_path, exist_ok=True)
+    except OSError as e:
+      logging_utils.log_message(
+          logging_options=self._logging_options,
+          message=(
+              f'Cache path {self.cache_options.cache_path} is not '
+              f'writable: {e}'
+          ),
+          type=types.LoggingType.WARNING,
+      )
+      self.status = types.QueryCacheManagerStatus.CACHE_PATH_NOT_WRITABLE
+      return
+
     if not os.access(self.cache_options.cache_path, os.W_OK):
+      logging_utils.log_message(
+          logging_options=self._logging_options,
+          message=(
+              f'Cache path {self.cache_options.cache_path} is not writable.'
+          ),
+          type=types.LoggingType.WARNING,
+      )
       self.status = types.QueryCacheManagerStatus.CACHE_PATH_NOT_WRITABLE
       return
 
@@ -612,9 +639,17 @@ class QueryCacheManager(state_controller.StateControlled):
       update: bool = True,
       unique_response_limit: int | None = None,
   ) -> types.CacheLookResult:
-    """Look up a cached response for a query record."""
+    """Look up a cached response for a query record.
+
+    Never raises for operational failures. If the cache manager is
+    not in WORKING state (not configured, path not writable, etc.),
+    returns a CacheLookResult with fail_reason=CACHE_UNAVAILABLE so
+    callers treat it identically to a cache miss.
+    """
     if self.status != types.QueryCacheManagerStatus.WORKING:
-      raise ValueError(f'QueryCacheManager status is {self.status}')
+      return types.CacheLookResult(
+          cache_look_fail_reason=types.CacheLookFailReason.CACHE_UNAVAILABLE
+      )
 
     if not isinstance(query_record, types.QueryRecord):
       raise ValueError('query_record should be of type QueryRecord')
@@ -664,9 +699,22 @@ class QueryCacheManager(state_controller.StateControlled):
       unique_response_limit: int | None = None,
       override_cache_value: bool = False,
   ):
-    """Store a query response in the cache."""
+    """Store a query response in the cache.
+
+    No-op with a warning log if the cache manager is not in WORKING
+    state. The cache is an optimization, so its unavailability should
+    not crash the calling code path.
+    """
     if self.status != types.QueryCacheManagerStatus.WORKING:
-      raise ValueError(f'QueryCacheManager status is {self.status}')
+      logging_utils.log_message(
+          logging_options=self._logging_options,
+          message=(
+              f'QueryCacheManager.cache() called while status={self.status}; '
+              f'skipping cache write.'
+          ),
+          type=types.LoggingType.WARNING,
+      )
+      return
 
     current_time = datetime.datetime.now()
     if override_cache_value:

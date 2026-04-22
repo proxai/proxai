@@ -658,12 +658,7 @@ class ProviderConnector(state_controller.StateControlled):
         connection_options.override_cache_value or not self.query_cache_manager
     ):
       return None
-    cache_look_result: types.CacheLookResult | None = None
-    try:
-      cache_look_result = self.query_cache_manager.look(query_record)
-    except Exception:
-      pass
-
+    cache_look_result = self.query_cache_manager.look(query_record)
     if not cache_look_result.result:
       return cache_look_result.cache_look_fail_reason
 
