@@ -59,23 +59,6 @@ def output_format_param_to_output_format(
   raise ValueError(f'Invalid output format: {output_format}')
 
 
-def _raise_invalid_output_format_value_error(
-    output_format: types.OutputFormatParam
-) -> None:
-  raise ValueError(
-      'Please provide one of the followings:\n'
-      ' - "json" as string for JSON output format\n'
-      ' - dict for JSON schema output format\n'
-      ' - pydantic.BaseModel for Pydantic output format\n'
-      ' - proxai.types.OutputFormat for custom more advanced output '
-      'format\n'
-      'Check https://www.proxai.co/proxai-docs/advanced/response-format '
-      'for more information.\n'
-      f'Output format type: {type(output_format)}\n'
-      f'Output format value: {output_format}'
-  )
-
-
 def check_messages_type(messages: types.MessagesType):
   """Check if messages type is supported."""
   for message in messages:
@@ -181,52 +164,6 @@ def check_input_format_type_param(
   )
 
 
-def create_output_format(
-    output_format: types.OutputFormatParam | None = None
-) -> types.OutputFormat:
-  """Convert various input formats to a standardized OutputFormat."""
-  if output_format is None:
-    return types.OutputFormat(type=types.OutputFormatType.TEXT)
-  elif isinstance(output_format, str):
-    if output_format == 'text':
-      return types.OutputFormat(type=types.OutputFormatType.TEXT)
-    if output_format == 'json':
-      return types.OutputFormat(type=types.OutputFormatType.JSON)
-    _raise_invalid_output_format_value_error(output_format)
-  elif isinstance(output_format, dict):
-    return types.OutputFormat(
-        value=output_format, type=types.OutputFormatType.JSON_SCHEMA
-    )
-  elif (
-      isinstance(output_format, type) and
-      issubclass(output_format, pydantic.BaseModel)
-  ):
-    return types.OutputFormat(
-        value=types.ResponseFormatPydanticValue(
-            class_name=output_format.__name__, class_value=output_format
-        ), type=types.OutputFormatType.PYDANTIC
-    )
-  elif isinstance(output_format, types.StructuredResponseFormat):
-    if output_format.type == types.OutputFormatType.TEXT:
-      return types.OutputFormat(type=types.OutputFormatType.TEXT)
-    elif output_format.type == types.OutputFormatType.JSON:
-      return types.OutputFormat(type=types.OutputFormatType.JSON)
-    elif output_format.type == types.OutputFormatType.JSON_SCHEMA:
-      return types.OutputFormat(
-          value=output_format.schema,
-          type=types.OutputFormatType.JSON_SCHEMA
-      )
-    elif output_format.type == types.OutputFormatType.PYDANTIC:
-      return types.OutputFormat(
-          value=types.ResponseFormatPydanticValue(
-              class_name=output_format.schema.__name__,
-              class_value=output_format.schema
-          ), type=types.OutputFormatType.PYDANTIC
-      )
-
-  _raise_invalid_output_format_value_error(output_format)
-
-
 def _normalize_chat_for_comparison(
     query_record: types.QueryRecord
 ) -> types.QueryRecord:
@@ -327,32 +264,6 @@ def is_query_record_equal(
   query_record_2 = _normalize_chat_for_comparison(query_record_2)
 
   return query_record_1 == query_record_2
-
-
-def create_pydantic_instance_from_response(
-    output_format: types.OutputFormat, response: types.Response
-) -> pydantic.BaseModel:
-  """Create pydantic instance from Response.
-
-  If response.value already has the instance, return it.
-  Otherwise, recreate from pydantic_metadata.instance_json_value.
-  """
-  if response.value is not None:
-    return response.value
-  elif (
-      response.pydantic_metadata is not None and
-      response.pydantic_metadata.instance_json_value is not None
-  ):
-    return output_format.value.class_value.model_validate(
-        response.pydantic_metadata.instance_json_value
-    )
-  else:
-    raise ValueError(
-        'Response has no value (instance) or '
-        'pydantic_metadata.instance_json_value. Please create an issue at '
-        'https://github.com/proxai/proxai/issues.\n'
-        f'Response: {response}'
-    )
 
 
 def _normalize_tag_param(param, tag_enum):

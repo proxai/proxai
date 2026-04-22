@@ -20,7 +20,6 @@ collect_ignore = [
     'connectors/test_model_configs.py',
     'connectors/test_provider_connector.py',
     'logging/test_utils.py',
-    'test_type_utils.py',
 ]
 
 
