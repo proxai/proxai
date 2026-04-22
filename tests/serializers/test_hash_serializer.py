@@ -1034,3 +1034,167 @@ class TestRemoteOnlyContentHash:
 
     assert (hash_serializer.get_query_record_hash(qr_gemini)
             != hash_serializer.get_query_record_hash(qr_claude))
+
+
+class TestStringMessageContent:
+  """Cover the isinstance(msg.content, str) branch in _hash_chat.
+
+  Message.content is typed str | list[MessageContent | str]; bare strings
+  are NOT auto-wrapped by Message.__post_init__, so the hash path at
+  hash_serializer.py:96-98 is the one that runs for them.
+  """
+
+  def _chat_with_string_content(self, text):
+    return chat_session.Chat(messages=[
+        message.Message(
+            role=message_content.MessageRoleType.USER,
+            content=text,
+        )
+    ])
+
+  def test_string_content_deterministic(self):
+    qr = types.QueryRecord(chat=self._chat_with_string_content('Hello'))
+    h1 = hash_serializer.get_query_record_hash(qr)
+    h2 = hash_serializer.get_query_record_hash(qr)
+    assert h1 == h2
+    assert len(h1) == hash_serializer._HASH_LENGTH
+
+  def test_string_content_affects_hash(self):
+    qr_1 = types.QueryRecord(chat=self._chat_with_string_content('Hello'))
+    qr_2 = types.QueryRecord(chat=self._chat_with_string_content('Goodbye'))
+    assert (
+        hash_serializer.get_query_record_hash(qr_1)
+        != hash_serializer.get_query_record_hash(qr_2)
+    )
+
+  def test_string_content_differs_from_list_content(self):
+    # Same text, different content shapes (bare str vs. [MessageContent]) —
+    # the hash takes different branches, so the hashes must differ.
+    qr_str = types.QueryRecord(chat=self._chat_with_string_content('Hello'))
+    qr_list = types.QueryRecord(chat=chat_session.Chat(messages=[
+        message.Message(
+            role=message_content.MessageRoleType.USER,
+            content=[
+                message_content.MessageContent(type='text', text='Hello')
+            ],
+        )
+    ]))
+    assert (
+        hash_serializer.get_query_record_hash(qr_str)
+        != hash_serializer.get_query_record_hash(qr_list)
+    )
+
+
+class TestRemoteOnlyFileIdsFallback:
+  """Cover the `elif file_ids` branch in _content_hash_dict.
+
+  When remote-only content has provider_file_api_ids but the query's
+  provider is None or not present in the ids dict, _content_hash_dict
+  stores the full dict under 'provider_file_ids' instead of a single
+  'provider_file_id'.
+  """
+
+  def _qr(self, mc, provider_model):
+    return types.QueryRecord(
+        chat=chat_session.Chat(messages=[
+            message.Message(
+                role=message_content.MessageRoleType.USER,
+                content=[mc])]),
+        provider_model=provider_model)
+
+  def test_remote_only_no_provider_model_uses_all_ids(self):
+    # provider_model=None → provider resolves to None → `elif file_ids`
+    # branch fires and embeds the full dict.
+    mc = message_content.MessageContent(
+        media_type='application/pdf',
+        provider_file_api_ids={'gemini': 'files/abc'})
+    qr = self._qr(mc, provider_model=None)
+    hash_value = hash_serializer.get_query_record_hash(qr)
+    assert len(hash_value) == hash_serializer._HASH_LENGTH
+
+  def test_remote_only_no_provider_model_different_ids_differ(self):
+    mc_1 = message_content.MessageContent(
+        media_type='application/pdf',
+        provider_file_api_ids={'gemini': 'files/abc'})
+    mc_2 = message_content.MessageContent(
+        media_type='application/pdf',
+        provider_file_api_ids={'gemini': 'files/xyz'})
+    assert (
+        hash_serializer.get_query_record_hash(self._qr(mc_1, None))
+        != hash_serializer.get_query_record_hash(self._qr(mc_2, None))
+    )
+
+  def test_remote_only_cross_provider_uses_all_ids(self):
+    # Query targets gemini, but the content only has claude's file id.
+    # Provider is not in file_ids → `elif file_ids` branch fires.
+    mc = message_content.MessageContent(
+        media_type='application/pdf',
+        provider_file_api_ids={'claude': 'file-xyz'})
+    qr = self._qr(mc, provider_model=_GEMINI_MODEL)
+    hash_value = hash_serializer.get_query_record_hash(qr)
+    assert len(hash_value) == hash_serializer._HASH_LENGTH
+
+  def test_remote_only_cross_provider_adding_ids_changes_hash(self):
+    # In the fallback branch the entire file_ids dict is part of the
+    # hash identity, so adding a second provider's id MUST change it.
+    # This is the behavioral difference from the `provider in file_ids`
+    # branch exercised by test_remote_only_adding_second_provider_stable.
+    mc_1 = message_content.MessageContent(
+        media_type='application/pdf',
+        provider_file_api_ids={'claude': 'file-xyz'})
+    mc_2 = message_content.MessageContent(
+        media_type='application/pdf',
+        provider_file_api_ids={
+            'claude': 'file-xyz', 'openai': 'file-123'})
+    assert (
+        hash_serializer.get_query_record_hash(
+            self._qr(mc_1, provider_model=_GEMINI_MODEL))
+        != hash_serializer.get_query_record_hash(
+            self._qr(mc_2, provider_model=_GEMINI_MODEL))
+    )
+
+
+class TestConnectionOptionsExclusion:
+  """Only ConnectionOptions.endpoint contributes to the hash.
+
+  fallback_models, suppress_provider_errors, skip_cache, and
+  override_cache_value are intentionally excluded — the cache identity
+  is the logical request, not per-call retry/cache-policy knobs. If
+  anyone accidentally includes one of them in _hash_connection_options,
+  these tests fail.
+  """
+
+  def _hash(self, **connection_kwargs):
+    return hash_serializer.get_query_record_hash(
+        types.QueryRecord(
+            prompt='test',
+            connection_options=types.ConnectionOptions(**connection_kwargs),
+        )
+    )
+
+  def test_fallback_models_excluded(self):
+    model_a = types.ProviderModelType(
+        provider='openai', model='gpt-4', provider_model_identifier='gpt-4')
+    model_b = types.ProviderModelType(
+        provider='claude', model='opus',
+        provider_model_identifier='claude-opus')
+    assert self._hash() == self._hash(fallback_models=[model_a])
+    assert self._hash(fallback_models=[model_a]) == (
+        self._hash(fallback_models=[model_a, model_b])
+    )
+
+  def test_suppress_provider_errors_excluded(self):
+    assert self._hash() == self._hash(suppress_provider_errors=True)
+    assert self._hash(suppress_provider_errors=True) == (
+        self._hash(suppress_provider_errors=False)
+    )
+
+  def test_skip_cache_excluded(self):
+    assert self._hash() == self._hash(skip_cache=True)
+    assert self._hash(skip_cache=True) == self._hash(skip_cache=False)
+
+  def test_override_cache_value_excluded(self):
+    assert self._hash() == self._hash(override_cache_value=True)
+    assert self._hash(override_cache_value=True) == (
+        self._hash(override_cache_value=False)
+    )
