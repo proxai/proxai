@@ -6,6 +6,7 @@ import proxai.types as types
 from proxai.connectors.adapter_utils import (
     min_support, merge_support_fields, merge_feature_configs,
     resolve_feature_tag_support,
+    resolve_input_format_type_support,
     resolve_output_format_type_support,
     resolve_tool_tag_support,
 )
@@ -148,6 +149,15 @@ class TestMergeFeatureConfigs:
     assert result.parameters is None
     assert result.tools is None
 
+  def test_merges_input_format(self):
+    ep = types.FeatureConfigType(
+        input_format=types.InputFormatConfigType(text=S, image=BE))
+    model = types.FeatureConfigType(
+        input_format=types.InputFormatConfigType(text=BE, image=S))
+    result = merge_feature_configs(ep, model)
+    assert result.input_format.text == BE
+    assert result.input_format.image == BE
+
 
 # ===================================================================
 # resolve_feature_tag_support
@@ -213,6 +223,18 @@ class TestResolveTagSupport:
     config = types.FeatureConfigType(output_format=None)
     assert resolve_output_format_type_support(
         config, types.OutputFormatType.TEXT) == NS
+
+  def test_all_input_format_types_covered(self):
+    config = types.FeatureConfigType(
+        input_format=types.InputFormatConfigType(
+            text=S, image=S, document=S, audio=S, video=S, json=S, pydantic=S))
+    for tag in types.InputFormatType:
+      assert resolve_input_format_type_support(config, tag) == S
+
+  def test_input_format_none_config(self):
+    config = types.FeatureConfigType(input_format=None)
+    assert resolve_input_format_type_support(
+        config, types.InputFormatType.TEXT) == NS
 
   def test_none_field_treated_as_not_supported(self):
     config = types.FeatureConfigType(prompt=None)

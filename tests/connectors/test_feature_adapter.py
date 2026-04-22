@@ -97,6 +97,94 @@ class _TestModel(pydantic.BaseModel):
 
 
 # ===================================================================
+# get_query_signature
+# ===================================================================
+
+class TestGetQuerySignature:
+  """Tests for get_query_signature (static observer)."""
+
+  def test_empty_query_returns_empty_signature(self):
+    assert FeatureAdapter.get_query_signature(types.QueryRecord()) == {}
+
+  def test_rich_query_extracts_all_features(self):
+    chat = Chat(system_prompt="be helpful")
+    chat.append(Message(role="user", content=[
+        MessageContent(type="text", text="hi"),
+        MessageContent(type="image", source="https://example.com/img.png"),
+    ]))
+    query = types.QueryRecord(
+        prompt="hi",
+        chat=chat,
+        parameters=types.ParameterType(
+            temperature=0.5, max_tokens=100, stop="end", n=2,
+            thinking=types.ThinkingType.LOW,
+        ),
+        tools=[types.Tools.WEB_SEARCH],
+        output_format=types.OutputFormat(type=types.OutputFormatType.JSON),
+    )
+    assert FeatureAdapter.get_query_signature(query) == {
+        'prompt': True,
+        'messages': True,
+        'system_prompt': True,
+        'input_format': ['image', 'text'],
+        'parameters': {
+            'temperature': 0.5,
+            'max_tokens': 100,
+            'stop': 'end',
+            'n': 2,
+            'thinking': 'low',
+        },
+        'tools': ['web_search'],
+        'output_format': 'json',
+    }
+
+
+# ===================================================================
+# get_query_support_details
+# ===================================================================
+
+class TestGetQuerySupportDetails:
+  """Tests for get_query_support_details (per-feature observability)."""
+
+  def test_rich_query_returns_per_feature_support(self):
+    adapter = _adapter(
+        prompt=S, messages=S, system_prompt=BE,
+        temperature=S, max_tokens=BE, stop=NS, n=S, thinking=S,
+        web_search=BE, text=S,
+        input_text=S, input_image=BE,
+    )
+    chat = Chat(system_prompt="Be nice")
+    chat.append(Message(role="user", content=[
+        MessageContent(type="text", text="hi"),
+        MessageContent(type="image", source="https://example.com/img.png"),
+    ]))
+    query = types.QueryRecord(
+        prompt="hi",
+        chat=chat,
+        parameters=types.ParameterType(
+            temperature=0.5, max_tokens=100, stop="end", n=2,
+            thinking=types.ThinkingType.LOW,
+        ),
+        tools=[types.Tools.WEB_SEARCH],
+        output_format=types.OutputFormat(type=types.OutputFormatType.TEXT),
+    )
+    assert adapter.get_query_support_details(query) == {
+        'prompt': 'supported',
+        'messages': 'supported',
+        'system_prompt': 'best_effort',
+        'input:text': 'supported',
+        'input:image': 'best_effort',
+        'temperature': 'supported',
+        'max_tokens': 'best_effort',
+        'stop': 'not_supported',
+        'n': 'supported',
+        'thinking': 'supported',
+        'web_search': 'best_effort',
+        'output_format': 'supported',
+    }
+
+
+# ===================================================================
 # get_query_record_support_level
 # ===================================================================
 
@@ -260,6 +348,22 @@ class TestGetQueryRecordSupportLevelOutputFormat:
     adapter = _adapter(prompt=S)
     with pytest.raises(ValueError, match="output_format.type.*must be set"):
       adapter.get_query_record_support_level(_query(prompt="hi"))
+
+
+class TestGetQueryRecordSupportLevelInputFormat:
+  """Content blocks in chat messages contribute to overall support level."""
+
+  def test_chat_image_block_with_best_effort_input_reduces_level(self):
+    adapter = _adapter(
+        messages=S, input_text=S, input_image=BE, text=S)
+    chat = Chat()
+    chat.append(Message(role="user", content=[
+        MessageContent(type="text", text="look"),
+        MessageContent(type="image", source="https://example.com/img.png"),
+    ]))
+    query = _query(
+        chat=chat, output_format_type=types.OutputFormatType.TEXT)
+    assert adapter.get_query_record_support_level(query) == BE
 
 
 class TestGetQueryRecordSupportLevelMinimumAcrossFeatures:
@@ -471,6 +575,22 @@ class TestAdaptChatMessages:
     assert isinstance(result.prompt, str)
     assert "Be nice" in result.prompt
     assert "Hello" in result.prompt
+
+
+# ===================================================================
+# adapt_query_record — chat + add_system_to_messages
+# ===================================================================
+
+class TestAdaptChatAddSystemToMessages:
+  """Chat path: add_system_to_messages wiring when system is SUPPORTED."""
+
+  def test_supported_system_prompt_folded_into_role_message(self):
+    adapter = _adapter(
+        messages=S, system_prompt=S, add_system_to_messages=True)
+    result = adapter.adapt_query_record(_query(chat=_chat("Be nice")))
+    assert "system_prompt" not in result.chat
+    assert result.chat["messages"][0] == {
+        "role": "system", "content": "Be nice"}
 
 
 # ===================================================================

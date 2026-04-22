@@ -1,10 +1,6 @@
 """Result adapter for mapping query response formats to provider capabilities."""
 
-import base64
 import json
-from typing import List
-
-import pydantic
 
 import proxai.chat.message_content as message_content
 import proxai.connectors.adapter_utils as adapter_utils
@@ -13,12 +9,6 @@ import proxai.types as types
 ContentType = message_content.ContentType
 MessageContent = message_content.MessageContent
 PydanticContent = message_content.PydanticContent
-
-_OUTPUT_FORMAT_TO_CONTENT_TYPE = {
-    types.OutputFormatType.IMAGE: ContentType.IMAGE,
-    types.OutputFormatType.AUDIO: ContentType.AUDIO,
-    types.OutputFormatType.VIDEO: ContentType.VIDEO,
-}
 
 
 class ResultAdapter:

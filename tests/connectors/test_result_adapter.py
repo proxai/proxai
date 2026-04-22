@@ -1,15 +1,22 @@
 """Tests for ResultAdapter."""
 
+import pydantic
 import pytest
 
 from proxai.chat.message_content import ContentType
 from proxai.chat.message_content import MessageContent
+from proxai.chat.message_content import PydanticContent
 import proxai.types as types
 from proxai.connectors.result_adapter import ResultAdapter
 
 S = types.FeatureSupportType.SUPPORTED
 BE = types.FeatureSupportType.BEST_EFFORT
 NS = types.FeatureSupportType.NOT_SUPPORTED
+
+
+class _TestModel(pydantic.BaseModel):
+  name: str
+  age: int
 
 
 # ===================================================================
@@ -148,6 +155,97 @@ class TestGetFeatureTagsSupportLevel:
 
 
 # ===================================================================
+# get_query_record_support_level
+# ===================================================================
+
+class TestResultAdapterGetQueryRecordSupportLevel:
+  """Tests for get_query_record_support_level."""
+
+  def test_no_output_format_raises(self):
+    adapter = _adapter(text=S)
+    with pytest.raises(ValueError, match="output_format.type.*must be set"):
+      adapter.get_query_record_support_level(types.QueryRecord())
+
+  def test_returns_configured_level(self):
+    adapter = _adapter(json_fmt=BE)
+    query = types.QueryRecord(output_format=types.OutputFormat(
+        type=types.OutputFormatType.JSON))
+    assert adapter.get_query_record_support_level(query) == BE
+
+
+# ===================================================================
+# _adapt_message_content — content transformation
+# ===================================================================
+
+class TestAdaptMessageContent:
+  """Tests for _adapt_message_content core transformation logic."""
+
+  def test_passthrough_types(self):
+    """Non-text, non-json content types are returned unchanged."""
+    adapter = _adapter(text=S)
+    query = types.QueryRecord(output_format=types.OutputFormat(
+        type=types.OutputFormatType.TEXT))
+    passthrough = [
+        MessageContent(type=ContentType.TEXT, text="hi"),
+        MessageContent(type=ContentType.THINKING, text="reasoning"),
+        MessageContent(
+            type=ContentType.IMAGE, source="https://ex.com/a.png"),
+        MessageContent(
+            type=ContentType.DOCUMENT, source="https://ex.com/a.pdf",
+            media_type="application/pdf"),
+        MessageContent(
+            type=ContentType.AUDIO, source="https://ex.com/a.mp3"),
+        MessageContent(
+            type=ContentType.VIDEO, source="https://ex.com/a.mp4"),
+    ]
+    for content in passthrough:
+      assert adapter._adapt_message_content(query, content) is content
+
+  def test_text_to_json_parses(self):
+    adapter = _adapter(json_fmt=S)
+    query = types.QueryRecord(output_format=types.OutputFormat(
+        type=types.OutputFormatType.JSON))
+    content = MessageContent(type=ContentType.TEXT,
+                             text='{"key": "value", "n": 42}')
+    result = adapter._adapt_message_content(query, content)
+    assert result.type == ContentType.JSON
+    assert result.json == {"key": "value", "n": 42}
+
+  def test_text_to_pydantic_parses_and_validates(self):
+    adapter = _adapter(pydantic_fmt=S)
+    query = types.QueryRecord(output_format=types.OutputFormat(
+        type=types.OutputFormatType.PYDANTIC, pydantic_class=_TestModel))
+    content = MessageContent(type=ContentType.TEXT,
+                             text='{"name": "Alice", "age": 30}')
+    result = adapter._adapt_message_content(query, content)
+    assert result.type == ContentType.PYDANTIC_INSTANCE
+    assert result.pydantic_content.class_name == "_TestModel"
+    assert result.pydantic_content.class_value is _TestModel
+    assert result.pydantic_content.instance_value == _TestModel(
+        name="Alice", age=30)
+    assert result.pydantic_content.instance_json_value == {
+        "name": "Alice", "age": 30}
+
+  def test_json_to_json_passthrough(self):
+    adapter = _adapter(json_fmt=S)
+    query = types.QueryRecord(output_format=types.OutputFormat(
+        type=types.OutputFormatType.JSON))
+    content = MessageContent(type=ContentType.JSON, json={"key": "value"})
+    assert adapter._adapt_message_content(query, content) is content
+
+  def test_json_to_pydantic_validates(self):
+    adapter = _adapter(pydantic_fmt=S)
+    query = types.QueryRecord(output_format=types.OutputFormat(
+        type=types.OutputFormatType.PYDANTIC, pydantic_class=_TestModel))
+    content = MessageContent(type=ContentType.JSON,
+                             json={"name": "Bob", "age": 25})
+    result = adapter._adapt_message_content(query, content)
+    assert result.type == ContentType.PYDANTIC_INSTANCE
+    assert result.pydantic_content.instance_value == _TestModel(
+        name="Bob", age=25)
+
+
+# ===================================================================
 # _adapt_output_values — media output projection
 # ===================================================================
 
@@ -224,3 +322,57 @@ class TestAdaptOutputValues:
     assert result.output_image is None
     assert result.output_audio is None
     assert result.output_video is None
+
+  def test_json_content_populates_output_json(self):
+    adapter = self._make_adapter()
+    content = MessageContent(type=ContentType.JSON, json={'k': 'v'})
+    result = types.ResultRecord(content=[content])
+    adapter._adapt_output_values(result)
+    assert result.output_json == {'k': 'v'}
+
+  def test_pydantic_content_populates_output_pydantic(self):
+    adapter = self._make_adapter()
+    instance = _TestModel(name='Alice', age=30)
+    content = MessageContent(
+        type=ContentType.PYDANTIC_INSTANCE,
+        pydantic_content=PydanticContent(
+            class_value=_TestModel, instance_value=instance))
+    result = types.ResultRecord(content=[content])
+    adapter._adapt_output_values(result)
+    assert result.output_pydantic is instance
+
+
+# ===================================================================
+# adapt_result_record — end-to-end
+# ===================================================================
+
+class TestAdaptResultRecord:
+  """End-to-end tests for adapt_result_record."""
+
+  def test_adapts_content_and_populates_output(self):
+    adapter = _adapter(json_fmt=S)
+    query = types.QueryRecord(output_format=types.OutputFormat(
+        type=types.OutputFormatType.JSON))
+    result = types.ResultRecord(content=[
+        MessageContent(type=ContentType.TEXT, text='{"result": "ok"}'),
+    ])
+    adapter.adapt_result_record(query, result)
+    assert result.content[0].type == ContentType.JSON
+    assert result.content[0].json == {'result': 'ok'}
+    assert result.output_json == {'result': 'ok'}
+
+  def test_adapts_each_choice(self):
+    adapter = _adapter(json_fmt=S)
+    query = types.QueryRecord(output_format=types.OutputFormat(
+        type=types.OutputFormatType.JSON))
+    result = types.ResultRecord(choices=[
+        types.ChoiceType(content=[
+            MessageContent(type=ContentType.TEXT, text='{"a": 1}')]),
+        types.ChoiceType(content=[
+            MessageContent(type=ContentType.TEXT, text='{"b": 2}')]),
+    ])
+    adapter.adapt_result_record(query, result)
+    assert result.choices[0].content[0].json == {'a': 1}
+    assert result.choices[0].output_json == {'a': 1}
+    assert result.choices[1].content[0].json == {'b': 2}
+    assert result.choices[1].output_json == {'b': 2}
