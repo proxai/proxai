@@ -9,7 +9,6 @@ import proxai.types as types
 # Store original value globally
 _ORIGINAL_API_KEY = None
 
-
 def _build_test_model_configs_instance() -> model_configs.ModelConfigs:
   """Build the shared pytest fixture registry.
 
