@@ -183,7 +183,7 @@ class AvailableModels(state_controller.StateControlled):
   def proxdash_connection_deserializer(
       self, state_value: types.ProxDashConnectionState
   ) -> proxdash.ProxDashConnection:
-    return proxdash.ProxDashConnection(init_state=state_value)
+    return proxdash.ProxDashConnection(init_from_state=state_value)
 
   @property
   def api_key_manager(self) -> api_key_manager.ApiKeyManager:
