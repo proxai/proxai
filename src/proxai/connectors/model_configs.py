@@ -45,7 +45,7 @@ class ModelConfigs(state_controller.StateControlled):
   _model_registry: types.ModelRegistry | None
   _model_configs_state: types.ModelConfigsState | None
 
-  LOCAL_CONFIG_VERSION = "v1.2.0"
+  LOCAL_CONFIG_VERSION = "v1.3.0"
 
   def __init__(  # noqa: D107
       self,
