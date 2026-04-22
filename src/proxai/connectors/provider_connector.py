@@ -907,7 +907,11 @@ class ProviderConnector(state_controller.StateControlled):
     connection_metadata.result_source = types.ResultSource.PROVIDER
     connection_metadata.cache_look_fail_reason = None
     debug_info = None
-    if executor_result.raw_provider_response is not None:
+    if (
+        executor_result.raw_provider_response is not None and
+        self.debug_options is not None and
+        self.debug_options.keep_raw_provider_response
+    ):
       debug_info = types.DebugInfo(
           raw_provider_response=executor_result.raw_provider_response
       )

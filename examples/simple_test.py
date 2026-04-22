@@ -8,11 +8,9 @@ import proxai as px
 
 
 def simple_model_test():
-  result = px.generate_text(
-      'When is the first galatasaray and fenerbahce?',
-      provider_model=('gemini', 'gemini-3-flash'),
-      extensive_return=True)
-  pprint(asdict(result))
+  result = px.generate(
+      'When is the first galatasaray and fenerbahce?')
+  pprint(result)
 
 
 def simple_cache_test():
