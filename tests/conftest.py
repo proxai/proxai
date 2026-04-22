@@ -17,7 +17,6 @@ _ORIGINAL_API_KEY = None
 # suite stays collectable. Delete entries as they are rewritten.
 collect_ignore = [
     'connections/test_available_models.py',
-    'connectors/test_provider_connector.py',
 ]
 
 
