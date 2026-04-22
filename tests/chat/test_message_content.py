@@ -489,6 +489,16 @@ class TestMessageContentCopyAndRepr:
     assert "source='https://example.com/img.png'" in repr(mc)
     assert "media_type='image/png'" in repr(mc)
 
+  def test_repr_data_path_and_long_text(self):
+    # Long text gets truncated with an ellipsis.
+    assert "..." in repr(MessageContent(type="text", text="x" * 100))
+
+    # Both data (base64 preview) and path appear in the repr.
+    mc = MessageContent(type="image", path="/tmp/a.png", data=b"\x89PNG")
+    r = repr(mc)
+    assert "path='/tmp/a.png'" in r
+    assert "data='" in r
+
 
 class TestFileUploadMetadata:
 
