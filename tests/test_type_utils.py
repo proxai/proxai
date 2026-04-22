@@ -1,6 +1,9 @@
 import pydantic
 import pytest
 
+import proxai.chat.chat_session as chat_session
+import proxai.chat.message as message
+import proxai.chat.message_content as message_content
 import proxai.type_utils as type_utils
 import proxai.types as types
 
@@ -8,6 +11,11 @@ import proxai.types as types
 class SampleModel(pydantic.BaseModel):
   name: str
   age: int
+
+
+_MODEL = types.ProviderModelType(
+    provider='openai', model='gpt-4', provider_model_identifier='gpt-4'
+)
 
 
 class TestCheckMessagesType:
@@ -39,151 +47,32 @@ class TestCheckMessagesType:
     type_utils.check_messages_type([{'role': 'user', 'content': 'content'}])
 
 
-class TestCreateOutputFormat:
+class TestMessagesParamToChat:
 
-  def test_none_returns_text_format(self):
-    result = type_utils.create_output_format(None)
-    assert result.type == types.OutputFormatType.TEXT
+  def test_none_returns_none(self):
+    assert type_utils.messages_param_to_chat(None) is None
 
-  def test_text_string_returns_text_format(self):
-    result = type_utils.create_output_format('text')
-    assert result.type == types.OutputFormatType.TEXT
+  def test_list_wraps_in_chat(self):
+    msg = message.Message(role='user', content='hello')
+    result = type_utils.messages_param_to_chat([msg])
+    assert isinstance(result, chat_session.Chat)
+    assert result.messages == [msg]
 
-  def test_json_string_returns_json_format(self):
-    result = type_utils.create_output_format('json')
-    assert result.type == types.OutputFormatType.JSON
-
-  def test_dict_returns_json_schema_format(self):
-    schema = {'type': 'object', 'properties': {'name': {'type': 'string'}}}
-    result = type_utils.create_output_format(schema)
-    assert result.type == types.OutputFormatType.JSON_SCHEMA
-    assert result.value == schema
-
-  def test_pydantic_model_returns_pydantic_format(self):
-    result = type_utils.create_output_format(SampleModel)
-    assert result.type == types.OutputFormatType.PYDANTIC
-    assert result.value.class_name == 'SampleModel'
-    assert result.value.class_value == SampleModel
-
-  def test_structured_output_format_text(self):
-    output_format = types.StructuredOutputFormat(
-        type=types.OutputFormatType.TEXT
+  def test_dict_builds_chat(self):
+    msg = message.Message(role='user', content='hello')
+    result = type_utils.messages_param_to_chat(
+        {'system': 'be helpful', 'messages': [msg]}
     )
-    result = type_utils.create_output_format(output_format)
-    assert result.type == types.OutputFormatType.TEXT
+    assert result.system_prompt == 'be helpful'
+    assert result.messages == [msg]
 
-  def test_structured_output_format_json(self):
-    output_format = types.StructuredOutputFormat(
-        type=types.OutputFormatType.JSON
-    )
-    result = type_utils.create_output_format(output_format)
-    assert result.type == types.OutputFormatType.JSON
+  def test_chat_passthrough(self):
+    chat = chat_session.Chat()
+    assert type_utils.messages_param_to_chat(chat) is chat
 
-  def test_structured_output_format_json_schema(self):
-    schema = {'type': 'object', 'properties': {'name': {'type': 'string'}}}
-    output_format = types.StructuredOutputFormat(
-        schema=schema, type=types.OutputFormatType.JSON_SCHEMA
-    )
-    result = type_utils.create_output_format(output_format)
-    assert result.type == types.OutputFormatType.JSON_SCHEMA
-    assert result.value == schema
-
-  def test_structured_output_format_pydantic(self):
-    output_format = types.StructuredOutputFormat(
-        schema=SampleModel, type=types.OutputFormatType.PYDANTIC
-    )
-    result = type_utils.create_output_format(output_format)
-    assert result.type == types.OutputFormatType.PYDANTIC
-    assert result.value.class_name == 'SampleModel'
-    assert result.value.class_value == SampleModel
-
-  def test_invalid_string_raises_error(self):
+  def test_invalid_type_raises(self):
     with pytest.raises(ValueError):
-      type_utils.create_output_format('invalid')
-
-
-class TestCreatePydanticInstanceFromResponse:
-
-  def _create_output_format(self) -> types.OutputFormat:
-    return types.OutputFormat(
-        value=types.OutputFormatPydanticValue(
-            class_name=SampleModel.__name__, class_value=SampleModel
-        ), type=types.OutputFormatType.PYDANTIC
-    )
-
-  def test_returns_instance_value_when_present(self):
-    output_format = self._create_output_format()
-    instance = SampleModel(name='John', age=30)
-    response = types.Response(
-        value=instance, type=types.ResponseType.PYDANTIC,
-        pydantic_metadata=types.PydanticMetadataType(
-            class_name=SampleModel.__name__
-        )
-    )
-
-    result = type_utils.create_pydantic_instance_from_response(
-        output_format, response
-    )
-
-    assert result is instance
-    assert result.name == 'John'
-    assert result.age == 30
-
-  def test_creates_instance_from_json_value(self):
-    output_format = self._create_output_format()
-    response = types.Response(
-        value=None, type=types.ResponseType.PYDANTIC,
-        pydantic_metadata=types.PydanticMetadataType(
-            class_name=SampleModel.__name__, instance_json_value={
-                'name': 'Jane',
-                'age': 25
-            }
-        )
-    )
-
-    result = type_utils.create_pydantic_instance_from_response(
-        output_format, response
-    )
-
-    assert isinstance(result, SampleModel)
-    assert result.name == 'Jane'
-    assert result.age == 25
-
-  def test_prefers_instance_value_over_json_value(self):
-    output_format = self._create_output_format()
-    instance = SampleModel(name='John', age=30)
-    response = types.Response(
-        value=instance, type=types.ResponseType.PYDANTIC,
-        pydantic_metadata=types.PydanticMetadataType(
-            class_name=SampleModel.__name__, instance_json_value={
-                'name': 'Jane',
-                'age': 25
-            }
-        )
-    )
-
-    result = type_utils.create_pydantic_instance_from_response(
-        output_format, response
-    )
-
-    assert result is instance
-    assert result.name == 'John'
-
-  def test_raises_error_when_no_value_present(self):
-    output_format = self._create_output_format()
-    response = types.Response(
-        value=None, type=types.ResponseType.PYDANTIC,
-        pydantic_metadata=types.PydanticMetadataType(
-            class_name=SampleModel.__name__
-        )
-    )
-
-    with pytest.raises(ValueError) as exc_info:
-      type_utils.create_pydantic_instance_from_response(
-          output_format, response
-      )
-
-    assert 'no value (instance) or' in str(exc_info.value)
+      type_utils.messages_param_to_chat('not a chat')
 
 
 class TestOutputFormatParamToOutputFormat:
@@ -239,49 +128,156 @@ class TestOutputFormatParamToOutputFormat:
       type_utils.output_format_param_to_output_format(123)
 
 
-class TestCreateFeatureListType:
+class TestCheckModelSizeIdentifierType:
 
-  def test_string_features_converted_to_enum(self):
-    features = ['prompt', 'messages', 'system']
-    result = type_utils.create_feature_list_type(features)
-    assert result == [
-        types.FeatureNameType.PROMPT,
-        types.FeatureNameType.MESSAGES,
-        types.FeatureNameType.SYSTEM,
-    ]
+  def test_enum_passthrough(self):
+    assert type_utils.check_model_size_identifier_type(
+        types.ModelSizeType.SMALL
+    ) == types.ModelSizeType.SMALL
 
-  def test_enum_features_kept_as_is(self):
-    features = [
-        types.FeatureNameType.PROMPT,
-        types.FeatureNameType.MAX_TOKENS,
-    ]
-    result = type_utils.create_feature_list_type(features)
-    assert result == [
-        types.FeatureNameType.PROMPT,
-        types.FeatureNameType.MAX_TOKENS,
-    ]
+  def test_string_converted(self):
+    assert type_utils.check_model_size_identifier_type('small') == (
+        types.ModelSizeType.SMALL
+    )
 
-  def test_mixed_string_and_enum_features(self):
-    features = [
-        'prompt',
-        types.FeatureNameType.MESSAGES,
-        'temperature',
-    ]
-    result = type_utils.create_feature_list_type(features)
-    assert result == [
-        types.FeatureNameType.PROMPT,
-        types.FeatureNameType.MESSAGES,
-        types.FeatureNameType.TEMPERATURE,
-    ]
-
-  def test_empty_list_returns_empty_list(self):
-    result = type_utils.create_feature_list_type([])
-    assert result == []
-
-  def test_invalid_string_raises_error(self):
+  def test_invalid_raises(self):
     with pytest.raises(ValueError):
-      type_utils.create_feature_list_type(['invalid_feature'])
+      type_utils.check_model_size_identifier_type('huge')
 
-  def test_invalid_type_raises_error(self):
+
+class TestCheckOutputFormatTypeParam:
+
+  def test_enum_passthrough(self):
+    assert type_utils.check_output_format_type_param(
+        types.OutputFormatType.JSON
+    ) == types.OutputFormatType.JSON
+
+  def test_lowercase_string_normalized(self):
+    assert type_utils.check_output_format_type_param('json') == (
+        types.OutputFormatType.JSON
+    )
+
+  def test_invalid_raises(self):
     with pytest.raises(ValueError):
-      type_utils.create_feature_list_type([123])
+      type_utils.check_output_format_type_param('xml')
+
+
+class TestCheckInputFormatTypeParam:
+
+  def test_enum_passthrough(self):
+    assert type_utils.check_input_format_type_param(
+        types.InputFormatType.DOCUMENT
+    ) == types.InputFormatType.DOCUMENT
+
+  def test_lowercase_string_normalized(self):
+    assert type_utils.check_input_format_type_param('document') == (
+        types.InputFormatType.DOCUMENT
+    )
+
+  def test_invalid_raises(self):
+    with pytest.raises(ValueError):
+      type_utils.check_input_format_type_param('xml')
+
+
+class TestCreateFeatureTagList:
+
+  def test_none_returns_none(self):
+    assert type_utils.create_feature_tag_list(None) is None
+
+  def test_single_string_wrapped(self):
+    assert type_utils.create_feature_tag_list('prompt') == [
+        types.FeatureTag.PROMPT
+    ]
+
+  def test_mixed_str_and_enum(self):
+    result = type_utils.create_feature_tag_list(
+        ['prompt', types.FeatureTag.MESSAGES]
+    )
+    assert result == [types.FeatureTag.PROMPT, types.FeatureTag.MESSAGES]
+
+  def test_invalid_string_raises(self):
+    with pytest.raises(ValueError):
+      type_utils.create_feature_tag_list(['not_a_tag'])
+
+
+class TestTagListHelperWiring:
+
+  def test_create_input_format_type_list(self):
+    assert type_utils.create_input_format_type_list(['text']) == [
+        types.InputFormatType.TEXT
+    ]
+
+  def test_create_output_format_type_list(self):
+    assert type_utils.create_output_format_type_list(['json']) == [
+        types.OutputFormatType.JSON
+    ]
+
+  def test_create_tool_tag_list(self):
+    assert type_utils.create_tool_tag_list(['web_search']) == [
+        types.ToolTag.WEB_SEARCH
+    ]
+
+
+class TestIsQueryRecordEqual:
+
+  def test_identical_equal(self):
+    qr_1 = types.QueryRecord(prompt='hello', system_prompt='be helpful')
+    qr_2 = types.QueryRecord(prompt='hello', system_prompt='be helpful')
+    assert type_utils.is_query_record_equal(qr_1, qr_2)
+
+  def test_different_prompts_not_equal(self):
+    qr_1 = types.QueryRecord(prompt='hello')
+    qr_2 = types.QueryRecord(prompt='goodbye')
+    assert not type_utils.is_query_record_equal(qr_1, qr_2)
+
+  def test_pydantic_class_normalized(self):
+    qr_live = types.QueryRecord(
+        prompt='hi',
+        output_format=types.OutputFormat(
+            type=types.OutputFormatType.PYDANTIC,
+            pydantic_class=SampleModel,
+        ),
+    )
+    qr_stored = types.QueryRecord(
+        prompt='hi',
+        output_format=types.OutputFormat(
+            type=types.OutputFormatType.PYDANTIC,
+            pydantic_class_name='SampleModel',
+            pydantic_class_json_schema=SampleModel.model_json_schema(),
+        ),
+    )
+    assert type_utils.is_query_record_equal(qr_live, qr_stored)
+
+  def test_connection_options_non_endpoint_fields_ignored(self):
+    qr_1 = types.QueryRecord(
+        prompt='hi',
+        connection_options=types.ConnectionOptions(
+            endpoint='ep', skip_cache=True, fallback_models=[_MODEL]
+        ),
+    )
+    qr_2 = types.QueryRecord(
+        prompt='hi',
+        connection_options=types.ConnectionOptions(
+            endpoint='ep', override_cache_value=True
+        ),
+    )
+    assert type_utils.is_query_record_equal(qr_1, qr_2)
+
+  def test_file_api_metadata_ignored(self):
+    def _chat(ids):
+      return chat_session.Chat(messages=[
+          message.Message(
+              role=message_content.MessageRoleType.USER,
+              content=[
+                  message_content.MessageContent(
+                      type='image',
+                      source='http://example.com/x',
+                      provider_file_api_ids=ids,
+                  )
+              ],
+          )
+      ])
+
+    qr_1 = types.QueryRecord(chat=_chat({'gemini': 'files/abc'}))
+    qr_2 = types.QueryRecord(chat=_chat({'gemini': 'files/xyz'}))
+    assert type_utils.is_query_record_equal(qr_1, qr_2)
