@@ -111,6 +111,10 @@ class TestMessageCopyAndRepr:
     msg = Message(role="user", content="Hello")
     assert repr(msg) == "Message(role='user', content='Hello')"
 
+  def test_repr_truncates_long_string_content(self):
+    msg = Message(role="user", content="x" * 100)
+    assert "..." in repr(msg)
+
   def test_repr_list_content(self):
     msg = Message(role="user", content=[
         MessageContent(type="text", text="Hello"),
