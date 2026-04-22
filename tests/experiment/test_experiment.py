@@ -5,6 +5,11 @@ import proxai.experiment.experiment as experiment
 
 class TestExperiment:
 
+  def test_get_hidden_run_key(self):
+    key = experiment.get_hidden_run_key()
+    assert isinstance(key, str)
+    assert 1 <= int(key) <= 1_000_000
+
   def test_invalid_empty_path(self):
     with pytest.raises(ValueError):
       experiment.validate_experiment_path('')
@@ -50,6 +55,30 @@ class TestExperiment:
       experiment.validate_experiment_path('root/./dir')
     with pytest.raises(ValueError):
       experiment.validate_experiment_path('./dir')
+
+  def test_invalid_path_with_dash_component(self):
+    with pytest.raises(ValueError):
+      experiment.validate_experiment_path('-')
+    with pytest.raises(ValueError):
+      experiment.validate_experiment_path('root/-')
+    with pytest.raises(ValueError):
+      experiment.validate_experiment_path('-/dir')
+
+  def test_invalid_path_with_underscore_component(self):
+    with pytest.raises(ValueError):
+      experiment.validate_experiment_path('_')
+    with pytest.raises(ValueError):
+      experiment.validate_experiment_path('root/_')
+    with pytest.raises(ValueError):
+      experiment.validate_experiment_path('_/dir')
+
+  def test_invalid_path_with_reserved_name(self):
+    with pytest.raises(ValueError):
+      experiment.validate_experiment_path('con')
+    with pytest.raises(ValueError):
+      experiment.validate_experiment_path('root/nul')
+    with pytest.raises(ValueError):
+      experiment.validate_experiment_path('CON')
 
   def test_valid_path(self):
     experiment.validate_experiment_path('root')
