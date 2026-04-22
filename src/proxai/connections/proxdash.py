@@ -2,6 +2,7 @@ import copy
 import dataclasses
 import json
 import os
+import traceback
 from concurrent.futures import ThreadPoolExecutor
 from importlib.metadata import version
 from typing import Union
@@ -862,8 +863,8 @@ class ProxDashConnection(state_controller.StateControlled):
     except Exception:
       return []
 
-  def get_model_configs_schema(self,) -> types.ModelConfigsSchemaType | None:
-    """Fetch the latest model configurations from ProxDash."""
+  def get_model_registry(self) -> types.ModelRegistry | None:
+    """Fetch the latest model registry from ProxDash."""
     current_version = version("proxai")
     request_url = (
         f'{self.proxdash_options.base_url}' +
@@ -880,7 +881,7 @@ class ProxDashConnection(state_controller.StateControlled):
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
           proxdash_options=self.proxdash_options, message=(
-              'Failed to get model configs from ProxDash.\n'
+              'Failed to get model registry from ProxDash.\n'
               f'ProxAI version: {current_version}\n'
               f'Status code: {response.status_code}\n'
               f'Response: {response.text}'
@@ -893,7 +894,7 @@ class ProxDashConnection(state_controller.StateControlled):
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
           proxdash_options=self.proxdash_options, message=(
-              'Failed to get model configs from ProxDash.\n'
+              'Failed to get model registry from ProxDash.\n'
               f'ProxAI version: {current_version}\n'
               f'Response: {response.text}'
           ), type=types.LoggingType.ERROR
@@ -901,33 +902,33 @@ class ProxDashConnection(state_controller.StateControlled):
       return None
 
     try:
-      model_configs_schema = type_serializer.decode_model_configs_schema_type(
+      model_registry = type_serializer.decode_model_registry(
           response_data['data']
       )
     except Exception as e:
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
           proxdash_options=self.proxdash_options, message=(
-              'Failed to decode model configs from ProxDash response.\n'
+              'Failed to decode model registry from ProxDash response.\n'
               'Please report this issue to the '
               'https://github.com/proxai/proxai.\n'
               'Also, please check latest stable version of ProxAI.\n'
               f'ProxAI version: {current_version}\n'
-              f'Error: {str(e)}'
+              f'Error: {e}\n'
+              f'Traceback: {traceback.format_exc()}'
           ), type=types.LoggingType.ERROR
       )
       return None
 
     if (
-        model_configs_schema.metadata is None or
-        model_configs_schema.version_config is None or
-        model_configs_schema.version_config.provider_model_configs is None or
-        len(model_configs_schema.version_config.provider_model_configs) < 2
+        model_registry.metadata is None or
+        model_registry.provider_model_configs is None or
+        len(model_registry.provider_model_configs) < 2
     ):
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
           proxdash_options=self.proxdash_options, message=(
-              'Model configs schema is invalid. Please report this '
+              'Model registry is invalid. Please report this '
               'issue to the https://github.com/proxai/proxai.\n'
               'Also, please check latest stable version of ProxAI. '
               f'Request URL: {request_url}'
@@ -939,12 +940,12 @@ class ProxDashConnection(state_controller.StateControlled):
     logging_utils.log_proxdash_message(
         logging_options=self.logging_options,
         proxdash_options=self.proxdash_options, message=(
-            f'Model configs schema (v{model_configs_schema.metadata.version}) '
+            f'Model registry (v{model_registry.metadata.version}) '
             'fetched from ProxDash.'
         ), type=types.LoggingType.INFO
     )
 
-    return model_configs_schema
+    return model_registry
 
   def get_provider_api_keys(self) -> types.ProviderTokenValueMap:
     if self.status != types.ProxDashConnectionStatus.CONNECTED:

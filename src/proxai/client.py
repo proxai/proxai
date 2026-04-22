@@ -62,7 +62,6 @@ class ModelConnector:
   def list_models(
       self,
       model_size: types.ModelSizeIdentifierType | None = None,
-      features: types.FeatureTagParam | None = None,
       input_format: types.InputFormatTypeParam | None = None,
       output_format: types.
       OutputFormatTypeParam = (types.OutputFormatType.TEXT),
@@ -74,7 +73,6 @@ class ModelConnector:
 
     Args:
         model_size: Filter by model size category.
-        features: Deprecated. Filter by required features.
         input_format: Filter by input format capabilities.
         output_format: Filter by output format capabilities.
         feature_tags: Filter by general feature support.
@@ -83,7 +81,6 @@ class ModelConnector:
     """
     return self._client_getter().available_models_instance.list_models(
         model_size=model_size,
-        features=features,
         input_format=input_format,
         output_format=output_format,
         feature_tags=feature_tags,
@@ -113,7 +110,6 @@ class ModelConnector:
       self,
       provider: str,
       model_size: types.ModelSizeIdentifierType | None = None,
-      features: types.FeatureTagParam | None = None,
       input_format: types.InputFormatTypeParam | None = None,
       output_format: types.
       OutputFormatTypeParam = (types.OutputFormatType.TEXT),
@@ -126,7 +122,6 @@ class ModelConnector:
     Args:
         provider: The provider name (e.g., 'openai', 'anthropic').
         model_size: Filter by model size category.
-        features: Deprecated. Filter by required features.
         input_format: Filter by input format capabilities.
         output_format: Filter by output format capabilities.
         feature_tags: Filter by general feature support.
@@ -137,7 +132,6 @@ class ModelConnector:
         self._client_getter().available_models_instance.list_provider_models(
             provider=provider,
             model_size=model_size,
-            features=features,
             input_format=input_format,
             output_format=output_format,
             feature_tags=feature_tags,
@@ -221,7 +215,6 @@ class ModelConnector:
   def list_working_models(
       self,
       model_size: types.ModelSizeIdentifierType | None = None,
-      features: types.FeatureTagParam | None = None,
       verbose: bool = True,
       return_all: bool = False,
       clear_model_cache: bool = False,
@@ -233,7 +226,6 @@ class ModelConnector:
 
     Args:
         model_size: Filter by model size category.
-        features: Filter by required features.
         verbose: If True, prints progress information during testing.
         return_all: If True, returns a ModelStatus object.
         clear_model_cache: If True, clears and retests all models.
@@ -253,7 +245,6 @@ class ModelConnector:
     return (
         self._client_getter().available_models_instance.list_working_models(
             model_size=model_size,
-            features=features,
             verbose=verbose,
             return_all=return_all,
             clear_model_cache=clear_model_cache,
@@ -315,7 +306,6 @@ class ModelConnector:
       self,
       provider: str,
       model_size: types.ModelSizeIdentifierType | None = None,
-      features: types.FeatureTagParam | None = None,
       verbose: bool = True,
       return_all: bool = False,
       clear_model_cache: bool = False,
@@ -331,7 +321,6 @@ class ModelConnector:
     Args:
         provider: The provider name to list models for.
         model_size: Filter by model size category.
-        features: Filter by required features.
         verbose: If True, prints progress information during testing.
             Defaults to True.
         return_all: If True, returns a ModelStatus object with
@@ -373,7 +362,6 @@ class ModelConnector:
     return available_models.list_working_provider_models(
         provider=provider,
         model_size=model_size,
-        features=features,
         verbose=verbose,
         return_all=return_all,
         clear_model_cache=clear_model_cache,
@@ -888,6 +876,7 @@ class ProxAIClient(state_controller.StateControlled):
       _ = self.model_cache_manager
       _ = self.query_cache_manager
       self._init_proxdash_connection()
+      self._maybe_fetch_model_registry_from_proxdash()
 
       if self.cache_options and self.cache_options.clear_model_cache_on_connect:
         self.model_cache_manager.clear_cache()
@@ -1232,14 +1221,6 @@ class ProxAIClient(state_controller.StateControlled):
 
   @property
   def model_configs_instance(self) -> model_configs.ModelConfigs:
-    if (
-        not self.model_configs_requested_from_proxdash and
-        self.proxdash_connection
-    ):
-      model_configs_schema = self.proxdash_connection.get_model_configs_schema()
-      if model_configs_schema is not None:
-        self._model_configs_instance.model_configs_schema = model_configs_schema
-      self.model_configs_requested_from_proxdash = True
     return self.get_property_value("model_configs_instance")
 
   @model_configs_instance.setter
@@ -1416,6 +1397,34 @@ class ProxAIClient(state_controller.StateControlled):
       self._proxdash_connection = proxdash.ProxDashConnection(
           init_from_params=proxdash_connection_params
       )
+
+  def _maybe_fetch_model_registry_from_proxdash(self):
+    """Fetch the model registry from ProxDash and install it locally.
+
+    The /models/configs endpoint is public by design — it serves fresh model
+    metadata to open-source users with no API key as well as authenticated
+    users. We only skip when:
+      * the client is in TEST run_type (tests must not hit the network), or
+      * the user explicitly opted out (proxdash status is DISABLED), or
+      * we already requested once this client lifetime.
+    All other statuses (CONNECTED, API_KEY_NOT_FOUND, etc.) still attempt the
+    fetch — the proxdash layer automatically sends an unauthenticated request
+    when there's no valid api key. Failures fall back to the bundled local
+    registry; the ProxDash layer logs the error.
+    """
+    if self.model_configs_requested_from_proxdash:
+      return
+    if self.run_type == types.RunType.TEST:
+      return
+    if self.proxdash_connection is None:
+      return
+    if (self.proxdash_connection.status
+        == types.ProxDashConnectionStatus.DISABLED):
+      return
+    model_registry = self.proxdash_connection.get_model_registry()
+    if model_registry is not None:
+      self.model_configs_instance.reload_from_registry(model_registry)
+    self.model_configs_requested_from_proxdash = True
 
   _OUTPUT_FORMAT_TYPE_FALLBACK = {
       types.OutputFormatType.PYDANTIC: [

@@ -248,6 +248,7 @@ class ProviderModelMetadataType:
 
   is_recommended: bool | None = None
   model_size_tags: list[ModelSizeType] | None = None
+  # Reserved for unstructured notes about the model. Not used for filtering.
   tags: list[str] | None = None
 
 
@@ -786,8 +787,6 @@ class ModelConfigsState(StateContainer):
   """Persisted state for model configuration data."""
 
   model_registry: ModelRegistry | None = None
-  models_by_model_size: ModelSizeMappingType | None = None
-  recommended_models: RecommendedModelsMappingType | None = None
 
 
 @dataclasses.dataclass
