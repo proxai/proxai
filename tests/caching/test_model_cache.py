@@ -51,7 +51,7 @@ def _get_example_model_status():
       pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4o')),
       pytest.model_configs_instance.get_provider_model(('openai', 'o3')),
       pytest.model_configs_instance.get_provider_model(('openai', 'dall-e-3')),
-      pytest.model_configs_instance.get_provider_model(('openai', 'sora-2')),
+      pytest.model_configs_instance.get_provider_model(('openai', 'gpt-5-nano')),
       pytest.model_configs_instance.get_provider_model(('openai', 'tts-1')),
   ]
 
@@ -457,3 +457,37 @@ class TestModelCacheManager:
               }
           ), types.OutputFormatType.TEXT
       )
+
+  def test_save_replaces_existing(self):
+    cache_path, temp_dir = _get_path_dir('test_cache')
+    params = model_cache.ModelCacheManagerParams(
+        cache_options=types.CacheOptions(cache_path=cache_path)
+    )
+    cache_manager = model_cache.ModelCacheManager(init_from_params=params)
+
+    first, models = _get_example_model_status()
+    cache_manager.update(first, types.OutputFormatType.TEXT)
+
+    replacement = types.ModelStatus()
+    replacement.working_models.add(models[0])
+    cache_manager.save(replacement, types.OutputFormatType.TEXT)
+
+    result = cache_manager.get(types.OutputFormatType.TEXT)
+    assert result.working_models == {models[0]}
+    assert result.failed_models == set()
+    assert result.unprocessed_models == set()
+    assert result.filtered_models == set()
+    assert result.provider_queries == {}
+
+  def test_output_format_types_are_isolated(self):
+    cache_path, temp_dir = _get_path_dir('test_cache')
+    params = model_cache.ModelCacheManagerParams(
+        cache_options=types.CacheOptions(cache_path=cache_path)
+    )
+    cache_manager = model_cache.ModelCacheManager(init_from_params=params)
+
+    text_data, _ = _get_example_model_status()
+    cache_manager.update(text_data, types.OutputFormatType.TEXT)
+
+    assert cache_manager.get(types.OutputFormatType.TEXT) == text_data
+    assert cache_manager.get(types.OutputFormatType.JSON) == types.ModelStatus()
