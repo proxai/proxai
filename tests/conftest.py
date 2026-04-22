@@ -9,16 +9,6 @@ import proxai.types as types
 # Store original value globally
 _ORIGINAL_API_KEY = None
 
-# TODO: these test files were written against pre-multi-modal-refactor types
-# (types.Response, types.QueryResponseRecord, types.ModelConfigsSchemaType,
-# types.EndpointFeatureInfoType, types.ProviderModelConfigType, etc. — none
-# of which exist anymore). They need from-scratch rewrites against the new
-# ResultRecord / ModelRegistry surface. Skipping here so the rest of the
-# suite stays collectable. Delete entries as they are rewritten.
-collect_ignore = [
-    'connections/test_available_models.py',
-]
-
 
 def _build_test_model_configs_instance() -> model_configs.ModelConfigs:
   """Build the shared pytest fixture registry.
