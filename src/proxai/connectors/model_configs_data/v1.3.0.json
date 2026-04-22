@@ -1,26 +1,16 @@
 {
   "metadata": {
-    "version": "example-1.0",
+    "version": "1.3.0",
     "released_at": "2026-04-22T12:00:00",
-    "min_proxai_version": ">=0.2.0",
-    "config_origin": "PROXDASH",
-    "release_notes": "Reference ProxDash-style registry used by tests. See example_proxdash_model_configs.md (same directory) for the model matrix and invariants."
+    "min_proxai_version": ">=2.2.0",
+    "config_origin": "BUILT_IN",
+    "release_notes": "Initial multi-modal registry mirror of examples/models_api_test.py. Will be replaced with a production-grade list in v1.3.1."
   },
   "default_model_priority_list": [
     {
       "provider": "gemini",
-      "model": "gemini-3-pro",
-      "provider_model_identifier": "gemini-3-pro"
-    },
-    {
-      "provider": "openai",
-      "model": "o3",
-      "provider_model_identifier": "o3"
-    },
-    {
-      "provider": "gemini",
-      "model": "gemini-2.5-pro",
-      "provider_model_identifier": "gemini-2.5-pro"
+      "model": "gemini-3-flash-preview",
+      "provider_model_identifier": "gemini-3-flash-preview"
     },
     {
       "provider": "openai",
@@ -28,70 +18,18 @@
       "provider_model_identifier": "gpt-4o"
     },
     {
-      "provider": "gemini",
-      "model": "gemini-2.5-flash",
-      "provider_model_identifier": "gemini-2.5-flash"
+      "provider": "claude",
+      "model": "claude-sonnet-4-6",
+      "provider_model_identifier": "claude-sonnet-4-6"
     }
   ],
   "provider_model_configs": {
-    "gemini": {
-      "gemini-1.5-pro": {
+    "claude": {
+      "claude-opus-4-6": {
         "features": {
-          "add_system_to_messages": true,
           "input_format": {
-            "audio": "SUPPORTED",
-            "document": "NOT_SUPPORTED",
-            "image": "SUPPORTED",
-            "json": "NOT_SUPPORTED",
-            "pydantic": "NOT_SUPPORTED",
-            "text": "SUPPORTED",
-            "video": "SUPPORTED"
-          },
-          "messages": "SUPPORTED",
-          "output_format": {
             "audio": "NOT_SUPPORTED",
-            "image": "NOT_SUPPORTED",
-            "json": "SUPPORTED",
-            "multi_modal": "NOT_SUPPORTED",
-            "pydantic": "BEST_EFFORT",
-            "text": "SUPPORTED",
-            "video": "NOT_SUPPORTED"
-          },
-          "parameters": {
-            "max_tokens": "SUPPORTED",
-            "n": "SUPPORTED",
-            "stop": "SUPPORTED",
-            "temperature": "SUPPORTED",
-            "thinking": "NOT_SUPPORTED"
-          },
-          "prompt": "SUPPORTED",
-          "system_prompt": "SUPPORTED",
-          "tools": {
-            "web_search": "NOT_SUPPORTED"
-          }
-        },
-        "metadata": {
-          "is_recommended": false,
-          "model_size_tags": [
-            "large"
-          ]
-        },
-        "pricing": {
-          "input_token_cost": 35.0,
-          "output_token_cost": 105.0
-        },
-        "provider_model": {
-          "model": "gemini-1.5-pro",
-          "provider": "gemini",
-          "provider_model_identifier": "gemini-1.5-pro"
-        }
-      },
-      "gemini-2.5-flash": {
-        "features": {
-          "add_system_to_messages": true,
-          "input_format": {
-            "audio": "SUPPORTED",
-            "document": "NOT_SUPPORTED",
+            "document": "SUPPORTED",
             "image": "SUPPORTED",
             "json": "NOT_SUPPORTED",
             "pydantic": "NOT_SUPPORTED",
@@ -110,10 +48,61 @@
           },
           "parameters": {
             "max_tokens": "SUPPORTED",
-            "n": "SUPPORTED",
+            "n": "NOT_SUPPORTED",
             "stop": "SUPPORTED",
             "temperature": "SUPPORTED",
             "thinking": "SUPPORTED"
+          },
+          "prompt": "SUPPORTED",
+          "system_prompt": "SUPPORTED",
+          "tools": {
+            "web_search": "NOT_SUPPORTED"
+          }
+        },
+        "metadata": {
+          "is_recommended": true,
+          "model_size_tags": [
+            "large",
+            "largest"
+          ]
+        },
+        "pricing": {
+          "input_token_cost": 1.0,
+          "output_token_cost": 2.0
+        },
+        "provider_model": {
+          "model": "claude-opus-4-6",
+          "provider": "claude",
+          "provider_model_identifier": "claude-opus-4-6"
+        }
+      },
+      "claude-sonnet-4-6": {
+        "features": {
+          "input_format": {
+            "audio": "NOT_SUPPORTED",
+            "document": "SUPPORTED",
+            "image": "SUPPORTED",
+            "json": "NOT_SUPPORTED",
+            "pydantic": "NOT_SUPPORTED",
+            "text": "SUPPORTED",
+            "video": "NOT_SUPPORTED"
+          },
+          "messages": "SUPPORTED",
+          "output_format": {
+            "audio": "NOT_SUPPORTED",
+            "image": "NOT_SUPPORTED",
+            "json": "SUPPORTED",
+            "multi_modal": "NOT_SUPPORTED",
+            "pydantic": "SUPPORTED",
+            "text": "SUPPORTED",
+            "video": "NOT_SUPPORTED"
+          },
+          "parameters": {
+            "max_tokens": "SUPPORTED",
+            "n": "NOT_SUPPORTED",
+            "stop": "SUPPORTED",
+            "temperature": "SUPPORTED",
+            "thinking": "NOT_SUPPORTED"
           },
           "prompt": "SUPPORTED",
           "system_prompt": "SUPPORTED",
@@ -124,22 +113,23 @@
         "metadata": {
           "is_recommended": true,
           "model_size_tags": [
-            "medium"
+            "large"
           ]
         },
         "pricing": {
-          "input_token_cost": 3.0,
-          "output_token_cost": 25.0
+          "input_token_cost": 1.0,
+          "output_token_cost": 2.0
         },
         "provider_model": {
-          "model": "gemini-2.5-flash",
-          "provider": "gemini",
-          "provider_model_identifier": "gemini-2.5-flash"
+          "model": "claude-sonnet-4-6",
+          "provider": "claude",
+          "provider_model_identifier": "claude-sonnet-4-6"
         }
-      },
-      "gemini-2.5-flash-lite": {
+      }
+    },
+    "deepseek": {
+      "deepseek-chat": {
         "features": {
-          "add_system_to_messages": true,
           "input_format": {
             "audio": "NOT_SUPPORTED",
             "document": "NOT_SUPPORTED",
@@ -153,16 +143,118 @@
           "output_format": {
             "audio": "NOT_SUPPORTED",
             "image": "NOT_SUPPORTED",
-            "json": "BEST_EFFORT",
+            "json": "SUPPORTED",
             "multi_modal": "NOT_SUPPORTED",
-            "pydantic": "NOT_SUPPORTED",
+            "pydantic": "SUPPORTED",
             "text": "SUPPORTED",
             "video": "NOT_SUPPORTED"
           },
           "parameters": {
             "max_tokens": "SUPPORTED",
             "n": "NOT_SUPPORTED",
-            "stop": "NOT_SUPPORTED",
+            "stop": "SUPPORTED",
+            "temperature": "SUPPORTED",
+            "thinking": "NOT_SUPPORTED"
+          },
+          "prompt": "SUPPORTED",
+          "system_prompt": "SUPPORTED",
+          "tools": {
+            "web_search": "NOT_SUPPORTED"
+          }
+        },
+        "metadata": {
+          "is_recommended": false,
+          "model_size_tags": [
+            "medium"
+          ]
+        },
+        "pricing": {
+          "input_token_cost": 1.0,
+          "output_token_cost": 2.0
+        },
+        "provider_model": {
+          "model": "deepseek-chat",
+          "provider": "deepseek",
+          "provider_model_identifier": "deepseek-chat"
+        }
+      },
+      "deepseek-reasoner": {
+        "features": {
+          "input_format": {
+            "audio": "NOT_SUPPORTED",
+            "document": "NOT_SUPPORTED",
+            "image": "NOT_SUPPORTED",
+            "json": "NOT_SUPPORTED",
+            "pydantic": "NOT_SUPPORTED",
+            "text": "SUPPORTED",
+            "video": "NOT_SUPPORTED"
+          },
+          "messages": "SUPPORTED",
+          "output_format": {
+            "audio": "NOT_SUPPORTED",
+            "image": "NOT_SUPPORTED",
+            "json": "SUPPORTED",
+            "multi_modal": "NOT_SUPPORTED",
+            "pydantic": "SUPPORTED",
+            "text": "SUPPORTED",
+            "video": "NOT_SUPPORTED"
+          },
+          "parameters": {
+            "max_tokens": "SUPPORTED",
+            "n": "NOT_SUPPORTED",
+            "stop": "SUPPORTED",
+            "temperature": "SUPPORTED",
+            "thinking": "SUPPORTED"
+          },
+          "prompt": "SUPPORTED",
+          "system_prompt": "SUPPORTED",
+          "tools": {
+            "web_search": "NOT_SUPPORTED"
+          }
+        },
+        "metadata": {
+          "is_recommended": false,
+          "model_size_tags": [
+            "large"
+          ]
+        },
+        "pricing": {
+          "input_token_cost": 1.0,
+          "output_token_cost": 2.0
+        },
+        "provider_model": {
+          "model": "deepseek-reasoner",
+          "provider": "deepseek",
+          "provider_model_identifier": "deepseek-reasoner"
+        }
+      }
+    },
+    "gemini": {
+      "gemini-2.5-flash": {
+        "features": {
+          "input_format": {
+            "audio": "SUPPORTED",
+            "document": "SUPPORTED",
+            "image": "SUPPORTED",
+            "json": "NOT_SUPPORTED",
+            "pydantic": "NOT_SUPPORTED",
+            "text": "SUPPORTED",
+            "video": "SUPPORTED"
+          },
+          "messages": "SUPPORTED",
+          "output_format": {
+            "audio": "NOT_SUPPORTED",
+            "image": "NOT_SUPPORTED",
+            "json": "SUPPORTED",
+            "multi_modal": "NOT_SUPPORTED",
+            "pydantic": "SUPPORTED",
+            "text": "SUPPORTED",
+            "video": "NOT_SUPPORTED"
+          },
+          "parameters": {
+            "max_tokens": "SUPPORTED",
+            "n": "NOT_SUPPORTED",
+            "stop": "SUPPORTED",
             "temperature": "SUPPORTED",
             "thinking": "NOT_SUPPORTED"
           },
@@ -179,18 +271,111 @@
           ]
         },
         "pricing": {
-          "input_token_cost": 0.5,
-          "output_token_cost": 3.0
+          "input_token_cost": 1.0,
+          "output_token_cost": 2.0
         },
         "provider_model": {
-          "model": "gemini-2.5-flash-lite",
+          "model": "gemini-2.5-flash",
           "provider": "gemini",
-          "provider_model_identifier": "gemini-2.5-flash-lite"
+          "provider_model_identifier": "gemini-2.5-flash"
         }
       },
-      "gemini-2.5-pro": {
+      "gemini-2.5-flash-image": {
         "features": {
-          "add_system_to_messages": true,
+          "input_format": {
+            "audio": "NOT_SUPPORTED",
+            "document": "NOT_SUPPORTED",
+            "image": "NOT_SUPPORTED",
+            "json": "NOT_SUPPORTED",
+            "pydantic": "NOT_SUPPORTED",
+            "text": "SUPPORTED",
+            "video": "NOT_SUPPORTED"
+          },
+          "messages": "SUPPORTED",
+          "output_format": {
+            "audio": "NOT_SUPPORTED",
+            "image": "SUPPORTED",
+            "json": "NOT_SUPPORTED",
+            "multi_modal": "NOT_SUPPORTED",
+            "pydantic": "NOT_SUPPORTED",
+            "text": "NOT_SUPPORTED",
+            "video": "NOT_SUPPORTED"
+          },
+          "parameters": {
+            "max_tokens": "SUPPORTED",
+            "n": "NOT_SUPPORTED",
+            "stop": "SUPPORTED",
+            "temperature": "SUPPORTED",
+            "thinking": "NOT_SUPPORTED"
+          },
+          "prompt": "SUPPORTED",
+          "system_prompt": "SUPPORTED",
+          "tools": {
+            "web_search": "NOT_SUPPORTED"
+          }
+        },
+        "metadata": {
+          "is_recommended": true
+        },
+        "pricing": {
+          "input_token_cost": 1.0,
+          "output_token_cost": 2.0
+        },
+        "provider_model": {
+          "model": "gemini-2.5-flash-image",
+          "provider": "gemini",
+          "provider_model_identifier": "gemini-2.5-flash-image"
+        }
+      },
+      "gemini-2.5-flash-preview-tts": {
+        "features": {
+          "input_format": {
+            "audio": "NOT_SUPPORTED",
+            "document": "NOT_SUPPORTED",
+            "image": "NOT_SUPPORTED",
+            "json": "NOT_SUPPORTED",
+            "pydantic": "NOT_SUPPORTED",
+            "text": "SUPPORTED",
+            "video": "NOT_SUPPORTED"
+          },
+          "messages": "SUPPORTED",
+          "output_format": {
+            "audio": "SUPPORTED",
+            "image": "NOT_SUPPORTED",
+            "json": "NOT_SUPPORTED",
+            "multi_modal": "NOT_SUPPORTED",
+            "pydantic": "NOT_SUPPORTED",
+            "text": "NOT_SUPPORTED",
+            "video": "NOT_SUPPORTED"
+          },
+          "parameters": {
+            "max_tokens": "SUPPORTED",
+            "n": "NOT_SUPPORTED",
+            "stop": "SUPPORTED",
+            "temperature": "SUPPORTED",
+            "thinking": "NOT_SUPPORTED"
+          },
+          "prompt": "SUPPORTED",
+          "system_prompt": "SUPPORTED",
+          "tools": {
+            "web_search": "NOT_SUPPORTED"
+          }
+        },
+        "metadata": {
+          "is_recommended": false
+        },
+        "pricing": {
+          "input_token_cost": 1.0,
+          "output_token_cost": 2.0
+        },
+        "provider_model": {
+          "model": "gemini-2.5-flash-preview-tts",
+          "provider": "gemini",
+          "provider_model_identifier": "gemini-2.5-flash-preview-tts"
+        }
+      },
+      "gemini-3-flash-preview": {
+        "features": {
           "input_format": {
             "audio": "SUPPORTED",
             "document": "SUPPORTED",
@@ -212,10 +397,10 @@
           },
           "parameters": {
             "max_tokens": "SUPPORTED",
-            "n": "SUPPORTED",
+            "n": "NOT_SUPPORTED",
             "stop": "SUPPORTED",
             "temperature": "SUPPORTED",
-            "thinking": "SUPPORTED"
+            "thinking": "NOT_SUPPORTED"
           },
           "prompt": "SUPPORTED",
           "system_prompt": "SUPPORTED",
@@ -226,83 +411,31 @@
         "metadata": {
           "is_recommended": true,
           "model_size_tags": [
-            "large"
+            "medium"
           ]
         },
         "pricing": {
-          "input_token_cost": 25.0,
-          "output_token_cost": 100.0
+          "input_token_cost": 1.0,
+          "output_token_cost": 2.0
         },
         "provider_model": {
-          "model": "gemini-2.5-pro",
+          "model": "gemini-3-flash-preview",
           "provider": "gemini",
-          "provider_model_identifier": "gemini-2.5-pro"
+          "provider_model_identifier": "gemini-3-flash-preview"
         }
       },
-      "gemini-3-pro": {
-        "features": {
-          "add_system_to_messages": true,
-          "input_format": {
-            "audio": "SUPPORTED",
-            "document": "SUPPORTED",
-            "image": "SUPPORTED",
-            "json": "NOT_SUPPORTED",
-            "pydantic": "NOT_SUPPORTED",
-            "text": "SUPPORTED",
-            "video": "SUPPORTED"
-          },
-          "messages": "SUPPORTED",
-          "output_format": {
-            "audio": "NOT_SUPPORTED",
-            "image": "NOT_SUPPORTED",
-            "json": "SUPPORTED",
-            "multi_modal": "SUPPORTED",
-            "pydantic": "SUPPORTED",
-            "text": "SUPPORTED",
-            "video": "NOT_SUPPORTED"
-          },
-          "parameters": {
-            "max_tokens": "SUPPORTED",
-            "n": "SUPPORTED",
-            "stop": "SUPPORTED",
-            "temperature": "SUPPORTED",
-            "thinking": "SUPPORTED"
-          },
-          "prompt": "SUPPORTED",
-          "system_prompt": "SUPPORTED",
-          "tools": {
-            "web_search": "SUPPORTED"
-          }
-        },
-        "metadata": {
-          "is_recommended": true,
-          "model_size_tags": [
-            "large",
-            "largest"
-          ]
-        },
-        "pricing": {
-          "input_token_cost": 120.0,
-          "output_token_cost": 500.0
-        },
-        "provider_model": {
-          "model": "gemini-3-pro",
-          "provider": "gemini",
-          "provider_model_identifier": "gemini-3-pro"
-        }
-      },
-      "veo-3.0": {
+      "veo-3.1-generate-preview": {
         "features": {
           "input_format": {
             "audio": "NOT_SUPPORTED",
             "document": "NOT_SUPPORTED",
-            "image": "SUPPORTED",
+            "image": "NOT_SUPPORTED",
             "json": "NOT_SUPPORTED",
             "pydantic": "NOT_SUPPORTED",
             "text": "SUPPORTED",
             "video": "NOT_SUPPORTED"
           },
-          "messages": "NOT_SUPPORTED",
+          "messages": "SUPPORTED",
           "output_format": {
             "audio": "NOT_SUPPORTED",
             "image": "NOT_SUPPORTED",
@@ -313,14 +446,14 @@
             "video": "SUPPORTED"
           },
           "parameters": {
-            "max_tokens": "NOT_SUPPORTED",
+            "max_tokens": "SUPPORTED",
             "n": "NOT_SUPPORTED",
-            "stop": "NOT_SUPPORTED",
-            "temperature": "NOT_SUPPORTED",
+            "stop": "SUPPORTED",
+            "temperature": "SUPPORTED",
             "thinking": "NOT_SUPPORTED"
           },
           "prompt": "SUPPORTED",
-          "system_prompt": "NOT_SUPPORTED",
+          "system_prompt": "SUPPORTED",
           "tools": {
             "web_search": "NOT_SUPPORTED"
           }
@@ -329,70 +462,23 @@
           "is_recommended": true
         },
         "pricing": {
-          "input_token_cost": 50.0,
-          "output_token_cost": 350.0
+          "input_token_cost": 1.0,
+          "output_token_cost": 2.0
         },
         "provider_model": {
-          "model": "veo-3.0",
+          "model": "veo-3.1-generate-preview",
           "provider": "gemini",
-          "provider_model_identifier": "veo-3.0"
+          "provider_model_identifier": "veo-3.1-generate-preview"
         }
       }
     },
-    "openai": {
-      "dall-e-3": {
+    "grok": {
+      "grok-3": {
         "features": {
           "input_format": {
             "audio": "NOT_SUPPORTED",
-            "document": "NOT_SUPPORTED",
+            "document": "SUPPORTED",
             "image": "NOT_SUPPORTED",
-            "json": "NOT_SUPPORTED",
-            "pydantic": "NOT_SUPPORTED",
-            "text": "SUPPORTED",
-            "video": "NOT_SUPPORTED"
-          },
-          "messages": "NOT_SUPPORTED",
-          "output_format": {
-            "audio": "NOT_SUPPORTED",
-            "image": "SUPPORTED",
-            "json": "NOT_SUPPORTED",
-            "multi_modal": "NOT_SUPPORTED",
-            "pydantic": "NOT_SUPPORTED",
-            "text": "NOT_SUPPORTED",
-            "video": "NOT_SUPPORTED"
-          },
-          "parameters": {
-            "max_tokens": "NOT_SUPPORTED",
-            "n": "NOT_SUPPORTED",
-            "stop": "NOT_SUPPORTED",
-            "temperature": "NOT_SUPPORTED",
-            "thinking": "NOT_SUPPORTED"
-          },
-          "prompt": "SUPPORTED",
-          "system_prompt": "NOT_SUPPORTED",
-          "tools": {
-            "web_search": "NOT_SUPPORTED"
-          }
-        },
-        "metadata": {
-          "is_recommended": true
-        },
-        "pricing": {
-          "input_token_cost": 0.0,
-          "output_token_cost": 400.0
-        },
-        "provider_model": {
-          "model": "dall-e-3",
-          "provider": "openai",
-          "provider_model_identifier": "dall-e-3"
-        }
-      },
-      "gpt-4-turbo": {
-        "features": {
-          "input_format": {
-            "audio": "NOT_SUPPORTED",
-            "document": "NOT_SUPPORTED",
-            "image": "SUPPORTED",
             "json": "NOT_SUPPORTED",
             "pydantic": "NOT_SUPPORTED",
             "text": "SUPPORTED",
@@ -402,15 +488,15 @@
           "output_format": {
             "audio": "NOT_SUPPORTED",
             "image": "NOT_SUPPORTED",
-            "json": "BEST_EFFORT",
+            "json": "SUPPORTED",
             "multi_modal": "NOT_SUPPORTED",
-            "pydantic": "NOT_SUPPORTED",
+            "pydantic": "SUPPORTED",
             "text": "SUPPORTED",
             "video": "NOT_SUPPORTED"
           },
           "parameters": {
             "max_tokens": "SUPPORTED",
-            "n": "SUPPORTED",
+            "n": "NOT_SUPPORTED",
             "stop": "SUPPORTED",
             "temperature": "SUPPORTED",
             "thinking": "NOT_SUPPORTED"
@@ -428,13 +514,166 @@
           ]
         },
         "pricing": {
-          "input_token_cost": 100.0,
-          "output_token_cost": 300.0
+          "input_token_cost": 1.0,
+          "output_token_cost": 2.0
         },
         "provider_model": {
-          "model": "gpt-4-turbo",
+          "model": "grok-3",
+          "provider": "grok",
+          "provider_model_identifier": "grok-3"
+        }
+      }
+    },
+    "mock_failing_provider": {
+      "mock_failing_model": {
+        "features": {
+          "input_format": {
+            "audio": "NOT_SUPPORTED",
+            "document": "NOT_SUPPORTED",
+            "image": "NOT_SUPPORTED",
+            "json": "NOT_SUPPORTED",
+            "pydantic": "NOT_SUPPORTED",
+            "text": "SUPPORTED",
+            "video": "NOT_SUPPORTED"
+          },
+          "messages": "SUPPORTED",
+          "output_format": {
+            "audio": "NOT_SUPPORTED",
+            "image": "NOT_SUPPORTED",
+            "json": "SUPPORTED",
+            "multi_modal": "NOT_SUPPORTED",
+            "pydantic": "SUPPORTED",
+            "text": "SUPPORTED",
+            "video": "NOT_SUPPORTED"
+          },
+          "parameters": {
+            "max_tokens": "SUPPORTED",
+            "n": "NOT_SUPPORTED",
+            "stop": "SUPPORTED",
+            "temperature": "SUPPORTED",
+            "thinking": "NOT_SUPPORTED"
+          },
+          "prompt": "SUPPORTED",
+          "system_prompt": "SUPPORTED",
+          "tools": {
+            "web_search": "NOT_SUPPORTED"
+          }
+        },
+        "metadata": {
+          "is_recommended": true,
+          "model_size_tags": [
+            "small"
+          ]
+        },
+        "pricing": {
+          "input_token_cost": 1.0,
+          "output_token_cost": 2.0
+        },
+        "provider_model": {
+          "model": "mock_failing_model",
+          "provider": "mock_failing_provider",
+          "provider_model_identifier": "mock_failing_model"
+        }
+      }
+    },
+    "mock_provider": {
+      "mock_model": {
+        "features": {
+          "input_format": {
+            "audio": "NOT_SUPPORTED",
+            "document": "SUPPORTED",
+            "image": "SUPPORTED",
+            "json": "SUPPORTED",
+            "pydantic": "SUPPORTED",
+            "text": "SUPPORTED",
+            "video": "NOT_SUPPORTED"
+          },
+          "messages": "SUPPORTED",
+          "output_format": {
+            "audio": "NOT_SUPPORTED",
+            "image": "NOT_SUPPORTED",
+            "json": "SUPPORTED",
+            "multi_modal": "NOT_SUPPORTED",
+            "pydantic": "SUPPORTED",
+            "text": "SUPPORTED",
+            "video": "NOT_SUPPORTED"
+          },
+          "parameters": {
+            "max_tokens": "SUPPORTED",
+            "n": "NOT_SUPPORTED",
+            "stop": "SUPPORTED",
+            "temperature": "SUPPORTED",
+            "thinking": "NOT_SUPPORTED"
+          },
+          "prompt": "SUPPORTED",
+          "system_prompt": "SUPPORTED",
+          "tools": {
+            "web_search": "NOT_SUPPORTED"
+          }
+        },
+        "metadata": {
+          "is_recommended": true,
+          "model_size_tags": [
+            "small"
+          ]
+        },
+        "pricing": {
+          "input_token_cost": 1.0,
+          "output_token_cost": 2.0
+        },
+        "provider_model": {
+          "model": "mock_model",
+          "provider": "mock_provider",
+          "provider_model_identifier": "mock_model"
+        }
+      }
+    },
+    "openai": {
+      "dall-e-3": {
+        "features": {
+          "input_format": {
+            "audio": "NOT_SUPPORTED",
+            "document": "NOT_SUPPORTED",
+            "image": "NOT_SUPPORTED",
+            "json": "NOT_SUPPORTED",
+            "pydantic": "NOT_SUPPORTED",
+            "text": "SUPPORTED",
+            "video": "NOT_SUPPORTED"
+          },
+          "messages": "SUPPORTED",
+          "output_format": {
+            "audio": "NOT_SUPPORTED",
+            "image": "SUPPORTED",
+            "json": "NOT_SUPPORTED",
+            "multi_modal": "NOT_SUPPORTED",
+            "pydantic": "NOT_SUPPORTED",
+            "text": "NOT_SUPPORTED",
+            "video": "NOT_SUPPORTED"
+          },
+          "parameters": {
+            "max_tokens": "SUPPORTED",
+            "n": "NOT_SUPPORTED",
+            "stop": "SUPPORTED",
+            "temperature": "SUPPORTED",
+            "thinking": "NOT_SUPPORTED"
+          },
+          "prompt": "SUPPORTED",
+          "system_prompt": "SUPPORTED",
+          "tools": {
+            "web_search": "NOT_SUPPORTED"
+          }
+        },
+        "metadata": {
+          "is_recommended": true
+        },
+        "pricing": {
+          "input_token_cost": 1.0,
+          "output_token_cost": 2.0
+        },
+        "provider_model": {
+          "model": "dall-e-3",
           "provider": "openai",
-          "provider_model_identifier": "gpt-4-turbo"
+          "provider_model_identifier": "dall-e-3"
         }
       },
       "gpt-4o": {
@@ -460,115 +699,15 @@
           },
           "parameters": {
             "max_tokens": "SUPPORTED",
-            "n": "SUPPORTED",
-            "stop": "SUPPORTED",
-            "temperature": "SUPPORTED",
-            "thinking": "NOT_SUPPORTED"
-          },
-          "prompt": "SUPPORTED",
-          "system_prompt": "SUPPORTED",
-          "tools": {
-            "web_search": "SUPPORTED"
-          }
-        },
-        "metadata": {
-          "is_recommended": true,
-          "model_size_tags": [
-            "medium"
-          ]
-        },
-        "pricing": {
-          "input_token_cost": 25.0,
-          "output_token_cost": 100.0
-        },
-        "provider_model": {
-          "model": "gpt-4o",
-          "provider": "openai",
-          "provider_model_identifier": "gpt-4o"
-        }
-      },
-      "gpt-5": {
-        "features": {
-          "input_format": {
-            "audio": "NOT_SUPPORTED",
-            "document": "SUPPORTED",
-            "image": "SUPPORTED",
-            "json": "NOT_SUPPORTED",
-            "pydantic": "NOT_SUPPORTED",
-            "text": "SUPPORTED",
-            "video": "NOT_SUPPORTED"
-          },
-          "messages": "SUPPORTED",
-          "output_format": {
-            "audio": "NOT_SUPPORTED",
-            "image": "NOT_SUPPORTED",
-            "json": "SUPPORTED",
-            "multi_modal": "NOT_SUPPORTED",
-            "pydantic": "SUPPORTED",
-            "text": "SUPPORTED",
-            "video": "NOT_SUPPORTED"
-          },
-          "parameters": {
-            "max_tokens": "SUPPORTED",
-            "n": "SUPPORTED",
-            "stop": "SUPPORTED",
-            "temperature": "SUPPORTED",
-            "thinking": "SUPPORTED"
-          },
-          "prompt": "SUPPORTED",
-          "system_prompt": "SUPPORTED",
-          "tools": {
-            "web_search": "SUPPORTED"
-          }
-        },
-        "metadata": {
-          "is_recommended": true,
-          "model_size_tags": [
-            "large"
-          ]
-        },
-        "pricing": {
-          "input_token_cost": 50.0,
-          "output_token_cost": 150.0
-        },
-        "provider_model": {
-          "model": "gpt-5",
-          "provider": "openai",
-          "provider_model_identifier": "gpt-5"
-        }
-      },
-      "gpt-5-nano": {
-        "features": {
-          "input_format": {
-            "audio": "NOT_SUPPORTED",
-            "document": "NOT_SUPPORTED",
-            "image": "NOT_SUPPORTED",
-            "json": "NOT_SUPPORTED",
-            "pydantic": "NOT_SUPPORTED",
-            "text": "SUPPORTED",
-            "video": "NOT_SUPPORTED"
-          },
-          "messages": "SUPPORTED",
-          "output_format": {
-            "audio": "NOT_SUPPORTED",
-            "image": "NOT_SUPPORTED",
-            "json": "BEST_EFFORT",
-            "multi_modal": "NOT_SUPPORTED",
-            "pydantic": "NOT_SUPPORTED",
-            "text": "SUPPORTED",
-            "video": "NOT_SUPPORTED"
-          },
-          "parameters": {
-            "max_tokens": "SUPPORTED",
             "n": "NOT_SUPPORTED",
-            "stop": "NOT_SUPPORTED",
+            "stop": "SUPPORTED",
             "temperature": "SUPPORTED",
             "thinking": "NOT_SUPPORTED"
           },
           "prompt": "SUPPORTED",
           "system_prompt": "SUPPORTED",
           "tools": {
-            "web_search": "NOT_SUPPORTED"
+            "web_search": "SUPPORTED"
           }
         },
         "metadata": {
@@ -579,12 +718,12 @@
         },
         "pricing": {
           "input_token_cost": 1.0,
-          "output_token_cost": 4.0
+          "output_token_cost": 2.0
         },
         "provider_model": {
-          "model": "gpt-5-nano",
+          "model": "gpt-4o",
           "provider": "openai",
-          "provider_model_identifier": "gpt-5-nano"
+          "provider_model_identifier": "gpt-4o"
         }
       },
       "o3": {
@@ -611,8 +750,8 @@
           "parameters": {
             "max_tokens": "SUPPORTED",
             "n": "NOT_SUPPORTED",
-            "stop": "NOT_SUPPORTED",
-            "temperature": "NOT_SUPPORTED",
+            "stop": "SUPPORTED",
+            "temperature": "SUPPORTED",
             "thinking": "SUPPORTED"
           },
           "prompt": "SUPPORTED",
@@ -624,18 +763,64 @@
         "metadata": {
           "is_recommended": true,
           "model_size_tags": [
-            "large",
-            "largest"
+            "medium"
           ]
         },
         "pricing": {
-          "input_token_cost": 150.0,
-          "output_token_cost": 600.0
+          "input_token_cost": 1.0,
+          "output_token_cost": 2.0
         },
         "provider_model": {
           "model": "o3",
           "provider": "openai",
           "provider_model_identifier": "o3"
+        }
+      },
+      "sora-2": {
+        "features": {
+          "input_format": {
+            "audio": "NOT_SUPPORTED",
+            "document": "NOT_SUPPORTED",
+            "image": "NOT_SUPPORTED",
+            "json": "NOT_SUPPORTED",
+            "pydantic": "NOT_SUPPORTED",
+            "text": "SUPPORTED",
+            "video": "NOT_SUPPORTED"
+          },
+          "messages": "SUPPORTED",
+          "output_format": {
+            "audio": "NOT_SUPPORTED",
+            "image": "NOT_SUPPORTED",
+            "json": "NOT_SUPPORTED",
+            "multi_modal": "NOT_SUPPORTED",
+            "pydantic": "NOT_SUPPORTED",
+            "text": "NOT_SUPPORTED",
+            "video": "SUPPORTED"
+          },
+          "parameters": {
+            "max_tokens": "SUPPORTED",
+            "n": "NOT_SUPPORTED",
+            "stop": "SUPPORTED",
+            "temperature": "SUPPORTED",
+            "thinking": "NOT_SUPPORTED"
+          },
+          "prompt": "SUPPORTED",
+          "system_prompt": "SUPPORTED",
+          "tools": {
+            "web_search": "NOT_SUPPORTED"
+          }
+        },
+        "metadata": {
+          "is_recommended": true
+        },
+        "pricing": {
+          "input_token_cost": 1.0,
+          "output_token_cost": 2.0
+        },
+        "provider_model": {
+          "model": "sora-2",
+          "provider": "openai",
+          "provider_model_identifier": "sora-2"
         }
       },
       "tts-1": {
@@ -649,7 +834,7 @@
             "text": "SUPPORTED",
             "video": "NOT_SUPPORTED"
           },
-          "messages": "NOT_SUPPORTED",
+          "messages": "SUPPORTED",
           "output_format": {
             "audio": "SUPPORTED",
             "image": "NOT_SUPPORTED",
@@ -660,14 +845,14 @@
             "video": "NOT_SUPPORTED"
           },
           "parameters": {
-            "max_tokens": "NOT_SUPPORTED",
+            "max_tokens": "SUPPORTED",
             "n": "NOT_SUPPORTED",
-            "stop": "NOT_SUPPORTED",
-            "temperature": "NOT_SUPPORTED",
+            "stop": "SUPPORTED",
+            "temperature": "SUPPORTED",
             "thinking": "NOT_SUPPORTED"
           },
           "prompt": "SUPPORTED",
-          "system_prompt": "NOT_SUPPORTED",
+          "system_prompt": "SUPPORTED",
           "tools": {
             "web_search": "NOT_SUPPORTED"
           }
@@ -676,8 +861,8 @@
           "is_recommended": true
         },
         "pricing": {
-          "input_token_cost": 15.0,
-          "output_token_cost": 0.0
+          "input_token_cost": 1.0,
+          "output_token_cost": 2.0
         },
         "provider_model": {
           "model": "tts-1",
