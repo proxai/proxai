@@ -19,7 +19,6 @@ collect_ignore = [
     'connections/test_available_models.py',
     'connectors/test_model_configs.py',
     'connectors/test_provider_connector.py',
-    'logging/test_utils.py',
 ]
 
 
