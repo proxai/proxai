@@ -356,6 +356,19 @@ class TestStateControlled:
     ):
       ExampleStateControlledClass().load_state('test')
 
+  def test_init_from_state_incorrect_type_raises(self):
+    with pytest.raises(
+        ValueError, match='Invalid state type.\nExpected: <class'
+    ):
+      ExampleStateControlledClass(init_from_state='test')
+
+  def test_init_from_state(self):
+    state = ExampleState(
+        property_1='test', property_2='test_2', property_3='test_3'
+    )
+    example_obj = ExampleStateControlledClass(init_from_state=state)
+    assert example_obj.get_state() == state
+
   def test_load_state(self):
     example_params = ExampleStateParams(
         property_1='test', property_2='test_2', property_3='test_3'
@@ -638,6 +651,35 @@ class TestSubState:
         sub_state=ExampleSubState(sub_property_1='sub_property_1_value_1')
     )
     assert example_obj_2.sub_state.sub_property_1 == 'sub_property_1_value_1'
+
+  def test_set_sub_state_from_state_container(self):
+    example_obj = ExampleStateControlledClass()
+    example_obj.sub_state = ExampleSubState(sub_property_1='from_container')
+    assert isinstance(example_obj.sub_state, ExampleSubStateControlledClass)
+    assert example_obj.sub_state.sub_property_1 == 'from_container'
+
+  def test_set_sub_state_to_none_clears_state(self):
+    example_obj = ExampleStateControlledClass(
+        init_from_params=ExampleStateParams(
+            sub_state=ExampleSubStateControlledClass(
+                init_from_params=ExampleSubStateParams(sub_property_1='value')
+            )
+        )
+    )
+    example_obj.sub_state = None
+    assert example_obj.sub_state is None
+    assert example_obj.get_internal_state().sub_state is None
+
+  def test_set_sub_state_invalid_type_raises(self):
+    example_obj = ExampleStateControlledClass()
+    with pytest.raises(ValueError, match='Invalid property value'):
+      example_obj.sub_state = 'not valid'
+
+  def test_get_sub_state_invalid_internal_value_raises(self):
+    example_obj = ExampleStateControlledClass()
+    example_obj._sub_state = 'bogus'
+    with pytest.raises(ValueError, match='Invalid property value'):
+      _ = example_obj.sub_state
 
 
 class TestStateContractValidation:
