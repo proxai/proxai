@@ -2,6 +2,7 @@ import pytest
 
 import proxai.connections.api_key_manager as api_key_manager
 import proxai.connectors.model_configs as model_configs
+import proxai.state_controllers.state_controller as state_controller
 import proxai.types as types
 
 
@@ -12,6 +13,19 @@ def clean_env(monkeypatch):
     for api_key in api_key_list:
       monkeypatch.delenv(api_key, raising=False)
   yield
+
+
+class _StubProxDashConnection(state_controller.BaseStateControlled):
+  """Minimal ProxDashConnection stub — returns fixed api keys."""
+
+  def __init__(self, api_keys):
+    self._api_keys = api_keys
+
+  def get_provider_api_keys(self):
+    return self._api_keys
+
+  def get_state(self):
+    return types.ProxDashConnectionState()
 
 
 def _create_manager(
@@ -69,6 +83,25 @@ class TestApiKeyManagerInit:
     monkeypatch.setenv('RANDOM_API_KEY', 'random-value')
     mgr = _create_manager()
     assert mgr.providers_with_key == {}
+
+  def test_init_fetches_keys_from_proxdash_connection(self, monkeypatch):
+    monkeypatch.setenv('OPENAI_API_KEY', 'env-openai')
+    stub = _StubProxDashConnection(api_keys={
+        'OPENAI_API_KEY': 'proxdash-openai',
+        'ANTHROPIC_API_KEY': 'proxdash-claude',
+    })
+    mgr = _create_manager(proxdash_connection=stub)
+
+    assert mgr.proxdash_provider_api_keys == {
+        'OPENAI_API_KEY': 'proxdash-openai',
+        'ANTHROPIC_API_KEY': 'proxdash-claude',
+    }
+    # ProxDash wins over env for the same provider.
+    assert mgr.providers_with_key['openai'] == {
+        'OPENAI_API_KEY': 'proxdash-openai'}
+    # Providers only in ProxDash are also picked up.
+    assert mgr.providers_with_key['claude'] == {
+        'ANTHROPIC_API_KEY': 'proxdash-claude'}
 
 
 class TestLoadProviderKeys:
