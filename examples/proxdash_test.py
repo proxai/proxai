@@ -671,7 +671,7 @@ def main():
           # clear_query_cache_on_connect=True,
       ),
       provider_call_options=px.ProviderCallOptions(
-          allow_parallel_file_operations=False,
+          allow_parallel_file_operations=True,
       ),
   )
   register_models(px.get_default_proxai_client())

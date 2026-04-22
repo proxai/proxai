@@ -621,8 +621,8 @@ class ProxDashConnection(state_controller.StateControlled):
 
   def _confirm_file_upload(self, file_id: str):
     try:
-      resp = requests.post(
-          f'{self.proxdash_options.base_url}/files/update/{file_id}',
+      resp = requests.patch(
+          f'{self.proxdash_options.base_url}/files/{file_id}',
           json={'uploadConfirmed': True},
           headers={'X-API-Key': self.proxdash_options.api_key}
       )
@@ -704,9 +704,9 @@ class ProxDashConnection(state_controller.StateControlled):
     file_id = media.proxdash_file_id
 
     try:
-      resp = requests.post(
-          (f'{self.proxdash_options.base_url}'
-           f'/files/update/{file_id}'), json=update_data,
+      resp = requests.patch(
+          f'{self.proxdash_options.base_url}/files/{file_id}',
+          json=update_data,
           headers={'X-API-Key': self.proxdash_options.api_key}
       )
       if resp.status_code not in (200, 201):

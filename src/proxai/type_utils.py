@@ -277,33 +277,30 @@ def is_query_record_equal(
   _normalize_chat_for_comparison() and hash_serializer module
   docstring for details.
   """
-  if (
-      query_record_1.output_format is not None and
-      query_record_1.output_format.type == types.OutputFormatType.PYDANTIC
-  ):
-    pydantic_value_1 = query_record_1.output_format.value
-    if pydantic_value_1.class_value is not None:
-      query_record_1 = copy.deepcopy(query_record_1)
-      query_record_1.output_format.value = types.ResponseFormatPydanticValue(
-          class_name=pydantic_value_1.class_name, class_json_schema_value=(
-              pydantic_value_1.class_value.model_json_schema()
-          )
-      )
-      del query_record_1.output_format.value.class_value
+  def _normalize_output_format(qr: types.QueryRecord) -> types.QueryRecord:
+    """Strip live pydantic_class, keep only name + json schema.
 
-  if (
-      query_record_2.output_format is not None and
-      query_record_2.output_format.type == types.OutputFormatType.PYDANTIC
-  ):
-    pydantic_value_2 = query_record_2.output_format.value
-    if pydantic_value_2.class_value is not None:
-      query_record_2 = copy.deepcopy(query_record_2)
-      query_record_2.output_format.value = types.ResponseFormatPydanticValue(
-          class_name=pydantic_value_2.class_name, class_json_schema_value=(
-              pydantic_value_2.class_value.model_json_schema()
-          )
-      )
-      del query_record_2.output_format.value.class_value
+    Mirrors hash_serializer._hash_output_format: the live class is
+    transport metadata — identity comes from class_name and
+    class_json_schema which survive serialization.
+    """
+    if qr.output_format is None:
+      return qr
+    if qr.output_format.pydantic_class is None:
+      return qr
+    qr = copy.copy(qr)
+    qr.output_format = types.OutputFormat(
+        type=qr.output_format.type,
+        pydantic_class=None,
+        pydantic_class_name=qr.output_format.pydantic_class.__name__,
+        pydantic_class_json_schema=(
+            qr.output_format.pydantic_class.model_json_schema()
+        ),
+    )
+    return qr
+
+  query_record_1 = _normalize_output_format(query_record_1)
+  query_record_2 = _normalize_output_format(query_record_2)
 
   # Normalize connection_options so equality mirrors the hash: only
   # `endpoint` is part of the query identity (see
