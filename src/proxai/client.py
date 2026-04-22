@@ -1640,6 +1640,19 @@ class ProxAIClient(state_controller.StateControlled):
         output_format
     )
 
+    if provider_model is None:
+      try:
+        provider_model = self.get_default_provider_model(
+            output_format_type=output_format.type
+        )
+      except ValueError as e:
+        raise ValueError(
+            'provider_model is not set and no default model could be '
+            'resolved. Please pass provider_model explicitly or set a '
+            'default via px.set_model(...).\n'
+            f'Underlying error: {e}'
+        )
+
     provider_models = [
         self.model_configs_instance.get_provider_model(provider_model)
     ]
