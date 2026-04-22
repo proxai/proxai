@@ -114,6 +114,12 @@ class TestChatMutation:
     assert chat[0].content[0].text == "Hello"
     assert chat[0].content[1].text == "World"
 
+  def test_append_list_of_dicts_creates_assistant_message(self):
+    chat = Chat()
+    chat.append([{"type": "text", "text": "Hello"}])
+    assert chat[0].role.value == "assistant"
+    assert chat[0].content[0].text == "Hello"
+
   def test_append_list_with_invalid_item_raises_error(self):
     chat = Chat()
     with pytest.raises(TypeError):
