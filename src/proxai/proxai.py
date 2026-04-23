@@ -1,5 +1,9 @@
 from typing import Dict, Any, List
+
+import pydantic
+
 import proxai.chat.chat_session as chat_session
+import proxai.chat.message as message_module
 import proxai.client as client
 import proxai.types as types
 
@@ -13,9 +17,12 @@ DebugOptions = types.DebugOptions
 FeatureMappingStrategy = types.FeatureMappingStrategy
 
 Chat = chat_session.Chat
+Message = message_module.Message
 ProviderModelType = types.ProviderModelType
 ParameterType = types.ParameterType
+ThinkingType = types.ThinkingType
 Tools = types.Tools
+OutputFormat = types.OutputFormat
 OutputFormatType = types.OutputFormatType
 ConnectionOptions = types.ConnectionOptions
 MessageRoleType = types.MessageRoleType
@@ -96,7 +103,7 @@ def generate(
     system_prompt: str | None = None,
     provider_model: types.ProviderModelParam | None = None,
     parameters: types.ParameterType | None = None,
-    tools: List[types.ToolType] | None = None,
+    tools: List[types.Tools] | None = None,
     output_format: types.OutputFormatParam | None = None,
     connection_options: types.ConnectionOptions | None = None,
 ) -> types.CallRecord:
@@ -118,7 +125,7 @@ def generate_text(
     system_prompt: str | None = None,
     provider_model: types.ProviderModelParam | None = None,
     parameters: types.ParameterType | None = None,
-    tools: List[types.ToolType] | None = None,
+    tools: List[types.Tools] | None = None,
     connection_options: types.ConnectionOptions | None = None,
 ) -> str:
   """Generates text using the configured AI model.
@@ -167,7 +174,7 @@ def generate_json(
     system_prompt: str | None = None,
     provider_model: types.ProviderModelParam | None = None,
     parameters: types.ParameterType | None = None,
-    tools: List[types.ToolType] | None = None,
+    tools: List[types.Tools] | None = None,
     connection_options: types.ConnectionOptions | None = None,
 ) -> dict:
   """Generates a JSON response using the configured AI model.
@@ -215,10 +222,10 @@ def generate_pydantic(
     system_prompt: str | None = None,
     provider_model: types.ProviderModelParam | None = None,
     parameters: types.ParameterType | None = None,
-    tools: List[types.ToolType] | None = None,
+    tools: List[types.Tools] | None = None,
     output_format: types.OutputFormatParam | None = None,
     connection_options: types.ConnectionOptions | None = None,
-) -> 'pydantic.BaseModel':
+) -> pydantic.BaseModel:
   """Generates a structured pydantic response using the configured AI model.
 
   Thin alias for generate() that resolves the default model and returns
@@ -271,7 +278,7 @@ def generate_image(
     system_prompt: str | None = None,
     provider_model: types.ProviderModelParam | None = None,
     parameters: types.ParameterType | None = None,
-    tools: List[types.ToolType] | None = None,
+    tools: List[types.Tools] | None = None,
     connection_options: types.ConnectionOptions | None = None,
 ):
   """Generates an image using the configured AI model.
@@ -296,7 +303,7 @@ def generate_audio(
     system_prompt: str | None = None,
     provider_model: types.ProviderModelParam | None = None,
     parameters: types.ParameterType | None = None,
-    tools: List[types.ToolType] | None = None,
+    tools: List[types.Tools] | None = None,
     connection_options: types.ConnectionOptions | None = None,
 ):
   """Generates audio using the configured AI model.
@@ -321,7 +328,7 @@ def generate_video(
     system_prompt: str | None = None,
     provider_model: types.ProviderModelParam | None = None,
     parameters: types.ParameterType | None = None,
-    tools: List[types.ToolType] | None = None,
+    tools: List[types.Tools] | None = None,
     connection_options: types.ConnectionOptions | None = None,
 ):
   """Generates video using the configured AI model.
