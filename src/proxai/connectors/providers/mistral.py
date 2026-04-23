@@ -285,7 +285,7 @@ class MistralConnector(provider_connector.ProviderConnector):
 
     if response.choices is not None and len(response.choices) > 1:
       result_record.choices = []
-      for choice in response.choices:
+      for choice in response.choices[1:]:
         result_record.choices.append(
             types.ChoiceType(
                 content=self._parse_message_content(choice.message.content)
@@ -324,7 +324,7 @@ class MistralConnector(provider_connector.ProviderConnector):
 
     if response.choices is not None and len(response.choices) > 1:
       result_record.choices = []
-      for choice in response.choices:
+      for choice in response.choices[1:]:
         result_record.choices.append(
             types.ChoiceType(
                 content=[

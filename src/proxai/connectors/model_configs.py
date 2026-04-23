@@ -212,18 +212,18 @@ class ModelConfigs(state_controller.StateControlled):
               f'provider_model.model is {config.provider_model.model!r}'
           )
         if config.pricing is not None:
-          if (config.pricing.input_token_cost is not None and
-              config.pricing.input_token_cost < 0):
+          if (config.pricing.input_token_cost_nano_usd_per_token is not None
+              and config.pricing.input_token_cost_nano_usd_per_token < 0):
             raise ValueError(
-                f'input_token_cost is negative '
-                f'({config.pricing.input_token_cost}) at '
+                f'input_token_cost_nano_usd_per_token is negative '
+                f'({config.pricing.input_token_cost_nano_usd_per_token}) at '
                 f'provider_model_configs[{provider!r}][{model!r}]'
             )
-          if (config.pricing.output_token_cost is not None and
-              config.pricing.output_token_cost < 0):
+          if (config.pricing.output_token_cost_nano_usd_per_token is not None
+              and config.pricing.output_token_cost_nano_usd_per_token < 0):
             raise ValueError(
-                f'output_token_cost is negative '
-                f'({config.pricing.output_token_cost}) at '
+                f'output_token_cost_nano_usd_per_token is negative '
+                f'({config.pricing.output_token_cost_nano_usd_per_token}) at '
                 f'provider_model_configs[{provider!r}][{model!r}]'
             )
 

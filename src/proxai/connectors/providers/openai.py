@@ -405,9 +405,9 @@ class OpenAIConnector(provider_connector.ProviderConnector):
             text=response.choices[0].message.content,
         )
     ]
-    if response.choices is not None and len(response.choices) > 0:
+    if response.choices is not None and len(response.choices) > 1:
       result_record.choices = []
-      for choice in response.choices:
+      for choice in response.choices[1:]:
         result_record.choices.append(
             types.ChoiceType(
                 content=[
@@ -477,9 +477,9 @@ class OpenAIConnector(provider_connector.ProviderConnector):
             ),
         )
     ]
-    if response.choices is not None and len(response.choices) > 0:
+    if response.choices is not None and len(response.choices) > 1:
       result_record.choices = []
-      for choice in response.choices:
+      for choice in response.choices[1:]:
         pydantic_content = message_content.PydanticContent(
             class_name=query_record.output_format.pydantic_class.__name__,
             class_value=query_record.output_format.pydantic_class,

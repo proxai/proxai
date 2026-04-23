@@ -450,7 +450,7 @@ class TestGetTokenCountEstimate:
 
 class TestGetEstimatedCost:
 
-  def test_computes_floor_of_sum(self):
+  def test_computes_sum_of_products(self):
     c = _build_connector(_CaptureTestConnector)
     call_record = types.CallRecord(
         result=types.ResultRecord(
@@ -459,11 +459,12 @@ class TestGetEstimatedCost:
     )
     pmc = _make_provider_model_config(
         pricing=types.ProviderModelPricingType(
-            input_token_cost=0.01, output_token_cost=0.02
+            input_token_cost_nano_usd_per_token=10,
+            output_token_cost_nano_usd_per_token=20,
         )
     )
-    # 100*0.01 + 200*0.02 = 5.0 → math.floor = 5.
-    assert c.get_estimated_cost(call_record, pmc) == 5
+    # 100*10 + 200*20 = 1000 + 4000 = 5000 nano-USD.
+    assert c.get_estimated_cost(call_record, pmc) == 5000
 
   def test_none_values_treated_as_zero(self):
     c = _build_connector(_CaptureTestConnector)
@@ -474,11 +475,35 @@ class TestGetEstimatedCost:
     )
     pmc = _make_provider_model_config(
         pricing=types.ProviderModelPricingType(
-            input_token_cost=None, output_token_cost=0.02
+            input_token_cost_nano_usd_per_token=None,
+            output_token_cost_nano_usd_per_token=20,
         )
     )
-    # input 0 * anything = 0; output 100 * 0.02 = 2. Sum=2.
-    assert c.get_estimated_cost(call_record, pmc) == 2
+    # input 0 * anything = 0; output 100 * 20 = 2000. Sum=2000.
+    assert c.get_estimated_cost(call_record, pmc) == 2000
+
+  def test_nano_usd_unit_contract_realistic_price(self):
+    """Lock the nano-USD unit: Claude Haiku @ $0.80 / 1M tokens input.
+
+    Per ProviderModelPricingType, $0.80 / 1M tokens = 800 nano-USD per
+    token. One million input tokens should therefore cost exactly
+    800_000_000 nano-USD = $0.80.
+    """
+    c = _build_connector(_CaptureTestConnector)
+    call_record = types.CallRecord(
+        result=types.ResultRecord(
+            usage=types.UsageType(
+                input_tokens=1_000_000, output_tokens=0,
+            ),
+        ),
+    )
+    pmc = _make_provider_model_config(
+        pricing=types.ProviderModelPricingType(
+            input_token_cost_nano_usd_per_token=800,
+            output_token_cost_nano_usd_per_token=4000,
+        )
+    )
+    assert c.get_estimated_cost(call_record, pmc) == 800_000_000
 
 
 # =============================================================================
@@ -759,6 +784,9 @@ class TestGetCachedResult:
     assert result.output_text == 'cached'
     # Timestamp refreshed to recent.
     assert result.timestamp.end_utc_date > past_time
+    # cache_response_time records the cache lookup duration.
+    assert result.timestamp.cache_response_time is not None
+    assert result.timestamp.cache_response_time >= datetime.timedelta(0)
 
   def test_cache_miss_returns_fail_reason(self, tmp_path):
     cache_mgr = _make_query_cache_manager(tmp_path)
@@ -998,7 +1026,8 @@ def _mock_provider_model_config():
           ),
       ),
       pricing=types.ProviderModelPricingType(
-          input_token_cost=0.01, output_token_cost=0.02,
+          input_token_cost_nano_usd_per_token=10,
+          output_token_cost_nano_usd_per_token=20,
       ),
   )
 
@@ -1134,6 +1163,30 @@ class TestGenerate:
     assert result.connection.result_source == types.ResultSource.CACHE
     assert result.result.output_text == 'FROM_CACHE'
 
+  def test_cache_miss_preserves_fail_reason_on_returned_record(
+      self, tmp_path,
+  ):
+    """cache_look_fail_reason must survive onto the returned CallRecord."""
+    cache_mgr = _make_query_cache_manager(tmp_path)
+    c = _build_connector(
+        mock_provider.MockProviderModelConnector,
+        query_cache_manager=cache_mgr,
+    )
+    # Cache has no entry for this prompt → CACHE_NOT_FOUND, then the
+    # provider runs. The returned record's cache_look_fail_reason must
+    # still report CACHE_NOT_FOUND so dashboards can show why the
+    # provider was hit.
+    result = c.generate(
+        provider_model=_mock_provider_model(),
+        provider_model_config=_mock_provider_model_config(),
+        prompt='never-cached',
+    )
+    assert result.connection.result_source == types.ResultSource.PROVIDER
+    assert (
+        result.connection.cache_look_fail_reason
+        == types.CacheLookFailReason.CACHE_NOT_FOUND
+    )
+
   # Failure path (2) ----------------------------------------------------------
 
   def test_failure_with_suppress_false_raises(self):
@@ -1208,3 +1261,154 @@ class TestGetTagSupportLevel:
         model_feature_config=_all_supported_features(),
     )
     assert result == _BE
+
+
+# =============================================================================
+# Multi-choice response shape (n > 1)
+# =============================================================================
+# Contract (see call_record_analysis §2.9):
+#   content  = [first provider choice]          (always when the call succeeded)
+#   choices  = [ChoiceType for each remaining]  (length n-1) when n > 1
+#            = None                             when n == 1
+# These tests pin the contract per-connector so a regression in one
+# provider is caught immediately.
+
+
+class _FakeMessage:
+
+  def __init__(self, content):
+    self.content = content
+    self.parsed = None
+
+
+class _FakeChoice:
+
+  def __init__(self, content):
+    self.message = _FakeMessage(content)
+
+
+class _FakeResponse:
+  """Minimal stand-in for an SDK chat-completions response."""
+
+  def __init__(self, choice_texts):
+    self.choices = [_FakeChoice(t) for t in choice_texts]
+
+
+def _install_fake_chat_completions(connector, choice_texts):
+  """Replace connector.api.chat.completions.create with a stub."""
+  response = _FakeResponse(choice_texts)
+
+  def _create(*args, **kwargs):
+    return response
+
+  connector.api.chat.completions.create = _create
+
+
+def _install_fake_mistral_chat(connector, choice_texts):
+  """Replace connector.api.chat.complete with a stub (Mistral's surface)."""
+  response = _FakeResponse(choice_texts)
+
+  def _complete(*args, **kwargs):
+    return response
+
+  connector.api.chat.complete = _complete
+
+
+class TestMultiChoiceShape:
+
+  def _provider_model(self, provider, model):
+    return types.ProviderModelType(
+        provider=provider, model=model, provider_model_identifier=model,
+    )
+
+  def _qr(self, provider, model, n=3):
+    return types.QueryRecord(
+        prompt='hi',
+        provider_model=self._provider_model(provider, model),
+        parameters=types.ParameterType(n=n),
+        output_format=types.OutputFormat(type=types.OutputFormatType.TEXT),
+    )
+
+  # ---- OpenAI -------------------------------------------------------------
+  def test_openai_n3_content_is_first_choices_is_remainder(self):
+    from proxai.connectors.providers import openai as openai_connector
+    c = _build_connector(openai_connector.OpenAIConnector)
+    _install_fake_chat_completions(c, ['A', 'B', 'C'])
+
+    result = c._chat_completions_create_executor(
+        query_record=self._qr('openai', 'gpt-4o', n=3),
+    )
+    assert result.result_record.error is None
+    assert result.result_record.content[0].text == 'A'
+    assert len(result.result_record.choices) == 2
+    assert result.result_record.choices[0].content[0].text == 'B'
+    assert result.result_record.choices[1].content[0].text == 'C'
+
+  def test_openai_n1_leaves_choices_none(self):
+    from proxai.connectors.providers import openai as openai_connector
+    c = _build_connector(openai_connector.OpenAIConnector)
+    _install_fake_chat_completions(c, ['only'])
+
+    result = c._chat_completions_create_executor(
+        query_record=self._qr('openai', 'gpt-4o', n=1),
+    )
+    assert result.result_record.content[0].text == 'only'
+    assert result.result_record.choices is None
+
+  # ---- Mistral ------------------------------------------------------------
+  def test_mistral_n3_content_is_first_choices_is_remainder(self):
+    from proxai.connectors.providers import mistral as mistral_connector
+    c = _build_connector(mistral_connector.MistralConnector)
+    _install_fake_mistral_chat(c, ['A', 'B', 'C'])
+
+    result = c._chat_complete_executor(
+        query_record=self._qr('mistral', 'mistral-large-latest', n=3),
+    )
+    assert result.result_record.error is None
+    assert result.result_record.content[0].text == 'A'
+    assert len(result.result_record.choices) == 2
+    assert result.result_record.choices[0].content[0].text == 'B'
+    assert result.result_record.choices[1].content[0].text == 'C'
+
+  def test_mistral_n1_leaves_choices_none(self):
+    from proxai.connectors.providers import mistral as mistral_connector
+    c = _build_connector(mistral_connector.MistralConnector)
+    _install_fake_mistral_chat(c, ['only'])
+
+    result = c._chat_complete_executor(
+        query_record=self._qr('mistral', 'mistral-large-latest', n=1),
+    )
+    assert result.result_record.content[0].text == 'only'
+    assert result.result_record.choices is None
+
+  # ---- Databricks ---------------------------------------------------------
+  def test_databricks_n3_content_is_first_choices_is_remainder(self):
+    from proxai.connectors.providers import databricks as databricks_connector
+    c = _build_connector(databricks_connector.DatabricksConnector)
+    _install_fake_chat_completions(c, ['A', 'B', 'C'])
+
+    result = c._chat_completions_create_executor(
+        query_record=self._qr(
+            'databricks', 'databricks-dbrx-instruct', n=3,
+        ),
+    )
+    assert result.result_record.error is None
+    # databricks._parse_message_content returns list[MessageContent]; TEXT
+    # for plain strings.
+    assert result.result_record.content[0].text == 'A'
+    assert len(result.result_record.choices) == 2
+    assert result.result_record.choices[0].content[0].text == 'B'
+    assert result.result_record.choices[1].content[0].text == 'C'
+
+  def test_databricks_n1_leaves_choices_none(self):
+    from proxai.connectors.providers import databricks as databricks_connector
+    c = _build_connector(databricks_connector.DatabricksConnector)
+    _install_fake_chat_completions(c, ['only'])
+
+    result = c._chat_completions_create_executor(
+        query_record=self._qr(
+            'databricks', 'databricks-dbrx-instruct', n=1,
+        ),
+    )
+    assert result.result_record.content[0].text == 'only'
+    assert result.result_record.choices is None

@@ -154,22 +154,72 @@ class ResultAdapter:
 
     return content_item
 
+  _MEDIA_PLACEHOLDER_TYPES = {
+      ContentType.IMAGE: 'image',
+      ContentType.AUDIO: 'audio',
+      ContentType.VIDEO: 'video',
+      ContentType.DOCUMENT: 'document',
+  }
+
+  @staticmethod
+  def _media_ref(content_item: MessageContent) -> str:
+    """Short human-readable reference for inline media placeholders.
+
+    Prefers explicit identifiers (source URL, local path) over raw bytes.
+    """
+    if content_item.source is not None:
+      return content_item.source
+    if content_item.path is not None:
+      return content_item.path
+    return '<data>'
+
   def _adapt_output_values(
       self,
       result_obj: types.ResultRecord,
   ):
-    for content_item in reversed(result_obj.content):
+    """Derive output_* shortcuts from result_obj.content.
+
+    Forward iteration, no break:
+      - TEXT           : concatenated into output_text (no separator).
+      - IMAGE/AUDIO/VIDEO/DOCUMENT: inline placeholder text like
+                         "[image: <ref>]" appended to output_text; the
+                         matching typed output_image / output_audio /
+                         output_video field is set to the last block
+                         of that type (DOCUMENT has no typed output).
+      - JSON           : output_json = last JSON block's json.
+      - PYDANTIC_INSTANCE: output_pydantic = last block's live instance.
+      - THINKING / TOOL: skipped (not surfaced in output_*).
+
+    output_text stays None if no TEXT/media block is present; it starts
+    as "" the first time one is seen, so an empty-text response still
+    reports output_text="" rather than None.
+    """
+    text_seen = False
+    for content_item in result_obj.content:
       if content_item.type == ContentType.TEXT:
-        result_obj.output_text = content_item.text
+        if not text_seen:
+          result_obj.output_text = ''
+          text_seen = True
+        if content_item.text is not None:
+          result_obj.output_text += content_item.text
+      elif content_item.type in self._MEDIA_PLACEHOLDER_TYPES:
+        label = self._MEDIA_PLACEHOLDER_TYPES[content_item.type]
+        if not text_seen:
+          result_obj.output_text = ''
+          text_seen = True
+        result_obj.output_text += (
+            f'[{label}: {self._media_ref(content_item)}]'
+        )
+        if content_item.type == ContentType.IMAGE:
+          result_obj.output_image = content_item
+        elif content_item.type == ContentType.AUDIO:
+          result_obj.output_audio = content_item
+        elif content_item.type == ContentType.VIDEO:
+          result_obj.output_video = content_item
       elif content_item.type == ContentType.JSON:
         result_obj.output_json = content_item.json
       elif content_item.type == ContentType.PYDANTIC_INSTANCE:
         result_obj.output_pydantic = (
             content_item.pydantic_content.instance_value)
-      elif content_item.type == ContentType.IMAGE:
-        result_obj.output_image = content_item
-      elif content_item.type == ContentType.AUDIO:
-        result_obj.output_audio = content_item
-      elif content_item.type == ContentType.VIDEO:
-        result_obj.output_video = content_item
+      # THINKING and TOOL contribute nothing to output_*.
 

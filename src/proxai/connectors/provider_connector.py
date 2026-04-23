@@ -9,6 +9,7 @@ import functools
 import json
 import math
 import re
+import time
 import traceback
 from collections.abc import Callable
 from functools import reduce
@@ -344,7 +345,14 @@ class ProviderConnector(state_controller.StateControlled):
       call_record: types.CallRecord,
       provider_model_config: types.ProviderModelConfig,
   ) -> int:
-    """Calculate the estimated cost for a call record."""
+    """Calculate the estimated cost for a call record in nano-USD.
+
+    See `ProviderModelPricingType` for the unit contract: both pricing
+    scalars are nano-USD per token, so the product is nano-USD. Missing
+    fields (None) are treated as zero. The result is floored to an
+    integer to avoid floating-point drift through the cache and
+    telemetry.
+    """
     input_token_count = call_record.result.usage.input_tokens
     if input_token_count is None:
       input_token_count = 0
@@ -353,10 +361,14 @@ class ProviderConnector(state_controller.StateControlled):
       output_token_count = 0
     model_pricing_config = provider_model_config.pricing
 
-    query_token_cost = model_pricing_config.input_token_cost
+    query_token_cost = (
+        model_pricing_config.input_token_cost_nano_usd_per_token
+    )
     if query_token_cost is None:
       query_token_cost = 0
-    response_token_cost = model_pricing_config.output_token_cost
+    response_token_cost = (
+        model_pricing_config.output_token_cost_nano_usd_per_token
+    )
     if response_token_cost is None:
       response_token_cost = 0
 
@@ -658,7 +670,9 @@ class ProviderConnector(state_controller.StateControlled):
         connection_options.override_cache_value or not self.query_cache_manager
     ):
       return None
+    lookup_start = time.perf_counter()
     cache_look_result = self.query_cache_manager.look(query_record)
+    lookup_elapsed = time.perf_counter() - lookup_start
     if not cache_look_result.result:
       return cache_look_result.cache_look_fail_reason
 
@@ -670,6 +684,9 @@ class ProviderConnector(state_controller.StateControlled):
     result.timestamp.local_time_offset_minute = (
         datetime.datetime.now().astimezone().utcoffset().total_seconds() // 60
     ) * -1
+    result.timestamp.cache_response_time = datetime.timedelta(
+        seconds=lookup_elapsed
+    )
     return result
 
   def _update_cache(
@@ -905,7 +922,6 @@ class ProviderConnector(state_controller.StateControlled):
 
     connection_metadata.endpoint_used = chosen_endpoint
     connection_metadata.result_source = types.ResultSource.PROVIDER
-    connection_metadata.cache_look_fail_reason = None
     debug_info = None
     if (
         executor_result.raw_provider_response is not None and
