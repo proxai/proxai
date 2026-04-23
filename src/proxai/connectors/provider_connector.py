@@ -831,7 +831,7 @@ class ProviderConnector(state_controller.StateControlled):
       messages: chat_session.Chat | None = None,
       system_prompt: str | None = None,
       parameters: types.ParameterType | None = None,
-      tools: List[types.ToolType] | None = None,
+      tools: List[types.Tools] | None = None,
       output_format: types.OutputFormatType | None = None,
       connection_options: types.ConnectionOptions | None = None,
       connection_metadata: types.ConnectionMetadata | None = None,

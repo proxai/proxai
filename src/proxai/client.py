@@ -1589,7 +1589,7 @@ class ProxAIClient(state_controller.StateControlled):
       system_prompt: str | None = None,
       provider_model: types.ProviderModelParam | None = None,
       parameters: types.ParameterType | None = None,
-      tools: List[types.ToolType] | None = None,
+      tools: List[types.Tools] | None = None,
       output_format: types.OutputFormatParam | None = None,
       connection_options: types.ConnectionOptions | None = None,
   ) -> types.CallRecord:
@@ -1720,7 +1720,7 @@ class ProxAIClient(state_controller.StateControlled):
       system_prompt: str | None = None,
       provider_model: types.ProviderModelParam | None = None,
       parameters: types.ParameterType | None = None,
-      tools: List[types.ToolType] | None = None,
+      tools: List[types.Tools] | None = None,
       connection_options: types.ConnectionOptions | None = None,
   ) -> str:
     """Generates text using the configured AI model.
@@ -1781,7 +1781,7 @@ class ProxAIClient(state_controller.StateControlled):
       system_prompt: str | None = None,
       provider_model: types.ProviderModelParam | None = None,
       parameters: types.ParameterType | None = None,
-      tools: List[types.ToolType] | None = None,
+      tools: List[types.Tools] | None = None,
       connection_options: types.ConnectionOptions | None = None,
   ) -> dict:
     """Generates a JSON response using the configured AI model.
@@ -1842,7 +1842,7 @@ class ProxAIClient(state_controller.StateControlled):
       system_prompt: str | None = None,
       provider_model: types.ProviderModelParam | None = None,
       parameters: types.ParameterType | None = None,
-      tools: List[types.ToolType] | None = None,
+      tools: List[types.Tools] | None = None,
       output_format: types.OutputFormatParam | None = None,
       connection_options: types.ConnectionOptions | None = None,
   ) -> pydantic.BaseModel:
@@ -1908,7 +1908,7 @@ class ProxAIClient(state_controller.StateControlled):
       system_prompt: str | None = None,
       provider_model: types.ProviderModelParam | None = None,
       parameters: types.ParameterType | None = None,
-      tools: List[types.ToolType] | None = None,
+      tools: List[types.Tools] | None = None,
       connection_options: types.ConnectionOptions | None = None,
   ) -> types.MessageContent | str:
     """Generates an image using the configured AI model.
@@ -1960,7 +1960,7 @@ class ProxAIClient(state_controller.StateControlled):
       system_prompt: str | None = None,
       provider_model: types.ProviderModelParam | None = None,
       parameters: types.ParameterType | None = None,
-      tools: List[types.ToolType] | None = None,
+      tools: List[types.Tools] | None = None,
       connection_options: types.ConnectionOptions | None = None,
   ) -> types.MessageContent | str:
     """Generates audio using the configured AI model.
@@ -2012,7 +2012,7 @@ class ProxAIClient(state_controller.StateControlled):
       system_prompt: str | None = None,
       provider_model: types.ProviderModelParam | None = None,
       parameters: types.ParameterType | None = None,
-      tools: List[types.ToolType] | None = None,
+      tools: List[types.Tools] | None = None,
       connection_options: types.ConnectionOptions | None = None,
   ) -> types.MessageContent | str:
     """Generates video using the configured AI model.

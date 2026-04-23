@@ -547,9 +547,15 @@ class Tools(enum.Enum):
 
 @dataclasses.dataclass
 class ConnectionOptions:
-  """Connection options for a query to a provider."""
+  """Connection options for a query to a provider.
 
-  fallback_models: list[ProviderModelType] | None = None
+  `fallback_models` accepts either a resolved `ProviderModelType` or
+  the shorthand `(provider, model)` tuple form for each entry; the
+  client resolves tuples via `ModelConfigs.get_provider_model()` before
+  dispatch.
+  """
+
+  fallback_models: list[ProviderModelIdentifierType] | None = None
   suppress_provider_errors: bool | None = None
   endpoint: str | None = None
   skip_cache: bool | None = None
