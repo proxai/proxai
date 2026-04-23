@@ -204,7 +204,7 @@ the library's source).
 Location: `docs/user_agents/` (public-facing API/usage docs) and
 `docs/developer_agents/` (library-internals docs for contributors).
 Structure and content are defined in
-[`outline_proposal.md`](./outline_proposal.md).
+[`documentation_outline.md`](./documentation_outline.md).
 
 ### Layer B — Skills bundled into the main `proxai` wheel
 
@@ -414,7 +414,7 @@ remains valid.
 
 Adding Skills does not reshuffle the docs content. The content
 inventory planned in
-[`outline_proposal.md`](./outline_proposal.md) stays intact. A few
+[`documentation_outline.md`](./documentation_outline.md) stays intact. A few
 details shift:
 
 1. **Recipes serve double duty.**
@@ -463,7 +463,7 @@ details shift:
        │   └── skills_authoring.md    (new)
        ├── llms.txt                   (Layer C — curated index)
        ├── llms-full.txt              (Layer C — CI-generated)
-       ├── outline_proposal.md
+       ├── documentation_outline.md
        └── skill_analyses.md
    ```
 

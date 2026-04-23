@@ -50,7 +50,7 @@ proxai/
 │   ├── README.md                        (top-level router)
 │   ├── llms.txt                         (Layer C — curated index)
 │   ├── llms-full.txt                    (Layer C — CI-generated)
-│   ├── outline_proposal.md              (this file)
+│   ├── documentation_outline.md              (this file)
 │   ├── skill_analyses.md                (analysis + rationale)
 │   │
 │   ├── user_agents/                     (Layer A — for library users)

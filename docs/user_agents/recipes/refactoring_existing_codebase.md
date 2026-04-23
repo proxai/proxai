@@ -1,3 +1,3 @@
 # Refactoring an Existing Codebase to ProxAI
 
-_Placeholder. Scope: see [`outline_proposal.md`](../../outline_proposal.md) §2.4._
+_Placeholder. Scope: see [`documentation_outline.md`](../../documentation_outline.md) §2.4._
