@@ -564,7 +564,7 @@ These are smaller decisions. A single recommended option is enough.
 Only the **returned** `CallRecord` carries the raw object — the one
 the caller actually receives from `client.generate()`. Attempts that
 failed and were internally logged (see
-`call_record_analysis.md §2.8` for the fallback semantics) have their
+`call_record_analysis.md §2.7` for the fallback semantics) have their
 own `debug.raw_provider_response = None`: either there was no raw
 object (the call failed) or it belongs to a previous attempt the
 caller never sees. This matches the existing "one record out" contract

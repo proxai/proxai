@@ -509,25 +509,21 @@ can find. Only if that also fails does it raise the "no working
 models" error (§4). Translation: misconfiguring your env keys is
 detected on your first `generate()` call, not at construction time.
 
-### 5.6 Fallback chains copy-then-force suppression
+### 5.6 Fallback chains force-enable error suppression
 
-When you set `connection_options.fallback_models`, the client
-`copy.copy`'s your `ConnectionOptions` first (so your caller-side
-instance is untouched), then on that internal copy **forces**
-`suppress_provider_errors=True` and clears `fallback_models=None`
-before dispatching to the connector. Every attempt in the fallback
-loop reads from that same internal copy, so every provider call has
-error suppression active and cannot raise out mid-loop.
+When `connection_options.fallback_models` is set, the fallback loop
+internally enables error suppression for every attempt so a single
+provider failure doesn't abort the chain. Your `ConnectionOptions`
+instance is not mutated — the client operates on its own copy.
 
-That is why §3.1 forbids you from also setting
-`suppress_provider_errors=True` on the same `ConnectionOptions`: the
-fallback loop already owns suppression and a second source of truth
-would be ambiguous.
+That is why §3.1 forbids setting `suppress_provider_errors=True` and
+`fallback_models` together — the loop already owns suppression and a
+second source of truth would be ambiguous.
 
-From your perspective: you always get one CallRecord back from a call
-that uses fallbacks. If every model failed, it has `status=FAILED`; if
-any succeeded, it has `status=SUCCESS` and
-`connection.failed_fallback_models` tells you what had to fail first.
+You always get exactly one `CallRecord` back from a fallback call. If
+every model failed, `status=FAILED`; if any succeeded, `status=SUCCESS`
+and `connection.failed_fallback_models` lists the models that failed
+before the one that returned.
 
 ### 5.7 Health checks do not touch the default client's state
 

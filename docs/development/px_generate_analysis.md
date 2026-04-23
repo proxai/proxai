@@ -351,7 +351,7 @@ rec.result.usage.input_tokens    # → 12
 rec.result.usage.output_tokens   # → 8
 rec.result.usage.total_tokens    # → 20
 rec.result.usage.estimated_cost  # → 1_500_000  (nano-USD: $0.0015)
-#                                   see call_record_analysis.md §2.12
+#                                   see call_record_analysis.md §2.11
 ```
 
 ### 4.4 Timing
@@ -633,7 +633,7 @@ log_entry = {
     "model": f"{rec.query.provider_model.provider}/{rec.query.provider_model.model}",
     "status": rec.result.status.value,
     "tokens": rec.result.usage.total_tokens,
-    # estimated_cost is integer nano-USD (see call_record_analysis.md §2.12).
+    # estimated_cost is integer nano-USD (see call_record_analysis.md §2.11).
     "cost_usd": rec.result.usage.estimated_cost / 1_000_000_000,
     "latency_s": rec.result.timestamp.response_time.total_seconds(),
     "cached": rec.connection.result_source.value == "CACHE",

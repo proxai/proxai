@@ -592,7 +592,7 @@ video_models = px.models.list_models(output_format="video")
 ```python
 cfg = px.models.get_model_config("openai", "gpt-4o")
 
-# Pricing (nano-USD per token — see call_record_analysis.md §2.12)
+# Pricing (nano-USD per token — see call_record_analysis.md §2.11)
 print(cfg.pricing.input_token_cost_nano_usd_per_token)
 
 # Feature flags
