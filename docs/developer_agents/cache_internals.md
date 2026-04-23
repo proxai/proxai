@@ -1,3 +1,3 @@
 # Cache Internals
 
-_Placeholder. Scope: see [`outline_proposal.md`](../outline_proposal.md) §2.7. Source content to extract from `docs/development/query_cache.md`._
+_Placeholder. Scope: see [`documentation_outline.md`](../documentation_outline.md) §2.7. Source content to extract from `docs/development/query_cache.md`._

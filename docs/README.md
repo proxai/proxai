@@ -1,6 +1,6 @@
 # ProxAI Documentation
 
-_Placeholder. See [`outline_proposal.md`](./outline_proposal.md) for the docs restructure plan._
+_Placeholder. See [`documentation_outline.md`](./documentation_outline.md) for the docs restructure plan._
 
 ## For AI agents using ProxAI
 
