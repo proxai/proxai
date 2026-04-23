@@ -378,32 +378,21 @@ the client's `proxdash_options` (see `px_client_analysis.md §5.4`).
 | **remove** | Removes from named providers only. | Same, **plus** deletes the ProxDash record (and the S3 object) in parallel. ProxDash delete failure is silent. On success, `proxdash_file_id` and `proxdash_file_status` are cleared. |
 | **is_upload_supported / is_download_supported** | Unchanged — pure predicates. | Unchanged. |
 
-### 3.2 Why ProxDash changes the lifecycle story
+### 3.2 Provider file retention windows
 
-Provider File APIs are ephemeral:
+Provider-side `file_id`s are ephemeral and scoped to a single
+provider (a Gemini file-id is useless on Claude):
 
-- Gemini `files` — expire 48 hours after upload.
-- OpenAI `files` — `user_data` files last ~30 days by default.
-- Claude `beta.files` — retention policy varies; check Anthropic docs.
-- Mistral `files` — persistent until explicit delete.
+- Gemini — expires 48 hours after upload.
+- OpenAI — `user_data` files last ~30 days by default.
+- Claude — retention policy varies; check Anthropic docs.
+- Mistral — persistent until explicit delete.
 
-Provider `file_id`s are also scoped to one provider — a
-`gemini` file-id is useless to `claude`. A fallback chain that
-switches providers on failure would have to re-upload every
-attachment.
-
-ProxDash sits above the providers as the canonical copy:
-
-- Bytes live in ProxDash's S3 bucket (no provider-side expiry).
-- `proxdash_file_id` is persistent and carries the provider
-  metadata for every provider you've uploaded to.
-- `upload()` with `providers=[]` is legal when ProxDash is
-  connected — the file goes to ProxDash only. Later, when you
-  actually call `generate()` against some provider, the
-  auto-upload path (§4) resolves from ProxDash back into that
-  provider's File API.
-- `download()` without naming a provider can always succeed
-  because ProxDash is provider-agnostic.
+When ProxDash is connected, it stores the canonical copy in S3 with
+no provider-side expiry. `proxdash_file_id` survives across provider
+re-uploads and sessions. `upload(providers=[])` is legal (ProxDash
+only); `download()` without a named provider works because ProxDash
+is provider-agnostic.
 
 ### 3.3 ProxDash connection states
 
@@ -469,17 +458,6 @@ through to the provider's content converter, which will either use
 inline base64 (if it can) or surface whatever error the provider
 returns. The query is NOT aborted on upload failure — the
 provider-side converter gets the last word.
-
-### 4.3 TEST mode
-
-When the client's `run_type == TEST` (used by `tests/` and by any
-integration harness that wants to exercise the file-id code path
-without real uploads), the dispatch tables route to the `_MOCK`
-variants (`file_helpers.py:459-462`). `mock_upload` returns a
-`FileUploadMetadata` with `file_id=f'mock-file-{uuid.uuid4()[:8]}'`
-and `state=ACTIVE`. No network call happens, but the `file_id` is
-populated so the generate pipeline exercises the file-reference
-code path.
 
 ---
 

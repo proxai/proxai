@@ -73,7 +73,7 @@ CallRecord
 │   │   ├── input_tokens: int | None
 │   │   ├── output_tokens: int | None
 │   │   ├── total_tokens: int | None
-│   │   └── estimated_cost: int | None      # nano-USD (×1_000_000_000) — see §2.12
+│   │   └── estimated_cost: int | None      # nano-USD (×1_000_000_000) — see §2.11
 │   └── timestamp: TimeStampType | None
 │       ├── start_utc_date: datetime
 │       ├── end_utc_date: datetime
@@ -119,7 +119,7 @@ subclass), `instance_value` (the live pydantic instance), and
 
 `ToolContent` carries `name`, `kind` (`CALL` or `RESULT`), and
 `citations: list[Citation]` — where each `Citation` has `title` and `url`.
-This is the single source of truth for web-search citations (see §2.11).
+This is the single source of truth for web-search citations (see §2.10).
 
 ---
 
@@ -136,44 +136,30 @@ even for plain text responses (a single `ContentType.TEXT` block). The
 `content: str | ...` polymorphism only exists on input `Message.content`,
 not on `ResultRecord.content`.
 
-### 2.2 `output_*` fields are derived, not authoritative
+### 2.2 `output_*` fields are shortcuts; `content` is authoritative
 
-`ResultAdapter._adapt_output_values()` is invoked once per content
-container — once on `result` and once on each `ChoiceType` in
-`result.choices`. It iterates `content` **forward** with no early
-break, and applies the following per-block rules:
+`output_text` is a concatenated-text view of `content` — TEXT blocks
+are joined directly (no separator) and IMAGE / AUDIO / VIDEO /
+DOCUMENT blocks contribute an inline `"[image: <ref>]"` placeholder
+where `<ref>` is `source`, else `path`, else `"<data>"`. THINKING,
+JSON, PYDANTIC, and TOOL blocks are skipped. If nothing contributes,
+`output_text` is `None`.
 
-| Block type              | Effect on `output_text`                        | Effect on typed `output_*`                 |
-|-------------------------|------------------------------------------------|--------------------------------------------|
-| `TEXT`                  | `output_text += text` (no separator)           | —                                          |
-| `IMAGE`                 | `output_text += "[image: <ref>]"`              | `output_image = block` (last wins)         |
-| `AUDIO`                 | `output_text += "[audio: <ref>]"`              | `output_audio = block` (last wins)         |
-| `VIDEO`                 | `output_text += "[video: <ref>]"`              | `output_video = block` (last wins)         |
-| `DOCUMENT`              | `output_text += "[document: <ref>]"`           | — (no typed field on `ResultRecord`)       |
-| `JSON`                  | skip                                           | `output_json = block.json` (last wins)     |
-| `PYDANTIC_INSTANCE`     | skip                                           | `output_pydantic = instance` (last wins)   |
-| `THINKING`              | skip                                           | —                                          |
-| `TOOL`                  | skip                                           | —                                          |
+`output_image` / `output_audio` / `output_video` each hold the **last**
+block of that type in `content`. `output_json` holds the last JSON
+block's `.json` dict; `output_pydantic` holds the last pydantic
+instance. Same "last one wins" rule applies to each `ChoiceType` in
+`result.choices`.
 
-`<ref>` is `source` if set, else `path`, else `"<data>"` (for inline
-bytes). `output_text` stays `None` if nothing contributes to it; it
-becomes `""` the first time a TEXT or media block is seen.
+For the full ordered response — every block in place — read `content`
+directly.
 
-This shape supports mixed responses like
-`[TEXT("Here: "), IMAGE(src=…), TEXT(" — good?")]`, which surface as
-`output_text = "Here: [image: <src>] — good?"` with `output_image`
-pointing at the block.
+### 2.3 System prompt lives in one place per call
 
-Consumers who need the full, correct response structure must read
-`content`. Connector executors must NOT write `output_*` directly — the
-adapter owns those fields. See `src/proxai/connectors/result_adapter.py`.
-
-### 2.3 `QueryRecord.system_prompt` vs `Chat.system_prompt` — mutually exclusive
-
-`QueryRecord.system_prompt` is set when the caller used the prompt API.
-`Chat.system_prompt` (the property on the `Chat` object assigned to
-`QueryRecord.chat`) is set when the caller used the messages API. Using
-both at the same time is a validation error at the `generate()` boundary.
+On a returned `CallRecord`, the system prompt is either on
+`query.system_prompt` (prompt API path) or on `query.chat.system_prompt`
+(messages API path) — never both. `generate()` rejects passing both at
+the boundary.
 
 ### 2.4 Structured output returns typed `MessageContent` blocks
 
@@ -198,15 +184,7 @@ list, ordered before the final answer blocks. Some providers
 becomes its own block. Cache replay preserves them. `Chat.export(
 omit_thinking=True)` strips them for re-submission.
 
-### 2.6 Only pure JSON or Pydantic — no legacy "JSON schema" mode
-
-`OutputFormat` exposes `pydantic_class` + `pydantic_class_name` +
-`pydantic_class_json_schema` for pydantic mode, or nothing extra for plain
-JSON mode. There is no "JSON with user-supplied schema but no pydantic
-class" mode — callers who want schema-constrained output must define a
-`BaseModel`.
-
-### 2.7 Timestamps reflect the original provider call
+### 2.6 Timestamps reflect the original provider call
 
 On a cache hit, `timestamp.response_time` stays equal to the original
 provider latency that was cached, and `timestamp.start_utc_date` /
@@ -217,7 +195,8 @@ the wall-clock duration of the cache lookup itself (measured with
 records it stays `None`. Cost-attribution and latency metrics should
 branch on `connection.result_source`.
 
-### 2.8 Fallback chains: one record per attempt internally, one record returned to the caller
+### 2.7 Fallback chains: one record per attempt internally, one record returned to the caller
+
 
 At the connector layer, each attempt against a different model is an
 independent `CallRecord` with its own `query.provider_model`, and each
@@ -241,7 +220,7 @@ Practical consequence: telemetry backends (ProxDash, the cache) see every
 attempt, but application code calling `px.generate()` / `client.generate()`
 only ever receives a single `CallRecord` per call.
 
-### 2.9 `content` holds the first choice, `choices` holds the remaining n-1
+### 2.8 `content` holds the first choice, `choices` holds the remaining n-1
 
 When `parameters.n > 1`, the connector puts the first provider choice
 into `result.content` and the remaining `n-1` choices into
@@ -252,7 +231,7 @@ into `result.content` and the remaining `n-1` choices into
 contract is enforced per connector; see the `TestMultiChoiceShape`
 test class for the locked cases.
 
-### 2.10 `ChoiceType` mirrors `ResultRecord` for content shape
+### 2.9 `ChoiceType` mirrors `ResultRecord` for content shape
 
 Each `ChoiceType` has its own `content: list[MessageContent]` plus the
 same `output_text` / `output_image` / `output_audio` / `output_video` /
@@ -260,7 +239,7 @@ same `output_text` / `output_image` / `output_audio` / `output_video` /
 runs `_adapt_output_values()` against each choice independently, so any
 shortcut that works on `result` also works on `result.choices[i]`.
 
-### 2.11 Tool info lives exclusively in `MessageContent(TOOL)` blocks
+### 2.10 Tool info lives exclusively in `MessageContent(TOOL)` blocks
 
 The sole source of truth for tool calls and results (including
 web-search citations) is a `MessageContent(type=TOOL,
@@ -280,7 +259,7 @@ deserializer silently ignores a legacy `tool_usage` key in older
 cached records so historical data still loads; derive any flat URL
 list you need from the `TOOL` blocks themselves.
 
-### 2.12 `estimated_cost` is integer nano-USD
+### 2.11 `estimated_cost` is integer nano-USD
 
 Unit contract — **everything on the cost path is int**:
 
@@ -307,7 +286,7 @@ Nano-USD (rather than µ-USD) is precise enough for per-token accounting
 even on the cheapest models — at µ-USD scale a $0.30/1M token would
 round to zero per-token.
 
-### 2.13 Error payload lifecycle
+### 2.12 Error payload lifecycle
 
 `_safe_provider_query` captures the raw `Exception` instance into
 `result.error` and stores `traceback.format_exc()` in
@@ -323,14 +302,14 @@ So a persisted `CallRecord` with `status=FAILED` always has `error` as a
 `str`; an in-flight one may briefly hold the raw exception object.
 `timestamp` is still populated for failed calls.
 
-### 2.14 `endpoint_used` is set on the provider path only
+### 2.13 `endpoint_used` is set on the provider path only
 
 On cache hits, `ConnectionMetadata.endpoint_used` is left unset — the
 cached result does not carry forward the endpoint that originally
 produced it. Any downstream code that reads `endpoint_used` should
 tolerate `None` alongside `result_source == CACHE`.
 
-### 2.15 `cache_look_fail_reason` survives to the returned record
+### 2.14 `cache_look_fail_reason` survives to the returned record
 
 When `_get_cached_result` returns a `CacheLookFailReason` (cache miss),
 the connector stores it on `connection_metadata.cache_look_fail_reason`
@@ -506,7 +485,7 @@ internally; it is not returned to user code. The returned record's
 `connection.failed_fallback_models` lists the models that were tried and
 failed before it.
 
-Per §2.8, `ProxAIClient.generate()` copies the caller's
+Per §2.7, `ProxAIClient.generate()` copies the caller's
 `ConnectionOptions` before it touches it, then on that copy forces
 `suppress_provider_errors=True` and clears `fallback_models` to `None`
 before dispatching to the connector. The caller's instance is
@@ -593,7 +572,7 @@ CallRecord(
 
 ### 3.5 Multiple choices (`n > 1`)
 
-Per §2.9, `content` holds the first choice and `choices` holds the
+Per §2.8, `content` holds the first choice and `choices` holds the
 remaining n-1 — no duplication. For n=3, `choices` has 2 entries. The
 adapter fills the `output_text` shortcut on both `result` and each
 `choice`.
@@ -771,7 +750,7 @@ CallRecord(
 ### 3.8 Web search with rich citations
 
 Citations live in a `TOOL` block inside `content` — that's the single
-source of truth (see §2.11). Consumers that want a flat URL list
+source of truth (see §2.10). Consumers that want a flat URL list
 derive it from the `TOOL` block's `citations`.
 
 ```python
@@ -878,7 +857,7 @@ CallRecord(
 
 Every non-hit that went through the cache subsystem carries a reason
 which survives onto the returned `CallRecord` alongside
-`result_source = PROVIDER` (see §2.15). The reasons map one-to-one to
+`result_source = PROVIDER` (see §2.14). The reasons map one-to-one to
 the `CacheLookFailReason` enum.
 
 ```python
@@ -1226,64 +1205,3 @@ CallRecord(
 )
 ```
 
----
-
-## 4. Where each field is populated
-
-For contributors debugging the pipeline: this is where each piece of the
-`CallRecord` is written, in order, inside
-`ProviderConnector.generate()`.
-
-1. `query: QueryRecord` — constructed from `generate()` arguments.
-   `query.provider_model` comes directly from the caller.
-2. `_prepare_execution()` chooses an endpoint (honouring
-   `connection_options.endpoint` if set) and runs
-   `FeatureAdapter.adapt_query_record()` to produce the
-   `modified_query_record` actually sent to the provider.
-3. `_get_cached_result()` either returns a `ResultRecord` (cache hit,
-   rebased timestamps) or a `CacheLookFailReason`. It returns `None` if
-   `connection_options.skip_cache` / `override_cache_value` is set or
-   no cache manager is configured.
-4. On cache hit: `_reconstruct_pydantic_from_cache()` rehydrates
-   `pydantic_content.instance_value` from `instance_json_value` for
-   every pydantic block (cache stores only the JSON form). Then
-   `connection.result_source = CACHE`, the `CallRecord` is returned
-   immediately, and `endpoint_used` stays `None`.
-5. On cache miss: `_execute_call()` invokes the chosen endpoint
-   executor. Each executor wraps its SDK call in
-   `_safe_provider_query()`, which catches exceptions into
-   `result.error` / `result.error_traceback` and sets
-   `status=FAILED`. On success, `_execute_call()` also runs
-   `ResultAdapter.adapt_result_record()` to normalize `content` (and
-   each `choice.content`) and fill the `output_*` shortcuts.
-6. `_compute_usage()` populates `result.usage.input_tokens` /
-   `output_tokens` / `total_tokens` using the connector's token-count
-   estimator (character + whitespace heuristic, `math.ceil(max(len/4,
-   words*1.3))`).
-7. `_compute_timestamp()` sets `start_utc_date`, `end_utc_date`,
-   `local_time_offset_minute`, and `response_time`.
-   `cache_response_time` is populated only on the cache-hit branch
-   (step 4) — on this provider-path branch it stays `None`.
-8. `connection.endpoint_used` is set to the endpoint that actually ran
-   and `result_source` is set to `PROVIDER`. Any
-   `cache_look_fail_reason` set by step 3 survives onto the returned
-   record (see §2.15).
-9. `get_estimated_cost()` computes `result.usage.estimated_cost` in
-   integer nano-USD using `provider_model_config.pricing`. The pricing
-   scalars are already nano-USD per token (see §2.12), so the function
-   is just `math.floor(input_tokens *
-   input_token_cost_nano_usd_per_token + output_tokens *
-   output_token_cost_nano_usd_per_token)` — no further scaling.
-10. If `executor_result.raw_provider_response` is present and
-    `debug_options.keep_raw_provider_response` is set,
-    `call_record.debug = DebugInfo(raw_provider_response=...)`;
-    otherwise `call_record.debug` stays `None`.
-11. If `status == FAILED` and `suppress_provider_errors` is falsy, the
-    captured exception is re-raised (the `CallRecord` is uploaded to
-    ProxDash first). Otherwise it is stringified, the record is
-    returned to the caller, and — on success only — `_update_cache()`
-    persists it (skipped when `skip_cache` is set).
-
-If you are adding a new field to `CallRecord` or a new provider
-connector, touch this section as well — it is the only place that ties
-the flow of the request pipeline to the shape of the record.
