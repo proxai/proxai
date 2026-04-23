@@ -495,3 +495,356 @@ class TestCheckHealth:
     # providers are is_recommended=False, they are excluded — we assert the
     # call completes and returns a valid ModelStatus.
     assert working_providers.isdisjoint(failed_providers)
+
+
+# =============================================================================
+# Expensive-probe guard — health-check harness refuses media output formats
+# =============================================================================
+# Each probe in list_working_* / get_working_model sends a real provider call
+# per model. For IMAGE / AUDIO / VIDEO output formats each probe would
+# generate real media, which is prohibitive for bulk probing and expensive
+# even for a single model. The working methods reject these up front at
+# _assert_probe_safe_output_format and point callers at a cheaper alternative.
+
+
+_MEDIA_OUTPUT_FORMATS = [
+    types.OutputFormatType.IMAGE,
+    types.OutputFormatType.AUDIO,
+    types.OutputFormatType.VIDEO,
+]
+
+
+class TestExpensiveProbeGuard:
+
+  @pytest.mark.parametrize('fmt', _MEDIA_OUTPUT_FORMATS)
+  def test_list_working_models_refuses_media_format(self, monkeypatch, fmt):
+    _set_fast_mock_keys(monkeypatch)
+    am = _build_available_models()
+    with pytest.raises(ValueError, match='list_working_models'):
+      am.list_working_models(output_format=fmt)
+
+  @pytest.mark.parametrize('fmt', _MEDIA_OUTPUT_FORMATS)
+  def test_list_working_providers_refuses_media_format(
+      self, monkeypatch, fmt,
+  ):
+    _set_fast_mock_keys(monkeypatch)
+    am = _build_available_models()
+    with pytest.raises(ValueError, match='list_working_providers'):
+      am.list_working_providers(output_format=fmt)
+
+  @pytest.mark.parametrize('fmt', _MEDIA_OUTPUT_FORMATS)
+  def test_list_working_provider_models_refuses_media_format(
+      self, monkeypatch, fmt,
+  ):
+    _set_fast_mock_keys(monkeypatch)
+    am = _build_available_models()
+    with pytest.raises(ValueError, match='list_working_provider_models'):
+      am.list_working_provider_models(
+          provider='mock_provider', output_format=fmt,
+      )
+
+  @pytest.mark.parametrize('fmt', _MEDIA_OUTPUT_FORMATS)
+  def test_get_working_model_refuses_media_format(self, monkeypatch, fmt):
+    _set_fast_mock_keys(monkeypatch)
+    am = _build_available_models()
+    with pytest.raises(ValueError, match='get_working_model'):
+      am.get_working_model(
+          provider='mock_provider', model='mock_model', output_format=fmt,
+      )
+
+  def test_error_message_points_at_alternative(self, monkeypatch):
+    _set_fast_mock_keys(monkeypatch)
+    am = _build_available_models()
+    with pytest.raises(ValueError) as exc_info:
+      am.list_working_models(output_format='image')
+    # The message must point callers at list_models / generate_image.
+    msg = str(exc_info.value)
+    assert 'list_models' in msg
+    assert 'generate_image' in msg
+
+
+# =============================================================================
+# Working methods — new declared-capability filters
+# =============================================================================
+# The working surface now accepts input_format / feature_tags / tool_tags, the
+# same filter axes list_models supports. Declared-capability narrowing happens
+# BEFORE probing, so unreachable combinations never hit the network.
+
+
+class TestListWorkingModelsNewFilters:
+
+  def test_feature_tags_filters_unsupported_before_probing(self, monkeypatch):
+    """THINKING is NOT_SUPPORTED at the mock_provider model level.
+
+    Under STRICT mode the filter drops mock_provider; under the default
+    BEST_EFFORT it also drops it (NS → filtered regardless of strategy).
+    """
+    _set_fast_mock_keys(monkeypatch)
+    am = _build_available_models(
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
+    )
+    status = am.list_working_models(
+        feature_tags=[types.FeatureTag.THINKING],
+        return_all=True, verbose=False, recommended_only=False,
+    )
+    # mock_provider declares thinking=NOT_SUPPORTED → filtered out before
+    # any probe fires. It appears in filtered_models, not working/failed.
+    all_mock = {m for m in (
+        status.working_models | status.failed_models
+        | status.unprocessed_models
+    ) if m.provider == 'mock_provider'}
+    assert not all_mock
+
+  def test_input_format_filters_unsupported_before_probing(self, monkeypatch):
+    """mock_provider declares input_format.image=NOT_SUPPORTED at the model."""
+    _set_fast_mock_keys(monkeypatch)
+    am = _build_available_models(
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
+    )
+    status = am.list_working_models(
+        input_format='image',
+        return_all=True, verbose=False, recommended_only=False,
+    )
+    mock_models = {m for m in (
+        status.working_models | status.failed_models
+        | status.unprocessed_models
+    ) if m.provider == 'mock_provider'}
+    assert not mock_models
+
+  def test_tool_tags_filters_unsupported_before_probing(self, monkeypatch):
+    """mock_provider declares tools.web_search=NOT_SUPPORTED at the model."""
+    _set_fast_mock_keys(monkeypatch)
+    am = _build_available_models(
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
+    )
+    status = am.list_working_models(
+        tool_tags=[types.ToolTag.WEB_SEARCH],
+        return_all=True, verbose=False, recommended_only=False,
+    )
+    mock_models = {m for m in (
+        status.working_models | status.failed_models
+        | status.unprocessed_models
+    ) if m.provider == 'mock_provider'}
+    assert not mock_models
+
+  def test_prompt_feature_tag_still_allows_mock_provider(self, monkeypatch):
+    """Sanity check: filters that DO match don't accidentally drop models."""
+    _set_fast_mock_keys(monkeypatch)
+    am = _build_available_models()
+    status = am.list_working_models(
+        feature_tags=[types.FeatureTag.PROMPT],
+        return_all=True, verbose=False, recommended_only=False,
+    )
+    providers = {m.provider for m in status.working_models}
+    assert 'mock_provider' in providers
+
+
+class TestListWorkingProviderModelsNewFilters:
+
+  def test_feature_tags_filters_unsupported(self, monkeypatch, tmp_path):
+    """Scoped-by-provider variant also honours the new filters."""
+    _set_fast_mock_keys(monkeypatch)
+    cache_mgr = _make_model_cache_manager(str(tmp_path))
+    am = _build_available_models(
+        model_cache_manager=cache_mgr,
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
+    )
+    status = am.list_working_provider_models(
+        provider='mock_provider',
+        feature_tags=[types.FeatureTag.THINKING],
+        return_all=True, verbose=False, recommended_only=False,
+    )
+    assert 'mock_model' not in {m.model for m in status.working_models}
+
+  def test_input_format_and_tool_tags_filter(self, monkeypatch, tmp_path):
+    _set_fast_mock_keys(monkeypatch)
+    cache_mgr = _make_model_cache_manager(str(tmp_path))
+    am = _build_available_models(
+        model_cache_manager=cache_mgr,
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
+    )
+    # input_format=image → mock_provider filtered out.
+    status_img = am.list_working_provider_models(
+        provider='mock_provider', input_format='image',
+        return_all=True, verbose=False, recommended_only=False,
+    )
+    assert not status_img.working_models
+    # tool_tags=web_search → same.
+    status_ws = am.list_working_provider_models(
+        provider='mock_provider', tool_tags=[types.ToolTag.WEB_SEARCH],
+        return_all=True, verbose=False, recommended_only=False,
+    )
+    assert not status_ws.working_models
+
+
+# =============================================================================
+# Probe format dispatch — non-TEXT output formats route to the right function
+# =============================================================================
+
+
+class TestProbeFormatDispatch:
+
+  def test_json_probe_runs_and_succeeds_on_mock_provider(self, monkeypatch):
+    """output_format=JSON dispatches to _test_generate_json; mock_provider
+    declares JSON=SUPPORTED so the probe completes with a SUCCESS record.
+    """
+    _set_fast_mock_keys(monkeypatch)
+    am = _build_available_models()
+    status = am.list_working_models(
+        output_format='json',
+        return_all=True, verbose=False, recommended_only=False,
+    )
+    mock_records = [
+        (m, rec) for m, rec in status.provider_queries.items()
+        if m.provider == 'mock_provider'
+    ]
+    assert mock_records, 'mock_provider should have been probed'
+    pm, rec = mock_records[0]
+    assert rec.result.status == types.ResultStatusType.SUCCESS
+    assert rec.query.output_format.type == types.OutputFormatType.JSON
+
+  def test_pydantic_probe_runs_and_succeeds_on_mock_provider(self, monkeypatch):
+    """output_format=PYDANTIC dispatches to _test_generate_pydantic."""
+    _set_fast_mock_keys(monkeypatch)
+    am = _build_available_models()
+    status = am.list_working_models(
+        output_format='pydantic',
+        return_all=True, verbose=False, recommended_only=False,
+    )
+    mock_records = [
+        (m, rec) for m, rec in status.provider_queries.items()
+        if m.provider == 'mock_provider'
+    ]
+    assert mock_records
+    pm, rec = mock_records[0]
+    assert rec.result.status == types.ResultStatusType.SUCCESS
+    assert rec.query.output_format.type == types.OutputFormatType.PYDANTIC
+
+  def test_text_probe_still_default(self, monkeypatch):
+    """Default path (output_format omitted) still routes through TEXT probe."""
+    _set_fast_mock_keys(monkeypatch)
+    am = _build_available_models()
+    status = am.list_working_models(
+        return_all=True, verbose=False, recommended_only=False,
+    )
+    mock_records = [
+        rec for m, rec in status.provider_queries.items()
+        if m.provider == 'mock_provider'
+    ]
+    assert mock_records
+    # The text probe omits output_format (defaults to TEXT on the connector).
+    rec = mock_records[0]
+    assert (
+        rec.query.output_format is None
+        or rec.query.output_format.type == types.OutputFormatType.TEXT
+    )
+
+
+# =============================================================================
+# STRICT-mode integration — BEST_EFFORT endpoints fail the probe under STRICT
+# =============================================================================
+# The probe functions pass output_format down to connector.generate(), which
+# runs FeatureAdapter's endpoint resolution. Under STRICT, a model whose
+# pydantic support merges to BEST_EFFORT must be rejected before the provider
+# call — exactly the declared-capability guarantee we want to lock.
+
+
+def _make_configs_with_best_effort_pydantic_model():
+  """Clone the pytest-wide registry and register a mock model whose model-
+  level pydantic support is BEST_EFFORT. Merged with the endpoint (SUPPORTED)
+  this resolves to BEST_EFFORT — the case STRICT rejects.
+  """
+  instance = model_configs.ModelConfigs(
+      init_from_params=model_configs.ModelConfigsParams(
+          model_registry=pytest.model_configs_instance.model_registry,
+      )
+  )
+
+  S = types.FeatureSupportType.SUPPORTED
+  BE = types.FeatureSupportType.BEST_EFFORT
+  NS = types.FeatureSupportType.NOT_SUPPORTED
+  instance.register_provider_model_config(
+      types.ProviderModelConfig(
+          provider_model=types.ProviderModelType(
+              provider='mock_provider',
+              model='mock_model_best_effort_pydantic',
+              provider_model_identifier='mock_model_best_effort_pydantic',
+          ),
+          pricing=types.ProviderModelPricingType(
+              input_token_cost_nano_usd_per_token=1,
+              output_token_cost_nano_usd_per_token=2,
+          ),
+          metadata=types.ProviderModelMetadataType(
+              is_recommended=False,
+              model_size_tags=[types.ModelSizeType.SMALL],
+          ),
+          features=types.FeatureConfigType(
+              prompt=S, messages=S, system_prompt=S,
+              parameters=types.ParameterConfigType(
+                  temperature=S, max_tokens=S, stop=NS, n=NS, thinking=NS,
+              ),
+              tools=types.ToolConfigType(web_search=NS),
+              input_format=types.InputFormatConfigType(
+                  text=S, image=NS, document=NS, audio=NS, video=NS,
+                  json=NS, pydantic=NS,
+              ),
+              output_format=types.OutputFormatConfigType(
+                  text=S, json=S, pydantic=BE,  # <-- BEST_EFFORT.
+                  image=NS, audio=NS, video=NS, multi_modal=NS,
+              ),
+          ),
+      )
+  )
+  return instance
+
+
+class TestStrictModeProbeBehaviour:
+
+  def test_pydantic_probe_under_strict_rejects_best_effort_model(
+      self, monkeypatch,
+  ):
+    """STRICT + output_format=pydantic + BEST_EFFORT support → filtered out.
+
+    The rejection happens during the declared-capability filter pass
+    (`_is_feature_compatible` treats BEST_EFFORT as incompatible under
+    STRICT). The model never reaches the probe — it ends up in
+    `filtered_models` rather than `failed_models`, which is the
+    cheaper-but-equivalent outcome for the caller: it's not in
+    `working_models`.
+    """
+    _set_fast_mock_keys(monkeypatch)
+    am = _build_available_models(
+        feature_mapping_strategy=types.FeatureMappingStrategy.STRICT,
+        model_configs_instance=_make_configs_with_best_effort_pydantic_model(),
+    )
+    status = am.list_working_models(
+        output_format='pydantic',
+        return_all=True, verbose=False, recommended_only=False,
+    )
+    target = types.ProviderModelType(
+        provider='mock_provider',
+        model='mock_model_best_effort_pydantic',
+        provider_model_identifier='mock_model_best_effort_pydantic',
+    )
+    assert target not in status.working_models
+    assert target in status.filtered_models
+
+  def test_pydantic_probe_under_best_effort_accepts_best_effort_model(
+      self, monkeypatch,
+  ):
+    """BEST_EFFORT strategy keeps the same model in working_models."""
+    _set_fast_mock_keys(monkeypatch)
+    am = _build_available_models(
+        feature_mapping_strategy=types.FeatureMappingStrategy.BEST_EFFORT,
+        model_configs_instance=_make_configs_with_best_effort_pydantic_model(),
+    )
+    status = am.list_working_models(
+        output_format='pydantic',
+        return_all=True, verbose=False, recommended_only=False,
+    )
+    target = types.ProviderModelType(
+        provider='mock_provider',
+        model='mock_model_best_effort_pydantic',
+        provider_model_identifier='mock_model_best_effort_pydantic',
+    )
+    assert target in status.working_models
