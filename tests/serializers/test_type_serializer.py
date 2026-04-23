@@ -46,22 +46,22 @@ def _get_provider_model_pricing_type_options():
   return [
       {},
       {
-          'input_token_cost': 0.001
+          'input_token_cost_nano_usd_per_token': 100
       },
       {
-          'output_token_cost': 0.002
+          'output_token_cost_nano_usd_per_token': 200
       },
       {
-          'input_token_cost': 0.001,
-          'output_token_cost': 0.002
+          'input_token_cost_nano_usd_per_token': 100,
+          'output_token_cost_nano_usd_per_token': 200
       },
       {
-          'input_token_cost': 0.0,
-          'output_token_cost': 0.0
+          'input_token_cost_nano_usd_per_token': 3,
+          'output_token_cost_nano_usd_per_token': 4
       },
       {
-          'input_token_cost': 1.5,
-          'output_token_cost': 0.5
+          'input_token_cost_nano_usd_per_token': 15000,
+          'output_token_cost_nano_usd_per_token': 75000
       },
   ]
 
@@ -319,7 +319,7 @@ def _get_provider_model_config_options():
           'provider_model': _MODEL_1,
           'pricing':
               types.ProviderModelPricingType(
-                  input_token_cost=0.001, output_token_cost=0.002
+                  input_token_cost_nano_usd_per_token=100, output_token_cost_nano_usd_per_token=200
               ),
           'features': types.FeatureConfigType(),
           'metadata': types.ProviderModelMetadataType()
@@ -343,7 +343,7 @@ def _get_provider_model_config_options():
           'provider_model': _MODEL_3,
           'pricing':
               types.ProviderModelPricingType(
-                  input_token_cost=0.003, output_token_cost=0.001
+                  input_token_cost_nano_usd_per_token=300, output_token_cost_nano_usd_per_token=100
               ),
           'features':
               types.FeatureConfigType(
@@ -439,7 +439,7 @@ def _get_model_registry_options():
                   types.ProviderModelConfig(
                       provider_model=_MODEL_1,
                       pricing=types.ProviderModelPricingType(
-                          input_token_cost=0.001, output_token_cost=0.002
+                          input_token_cost_nano_usd_per_token=100, output_token_cost_nano_usd_per_token=200
                       ), features=types.FeatureConfigType(
                           prompt=types.FeatureSupportType.SUPPORTED,
                           messages=types.FeatureSupportType.SUPPORTED
@@ -466,7 +466,7 @@ def _get_model_registry_options():
                   types.ProviderModelConfig(
                       provider_model=_MODEL_1,
                       pricing=types.ProviderModelPricingType(
-                          input_token_cost=0.001, output_token_cost=0.002
+                          input_token_cost_nano_usd_per_token=100, output_token_cost_nano_usd_per_token=200
                       ), features=types.FeatureConfigType(
                           prompt=types.FeatureSupportType.SUPPORTED,
                           messages=types.FeatureSupportType.SUPPORTED,
@@ -760,22 +760,6 @@ def _get_usage_type_options():
   ]
 
 
-def _get_tool_usage_type_options():
-  return [
-      {},
-      {
-          'web_search_count': 3
-      },
-      {
-          'web_search_citations': ['https://example.com']
-      },
-      {
-          'web_search_count': 5,
-          'web_search_citations': ['https://example.com', 'https://test.com']
-      },
-  ]
-
-
 def _get_timestamp_type_options():
   return [
       {},
@@ -884,9 +868,6 @@ def _get_result_record_options():
           'usage': types.UsageType(input_tokens=100, output_tokens=200)
       },
       {
-          'tool_usage': types.ToolUsageType(web_search_count=3)
-      },
-      {
           'timestamp':
               types.TimeStampType(
                   start_utc_date=datetime.datetime.now(datetime.timezone.utc),
@@ -915,11 +896,6 @@ def _get_result_record_options():
               types.UsageType(
                   input_tokens=100, output_tokens=200, total_tokens=300,
                   estimated_cost=50
-              ),
-          'tool_usage':
-              types.ToolUsageType(
-                  web_search_count=2,
-                  web_search_citations=['https://example.com']
               ),
           'timestamp':
               types.TimeStampType(
@@ -1536,7 +1512,7 @@ def _get_provider_model_configs_mapping_type_options():
                   types.ProviderModelConfig(
                       provider_model=_MODEL_1,
                       pricing=types.ProviderModelPricingType(
-                          input_token_cost=0.001, output_token_cost=0.002
+                          input_token_cost_nano_usd_per_token=100, output_token_cost_nano_usd_per_token=200
                       ), features=types.FeatureConfigType(),
                       metadata=types.ProviderModelMetadataType()
                   )
@@ -2059,18 +2035,18 @@ class TestTypeSerializer:
     )
     assert usage_type == decoded_usage_type
 
-  @pytest.mark.parametrize(
-      'tool_usage_type_options', _get_tool_usage_type_options()
-  )
-  def test_encode_decode_tool_usage_type(self, tool_usage_type_options):
-    tool_usage_type = types.ToolUsageType(**tool_usage_type_options)
-    encoded_tool_usage_type = type_serializer.encode_tool_usage_type(
-        tool_usage_type=tool_usage_type
-    )
-    decoded_tool_usage_type = type_serializer.decode_tool_usage_type(
-        record=encoded_tool_usage_type
-    )
-    assert tool_usage_type == decoded_tool_usage_type
+  def test_legacy_tool_usage_key_is_ignored(self):
+    """Records persisted before ToolUsageType was removed must still load."""
+    legacy = {
+        'status': types.ResultStatusType.SUCCESS.value,
+        'tool_usage': {
+            'web_search_count': 2,
+            'web_search_citations': ['https://example.com'],
+        },
+    }
+    decoded = type_serializer.decode_result_record(record=legacy)
+    assert decoded.status == types.ResultStatusType.SUCCESS
+    assert not hasattr(decoded, 'tool_usage')
 
   @pytest.mark.parametrize(
       'timestamp_type_options', _get_timestamp_type_options()

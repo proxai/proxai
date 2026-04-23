@@ -93,7 +93,7 @@ def _register_mock_providers(mc_instance: model_configs.ModelConfigs) -> None:
                 provider=provider, model=model,
                 provider_model_identifier=model),
             pricing=types.ProviderModelPricingType(
-                input_token_cost=0.0, output_token_cost=0.0),
+                input_token_cost_nano_usd_per_token=1, output_token_cost_nano_usd_per_token=2),
             metadata=types.ProviderModelMetadataType(
                 is_recommended=False,
                 model_size_tags=[types.ModelSizeType.SMALL]),
@@ -535,6 +535,26 @@ class TestGenerateFallback:
     # The fallback model is mock_provider, which succeeds.
     assert result.result.status == types.ResultStatusType.SUCCESS
     assert result.query.provider_model.provider == 'mock_provider'
+
+  def test_fallback_models_does_not_mutate_caller_options(self):
+    """Caller's ConnectionOptions must not be mutated by generate()."""
+    px_client = _build_client(with_mock_model=False)
+    px_client.set_model(('mock_failing_provider', 'mock_failing_model'))
+    caller_options = types.ConnectionOptions(
+        fallback_models=[('mock_provider', 'mock_model')],
+    )
+    # Snapshot the fields before the call.
+    pre_fallback_models = caller_options.fallback_models
+    pre_suppress = caller_options.suppress_provider_errors
+
+    px_client.generate(prompt='hi', connection_options=caller_options)
+
+    # Caller's instance must be unchanged.
+    assert caller_options.fallback_models is pre_fallback_models
+    assert caller_options.fallback_models == [
+        ('mock_provider', 'mock_model'),
+    ]
+    assert caller_options.suppress_provider_errors is pre_suppress
 
 
 # =============================================================================

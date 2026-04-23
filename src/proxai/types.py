@@ -129,10 +129,27 @@ StopType = str | list[str]
 
 @dataclasses.dataclass
 class ProviderModelPricingType:
-  """Cost information for a model's token usage."""
+  """Cost information for a model's token usage.
 
-  input_token_cost: float | None = None
-  output_token_cost: float | None = None
+  Unit convention (authoritative):
+    - Both cost fields are quoted in nano-USD (10^-9 USD) per token.
+      Example: Claude Haiku input list price is $0.80 per 1M tokens, i.e.
+      $0.0000008 per token, i.e. 800 nano-USD per token, so the field
+      value is 800.
+    - `ResultRecord.usage.estimated_cost` is also integer nano-USD.
+      `get_estimated_cost` simply computes
+        floor(input_tokens * input_token_cost_nano_usd_per_token +
+              output_tokens * output_token_cost_nano_usd_per_token)
+      which stays in nano-USD because the pricing scalars already are.
+    - To display in USD: divide by 1_000_000_000.
+      To display in µ-USD: divide by 1_000.
+
+  This avoids floating-point drift in the cache and telemetry, and is
+  precise enough for per-token accounting even on the cheapest models.
+  """
+
+  input_token_cost_nano_usd_per_token: int | None = None
+  output_token_cost_nano_usd_per_token: int | None = None
 
 
 class FeatureSupportType(str, enum.Enum):
@@ -586,14 +603,6 @@ class UsageType:
 
 
 @dataclasses.dataclass
-class ToolUsageType:
-  """Usage of a tool for a query to a provider."""
-
-  web_search_count: int | None = None
-  web_search_citations: list[str] | None = None
-
-
-@dataclasses.dataclass
 class TimeStampType:
   """Timestamp information for a query to a provider."""
 
@@ -626,7 +635,6 @@ class ResultRecord:
   error_traceback: str | None = None
 
   usage: UsageType | None = None
-  tool_usage: ToolUsageType | None = None
   timestamp: TimeStampType | None = None
 
 

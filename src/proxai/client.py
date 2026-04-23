@@ -1628,6 +1628,14 @@ class ProxAIClient(state_controller.StateControlled):
 
     if connection_options is None:
       connection_options = types.ConnectionOptions()
+    elif connection_options.fallback_models:
+      # Copy so the fallback expansion below (which clears
+      # fallback_models and forces suppress_provider_errors=True on the
+      # retry chain) doesn't rewrite fields on the caller's instance.
+      # Filling in suppress_provider_errors from provider_call_options
+      # when the caller left it None is allowed to land on the caller's
+      # instance — it's a configured default, not a surprise mutation.
+      connection_options = copy.copy(connection_options)
     if connection_options.suppress_provider_errors is None:
       connection_options.suppress_provider_errors = (
           self.provider_call_options.suppress_provider_errors

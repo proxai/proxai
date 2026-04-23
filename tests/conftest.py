@@ -44,7 +44,7 @@ def _build_test_model_configs_instance() -> model_configs.ModelConfigs:
                 provider=provider, model=model,
                 provider_model_identifier=model),
             pricing=types.ProviderModelPricingType(
-                input_token_cost=0.0, output_token_cost=0.0),
+                input_token_cost_nano_usd_per_token=1, output_token_cost_nano_usd_per_token=2),
             metadata=types.ProviderModelMetadataType(
                 is_recommended=False,
                 model_size_tags=[types.ModelSizeType.SMALL]),

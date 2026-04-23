@@ -122,7 +122,7 @@ A simple reference showing which files import which modules within `src/proxai/`
 | `connectors/providers/openai.py` | `types`, `openai_mock`, `provider_connector` |
 | `connectors/providers/claude.py` | `types`, `claude_mock`, `provider_connector` |
 | `connectors/providers/gemini.py` | `types`, `gemini_mock`, `provider_connector`, `model_configs` |
-| `connectors/providers/cohere_api.py` | `types`, `cohere_api_mock`, `provider_connector` |
+| `connectors/providers/cohere.py` | `types`, `cohere_mock`, `provider_connector`, `content_utils`, `chat/message_content` |
 | `connectors/providers/databricks.py` | `types`, `databricks_mock`, `provider_connector` |
 | `connectors/providers/mistral.py` | `types`, `mistral_mock`, `provider_connector` |
 | `connectors/providers/huggingface.py` | `types`, `huggingface_mock`, `provider_connector` |

@@ -43,29 +43,35 @@ def decode_provider_model_type(
 def encode_provider_model_pricing_type(
     provider_model_pricing_type: types.ProviderModelPricingType
 ) -> dict[str, Any]:
-  """Serialize ProviderModelPricingType to a dictionary."""
+  """Serialize ProviderModelPricingType to a dictionary.
+
+  Unit: nano-USD per token (see ProviderModelPricingType).
+  """
   record = {}
-  if provider_model_pricing_type.input_token_cost is not None:
-    record['input_token_cost'] = (provider_model_pricing_type.input_token_cost)
-  if provider_model_pricing_type.output_token_cost is not None:
-    record['output_token_cost'] = (
-        provider_model_pricing_type.output_token_cost
-    )
+  v = provider_model_pricing_type.input_token_cost_nano_usd_per_token
+  if v is not None:
+    record['input_token_cost_nano_usd_per_token'] = v
+  v = provider_model_pricing_type.output_token_cost_nano_usd_per_token
+  if v is not None:
+    record['output_token_cost_nano_usd_per_token'] = v
   return record
 
 
 def decode_provider_model_pricing_type(
     record: dict[str, Any]
 ) -> types.ProviderModelPricingType:
-  """Deserialize ProviderModelPricingType from a dictionary."""
+  """Deserialize ProviderModelPricingType from a dictionary.
+
+  Unit: nano-USD per token (see ProviderModelPricingType).
+  """
   provider_model_pricing_type = types.ProviderModelPricingType()
-  if 'input_token_cost' in record:
-    provider_model_pricing_type.input_token_cost = (
-        float(record['input_token_cost'])
+  if 'input_token_cost_nano_usd_per_token' in record:
+    provider_model_pricing_type.input_token_cost_nano_usd_per_token = (
+        int(record['input_token_cost_nano_usd_per_token'])
     )
-  if 'output_token_cost' in record:
-    provider_model_pricing_type.output_token_cost = (
-        float(record['output_token_cost'])
+  if 'output_token_cost_nano_usd_per_token' in record:
+    provider_model_pricing_type.output_token_cost_nano_usd_per_token = (
+        int(record['output_token_cost_nano_usd_per_token'])
     )
   return provider_model_pricing_type
 
@@ -917,27 +923,6 @@ def decode_usage_type(record: dict[str, Any]) -> types.UsageType:
   return usage_type
 
 
-def encode_tool_usage_type(
-    tool_usage_type: types.ToolUsageType
-) -> dict[str, Any]:
-  """Serialize ToolUsageType to a dictionary."""
-  record = {}
-  if tool_usage_type.web_search_count is not None:
-    record['web_search_count'] = tool_usage_type.web_search_count
-  if tool_usage_type.web_search_citations is not None:
-    record['web_search_citations'] = tool_usage_type.web_search_citations
-  return record
-
-
-def decode_tool_usage_type(record: dict[str, Any]) -> types.ToolUsageType:
-  """Deserialize ToolUsageType from a dictionary."""
-  tool_usage_type = types.ToolUsageType()
-  if 'web_search_count' in record:
-    tool_usage_type.web_search_count = int(record['web_search_count'])
-  tool_usage_type.web_search_citations = record.get('web_search_citations')
-  return tool_usage_type
-
-
 def encode_timestamp_type(
     timestamp_type: types.TimeStampType
 ) -> dict[str, Any]:
@@ -1024,8 +1009,6 @@ def encode_result_record(result_record: types.ResultRecord) -> dict[str, Any]:
     record['error_traceback'] = result_record.error_traceback
   if result_record.usage is not None:
     record['usage'] = encode_usage_type(result_record.usage)
-  if result_record.tool_usage is not None:
-    record['tool_usage'] = encode_tool_usage_type(result_record.tool_usage)
   if result_record.timestamp is not None:
     record['timestamp'] = encode_timestamp_type(result_record.timestamp)
   return record
@@ -1063,8 +1046,8 @@ def decode_result_record(record: dict[str, Any]) -> types.ResultRecord:
   result_record.error_traceback = record.get('error_traceback')
   if 'usage' in record:
     result_record.usage = decode_usage_type(record['usage'])
-  if 'tool_usage' in record:
-    result_record.tool_usage = decode_tool_usage_type(record['tool_usage'])
+  # Legacy records may have a 'tool_usage' key; silently ignored.
+  # Tool info is the sole source of truth in MessageContent(TOOL) blocks.
   if 'timestamp' in record:
     result_record.timestamp = decode_timestamp_type(record['timestamp'])
   return result_record

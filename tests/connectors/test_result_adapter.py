@@ -3,6 +3,7 @@
 import pydantic
 import pytest
 
+import proxai.chat.message_content as message_content
 from proxai.chat.message_content import ContentType
 from proxai.chat.message_content import MessageContent
 from proxai.chat.message_content import PydanticContent
@@ -256,7 +257,7 @@ class TestAdaptOutputValues:
     return _adapter(
         prompt=S, text=S, image=S, audio=S, video=S)
 
-  def test_image_content_populates_output_image(self):
+  def test_image_content_populates_output_image_and_placeholder_text(self):
     adapter = self._make_adapter()
     img = MessageContent(
         type=ContentType.IMAGE,
@@ -265,8 +266,10 @@ class TestAdaptOutputValues:
     result = types.ResultRecord(content=[img])
     adapter._adapt_output_values(result)
     assert result.output_image is img
+    # Media blocks emit an inline placeholder into output_text.
+    assert result.output_text == '[image: https://example.com/img.png]'
 
-  def test_audio_content_populates_output_audio(self):
+  def test_audio_content_populates_output_audio_and_placeholder_text(self):
     adapter = self._make_adapter()
     audio = MessageContent(
         type=ContentType.AUDIO,
@@ -276,8 +279,10 @@ class TestAdaptOutputValues:
     result = types.ResultRecord(content=[audio])
     adapter._adapt_output_values(result)
     assert result.output_audio is audio
+    # Raw bytes have no URL or path — ref falls back to "<data>".
+    assert result.output_text == '[audio: <data>]'
 
-  def test_video_content_populates_output_video(self):
+  def test_video_content_populates_output_video_and_placeholder_text(self):
     adapter = self._make_adapter()
     video = MessageContent(
         type=ContentType.VIDEO,
@@ -286,21 +291,46 @@ class TestAdaptOutputValues:
     result = types.ResultRecord(content=[video])
     adapter._adapt_output_values(result)
     assert result.output_video is video
+    assert result.output_text == '[video: https://example.com/video.mp4]'
 
-  def test_mixed_text_and_image(self):
+  def test_document_emits_placeholder_but_has_no_typed_output(self):
     adapter = self._make_adapter()
-    text = MessageContent(type=ContentType.TEXT, text='hello')
+    doc = MessageContent(
+        type=ContentType.DOCUMENT,
+        path='/tmp/report.pdf',
+    )
+    result = types.ResultRecord(content=[doc])
+    adapter._adapt_output_values(result)
+    assert result.output_text == '[document: /tmp/report.pdf]'
+    # DOCUMENT has no typed output_* on ResultRecord.
+
+  def test_mixed_text_and_image_inlines_placeholder_in_text(self):
+    adapter = self._make_adapter()
+    pre = MessageContent(type=ContentType.TEXT, text='Here: ')
     img = MessageContent(
         type=ContentType.IMAGE,
         source='https://example.com/img.png',
     )
-    result = types.ResultRecord(content=[text, img])
+    post = MessageContent(type=ContentType.TEXT, text=' — good?')
+    result = types.ResultRecord(content=[pre, img, post])
     adapter._adapt_output_values(result)
-    assert result.output_text == 'hello'
+    # TEXT blocks concatenate with no separator; media placeholder sits
+    # inline at its position.
+    assert result.output_text == 'Here: [image: https://example.com/img.png] — good?'
     assert result.output_image is img
 
-  def test_multiple_images_first_wins(self):
-    """Reversed scan means the first content block overwrites later ones."""
+  def test_multiple_text_blocks_concatenate_without_separator(self):
+    adapter = self._make_adapter()
+    result = types.ResultRecord(content=[
+        MessageContent(type=ContentType.TEXT, text='foo'),
+        MessageContent(type=ContentType.TEXT, text='bar'),
+        MessageContent(type=ContentType.TEXT, text='baz'),
+    ])
+    adapter._adapt_output_values(result)
+    assert result.output_text == 'foobarbaz'
+
+  def test_multiple_images_last_wins_in_typed_output(self):
+    """output_image is the last IMAGE block; placeholders appear for all."""
     adapter = self._make_adapter()
     img1 = MessageContent(
         type=ContentType.IMAGE,
@@ -312,9 +342,32 @@ class TestAdaptOutputValues:
     )
     result = types.ResultRecord(content=[img1, img2])
     adapter._adapt_output_values(result)
-    assert result.output_image is img1
+    assert result.output_image is img2
+    assert result.output_text == (
+        '[image: https://example.com/first.png]'
+        '[image: https://example.com/second.png]'
+    )
 
-  def test_no_media_leaves_output_none(self):
+  def test_thinking_blocks_are_excluded_from_output_text(self):
+    adapter = self._make_adapter()
+    result = types.ResultRecord(content=[
+        MessageContent(type=ContentType.THINKING, text='reasoning...'),
+        MessageContent(type=ContentType.TEXT, text='the answer'),
+    ])
+    adapter._adapt_output_values(result)
+    assert result.output_text == 'the answer'
+
+  def test_no_media_no_text_leaves_output_text_none(self):
+    adapter = self._make_adapter()
+    # A JSON-only response should not fabricate an output_text value.
+    result = types.ResultRecord(content=[
+        MessageContent(type=ContentType.JSON, json={'k': 'v'}),
+    ])
+    adapter._adapt_output_values(result)
+    assert result.output_text is None
+    assert result.output_json == {'k': 'v'}
+
+  def test_no_media_leaves_output_media_none(self):
     adapter = self._make_adapter()
     text = MessageContent(type=ContentType.TEXT, text='hello')
     result = types.ResultRecord(content=[text])
@@ -322,6 +375,8 @@ class TestAdaptOutputValues:
     assert result.output_image is None
     assert result.output_audio is None
     assert result.output_video is None
+    # Plain text still surfaces as output_text.
+    assert result.output_text == 'hello'
 
   def test_json_content_populates_output_json(self):
     adapter = self._make_adapter()
@@ -329,6 +384,15 @@ class TestAdaptOutputValues:
     result = types.ResultRecord(content=[content])
     adapter._adapt_output_values(result)
     assert result.output_json == {'k': 'v'}
+
+  def test_multiple_json_blocks_last_wins(self):
+    adapter = self._make_adapter()
+    result = types.ResultRecord(content=[
+        MessageContent(type=ContentType.JSON, json={'k': 1}),
+        MessageContent(type=ContentType.JSON, json={'k': 2}),
+    ])
+    adapter._adapt_output_values(result)
+    assert result.output_json == {'k': 2}
 
   def test_pydantic_content_populates_output_pydantic(self):
     adapter = self._make_adapter()
@@ -340,6 +404,21 @@ class TestAdaptOutputValues:
     result = types.ResultRecord(content=[content])
     adapter._adapt_output_values(result)
     assert result.output_pydantic is instance
+
+  def test_tool_blocks_do_not_contribute_to_output_text(self):
+    adapter = self._make_adapter()
+    result = types.ResultRecord(content=[
+        MessageContent(
+            type=ContentType.TOOL,
+            tool_content=message_content.ToolContent(
+                name='web_search',
+                kind=message_content.ToolKind.RESULT,
+            ),
+        ),
+        MessageContent(type=ContentType.TEXT, text='final answer'),
+    ])
+    adapter._adapt_output_values(result)
+    assert result.output_text == 'final answer'
 
 
 # ===================================================================
