@@ -1,0 +1,3 @@
+# ProxAI — llms.txt
+
+Placeholder. See `docs/outline_proposal.md` and `docs/skill_analyses.md` §5 Layer C for the intended shape.
