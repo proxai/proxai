@@ -1,24 +1,30 @@
-# `px.Client` — Options & Behaviour
+# `px.Client` Comprehensive Use Case Analysis
 
-Partner document to `call_record_analysis.md`. That doc tells you what
-you get back from a call; this doc tells you what you can configure and
-what happens when you flip each knob. Source of truth:
-`src/proxai/types.py` (the option dataclasses), `src/proxai/client.py`
-(the `ProxAIClient` constructor and `generate()` method), and
-`src/proxai/proxai.py` (the module-level functions).
+Source of truth: `src/proxai/types.py` (the option dataclasses),
+`src/proxai/client.py` (the `ProxAIClient` constructor, `set_model()`,
+and `generate()` method), and `src/proxai/proxai.py` (the module-level
+functions). If this document disagrees with those files, the files win
+— update this document.
 
-Everything below is what a caller of `px.Client(...)` or `px.connect(...)`
-can observe from the outside. Behaviour descriptions cover what changes
-in your code — not how the library is wired internally.
+This is the definitive reference for every knob a caller of
+`px.Client(...)` or `px.connect(...)` can turn, every implicit
+behaviour they observe when they don't, and every validation error the
+client can raise up front. Read this before adding a new client
+option, a new `ConnectionOptions` field, or changing how default
+lookups cascade.
+
+See also: `call_record_analysis.md` (the `CallRecord` shape and
+request pipeline) and `px_generate_analysis.md` (calling conventions
+for `px.generate()` and its wrappers).
 
 ---
 
-## 1. Option structure
+## 1. Option structure (current)
 
 ### 1.1 Construction-time options
 
 ```
-ProxAIClient(
+ProxAIClient(                                  # same kwargs on px.connect(...)
 │
 ├── experiment_path: str | None = None
 │
@@ -43,18 +49,25 @@ ProxAIClient(
 │   ├── api_key: str | None = None
 │   └── base_url: str | None = "https://proxainest-production.up.railway.app"
 │
-├── feature_mapping_strategy: FeatureMappingStrategy = BEST_EFFORT
-├── suppress_provider_errors: bool = False
-├── allow_multiprocessing: bool = True
-└── model_test_timeout: int = 25    # seconds
+├── provider_call_options: ProviderCallOptions | None = None
+│   ├── feature_mapping_strategy: FeatureMappingStrategy = BEST_EFFORT
+│   ├── suppress_provider_errors: bool = False
+│   └── allow_parallel_file_operations: bool = True
+│
+├── model_probe_options: ModelProbeOptions | None = None
+│   ├── allow_multiprocessing: bool = True
+│   └── timeout: int = 25                     # seconds
+│
+└── debug_options: DebugOptions | None = None
+    └── keep_raw_provider_response: bool = False
 )
 ```
 
 The exact same kwargs are accepted by the module-level façade
-`px.connect(...)` and by `px.Client(...)`. The module-level form writes
-to a hidden global client used by `px.generate(...)`, `px.set_model(...)`,
-`px.models.*`. See §5.1 for the two calling styles and their isolation
-rules.
+`px.connect(...)` and by `px.Client(...)`. The module-level form
+writes to a hidden global client used by `px.generate(...)`,
+`px.set_model(...)`, `px.models.*`. See §5.1 for the two calling
+styles and their isolation rules.
 
 ### 1.2 Per-call options
 
@@ -62,7 +75,10 @@ rules.
 # Passed via client.generate(..., connection_options=ConnectionOptions(...))
 ConnectionOptions(
 │
-├── fallback_models: list[ProviderModelType] | None = None
+├── fallback_models: list[ProviderModelIdentifierType] | None = None
+│                                              # each entry is either a
+│                                              # ProviderModelType or a
+│                                              # (provider, model) tuple
 ├── suppress_provider_errors: bool | None = None   # None = inherit client default
 ├── endpoint: str | None = None
 ├── skip_cache: bool | None = None
@@ -198,9 +214,10 @@ is not modified.
 ### 2.4 `proxdash_options: ProxDashOptions | None`
 
 ProxDash is ProxAI's hosted monitoring backend. These options control
-whether and how calls are reported. Default `None`, which means ProxDash
-is still enabled if a `PROXDASH_API_KEY` environment variable is present
-— omitting the option is **not** the same as opting out. See §5.4.
+whether and how calls are reported. Default `None`, which means
+ProxDash is still enabled if a `PROXDASH_API_KEY` environment variable
+is present — omitting the option is **not** the same as opting out.
+See §5.4.
 
 #### 2.4.1 `stdout: bool`
 
@@ -231,10 +248,16 @@ ProxDash server URL. Default
 `"https://proxainest-production.up.railway.app"`. Override only if you
 are pointing at a staging server or a self-hosted deployment.
 
-### 2.5 `feature_mapping_strategy: FeatureMappingStrategy`
+### 2.5 `provider_call_options: ProviderCallOptions | None`
+
+Client-wide defaults for what happens when a provider call is
+actually executed. Default `None`, which resolves to the `ProviderCallOptions`
+defaults listed below.
+
+#### 2.5.1 `feature_mapping_strategy: FeatureMappingStrategy`
 
 How strict the client is when matching your request against a model's
-endpoint capabilities. Default `BEST_EFFORT`.
+endpoint capabilities. Default `FeatureMappingStrategy.BEST_EFFORT`.
 
 - `BEST_EFFORT` — if the endpoint only partially supports your
   request (e.g., the model has no native system prompt but the
@@ -245,10 +268,10 @@ endpoint capabilities. Default `BEST_EFFORT`.
   raises `ValueError` before contacting the provider if no endpoint
   fully supports your request.
 
-Currently there is **no per-call override**. Strategy is chosen once at
-client construction and applies to every call.
+Currently there is **no per-call override**. Strategy is chosen once
+at client construction and applies to every call.
 
-### 2.6 `suppress_provider_errors: bool`
+#### 2.5.2 `suppress_provider_errors: bool`
 
 What to do when a provider call fails (rate limit, HTTP 500, JSON
 parse error, etc.). Default `False`.
@@ -263,10 +286,26 @@ Can be overridden on a single call via
 `ConnectionOptions.suppress_provider_errors` (§3.2). See also §5.6
 for how fallback chains force this on internally.
 
-### 2.7 `allow_multiprocessing: bool`
+#### 2.5.3 `allow_parallel_file_operations: bool`
 
-Whether `client.models.list_working_models()` and `px.check_health()`
-may spin up a process pool to probe models in parallel. Default `True`.
+If `True`, the files manager may upload / fetch media attachments in
+parallel when a call carries multiple `MessageContent` media blocks.
+Default `True`. Disable in environments that cannot run concurrent
+I/O reliably (some sandboxed or single-threaded runtimes).
+
+Does **not** affect text-only calls.
+
+### 2.6 `model_probe_options: ModelProbeOptions | None`
+
+Controls the health-check harness used by `client.models.check_health()`,
+`client.models.list_working_models()`, and the lazy model-selection
+fallback (§5.5). Default `None`, which resolves to the
+`ModelProbeOptions` defaults below.
+
+#### 2.6.1 `allow_multiprocessing: bool`
+
+Whether model probing may spin up a process pool to probe models in
+parallel. Default `True`.
 
 Disable in environments that cannot fork cleanly — Jupyter notebooks on
 macOS, AWS Lambda, some Windows configurations. With `False`, model
@@ -275,14 +314,28 @@ probing is sequential and slower but never crashes on spawn.
 Does **not** affect normal `.generate()` calls — only the health-check
 harness.
 
-### 2.8 `model_test_timeout: int`
+#### 2.6.2 `timeout: int`
 
 Seconds to wait for any one model during a health check before marking
-it failed. Default `25`. Must be `>= 1` (setter raises `ValueError`
-otherwise).
+it failed. Default `25`. Must be `>= 1` (setter raises `ValueError:
+ModelProbeOptions.timeout must be >= 1.` otherwise).
 
 Does **not** apply to normal `.generate()` calls; those use the
 provider SDK's own timeouts.
+
+### 2.7 `debug_options: DebugOptions | None`
+
+Developer-only diagnostics. Default `None`, which resolves to the
+`DebugOptions` defaults below.
+
+#### 2.7.1 `keep_raw_provider_response: bool`
+
+If `True`, the raw response object from the provider SDK is attached
+to `CallRecord.debug.raw_provider_response` (see
+`call_record_analysis.md` §1). Default `False`. None of `DebugInfo`
+is serialised to the cache or ProxDash — the raw response can hold a
+live SDK object that is not portable. Intended purely for local
+debugging.
 
 ---
 
@@ -292,10 +345,12 @@ Pass to `client.generate(..., connection_options=...)`. Each field is
 scoped to a single call. `None` on any field means "use the client
 default" (where applicable) or "off".
 
-### 3.1 `fallback_models: list[ProviderModelType] | None`
+### 3.1 `fallback_models: list[ProviderModelIdentifierType] | None`
 
 Ordered list of models to try if the primary model fails. Default
-`None` (no fallback).
+`None` (no fallback). Each entry may be a `ProviderModelType` instance
+or a `(provider, model)` tuple — tuples are resolved by the client
+before dispatch.
 
 **Behaviour:**
 
@@ -307,6 +362,9 @@ Ordered list of models to try if the primary model fails. Default
 - The returned CallRecord's `query.provider_model` tells you which
   model actually answered. `connection.failed_fallback_models` lists
   the models that failed before the one that returned.
+- Setting `fallback_models` triggers a shallow-copy of the caller's
+  `ConnectionOptions` before internal mutations (see §5.6); the
+  caller's instance stays untouched.
 
 **Conflicts (all raise `ValueError` up front):**
 
@@ -318,8 +376,9 @@ Ordered list of models to try if the primary model fails. Default
 
 ### 3.2 `suppress_provider_errors: bool | None`
 
-Overrides the client-level `suppress_provider_errors` for this single
-call. Default `None` (inherit). Same semantics as §2.6 once resolved.
+Overrides the client-level `provider_call_options.suppress_provider_errors`
+for this single call. Default `None` (inherit). Same semantics as
+§2.5.2 once resolved.
 
 Conflicts with `fallback_models` on the same `ConnectionOptions`
 (see §3.1).
@@ -362,7 +421,7 @@ routed through `suppress_provider_errors`.
 | Where | Trigger | Message (abbreviated) |
 |-------|---------|------------------------|
 | `Client()` / `connect()` | `cache_options` set, no `cache_path`, no `disable_model_cache=True` | `cache_path is required while setting cache_options` |
-| `Client()` / `connect()` | `model_test_timeout < 1` | `model_test_timeout must be greater than 0` |
+| `Client()` / `connect()` | `model_probe_options.timeout < 1` | `ModelProbeOptions.timeout must be >= 1.` |
 | `Client()` / `connect()` | `root_logging_path` (derived from `logging_options.logging_path`) points at a path whose parent cannot be created | `Root logging path does not exist: ...` |
 | `client.generate()` | `prompt` and `messages` both set | `prompt and messages cannot be used together` |
 | `client.generate()` | `system_prompt` and `messages` both set | `system_prompt and messages cannot be used together. Please use "system" message in messages...` |
@@ -370,8 +429,8 @@ routed through `suppress_provider_errors`.
 | `client.generate()` | `connection_options.fallback_models` and `connection_options.endpoint` | `endpoint and fallback_models cannot be used together` |
 | `client.generate()` | forced `endpoint` not supported by the resolved model | `endpoint <name> is not supported` (or `... is not supported in STRICT mode`) |
 | `client.generate()` | no endpoint at all compatible with the request | `No compatible endpoint found for the query record...` |
-| `client.set_model()` | both `provider_model` and `generate_text` given | `provider_model and generate_text cannot be set at the same time` |
-| `client.set_model()` | neither `provider_model` nor `generate_text` given | `provider_model or generate_text must be set` |
+| `client.set_model()` | both `provider_model` and `generate_text` given | `provider_model and generate_text cannot be set at the same time. Please set one of them.` |
+| `client.set_model()` | no kwargs given at all | `At least one model must be specified. Use provider_model, generate_text, generate_json, generate_pydantic, generate_image, generate_audio, or generate_video.` |
 | First `generate()` without `set_model` | no model in the default priority list is reachable with your env keys | `No working models found in current environment. Please check your environment variables...` |
 
 Any provider-side exception (rate limit, auth, HTTP 5xx, JSON parse
@@ -450,38 +509,47 @@ can find. Only if that also fails does it raise the "no working
 models" error (§4). Translation: misconfiguring your env keys is
 detected on your first `generate()` call, not at construction time.
 
-### 5.6 Fallback chains force-enable suppression internally
+### 5.6 Fallback chains copy-then-force suppression
 
-When you set `connection_options.fallback_models`, the client's
-fallback loop needs every attempt to return rather than raise — so it
-**forces** `suppress_provider_errors=True` on the underlying provider
-calls for the duration of the loop. That is why §3.1 forbids you from
-also setting `suppress_provider_errors=True` on the same
-`ConnectionOptions`: there would be two sources of truth.
+When you set `connection_options.fallback_models`, the client
+`copy.copy`'s your `ConnectionOptions` first (so your caller-side
+instance is untouched), then on that internal copy **forces**
+`suppress_provider_errors=True` and clears `fallback_models=None`
+before dispatching to the connector. Every attempt in the fallback
+loop reads from that same internal copy, so every provider call has
+error suppression active and cannot raise out mid-loop.
+
+That is why §3.1 forbids you from also setting
+`suppress_provider_errors=True` on the same `ConnectionOptions`: the
+fallback loop already owns suppression and a second source of truth
+would be ambiguous.
 
 From your perspective: you always get one CallRecord back from a call
 that uses fallbacks. If every model failed, it has `status=FAILED`; if
 any succeeded, it has `status=SUCCESS` and
 `connection.failed_fallback_models` tells you what had to fail first.
 
-### 5.7 `px.check_health()` does not touch the default client
+### 5.7 Health checks do not touch the default client's state
 
-`px.check_health(...)` constructs its own **ephemeral** client for the
-duration of the health check, independent of whatever you already set
-up via `px.connect(...)`. Your default client's caches, logs, and
-ProxDash connection are not disturbed.
+`client.models.check_health()` retests every model fresh using the
+client's `model_probe_options`. It does not disturb the **default
+model cache**'s in-memory selection that `px.generate()` has been
+using for the current session.
 
-Practical consequence: calling `px.check_health()` in the middle of a
-script does not invalidate the cached default-model selection that
-`px.generate()` has been using.
+`px.models.check_health()` runs against the **default** client — so
+it reuses that default client's `model_probe_options` / cache, not an
+ephemeral throwaway.
 
 ### 5.8 Option objects you omit still report defaults
 
 If you pass `logging_options=None` (or just leave it out),
 `client.logging_options` is still readable — its fields return the
 blank defaults (`stdout=False`, `hide_sensitive_content=False`,
-`logging_path=None`). Same for `proxdash_options`. You never have to
-guard `client.logging_options.stdout` with a `None` check.
+`logging_path=None`). Same for `proxdash_options`,
+`provider_call_options`, `model_probe_options`, `debug_options`. You
+never have to guard `client.logging_options.stdout` or
+`client.provider_call_options.feature_mapping_strategy` with a `None`
+check.
 
 `cache_options` is the exception: leaving it out leaves
 `client.cache_options` as `None`. That is intentional — "no query
@@ -516,14 +584,17 @@ print(rec.result.output_text)
 
 Two independent clients with their own caches and logs. Useful in
 notebooks where you want to compare configurations without them
-stepping on each other.
+stepping on each other. Note that behavioural knobs like
+`feature_mapping_strategy` now live inside `ProviderCallOptions`.
 
 ```python
 exp_a = px.Client(
     experiment_path="exp_a",
     cache_options=px.CacheOptions(cache_path="/data/exp_a/cache"),
     logging_options=px.LoggingOptions(logging_path="/data/exp_a/logs"),
-    feature_mapping_strategy=px.FeatureMappingStrategy.STRICT,
+    provider_call_options=px.ProviderCallOptions(
+        feature_mapping_strategy=px.FeatureMappingStrategy.STRICT,
+    ),
 )
 exp_b = px.Client(
     experiment_path="exp_b",
@@ -542,11 +613,13 @@ rec = px.generate(
     prompt="Explain quantum entanglement.",
     provider_model=("openai", "gpt-4"),
     connection_options=px.ConnectionOptions(
+        # Tuples and ProviderModelType entries are both accepted.
         fallback_models=[
+            ("anthropic", "claude-3-5-sonnet"),
             px.ProviderModelType(
-                provider="anthropic",
-                model="claude-3-5-sonnet",
-                provider_model_identifier="claude-3-5-sonnet-20241022",
+                provider="google",
+                model="gemini-2.5-pro",
+                provider_model_identifier="gemini-2.5-pro",
             ),
         ],
     ),
@@ -595,13 +668,18 @@ client = px.Client(
 
 ### 6.7 Health check in a constrained environment
 
+Probing options are set at client construction — `check_health()`
+itself only takes `verbose`.
+
 ```python
 # Jupyter on macOS: disable multiprocessing to avoid spawn crashes.
-status = px.check_health(
-    verbose=False,
-    extensive_return=True,
-    allow_multiprocessing=False,
+client = px.Client(
+    model_probe_options=px.ModelProbeOptions(
+        allow_multiprocessing=False,
+        timeout=15,
+    ),
 )
+status = client.models.check_health(verbose=False)
 print(len(status.working_models), "working;",
       len(status.failed_models), "failed")
 ```
@@ -623,4 +701,16 @@ client = px.Client(
 import json
 with open("run_config.json", "w") as f:
     json.dump(client.get_current_options(json=True), f, indent=2)
+```
+
+### 6.10 Attaching raw provider responses for local debugging
+
+```python
+# Keeps the provider SDK's raw response on CallRecord.debug.
+# Not serialised to cache or ProxDash — local-only.
+client = px.Client(
+    debug_options=px.DebugOptions(keep_raw_provider_response=True),
+)
+rec = client.generate(prompt="Hello")
+print(type(rec.debug.raw_provider_response))
 ```
