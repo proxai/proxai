@@ -84,12 +84,8 @@ class MockProviderModelConnector(provider_connector.ProviderConnector):
 
     fmt = query_record.output_format
     is_text = fmt is None or fmt.type == types.OutputFormatType.TEXT
-    is_json = (
-        fmt and (
-            fmt.type == types.OutputFormatType.JSON or
-            fmt.type == types.OutputFormatType.PYDANTIC
-        )
-    )
+    is_json = fmt and fmt.type == types.OutputFormatType.JSON
+    is_pydantic = fmt and fmt.type == types.OutputFormatType.PYDANTIC
     if is_text:
       result_record.content = [
           message_content.MessageContent(
@@ -104,15 +100,24 @@ class MockProviderModelConnector(provider_connector.ProviderConnector):
               json={"name": "John Doe", "age": 30},
           )
       ]
-    elif fmt and fmt.type == types.OutputFormatType.PYDANTIC:
+    elif is_pydantic:
+      # Respect the requested pydantic_class. For the hard-coded
+      # SamplePydanticModel we know the shape; for any other class the
+      # mock uses `model_construct()` to emit a valid instance without
+      # having to synthesize field values — good enough for framework
+      # plumbing tests (probe dispatch, STRICT-vs-BEST_EFFORT, etc.).
+      pydantic_class = fmt.pydantic_class
+      if pydantic_class is SamplePydanticModel:
+        instance_value = SamplePydanticModel(name='John Doe', age=30)
+      else:
+        instance_value = pydantic_class.model_construct()
       result_record.content = [
           message_content.MessageContent(
               type=message_content.ContentType.PYDANTIC_INSTANCE,
               pydantic_content=message_content.PydanticContent(
-                  class_name='SamplePydanticModel',
-                  class_value=SamplePydanticModel,
-                  instance_value=SamplePydanticModel(
-                      name='John Doe', age=30),
+                  class_name=pydantic_class.__name__,
+                  class_value=pydantic_class,
+                  instance_value=instance_value,
               ),
           )
       ]

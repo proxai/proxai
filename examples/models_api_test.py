@@ -156,7 +156,8 @@ def _get_model_config(
           provider=provider, model=model, provider_model_identifier=model
       ),
       pricing=types.ProviderModelPricingType(
-          input_token_cost=1.0, output_token_cost=2.0
+          input_token_cost_nano_usd_per_token=1,
+          output_token_cost_nano_usd_per_token=2,
       ),
       metadata=types.ProviderModelMetadataType(
           is_recommended=is_recommended,
@@ -500,6 +501,157 @@ def test_get_default_model_list():
     assert (actual.provider, actual.model) == expected
 
 
+# -----------------------------------------------------------------------------
+# Working-method tests (exercise the health-check harness)
+# -----------------------------------------------------------------------------
+# These probe each model via connector.generate(). mock_provider /
+# mock_failing_provider answer without network I/O. Real providers
+# (openai / claude / ...) only probe if their real API keys are in env —
+# keeping the tests resilient to CI vs. dev setup, we only assert on
+# the mocks.
+
+
+def test_list_working_models_default():
+  """Default probe: mock_model succeeds, mock_failing_model fails."""
+  print('\n=== test_list_working_models_default ===')
+  status = px.models.list_working_models(
+      return_all=True, verbose=False, recommended_only=False,
+  )
+  working = {m.model for m in status.working_models}
+  failed = {m.model for m in status.failed_models}
+  print(f'  working (subset): mock_model={"mock_model" in working}')
+  print(f'  failed  (subset): mock_failing_model='
+        f'{"mock_failing_model" in failed}')
+  assert 'mock_model' in working
+  assert 'mock_failing_model' in failed
+
+
+def test_list_working_methods_refuse_media_output_formats():
+  """All four working methods raise for IMAGE / AUDIO / VIDEO."""
+  print('\n=== test_list_working_methods_refuse_media_output_formats ===')
+  media_formats = [
+      types.OutputFormatType.IMAGE,
+      types.OutputFormatType.AUDIO,
+      types.OutputFormatType.VIDEO,
+  ]
+
+  def _expect_raises(method_name, fn):
+    try:
+      fn()
+    except ValueError as e:
+      msg = str(e)
+      assert method_name in msg, (
+          f'error message for {method_name} did not mention the method: {msg}')
+      assert 'list_models' in msg, (
+          f'error message for {method_name} did not point at list_models: {msg}'
+      )
+      return
+    raise AssertionError(f'{method_name} did not raise for media format')
+
+  for fmt in media_formats:
+    _expect_raises(
+        'list_working_models',
+        lambda: px.models.list_working_models(output_format=fmt, verbose=False))
+    _expect_raises(
+        'list_working_providers',
+        lambda: px.models.list_working_providers(
+            output_format=fmt, verbose=False))
+    _expect_raises(
+        'list_working_provider_models',
+        lambda: px.models.list_working_provider_models(
+            'mock_provider', output_format=fmt, verbose=False))
+    _expect_raises(
+        'get_working_model',
+        lambda: px.models.get_working_model(
+            'mock_provider', 'mock_model', output_format=fmt))
+    print(f'  {fmt.value}: all four methods refused')
+
+
+def test_list_working_models_new_filters():
+  """input_format / feature_tags / tool_tags pre-filter before probing.
+
+  mock_provider's model-level feature config:
+    input_format  = {text, image, document, json, pydantic}   (no audio/video)
+    feature_tags  = {prompt, messages, system_prompt}          (no thinking)
+    tool_tags     = {}                                         (no web_search)
+
+  Asking for any of those missing capabilities drops the model before the
+  probe fires — it never reaches working_models.
+  """
+  print('\n=== test_list_working_models_new_filters ===')
+
+  # feature_tags=THINKING — mock_provider has no thinking.
+  thinking_status = px.models.list_working_models(
+      feature_tags=types.FeatureTag.THINKING, return_all=True,
+      verbose=False, recommended_only=False,
+  )
+  thinking_working = {m.model for m in thinking_status.working_models}
+  print(f'  thinking working: mock_model in? '
+        f'{"mock_model" in thinking_working}')
+  assert 'mock_model' not in thinking_working
+
+  # input_format=AUDIO — mock_provider has no audio input.
+  audio_status = px.models.list_working_models(
+      input_format=types.InputFormatType.AUDIO, return_all=True,
+      verbose=False, recommended_only=False,
+  )
+  audio_working = {m.model for m in audio_status.working_models}
+  print(f'  audio-input working: mock_model in? '
+        f'{"mock_model" in audio_working}')
+  assert 'mock_model' not in audio_working
+
+  # tool_tags=WEB_SEARCH — mock_provider has no web search.
+  ws_status = px.models.list_working_models(
+      tool_tags=types.ToolTag.WEB_SEARCH, return_all=True,
+      verbose=False, recommended_only=False,
+  )
+  ws_working = {m.model for m in ws_status.working_models}
+  print(f'  web_search working: mock_model in? '
+        f'{"mock_model" in ws_working}')
+  assert 'mock_model' not in ws_working
+
+  # Positive control: feature_tags=PROMPT is supported; mock_model stays.
+  prompt_status = px.models.list_working_models(
+      feature_tags=types.FeatureTag.PROMPT, return_all=True,
+      verbose=False, recommended_only=False,
+  )
+  prompt_working = {m.model for m in prompt_status.working_models}
+  assert 'mock_model' in prompt_working
+
+
+def test_list_working_models_safe_output_formats():
+  """JSON / PYDANTIC / MULTI_MODAL output_formats now probe successfully.
+
+  Before: only TEXT was routed through the probe; anything else crashed
+  with 'Output format type not supported'. The dispatch table now picks
+  the matching _test_generate_<format> per the requested output_format,
+  and the probe's CallRecord carries that output_format through.
+
+  mock_provider declares JSON and PYDANTIC supported, so both probes
+  land in working_models with the right output_format on the record.
+  MULTI_MODAL isn't declared by mock_provider (filtered out before the
+  probe), so we only test JSON and PYDANTIC here.
+  """
+  print('\n=== test_list_working_models_safe_output_formats ===')
+  for fmt in [types.OutputFormatType.JSON, types.OutputFormatType.PYDANTIC]:
+    status = px.models.list_working_models(
+        output_format=fmt, return_all=True,
+        verbose=False, recommended_only=False,
+    )
+    working = {m.model for m in status.working_models}
+    mock_recs = [
+        rec for m, rec in status.provider_queries.items()
+        if m.model == 'mock_model'
+    ]
+    assert 'mock_model' in working, f'{fmt}: mock_model not in working set'
+    assert mock_recs, f'{fmt}: no provider_queries record for mock_model'
+    rec = mock_recs[0]
+    assert rec.query.output_format.type == fmt, (
+        f'{fmt}: probe query recorded output_format='
+        f'{rec.query.output_format.type}, expected {fmt}')
+    print(f'  {fmt.value}: mock_model probed with correct output_format')
+
+
 TEST_SEQUENCE = [
     ('list_models_default', test_list_models_default),
     ('list_models_recommended_only_false',
@@ -515,6 +667,13 @@ TEST_SEQUENCE = [
     ('get_model', test_get_model),
     ('get_model_config', test_get_model_config),
     ('get_default_model_list', test_get_default_model_list),
+    ('list_working_models_default', test_list_working_models_default),
+    ('list_working_methods_refuse_media_output_formats',
+     test_list_working_methods_refuse_media_output_formats),
+    ('list_working_models_new_filters',
+     test_list_working_models_new_filters),
+    ('list_working_models_safe_output_formats',
+     test_list_working_models_safe_output_formats),
 ]
 TEST_MAP = dict(TEST_SEQUENCE)
 

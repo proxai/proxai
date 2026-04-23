@@ -215,40 +215,58 @@ class ModelConnector:
   def list_working_models(
       self,
       model_size: types.ModelSizeIdentifierType | None = None,
+      input_format: types.InputFormatTypeParam | None = None,
+      output_format: types.
+      OutputFormatTypeParam = (types.OutputFormatType.TEXT),
+      feature_tags: types.FeatureTagParam | None = None,
+      tool_tags: types.ToolTagParam | None = None,
       verbose: bool = True,
       return_all: bool = False,
       clear_model_cache: bool = False,
-      output_format: types.
-      OutputFormatTypeParam = (types.OutputFormatType.TEXT),
       recommended_only: bool = True,
   ) -> list[types.ProviderModelType] | types.ModelStatus:
     """Lists models that have been verified to be working.
 
+    Declared-capability filters are applied BEFORE probing, so only
+    models that claim to support the requested combination are tested.
+
     Args:
         model_size: Filter by model size category.
+        input_format: Filter by declared input format capability.
+        output_format: Output format to probe against. Defaults to TEXT.
+            Must be one of TEXT, JSON, PYDANTIC, or MULTI_MODAL — IMAGE,
+            AUDIO, and VIDEO are refused because each probe would
+            generate real media.
+        feature_tags: Filter by declared feature support
+            (prompt, system_prompt, thinking, etc.).
+        tool_tags: Filter by declared tool support (e.g. web_search).
         verbose: If True, prints progress information during testing.
         return_all: If True, returns a ModelStatus object.
         clear_model_cache: If True, clears and retests all models.
-        output_format: Output format to test. Defaults to TEXT.
         recommended_only: If True, returns only recommended models.
+
+    Raises:
+        ValueError: If output_format is IMAGE, AUDIO, or VIDEO.
 
     Example:
         >>> import proxai as px
         >>> working_models = px.models.list_working_models(verbose=False)
         >>> print(f"Found {len(working_models)} working models")
 
-        >>> # Using a specific client
-        >>> client = px.Client()
-        >>> working_models = client.models.list_working_models(
-        ...   verbose=False)
+        >>> # Narrow to thinking-capable text models before probing.
+        >>> thinking_models = px.models.list_working_models(
+        ...   feature_tags=["thinking"], verbose=False)
     """
     return (
         self._client_getter().available_models_instance.list_working_models(
             model_size=model_size,
+            input_format=input_format,
+            output_format=output_format,
+            feature_tags=feature_tags,
+            tool_tags=tool_tags,
             verbose=verbose,
             return_all=return_all,
             clear_model_cache=clear_model_cache,
-            output_format=output_format,
             recommended_only=recommended_only,
         )
     )
@@ -306,30 +324,38 @@ class ModelConnector:
       self,
       provider: str,
       model_size: types.ModelSizeIdentifierType | None = None,
+      input_format: types.InputFormatTypeParam | None = None,
+      output_format: types.
+      OutputFormatTypeParam = (types.OutputFormatType.TEXT),
+      feature_tags: types.FeatureTagParam | None = None,
+      tool_tags: types.ToolTagParam | None = None,
       verbose: bool = True,
       return_all: bool = False,
       clear_model_cache: bool = False,
-      output_format: types.
-      OutputFormatTypeParam = (types.OutputFormatType.TEXT),
       recommended_only: bool = True,
   ) -> list[types.ProviderModelType] | types.ModelStatus:
     """Lists working models from a specific provider.
 
-    Tests models from the specified provider and returns only those
-    that successfully respond.
+    Declared-capability filters are applied BEFORE probing, so only
+    models that claim to support the requested combination are tested.
 
     Args:
         provider: The provider name to list models for.
         model_size: Filter by model size category.
+        input_format: Filter by declared input format capability.
+        output_format: The output format to probe against. Must be one
+            of TEXT, JSON, PYDANTIC, or MULTI_MODAL — IMAGE, AUDIO, and
+            VIDEO are refused because each probe would generate real
+            media. Defaults to TEXT.
+        feature_tags: Filter by declared feature support
+            (prompt, system_prompt, thinking, etc.).
+        tool_tags: Filter by declared tool support (e.g. web_search).
         verbose: If True, prints progress information during testing.
             Defaults to True.
         return_all: If True, returns a ModelStatus object with
             detailed results. Defaults to False.
         clear_model_cache: If True, clears the model cache and
             retests models. Defaults to False.
-        output_format: The output format to test. Can be an
-            OutputFormatType enum or a string (e.g., 'text').
-            Defaults to TEXT.
         recommended_only: If True, returns only recommended models
             curated by ProxAI. Set to False to include all available
             models. Defaults to True.
@@ -340,7 +366,8 @@ class ModelConnector:
             provider, or a ModelStatus object if return_all is True.
 
     Raises:
-        ValueError: If the provider's API key is not found.
+        ValueError: If the provider's API key is not found, or if
+            output_format is IMAGE, AUDIO, or VIDEO.
 
     Example:
         >>> import proxai as px
@@ -350,22 +377,21 @@ class ModelConnector:
         >>> print(openai_working)
         [(openai, gpt-4), (openai, gpt-3.5-turbo)]
 
-        >>> # Using a specific client
-        >>> client = px.Client()
-        >>> openai_working = (
-        ...   client.models.list_working_provider_models(
-        ...     "openai", verbose=False
-        ...   )
-        ... )
+        >>> # Narrow to web-search-capable models before probing.
+        >>> search = px.models.list_working_provider_models(
+        ...   "openai", tool_tags=["web_search"], verbose=False)
     """
     available_models = (self._client_getter().available_models_instance)
     return available_models.list_working_provider_models(
         provider=provider,
         model_size=model_size,
+        input_format=input_format,
+        output_format=output_format,
+        feature_tags=feature_tags,
+        tool_tags=tool_tags,
         verbose=verbose,
         return_all=return_all,
         clear_model_cache=clear_model_cache,
-        output_format=output_format,
         recommended_only=recommended_only,
     )
 

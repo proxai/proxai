@@ -494,24 +494,23 @@ class TestGenerateAliasSmoke:
   def test_generate_pydantic_returns_instance(self):
     """Smoke: call succeeds and returns a parsed result (not an error string).
 
-    The mock provider returns a JSON dict; full pydantic validation is the
-    responsibility of ResultAdapter and is tested there. We only verify the
-    alias wiring runs end-to-end.
+    Uses the canonical SamplePydanticModel the mock provider emits with
+    populated fields — other classes get an unpopulated
+    `model_construct()` instance (fine for plumbing tests but there's
+    nothing to assert on). Full pydantic validation is tested in
+    ResultAdapter's own suite.
     """
-    import pydantic
-
-    class _City(pydantic.BaseModel):
-      name: str
-      age: int
+    from proxai.connectors.providers.mock_provider import SamplePydanticModel
 
     px_client = _build_client()
     result = px_client.generate_pydantic(
         prompt='hello',
         output_format=types.OutputFormat(
-            type=types.OutputFormatType.PYDANTIC, pydantic_class=_City,
+            type=types.OutputFormatType.PYDANTIC,
+            pydantic_class=SamplePydanticModel,
         ),
     )
-    assert isinstance(result, _City)
+    assert isinstance(result, SamplePydanticModel)
     assert result.name == 'John Doe'
 
 
