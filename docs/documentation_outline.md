@@ -434,6 +434,18 @@ Content rewrites are pending per doc.
   raw-response shapes. Inbound link added from `px_client_api.md`
   §2.7.1; the scope cell in §2.3 was corrected (previously described
   `provider_queries`, which is not this doc's subject).
+- `developer_agents/feature_adapters_logic.md` drafted
+  (2026-04-23) — covers the full FeatureAdapter and ResultAdapter
+  pipeline: endpoint selection probing, the deep-copy `adapt_query_record`
+  order, system-prompt folding (Pattern 1 vs Pattern 2), `Chat.export`
+  flag passthrough, per-content-block input-format adaptation (with the
+  passthrough/converter table), output-format guidance injection (the
+  "no best effort" set, why JSON/Pydantic types are intentionally not
+  cleared), parameter drops, and the post-call TEXT → JSON / Pydantic
+  transform plus `output_*` shortcut population. The §2.7 scope cell
+  for `feature_adapters_logic.md` already matched the doc's content
+  ("FeatureAdapter + ResultAdapter mechanics; what gets dropped or
+  injected per support level") — no scope edit needed.
 
 ### 7.2 Pending — staging files in `docs/development/`
 

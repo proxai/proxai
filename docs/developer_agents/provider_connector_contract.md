@@ -63,6 +63,13 @@ client.generate(prompt=..., parameters=..., response_format=...)
 hand it to `_safe_provider_query`, parse the response into
 `MessageContent` blocks. The framework handles everything around it.
 
+For the deep mechanics of what happens inside `FeatureAdapter` and
+`ResultAdapter` (the boxes above and below your executor in the
+diagram), see [`feature_adapters_logic.md`](./feature_adapters_logic.md)
+— it covers the order of operations, the per-content-type adaptation
+table, and the JSON / Pydantic guidance-injection rules referenced
+throughout this doc.
+
 ---
 
 ## 2. Files You Will Touch
