@@ -67,8 +67,8 @@
           ]
         },
         "pricing": {
-          "input_token_cost_nano_usd_per_token": 15000,
-          "output_token_cost_nano_usd_per_token": 75000
+          "input_token_cost": 15000,
+          "output_token_cost": 75000
         },
         "provider_model": {
           "model": "claude-opus-4-6",
@@ -117,8 +117,8 @@
           ]
         },
         "pricing": {
-          "input_token_cost_nano_usd_per_token": 3000,
-          "output_token_cost_nano_usd_per_token": 15000
+          "input_token_cost": 3000,
+          "output_token_cost": 15000
         },
         "provider_model": {
           "model": "claude-sonnet-4-6",
@@ -169,8 +169,8 @@
           ]
         },
         "pricing": {
-          "input_token_cost_nano_usd_per_token": 300,
-          "output_token_cost_nano_usd_per_token": 1200
+          "input_token_cost": 300,
+          "output_token_cost": 1200
         },
         "provider_model": {
           "model": "deepseek-chat",
@@ -219,8 +219,8 @@
           ]
         },
         "pricing": {
-          "input_token_cost_nano_usd_per_token": 600,
-          "output_token_cost_nano_usd_per_token": 2400
+          "input_token_cost": 600,
+          "output_token_cost": 2400
         },
         "provider_model": {
           "model": "deepseek-reasoner",
@@ -271,8 +271,8 @@
           ]
         },
         "pricing": {
-          "input_token_cost_nano_usd_per_token": 300,
-          "output_token_cost_nano_usd_per_token": 2500
+          "input_token_cost": 300,
+          "output_token_cost": 2500
         },
         "provider_model": {
           "model": "gemini-2.5-flash",
@@ -318,8 +318,8 @@
           "is_recommended": true
         },
         "pricing": {
-          "input_token_cost_nano_usd_per_token": 0,
-          "output_token_cost_nano_usd_per_token": 0
+          "input_token_cost": 0,
+          "output_token_cost": 0
         },
         "provider_model": {
           "model": "gemini-2.5-flash-image",
@@ -365,8 +365,8 @@
           "is_recommended": false
         },
         "pricing": {
-          "input_token_cost_nano_usd_per_token": 0,
-          "output_token_cost_nano_usd_per_token": 0
+          "input_token_cost": 0,
+          "output_token_cost": 0
         },
         "provider_model": {
           "model": "gemini-2.5-flash-preview-tts",
@@ -415,8 +415,8 @@
           ]
         },
         "pricing": {
-          "input_token_cost_nano_usd_per_token": 500,
-          "output_token_cost_nano_usd_per_token": 2500
+          "input_token_cost": 500,
+          "output_token_cost": 2500
         },
         "provider_model": {
           "model": "gemini-3-flash-preview",
@@ -462,8 +462,8 @@
           "is_recommended": true
         },
         "pricing": {
-          "input_token_cost_nano_usd_per_token": 0,
-          "output_token_cost_nano_usd_per_token": 0
+          "input_token_cost": 0,
+          "output_token_cost": 0
         },
         "provider_model": {
           "model": "veo-3.1-generate-preview",
@@ -514,8 +514,8 @@
           ]
         },
         "pricing": {
-          "input_token_cost_nano_usd_per_token": 3000,
-          "output_token_cost_nano_usd_per_token": 15000
+          "input_token_cost": 3000,
+          "output_token_cost": 15000
         },
         "provider_model": {
           "model": "grok-3",
@@ -566,8 +566,8 @@
           ]
         },
         "pricing": {
-          "input_token_cost_nano_usd_per_token": 0,
-          "output_token_cost_nano_usd_per_token": 0
+          "input_token_cost": 0,
+          "output_token_cost": 0
         },
         "provider_model": {
           "model": "mock_failing_model",
@@ -618,8 +618,8 @@
           ]
         },
         "pricing": {
-          "input_token_cost_nano_usd_per_token": 0,
-          "output_token_cost_nano_usd_per_token": 0
+          "input_token_cost": 0,
+          "output_token_cost": 0
         },
         "provider_model": {
           "model": "mock_model",
@@ -667,8 +667,8 @@
           "is_recommended": true
         },
         "pricing": {
-          "input_token_cost_nano_usd_per_token": 0,
-          "output_token_cost_nano_usd_per_token": 0
+          "input_token_cost": 0,
+          "output_token_cost": 0
         },
         "provider_model": {
           "model": "dall-e-3",
@@ -717,8 +717,8 @@
           ]
         },
         "pricing": {
-          "input_token_cost_nano_usd_per_token": 2500,
-          "output_token_cost_nano_usd_per_token": 10000
+          "input_token_cost": 2500,
+          "output_token_cost": 10000
         },
         "provider_model": {
           "model": "gpt-4o",
@@ -767,8 +767,8 @@
           ]
         },
         "pricing": {
-          "input_token_cost_nano_usd_per_token": 2000,
-          "output_token_cost_nano_usd_per_token": 8000
+          "input_token_cost": 2000,
+          "output_token_cost": 8000
         },
         "provider_model": {
           "model": "o3",
@@ -814,8 +814,8 @@
           "is_recommended": true
         },
         "pricing": {
-          "input_token_cost_nano_usd_per_token": 0,
-          "output_token_cost_nano_usd_per_token": 0
+          "input_token_cost": 0,
+          "output_token_cost": 0
         },
         "provider_model": {
           "model": "sora-2",
@@ -861,8 +861,8 @@
           "is_recommended": true
         },
         "pricing": {
-          "input_token_cost_nano_usd_per_token": 0,
-          "output_token_cost_nano_usd_per_token": 0
+          "input_token_cost": 0,
+          "output_token_cost": 0
         },
         "provider_model": {
           "model": "tts-1",

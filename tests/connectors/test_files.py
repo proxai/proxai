@@ -790,3 +790,35 @@ class TestProxDashListIntegration:
       results = mgr.list(providers=['gemini'])
     assert len(results) == 2
     assert all(r.proxdash_file_id is None for r in results)
+
+  def test_proxdash_results_without_requested_provider_are_dropped(
+      self, monkeypatch
+  ):
+    # ProxDash returns two MCs: openai-only and gemini+claude. A
+    # list(providers=['gemini']) query should keep only the
+    # gemini+claude MC and drop the openai-only one.
+    pd_results = [
+        _make_proxdash_mc('pd-openai', {'openai': 'files/o-1'}),
+        _make_proxdash_mc(
+            'pd-multi', {'gemini': 'file-1', 'claude': 'files/c-1'}
+        ),
+    ]
+    mock_pd = _make_mock_proxdash_for_list(pd_results)
+    mgr = _make_files_manager(
+        monkeypatch, ['gemini'], proxdash_connection=mock_pd
+    )
+    dispatch = {'gemini': _fake_list_fn}
+    with patch.dict(file_helpers.LIST_DISPATCH, dispatch):
+      results = mgr.list(providers=['gemini'])
+    proxdash_results = [r for r in results if r.proxdash_file_id]
+    assert len(proxdash_results) == 1
+    assert proxdash_results[0].proxdash_file_id == 'pd-multi'
+    assert proxdash_results[0].provider_file_api_ids == {
+        'gemini': 'file-1', 'claude': 'files/c-1'
+    }
+    # Provider-side dedupe must use the filtered ProxDash set: the
+    # gemini+claude MC covers file-1, so only file-2 should come
+    # through from the provider listing.
+    provider_only = [r for r in results if not r.proxdash_file_id]
+    assert len(provider_only) == 1
+    assert provider_only[0].provider_file_api_ids['gemini'] == 'file-2'

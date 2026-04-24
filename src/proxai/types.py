@@ -138,8 +138,8 @@ class ProviderModelPricingType:
       value is 800.
     - `ResultRecord.usage.estimated_cost` is also integer nano-USD.
       `get_estimated_cost` simply computes
-        floor(input_tokens * input_token_cost_nano_usd_per_token +
-              output_tokens * output_token_cost_nano_usd_per_token)
+        floor(input_tokens * input_token_cost +
+              output_tokens * output_token_cost)
       which stays in nano-USD because the pricing scalars already are.
     - To display in USD: divide by 1_000_000_000.
       To display in µ-USD: divide by 1_000.
@@ -148,8 +148,8 @@ class ProviderModelPricingType:
   precise enough for per-token accounting even on the cheapest models.
   """
 
-  input_token_cost_nano_usd_per_token: int | None = None
-  output_token_cost_nano_usd_per_token: int | None = None
+  input_token_cost: int | None = None
+  output_token_cost: int | None = None
 
 
 class FeatureSupportType(str, enum.Enum):

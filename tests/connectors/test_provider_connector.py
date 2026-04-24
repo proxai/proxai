@@ -459,8 +459,8 @@ class TestGetEstimatedCost:
     )
     pmc = _make_provider_model_config(
         pricing=types.ProviderModelPricingType(
-            input_token_cost_nano_usd_per_token=10,
-            output_token_cost_nano_usd_per_token=20,
+            input_token_cost=10,
+            output_token_cost=20,
         )
     )
     # 100*10 + 200*20 = 1000 + 4000 = 5000 nano-USD.
@@ -475,8 +475,8 @@ class TestGetEstimatedCost:
     )
     pmc = _make_provider_model_config(
         pricing=types.ProviderModelPricingType(
-            input_token_cost_nano_usd_per_token=None,
-            output_token_cost_nano_usd_per_token=20,
+            input_token_cost=None,
+            output_token_cost=20,
         )
     )
     # input 0 * anything = 0; output 100 * 20 = 2000. Sum=2000.
@@ -499,8 +499,8 @@ class TestGetEstimatedCost:
     )
     pmc = _make_provider_model_config(
         pricing=types.ProviderModelPricingType(
-            input_token_cost_nano_usd_per_token=800,
-            output_token_cost_nano_usd_per_token=4000,
+            input_token_cost=800,
+            output_token_cost=4000,
         )
     )
     assert c.get_estimated_cost(call_record, pmc) == 800_000_000
@@ -1026,8 +1026,8 @@ def _mock_provider_model_config():
           ),
       ),
       pricing=types.ProviderModelPricingType(
-          input_token_cost_nano_usd_per_token=10,
-          output_token_cost_nano_usd_per_token=20,
+          input_token_cost=10,
+          output_token_cost=20,
       ),
   )
 

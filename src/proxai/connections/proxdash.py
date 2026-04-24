@@ -18,6 +18,16 @@ import proxai.types as types
 _PROXDASH_STATE_PROPERTY = '_proxdash_connection_state'
 _NOT_SET_EXPERIMENT_PATH_VALUE = '(not set)'
 _SENSITIVE_CONTENT_HIDDEN_STRING = '<SENSITIVE CONTENT HIDDEN>'
+_RESPONSE_LOG_MAX_CHARS = 500
+
+
+def _truncate_for_log(text: str) -> str:
+  if len(text) <= _RESPONSE_LOG_MAX_CHARS:
+    return text
+  return (
+      f'{text[:_RESPONSE_LOG_MAX_CHARS]}... '
+      f'(truncated, {len(text)} chars total)'
+  )
 
 
 @dataclasses.dataclass
@@ -884,7 +894,7 @@ class ProxDashConnection(state_controller.StateControlled):
               'Failed to get model registry from ProxDash.\n'
               f'ProxAI version: {current_version}\n'
               f'Status code: {response.status_code}\n'
-              f'Response: {response.text}'
+              f'Response: {_truncate_for_log(response.text)}'
           ), type=types.LoggingType.ERROR
       )
       return None
@@ -896,7 +906,7 @@ class ProxDashConnection(state_controller.StateControlled):
           proxdash_options=self.proxdash_options, message=(
               'Failed to get model registry from ProxDash.\n'
               f'ProxAI version: {current_version}\n'
-              f'Response: {response.text}'
+              f'Response: {_truncate_for_log(response.text)}'
           ), type=types.LoggingType.ERROR
       )
       return None
@@ -932,7 +942,7 @@ class ProxDashConnection(state_controller.StateControlled):
               'issue to the https://github.com/proxai/proxai.\n'
               'Also, please check latest stable version of ProxAI. '
               f'Request URL: {request_url}'
-              f'Response: {response.text}'
+              f'Response: {_truncate_for_log(response.text)}'
           ), type=types.LoggingType.ERROR
       )
       return None

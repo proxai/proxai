@@ -263,8 +263,8 @@ list you need from the `TOOL` blocks themselves.
 
 Unit contract — **everything on the cost path is int**:
 
-- `ProviderModelPricingType.input_token_cost_nano_usd_per_token` and
-  `output_token_cost_nano_usd_per_token` are typed `int | None` and
+- `ProviderModelPricingType.input_token_cost` and
+  `output_token_cost` are typed `int | None` and
   quoted in **nano-USD per token** (1 nano-USD = 10⁻⁹ USD). For Claude
   Haiku at $0.80 per 1M input tokens → $0.0000008 per token → `800`.
   No fractional costs; nano-USD is fine enough to represent every real
@@ -273,8 +273,8 @@ Unit contract — **everything on the cost path is int**:
 - `UsageType.input_tokens` / `output_tokens` are `int`.
 - `UsageType.estimated_cost` is `int`, in **nano-USD total**.
   `get_estimated_cost` computes
-  `math.floor(input_tokens * input_token_cost_nano_usd_per_token +
-  output_tokens * output_token_cost_nano_usd_per_token)`. With all int
+  `math.floor(input_tokens * input_token_cost +
+  output_tokens * output_token_cost)`. With all int
   inputs the product is already int, so the `math.floor` is a defensive
   no-op; the unit is preserved because the scalars are already nano-USD
   per token. For the Haiku example above, 1,000,000 input tokens × 800
