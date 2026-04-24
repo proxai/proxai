@@ -47,48 +47,50 @@ proxai/
 │                                         includes `skills install`)
 │
 ├── docs/
-│   ├── README.md                        (top-level router)
+│   ├── README.md  *                     (top-level router)
 │   ├── llms.txt                         (Layer C — curated index)
 │   ├── llms-full.txt                    (Layer C — CI-generated)
-│   ├── documentation_outline.md              (this file)
-│   ├── skill_analyses.md                (analysis + rationale)
+│   ├── documentation_outline.md  *      (this file)
+│   ├── skill_analyses.md  *             (analysis + rationale)
 │   │
 │   ├── user_agents/                     (Layer A — for library users)
-│   │   ├── overview.md
+│   │   ├── overview.md  *
 │   │   ├── api_guidelines/
-│   │   │   ├── px_client_api.md
-│   │   │   ├── px_generate_api.md
-│   │   │   ├── px_models_api.md
-│   │   │   ├── px_files_api.md
-│   │   │   ├── px_chat_api.md
-│   │   │   ├── call_record.md
-│   │   │   ├── raw_provider_response.md
-│   │   │   ├── provider_feature_support_summary.md
-│   │   │   └── cache_behaviors.md
+│   │   │   ├── px_client_api.md  *
+│   │   │   ├── px_generate_api.md  *
+│   │   │   ├── px_models_api.md  *
+│   │   │   ├── px_files_api.md  *
+│   │   │   ├── px_chat_api.md  *
+│   │   │   ├── call_record.md  *
+│   │   │   ├── raw_provider_response.md  *
+│   │   │   ├── provider_feature_support_summary.md  *
+│   │   │   └── cache_behaviors.md  *
 │   │   ├── recipes/
 │   │   │   ├── proxdash_onboarding.md
 │   │   │   ├── refactoring_existing_codebase.md
 │   │   │   ├── best_practices.md
 │   │   │   └── production_best_practices.md
-│   │   └── troubleshooting.md
+│   │   └── troubleshooting.md  *
 │   │
 │   └── developer_agents/                (Layer A — for contributors)
-│       ├── overview.md
-│       ├── dependency_graph.md
-│       ├── state_controller.md
-│       ├── provider_connector_contract.md
-│       ├── adding_a_new_provider.md
-│       ├── feature_adapters_logic.md
-│       ├── chat_export_logic.md
-│       ├── cache_internals.md
-│       ├── files_internals.md
-│       ├── testing_conventions.md
-│       ├── sanity_check_before_merge.md
+│       ├── overview.md  *
+│       ├── dependency_graph.md  *
+│       ├── state_controller.md  *
+│       ├── adding_a_new_provider.md  *
+│       ├── feature_adapters_logic.md  *
+│       ├── chat_export_logic.md  *
+│       ├── cache_internals.md  *
+│       ├── files_internals.md  *
+│       ├── testing_conventions.md  *
+│       ├── sanity_check_before_merge.md  *
 │       ├── feature_roadmap.md
 │       └── skills_authoring.md
 │
 └── README.md                            (root — PyPI / GitHub landing)
 ```
+
+`*` marks files that have been drafted with substantive content;
+unmarked entries are still placeholders pending a write (see §7.3).
 
 Counts:
 - **Layer A (repo docs):** 22 markdown files (9 top-level +
@@ -108,9 +110,13 @@ inside the ProxAI repository.
 
 ### 2.1 `docs/README.md`
 
-A one-screen router. Directs visitors based on task:
-"using ProxAI → `user_agents/overview.md`; modifying ProxAI →
-`developer_agents/overview.md`." Short. No deep content.
+A top-of-`docs/` router page. Directs visitors based on task
+("using ProxAI → `user_agents/overview.md`; modifying ProxAI →
+`developer_agents/overview.md`") and carries a flat sorted
+inventory of every doc in the tree with a one-sentence scope per
+entry, so an agent that landed at `docs/` can reach any target
+without opening an overview first. No deep content — every entry
+links out to the reference doc that owns the surface.
 
 ### 2.2 `user_agents/overview.md`
 
@@ -174,14 +180,13 @@ Mandatory first read for developer-agents. Contains:
 |---|---|
 | `dependency_graph.md` | Layering rules (types → caches → connectors → client → proxai), import contracts. |
 | `state_controller.md` | StateControlled base, StateContainer, handle_changes contract, propagation rules (absorbs `state_propagation_analysis.md`). |
-| `provider_connector_contract.md` | The 5 required class attributes, `__init_subclass__` validator, endpoint-key naming, SUPPORTED / BEST_EFFORT / NOT_SUPPORTED taxonomy (renamed from `provider_connectors.md`). |
-| `adding_a_new_provider.md` | Step-by-step: create connector file, create mock, register in `_MODEL_CONNECTOR_MAP`, add JSON model config, add to pyproject `include`, write tests. |
+| `adding_a_new_provider.md` | Self-contained end-to-end guide for writing a new connector — both the procedural recipe and the normative contract. Covers: (0) throwaway SDK-probing scripts and the observation→`FeatureSupportType` table; (1-3) the 3-gate flow — code (create `providers/<name>.py` + mock, register in `_MODEL_CONNECTOR_MAP` + `PROVIDER_KEY_MAP`, add to `model_configs_data/v1.3.x.json`, add pyproject dep), optional File API dispatch integration, tests + integration-harness block; plus inline reference for `FeatureConfigType` fields (top-level, `ParameterConfigType`, `ToolConfigType`, `InputFormatConfigType`, `OutputFormatConfigType`, system-prompt Patterns 1/2), SUPPORTED / BEST_EFFORT / NOT_SUPPORTED semantics, executor anatomy (`ExecutorResult`, `_safe_provider_query`, what `query_record` carries after the adapter), per-provider parameter cross-reference, JSON / PYDANTIC Pattern A/B, multimodal `_to_<provider>_part` conversion, thinking / web-search citations, mock contract, common pitfalls. |
 | `feature_adapters_logic.md` | FeatureAdapter + ResultAdapter mechanics; what gets dropped or injected per support level. |
-| `chat_export_logic.md` | How `Chat` serializes messages, content-block conversion, history persistence. |
-| `cache_internals.md` | query_cache / model_cache implementation, on-disk layout, invalidation rules, concurrency. |
-| `files_internals.md` | FilesManager dispatch tables (UPLOAD / DOWNLOAD), auto-upload hook in `ProviderConnector.generate`, per-provider routing (split from `multimodal_large_file_analysis.md`). |
-| `testing_conventions.md` | Mock-provider pattern, when to use `run_type=TEST`, integration harness in `integration_tests/`, coverage expectations. |
-| `sanity_check_before_merge.md` | Pre-merge checklist: test coverage, integration coverage, user_agents docs reflect behavior changes, developer_agents docs current. |
+| `chat_export_logic.md` | `Chat` construction / normalization and the `Chat.export` pipeline: deep-copy invariant, the 10-step processing order, the ten private helpers, how `_adapt_chat` drives `export` via six flags, `to_dict` / `from_dict` vs. `export` serialization. |
+| `cache_internals.md` | `QueryCacheManager` / `ShardManager` / `HeapManager` three-layer architecture, on-disk sharded JSONL layout, the freshness invariant (in-memory index as source of truth), hash + equality identity pact (`hash_serializer` ↔ `type_utils.is_query_record_equal`), LRU eviction, backlog flush / shard merge, restart recovery, and `ModelCacheManager` (separate single-file design). |
+| `files_internals.md` | `FilesManager` lifecycle and state fields, the four dispatch tables (`UPLOAD` / `REMOVE` / `LIST` / `DOWNLOAD`) plus mocks, capability-table split (`UPLOAD_SUPPORTED_MEDIA_TYPES` vs. `REFERENCE_SUPPORTED_MEDIA_TYPES`), parallelism rules, ProxDash dual-persistence story, the `_auto_upload_media` hook in `ProviderConnector.generate`, and the per-provider `_to_*_part` consumers. |
+| `testing_conventions.md` | Unit tier (`tests/`) vs. interactive integration harness (`integration_tests/proxai_api_test.py`), the `run_type=TEST` mock switch in `ProviderConnector.api`, structural-duck-typed `*_mock.py` contract, `MOCK_*_DISPATCH` for files, the `conftest.py` shared `model_configs_instance` fixture, common per-file fixtures (monkeypatch / requests_mock / tmp_path), style / class-grouping rules, `@integration_block` decorator and checkpointing, and coverage expectations (including the hash / equality parallel rule). |
+| `sanity_check_before_merge.md` | Pre-merge audit organized by gates: CI-enforced lint / yapf / pytest (§2-3), conventions CI doesn't catch (§4 layering, §5 `poetry run`, §6 CLAUDE.md spot-checks), conditional checklists triggered by the kind of change (§7 public behavior, §8 new provider, §9 hash/equality mirror for new fields, §10 StateControlled edits, §11 wire-format → integration harness, §12 cache changes), docs currency (§13-14 Layer A + outline), and packaging / version bumps (§15). |
 | `feature_roadmap.md` | Planned work with `Status: planned / in-progress / blocked / shipped` and a date. Tool usage, router, more providers, i2i / t+i2i / i2v. |
 | `skills_authoring.md` | Rules for authoring files under `src/proxai/agent_skills/`: 5k-token body cap, `description` phrasing, progressive-disclosure pattern, versioning / CI checks for code snippets. |
 
@@ -412,40 +417,40 @@ Content rewrites are pending per doc.
 
 ### 7.1 Completed
 
+The `*` markers in §1 "Complete repo and docs layout" are the
+authoritative list of completed docs. This section captures the
+structural bootstrap and a dated drafting log only — scope lives
+in §2.3 / §2.6 / §2.7, not here.
+
+**Structural bootstrap**
+
 - `docs/user_agents/`, `docs/developer_agents/`,
   `user_agents/api_guidelines/`, `user_agents/recipes/`
   directories created.
-- 11 files moved and renamed via `git mv` from
-  `docs/development/` to their Layer A homes (history preserved as
-  renames).
-- 20 empty placeholders created for new docs, each with a
-  one-line pointer back to this outline.
-- `docs/llms.txt` and `docs/llms-full.txt` placeholders created.
-- `docs/README.md` placeholder created.
-- `user_agents/api_guidelines/cache_behaviors.md` drafted from the
-  per-doc outline in §6.1 and the user-facing portion of
-  `docs/development/query_cache.md` (2026-04-23). Inbound links added
-  from `px_client_api.md` §2.2, `px_generate_api.md` §5.9, and
-  `call_record.md` §3.10.
-- `user_agents/api_guidelines/raw_provider_response.md` drafted
-  (2026-04-23) — covers the `keep_raw_provider_response` debug flag,
-  the `CallRecord.debug.raw_provider_response` field it populates,
-  the `cache_options` mutual exclusion, and typical per-provider
-  raw-response shapes. Inbound link added from `px_client_api.md`
-  §2.7.1; the scope cell in §2.3 was corrected (previously described
-  `provider_queries`, which is not this doc's subject).
-- `developer_agents/feature_adapters_logic.md` drafted
-  (2026-04-23) — covers the full FeatureAdapter and ResultAdapter
-  pipeline: endpoint selection probing, the deep-copy `adapt_query_record`
-  order, system-prompt folding (Pattern 1 vs Pattern 2), `Chat.export`
-  flag passthrough, per-content-block input-format adaptation (with the
-  passthrough/converter table), output-format guidance injection (the
-  "no best effort" set, why JSON/Pydantic types are intentionally not
-  cleared), parameter drops, and the post-call TEXT → JSON / Pydantic
-  transform plus `output_*` shortcut population. The §2.7 scope cell
-  for `feature_adapters_logic.md` already matched the doc's content
-  ("FeatureAdapter + ResultAdapter mechanics; what gets dropped or
-  injected per support level") — no scope edit needed.
+- 11 files moved via `git mv` from `docs/development/` into Layer
+  A homes (history preserved as renames).
+- 20 empty placeholders created for new docs, each with a one-line
+  scope pointer back to this outline.
+- `docs/README.md`, `docs/llms.txt`, `docs/llms-full.txt`
+  placeholders created.
+
+**Drafts**
+
+- `user_agents/api_guidelines/cache_behaviors.md` — 2026-04-23
+- `user_agents/api_guidelines/raw_provider_response.md` — 2026-04-23
+- `user_agents/troubleshooting.md` — 2026-04-23
+- `developer_agents/feature_adapters_logic.md` — 2026-04-23
+- `developer_agents/adding_a_new_provider.md` — 2026-04-23
+- `developer_agents/sanity_check_before_merge.md` — 2026-04-23
+- `developer_agents/testing_conventions.md` — 2026-04-23
+- `developer_agents/cache_internals.md` — 2026-04-23 (drains
+  `docs/development/query_cache.md` — deleted; see §7.2)
+- `developer_agents/files_internals.md` — 2026-04-23
+- `developer_agents/chat_export_logic.md` — 2026-04-23
+- `user_agents/overview.md` — 2026-04-24
+- `developer_agents/overview.md` — 2026-04-24
+- `docs/README.md` — 2026-04-24 (router + flat doc inventory;
+  `/px-create-doc` §7.1 keeps the inventory in sync)
 
 ### 7.2 Pending — staging files in `docs/development/`
 
@@ -455,8 +460,8 @@ are written:
 
 | Staging file | Consumes into |
 |---|---|
-| `query_cache.md` | Split: user-facing content → `user_agents/api_guidelines/cache_behaviors.md` (consumed 2026-04-23); internals → `developer_agents/cache_internals.md` (still pending). Keep until the internals half lands. |
-| `multimodal_large_file_analysis.md` | Split: user-facing content folded into `user_agents/api_guidelines/px_files_api.md` and `px_generate_api.md`; internals → `developer_agents/files_internals.md` |
+| ~~`query_cache.md`~~ | Fully drained and deleted 2026-04-23. User-facing content → `user_agents/api_guidelines/cache_behaviors.md`; internals → `developer_agents/cache_internals.md`. Stale `retry_if_error_cached` / `PROVIDER_ERROR_CACHED` descriptions in the staging file were intentionally NOT carried forward — the current source has those removed. |
+| `multimodal_large_file_analysis.md` | Split: internals half (FilesManager + auto-upload) consumed into `developer_agents/files_internals.md` (drafted 2026-04-23). User-facing halves already folded into `user_agents/api_guidelines/px_files_api.md` and `px_generate_api.md`. Per-provider size-limit / delivery-method reference material (§3) and SDK code examples (§5) in the staging file are NOT yet migrated — keep the file until either that reference material is folded into Layer A or the maintainer confirms it can be dropped. |
 | `state_propagation_analysis.md` | Merged into `developer_agents/state_controller.md` |
 
 `docs/development/` will be removed once all three staging files
