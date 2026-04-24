@@ -1198,6 +1198,25 @@ class TestGenerate:
           prompt='hi',
       )
 
+  def test_failure_with_suppress_false_uploads_stringified_error(self):
+    # Regression: on the raise path the call_record must be stringified
+    # before upload, otherwise ProxDash ingestion fails with
+    # "Object of type <Exception> is not JSON serializable".
+    c = _build_connector(mock_provider.MockFailingProviderModelConnector)
+    captured = []
+    c._upload_call_record_to_proxdash = captured.append
+    with pytest.raises(ValueError, match='Mock failing provider query'):
+      c.generate(
+          provider_model=_mock_failing_provider_model(),
+          provider_model_config=_mock_failing_provider_model_config(),
+          prompt='hi',
+      )
+    assert len(captured) == 1
+    uploaded = captured[0]
+    assert uploaded.result.status == types.ResultStatusType.FAILED
+    assert isinstance(uploaded.result.error, str)
+    assert 'Mock failing provider query' in uploaded.result.error
+
   def test_failure_with_suppress_true_returns_stringified_error(self):
     c = _build_connector(mock_provider.MockFailingProviderModelConnector)
     result = c.generate(

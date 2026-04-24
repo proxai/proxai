@@ -947,8 +947,10 @@ class ProviderConnector(state_controller.StateControlled):
           not connection_options or
           not connection_options.suppress_provider_errors
       ):
+        original_error = call_record.result.error
+        call_record.result.error = str(original_error)
         self._upload_call_record_to_proxdash(call_record)
-        raise call_record.result.error
+        raise original_error
       else:
         call_record.result.error = str(call_record.result.error)
     else:
