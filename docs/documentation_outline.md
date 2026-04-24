@@ -134,7 +134,7 @@ Mandatory first read for user-agents. Contains:
 | `px_files_api.md` | `px.files.*` upload / list / delete surface; semantics of local paths vs. uploaded file IDs. |
 | `px_chat_api.md` | `px.Chat` session API, Message / MessageContent shape. |
 | `call_record.md` | Return shape: fields on CallRecord, QueryRecord, ResultRecord, MessageContent. |
-| `raw_provider_response.md` | `provider_queries` dict — how to read the per-model test records on ModelStatus. |
+| `raw_provider_response.md` | `DebugOptions.keep_raw_provider_response` — the client-level debug flag that attaches the provider SDK's raw response to `CallRecord.debug.raw_provider_response`. |
 | `provider_feature_support_summary.md` | Quick-skim tables for SUPPORTED / BEST_EFFORT / NOT_SUPPORTED per provider (already written). |
 | `cache_behaviors.md` | User-facing cache behavior: implications + simple examples. Detailed outline in §6.1. |
 
@@ -427,6 +427,13 @@ Content rewrites are pending per doc.
   `docs/development/query_cache.md` (2026-04-23). Inbound links added
   from `px_client_api.md` §2.2, `px_generate_api.md` §5.9, and
   `call_record.md` §3.10.
+- `user_agents/api_guidelines/raw_provider_response.md` drafted
+  (2026-04-23) — covers the `keep_raw_provider_response` debug flag,
+  the `CallRecord.debug.raw_provider_response` field it populates,
+  the `cache_options` mutual exclusion, and typical per-provider
+  raw-response shapes. Inbound link added from `px_client_api.md`
+  §2.7.1; the scope cell in §2.3 was corrected (previously described
+  `provider_queries`, which is not this doc's subject).
 
 ### 7.2 Pending — staging files in `docs/development/`
 
@@ -496,9 +503,11 @@ Resolved items from the planning discussion:
    subsection rather than a standalone file, since the content is
    a short list of environment-specific notes.
 
-7. **`raw_provider_response.md` in `user_agents/`.** Users who
-   inspect `provider_queries` from a CallRecord are still in
-   user-facing territory.
+7. **`raw_provider_response.md` in `user_agents/`.** The doc covers
+   the client-level `keep_raw_provider_response` debug flag — a
+   caller-facing escape hatch for reading the provider SDK's raw
+   response object off a returned `CallRecord`. Users who reach for
+   this flag are still in user-facing territory.
 
 8. **`docs/README.md` (not `index.md`).** GitHub renders it
    automatically at the `docs/` path.
