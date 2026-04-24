@@ -93,7 +93,7 @@ def _register_mock_providers(mc_instance: model_configs.ModelConfigs) -> None:
                 provider=provider, model=model,
                 provider_model_identifier=model),
             pricing=types.ProviderModelPricingType(
-                input_token_cost_nano_usd_per_token=1, output_token_cost_nano_usd_per_token=2),
+                input_token_cost=1, output_token_cost=2),
             metadata=types.ProviderModelMetadataType(
                 is_recommended=False,
                 model_size_tags=[types.ModelSizeType.SMALL]),

@@ -771,8 +771,8 @@ def _make_configs_with_best_effort_pydantic_model():
               provider_model_identifier='mock_model_best_effort_pydantic',
           ),
           pricing=types.ProviderModelPricingType(
-              input_token_cost_nano_usd_per_token=1,
-              output_token_cost_nano_usd_per_token=2,
+              input_token_cost=1,
+              output_token_cost=2,
           ),
           metadata=types.ProviderModelMetadataType(
               is_recommended=False,

@@ -48,12 +48,12 @@ def encode_provider_model_pricing_type(
   Unit: nano-USD per token (see ProviderModelPricingType).
   """
   record = {}
-  v = provider_model_pricing_type.input_token_cost_nano_usd_per_token
+  v = provider_model_pricing_type.input_token_cost
   if v is not None:
-    record['input_token_cost_nano_usd_per_token'] = v
-  v = provider_model_pricing_type.output_token_cost_nano_usd_per_token
+    record['input_token_cost'] = v
+  v = provider_model_pricing_type.output_token_cost
   if v is not None:
-    record['output_token_cost_nano_usd_per_token'] = v
+    record['output_token_cost'] = v
   return record
 
 
@@ -65,13 +65,13 @@ def decode_provider_model_pricing_type(
   Unit: nano-USD per token (see ProviderModelPricingType).
   """
   provider_model_pricing_type = types.ProviderModelPricingType()
-  if 'input_token_cost_nano_usd_per_token' in record:
-    provider_model_pricing_type.input_token_cost_nano_usd_per_token = (
-        int(record['input_token_cost_nano_usd_per_token'])
+  if 'input_token_cost' in record:
+    provider_model_pricing_type.input_token_cost = (
+        int(record['input_token_cost'])
     )
-  if 'output_token_cost_nano_usd_per_token' in record:
-    provider_model_pricing_type.output_token_cost_nano_usd_per_token = (
-        int(record['output_token_cost_nano_usd_per_token'])
+  if 'output_token_cost' in record:
+    provider_model_pricing_type.output_token_cost = (
+        int(record['output_token_cost'])
     )
   return provider_model_pricing_type
 

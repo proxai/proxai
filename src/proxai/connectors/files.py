@@ -587,6 +587,20 @@ class FilesManager(state_controller.StateControlled):
     except Exception:
       return []
 
+  def _filter_proxdash_by_providers(
+      self,
+      proxdash_results: list[message_content.MessageContent],
+      providers: list[types.ProviderNameType],
+  ) -> list[message_content.MessageContent]:
+    provider_set = set(providers)
+    filtered = []
+    for mc in proxdash_results:
+      if not mc.provider_file_api_ids:
+        continue
+      if provider_set.intersection(mc.provider_file_api_ids):
+        filtered.append(mc)
+    return filtered
+
   def _build_covered_file_ids(
       self, proxdash_results: list[message_content.MessageContent]
   ) -> dict[str, set[str]]:
@@ -644,6 +658,9 @@ class FilesManager(state_controller.StateControlled):
         except Exception:
           provider_results_raw[provider] = []
 
+    proxdash_results = self._filter_proxdash_by_providers(
+        proxdash_results, providers
+    )
     covered = self._build_covered_file_ids(proxdash_results)
 
     provider_results: list[message_content.MessageContent] = []

@@ -259,7 +259,7 @@ def test_multi_parallel():
 
 def test_multi_parallel_mixed_media_fail():
   print('\n=== Multi Upload: Mixed media validation error ===')
-  px.connect()
+  px.connect(proxdash_options=px.ProxDashOptions(disable_proxdash=True))
   media = px.MessageContent(
       path=_asset('cat.mp3'), media_type='audio/mpeg')
   try:
@@ -988,13 +988,13 @@ def main():
       help=f'Test to run: {", ".join(test_names)}, or "all"')
   args = parser.parse_args()
 
-  px.connect()
+  px.connect(proxdash_options=px.ProxDashOptions(disable_proxdash=True))
 
   if args.test == 'all':
     for name, test_fn in TEST_SEQUENCE:
       test_fn()
       px.reset_state()
-      px.connect()
+      px.connect(proxdash_options=px.ProxDashOptions(disable_proxdash=True))
   else:
     if args.test not in TEST_MAP:
       print(f'Unknown test: {args.test}')

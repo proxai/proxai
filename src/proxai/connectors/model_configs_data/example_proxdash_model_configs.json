@@ -77,8 +77,8 @@
           ]
         },
         "pricing": {
-          "input_token_cost_nano_usd_per_token": 1250,
-          "output_token_cost_nano_usd_per_token": 5000
+          "input_token_cost": 1250,
+          "output_token_cost": 5000
         },
         "provider_model": {
           "model": "gemini-1.5-pro",
@@ -128,8 +128,8 @@
           ]
         },
         "pricing": {
-          "input_token_cost_nano_usd_per_token": 300,
-          "output_token_cost_nano_usd_per_token": 2500
+          "input_token_cost": 300,
+          "output_token_cost": 2500
         },
         "provider_model": {
           "model": "gemini-2.5-flash",
@@ -179,8 +179,8 @@
           ]
         },
         "pricing": {
-          "input_token_cost_nano_usd_per_token": 100,
-          "output_token_cost_nano_usd_per_token": 400
+          "input_token_cost": 100,
+          "output_token_cost": 400
         },
         "provider_model": {
           "model": "gemini-2.5-flash-lite",
@@ -230,8 +230,8 @@
           ]
         },
         "pricing": {
-          "input_token_cost_nano_usd_per_token": 1250,
-          "output_token_cost_nano_usd_per_token": 10000
+          "input_token_cost": 1250,
+          "output_token_cost": 10000
         },
         "provider_model": {
           "model": "gemini-2.5-pro",
@@ -282,8 +282,8 @@
           ]
         },
         "pricing": {
-          "input_token_cost_nano_usd_per_token": 2000,
-          "output_token_cost_nano_usd_per_token": 15000
+          "input_token_cost": 2000,
+          "output_token_cost": 15000
         },
         "provider_model": {
           "model": "gemini-3-pro",
@@ -329,8 +329,8 @@
           "is_recommended": true
         },
         "pricing": {
-          "input_token_cost_nano_usd_per_token": 0,
-          "output_token_cost_nano_usd_per_token": 0
+          "input_token_cost": 0,
+          "output_token_cost": 0
         },
         "provider_model": {
           "model": "veo-3.0",
@@ -378,8 +378,8 @@
           "is_recommended": true
         },
         "pricing": {
-          "input_token_cost_nano_usd_per_token": 0,
-          "output_token_cost_nano_usd_per_token": 0
+          "input_token_cost": 0,
+          "output_token_cost": 0
         },
         "provider_model": {
           "model": "dall-e-3",
@@ -428,8 +428,8 @@
           ]
         },
         "pricing": {
-          "input_token_cost_nano_usd_per_token": 10000,
-          "output_token_cost_nano_usd_per_token": 30000
+          "input_token_cost": 10000,
+          "output_token_cost": 30000
         },
         "provider_model": {
           "model": "gpt-4-turbo",
@@ -478,8 +478,8 @@
           ]
         },
         "pricing": {
-          "input_token_cost_nano_usd_per_token": 2500,
-          "output_token_cost_nano_usd_per_token": 10000
+          "input_token_cost": 2500,
+          "output_token_cost": 10000
         },
         "provider_model": {
           "model": "gpt-4o",
@@ -528,8 +528,8 @@
           ]
         },
         "pricing": {
-          "input_token_cost_nano_usd_per_token": 5000,
-          "output_token_cost_nano_usd_per_token": 20000
+          "input_token_cost": 5000,
+          "output_token_cost": 20000
         },
         "provider_model": {
           "model": "gpt-5",
@@ -578,8 +578,8 @@
           ]
         },
         "pricing": {
-          "input_token_cost_nano_usd_per_token": 100,
-          "output_token_cost_nano_usd_per_token": 400
+          "input_token_cost": 100,
+          "output_token_cost": 400
         },
         "provider_model": {
           "model": "gpt-5-nano",
@@ -629,8 +629,8 @@
           ]
         },
         "pricing": {
-          "input_token_cost_nano_usd_per_token": 2000,
-          "output_token_cost_nano_usd_per_token": 8000
+          "input_token_cost": 2000,
+          "output_token_cost": 8000
         },
         "provider_model": {
           "model": "o3",
@@ -676,8 +676,8 @@
           "is_recommended": true
         },
         "pricing": {
-          "input_token_cost_nano_usd_per_token": 0,
-          "output_token_cost_nano_usd_per_token": 0
+          "input_token_cost": 0,
+          "output_token_cost": 0
         },
         "provider_model": {
           "model": "tts-1",

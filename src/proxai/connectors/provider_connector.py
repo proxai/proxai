@@ -362,12 +362,12 @@ class ProviderConnector(state_controller.StateControlled):
     model_pricing_config = provider_model_config.pricing
 
     query_token_cost = (
-        model_pricing_config.input_token_cost_nano_usd_per_token
+        model_pricing_config.input_token_cost
     )
     if query_token_cost is None:
       query_token_cost = 0
     response_token_cost = (
-        model_pricing_config.output_token_cost_nano_usd_per_token
+        model_pricing_config.output_token_cost
     )
     if response_token_cost is None:
       response_token_cost = 0

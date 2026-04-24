@@ -275,10 +275,15 @@ When `providers=None`, every provider with an API key and a
 1. ProxDash `/files` endpoint is queried first and returns
    `MessageContent`s with combined provider metadata already
    stitched together (these come first in the return list).
-2. Each provider's `list` is still queried, but any file whose
-   `(provider, file_id)` pair already appears in a ProxDash result
-   is dropped — the ProxDash record is authoritative.
-3. Provider-only files (unknown to ProxDash) follow in the list.
+2. ProxDash results are filtered to the resolved `providers` set:
+   an MC is kept only if at least one of the requested providers
+   appears in its `provider_file_api_ids`. MCs with no provider
+   linkage, or linked only to unrequested providers, are dropped.
+3. Each provider's `list` is still queried, but any file whose
+   `(provider, file_id)` pair already appears in a (filtered)
+   ProxDash result is dropped — the ProxDash record is
+   authoritative.
+4. Provider-only files (unknown to ProxDash) follow in the list.
 
 **Raises:**
 
@@ -374,7 +379,7 @@ the client's `proxdash_options` (see `px_client_analysis.md §5.4`).
 |---|---|---|
 | **upload** | Uploads to each named provider; mutates `provider_file_api_ids` / `provider_file_api_status`. | Same, **plus** uploads the bytes to ProxDash S3 in the same parallel pool. On success, `media.proxdash_file_id` and `proxdash_file_status` are set. After all provider uploads complete, provider metadata is pushed to ProxDash via `PATCH /files/{id}` so the central record reflects every provider's `file_id`. ProxDash failure is silent. |
 | **download** | Only Mistral works — other providers raise. | When `provider=None` is passed, ProxDash is tried first via presigned S3 URL — works for any file with a `proxdash_file_id` regardless of original provider. Falls back to provider download if ProxDash fails. |
-| **list** | Returns provider-side file listings only. | ProxDash `/files` is queried first (returns combined cross-provider metadata); providers are still queried and then **deduplicated** against the ProxDash results by `(provider, file_id)` pair. |
+| **list** | Returns provider-side file listings only. | ProxDash `/files` is queried first (returns combined cross-provider metadata), then **filtered** to the resolved `providers` set — MCs without any requested provider in `provider_file_api_ids` are dropped; providers are still queried and then **deduplicated** against the filtered ProxDash results by `(provider, file_id)` pair. |
 | **remove** | Removes from named providers only. | Same, **plus** deletes the ProxDash record (and the S3 object) in parallel. ProxDash delete failure is silent. On success, `proxdash_file_id` and `proxdash_file_status` are cleared. |
 | **is_upload_supported / is_download_supported** | Unchanged — pure predicates. | Unchanged. |
 

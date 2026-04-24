@@ -36,7 +36,7 @@ def _make_config(provider, model, identifier=None):
           provider=provider, model=model,
           provider_model_identifier=identifier or model),
       pricing=types.ProviderModelPricingType(
-          input_token_cost_nano_usd_per_token=1, output_token_cost_nano_usd_per_token=1),
+          input_token_cost=1, output_token_cost=1),
       features=types.FeatureConfigType(),
       metadata=types.ProviderModelMetadataType(),
   )
@@ -240,13 +240,13 @@ class TestValidateProviderModelConfigs:
         provider_model=types.ProviderModelType(
             provider='openai', model='gpt-4',
             provider_model_identifier='gpt-4'),
-        pricing=types.ProviderModelPricingType(input_token_cost_nano_usd_per_token=-1),
+        pricing=types.ProviderModelPricingType(input_token_cost=-1),
         features=types.FeatureConfigType(),
         metadata=types.ProviderModelMetadataType())
     registry = types.ModelRegistry(
         metadata=None, default_model_priority_list=[],
         provider_model_configs={'openai': {'gpt-4': config}})
-    with pytest.raises(ValueError, match='input_token_cost_nano_usd_per_token is negative'):
+    with pytest.raises(ValueError, match='input_token_cost is negative'):
       model_configs.ModelConfigs._validate_provider_model_configs(registry)
 
 

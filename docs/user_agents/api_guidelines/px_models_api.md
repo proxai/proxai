@@ -146,8 +146,8 @@ argument to `px.generate()`.
 ProviderModelConfig (from get_model_config)
 ├── provider_model: ProviderModelType
 ├── pricing: ProviderModelPricingType
-│   ├── input_token_cost_nano_usd_per_token: int | None
-│   └── output_token_cost_nano_usd_per_token: int | None
+│   ├── input_token_cost: int | None
+│   └── output_token_cost: int | None
 ├── features: FeatureConfigType
 │   ├── prompt / messages / system_prompt: FeatureSupportType | None
 │   ├── parameters: ParameterConfigType | None
@@ -306,7 +306,7 @@ px.models.get_model_config(
 ```python
 cfg = px.models.get_model_config("gemini", "gemini-2.5-flash")
 print(cfg.features.input_format.image)   # → SUPPORTED
-print(cfg.pricing.input_token_cost_nano_usd_per_token)   # → 300
+print(cfg.pricing.input_token_cost)   # → 300
 ```
 
 Raises `KeyError` if the model doesn't exist.
@@ -593,7 +593,7 @@ video_models = px.models.list_models(output_format="video")
 cfg = px.models.get_model_config("openai", "gpt-4o")
 
 # Pricing (nano-USD per token — see call_record_analysis.md §2.11)
-print(cfg.pricing.input_token_cost_nano_usd_per_token)
+print(cfg.pricing.input_token_cost)
 
 # Feature flags
 print(cfg.features.input_format.image)    # SUPPORTED | BEST_EFFORT | NOT_SUPPORTED

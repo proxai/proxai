@@ -46,22 +46,22 @@ def _get_provider_model_pricing_type_options():
   return [
       {},
       {
-          'input_token_cost_nano_usd_per_token': 100
+          'input_token_cost': 100
       },
       {
-          'output_token_cost_nano_usd_per_token': 200
+          'output_token_cost': 200
       },
       {
-          'input_token_cost_nano_usd_per_token': 100,
-          'output_token_cost_nano_usd_per_token': 200
+          'input_token_cost': 100,
+          'output_token_cost': 200
       },
       {
-          'input_token_cost_nano_usd_per_token': 3,
-          'output_token_cost_nano_usd_per_token': 4
+          'input_token_cost': 3,
+          'output_token_cost': 4
       },
       {
-          'input_token_cost_nano_usd_per_token': 15000,
-          'output_token_cost_nano_usd_per_token': 75000
+          'input_token_cost': 15000,
+          'output_token_cost': 75000
       },
   ]
 
@@ -319,7 +319,7 @@ def _get_provider_model_config_options():
           'provider_model': _MODEL_1,
           'pricing':
               types.ProviderModelPricingType(
-                  input_token_cost_nano_usd_per_token=100, output_token_cost_nano_usd_per_token=200
+                  input_token_cost=100, output_token_cost=200
               ),
           'features': types.FeatureConfigType(),
           'metadata': types.ProviderModelMetadataType()
@@ -343,7 +343,7 @@ def _get_provider_model_config_options():
           'provider_model': _MODEL_3,
           'pricing':
               types.ProviderModelPricingType(
-                  input_token_cost_nano_usd_per_token=300, output_token_cost_nano_usd_per_token=100
+                  input_token_cost=300, output_token_cost=100
               ),
           'features':
               types.FeatureConfigType(
@@ -439,7 +439,7 @@ def _get_model_registry_options():
                   types.ProviderModelConfig(
                       provider_model=_MODEL_1,
                       pricing=types.ProviderModelPricingType(
-                          input_token_cost_nano_usd_per_token=100, output_token_cost_nano_usd_per_token=200
+                          input_token_cost=100, output_token_cost=200
                       ), features=types.FeatureConfigType(
                           prompt=types.FeatureSupportType.SUPPORTED,
                           messages=types.FeatureSupportType.SUPPORTED
@@ -466,7 +466,7 @@ def _get_model_registry_options():
                   types.ProviderModelConfig(
                       provider_model=_MODEL_1,
                       pricing=types.ProviderModelPricingType(
-                          input_token_cost_nano_usd_per_token=100, output_token_cost_nano_usd_per_token=200
+                          input_token_cost=100, output_token_cost=200
                       ), features=types.FeatureConfigType(
                           prompt=types.FeatureSupportType.SUPPORTED,
                           messages=types.FeatureSupportType.SUPPORTED,
@@ -1503,7 +1503,7 @@ def _get_provider_model_configs_mapping_type_options():
                   types.ProviderModelConfig(
                       provider_model=_MODEL_1,
                       pricing=types.ProviderModelPricingType(
-                          input_token_cost_nano_usd_per_token=100, output_token_cost_nano_usd_per_token=200
+                          input_token_cost=100, output_token_cost=200
                       ), features=types.FeatureConfigType(),
                       metadata=types.ProviderModelMetadataType()
                   )
