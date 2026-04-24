@@ -1431,3 +1431,152 @@ class TestMultiChoiceShape:
     )
     assert result.result_record.content[0].text == 'only'
     assert result.result_record.choices is None
+
+
+# =============================================================================
+# OpenAI responses.create: web_search + JSON/PYDANTIC output conflict
+# =============================================================================
+
+
+class TestOpenAIResponsesCreateNativeJsonModeBlocked:
+  """OpenAI's responses.create rejects 'text.format=json_object' alongside
+  web_search. The executor must skip setting native JSON mode when the
+  query pairs WEB_SEARCH with a structured output format; FeatureAdapter
+  has already injected the schema/json guidance into the prompt, so the
+  model still gets steered toward structured output.
+  """
+
+  def _provider_model(self):
+    return types.ProviderModelType(
+        provider='openai', model='gpt-4o',
+        provider_model_identifier='gpt-4o',
+    )
+
+  def _install_capturing_responses_create(self, connector):
+    captured = {}
+
+    class _FakeResponsesResponse:
+
+      def __init__(self):
+        self.output = []
+
+    def _create(**kwargs):
+      captured.update(kwargs)
+      return _FakeResponsesResponse()
+
+    connector.api.responses.create = _create
+    return captured
+
+  def test_predicate_true_when_web_search_tool_present(self):
+    from proxai.connectors.providers import openai as openai_connector
+    qr = types.QueryRecord(tools=[types.Tools.WEB_SEARCH])
+    assert openai_connector.OpenAIConnector._native_json_mode_blocked(qr)
+
+  def test_predicate_false_when_no_tools(self):
+    from proxai.connectors.providers import openai as openai_connector
+    qr = types.QueryRecord(tools=None)
+    assert not openai_connector.OpenAIConnector._native_json_mode_blocked(qr)
+
+  def test_executor_drops_native_json_when_web_search_requested(self):
+    from proxai.connectors.providers import openai as openai_connector
+    c = _build_connector(openai_connector.OpenAIConnector)
+    captured = self._install_capturing_responses_create(c)
+
+    c._responses_create_executor(
+        query_record=types.QueryRecord(
+            prompt='hi',
+            provider_model=self._provider_model(),
+            tools=[types.Tools.WEB_SEARCH],
+            output_format=types.OutputFormat(
+                type=types.OutputFormatType.JSON),
+        ),
+    )
+    assert captured.get('tools') == [{'type': 'web_search'}]
+    assert 'text' not in captured
+
+  def test_executor_keeps_native_json_without_web_search(self):
+    from proxai.connectors.providers import openai as openai_connector
+    c = _build_connector(openai_connector.OpenAIConnector)
+    captured = self._install_capturing_responses_create(c)
+
+    c._responses_create_executor(
+        query_record=types.QueryRecord(
+            prompt='hi',
+            provider_model=self._provider_model(),
+            output_format=types.OutputFormat(
+                type=types.OutputFormatType.JSON),
+        ),
+    )
+    assert captured.get('text') == {'format': {'type': 'json_object'}}
+    assert 'tools' not in captured
+
+  def _install_scripted_responses_create(self, connector, text):
+    """Replace responses.create to return a single text content block."""
+
+    class _FakeContent:
+
+      def __init__(self, text):
+        self.text = text
+        self.annotations = None
+
+    class _FakeOutput:
+
+      def __init__(self, content_text):
+        self.type = 'message'
+        self.content = [_FakeContent(content_text)]
+
+    class _FakeResponse:
+
+      def __init__(self, content_text):
+        self.output = [_FakeOutput(content_text)]
+
+    def _create(**kwargs):
+      return _FakeResponse(text)
+
+    connector.api.responses.create = _create
+
+  def test_executor_unwraps_fenced_json_into_json_block(self):
+    # Regression: when native JSON mode is blocked by web_search, the model
+    # returns markdown-fenced JSON text. The executor must extract the JSON
+    # so ResultAdapter sees a clean JSON block (contract: output_format JSON
+    # => content is a JSON block, never TEXT).
+    from proxai.connectors.providers import openai as openai_connector
+    import proxai.chat.message_content as message_content
+    c = _build_connector(openai_connector.OpenAIConnector)
+    self._install_scripted_responses_create(
+        c, '```json\n{"a": 1, "b": "two"}\n```')
+
+    result = c._responses_create_executor(
+        query_record=types.QueryRecord(
+            prompt='hi',
+            provider_model=self._provider_model(),
+            tools=[types.Tools.WEB_SEARCH],
+            output_format=types.OutputFormat(
+                type=types.OutputFormatType.JSON),
+        ),
+    )
+    content = result.result_record.content
+    assert len(content) == 1
+    assert content[0].type == message_content.ContentType.JSON
+    assert content[0].json == {'a': 1, 'b': 'two'}
+
+  def test_executor_wraps_clean_json_text_into_json_block(self):
+    # The native JSON mode path also emits a JSON block (not TEXT), so the
+    # contract with ResultAdapter is uniform across degraded and native.
+    from proxai.connectors.providers import openai as openai_connector
+    import proxai.chat.message_content as message_content
+    c = _build_connector(openai_connector.OpenAIConnector)
+    self._install_scripted_responses_create(c, '{"a": 1, "b": "two"}')
+
+    result = c._responses_create_executor(
+        query_record=types.QueryRecord(
+            prompt='hi',
+            provider_model=self._provider_model(),
+            output_format=types.OutputFormat(
+                type=types.OutputFormatType.JSON),
+        ),
+    )
+    content = result.result_record.content
+    assert len(content) == 1
+    assert content[0].type == message_content.ContentType.JSON
+    assert content[0].json == {'a': 1, 'b': 'two'}

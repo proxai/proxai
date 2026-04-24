@@ -498,6 +498,20 @@ class OpenAIConnector(provider_connector.ProviderConnector):
     return types.ExecutorResult(
         result_record=result_record, raw_provider_response=response)
 
+  @staticmethod
+  def _native_json_mode_blocked(
+      query_record: types.QueryRecord) -> bool:
+    """responses.create rejects text.format=json_object with web_search.
+
+    On this path FeatureAdapter has already injected JSON / pydantic-schema
+    guidance into the prompt, and ResultAdapter parses the returned text
+    back into the requested structure — so declining native JSON mode here
+    is a lossless degradation.
+    """
+    return bool(
+        query_record.tools
+        and types.Tools.WEB_SEARCH in query_record.tools)
+
   def _responses_create_executor(
       self,
       query_record: types.QueryRecord) -> types.ExecutorResult:
@@ -541,17 +555,15 @@ class OpenAIConnector(provider_connector.ProviderConnector):
       if types.Tools.WEB_SEARCH in query_record.tools:
         create = functools.partial(create, tools=[{"type": "web_search"}])
   
-    if query_record.output_format.type == types.OutputFormatType.JSON:
-      create = functools.partial(
-          create, text={'format': {
-              'type': 'json_object'
-          }})
-
-    if query_record.output_format.type == types.OutputFormatType.PYDANTIC:
-      create = functools.partial(
-          create, text={'format': {
-              'type': 'json_object'
-          }})
+    if query_record.output_format.type in (
+        types.OutputFormatType.JSON,
+        types.OutputFormatType.PYDANTIC,
+    ):
+      if not self._native_json_mode_blocked(query_record):
+        create = functools.partial(
+            create, text={'format': {
+                'type': 'json_object'
+            }})
 
     response, result_record = self._safe_provider_query(create)
     if result_record.error is not None:
@@ -588,6 +600,18 @@ class OpenAIConnector(provider_connector.ProviderConnector):
                 message_content.MessageContent(
                     type=message_content.ContentType.THINKING,
                     text=summary.text))
+
+    if query_record.output_format.type in (
+        types.OutputFormatType.JSON,
+        types.OutputFormatType.PYDANTIC,
+    ):
+      parsed_response = [
+          message_content.MessageContent(
+              type=message_content.ContentType.JSON,
+              json=self._extract_json_from_text(c.text),
+          ) if c.type == message_content.ContentType.TEXT else c
+          for c in parsed_response
+      ]
 
     result_record.content = parsed_response
     return types.ExecutorResult(
