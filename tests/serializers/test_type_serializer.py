@@ -1174,10 +1174,6 @@ def _get_cache_look_result_options():
               types.CacheLookFailReason.UNIQUE_RESPONSE_LIMIT_NOT_REACHED
       },
       {
-          'cache_look_fail_reason':
-              types.CacheLookFailReason.PROVIDER_ERROR_CACHED
-      },
-      {
           'cache_look_fail_reason': types.CacheLookFailReason.CACHE_UNAVAILABLE
       },
       {
@@ -1185,8 +1181,7 @@ def _get_cache_look_result_options():
               types.ResultRecord(
                   status=types.ResultStatusType.FAILED, error='provider error'
               ),
-          'cache_look_fail_reason':
-              types.CacheLookFailReason.PROVIDER_ERROR_CACHED
+          'cache_look_fail_reason': types.CacheLookFailReason.CACHE_UNAVAILABLE
       },
   ]
 
@@ -1216,9 +1211,6 @@ def _get_cache_options_options():
           'unique_response_limit': 1
       },
       {
-          'retry_if_error_cached': True
-      },
-      {
           'clear_query_cache_on_connect': True
       },
       {
@@ -1233,7 +1225,6 @@ def _get_cache_options_options():
       {
           'cache_path': 'cache_path',
           'unique_response_limit': 5,
-          'retry_if_error_cached': True,
           'clear_query_cache_on_connect': True,
           'clear_model_cache_on_connect': True,
           'disable_model_cache': False,
@@ -1381,7 +1372,7 @@ def _get_run_options_options():
           'cache_options':
               types.CacheOptions(
                   cache_path='cache_path', unique_response_limit=1,
-                  retry_if_error_cached=True, clear_query_cache_on_connect=True,
+                  clear_query_cache_on_connect=True,
                   clear_model_cache_on_connect=True
               )
       },
@@ -1429,7 +1420,7 @@ def _get_run_options_options():
           'cache_options':
               types.CacheOptions(
                   cache_path='cache_path', unique_response_limit=1,
-                  retry_if_error_cached=True, clear_query_cache_on_connect=True,
+                  clear_query_cache_on_connect=True,
                   clear_model_cache_on_connect=True
               ),
           'proxdash_options':

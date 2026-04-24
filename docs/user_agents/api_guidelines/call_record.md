@@ -858,7 +858,8 @@ CallRecord(
 Every non-hit that went through the cache subsystem carries a reason
 which survives onto the returned `CallRecord` alongside
 `result_source = PROVIDER` (see §2.14). The reasons map one-to-one to
-the `CacheLookFailReason` enum.
+the `CacheLookFailReason` enum. See `cache_behaviors.md` §6 for the
+caller-side patterns these reasons enable.
 
 ```python
 # No cache entry for this query hash
@@ -879,12 +880,6 @@ ConnectionMetadata(
     cache_look_fail_reason=(
         CacheLookFailReason.UNIQUE_RESPONSE_LIMIT_NOT_REACHED
     ),
-)
-
-# Cached result was an error; retry_if_error_cached forced a retry
-ConnectionMetadata(
-    result_source=ResultSource.PROVIDER,
-    cache_look_fail_reason=CacheLookFailReason.PROVIDER_ERROR_CACHED,
 )
 
 # Cache manager is configured but not in the WORKING state

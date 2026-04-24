@@ -359,8 +359,6 @@ class CacheOptions:
     unique_response_limit: Number of unique responses to collect for
       the same query before returning from cache. Useful for getting
       diverse outputs. Defaults to 1.
-    retry_if_error_cached: If True, retries the API call when the
-      cached response was an error. Defaults to False.
     clear_query_cache_on_connect: If True, clears the query cache
       when connect() is called. Defaults to False.
     disable_model_cache: If True, disables caching of model availability
@@ -380,7 +378,6 @@ class CacheOptions:
   cache_path: str | None = None
 
   unique_response_limit: int | None = 1
-  retry_if_error_cached: bool = False
   clear_query_cache_on_connect: bool = False
 
   disable_model_cache: bool = False
@@ -665,7 +662,6 @@ class CacheLookFailReason(str, enum.Enum):
   CACHE_NOT_FOUND = "CACHE_NOT_FOUND"
   CACHE_NOT_MATCHED = "CACHE_NOT_MATCHED"
   UNIQUE_RESPONSE_LIMIT_NOT_REACHED = "UNIQUE_RESPONSE_LIMIT_NOT_REACHED"
-  PROVIDER_ERROR_CACHED = "PROVIDER_ERROR_CACHED"
   CACHE_UNAVAILABLE = "CACHE_UNAVAILABLE"
 
 
