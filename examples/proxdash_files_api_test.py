@@ -336,7 +336,7 @@ def _get_model_config(
 
 def _register_models():
   client = px.get_default_proxai_client()
-  client.model_configs_instance.unregister_all_models()
+  client.models.model_config.unregister_all_models()
   for provider, model in [
       ('gemini', 'gemini-2.5-flash'),
       ('claude', 'claude-sonnet-4-6'),
@@ -347,7 +347,7 @@ def _register_models():
       fmt = ['text', 'document', 'image', 'audio', 'video']
     else:
       fmt = ['text', 'document', 'image']
-    client.model_configs_instance.register_provider_model_config(
+    client.models.model_config.register_provider_model_config(
         _get_model_config(provider, model, model, input_format=fmt)
     )
 

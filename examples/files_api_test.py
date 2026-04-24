@@ -67,13 +67,13 @@ def _get_model_config(
 
 def _register_models():
   client = px.get_default_proxai_client()
-  client.model_configs_instance.unregister_all_models()
+  client.models.model_config.unregister_all_models()
   for provider, (prov, model) in _PROVIDER_MODELS.items():
     if provider == 'gemini':
       fmt = ['text', 'document', 'image', 'audio', 'video']
     else:
       fmt = ['text', 'document', 'image']
-    client.model_configs_instance.register_provider_model_config(
+    client.models.model_config.register_provider_model_config(
         _get_model_config(prov, model, model, input_format=fmt))
 
 
@@ -734,9 +734,9 @@ def _create_cached_client():
       cache_options=px.CacheOptions(
           cache_path=_CACHE_PATH,
           unique_response_limit=1))
-  client.model_configs_instance.unregister_all_models()
+  client.models.model_config.unregister_all_models()
   for provider, (prov, model) in _PROVIDER_MODELS.items():
-    client.model_configs_instance.register_provider_model_config(
+    client.models.model_config.register_provider_model_config(
         _get_model_config(prov, model, model))
   return client
 

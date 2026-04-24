@@ -95,9 +95,9 @@ def _get_model_config(
 
 
 def register_models(client: px.Client):
-  client.model_configs_instance.unregister_all_models()
+  client.models.model_config.unregister_all_models()
 
-  client.model_configs_instance.register_provider_model_config(
+  client.models.model_config.register_provider_model_config(
       _get_model_config(
           provider='mock_provider',
           model='mock_model',
@@ -111,7 +111,7 @@ def register_models(client: px.Client):
       )
   )
 
-  client.model_configs_instance.register_provider_model_config(
+  client.models.model_config.register_provider_model_config(
       _get_model_config(
           provider='mock_failing_provider',
           model='mock_failing_model',
@@ -125,7 +125,7 @@ def register_models(client: px.Client):
       )
   )
 
-  client.model_configs_instance.register_provider_model_config(
+  client.models.model_config.register_provider_model_config(
       _get_model_config(
           provider='openai',
           model='gpt-4o',
@@ -138,7 +138,7 @@ def register_models(client: px.Client):
           ],
       )
   )
-  client.model_configs_instance.register_provider_model_config(
+  client.models.model_config.register_provider_model_config(
       _get_model_config(
           provider='openai',
           model='o3',
@@ -152,7 +152,7 @@ def register_models(client: px.Client):
       )
   )
 
-  client.model_configs_instance.register_provider_model_config(
+  client.models.model_config.register_provider_model_config(
       _get_model_config(
           provider='openai',
           model='dall-e-3',
@@ -162,7 +162,7 @@ def register_models(client: px.Client):
       )
   )
 
-  client.model_configs_instance.register_provider_model_config(
+  client.models.model_config.register_provider_model_config(
       _get_model_config(
           provider='openai',
           model='tts-1',
@@ -172,7 +172,7 @@ def register_models(client: px.Client):
       )
   )
 
-  client.model_configs_instance.register_provider_model_config(
+  client.models.model_config.register_provider_model_config(
       _get_model_config(
           provider='openai',
           model='sora-2',
@@ -182,7 +182,7 @@ def register_models(client: px.Client):
       )
   )
 
-  client.model_configs_instance.register_provider_model_config(
+  client.models.model_config.register_provider_model_config(
       _get_model_config(
           provider='gemini',
           model='gemini-3-flash-preview',
@@ -198,7 +198,7 @@ def register_models(client: px.Client):
       )
   )
 
-  client.model_configs_instance.register_provider_model_config(
+  client.models.model_config.register_provider_model_config(
       _get_model_config(
           provider='gemini',
           model='gemini-2.5-flash',
@@ -214,7 +214,7 @@ def register_models(client: px.Client):
       )
   )
 
-  client.model_configs_instance.register_provider_model_config(
+  client.models.model_config.register_provider_model_config(
       _get_model_config(
           provider='gemini',
           model='gemini-2.5-flash-image',
@@ -224,7 +224,7 @@ def register_models(client: px.Client):
       )
   )
 
-  client.model_configs_instance.register_provider_model_config(
+  client.models.model_config.register_provider_model_config(
       _get_model_config(
           provider='gemini',
           model='gemini-2.5-flash-preview-tts',
@@ -234,7 +234,7 @@ def register_models(client: px.Client):
       )
   )
 
-  client.model_configs_instance.register_provider_model_config(
+  client.models.model_config.register_provider_model_config(
       _get_model_config(
           provider='gemini',
           model='veo-3.1-generate-preview',
@@ -244,7 +244,7 @@ def register_models(client: px.Client):
       )
   )
 
-  client.model_configs_instance.register_provider_model_config(
+  client.models.model_config.register_provider_model_config(
       _get_model_config(
           provider='claude',
           model='claude-sonnet-4-6',
@@ -258,7 +258,7 @@ def register_models(client: px.Client):
       )
   )
 
-  client.model_configs_instance.register_provider_model_config(
+  client.models.model_config.register_provider_model_config(
       _get_model_config(
           provider='claude',
           model='claude-opus-4-6',
@@ -272,7 +272,7 @@ def register_models(client: px.Client):
       )
   )
 
-  client.model_configs_instance.register_provider_model_config(
+  client.models.model_config.register_provider_model_config(
       _get_model_config(
           provider='deepseek',
           model='deepseek-chat',
@@ -286,7 +286,7 @@ def register_models(client: px.Client):
       )
   )
 
-  client.model_configs_instance.register_provider_model_config(
+  client.models.model_config.register_provider_model_config(
       _get_model_config(
           provider='deepseek',
           model='deepseek-reasoner',
@@ -300,7 +300,7 @@ def register_models(client: px.Client):
       )
   )
 
-  client.model_configs_instance.register_provider_model_config(
+  client.models.model_config.register_provider_model_config(
       _get_model_config(
           provider='grok',
           model='grok-3',
@@ -314,7 +314,7 @@ def register_models(client: px.Client):
       )
   )
 
-  client.model_configs_instance.override_default_model_priority_list([
+  client.models.model_config.override_default_model_priority_list([
       px.models.get_model('gemini', 'gemini-3-flash-preview'),
       px.models.get_model('openai', 'gpt-4o'),
       px.models.get_model('claude', 'claude-sonnet-4-6'),
