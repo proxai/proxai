@@ -422,6 +422,11 @@ Content rewrites are pending per doc.
   one-line pointer back to this outline.
 - `docs/llms.txt` and `docs/llms-full.txt` placeholders created.
 - `docs/README.md` placeholder created.
+- `user_agents/api_guidelines/cache_behaviors.md` drafted from the
+  per-doc outline in §6.1 and the user-facing portion of
+  `docs/development/query_cache.md` (2026-04-23). Inbound links added
+  from `px_client_api.md` §2.2, `px_generate_api.md` §5.9, and
+  `call_record.md` §3.10.
 
 ### 7.2 Pending — staging files in `docs/development/`
 
@@ -431,7 +436,7 @@ are written:
 
 | Staging file | Consumes into |
 |---|---|
-| `query_cache.md` | Split: user-facing content → `user_agents/api_guidelines/cache_behaviors.md`; internals → `developer_agents/cache_internals.md` |
+| `query_cache.md` | Split: user-facing content → `user_agents/api_guidelines/cache_behaviors.md` (consumed 2026-04-23); internals → `developer_agents/cache_internals.md` (still pending). Keep until the internals half lands. |
 | `multimodal_large_file_analysis.md` | Split: user-facing content folded into `user_agents/api_guidelines/px_files_api.md` and `px_generate_api.md`; internals → `developer_agents/files_internals.md` |
 | `state_propagation_analysis.md` | Merged into `developer_agents/state_controller.md` |
 

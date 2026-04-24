@@ -1404,8 +1404,6 @@ def encode_cache_options(cache_options: types.CacheOptions) -> dict[str, Any]:
     record['cache_path'] = cache_options.cache_path
   if cache_options.unique_response_limit is not None:
     record['unique_response_limit'] = cache_options.unique_response_limit
-  if cache_options.retry_if_error_cached is not None:
-    record['retry_if_error_cached'] = cache_options.retry_if_error_cached
   if cache_options.clear_query_cache_on_connect is not None:
     record['clear_query_cache_on_connect'] = (
         cache_options.clear_query_cache_on_connect
@@ -1428,8 +1426,6 @@ def decode_cache_options(record: dict[str, Any]) -> types.CacheOptions:
     cache_options.cache_path = record['cache_path']
   if 'unique_response_limit' in record:
     cache_options.unique_response_limit = record['unique_response_limit']
-  if 'retry_if_error_cached' in record:
-    cache_options.retry_if_error_cached = record['retry_if_error_cached']
   if 'clear_query_cache_on_connect' in record:
     cache_options.clear_query_cache_on_connect = (
         record['clear_query_cache_on_connect']

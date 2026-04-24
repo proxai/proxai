@@ -565,6 +565,11 @@ rec = px.generate(
 )
 ```
 
+`skip_cache` and `override_cache_value` are not interchangeable —
+`skip_cache` makes the call invisible to the cache, `override_cache_value`
+still writes back. See `cache_behaviors.md` §5.2 for the read/write
+matrix and the `override_cache_value` validation error.
+
 ### 5.10 Suppressing errors for a single call
 
 ```python

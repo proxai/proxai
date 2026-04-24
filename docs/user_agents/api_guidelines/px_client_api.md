@@ -31,7 +31,6 @@ ProxAIClient(                                  # same kwargs on px.connect(...)
 ├── cache_options: CacheOptions | None = None
 │   ├── cache_path: str | None = None
 │   ├── unique_response_limit: int | None = 1
-│   ├── retry_if_error_cached: bool = False
 │   ├── clear_query_cache_on_connect: bool = False
 │   ├── disable_model_cache: bool = False
 │   ├── clear_model_cache_on_connect: bool = False
@@ -116,6 +115,10 @@ means: no query cache, and health checks fall back to a built-in
 default model cache (see §5.3). You do **not** need `cache_options` to
 get working model discovery — you only need it to get query replay.
 
+See `cache_behaviors.md` for the user-facing cache contract — what each
+field does at runtime, how to read cache metadata off a `CallRecord`,
+and when to bypass via `ConnectionOptions`.
+
 #### 2.2.1 `cache_path: str | None`
 
 Directory on disk where both caches are stored. Default `None`.
@@ -140,25 +143,14 @@ cache starts serving replays. Default `1`.
   "collecting" sets `connection.cache_look_fail_reason =
   UNIQUE_RESPONSE_LIMIT_NOT_REACHED`.
 
-#### 2.2.3 `retry_if_error_cached: bool`
-
-What to do when the cached entry for a query is an error. Default `False`.
-
-- `False` — the error is replayed from cache (same error string,
-  same traceback). Your code sees a `FAILED` CallRecord just like the
-  original failure.
-- `True` — the cache is ignored for this query and the provider is
-  called again. The CallRecord reports
-  `connection.cache_look_fail_reason = PROVIDER_ERROR_CACHED`.
-
-#### 2.2.4 `clear_query_cache_on_connect: bool`
+#### 2.2.3 `clear_query_cache_on_connect: bool`
 
 If `True`, the query cache directory is **wiped** during client
 construction. Default `False`. Destructive — every previously cached
 response is gone. Use in tests or when you intentionally want to
 invalidate prior results.
 
-#### 2.2.5 `disable_model_cache: bool`
+#### 2.2.4 `disable_model_cache: bool`
 
 If `True`, the user-level model cache at `cache_path` is not used.
 Default `False`. Health check results still flow through the built-in
@@ -168,14 +160,14 @@ This is the one escape that lets you pass `cache_options` without
 setting `cache_path` — useful if you want the query cache somewhere
 and do not want a separate model cache at all.
 
-#### 2.2.6 `clear_model_cache_on_connect: bool`
+#### 2.2.5 `clear_model_cache_on_connect: bool`
 
 If `True`, the user-level model cache at `cache_path` is wiped during
 client construction. Default `False`. Same destructive semantics as
 `clear_query_cache_on_connect`. Does **not** wipe the built-in default
 model cache — use `px.reset_state()` for that.
 
-#### 2.2.7 `model_cache_duration: int | None`
+#### 2.2.6 `model_cache_duration: int | None`
 
 Time-to-live for model cache entries, in seconds. Default `None` (no
 expiry on user-level cache entries). Stale entries are discarded on

@@ -674,17 +674,6 @@ class QueryCacheManager(state_controller.StateControlled):
       )
     result_record: types.ResultRecord = cache_record.results[
         cache_record.call_count % len(cache_record.results)]
-    if (
-        result_record.error and self.cache_options.retry_if_error_cached and
-        cache_record.call_count < len(cache_record.results)
-    ):
-      cache_record.last_access_time = datetime.datetime.now()
-      cache_record.call_count += 1
-      self._shard_manager.save_record(cache_record=cache_record)
-      self._push_record_heap(cache_record)
-      return types.CacheLookResult(
-          cache_look_fail_reason=types.CacheLookFailReason.PROVIDER_ERROR_CACHED
-      )
     if update:
       cache_record.last_access_time = datetime.datetime.now()
       cache_record.call_count += 1
@@ -746,14 +735,3 @@ class QueryCacheManager(state_controller.StateControlled):
       self._shard_manager.save_record(cache_record=cache_record)
       self._push_record_heap(cache_record)
       return
-    if (
-        self.cache_options.retry_if_error_cached and
-        result_record.error is None
-    ):
-      for idx, previous_response in enumerate(cache_record.results):
-        if previous_response.error:
-          cache_record.results[idx] = result_record
-          cache_record.last_access_time = current_time
-          self._shard_manager.save_record(cache_record=cache_record)
-          self._push_record_heap(cache_record)
-          return

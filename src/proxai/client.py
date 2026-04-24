@@ -1153,7 +1153,6 @@ class ProxAIClient(state_controller.StateControlled):
       result_cache_options.cache_path = value.cache_path
 
       result_cache_options.unique_response_limit = value.unique_response_limit
-      result_cache_options.retry_if_error_cached = value.retry_if_error_cached
       result_cache_options.clear_query_cache_on_connect = (
           value.clear_query_cache_on_connect
       )
