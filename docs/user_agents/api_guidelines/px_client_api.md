@@ -323,11 +323,14 @@ Developer-only diagnostics. Default `None`, which resolves to the
 #### 2.7.1 `keep_raw_provider_response: bool`
 
 If `True`, the raw response object from the provider SDK is attached
-to `CallRecord.debug.raw_provider_response` (see
-`call_record_analysis.md` §1). Default `False`. None of `DebugInfo`
-is serialised to the cache or ProxDash — the raw response can hold a
-live SDK object that is not portable. Intended purely for local
-debugging.
+to `CallRecord.debug.raw_provider_response` (see `call_record.md`
+§1). Default `False`. None of `DebugInfo` is serialised to the cache
+or ProxDash — the raw response can hold a live SDK object that is
+not portable. Intended purely for local debugging.
+
+For the full contract on this flag — what a raw response looks like
+per provider, the validation rules, and the debugging patterns it
+supports — see `raw_provider_response.md`.
 
 ---
 
