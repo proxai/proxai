@@ -637,6 +637,117 @@ class TestFileConnector:
 
 
 # =============================================================================
+# ModelConfigConnector — px.models.model_config.* delegation smoke
+#
+# Each method is a thin forwarder onto ProxAIClient.model_configs_instance.
+# Deep behaviour is owned by tests/connectors/test_model_configs.py — here we
+# only prove that calling through the connector lands on the same underlying
+# instance as direct mutation, per-client isolation holds, and each public
+# method forwards its arguments.
+# =============================================================================
+
+
+def _make_provider_model_config(
+    provider: str,
+    model: str,
+    identifier: str | None = None,
+) -> types.ProviderModelConfig:
+  """Minimal valid ProviderModelConfig for registry-mutation tests."""
+  return types.ProviderModelConfig(
+      provider_model=types.ProviderModelType(
+          provider=provider, model=model,
+          provider_model_identifier=identifier or model),
+      pricing=types.ProviderModelPricingType(
+          input_token_cost=1, output_token_cost=1),
+      features=types.FeatureConfigType(),
+      metadata=types.ProviderModelMetadataType(),
+  )
+
+
+class TestModelConfigConnector:
+
+  def test_model_config_is_bound_to_this_client(self):
+    px_client = _build_bare_client()
+    assert px_client.models.model_config._client_getter() is px_client
+
+  def test_distinct_clients_have_distinct_model_config_connectors(self):
+    a = _build_bare_client()
+    b = _build_bare_client()
+    assert a.models.model_config is not b.models.model_config
+    assert a.models.model_config._client_getter() is a
+    assert b.models.model_config._client_getter() is b
+
+  def test_register_provider_model_config_delegates(self):
+    px_client = _build_bare_client()
+    config = _make_provider_model_config('testp', 'testm')
+    px_client.models.model_config.register_provider_model_config(config)
+    # Registration reached the shared model_configs_instance.
+    assert px_client.model_configs_instance.get_provider_model(
+        ('testp', 'testm')).model == 'testm'
+
+  def test_unregister_model_delegates(self):
+    px_client = _build_bare_client()
+    config = _make_provider_model_config('testp', 'testm')
+    px_client.models.model_config.register_provider_model_config(config)
+    px_client.models.model_config.unregister_model(config.provider_model)
+    assert ('testm' not in
+            px_client.model_configs_instance
+            .model_registry.provider_model_configs.get('testp', {}))
+
+  def test_unregister_all_models_delegates(self):
+    px_client = _build_bare_client()
+    px_client.models.model_config.unregister_all_models()
+    registry = px_client.model_configs_instance.model_registry
+    assert registry.provider_model_configs == {}
+    assert registry.default_model_priority_list == []
+
+  def test_override_default_model_priority_list_delegates(self):
+    px_client = _build_bare_client()
+    config = _make_provider_model_config('testp', 'testm')
+    px_client.models.model_config.register_provider_model_config(config)
+    px_client.models.model_config.override_default_model_priority_list(
+        [config.provider_model])
+    assert px_client.model_configs_instance.\
+        get_default_model_priority_list() == [config.provider_model]
+
+  def test_load_model_registry_from_json_string_delegates(self):
+    from importlib import resources
+
+    px_client = _build_bare_client()
+    data = resources.files(
+        'proxai.connectors.model_configs_data'
+    ).joinpath('example_proxdash_model_configs.json').read_text(
+        encoding='utf-8')
+    px_client.models.model_config.load_model_registry_from_json_string(data)
+    configs = px_client.model_configs_instance.\
+        model_registry.provider_model_configs
+    assert 'openai' in configs
+    assert 'gemini' in configs
+
+  def test_export_to_json_delegates(self, tmp_path):
+    px_client = _build_bare_client()
+    file_path = tmp_path / 'registry.json'
+    px_client.models.model_config.export_to_json(str(file_path))
+    # File was produced via the client's model_configs_instance — a fresh
+    # ModelConfigs should be able to load it back and reach the same state.
+    assert file_path.exists()
+    restored = model_configs.ModelConfigs()
+    restored.load_model_registry_from_json_string(
+        file_path.read_text(encoding='utf-8'))
+    assert (restored.model_registry ==
+            px_client.model_configs_instance.model_registry)
+
+  def test_get_default_model_priority_list_delegates(self):
+    px_client = _build_bare_client()
+    via_connector = px_client.models.model_config.\
+        get_default_model_priority_list()
+    via_instance = px_client.model_configs_instance.\
+        get_default_model_priority_list()
+    # Identity check — same list object is returned, not a copy.
+    assert via_connector is via_instance
+
+
+# =============================================================================
 # keep_raw_provider_response — debug escape hatch
 # =============================================================================
 

@@ -47,6 +47,7 @@ files with only a scope pointer back to
 - [`user_agents/api_guidelines/px_files_api.md`](./user_agents/api_guidelines/px_files_api.md) — `px.files.*` upload / list / remove / download plus the auto-upload hook inside `generate()`.
 - [`user_agents/api_guidelines/px_generate_api.md`](./user_agents/api_guidelines/px_generate_api.md) — The seven `generate_*` functions — parameters, output formats, fallback chains.
 - [`user_agents/api_guidelines/px_models_api.md`](./user_agents/api_guidelines/px_models_api.md) — `px.models.*` discovery — filters, health probes, configured vs. working.
+- [`user_agents/api_guidelines/px_models_model_config_api.md`](./user_agents/api_guidelines/px_models_model_config_api.md) — `px.models.model_config.*` registry mutation — register / unregister models, override the fallback priority list, load / export as JSON.
 - [`user_agents/api_guidelines/raw_provider_response.md`](./user_agents/api_guidelines/raw_provider_response.md) — The `DebugOptions.keep_raw_provider_response` local-debug hatch.
 - [`user_agents/recipes/best_practices.md`](./user_agents/recipes/best_practices.md) — General do/don't rules for library use _(placeholder)_.
 - [`user_agents/recipes/production_best_practices.md`](./user_agents/recipes/production_best_practices.md) — Production resilience additions — fallback chains, cache hygiene _(placeholder)_.

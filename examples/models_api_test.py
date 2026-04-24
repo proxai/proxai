@@ -195,12 +195,12 @@ def _get_model_config(
 
 
 def register_models(client: px.Client):
-  client.model_configs_instance.unregister_all_models()
+  client.models.model_config.unregister_all_models()
   for entry in _MODEL_CATALOG:
-    client.model_configs_instance.register_provider_model_config(
+    client.models.model_config.register_provider_model_config(
         _get_model_config(**entry)
     )
-  client.model_configs_instance.override_default_model_priority_list([
+  client.models.model_config.override_default_model_priority_list([
       px.models.get_model(provider, model)
       for provider, model in _DEFAULT_PRIORITY_LIST
   ])

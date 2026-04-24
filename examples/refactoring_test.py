@@ -376,46 +376,46 @@ def assert_audio_content(result: types.CallRecord):
 
 
 def register_models(client: px.Client):
-  client.model_configs_instance.unregister_all_models()
+  client.models.model_config.unregister_all_models()
 
   try:
     client.models.get_model(_MAIN_MODEL[0], _MAIN_MODEL[1])
   except Exception as e:
-    client.model_configs_instance.register_provider_model_config(
+    client.models.model_config.register_provider_model_config(
         _MAIN_MODEL_CONFIG)
 
 
   try:
     client.models.get_model(_FAILING_MODEL[0], _FAILING_MODEL[1])
   except Exception as e:
-    client.model_configs_instance.register_provider_model_config(
+    client.models.model_config.register_provider_model_config(
         _FAILING_MODEL_CONFIG)
 
   try:
     client.models.get_model(_THINKING_MODEL[0], _THINKING_MODEL[1])
   except Exception as e:
-    client.model_configs_instance.register_provider_model_config(
+    client.models.model_config.register_provider_model_config(
         _THINKING_MODEL_CONFIG)
 
   if _IMAGE_MODEL[0] is not None:
     try:
       client.models.get_model(_IMAGE_MODEL[0], _IMAGE_MODEL[1])
     except Exception as e:
-      client.model_configs_instance.register_provider_model_config(
+      client.models.model_config.register_provider_model_config(
           _IMAGE_MODEL_CONFIG)
 
   if _AUDIO_MODEL[0] is not None:
     try:
       client.models.get_model(_AUDIO_MODEL[0], _AUDIO_MODEL[1])
     except Exception as e:
-      client.model_configs_instance.register_provider_model_config(
+      client.models.model_config.register_provider_model_config(
           _AUDIO_MODEL_CONFIG)
 
   if _VIDEO_MODEL[0] is not None:
     try:
       client.models.get_model(_VIDEO_MODEL[0], _VIDEO_MODEL[1])
     except Exception as e:
-      client.model_configs_instance.register_provider_model_config(
+      client.models.model_config.register_provider_model_config(
           _VIDEO_MODEL_CONFIG)
 
 

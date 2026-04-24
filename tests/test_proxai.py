@@ -223,6 +223,60 @@ class TestModelsFilesSingletons:
 
 
 # =============================================================================
+# px.models.model_config — module-level facade for registry mutation
+# =============================================================================
+
+
+def _make_provider_model_config(
+    provider: str,
+    model: str,
+    identifier: str | None = None,
+) -> types.ProviderModelConfig:
+  """Minimal valid ProviderModelConfig for registry-mutation tests."""
+  return types.ProviderModelConfig(
+      provider_model=types.ProviderModelType(
+          provider=provider, model=model,
+          provider_model_identifier=identifier or model),
+      pricing=types.ProviderModelPricingType(
+          input_token_cost=1, output_token_cost=1),
+      features=types.FeatureConfigType(),
+      metadata=types.ProviderModelMetadataType(),
+  )
+
+
+class TestModelConfigFacade:
+
+  def test_px_model_config_bound_to_default_client(self):
+    _px_connect_disable_proxdash()
+    px_client = px.get_default_proxai_client()
+    assert px.models.model_config._client_getter() is px_client
+
+  def test_register_reaches_default_client(self):
+    _px_connect_disable_proxdash()
+    config = _make_provider_model_config('testp', 'testm')
+    px.models.model_config.register_provider_model_config(config)
+    default_client = px.get_default_proxai_client()
+    assert default_client.model_configs_instance.get_provider_model(
+        ('testp', 'testm')).model == 'testm'
+
+  def test_unregister_all_reaches_default_client(self):
+    _px_connect_disable_proxdash()
+    px.models.model_config.unregister_all_models()
+    registry = (
+        px.get_default_proxai_client().model_configs_instance.model_registry)
+    assert registry.provider_model_configs == {}
+    assert registry.default_model_priority_list == []
+
+  def test_get_default_model_priority_list_reaches_default_client(self):
+    _px_connect_disable_proxdash()
+    via_facade = px.models.model_config.get_default_model_priority_list()
+    via_client = (
+        px.get_default_proxai_client().model_configs_instance
+        .get_default_model_priority_list())
+    assert via_facade is via_client
+
+
+# =============================================================================
 # TestUserPatterns — seven load-bearing user flows.
 #
 # Each test mirrors a real user journey that a common tutorial / README /

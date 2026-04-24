@@ -59,6 +59,7 @@ proxai/
 │   │   │   ├── px_client_api.md  *
 │   │   │   ├── px_generate_api.md  *
 │   │   │   ├── px_models_api.md  *
+│   │   │   ├── px_models_model_config_api.md  *
 │   │   │   ├── px_files_api.md  *
 │   │   │   ├── px_chat_api.md  *
 │   │   │   ├── call_record.md  *
@@ -130,13 +131,14 @@ Mandatory first read for user-agents. Contains:
 - Pointer to `troubleshooting.md` for errors and to the bundled
   Skills for task-oriented workflows.
 
-### 2.3 `user_agents/api_guidelines/` (9 files)
+### 2.3 `user_agents/api_guidelines/` (10 files)
 
 | File | Scope |
 |---|---|
 | `px_client_api.md` | `px.connect()` / `ProxAIClient` construction, option trees (ConnectionOptions, ProviderCallOptions, ModelProbeOptions, DebugOptions). |
 | `px_generate_api.md` | `generate_text` / `generate_image` / `generate_audio` / `generate_video` / `generate_json` / `generate_pydantic` / `generate_multi_modal`. Parameters, response_format, tools, fallback chains. |
 | `px_models_api.md` | `px.models.*` discovery surface — list / working / provider methods, filters, health checks. |
+| `px_models_model_config_api.md` | `px.models.model_config.*` registry-mutation surface — register / unregister models, override the default fallback priority list, load / export the registry as JSON. Sibling of `px_models_api.md` (read-only discovery). |
 | `px_files_api.md` | `px.files.*` upload / list / delete surface; semantics of local paths vs. uploaded file IDs. |
 | `px_chat_api.md` | `px.Chat` session API, Message / MessageContent shape. |
 | `call_record.md` | Return shape: fields on CallRecord, QueryRecord, ResultRecord, MessageContent. |
@@ -451,6 +453,7 @@ in §2.3 / §2.6 / §2.7, not here.
 - `developer_agents/overview.md` — 2026-04-24
 - `docs/README.md` — 2026-04-24 (router + flat doc inventory;
   `/px-create-doc` §7.1 keeps the inventory in sync)
+- `user_agents/api_guidelines/px_models_model_config_api.md` — 2026-04-24
 
 ### 7.2 Pending — staging files in `docs/development/`
 

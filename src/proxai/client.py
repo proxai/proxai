@@ -29,6 +29,166 @@ import proxai.types as types
 _PROXAI_CLIENT_STATE_PROPERTY = "_proxai_client_state"
 
 
+class ModelConfigConnector:
+  """Provides access to model configuration registry management.
+
+  This class exposes the client's ``model_configs_instance`` registry
+  mutation + inspection surface — registering/unregistering models,
+  overriding the default priority list, and loading/exporting the registry
+  as JSON. It is typically accessed via ``px.models.model_config`` for the
+  default client, or via ``client.models.model_config`` for a specific
+  client instance.
+
+  Example:
+      >>> import proxai as px
+      >>> # Clear the bundled registry and load a custom one.
+      >>> px.models.model_config.unregister_all_models()
+      >>> px.models.model_config.load_model_registry_from_json_string(
+      ...   json_string
+      ... )
+  """
+
+  def __init__(
+      self,
+      client_getter: Callable[[], "ProxAIClient"],
+  ) -> None:
+    """Initializes the ModelConfigConnector with a client getter function.
+
+    Args:
+        client_getter: A callable that returns the ProxAIClient instance
+            whose ``model_configs_instance`` this connector operates on.
+    """
+    self._client_getter = client_getter
+
+  def register_provider_model_config(
+      self,
+      provider_model_config: types.ProviderModelConfig,
+  ) -> None:
+    """Registers a new provider/model configuration in the client's registry.
+
+    Args:
+        provider_model_config: The provider model configuration to register.
+
+    Raises:
+        ValueError: If the model is already registered for the provider.
+
+    Example:
+        >>> import proxai as px
+        >>> px.models.model_config.register_provider_model_config(config)
+    """
+    self._client_getter().model_configs_instance.\
+        register_provider_model_config(provider_model_config)
+
+  def unregister_model(
+      self,
+      provider_model: types.ProviderModelType,
+  ) -> None:
+    """Removes a registered model from the client's registry.
+
+    Args:
+        provider_model: The provider/model identifier to remove.
+
+    Raises:
+        ValueError: If the provider or model is not registered, or if the
+            provider_model_identifier does not match the registered config.
+
+    Example:
+        >>> import proxai as px
+        >>> px.models.model_config.unregister_model(provider_model)
+    """
+    self._client_getter().model_configs_instance.unregister_model(
+        provider_model
+    )
+
+  def unregister_all_models(self) -> None:
+    """Clears every registered model and the default priority list.
+
+    Example:
+        >>> import proxai as px
+        >>> px.models.model_config.unregister_all_models()
+    """
+    self._client_getter().model_configs_instance.unregister_all_models()
+
+  def override_default_model_priority_list(
+      self,
+      default_model_priority_list: list[types.ProviderModelType],
+  ) -> None:
+    """Replaces the default model priority list used for fallback selection.
+
+    Args:
+        default_model_priority_list: Ordered list of models to use as the
+            default priority list. Every entry must already be registered.
+
+    Raises:
+        ValueError: If any entry references an unregistered provider or
+            model.
+
+    Example:
+        >>> import proxai as px
+        >>> px.models.model_config.override_default_model_priority_list([
+        ...   provider_model_a,
+        ...   provider_model_b,
+        ... ])
+    """
+    self._client_getter().model_configs_instance.\
+        override_default_model_priority_list(default_model_priority_list)
+
+  def load_model_registry_from_json_string(
+      self,
+      json_string: str,
+  ) -> None:
+    """Replaces the current registry with one loaded from a JSON string.
+
+    Args:
+        json_string: JSON-encoded ModelRegistry payload.
+
+    Raises:
+        ValueError: If the payload is not a valid ModelRegistry or if any
+            per-model invariant fails.
+
+    Example:
+        >>> import proxai as px
+        >>> px.models.model_config.load_model_registry_from_json_string(
+        ...   json_string
+        ... )
+    """
+    self._client_getter().model_configs_instance.\
+        load_model_registry_from_json_string(json_string)
+
+  def export_to_json(self, file_path: str) -> None:
+    """Exports the current registry to a JSON file with sorted keys.
+
+    Args:
+        file_path: Filesystem path where the JSON file should be written.
+            Any existing file at this path is overwritten.
+
+    Example:
+        >>> import proxai as px
+        >>> px.models.model_config.export_to_json('/tmp/registry.json')
+    """
+    self._client_getter().model_configs_instance.export_to_json(file_path)
+
+  def get_default_model_priority_list(
+      self,
+  ) -> list[types.ProviderModelType]:
+    """Returns the default model priority list used for fallback selection.
+
+    Returns:
+        list[types.ProviderModelType]: An ordered list of models used as
+            the default fallback priority.
+
+    Example:
+        >>> import proxai as px
+        >>> models = px.models.model_config.get_default_model_priority_list()
+        >>> print(models[0])
+        (openai, gpt-4o)
+    """
+    return (
+        self._client_getter().model_configs_instance.
+        get_default_model_priority_list()
+    )
+
+
 class ModelConnector:
   """Provides access to model discovery and availability information.
 
@@ -37,10 +197,16 @@ class ModelConnector:
   singleton for the default client, or via ``client.models`` for a specific
   client instance.
 
+  The ``model_config`` attribute (a ``ModelConfigConnector``) exposes
+  registry-mutation operations such as registering/unregistering models
+  and loading/exporting the registry as JSON.
+
   Example:
       >>> import proxai as px
       >>> # Using the default client singleton
       >>> models = px.models.list_models()
+      >>> # Registry mutation via the nested model_config connector
+      >>> px.models.model_config.unregister_all_models()
       >>> # Using a specific client instance
       >>> client = px.Client()
       >>> models = client.models.list_models()
@@ -58,6 +224,7 @@ class ModelConnector:
             with both the default global client and specific client instances.
     """
     self._client_getter = client_getter
+    self.model_config = ModelConfigConnector(client_getter)
 
   def list_models(
       self,

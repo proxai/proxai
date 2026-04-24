@@ -15,9 +15,12 @@ a new filter axis, or changing how health checks propagate.
 
 See also: `px_client_analysis.md` (client construction — where
 `model_probe_options` lives), `call_record_analysis.md` (CallRecord
-shape — what `provider_queries` holds per model), and
+shape — what `provider_queries` holds per model),
 `px_generate_analysis.md` (how returned `ProviderModelType` values
-plug into `generate()`).
+plug into `generate()`), and `px_models_model_config_api.md`
+(`px.models.model_config.*` — the registry-mutation sibling of this
+surface: register / unregister models, override the fallback
+priority list, load / export the registry as JSON).
 
 ---
 
@@ -326,6 +329,13 @@ models = px.models.get_default_model_list()
 # → [(gemini, gemini-3-pro), (openai, gpt-4o), ...]
 print("Default fallback head:", models[0])
 ```
+
+Identical to `px.models.model_config.get_default_model_priority_list()`
+(see `px_models_model_config_api.md` §4.1) — both names return the
+same underlying list. Use the `model_config.*` name alongside
+`override_default_model_priority_list(...)` when you are about to
+mutate the list; keep `get_default_model_list()` for read-only
+discovery code.
 
 ---
 

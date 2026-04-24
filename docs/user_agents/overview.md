@@ -67,6 +67,15 @@ proxai                                              # import proxai as px
 ├── px.models.get_working_model(...)                → ProviderModelType
 ├── px.models.check_health(verbose=True)            → ModelStatus
 │
+│   # Registry mutation — register / swap / export models
+├── px.models.model_config.register_provider_model_config(cfg)  → None
+├── px.models.model_config.unregister_model(...)               → None
+├── px.models.model_config.unregister_all_models()             → None
+├── px.models.model_config.override_default_model_priority_list(...) → None
+├── px.models.model_config.load_model_registry_from_json_string(...) → None
+├── px.models.model_config.export_to_json(file_path)           → None
+├── px.models.model_config.get_default_model_priority_list()   → list[ProviderModelType]
+│
 │   # Files — per-provider upload / list / remove / download
 ├── px.files.upload(...)                            → MessageContent  (mutated)
 ├── px.files.download(...)                          → MessageContent  (mutated)
@@ -113,6 +122,8 @@ I want to …                                         → Read
 │   # Picking a model
 ├── list / filter models by capability              →  px_models_api.md §2
 ├── verify a model actually works (health probe)    →  px_models_api.md §3
+├── register / unregister / swap models in the      →  px_models_model_config_api.md
+│   registry, override the fallback priority list
 ├── see which providers support which features      →  provider_feature_support_summary.md
 │
 │   # Configuring the client
@@ -306,6 +317,7 @@ cover every parameter, every field, and every edge case:
 | Client construction, options, lifecycle | [`px_client_api.md`](./api_guidelines/px_client_api.md) |
 | Generation — seven functions, full parameter surface | [`px_generate_api.md`](./api_guidelines/px_generate_api.md) |
 | Model discovery and health probes | [`px_models_api.md`](./api_guidelines/px_models_api.md) |
+| Model registry mutation — register / swap / export | [`px_models_model_config_api.md`](./api_guidelines/px_models_model_config_api.md) |
 | File upload / list / remove / download | [`px_files_api.md`](./api_guidelines/px_files_api.md) |
 | Conversations — `Chat`, `Message`, `MessageContent` | [`px_chat_api.md`](./api_guidelines/px_chat_api.md) |
 | `CallRecord` shape — every field returned from a call | [`call_record.md`](./api_guidelines/call_record.md) |
