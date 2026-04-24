@@ -20,11 +20,12 @@ present, and the implicit auto-upload that happens inside
 new provider to the File API dispatch, a new MIME type to the
 allow-list, or changing how `proxdash_file_id` is populated.
 
-See also: `multimodal_large_file_analysis.md` (how media content
-flows through `FeatureAdapter` and provider content converters),
-`call_record_analysis.md` (CallRecord / `MessageContent` shape), and
-`px_client_analysis.md` (where `allow_parallel_file_operations`
-lives on `ProviderCallOptions`).
+See also: `../../developer_agents/files_internals.md` (internals
+— dispatch tables, auto-upload hook, per-provider routing; the
+developer-facing counterpart to this doc), `call_record.md`
+(CallRecord / `MessageContent` shape), and `px_client_api.md`
+(where `allow_parallel_file_operations` lives on
+`ProviderCallOptions`).
 
 ---
 

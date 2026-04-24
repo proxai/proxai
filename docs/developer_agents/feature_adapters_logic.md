@@ -16,9 +16,10 @@ executor is allowed to read on entry. Read this before changing the
 adapter pipeline, adding a new feature to `FeatureConfigType`,
 introducing a new content type, or wiring a new output format.
 
-See also: `provider_connector_contract.md` (the executor-side
+See also: `adding_a_new_provider.md` (the executor-side
 contract — required class attributes, support-level taxonomy from
-the connector author's perspective), `chat_export_logic.md`
+the connector author's perspective, plus the full end-to-end
+new-provider recipe), `chat_export_logic.md`
 (how `Chat.export` reshapes messages — invoked by `_adapt_chat`),
 and `state_controller.md` (StateControlled internals — separate
 subsystem; adapters do not touch state).
@@ -299,7 +300,7 @@ This means: from the executor's perspective, a Pattern 2 endpoint
 *never* receives `query_record.system_prompt`, even on a prompt-mode
 call. The system message is already inside `chat['messages']`. Read
 only from there. (The provider connector contract calls this out
-in `provider_connector_contract.md` §6 "System Prompts".)
+in `adding_a_new_provider.md` §4.6 "System prompts: two patterns".)
 
 ### 2.4 `_adapt_chat` — Chat → exported dict
 
@@ -455,8 +456,8 @@ provider-side JSON mode on top of the prompt injection — OpenAI's
 chat connector does this. If the executor does nothing, the
 framework parses the returned text via `result_adapter` (§3.2) and
 the round-trip still works. Either path is correct; the executor
-chooses based on what its SDK offers. `provider_connector_contract.md`
-§7 covers this from the executor author's side.
+chooses based on what its SDK offers. `adding_a_new_provider.md`
+§5 and §8 cover this from the executor author's side.
 
 ### 2.7 `_adapt_tools` and `_adapt_parameters` — drops and raises
 
@@ -587,8 +588,8 @@ A few consequences worth knowing:
   belongs in the executor, which can call
   `ProviderConnector._extract_json_from_text(text)` (a base-class
   helper) before constructing the TEXT block. Anthropic Claude and
-  Mistral both do this. See `provider_connector_contract.md` §10
-  Pattern B.
+  Mistral both do this. See `adding_a_new_provider.md` §8.1
+  "Pattern B — no native mode".
 - **Pydantic validation runs on every PYDANTIC request.** A model
   that returns syntactically valid JSON but the wrong shape will
   raise `pydantic.ValidationError` here. There is no recovery
@@ -685,10 +686,10 @@ separate.
 
 ## 5. Where to read next
 
-- `provider_connector_contract.md` — the executor-side perspective
-  on the same support levels and feature config. If you are
-  *writing* a connector rather than modifying the adapters, start
-  there.
+- `adding_a_new_provider.md` — the executor-side perspective on
+  the same support levels and feature config, plus the full
+  new-provider recipe. If you are *writing* a connector rather
+  than modifying the adapters, start there.
 - `chat_export_logic.md` — `Chat.export` is the workhorse
   `_adapt_chat` calls into. The flag matrix
   (`add_system_to_messages`, `add_system_to_first_user_message`,

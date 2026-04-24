@@ -314,6 +314,10 @@ candidates:
   doc is in `developer_agents/`).
 - Sibling `*_api.md` files in the same folder whose "See also"
   section covers the same adjacent surface.
+- `docs/README.md` "Complete doc inventory" — add one bulleted
+  line for the new doc in the correct group (alphabetical within
+  `user_agents/` / `developer_agents/` / top-level), and drop
+  any `(placeholder)` flag if you just populated an empty file.
 
 Do not leave dangling references. If another doc discusses the
 surface you just documented, add a link from there.
