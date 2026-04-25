@@ -1613,7 +1613,9 @@ class ProxAIClient(state_controller.StateControlled):
     if (self.proxdash_connection.status
         == types.ProxDashConnectionStatus.DISABLED):
       return
-    model_registry = self.proxdash_connection.get_model_registry()
+    # TODO: Remove this once ProxDash is ready.
+    # model_registry = self.proxdash_connection.get_model_registry()
+    model_registry = None
     if model_registry is not None:
       self.model_configs_instance.reload_from_registry(model_registry)
     self.model_configs_requested_from_proxdash = True
