@@ -176,13 +176,13 @@ class GeminiConnector(provider_connector.ProviderConnector):
       if query_record.parameters.thinking is not None:
         if query_record.parameters.thinking.value.lower() == 'low':
           config.thinking_config = genai_types.ThinkingConfig(
-              thinking_budget=1024)
+              include_thoughts=True, thinking_budget=1024)
         elif query_record.parameters.thinking.value.lower() == 'medium':
           config.thinking_config = genai_types.ThinkingConfig(
-              thinking_budget=8192)
+              include_thoughts=True, thinking_budget=8192)
         elif query_record.parameters.thinking.value.lower() == 'high':
           config.thinking_config = genai_types.ThinkingConfig(
-              thinking_budget=24576)
+              include_thoughts=True, thinking_budget=24576)
 
     if query_record.tools is not None:
       if types.Tools.WEB_SEARCH in query_record.tools:
