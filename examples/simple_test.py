@@ -13,35 +13,20 @@ def simple_model_test():
   pprint(result)
 
 
-def simple_cache_test():
-  px.connect(
-      experiment_path='simple_test/run_1',
-      cache_path=f'{Path.home()}/proxai_cache/')
+def image_cache_test():
+  client = px.Client(
+      logging_options=px.LoggingOptions(
+          stdout=True,
+      ),
+      cache_options=px.CacheOptions(
+          cache_path=f'{Path.home()}/proxai_cache_2/'))
 
-  random_int = random.randint(1, 1000000)
+  pprint(client.models.list_models(output_format='image'))
 
-  def _test_function():
-    result = px.generate_text(
-        'This is a test message to check if the cache is working or '
-        f'not. {random_int}',
-        provider_model=('openai', 'gpt-5.1'),
-        extensive_return=True)
-    print('Response    :', result.response_record.response.value)
-    print('Source      :', result.response_source)
-    print('Fail reason :', result.look_fail_reason)
-    return result
-
-  print('1:')
-  _test_function()
-  time.sleep(1)
-
-  print('2:')
-  _test_function()
-  time.sleep(1)
-
-  print('3:')
-  _test_function()
-  time.sleep(1)
+  result = client.generate_image(
+      'Make funny cartoon cat in living room.',
+      provider_model=('gemini', 'gemini-2.5-flash-image'))
+  print(result.data[:100])
 
 
 def list_models():
@@ -106,9 +91,9 @@ def proxdash_test():
 
 def main():
   # simple_model_test()
-  # simple_cache_test()
+  image_cache_test()
   # list_models()
-  check_health()
+  # check_health()
   # proxdash_test()
 
 if __name__ == '__main__':

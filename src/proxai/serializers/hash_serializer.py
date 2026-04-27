@@ -13,6 +13,13 @@ Currently excluded from cache identity:
 - MessageContent.filename (informational label)
 - ConnectionOptions fields other than endpoint
 
+`MessageContent.data` raw bytes are *replaced* (not excluded) by their
+sha256 digest in the hash dict. The digest is unique per byte sequence,
+so cache identity is preserved; the equality check still byte-compares
+because cache records on disk keep the original bytes. This is purely
+a hash-time optimization to avoid passing megabytes of base64 through
+json.dumps + SHA256.
+
 See: type_utils._normalize_chat_for_comparison()
 See: _content_hash_dict() in this file
 """
@@ -48,6 +55,13 @@ def _content_hash_dict(
   metadata. For remote-only content (no local data), includes
   only the current provider's file_id as the content identity.
 
+  Inline raw bytes (`data` field) are replaced with their sha256
+  digest under the key `data_sha256`. This keeps content identity
+  intact (different bytes → different digest → different hash)
+  while avoiding a full json.dumps + SHA256 pass over the base64
+  payload of large media (images, audio, video). The digest is
+  hash-only — it is never written to disk.
+
   WARNING: Any field excluded here must also be excluded in
   type_utils._normalize_chat_for_comparison(). These two
   functions define cache identity together — the hash finds the
@@ -60,6 +74,9 @@ def _content_hash_dict(
   has_local_content = (
       'path' in d or 'data' in d or 'source' in d
   )
+  if 'data' in d and content_item.data is not None:
+    d['data_sha256'] = hashlib.sha256(content_item.data).hexdigest()
+    del d['data']
   if has_local_content:
     d.pop('provider_file_api_ids', None)
     d.pop('provider_file_api_status', None)
