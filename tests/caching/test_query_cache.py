@@ -8,6 +8,9 @@ import tempfile
 import pytest
 
 import proxai.caching.query_cache as query_cache
+import proxai.chat.chat_session as chat_session
+import proxai.chat.message as message
+import proxai.chat.message_content as message_content
 import proxai.serializers.hash_serializer as hash_serializer
 import proxai.serializers.type_serializer as type_serializer
 import proxai.types as types
@@ -2885,3 +2888,210 @@ class TestQueryCacheState:
           query_cache_manager.status ==
           types.QueryCacheManagerStatus.WORKING
       )
+
+
+class TestInlineBytesWarning:
+  """QueryCacheManager warns once when MessageContent carries raw bytes.
+
+  Inline bytes in the query cache are an anti-pattern (duplicated
+  across entries, slow hashing/equality, cache directory bloat). The
+  warning is emitted via logging_utils on the first cache() call that
+  contains inline bytes and never again for the rest of the manager's
+  lifetime.
+
+  These tests pin:
+    - the warning fires for inline bytes in QueryRecord
+    - the warning fires for inline bytes in ResultRecord
+    - path-only or source-only content does NOT trigger the warning
+    - the warning is deduplicated (one warning per manager instance)
+  """
+
+  def _make_manager(self, temp_dir):
+    return query_cache.QueryCacheManager(
+        init_from_params=query_cache.QueryCacheManagerParams(
+            cache_options=types.CacheOptions(cache_path=temp_dir),
+            shard_count=_SHARD_COUNT,
+            response_per_file=_RESPONSE_PER_FILE,
+            cache_response_size=10,
+        )
+    )
+
+  def _capture_warnings(self, monkeypatch):
+    """Replace logging_utils.log_message and return the list of calls."""
+    calls = []
+
+    def fake_log(*, logging_options, message, type):
+      calls.append({'message': message, 'type': type})
+
+    monkeypatch.setattr(query_cache.logging_utils, 'log_message', fake_log)
+    return calls
+
+  @staticmethod
+  def _query_with_inline_bytes():
+    return types.QueryRecord(
+        prompt='p',
+        chat=chat_session.Chat(messages=[
+            message.Message(
+                role=message_content.MessageRoleType.USER,
+                content=[
+                    message_content.MessageContent(
+                        type=message_content.ContentType.IMAGE,
+                        data=b'\x89PNG\r\n\x1a\nbody',
+                    ),
+                ],
+            )
+        ]),
+    )
+
+  @staticmethod
+  def _query_with_path_only(tmp_path):
+    file_path = tmp_path / 'img.png'
+    file_path.write_bytes(b'\x89PNG\r\n\x1a\nbody')
+    return types.QueryRecord(
+        prompt='p',
+        chat=chat_session.Chat(messages=[
+            message.Message(
+                role=message_content.MessageRoleType.USER,
+                content=[
+                    message_content.MessageContent(
+                        type=message_content.ContentType.IMAGE,
+                        path=str(file_path),
+                    ),
+                ],
+            )
+        ]),
+    )
+
+  @staticmethod
+  def _query_with_source_only():
+    return types.QueryRecord(
+        prompt='p',
+        chat=chat_session.Chat(messages=[
+            message.Message(
+                role=message_content.MessageRoleType.USER,
+                content=[
+                    message_content.MessageContent(
+                        type=message_content.ContentType.IMAGE,
+                        source='https://example.com/a.png',
+                    ),
+                ],
+            )
+        ]),
+    )
+
+  def test_warning_fires_on_inline_bytes_in_query_record(self, monkeypatch):
+    with tempfile.TemporaryDirectory() as temp_dir:
+      mgr = self._make_manager(temp_dir)
+      warnings = self._capture_warnings(monkeypatch)
+
+      mgr.cache(
+          self._query_with_inline_bytes(),
+          types.ResultRecord(output_text='r'),
+      )
+
+      inline_warnings = [
+          w for w in warnings if 'raw bytes inline' in w['message']
+      ]
+      assert len(inline_warnings) == 1
+      assert inline_warnings[0]['type'] == types.LoggingType.WARNING
+
+  def test_warning_fires_on_inline_bytes_in_result_record(self, monkeypatch):
+    with tempfile.TemporaryDirectory() as temp_dir:
+      mgr = self._make_manager(temp_dir)
+      warnings = self._capture_warnings(monkeypatch)
+
+      mgr.cache(
+          types.QueryRecord(prompt='p'),
+          types.ResultRecord(
+              output_image=message_content.MessageContent(
+                  type=message_content.ContentType.IMAGE,
+                  data=b'\x89PNG\r\n\x1a\nresult',
+              )
+          ),
+      )
+
+      inline_warnings = [
+          w for w in warnings if 'raw bytes inline' in w['message']
+      ]
+      assert len(inline_warnings) == 1
+
+  def test_warning_does_not_fire_for_path_only(self, monkeypatch, tmp_path):
+    with tempfile.TemporaryDirectory() as temp_dir:
+      mgr = self._make_manager(temp_dir)
+      warnings = self._capture_warnings(monkeypatch)
+
+      mgr.cache(
+          self._query_with_path_only(tmp_path),
+          types.ResultRecord(output_text='r'),
+      )
+
+      inline_warnings = [
+          w for w in warnings if 'raw bytes inline' in w['message']
+      ]
+      assert inline_warnings == []
+
+  def test_warning_does_not_fire_for_source_only(self, monkeypatch):
+    with tempfile.TemporaryDirectory() as temp_dir:
+      mgr = self._make_manager(temp_dir)
+      warnings = self._capture_warnings(monkeypatch)
+
+      mgr.cache(
+          self._query_with_source_only(),
+          types.ResultRecord(output_text='r'),
+      )
+
+      inline_warnings = [
+          w for w in warnings if 'raw bytes inline' in w['message']
+      ]
+      assert inline_warnings == []
+
+  def test_warning_deduplicated_within_session(self, monkeypatch):
+    with tempfile.TemporaryDirectory() as temp_dir:
+      mgr = self._make_manager(temp_dir)
+      warnings = self._capture_warnings(monkeypatch)
+
+      for i in range(3):
+        mgr.cache(
+            types.QueryRecord(
+                prompt=f'p{i}',
+                chat=chat_session.Chat(messages=[
+                    message.Message(
+                        role=message_content.MessageRoleType.USER,
+                        content=[
+                            message_content.MessageContent(
+                                type=message_content.ContentType.IMAGE,
+                                data=b'bytes_' + str(i).encode(),
+                            ),
+                        ],
+                    )
+                ]),
+            ),
+            types.ResultRecord(output_text=f'r{i}'),
+        )
+
+      inline_warnings = [
+          w for w in warnings if 'raw bytes inline' in w['message']
+      ]
+      assert len(inline_warnings) == 1, (
+          f'expected 1 inline-bytes warning across 3 writes, '
+          f'got {len(inline_warnings)}'
+      )
+
+  def test_warning_text_contains_examples(self, monkeypatch):
+    with tempfile.TemporaryDirectory() as temp_dir:
+      mgr = self._make_manager(temp_dir)
+      warnings = self._capture_warnings(monkeypatch)
+
+      mgr.cache(
+          self._query_with_inline_bytes(),
+          types.ResultRecord(output_text='r'),
+      )
+
+      msg = next(
+          w['message'] for w in warnings if 'raw bytes inline' in w['message']
+      )
+      # Anti-pattern + good-pattern + once-per-session note all present.
+      assert 'Anti-pattern' in msg
+      assert 'path=' in msg
+      assert 'files.upload' in msg
+      assert 'once per session' in msg

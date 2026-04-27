@@ -23,6 +23,75 @@ CACHE_DIR = 'query_cache'
 LIGHT_CACHE_RECORDS_PATH = 'light_cache_records.json'
 _QUERY_CACHE_MANAGER_STATE_PROPERTY = '_query_cache_manager_state'
 
+_INLINE_BYTES_WARNING = (
+    "MessageContent in this query carries raw bytes inline (the `data` "
+    "field is set). This is an anti-pattern for the query cache:\n"
+    "  - bytes are duplicated in every cache entry that holds them\n"
+    "  - hashing and equality checks pay byte-level cost on every lookup\n"
+    "  - the cache directory grows quickly with media payloads\n"
+    "\n"
+    "  Anti-pattern (avoid):\n"
+    "    px.MessageContent(\n"
+    "        type='image', data=open('photo.png', 'rb').read())\n"
+    "\n"
+    "  Use a local path instead:\n"
+    "    px.MessageContent(type='image', path='photo.png')\n"
+    "\n"
+    "  Or upload once via the file API and reference by id:\n"
+    "    file = px.files.upload('photo.png')\n"
+    "\n"
+    "This warning is shown once per session per cache manager."
+)
+
+
+def _iter_message_content(
+    query_record: types.QueryRecord | None,
+    result_record: types.ResultRecord | None,
+):
+  """Yield every MessageContent block referenced by the given records.
+
+  Walks all known carriers of MessageContent on QueryRecord and
+  ResultRecord. Tolerates None or missing fields silently — the goal
+  is detection of inline bytes, not validation.
+  """
+  if query_record is not None and query_record.chat is not None:
+    for msg in query_record.chat.messages:
+      if isinstance(msg.content, list):
+        for mc in msg.content:
+          if isinstance(mc, types.MessageContent):
+            yield mc
+  if result_record is None:
+    return
+  for attr in ('output_image', 'output_audio', 'output_video'):
+    mc = getattr(result_record, attr, None)
+    if isinstance(mc, types.MessageContent):
+      yield mc
+  if result_record.content:
+    for mc in result_record.content:
+      if isinstance(mc, types.MessageContent):
+        yield mc
+  if result_record.choices:
+    for choice in result_record.choices:
+      for attr in ('output_image', 'output_audio', 'output_video'):
+        mc = getattr(choice, attr, None)
+        if isinstance(mc, types.MessageContent):
+          yield mc
+      if choice.content:
+        for mc in choice.content:
+          if isinstance(mc, types.MessageContent):
+            yield mc
+
+
+def _has_inline_bytes(
+    query_record: types.QueryRecord | None,
+    result_record: types.ResultRecord | None,
+) -> bool:
+  """Return True if any MessageContent in the records has inline bytes."""
+  for mc in _iter_message_content(query_record, result_record):
+    if mc.data is not None:
+      return True
+  return False
+
 
 def _to_light_cache_record(cache_record: types.CacheRecord):
   """Convert a full CacheRecord to a lightweight version."""
@@ -468,6 +537,7 @@ class QueryCacheManager(state_controller.StateControlled):
   _query_cache_manager_state: types.QueryCacheManagerState
   _shard_manager: ShardManager
   _record_heap: HeapManager
+  _inline_bytes_warning_emitted: bool
 
   def __init__(
       self, init_from_params: QueryCacheManagerParams | None = None,
@@ -482,6 +552,7 @@ class QueryCacheManager(state_controller.StateControlled):
     )
 
     self._logging_options = None
+    self._inline_bytes_warning_emitted = False
     if init_from_state:
       self.load_state(init_from_state)
       self._init_dir()
@@ -706,6 +777,16 @@ class QueryCacheManager(state_controller.StateControlled):
           type=types.LoggingType.WARNING,
       )
       return
+
+    if not self._inline_bytes_warning_emitted and _has_inline_bytes(
+        query_record, result_record
+    ):
+      logging_utils.log_message(
+          logging_options=self._logging_options,
+          message=_INLINE_BYTES_WARNING,
+          type=types.LoggingType.WARNING,
+      )
+      self._inline_bytes_warning_emitted = True
 
     current_time = datetime.datetime.now()
     if override_cache_value:

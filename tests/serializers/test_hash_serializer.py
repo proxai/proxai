@@ -1,4 +1,7 @@
+import hashlib
+import json
 import os
+import time
 
 import pydantic
 import pytest
@@ -1197,4 +1200,75 @@ class TestConnectionOptionsExclusion:
     assert self._hash() == self._hash(override_cache_value=True)
     assert self._hash(override_cache_value=True) == (
         self._hash(override_cache_value=False)
+    )
+
+
+class TestInlineBytesHashOptimization:
+  """Inline raw bytes are replaced by a sha256 digest in the hash dict.
+
+  Without this optimization, the per-content hash dict contained the
+  full base64 string of `MessageContent.data`; that string was then
+  JSON-serialized and fed to SHA256 on every cache lookup. Large media
+  (images, audio, video) made hashing disproportionately slow.
+
+  These tests pin the optimization in place. Any future change that
+  reintroduces raw bytes into the hash dict will fail one of them.
+  Cache identity is preserved because different bytes still produce
+  different digests (covered by TestMediaContentAffectsHash).
+  """
+
+  def test_data_field_replaced_with_data_sha256(self):
+    content = message_content.MessageContent(
+        type=message_content.ContentType.IMAGE,
+        data=b'\x89PNG\r\n\x1a\nbody',
+    )
+    d = hash_serializer._content_hash_dict(content, provider=None)
+    assert 'data' not in d
+    assert 'data_sha256' in d
+    assert d['data_sha256'] == (
+        hashlib.sha256(b'\x89PNG\r\n\x1a\nbody').hexdigest()
+    )
+
+  def test_inline_bytes_dont_flow_through_json_dumps(self, monkeypatch):
+    # 1 MB of bytes; the base64 form is ~1.33 MB. If the optimization
+    # is in place, json.dumps inside the hasher only ever serializes a
+    # per-content dict containing a 64-char sha256 digest, never the
+    # raw payload.
+    payload = b'A' * (1024 * 1024)
+    qr = types.QueryRecord(chat=_image_chat(data=payload))
+
+    original_dumps = json.dumps
+    largest_serialized = 0
+
+    def tracking_dumps(obj, *args, **kwargs):
+      nonlocal largest_serialized
+      s = original_dumps(obj, *args, **kwargs)
+      if len(s) > largest_serialized:
+        largest_serialized = len(s)
+      return s
+
+    monkeypatch.setattr(hash_serializer.json, 'dumps', tracking_dumps)
+    hash_serializer.get_query_record_hash(qr)
+
+    # Comfortable headroom: the digest+metadata dict serializes well
+    # under 1 KB. 4 KB is a safety margin for unrelated metadata growth
+    # without being so loose it allows raw bytes back in.
+    assert largest_serialized < 4096, (
+        f'json.dumps was called with up to {largest_serialized} bytes; '
+        f'expected < 4096 (raw payload was {len(payload)} bytes).'
+    )
+
+  def test_large_inline_bytes_hash_is_fast(self):
+    # 5 MB of bytes. With the digest optimization this is one sha256
+    # pass over 5 MB, then ~64-char digest through the outer hasher —
+    # well under 100 ms on any modern CPU. The 500 ms ceiling guards
+    # against regression while staying robust on slow CI.
+    payload = b'B' * (5 * 1024 * 1024)
+    qr = types.QueryRecord(chat=_image_chat(data=payload))
+    start = time.perf_counter()
+    hash_serializer.get_query_record_hash(qr)
+    elapsed_ms = (time.perf_counter() - start) * 1000
+    assert elapsed_ms < 500, (
+        f'hashing 5 MB inline bytes took {elapsed_ms:.1f} ms; '
+        'expected < 500 ms (digest optimization regression).'
     )
