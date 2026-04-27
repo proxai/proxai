@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 class _MockMessage:
   content: str
 

@@ -83,7 +83,14 @@ def list_models():
 
 
 def check_health():
-  px.models.check_health(verbose=True)
+  client = px.Client(
+      proxdash_options=px.ProxDashOptions(
+          stdout=True,
+          base_url='http://localhost:3001',
+          api_key='yf5ak72-mogdeiah-tmui8htgtgn',
+      ),
+  )
+  client.models.check_health(verbose=True)
 
 
 def proxdash_test():
@@ -100,8 +107,8 @@ def proxdash_test():
 def main():
   # simple_model_test()
   # simple_cache_test()
-  list_models()
-  # check_health()
+  # list_models()
+  check_health()
   # proxdash_test()
 
 if __name__ == '__main__':

@@ -1,4 +1,5 @@
 """Result adapter for mapping query response formats to provider capabilities."""
+from __future__ import annotations
 
 import json
 

@@ -1,4 +1,5 @@
 """Message dataclass for conversation messages."""
+from __future__ import annotations
 
 import copy
 import dataclasses

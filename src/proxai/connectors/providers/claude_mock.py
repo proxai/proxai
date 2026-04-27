@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # [ContentBlock(text="Hello! How can I assist you?", type='text')]
 
 

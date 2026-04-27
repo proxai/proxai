@@ -1,4 +1,5 @@
 """Shared content conversion utilities for provider connectors."""
+from __future__ import annotations
 
 import base64
 import io

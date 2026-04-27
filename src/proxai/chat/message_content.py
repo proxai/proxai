@@ -1,4 +1,5 @@
 """MessageContent dataclass for multi-modal message content blocks."""
+from __future__ import annotations
 
 import base64
 import copy
