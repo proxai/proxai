@@ -1,28 +1,28 @@
 {
+  "metadata": {
+    "version": "1.3.0",
+    "released_at": "2026-04-25T16:29:19.092529",
+    "min_proxai_version": ">=0.2.20",
+    "config_origin": "BUILT_IN",
+    "release_notes": "v1.3.0 \u2014 rewritten against the new proxai multi_modal API.\nBreaking changes vs v1.1.x:\n  * is_featured \u2192 is_recommended (single recommendation flag).\n  * Per-endpoint feature arrays replaced with FeatureConfigType\n    (prompt / messages / system_prompt / parameters / tools /\n     input_format / output_format), each cell\n     SUPPORTED | BEST_EFFORT | NOT_SUPPORTED.\n  * Token pricing is now integer nano-USD (input_token_cost,\n    output_token_cost) instead of float per_query / per_response costs.\n  * CallType removed; v1.3.0 is text-only generation.\n  * Display metadata lives in metadata.tags via display::* namespace.\n  * Ranking signals emitted as rank::best_small / best_medium /\n    best_large / largest bare flags.\n"
+  },
   "default_model_priority_list": [
     {
-      "model": "gemini-3-flash",
       "provider": "gemini",
+      "model": "gemini-3-flash",
       "provider_model_identifier": "gemini-3-flash-preview"
     },
     {
-      "model": "gpt-4o-mini",
       "provider": "openai",
+      "model": "gpt-4o-mini",
       "provider_model_identifier": "gpt-4o-mini"
     },
     {
-      "model": "haiku-4.5",
       "provider": "claude",
+      "model": "haiku-4.5",
       "provider_model_identifier": "claude-haiku-4-5-20251001"
     }
   ],
-  "metadata": {
-    "config_origin": "BUILT_IN",
-    "min_proxai_version": ">=0.2.20",
-    "release_notes": "v1.3.0 \u2014 rewritten against the new proxai multi_modal API.\nBreaking changes vs v1.1.x:\n  * is_featured \u2192 is_recommended (single recommendation flag).\n  * Per-endpoint feature arrays replaced with FeatureConfigType\n    (prompt / messages / system_prompt / parameters / tools /\n     input_format / output_format), each cell\n     SUPPORTED | BEST_EFFORT | NOT_SUPPORTED.\n  * Token pricing is now integer nano-USD (input_token_cost,\n    output_token_cost) instead of float per_query / per_response costs.\n  * CallType removed; v1.3.0 is text-only generation.\n  * Display metadata lives in metadata.tags via display::* namespace.\n  * Ranking signals emitted as rank::best_small / best_medium /\n    best_large / largest bare flags.\n",
-    "released_at": "2026-04-25T16:29:19.092529",
-    "version": "1.3.0"
-  },
   "provider_model_configs": {
     "claude": {
       "haiku-4.5": {
@@ -66,6 +66,8 @@
           "tags": [
             "display::model_name=Claude Haiku 4.5",
             "display::provider_name=Claude",
+            "display::provider_rank=3",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -142,6 +144,8 @@
           "tags": [
             "display::model_name=Claude Opus 4",
             "display::provider_name=Claude",
+            "display::provider_rank=3",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -217,6 +221,8 @@
           "tags": [
             "display::model_name=Claude Opus 4.1",
             "display::provider_name=Claude",
+            "display::provider_rank=3",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -295,6 +301,8 @@
             "best_large::success=73d2f3fa3f6c",
             "display::model_name=Claude Opus 4.5",
             "display::provider_name=Claude",
+            "display::provider_rank=3",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -375,6 +383,8 @@
             "best_large::success=73d2f3fa3f6c",
             "display::model_name=Claude Opus 4 6",
             "display::provider_name=Claude",
+            "display::provider_rank=3",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -456,6 +466,8 @@
             "best_large::success=73d2f3fa3f6c",
             "display::model_name=Claude Opus 4 7",
             "display::provider_name=Claude",
+            "display::provider_rank=3",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -538,6 +550,8 @@
             "best_medium::success=03be6e55ec87",
             "display::model_name=Claude Sonnet 4",
             "display::provider_name=Claude",
+            "display::provider_rank=3",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -617,6 +631,8 @@
             "best_medium::success=03be6e55ec87",
             "display::model_name=Claude Sonnet 4.5",
             "display::provider_name=Claude",
+            "display::provider_rank=3",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -696,6 +712,8 @@
             "best_medium::success=03be6e55ec87",
             "display::model_name=Claude Sonnet 4 6",
             "display::provider_name=Claude",
+            "display::provider_rank=3",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -775,9 +793,11 @@
             "large"
           ],
           "tags": [
-            "best_large::failed=1eacb33904e8",
+            "best_large::success=1eacb33904e8",
             "display::model_name=C4ai Aya Expanse 32b",
             "display::provider_name=Cohere",
+            "display::provider_rank=7",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -855,9 +875,11 @@
             "large"
           ],
           "tags": [
-            "best_large::failed=1eacb33904e8",
+            "best_large::success=1eacb33904e8",
             "display::model_name=C4ai Aya Vision 32b",
             "display::provider_name=Cohere",
+            "display::provider_rank=7",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -935,9 +957,11 @@
             "large"
           ],
           "tags": [
-            "best_large::failed=1eacb33904e8",
+            "best_large::success=1eacb33904e8",
             "display::model_name=Command A",
             "display::provider_name=Cohere",
+            "display::provider_rank=7",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -963,7 +987,8 @@
             "is_recommended::success",
             "largest::success=1eacb33904e8",
             "model_size::success",
-            "pricing::success"
+            "pricing::success",
+            "rank::best_large"
           ]
         },
         "pricing": {
@@ -1016,9 +1041,11 @@
             "largest"
           ],
           "tags": [
-            "best_large::failed=1eacb33904e8",
+            "best_large::success=1eacb33904e8",
             "display::model_name=Command A Reasoning",
             "display::provider_name=Cohere",
+            "display::provider_rank=7",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -1045,6 +1072,7 @@
             "largest::success=1eacb33904e8",
             "model_size::success",
             "pricing::success",
+            "rank::best_large",
             "rank::largest"
           ]
         },
@@ -1097,9 +1125,11 @@
             "large"
           ],
           "tags": [
-            "best_large::failed=1eacb33904e8",
+            "best_large::success=1eacb33904e8",
             "display::model_name=Command A Translate",
             "display::provider_name=Cohere",
+            "display::provider_rank=7",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -1177,9 +1207,11 @@
             "large"
           ],
           "tags": [
-            "best_large::failed=1eacb33904e8",
+            "best_large::success=1eacb33904e8",
             "display::model_name=Command A Vision",
             "display::provider_name=Cohere",
+            "display::provider_rank=7",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -1205,7 +1237,8 @@
             "is_recommended::success",
             "largest::success=1eacb33904e8",
             "model_size::success",
-            "pricing::success"
+            "pricing::success",
+            "rank::best_large"
           ]
         },
         "pricing": {
@@ -1257,6 +1290,8 @@
           "tags": [
             "display::model_name=Command R",
             "display::provider_name=Cohere",
+            "display::provider_rank=7",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -1332,9 +1367,11 @@
             "large"
           ],
           "tags": [
-            "best_large::failed=1eacb33904e8",
+            "best_large::success=1eacb33904e8",
             "display::model_name=Command R Plus",
             "display::provider_name=Cohere",
+            "display::provider_rank=7",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -1415,6 +1452,8 @@
             "best_small::success=4b17a61d6bda",
             "display::model_name=Command R7b",
             "display::provider_name=Cohere",
+            "display::provider_rank=7",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -1495,6 +1534,8 @@
             "best_small::success=4b17a61d6bda",
             "display::model_name=Command R7b Arabic",
             "display::provider_name=Cohere",
+            "display::provider_rank=7",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -1573,6 +1614,8 @@
           "tags": [
             "display::model_name=Databricks Bge Large En",
             "display::provider_name=Databricks",
+            "display::provider_rank=8",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -1648,9 +1691,11 @@
             "medium"
           ],
           "tags": [
-            "best_medium::failed=d1289ba39d32",
+            "best_medium::success=d1289ba39d32",
             "display::model_name=Databricks Gemma 3 12b",
             "display::provider_name=Databricks",
+            "display::provider_rank=8",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -1675,7 +1720,8 @@
             "feature_config::tools.web_search=failed",
             "is_recommended::success",
             "model_size::success",
-            "pricing::success"
+            "pricing::success",
+            "rank::best_medium"
           ]
         },
         "pricing": {
@@ -1727,6 +1773,8 @@
           "tags": [
             "display::model_name=Databricks GPT 5 1",
             "display::provider_name=Databricks",
+            "display::provider_rank=8",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -1802,6 +1850,8 @@
           "tags": [
             "display::model_name=Databricks GPT 5 2",
             "display::provider_name=Databricks",
+            "display::provider_rank=8",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -1877,6 +1927,8 @@
           "tags": [
             "display::model_name=Databricks GPT 5.2 Codex",
             "display::provider_name=Databricks",
+            "display::provider_rank=8",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -1952,6 +2004,8 @@
           "tags": [
             "display::model_name=Databricks GPT 5.3 Codex",
             "display::provider_name=Databricks",
+            "display::provider_rank=8",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -2027,6 +2081,8 @@
           "tags": [
             "display::model_name=Databricks GPT 5 4",
             "display::provider_name=Databricks",
+            "display::provider_rank=8",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -2102,6 +2158,8 @@
           "tags": [
             "display::model_name=Databricks GPT 5.4 Mini",
             "display::provider_name=Databricks",
+            "display::provider_rank=8",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -2177,6 +2235,8 @@
           "tags": [
             "display::model_name=Databricks GPT 5.4 Nano",
             "display::provider_name=Databricks",
+            "display::provider_rank=8",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -2252,6 +2312,8 @@
           "tags": [
             "display::model_name=Databricks GPT 5 5",
             "display::provider_name=Databricks",
+            "display::provider_rank=8",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -2327,6 +2389,8 @@
           "tags": [
             "display::model_name=Databricks GPT 5.5 Pro",
             "display::provider_name=Databricks",
+            "display::provider_rank=8",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -2405,6 +2469,8 @@
             "best_large::success=adbb3df3bfe4",
             "display::model_name=Databricks GPT Oss 120b",
             "display::provider_name=Databricks",
+            "display::provider_rank=8",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -2483,9 +2549,11 @@
             "medium"
           ],
           "tags": [
-            "best_medium::failed=d1289ba39d32",
+            "best_medium::success=d1289ba39d32",
             "display::model_name=Databricks GPT Oss 20b",
             "display::provider_name=Databricks",
+            "display::provider_rank=8",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -2510,7 +2578,8 @@
             "feature_config::tools.web_search=failed",
             "is_recommended::success",
             "model_size::success",
-            "pricing::success"
+            "pricing::success",
+            "rank::best_medium"
           ]
         },
         "pricing": {
@@ -2562,6 +2631,8 @@
           "tags": [
             "display::model_name=Databricks Gte Large En",
             "display::provider_name=Databricks",
+            "display::provider_rank=8",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -2641,6 +2712,8 @@
             "best_large::success=adbb3df3bfe4",
             "display::model_name=Databricks Llama 4 Maverick",
             "display::provider_name=Databricks",
+            "display::provider_rank=8",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -2723,6 +2796,8 @@
             "best_large::success=adbb3df3bfe4",
             "display::model_name=Databricks Meta Llama 3.1 405b Instruct",
             "display::provider_name=Databricks",
+            "display::provider_rank=8",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -2802,6 +2877,8 @@
           "tags": [
             "display::model_name=Databricks Meta Llama 3.1 8b Instruct",
             "display::provider_name=Databricks",
+            "display::provider_rank=8",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -2878,9 +2955,11 @@
             "medium"
           ],
           "tags": [
-            "best_medium::failed=d1289ba39d32",
+            "best_medium::success=d1289ba39d32",
             "display::model_name=Databricks Meta Llama 3.3 70b Instruct",
             "display::provider_name=Databricks",
+            "display::provider_rank=8",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -2905,7 +2984,8 @@
             "feature_config::tools.web_search=failed",
             "is_recommended::success",
             "model_size::success",
-            "pricing::success"
+            "pricing::success",
+            "rank::best_medium"
           ]
         },
         "pricing": {
@@ -2960,6 +3040,8 @@
             "best_large::success=adbb3df3bfe4",
             "display::model_name=Databricks Qwen3 Next 80b A3b Instruct",
             "display::provider_name=Databricks",
+            "display::provider_rank=8",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -3042,6 +3124,8 @@
           "tags": [
             "display::model_name=DeepSeek V4 Flash",
             "display::provider_name=DeepSeek",
+            "display::provider_rank=6",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -3118,6 +3202,8 @@
           "tags": [
             "display::model_name=DeepSeek V4 Pro",
             "display::provider_name=DeepSeek",
+            "display::provider_rank=6",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -3195,6 +3281,8 @@
           "tags": [
             "display::model_name=Aqa",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -3270,6 +3358,8 @@
           "tags": [
             "display::model_name=Deep Research Preview",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -3345,6 +3435,8 @@
           "tags": [
             "display::model_name=Deep Research Max Preview",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -3420,6 +3512,8 @@
           "tags": [
             "display::model_name=Deep Research Pro Preview",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -3495,9 +3589,11 @@
             "small"
           ],
           "tags": [
-            "best_small::failed=dac1677f8bc1",
+            "best_small::success=dac1677f8bc1",
             "display::model_name=Gemini 2.0 Flash",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=success",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -3574,9 +3670,11 @@
             "small"
           ],
           "tags": [
-            "best_small::failed=dac1677f8bc1",
+            "best_small::success=dac1677f8bc1",
             "display::model_name=Gemini 2.0 Flash 001",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=success",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -3653,9 +3751,11 @@
             "small"
           ],
           "tags": [
-            "best_small::failed=dac1677f8bc1",
+            "best_small::success=dac1677f8bc1",
             "display::model_name=Gemini 2.0 Flash Lite",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=success",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -3732,9 +3832,11 @@
             "small"
           ],
           "tags": [
-            "best_small::failed=dac1677f8bc1",
+            "best_small::success=dac1677f8bc1",
             "display::model_name=Gemini 2.0 Flash Lite 001",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=success",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -3811,9 +3913,11 @@
             "small"
           ],
           "tags": [
-            "best_small::failed=dac1677f8bc1",
+            "best_small::success=dac1677f8bc1",
             "display::model_name=Gemini 2.5 Flash",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=success",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -3890,9 +3994,11 @@
             "small"
           ],
           "tags": [
-            "best_small::failed=dac1677f8bc1",
+            "best_small::success=dac1677f8bc1",
             "display::model_name=Gemini 2.5 Flash Image",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -3969,9 +4075,11 @@
             "small"
           ],
           "tags": [
-            "best_small::failed=dac1677f8bc1",
+            "best_small::success=dac1677f8bc1",
             "display::model_name=Gemini 2.5 Flash Lite",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=success",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -4048,6 +4156,8 @@
           "tags": [
             "display::model_name=Gemini 2.5 Flash Native Audio Preview",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -4120,6 +4230,8 @@
           "tags": [
             "display::model_name=Gemini 2.5 Flash Native Audio Latest",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -4195,6 +4307,8 @@
           "tags": [
             "display::model_name=Gemini 2.5 Flash Native Audio Preview",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -4267,6 +4381,8 @@
           "tags": [
             "display::model_name=Gemini 2.5 Flash Preview TTS",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -4342,9 +4458,11 @@
             "large"
           ],
           "tags": [
-            "best_large::success=69e63c4a2d2a",
+            "best_large::success=b180cb599347",
             "display::model_name=Gemini 2.5 Pro",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=success",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -4368,9 +4486,9 @@
             "feature_config::system_prompt=success",
             "feature_config::tools.web_search=success",
             "is_recommended::success",
+            "largest::success=b180cb599347",
             "model_size::success",
-            "pricing::success",
-            "largest::success=b180cb599347"
+            "pricing::success"
           ]
         },
         "pricing": {
@@ -4422,6 +4540,8 @@
           "tags": [
             "display::model_name=Gemini 2.5 Pro Preview TTS",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -4497,9 +4617,11 @@
             "small"
           ],
           "tags": [
-            "best_small::failed=dac1677f8bc1",
+            "best_small::success=dac1677f8bc1",
             "display::model_name=Gemini 3 Flash Preview",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=True",
             "feature_config::input_format.audio=success",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -4524,7 +4646,8 @@
             "feature_config::tools.web_search=success",
             "is_recommended::success",
             "model_size::success",
-            "pricing::success"
+            "pricing::success",
+            "rank::best_small"
           ]
         },
         "pricing": {
@@ -4576,9 +4699,11 @@
             "large"
           ],
           "tags": [
-            "best_large::success=69e63c4a2d2a",
+            "best_large::success=b180cb599347",
             "display::model_name=Gemini 3 Pro Preview",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=success",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -4602,10 +4727,9 @@
             "feature_config::system_prompt=success",
             "feature_config::tools.web_search=success",
             "is_recommended::success",
+            "largest::success=b180cb599347",
             "model_size::success",
-            "pricing::success",
-            "rank::best_large",
-            "largest::success=b180cb599347"
+            "pricing::success"
           ]
         },
         "pricing": {
@@ -4657,9 +4781,11 @@
             "large"
           ],
           "tags": [
-            "best_large::success=69e63c4a2d2a",
+            "best_large::success=b180cb599347",
             "display::model_name=Gemini 3 Pro Image Preview",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -4683,9 +4809,10 @@
             "feature_config::system_prompt=success",
             "feature_config::tools.web_search=success",
             "is_recommended::success",
+            "largest::success=b180cb599347",
             "model_size::success",
             "pricing::success",
-            "largest::success=b180cb599347"
+            "rank::best_large"
           ]
         },
         "pricing": {
@@ -4737,9 +4864,11 @@
             "small"
           ],
           "tags": [
-            "best_small::failed=dac1677f8bc1",
+            "best_small::success=dac1677f8bc1",
             "display::model_name=Gemini 3.1 Flash Image Preview",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=True",
             "feature_config::input_format.audio=success",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -4764,7 +4893,8 @@
             "feature_config::tools.web_search=success",
             "is_recommended::success",
             "model_size::success",
-            "pricing::success"
+            "pricing::success",
+            "rank::best_small"
           ]
         },
         "pricing": {
@@ -4816,9 +4946,11 @@
             "small"
           ],
           "tags": [
-            "best_small::failed=dac1677f8bc1",
+            "best_small::success=dac1677f8bc1",
             "display::model_name=Gemini 3.1 Flash Lite Preview",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=True",
             "feature_config::input_format.audio=success",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -4843,7 +4975,8 @@
             "feature_config::tools.web_search=success",
             "is_recommended::success",
             "model_size::success",
-            "pricing::success"
+            "pricing::success",
+            "rank::best_small"
           ]
         },
         "pricing": {
@@ -4895,6 +5028,8 @@
           "tags": [
             "display::model_name=Gemini 3.1 Flash Live Preview",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -4970,6 +5105,8 @@
           "tags": [
             "display::model_name=Gemini 3.1 Flash TTS Preview",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -5012,12 +5149,15 @@
             "audio": "SUPPORTED",
             "document": "SUPPORTED",
             "image": "SUPPORTED",
+            "json": "BEST_EFFORT",
             "pydantic": "BEST_EFFORT",
             "text": "SUPPORTED",
             "video": "SUPPORTED"
           },
           "messages": "SUPPORTED",
           "output_format": {
+            "audio": "NOT_SUPPORTED",
+            "image": "NOT_SUPPORTED",
             "json": "SUPPORTED",
             "pydantic": "BEST_EFFORT",
             "text": "SUPPORTED",
@@ -5043,18 +5183,21 @@
             "largest"
           ],
           "tags": [
+            "best_large::success=b180cb599347",
             "display::model_name=Gemini 3.1 Pro Preview",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=True",
             "feature_config::input_format.audio=success",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
-            "feature_config::input_format.json=qps_fail",
+            "feature_config::input_format.json=success",
             "feature_config::input_format.pydantic=success",
             "feature_config::input_format.text=success",
             "feature_config::input_format.video=success",
             "feature_config::messages=success",
-            "feature_config::output_format.audio=qps_fail",
-            "feature_config::output_format.image=qps_fail",
+            "feature_config::output_format.audio=failed",
+            "feature_config::output_format.image=failed",
             "feature_config::output_format.json=success",
             "feature_config::output_format.pydantic=success",
             "feature_config::output_format.text=success",
@@ -5067,10 +5210,12 @@
             "feature_config::prompt=success",
             "feature_config::system_prompt=success",
             "feature_config::tools.web_search=success",
-            "pricing::success",
             "is_recommended::success",
-            "rank::largest",
-            "largest::success=b180cb599347"
+            "largest::success=b180cb599347",
+            "model_size::success",
+            "pricing::success",
+            "rank::best_large",
+            "rank::largest"
           ]
         },
         "pricing": {
@@ -5122,6 +5267,8 @@
           "tags": [
             "display::model_name=Gemini 3.1 Pro Preview Customtools",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=success",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -5197,9 +5344,11 @@
             "small"
           ],
           "tags": [
-            "best_small::failed=dac1677f8bc1",
+            "best_small::success=dac1677f8bc1",
             "display::model_name=Gemini Flash Latest",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=success",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -5276,9 +5425,11 @@
             "small"
           ],
           "tags": [
-            "best_small::failed=dac1677f8bc1",
+            "best_small::success=dac1677f8bc1",
             "display::model_name=Gemini Flash Lite Latest",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=success",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -5355,6 +5506,8 @@
           "tags": [
             "display::model_name=Gemini Pro Latest",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -5430,9 +5583,11 @@
             "large"
           ],
           "tags": [
-            "best_large::success=69e63c4a2d2a",
+            "best_large::success=b180cb599347",
             "display::model_name=Gemini Robotics Er 1.5 Preview",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=success",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -5456,9 +5611,9 @@
             "feature_config::system_prompt=success",
             "feature_config::tools.web_search=success",
             "is_recommended::success",
+            "largest::success=b180cb599347",
             "model_size::success",
-            "pricing::failed",
-            "largest::success=b180cb599347"
+            "pricing::failed"
           ]
         },
         "pricing": {},
@@ -5507,9 +5662,11 @@
             "large"
           ],
           "tags": [
-            "best_large::success=69e63c4a2d2a",
+            "best_large::success=b180cb599347",
             "display::model_name=Gemini Robotics Er 1.6 Preview",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=success",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -5533,9 +5690,9 @@
             "feature_config::system_prompt=success",
             "feature_config::tools.web_search=success",
             "is_recommended::success",
+            "largest::success=b180cb599347",
             "model_size::success",
-            "pricing::failed",
-            "largest::success=b180cb599347"
+            "pricing::failed"
           ]
         },
         "pricing": {},
@@ -5587,6 +5744,8 @@
             "best_medium::success=125c40cd421d",
             "display::model_name=Gemma 3 12b IT",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -5663,9 +5822,11 @@
             "small"
           ],
           "tags": [
-            "best_small::failed=dac1677f8bc1",
+            "best_small::success=dac1677f8bc1",
             "display::model_name=Gemma 3 1b IT",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -5742,9 +5903,11 @@
             "large"
           ],
           "tags": [
-            "best_large::success=69e63c4a2d2a",
+            "best_large::success=b180cb599347",
             "display::model_name=Gemma 3 27b IT",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -5768,10 +5931,9 @@
             "feature_config::system_prompt=failed",
             "feature_config::tools.web_search=failed",
             "is_recommended::success",
+            "largest::success=b180cb599347",
             "model_size::success",
-            "pricing::success",
-            "rank::best_large",
-            "largest::success=b180cb599347"
+            "pricing::success"
           ]
         },
         "pricing": {
@@ -5823,9 +5985,11 @@
             "small"
           ],
           "tags": [
-            "best_small::failed=dac1677f8bc1",
+            "best_small::success=dac1677f8bc1",
             "display::model_name=Gemma 3 4b IT",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -5902,9 +6066,11 @@
             "small"
           ],
           "tags": [
-            "best_small::failed=dac1677f8bc1",
+            "best_small::success=dac1677f8bc1",
             "display::model_name=Gemma 3n E2b IT",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -5981,9 +6147,11 @@
             "small"
           ],
           "tags": [
-            "best_small::failed=dac1677f8bc1",
+            "best_small::success=dac1677f8bc1",
             "display::model_name=Gemma 3n E4b IT",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -6063,6 +6231,8 @@
             "best_medium::success=125c40cd421d",
             "display::model_name=Gemma 4 26b A4b IT",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -6140,6 +6310,8 @@
             "best_medium::success=125c40cd421d",
             "display::model_name=Gemma 4 31b IT",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -6214,6 +6386,8 @@
           "tags": [
             "display::model_name=Imagen 4.0 Fast Generate 001",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -6289,6 +6463,8 @@
           "tags": [
             "display::model_name=Imagen 4.0 Generate 001",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -6364,6 +6540,8 @@
           "tags": [
             "display::model_name=Imagen 4.0 Ultra Generate 001",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -6439,9 +6617,11 @@
             "small"
           ],
           "tags": [
-            "best_small::failed=dac1677f8bc1",
+            "best_small::success=dac1677f8bc1",
             "display::model_name=Lyria 3 Clip Preview",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -6518,6 +6698,8 @@
           "tags": [
             "display::model_name=Lyria 3 Pro Preview",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -6593,6 +6775,8 @@
           "tags": [
             "display::model_name=Nano Banana Pro Preview",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -6668,6 +6852,8 @@
           "tags": [
             "display::model_name=Veo 2.0 Generate 001",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -6743,6 +6929,8 @@
           "tags": [
             "display::model_name=Veo 3.0 Fast Generate 001",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -6818,6 +7006,8 @@
           "tags": [
             "display::model_name=Veo 3.0 Generate 001",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -6893,6 +7083,8 @@
           "tags": [
             "display::model_name=Veo 3.1 Fast Generate Preview",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -6968,6 +7160,8 @@
           "tags": [
             "display::model_name=Veo 3.1 Generate Preview",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -7043,6 +7237,8 @@
           "tags": [
             "display::model_name=Veo 3.1 Lite Generate Preview",
             "display::provider_name=Gemini",
+            "display::provider_rank=1",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -7123,6 +7319,8 @@
             "best_large::success=f4b8b318ff69",
             "display::model_name=Grok 3",
             "display::provider_name=Grok",
+            "display::provider_rank=5",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -7146,7 +7344,7 @@
             "feature_config::system_prompt=success",
             "feature_config::tools.web_search=failed",
             "is_recommended::success",
-            "largest::failed=f4b8b318ff69",
+            "largest::success=f4b8b318ff69",
             "model_size::success",
             "pricing::success"
           ]
@@ -7203,6 +7401,8 @@
             "best_small::success=3be79547123a",
             "display::model_name=Grok 3 Mini",
             "display::provider_name=Grok",
+            "display::provider_rank=5",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -7227,7 +7427,8 @@
             "feature_config::tools.web_search=failed",
             "is_recommended::success",
             "model_size::success",
-            "pricing::success"
+            "pricing::success",
+            "rank::best_small"
           ]
         },
         "pricing": {
@@ -7282,6 +7483,8 @@
             "best_large::success=f4b8b318ff69",
             "display::model_name=Grok 4",
             "display::provider_name=Grok",
+            "display::provider_rank=5",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -7305,7 +7508,7 @@
             "feature_config::system_prompt=success",
             "feature_config::tools.web_search=success",
             "is_recommended::success",
-            "largest::failed=f4b8b318ff69",
+            "largest::success=f4b8b318ff69",
             "model_size::success",
             "pricing::success"
           ]
@@ -7362,6 +7565,8 @@
             "best_small::success=3be79547123a",
             "display::model_name=Grok 4 Fast Non Reasoning",
             "display::provider_name=Grok",
+            "display::provider_rank=5",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -7441,6 +7646,8 @@
             "best_small::success=3be79547123a",
             "display::model_name=Grok 4 Fast Reasoning",
             "display::provider_name=Grok",
+            "display::provider_rank=5",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -7520,6 +7727,8 @@
             "best_small::success=3be79547123a",
             "display::model_name=Grok 4.1 Fast Non Reasoning",
             "display::provider_name=Grok",
+            "display::provider_rank=5",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -7600,6 +7809,8 @@
             "best_small::success=3be79547123a",
             "display::model_name=Grok 4.1 Fast Reasoning",
             "display::provider_name=Grok",
+            "display::provider_rank=5",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -7680,6 +7891,8 @@
             "best_large::success=f4b8b318ff69",
             "display::model_name=Grok 4.20 0309 Non Reasoning",
             "display::provider_name=Grok",
+            "display::provider_rank=5",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -7703,7 +7916,7 @@
             "feature_config::system_prompt=success",
             "feature_config::tools.web_search=success",
             "is_recommended::success",
-            "largest::failed=f4b8b318ff69",
+            "largest::success=f4b8b318ff69",
             "model_size::success",
             "pricing::success",
             "rank::best_large"
@@ -7755,12 +7968,15 @@
         "metadata": {
           "is_recommended": true,
           "model_size_tags": [
-            "large"
+            "large",
+            "largest"
           ],
           "tags": [
             "best_large::success=f4b8b318ff69",
             "display::model_name=Grok 4.20 0309 Reasoning",
             "display::provider_name=Grok",
+            "display::provider_rank=5",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -7784,10 +8000,11 @@
             "feature_config::system_prompt=success",
             "feature_config::tools.web_search=success",
             "is_recommended::success",
-            "largest::failed=f4b8b318ff69",
+            "largest::success=f4b8b318ff69",
             "model_size::success",
             "pricing::success",
-            "rank::best_large"
+            "rank::best_large",
+            "rank::largest"
           ]
         },
         "pricing": {
@@ -7842,6 +8059,8 @@
             "best_large::success=f4b8b318ff69",
             "display::model_name=Grok 4.20 Multi Agent",
             "display::provider_name=Grok",
+            "display::provider_rank=5",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -7865,9 +8084,10 @@
             "feature_config::system_prompt=success",
             "feature_config::tools.web_search=success",
             "is_recommended::success",
-            "largest::failed=f4b8b318ff69",
+            "largest::success=f4b8b318ff69",
             "model_size::success",
-            "pricing::success"
+            "pricing::success",
+            "rank::best_large"
           ]
         },
         "pricing": {
@@ -7922,6 +8142,8 @@
             "best_small::success=3be79547123a",
             "display::model_name=Grok Code Fast 1",
             "display::provider_name=Grok",
+            "display::provider_rank=5",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -7998,6 +8220,8 @@
           "tags": [
             "display::model_name=Grok Imagine Image",
             "display::provider_name=Grok",
+            "display::provider_rank=5",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -8073,6 +8297,8 @@
           "tags": [
             "display::model_name=Grok Imagine Image Pro",
             "display::provider_name=Grok",
+            "display::provider_rank=5",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -8148,6 +8374,8 @@
           "tags": [
             "display::model_name=Grok Imagine Video",
             "display::provider_name=Grok",
+            "display::provider_rank=5",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -8225,9 +8453,11 @@
             "large"
           ],
           "tags": [
-            "best_large::success=fd3589cf8f44",
+            "best_large::success=ed67fb1c3801",
             "display::model_name=Deepcogito / Cogito 671b V2.1",
             "display::provider_name=HuggingFace",
+            "display::provider_rank=9",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -8251,7 +8481,7 @@
             "feature_config::system_prompt=success",
             "feature_config::tools.web_search=failed",
             "is_recommended::success",
-            "largest::success=fd3589cf8f44",
+            "largest::success=ed67fb1c3801",
             "model_size::success",
             "pricing::success"
           ]
@@ -8305,9 +8535,11 @@
             "large"
           ],
           "tags": [
-            "best_large::success=fd3589cf8f44",
+            "best_large::success=ed67fb1c3801",
             "display::model_name=Deepcogito / Cogito 671b V2.1 Fp8",
             "display::provider_name=HuggingFace",
+            "display::provider_rank=9",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -8331,7 +8563,7 @@
             "feature_config::system_prompt=success",
             "feature_config::tools.web_search=failed",
             "is_recommended::success",
-            "largest::success=fd3589cf8f44",
+            "largest::success=ed67fb1c3801",
             "model_size::success",
             "pricing::success"
           ]
@@ -8350,43 +8582,48 @@
         "features": {
           "input_format": {
             "audio": "NOT_SUPPORTED",
-            "document": "NOT_SUPPORTED",
-            "image": "BEST_EFFORT",
+            "document": "BEST_EFFORT",
+            "image": "SUPPORTED",
             "json": "BEST_EFFORT",
             "pydantic": "BEST_EFFORT",
             "text": "SUPPORTED",
             "video": "NOT_SUPPORTED"
           },
-          "messages": "BEST_EFFORT",
+          "messages": "SUPPORTED",
           "output_format": {
             "audio": "NOT_SUPPORTED",
             "image": "NOT_SUPPORTED",
             "json": "NOT_SUPPORTED",
             "pydantic": "NOT_SUPPORTED",
-            "text": "BEST_EFFORT",
+            "text": "SUPPORTED",
             "video": "NOT_SUPPORTED"
           },
           "parameters": {
             "max_tokens": "SUPPORTED",
             "n": "NOT_SUPPORTED",
-            "stop": "BEST_EFFORT",
-            "temperature": "BEST_EFFORT",
+            "stop": "SUPPORTED",
+            "temperature": "SUPPORTED",
             "thinking": "BEST_EFFORT"
           },
-          "prompt": "BEST_EFFORT",
-          "system_prompt": "BEST_EFFORT",
+          "prompt": "SUPPORTED",
+          "system_prompt": "SUPPORTED",
           "tools": {
             "web_search": "NOT_SUPPORTED"
           }
         },
         "metadata": {
-          "is_recommended": false,
-          "model_size_tags": [],
+          "is_recommended": true,
+          "model_size_tags": [
+            "large"
+          ],
           "tags": [
+            "best_large::success=ed67fb1c3801",
             "display::model_name=DeepSeek Ai / DeepSeek R1",
             "display::provider_name=HuggingFace",
+            "display::provider_rank=9",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
-            "feature_config::input_format.document=failed",
+            "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
             "feature_config::input_format.json=success",
             "feature_config::input_format.pydantic=success",
@@ -8394,7 +8631,7 @@
             "feature_config::input_format.video=failed",
             "feature_config::messages=success",
             "feature_config::output_format.audio=failed",
-            "feature_config::output_format.image=failed",
+            "feature_config::output_format.image=timeout",
             "feature_config::output_format.json=failed",
             "feature_config::output_format.pydantic=failed",
             "feature_config::output_format.text=success",
@@ -8408,12 +8645,15 @@
             "feature_config::system_prompt=success",
             "feature_config::tools.web_search=failed",
             "is_recommended::success",
-            "pricing::success"
+            "largest::success=ed67fb1c3801",
+            "model_size::success",
+            "pricing::success",
+            "rank::best_large"
           ]
         },
         "pricing": {
-          "input_token_cost": 550,
-          "output_token_cost": 2190
+          "input_token_cost": 700,
+          "output_token_cost": 2500
         },
         "provider_model": {
           "model": "deepseek-ai/deepseek-r1",
@@ -8460,6 +8700,8 @@
           "tags": [
             "display::model_name=DeepSeek Ai / DeepSeek R1",
             "display::provider_name=HuggingFace",
+            "display::provider_rank=9",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -8512,6 +8754,7 @@
             "audio": "NOT_SUPPORTED",
             "image": "NOT_SUPPORTED",
             "json": "NOT_SUPPORTED",
+            "pydantic": "SUPPORTED",
             "text": "SUPPORTED",
             "video": "NOT_SUPPORTED"
           },
@@ -8537,6 +8780,8 @@
             "best_medium::success=500473b86625",
             "display::model_name=DeepSeek Ai / DeepSeek V3",
             "display::provider_name=HuggingFace",
+            "display::provider_rank=9",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -8548,7 +8793,7 @@
             "feature_config::output_format.audio=failed",
             "feature_config::output_format.image=failed",
             "feature_config::output_format.json=failed",
-            "feature_config::output_format.pydantic=qps_fail",
+            "feature_config::output_format.pydantic=success",
             "feature_config::output_format.text=success",
             "feature_config::output_format.video=failed",
             "feature_config::parameters.max_tokens=success",
@@ -8614,6 +8859,8 @@
           "tags": [
             "display::model_name=DeepSeek Ai / DeepSeek V3",
             "display::provider_name=HuggingFace",
+            "display::provider_rank=9",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -8689,9 +8936,11 @@
             "large"
           ],
           "tags": [
-            "best_large::success=fd3589cf8f44",
+            "best_large::success=ed67fb1c3801",
             "display::model_name=DeepSeek Ai / DeepSeek V3.1",
             "display::provider_name=HuggingFace",
+            "display::provider_rank=9",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -8715,7 +8964,7 @@
             "feature_config::system_prompt=success",
             "feature_config::tools.web_search=failed",
             "is_recommended::success",
-            "largest::success=fd3589cf8f44",
+            "largest::success=ed67fb1c3801",
             "model_size::success",
             "pricing::success"
           ]
@@ -8770,9 +9019,11 @@
             "largest"
           ],
           "tags": [
-            "best_large::success=fd3589cf8f44",
+            "best_large::success=ed67fb1c3801",
             "display::model_name=DeepSeek Ai / DeepSeek V4 Pro",
             "display::provider_name=HuggingFace",
+            "display::provider_rank=9",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -8796,7 +9047,7 @@
             "feature_config::system_prompt=success",
             "feature_config::tools.web_search=failed",
             "is_recommended::success",
-            "largest::success=fd3589cf8f44",
+            "largest::success=ed67fb1c3801",
             "model_size::success",
             "pricing::success",
             "rank::best_large",
@@ -8855,6 +9106,8 @@
             "best_medium::success=500473b86625",
             "display::model_name=EssentialAI / Rnj 1 Instruct",
             "display::provider_name=HuggingFace",
+            "display::provider_rank=9",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -8932,9 +9185,11 @@
             "large"
           ],
           "tags": [
-            "best_large::success=fd3589cf8f44",
+            "best_large::success=ed67fb1c3801",
             "display::model_name=Meta Llama / Llama 3.3 70B Instruct",
             "display::provider_name=HuggingFace",
+            "display::provider_rank=9",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -8958,7 +9213,7 @@
             "feature_config::system_prompt=success",
             "feature_config::tools.web_search=failed",
             "is_recommended::success",
-            "largest::success=fd3589cf8f44",
+            "largest::success=ed67fb1c3801",
             "model_size::success",
             "pricing::success"
           ]
@@ -9012,9 +9267,11 @@
             "large"
           ],
           "tags": [
-            "best_large::success=fd3589cf8f44",
+            "best_large::success=ed67fb1c3801",
             "display::model_name=Minimaxai / Minimax M2.7",
             "display::provider_name=HuggingFace",
+            "display::provider_rank=9",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -9038,9 +9295,10 @@
             "feature_config::system_prompt=success",
             "feature_config::tools.web_search=failed",
             "is_recommended::success",
-            "largest::success=fd3589cf8f44",
+            "largest::success=ed67fb1c3801",
             "model_size::success",
-            "pricing::success"
+            "pricing::success",
+            "rank::best_large"
           ]
         },
         "pricing": {
@@ -9092,9 +9350,11 @@
             "large"
           ],
           "tags": [
-            "best_large::success=fd3589cf8f44",
+            "best_large::success=ed67fb1c3801",
             "display::model_name=OpenAI / GPT Oss 120b",
             "display::provider_name=HuggingFace",
+            "display::provider_rank=9",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -9118,9 +9378,10 @@
             "feature_config::system_prompt=success",
             "feature_config::tools.web_search=failed",
             "is_recommended::success",
-            "largest::success=fd3589cf8f44",
+            "largest::success=ed67fb1c3801",
             "model_size::success",
-            "pricing::success"
+            "pricing::success",
+            "rank::best_large"
           ]
         },
         "pricing": {
@@ -9174,6 +9435,8 @@
           "tags": [
             "display::model_name=OpenAI / GPT Oss 20b",
             "display::provider_name=HuggingFace",
+            "display::provider_rank=9",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -9253,6 +9516,8 @@
             "best_medium::success=500473b86625",
             "display::model_name=Qwen / Qwen2.5 7B Instruct",
             "display::provider_name=HuggingFace",
+            "display::provider_rank=9",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -9277,7 +9542,8 @@
             "feature_config::tools.web_search=failed",
             "is_recommended::success",
             "model_size::success",
-            "pricing::success"
+            "pricing::success",
+            "rank::best_medium"
           ]
         },
         "pricing": {
@@ -9329,6 +9595,8 @@
           "tags": [
             "display::model_name=Qwen / Qwen3 235B A22b Instruct",
             "display::provider_name=HuggingFace",
+            "display::provider_rank=9",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -9405,9 +9673,11 @@
             "large"
           ],
           "tags": [
-            "best_large::success=fd3589cf8f44",
+            "best_large::success=ed67fb1c3801",
             "display::model_name=Qwen / Qwen3 Coder 480B A35b Instruct",
             "display::provider_name=HuggingFace",
+            "display::provider_rank=9",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -9431,10 +9701,9 @@
             "feature_config::system_prompt=success",
             "feature_config::tools.web_search=failed",
             "is_recommended::success",
-            "largest::success=fd3589cf8f44",
+            "largest::success=ed67fb1c3801",
             "model_size::success",
-            "pricing::success",
-            "rank::best_large"
+            "pricing::success"
           ]
         },
         "pricing": {
@@ -9486,9 +9755,11 @@
             "large"
           ],
           "tags": [
-            "best_large::success=fd3589cf8f44",
+            "best_large::success=ed67fb1c3801",
             "display::model_name=Qwen / Qwen3 Coder 480B A35b Instruct Fp8",
             "display::provider_name=HuggingFace",
+            "display::provider_rank=9",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -9512,7 +9783,7 @@
             "feature_config::system_prompt=success",
             "feature_config::tools.web_search=failed",
             "is_recommended::success",
-            "largest::success=fd3589cf8f44",
+            "largest::success=ed67fb1c3801",
             "model_size::success",
             "pricing::success"
           ]
@@ -9566,6 +9837,8 @@
           "tags": [
             "display::model_name=Qwen / Qwen3 Coder Next Fp8",
             "display::provider_name=HuggingFace",
+            "display::provider_rank=9",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -9642,9 +9915,11 @@
             "large"
           ],
           "tags": [
-            "best_large::success=fd3589cf8f44",
+            "best_large::success=ed67fb1c3801",
             "display::model_name=Zai Org / Glm 5",
             "display::provider_name=HuggingFace",
+            "display::provider_rank=9",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -9668,9 +9943,10 @@
             "feature_config::system_prompt=success",
             "feature_config::tools.web_search=failed",
             "is_recommended::success",
-            "largest::success=fd3589cf8f44",
+            "largest::success=ed67fb1c3801",
             "model_size::success",
-            "pricing::success"
+            "pricing::success",
+            "rank::best_large"
           ]
         },
         "pricing": {
@@ -9681,87 +9957,6 @@
           "model": "zai-org/glm-5",
           "provider": "huggingface",
           "provider_model_identifier": "zai-org/GLM-5"
-        }
-      },
-      "zai-org/glm-5.1": {
-        "features": {
-          "input_format": {
-            "audio": "NOT_SUPPORTED",
-            "document": "BEST_EFFORT",
-            "image": "NOT_SUPPORTED",
-            "json": "BEST_EFFORT",
-            "pydantic": "BEST_EFFORT",
-            "text": "SUPPORTED",
-            "video": "NOT_SUPPORTED"
-          },
-          "messages": "SUPPORTED",
-          "output_format": {
-            "audio": "NOT_SUPPORTED",
-            "image": "NOT_SUPPORTED",
-            "json": "SUPPORTED",
-            "pydantic": "SUPPORTED",
-            "text": "SUPPORTED",
-            "video": "NOT_SUPPORTED"
-          },
-          "parameters": {
-            "max_tokens": "NOT_SUPPORTED",
-            "n": "NOT_SUPPORTED",
-            "stop": "NOT_SUPPORTED",
-            "temperature": "SUPPORTED",
-            "thinking": "BEST_EFFORT"
-          },
-          "prompt": "SUPPORTED",
-          "system_prompt": "SUPPORTED",
-          "tools": {
-            "web_search": "NOT_SUPPORTED"
-          }
-        },
-        "metadata": {
-          "is_recommended": true,
-          "model_size_tags": [
-            "large"
-          ],
-          "tags": [
-            "best_large::success=fd3589cf8f44",
-            "display::model_name=Zai Org / Glm 5.1",
-            "display::provider_name=HuggingFace",
-            "feature_config::input_format.audio=failed",
-            "feature_config::input_format.document=success",
-            "feature_config::input_format.image=failed",
-            "feature_config::input_format.json=success",
-            "feature_config::input_format.pydantic=success",
-            "feature_config::input_format.text=success",
-            "feature_config::input_format.video=failed",
-            "feature_config::messages=success",
-            "feature_config::output_format.audio=failed",
-            "feature_config::output_format.image=failed",
-            "feature_config::output_format.json=success",
-            "feature_config::output_format.pydantic=success",
-            "feature_config::output_format.text=success",
-            "feature_config::output_format.video=failed",
-            "feature_config::parameters.max_tokens=failed",
-            "feature_config::parameters.n=failed",
-            "feature_config::parameters.stop=failed",
-            "feature_config::parameters.temperature=success",
-            "feature_config::parameters.thinking=success",
-            "feature_config::prompt=success",
-            "feature_config::system_prompt=success",
-            "feature_config::tools.web_search=failed",
-            "is_recommended::success",
-            "largest::success=fd3589cf8f44",
-            "model_size::success",
-            "pricing::success",
-            "rank::best_large"
-          ]
-        },
-        "pricing": {
-          "input_token_cost": 1400,
-          "output_token_cost": 4400
-        },
-        "provider_model": {
-          "model": "zai-org/glm-5.1",
-          "provider": "huggingface",
-          "provider_model_identifier": "zai-org/GLM-5.1"
         }
       }
     },
@@ -9805,9 +10000,11 @@
             "medium"
           ],
           "tags": [
-            "best_medium::failed=fbcce2e082d3",
+            "best_medium::success=fbcce2e082d3",
             "display::model_name=Codestral",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -9884,6 +10081,8 @@
           "tags": [
             "display::model_name=Codestral Latest",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -9962,6 +10161,8 @@
             "best_large::success=48418b4f93a2",
             "display::model_name=Devstral",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -9987,8 +10188,7 @@
             "is_recommended::success",
             "largest::success=48418b4f93a2",
             "model_size::success",
-            "pricing::success",
-            "rank::best_large"
+            "pricing::success"
           ]
         },
         "pricing": {
@@ -10040,6 +10240,8 @@
           "tags": [
             "display::model_name=Devstral Latest",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -10115,9 +10317,11 @@
             "medium"
           ],
           "tags": [
-            "best_medium::failed=fbcce2e082d3",
+            "best_medium::success=fbcce2e082d3",
             "display::model_name=Devstral Medium",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -10194,6 +10398,8 @@
           "tags": [
             "display::model_name=Devstral Medium Latest",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -10272,6 +10478,8 @@
             "best_small::success=639c527a62c4",
             "display::model_name=Devstral Small",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -10348,6 +10556,8 @@
           "tags": [
             "display::model_name=Labs Leanstral",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -10426,6 +10636,8 @@
             "best_small::success=639c527a62c4",
             "display::model_name=Labs Mistral Small Creative",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -10502,9 +10714,11 @@
             "medium"
           ],
           "tags": [
-            "best_medium::failed=fbcce2e082d3",
+            "best_medium::success=fbcce2e082d3",
             "display::model_name=Magistral Medium",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -10529,7 +10743,8 @@
             "feature_config::tools.web_search=success",
             "is_recommended::success",
             "model_size::success",
-            "pricing::success"
+            "pricing::success",
+            "rank::best_medium"
           ]
         },
         "pricing": {
@@ -10581,6 +10796,8 @@
           "tags": [
             "display::model_name=Magistral Medium Latest",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -10656,6 +10873,8 @@
           "tags": [
             "display::model_name=Magistral Small",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -10731,6 +10950,8 @@
           "tags": [
             "display::model_name=Magistral Small Latest",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -10809,6 +11030,8 @@
             "best_small::success=639c527a62c4",
             "display::model_name=Ministral 14b",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -10886,6 +11109,8 @@
           "tags": [
             "display::model_name=Ministral 14b Latest",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -10964,6 +11189,8 @@
             "best_small::success=639c527a62c4",
             "display::model_name=Ministral 3b",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -11040,6 +11267,8 @@
           "tags": [
             "display::model_name=Ministral 3b Latest",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -11118,6 +11347,8 @@
             "best_small::success=639c527a62c4",
             "display::model_name=Ministral 8b",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -11194,6 +11425,8 @@
           "tags": [
             "display::model_name=Ministral 8b Latest",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -11273,6 +11506,8 @@
             "best_large::success=48418b4f93a2",
             "display::model_name=Mistral Large",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -11352,6 +11587,8 @@
           "tags": [
             "display::model_name=Mistral Large",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -11427,6 +11664,8 @@
           "tags": [
             "display::model_name=Mistral Large Latest",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=success",
@@ -11505,6 +11744,8 @@
             "best_large::success=48418b4f93a2",
             "display::model_name=Mistral Large Pixtral",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -11582,9 +11823,11 @@
             "medium"
           ],
           "tags": [
-            "best_medium::failed=fbcce2e082d3",
+            "best_medium::success=fbcce2e082d3",
             "display::model_name=Mistral Medium",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -11609,7 +11852,8 @@
             "feature_config::tools.web_search=success",
             "is_recommended::success",
             "model_size::success",
-            "pricing::success"
+            "pricing::success",
+            "rank::best_medium"
           ]
         },
         "pricing": {
@@ -11661,6 +11905,8 @@
           "tags": [
             "display::model_name=Mistral Medium",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -11736,6 +11982,8 @@
           "tags": [
             "display::model_name=Mistral Medium",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -11811,6 +12059,8 @@
           "tags": [
             "display::model_name=Mistral Medium Latest",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -11889,6 +12139,8 @@
             "best_small::success=639c527a62c4",
             "display::model_name=Mistral Small",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -11966,6 +12218,8 @@
           "tags": [
             "display::model_name=Mistral Small",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -12041,6 +12295,8 @@
           "tags": [
             "display::model_name=Mistral Small Latest",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -12119,6 +12375,8 @@
             "best_small::success=639c527a62c4",
             "display::model_name=Mistral Tiny",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -12195,6 +12453,8 @@
           "tags": [
             "display::model_name=Mistral Tiny Latest",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -12273,6 +12533,8 @@
             "best_large::success=48418b4f93a2",
             "display::model_name=Mistral Vibe Cli Latest",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -12353,6 +12615,8 @@
             "best_small::success=639c527a62c4",
             "display::model_name=Mistral Vibe Cli Fast",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -12432,6 +12696,8 @@
             "best_large::success=48418b4f93a2",
             "display::model_name=Mistral Vibe Cli With Tools",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -12509,9 +12775,11 @@
             "medium"
           ],
           "tags": [
-            "best_medium::failed=fbcce2e082d3",
+            "best_medium::success=fbcce2e082d3",
             "display::model_name=Open Mistral Nemo",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -12588,6 +12856,8 @@
           "tags": [
             "display::model_name=Open Mistral Nemo",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -12666,6 +12936,8 @@
             "best_large::success=48418b4f93a2",
             "display::model_name=Pixtral Large",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -12691,7 +12963,8 @@
             "is_recommended::success",
             "largest::success=48418b4f93a2",
             "model_size::success",
-            "pricing::success"
+            "pricing::success",
+            "rank::best_large"
           ]
         },
         "pricing": {
@@ -12743,6 +13016,8 @@
           "tags": [
             "display::model_name=Pixtral Large Latest",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -12821,6 +13096,8 @@
             "best_small::success=639c527a62c4",
             "display::model_name=Voxtral Mini",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -12897,6 +13174,8 @@
           "tags": [
             "display::model_name=Voxtral Mini Latest",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -12975,6 +13254,8 @@
             "best_small::success=639c527a62c4",
             "display::model_name=Voxtral Small",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -12999,7 +13280,8 @@
             "feature_config::tools.web_search=failed",
             "is_recommended::success",
             "model_size::success",
-            "pricing::success"
+            "pricing::success",
+            "rank::best_small"
           ]
         },
         "pricing": {
@@ -13051,6 +13333,8 @@
           "tags": [
             "display::model_name=Voxtral Small Latest",
             "display::provider_name=Mistral",
+            "display::provider_rank=4",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -13293,6 +13577,8 @@
           "tags": [
             "display::model_name=Babbage 002",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -13368,6 +13654,8 @@
           "tags": [
             "display::model_name=ChatGPT Image Latest",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -13443,6 +13731,8 @@
           "tags": [
             "display::model_name=Dall E 2",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -13518,6 +13808,8 @@
           "tags": [
             "display::model_name=Dall E 3",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -13593,6 +13885,8 @@
           "tags": [
             "display::model_name=Davinci 002",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -13671,6 +13965,8 @@
             "best_medium::success=607ab1e249ca",
             "display::model_name=GPT 3.5 Turbo",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -13747,6 +14043,8 @@
           "tags": [
             "display::model_name=GPT 3.5 Turbo",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -13822,6 +14120,8 @@
           "tags": [
             "display::model_name=GPT 3.5 Turbo",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -13897,6 +14197,8 @@
           "tags": [
             "display::model_name=GPT 3.5 Turbo 16k",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -13972,6 +14274,8 @@
           "tags": [
             "display::model_name=GPT 3.5 Turbo Instruct",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -14047,6 +14351,8 @@
           "tags": [
             "display::model_name=GPT 3.5 Turbo Instruct",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -14122,9 +14428,11 @@
             "large"
           ],
           "tags": [
-            "best_large::failed=335d26be988f",
+            "best_large::success=335d26be988f",
             "display::model_name=GPT 4",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -14202,6 +14510,8 @@
           "tags": [
             "display::model_name=GPT 4",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -14277,6 +14587,8 @@
           "tags": [
             "display::model_name=GPT 4 Turbo",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -14353,6 +14665,8 @@
           "tags": [
             "display::model_name=GPT 4 Turbo",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -14431,6 +14745,8 @@
             "best_medium::success=607ab1e249ca",
             "display::model_name=GPT 4.1",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -14507,6 +14823,8 @@
           "tags": [
             "display::model_name=GPT 4.1",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -14582,9 +14900,11 @@
             "small"
           ],
           "tags": [
-            "best_small::failed=78063c3d8f0a",
+            "best_small::success=78063c3d8f0a",
             "display::model_name=GPT 4.1 Mini",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -14661,6 +14981,8 @@
           "tags": [
             "display::model_name=GPT 4.1 Mini",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -14736,9 +15058,11 @@
             "small"
           ],
           "tags": [
-            "best_small::failed=78063c3d8f0a",
+            "best_small::success=78063c3d8f0a",
             "display::model_name=GPT 4.1 Nano",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -14815,6 +15139,8 @@
           "tags": [
             "display::model_name=GPT 4.1 Nano",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -14890,6 +15216,8 @@
           "tags": [
             "display::model_name=GPT 4o",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -14966,6 +15294,8 @@
           "tags": [
             "display::model_name=GPT 4o",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -15041,6 +15371,8 @@
           "tags": [
             "display::model_name=GPT 4o",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -15116,6 +15448,8 @@
           "tags": [
             "display::model_name=GPT 4o",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -15191,6 +15525,8 @@
           "tags": [
             "display::model_name=GPT 4o Audio Preview",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=success",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -15266,6 +15602,8 @@
           "tags": [
             "display::model_name=GPT 4o Audio Preview",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=success",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -15341,6 +15679,8 @@
           "tags": [
             "display::model_name=GPT 4o Audio Preview",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=success",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -15416,9 +15756,11 @@
             "small"
           ],
           "tags": [
-            "best_small::failed=78063c3d8f0a",
+            "best_small::success=78063c3d8f0a",
             "display::model_name=GPT 4o Mini",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -15495,6 +15837,8 @@
           "tags": [
             "display::model_name=GPT 4o Mini",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -15570,6 +15914,8 @@
           "tags": [
             "display::model_name=GPT 4o Mini Audio Preview",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=success",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -15645,6 +15991,8 @@
           "tags": [
             "display::model_name=GPT 4o Mini Audio Preview",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=success",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -15720,6 +16068,8 @@
           "tags": [
             "display::model_name=GPT 4o Mini Realtime Preview",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -15795,6 +16145,8 @@
           "tags": [
             "display::model_name=GPT 4o Mini Realtime Preview",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -15870,6 +16222,8 @@
           "tags": [
             "display::model_name=GPT 4o Mini Search Preview",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -15945,6 +16299,8 @@
           "tags": [
             "display::model_name=GPT 4o Mini Search Preview",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -16020,6 +16376,8 @@
           "tags": [
             "display::model_name=GPT 4o Mini Transcribe",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -16095,6 +16453,8 @@
           "tags": [
             "display::model_name=GPT 4o Mini Transcribe",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -16170,6 +16530,8 @@
           "tags": [
             "display::model_name=GPT 4o Mini Transcribe",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -16242,6 +16604,8 @@
           "tags": [
             "display::model_name=GPT 4o Mini TTS",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -16317,6 +16681,8 @@
           "tags": [
             "display::model_name=GPT 4o Mini TTS",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -16392,6 +16758,8 @@
           "tags": [
             "display::model_name=GPT 4o Mini TTS",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -16467,6 +16835,8 @@
           "tags": [
             "display::model_name=GPT 4o Realtime Preview",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -16542,6 +16912,8 @@
           "tags": [
             "display::model_name=GPT 4o Realtime Preview",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -16617,6 +16989,8 @@
           "tags": [
             "display::model_name=GPT 4o Realtime Preview",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -16692,6 +17066,8 @@
           "tags": [
             "display::model_name=GPT 4o Search Preview",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -16767,6 +17143,8 @@
           "tags": [
             "display::model_name=GPT 4o Search Preview",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -16842,6 +17220,8 @@
           "tags": [
             "display::model_name=GPT 4o Transcribe",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -16917,6 +17297,8 @@
           "tags": [
             "display::model_name=GPT 4o Transcribe Diarize",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -16992,9 +17374,11 @@
             "large"
           ],
           "tags": [
-            "best_large::failed=335d26be988f",
+            "best_large::success=335d26be988f",
             "display::model_name=GPT 5",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -17072,6 +17456,8 @@
           "tags": [
             "display::model_name=GPT 5",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -17147,9 +17533,11 @@
             "large"
           ],
           "tags": [
-            "best_large::failed=335d26be988f",
+            "best_large::success=335d26be988f",
             "display::model_name=GPT 5 Chat Latest",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -17230,6 +17618,8 @@
             "best_medium::success=607ab1e249ca",
             "display::model_name=GPT 5 Codex",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -17303,9 +17693,11 @@
             "small"
           ],
           "tags": [
-            "best_small::failed=78063c3d8f0a",
+            "best_small::success=78063c3d8f0a",
             "display::model_name=GPT 5 Mini",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -17382,6 +17774,8 @@
           "tags": [
             "display::model_name=GPT 5 Mini",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -17457,9 +17851,11 @@
             "small"
           ],
           "tags": [
-            "best_small::failed=78063c3d8f0a",
+            "best_small::success=78063c3d8f0a",
             "display::model_name=GPT 5 Nano",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -17536,6 +17932,8 @@
           "tags": [
             "display::model_name=GPT 5 Nano",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -17611,9 +18009,11 @@
             "large"
           ],
           "tags": [
-            "best_large::failed=335d26be988f",
+            "best_large::success=335d26be988f",
             "display::model_name=GPT 5 Pro",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -17691,6 +18091,8 @@
           "tags": [
             "display::model_name=GPT 5 Pro",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -17763,6 +18165,8 @@
           "tags": [
             "display::model_name=GPT 5 Search Api",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -17835,6 +18239,8 @@
           "tags": [
             "display::model_name=GPT 5 Search Api",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -17910,9 +18316,11 @@
             "large"
           ],
           "tags": [
-            "best_large::failed=335d26be988f",
+            "best_large::success=335d26be988f",
             "display::model_name=GPT 5.1",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -17990,6 +18398,8 @@
           "tags": [
             "display::model_name=GPT 5.1",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -18068,6 +18478,8 @@
             "best_medium::success=607ab1e249ca",
             "display::model_name=GPT 5.1 Chat Latest",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -18092,7 +18504,8 @@
             "feature_config::tools.web_search=success",
             "is_recommended::success",
             "model_size::success",
-            "pricing::success"
+            "pricing::success",
+            "rank::best_medium"
           ]
         },
         "pricing": {
@@ -18144,6 +18557,8 @@
           "tags": [
             "display::model_name=GPT 5.1 Codex",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -18219,9 +18634,11 @@
             "large"
           ],
           "tags": [
-            "best_large::failed=335d26be988f",
+            "best_large::success=335d26be988f",
             "display::model_name=GPT 5.1 Codex Max",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -18299,9 +18716,11 @@
             "small"
           ],
           "tags": [
-            "best_small::failed=78063c3d8f0a",
+            "best_small::success=78063c3d8f0a",
             "display::model_name=GPT 5.1 Codex Mini",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -18378,6 +18797,8 @@
           "tags": [
             "display::model_name=GPT 5.2",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -18454,6 +18875,8 @@
           "tags": [
             "display::model_name=GPT 5.2",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -18529,9 +18952,11 @@
             "large"
           ],
           "tags": [
-            "best_large::failed=335d26be988f",
+            "best_large::success=335d26be988f",
             "display::model_name=GPT 5.2 Chat Latest",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -18606,9 +19031,11 @@
             "large"
           ],
           "tags": [
-            "best_large::failed=335d26be988f",
+            "best_large::success=335d26be988f",
             "display::model_name=GPT 5.2 Codex",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -18686,6 +19113,8 @@
           "tags": [
             "display::model_name=GPT 5.2 Pro",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -18762,6 +19191,8 @@
           "tags": [
             "display::model_name=GPT 5.2 Pro",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -18837,9 +19268,11 @@
             "large"
           ],
           "tags": [
-            "best_large::failed=335d26be988f",
+            "best_large::success=335d26be988f",
             "display::model_name=GPT 5.3 Chat Latest",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -18865,7 +19298,8 @@
             "is_recommended::success",
             "largest::success=335d26be988f",
             "model_size::success",
-            "pricing::success"
+            "pricing::success",
+            "rank::best_large"
           ]
         },
         "pricing": {
@@ -18917,9 +19351,11 @@
             "large"
           ],
           "tags": [
-            "best_large::failed=335d26be988f",
+            "best_large::success=335d26be988f",
             "display::model_name=GPT 5.3 Codex",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -18997,6 +19433,8 @@
           "tags": [
             "display::model_name=GPT 5.4",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -19073,6 +19511,8 @@
           "tags": [
             "display::model_name=GPT 5.4",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -19148,9 +19588,11 @@
             "small"
           ],
           "tags": [
-            "best_small::failed=78063c3d8f0a",
+            "best_small::success=78063c3d8f0a",
             "display::model_name=GPT 5.4 Mini",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -19175,7 +19617,8 @@
             "feature_config::tools.web_search=success",
             "is_recommended::success",
             "model_size::success",
-            "pricing::success"
+            "pricing::success",
+            "rank::best_small"
           ]
         },
         "pricing": {
@@ -19227,6 +19670,8 @@
           "tags": [
             "display::model_name=GPT 5.4 Mini",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -19302,9 +19747,11 @@
             "small"
           ],
           "tags": [
-            "best_small::failed=78063c3d8f0a",
+            "best_small::success=78063c3d8f0a",
             "display::model_name=GPT 5.4 Nano",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -19329,7 +19776,8 @@
             "feature_config::tools.web_search=success",
             "is_recommended::success",
             "model_size::success",
-            "pricing::success"
+            "pricing::success",
+            "rank::best_small"
           ]
         },
         "pricing": {
@@ -19381,6 +19829,8 @@
           "tags": [
             "display::model_name=GPT 5.4 Nano",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -19456,6 +19906,8 @@
           "tags": [
             "display::model_name=GPT 5.4 Pro",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -19532,6 +19984,8 @@
           "tags": [
             "display::model_name=GPT 5.4 Pro",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -19610,6 +20064,8 @@
             "best_medium::success=607ab1e249ca",
             "display::model_name=GPT 5.5",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -19687,6 +20143,8 @@
           "tags": [
             "display::model_name=GPT 5.5",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -19763,9 +20221,11 @@
             "largest"
           ],
           "tags": [
-            "best_large::failed=335d26be988f",
+            "best_large::success=335d26be988f",
             "display::model_name=GPT 5.5 Pro",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -19792,6 +20252,7 @@
             "largest::success=335d26be988f",
             "model_size::success",
             "pricing::success",
+            "rank::best_large",
             "rank::largest"
           ]
         },
@@ -19844,6 +20305,8 @@
           "tags": [
             "display::model_name=GPT 5.5 Pro",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -19919,6 +20382,8 @@
           "tags": [
             "display::model_name=GPT Audio",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=success",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -19991,6 +20456,8 @@
           "tags": [
             "display::model_name=GPT Audio 1.5",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=success",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -20066,6 +20533,8 @@
           "tags": [
             "display::model_name=GPT Audio",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=success",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -20141,6 +20610,8 @@
           "tags": [
             "display::model_name=GPT Audio Mini",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=success",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -20216,6 +20687,8 @@
           "tags": [
             "display::model_name=GPT Audio Mini",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=success",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -20288,6 +20761,8 @@
           "tags": [
             "display::model_name=GPT Audio Mini",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=success",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -20363,6 +20838,8 @@
           "tags": [
             "display::model_name=GPT Image 1",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -20438,6 +20915,8 @@
           "tags": [
             "display::model_name=GPT Image 1 Mini",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -20510,6 +20989,8 @@
           "tags": [
             "display::model_name=GPT Image 1.5",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -20585,6 +21066,8 @@
           "tags": [
             "display::model_name=GPT Image 2",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -20660,6 +21143,8 @@
           "tags": [
             "display::model_name=GPT Image 2",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -20735,6 +21220,8 @@
           "tags": [
             "display::model_name=GPT Realtime",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -20810,6 +21297,8 @@
           "tags": [
             "display::model_name=GPT Realtime 1.5",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -20885,6 +21374,8 @@
           "tags": [
             "display::model_name=GPT Realtime",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -20960,6 +21451,8 @@
           "tags": [
             "display::model_name=GPT Realtime Mini",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -21035,6 +21528,8 @@
           "tags": [
             "display::model_name=GPT Realtime Mini",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -21110,6 +21605,8 @@
           "tags": [
             "display::model_name=GPT Realtime Mini",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -21185,9 +21682,11 @@
             "large"
           ],
           "tags": [
-            "best_large::failed=335d26be988f",
+            "best_large::success=335d26be988f",
             "display::model_name=O1",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -21265,6 +21764,8 @@
           "tags": [
             "display::model_name=O1",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -21340,9 +21841,11 @@
             "large"
           ],
           "tags": [
-            "best_large::failed=335d26be988f",
+            "best_large::success=335d26be988f",
             "display::model_name=O1 Pro",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -21420,6 +21923,8 @@
           "tags": [
             "display::model_name=O1 Pro",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -21495,9 +22000,11 @@
             "large"
           ],
           "tags": [
-            "best_large::failed=335d26be988f",
+            "best_large::success=335d26be988f",
             "display::model_name=O3",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -21575,6 +22082,8 @@
           "tags": [
             "display::model_name=O3",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -21650,6 +22159,8 @@
           "tags": [
             "display::model_name=O3 Deep Research",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -21725,6 +22236,8 @@
           "tags": [
             "display::model_name=O3 Deep Research",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -21800,9 +22313,11 @@
             "small"
           ],
           "tags": [
-            "best_small::failed=78063c3d8f0a",
+            "best_small::success=78063c3d8f0a",
             "display::model_name=O3 Mini",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -21879,6 +22394,8 @@
           "tags": [
             "display::model_name=O3 Mini",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=failed",
@@ -21954,9 +22471,11 @@
             "large"
           ],
           "tags": [
-            "best_large::failed=335d26be988f",
+            "best_large::success=335d26be988f",
             "display::model_name=O3 Pro",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -21982,7 +22501,8 @@
             "is_recommended::success",
             "largest::success=335d26be988f",
             "model_size::success",
-            "pricing::success"
+            "pricing::success",
+            "rank::best_large"
           ]
         },
         "pricing": {
@@ -22034,6 +22554,8 @@
           "tags": [
             "display::model_name=O3 Pro",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -22109,9 +22631,11 @@
             "small"
           ],
           "tags": [
-            "best_small::failed=78063c3d8f0a",
+            "best_small::success=78063c3d8f0a",
             "display::model_name=O4 Mini",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=True",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -22136,7 +22660,8 @@
             "feature_config::tools.web_search=success",
             "is_recommended::success",
             "model_size::success",
-            "pricing::success"
+            "pricing::success",
+            "rank::best_small"
           ]
         },
         "pricing": {
@@ -22188,6 +22713,8 @@
           "tags": [
             "display::model_name=O4 Mini",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=success",
             "feature_config::input_format.image=success",
@@ -22263,6 +22790,8 @@
           "tags": [
             "display::model_name=O4 Mini Deep Research",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -22338,6 +22867,8 @@
           "tags": [
             "display::model_name=O4 Mini Deep Research",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -22413,6 +22944,8 @@
           "tags": [
             "display::model_name=Omni Moderation",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -22488,6 +23021,8 @@
           "tags": [
             "display::model_name=Omni Moderation Latest",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -22563,6 +23098,8 @@
           "tags": [
             "display::model_name=Sora 2",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -22638,6 +23175,8 @@
           "tags": [
             "display::model_name=Sora 2 Pro",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -22713,6 +23252,8 @@
           "tags": [
             "display::model_name=TTS 1",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -22788,6 +23329,8 @@
           "tags": [
             "display::model_name=TTS 1",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -22863,6 +23406,8 @@
           "tags": [
             "display::model_name=TTS 1 Hd",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -22938,6 +23483,8 @@
           "tags": [
             "display::model_name=TTS 1 Hd",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
@@ -23013,6 +23560,8 @@
           "tags": [
             "display::model_name=Whisper 1",
             "display::provider_name=OpenAI",
+            "display::provider_rank=2",
+            "display::show_model=False",
             "feature_config::input_format.audio=failed",
             "feature_config::input_format.document=failed",
             "feature_config::input_format.image=failed",
