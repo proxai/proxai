@@ -303,11 +303,26 @@ class ModelConfigs(state_controller.StateControlled):
           f'support@proxai.co\nError: {e}'
       ) from e
 
+    return ModelConfigs._decode_in_canonical_order(config_dict)
+
+  @staticmethod
+  def _decode_in_canonical_order(
+      config_dict: dict,
+  ) -> types.ModelRegistry:
+    """Decode after sorting provider_model_configs to canonical form.
+
+    Mirrors the sort in export_to_json so load → export → load is stable
+    regardless of the source JSON's list ordering.
+    """
+    if 'provider_model_configs' in config_dict:
+      config_dict['provider_model_configs'] = ModelConfigs._sort_value(
+          config_dict['provider_model_configs']
+      )
     return type_serializer.decode_model_registry(config_dict)
 
   def load_model_registry_from_json_string(self, json_string: str):
     """Load model registry from a JSON string."""
-    model_registry = type_serializer.decode_model_registry(
+    model_registry = ModelConfigs._decode_in_canonical_order(
         json.loads(json_string)
     )
     self.reload_from_registry(model_registry)
