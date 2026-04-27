@@ -294,7 +294,7 @@ passes through for connector-side extraction).
 (`feature_adapter.py:510`). Every other media type at `BEST_EFFORT`
 without a converter is dropped.
 
-### 4.5 `OutputFormatConfigType` (`types.py:181-191`)
+### 4.5 `OutputFormatConfigType` (`types.py:181-190`)
 
 | Field | Controls |
 |---|---|
@@ -302,12 +302,11 @@ without a converter is dropped.
 | `json` | Free-form JSON |
 | `pydantic` | Structured output to a Pydantic class |
 | `image` / `audio` / `video` | Media generation |
-| `multi_modal` | Mixed modalities in one response |
 
-**Only `json` and `pydantic` may be `BEST_EFFORT`.** The five
-media-ish fields (`text`, `image`, `audio`, `video`, `multi_modal`)
-must be `SUPPORTED`, `NOT_SUPPORTED`, or omitted — the adapter
-raises at request time if one is `BEST_EFFORT`
+**Only `json` and `pydantic` may be `BEST_EFFORT`.** The four
+media-ish fields (`text`, `image`, `audio`, `video`) must be
+`SUPPORTED`, `NOT_SUPPORTED`, or omitted — the adapter raises at
+request time if one is `BEST_EFFORT`
 (`feature_adapter.py:13-15, 408-414`). There is no meaningful prompt
 fallback for "best-effort generate an image".
 
@@ -375,7 +374,7 @@ injection.
 | `input_format.image/audio/video` | Drops the block silently | No block |
 | `output_format.json` | Appends `"You must respond with valid JSON."` to prompt/system; **leaves `output_format.type == JSON`** | `type=JSON` — may optionally flip on native JSON mode |
 | `output_format.pydantic` | Appends `"You must respond with valid JSON that follows this schema: {schema}"`; **leaves `output_format.type == PYDANTIC`** | `type=PYDANTIC`, `pydantic_class` populated — may optionally flip on native JSON mode |
-| `output_format.text/image/audio/video/multi_modal` | Adapter raises "cannot be best effort" (`feature_adapter.py:408-414`) | n/a |
+| `output_format.text/image/audio/video` | Adapter raises "cannot be best effort" (`feature_adapter.py:408-414`) | n/a |
 
 ### 5.3 `NOT_SUPPORTED`
 
@@ -1064,7 +1063,7 @@ Full audit: `sanity_check_before_merge.md` §13.
 | Test passes, production silently ignores `temperature` | `temperature=SUPPORTED` but executor forgot to wire `functools.partial(call, temperature=...)` | Add the branch; add an assert-on-partial test |
 | `JSONDecodeError: Expecting value` from `result_adapter` | `json=SUPPORTED` but executor didn't flip native JSON mode, model returned prose | Wire the flag, or downgrade to `BEST_EFFORT` + `_extract_json_from_text` |
 | Pydantic silently wrong shape | `pydantic=SUPPORTED` but didn't pass `response_format=Cls` / `output_format=Cls` to SDK | Wire it, or downgrade to `BEST_EFFORT` |
-| `'text' output format config cannot be best effort` (or `image`/`audio`/`video`/`multi_modal`) | One of the five at `BEST_EFFORT` | Use `SUPPORTED`/`NOT_SUPPORTED`/omit — only `json`/`pydantic` may be `BEST_EFFORT` |
+| `'text' output format config cannot be best effort` (or `image`/`audio`/`video`) | One of the four at `BEST_EFFORT` | Use `SUPPORTED`/`NOT_SUPPORTED`/omit — only `json`/`pydantic` may be `BEST_EFFORT` |
 | Test-only `AttributeError` inside `_safe_provider_query` → `FAILED` result | Mock missing attribute path the executor reads | Grow the mock for paths your executor touches |
 | System prompt ignored on chat but works on prompt | Pattern-2 executor reading `query_record.system_prompt` | Read only from `query_record.chat['messages']` (§4.6) |
 | `AttributeError: 'dict' object has no attribute 'messages'` | Reading `query_record.chat.messages` | After adaptation `chat` is a dict — `query_record.chat['messages']` |

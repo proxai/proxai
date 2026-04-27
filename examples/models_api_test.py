@@ -188,7 +188,6 @@ def _get_model_config(
               image=S if 'image' in output_format else NS,
               audio=S if 'audio' in output_format else NS,
               video=S if 'video' in output_format else NS,
-              multi_modal=NS,
           ),
       ),
   )
@@ -620,7 +619,7 @@ def test_list_working_models_new_filters():
 
 
 def test_list_working_models_safe_output_formats():
-  """JSON / PYDANTIC / MULTI_MODAL output_formats now probe successfully.
+  """JSON / PYDANTIC output_formats now probe successfully.
 
   Before: only TEXT was routed through the probe; anything else crashed
   with 'Output format type not supported'. The dispatch table now picks
@@ -629,8 +628,6 @@ def test_list_working_models_safe_output_formats():
 
   mock_provider declares JSON and PYDANTIC supported, so both probes
   land in working_models with the right output_format on the record.
-  MULTI_MODAL isn't declared by mock_provider (filtered out before the
-  probe), so we only test JSON and PYDANTIC here.
   """
   print('\n=== test_list_working_models_safe_output_formats ===')
   for fmt in [types.OutputFormatType.JSON, types.OutputFormatType.PYDANTIC]:

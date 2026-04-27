@@ -82,6 +82,7 @@ proxai/
 │       ├── chat_export_logic.md  *
 │       ├── cache_internals.md  *
 │       ├── files_internals.md  *
+│       ├── model_registry_type.md  *
 │       ├── testing_conventions.md  *
 │       ├── sanity_check_before_merge.md  *
 │       ├── feature_roadmap.md
@@ -136,7 +137,7 @@ Mandatory first read for user-agents. Contains:
 | File | Scope |
 |---|---|
 | `px_client_api.md` | `px.connect()` / `ProxAIClient` construction, option trees (ConnectionOptions, ProviderCallOptions, ModelProbeOptions, DebugOptions). |
-| `px_generate_api.md` | `generate_text` / `generate_image` / `generate_audio` / `generate_video` / `generate_json` / `generate_pydantic` / `generate_multi_modal`. Parameters, response_format, tools, fallback chains. |
+| `px_generate_api.md` | `generate_text` / `generate_image` / `generate_audio` / `generate_video` / `generate_json` / `generate_pydantic`. Parameters, response_format, tools, fallback chains. |
 | `px_models_api.md` | `px.models.*` discovery surface — list / working / provider methods, filters, health checks. |
 | `px_models_model_config_api.md` | `px.models.model_config.*` registry-mutation surface — register / unregister models, override the default fallback priority list, load / export the registry as JSON. Sibling of `px_models_api.md` (read-only discovery). |
 | `px_files_api.md` | `px.files.*` upload / list / delete surface; semantics of local paths vs. uploaded file IDs. |
@@ -187,6 +188,7 @@ Mandatory first read for developer-agents. Contains:
 | `chat_export_logic.md` | `Chat` construction / normalization and the `Chat.export` pipeline: deep-copy invariant, the 10-step processing order, the ten private helpers, how `_adapt_chat` drives `export` via six flags, `to_dict` / `from_dict` vs. `export` serialization. |
 | `cache_internals.md` | `QueryCacheManager` / `ShardManager` / `HeapManager` three-layer architecture, on-disk sharded JSONL layout, the freshness invariant (in-memory index as source of truth), hash + equality identity pact (`hash_serializer` ↔ `type_utils.is_query_record_equal`), LRU eviction, backlog flush / shard merge, restart recovery, and `ModelCacheManager` (separate single-file design). |
 | `files_internals.md` | `FilesManager` lifecycle and state fields, the four dispatch tables (`UPLOAD` / `REMOVE` / `LIST` / `DOWNLOAD`) plus mocks, capability-table split (`UPLOAD_SUPPORTED_MEDIA_TYPES` vs. `REFERENCE_SUPPORTED_MEDIA_TYPES`), parallelism rules, ProxDash dual-persistence story, the `_auto_upload_media` hook in `ProviderConnector.generate`, and the per-provider `_to_*_part` consumers. |
+| `model_registry_type.md` | The `ModelRegistry` dataclass in `types.py` — its three fields (`metadata`, `default_model_priority_list`, `provider_model_configs`), supporting nested types, the load lifecycle (BUILT_IN bundled JSON → optional PROXDASH override via `proxdash.get_model_registry` → user-supplied JSON), the validation invariants enforced by `ModelConfigs.reload_from_registry` (`_validate_provider_model_configs`, `_validate_default_model_priority_list`, `_validate_min_proxai_version`), the JSON serializer round-trip (`encode_model_registry` / `decode_model_registry`), the `ModelConfigsState` / StateControlled integration, and the consumer matrix (`ModelConfigs`, `ProxDashConnection`, `AvailableModels`, `ProviderConnector`). |
 | `testing_conventions.md` | Unit tier (`tests/`) vs. interactive integration harness (`integration_tests/proxai_api_test.py`), the `run_type=TEST` mock switch in `ProviderConnector.api`, structural-duck-typed `*_mock.py` contract, `MOCK_*_DISPATCH` for files, the `conftest.py` shared `model_configs_instance` fixture, common per-file fixtures (monkeypatch / requests_mock / tmp_path), style / class-grouping rules, `@integration_block` decorator and checkpointing, and coverage expectations (including the hash / equality parallel rule). |
 | `sanity_check_before_merge.md` | Pre-merge audit organized by gates: CI-enforced lint / yapf / pytest (§2-3), conventions CI doesn't catch (§4 layering, §5 `poetry run`, §6 CLAUDE.md spot-checks), conditional checklists triggered by the kind of change (§7 public behavior, §8 new provider, §9 hash/equality mirror for new fields, §10 StateControlled edits, §11 wire-format → integration harness, §12 cache changes), docs currency (§13-14 Layer A + outline), and packaging / version bumps (§15). |
 | `feature_roadmap.md` | Planned work with `Status: planned / in-progress / blocked / shipped` and a date. Tool usage, router, more providers, i2i / t+i2i / i2v. |
@@ -454,6 +456,7 @@ in §2.3 / §2.6 / §2.7, not here.
 - `docs/README.md` — 2026-04-24 (router + flat doc inventory;
   `/px-create-doc` §7.1 keeps the inventory in sync)
 - `user_agents/api_guidelines/px_models_model_config_api.md` — 2026-04-24
+- `developer_agents/model_registry_type.md` — 2026-04-26
 
 ### 7.2 Pending — staging files in `docs/development/`
 

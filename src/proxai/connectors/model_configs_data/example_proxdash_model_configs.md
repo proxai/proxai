@@ -15,7 +15,7 @@ Output columns: formats marked `(BE)` are `BEST_EFFORT`; everything else listed 
 | gemini | gemini-2.5-flash | [medium] | ✓ | text, image, audio | text, json, pydantic | ✓ | ✓ |
 | gemini | gemini-2.5-flash-lite | [small] | ✓ | text | text, json (BE) | — | — |
 | gemini | gemini-2.5-pro | [large] | ✓ | text, image, document, audio, video | text, json, pydantic | ✓ | ✓ |
-| gemini | gemini-3-pro | [large, largest] | ✓ | text, image, document, audio, video | text, json, pydantic, multi_modal | ✓ | ✓ |
+| gemini | gemini-3-pro | [large, largest] | ✓ | text, image, document, audio, video | text, json, pydantic | ✓ | ✓ |
 | gemini | veo-3.0 | — | ✓ | text, image | video | — | — |
 | openai | dall-e-3 | — | ✓ | text | image | — | — |
 | openai | gpt-4-turbo | [medium] | — | text, image | text, json (BE) | — | — |
@@ -38,7 +38,6 @@ Output columns: formats marked `(BE)` are `BEST_EFFORT`; everything else listed 
 - text: all 10 text models
 - json: all 10 text models (BEST_EFFORT on gpt-5-nano, gemini-2.5-flash-lite, gpt-4-turbo)
 - pydantic: 8 text models, SUPPORTED (7) + BEST_EFFORT (gemini-1.5-pro); not set on gpt-5-nano, gemini-2.5-flash-lite, gpt-4-turbo
-- multi_modal: gemini-3-pro
 - image: dall-e-3
 - audio: tts-1
 - video: veo-3.0
@@ -72,7 +71,6 @@ Output columns: formats marked `(BE)` are `BEST_EFFORT`; everything else listed 
 - 2 providers (openai, gemini), 13 models
 - 2 non-recommended: gpt-4-turbo, gemini-1.5-pro
 - 2 tagged `largest` (always paired with `large`): o3, gemini-3-pro
-- 1 with `output_format.multi_modal`: gemini-3-pro
 - 1 per media type: dall-e-3 (image), tts-1 (audio), veo-3.0 (video)
 - 3 with `output_format.json=BEST_EFFORT`: gpt-5-nano, gemini-2.5-flash-lite, gpt-4-turbo
 - 1 with `output_format.pydantic=BEST_EFFORT`: gemini-1.5-pro

@@ -32,7 +32,6 @@ _GENERATE_JSON_TEST_PROMPT = (
 _GENERATE_PYDANTIC_TEST_PROMPT = (
     'Return a structured response with a single boolean field "ok" set to true.'
 )
-_GENERATE_MULTI_MODAL_TEST_PROMPT = 'Return a brief text response.'
 _GENERATE_TEXT_TEST_MAX_TOKENS = 1000
 
 
@@ -87,7 +86,6 @@ class AvailableModels(state_controller.StateControlled):
       types.OutputFormatType.TEXT,
       types.OutputFormatType.JSON,
       types.OutputFormatType.PYDANTIC,
-      types.OutputFormatType.MULTI_MODAL,
   })
 
   @staticmethod
@@ -99,8 +97,8 @@ class AvailableModels(state_controller.StateControlled):
     """Normalize output_format and refuse expensive media probes.
 
     Working-model methods send a real provider call per model. For
-    text-shaped output (TEXT / JSON / PYDANTIC) and MULTI_MODAL this is
-    cheap. For IMAGE / AUDIO / VIDEO each probe generates real media —
+    text-shaped output (TEXT / JSON / PYDANTIC) this is cheap. For
+    IMAGE / AUDIO / VIDEO each probe generates real media —
     prohibitive for bulk probing and still costly for single-model
     probing — so we refuse at the public-method boundary instead.
     """
@@ -722,71 +720,6 @@ class AvailableModels(state_controller.StateControlled):
               output_format=types.OutputFormat(
                   type=types.OutputFormatType.PYDANTIC,
                   pydantic_class=_ProbeReply,
-              ),
-          ),
-          result=types.ResultRecord(
-              status=types.ResultStatusType.FAILED,
-              error=str(e),
-              error_traceback=traceback.format_exc(),
-              timestamp=types.TimeStampType(
-                  start_utc_date=start_utc_date,
-                  end_utc_date=end_utc_date,
-                  response_time=(end_utc_date - start_utc_date),
-              ),
-          ),
-          connection=types.ConnectionMetadata(
-              result_source=types.ResultSource.PROVIDER
-          ),
-      )
-
-  @staticmethod
-  def _test_generate_multi_modal(
-      provider_state: types.ProviderState,
-      provider_model: types.ProviderModelType, verbose: bool = False,
-      model_configs_state: types.ModelConfigsState | None = None,
-      model_configs_instance: model_configs.ModelConfigs | None = None
-  ) -> types.CallRecord:
-    if verbose:
-      print(f'Testing {provider_model} (multi_modal)...')
-    start_utc_date = datetime.datetime.now(datetime.timezone.utc)
-    if model_configs_instance is None:
-      model_configs_instance = model_configs.ModelConfigs(
-          init_from_state=model_configs_state
-      )
-    provider_model_config = model_configs_instance.get_provider_model_config(
-        provider_model
-    )
-    connector = model_registry.get_model_connector(
-        provider=provider_model.provider, without_additional_args=True
-    )
-    connector = connector(init_from_state=provider_state)
-    try:
-      call_record: types.CallRecord = connector.generate(
-          prompt=_GENERATE_MULTI_MODAL_TEST_PROMPT,
-          provider_model=provider_model,
-          provider_model_config=provider_model_config,
-          parameters=types.ParameterType(
-              max_tokens=_GENERATE_TEXT_TEST_MAX_TOKENS
-          ),
-          output_format=types.OutputFormat(
-              type=types.OutputFormatType.MULTI_MODAL
-          ),
-          connection_options=types.ConnectionOptions(
-              skip_cache=True, suppress_provider_errors=True
-          ),
-      )
-      return call_record
-    except Exception as e:
-      end_utc_date = datetime.datetime.now(datetime.timezone.utc)
-      return types.CallRecord(
-          query=types.QueryRecord(
-              provider_model=provider_model,
-              prompt=_GENERATE_MULTI_MODAL_TEST_PROMPT,
-              parameters=types.ParameterType(
-                  max_tokens=_GENERATE_TEXT_TEST_MAX_TOKENS
-              ),
-              output_format=types.OutputFormat(
-                  type=types.OutputFormatType.MULTI_MODAL
               ),
           ),
           result=types.ResultRecord(
@@ -1505,6 +1438,4 @@ _PROBE_FUNCTIONS_BY_OUTPUT_FORMAT = {
     types.OutputFormatType.TEXT: AvailableModels._test_generate_text,
     types.OutputFormatType.JSON: AvailableModels._test_generate_json,
     types.OutputFormatType.PYDANTIC: AvailableModels._test_generate_pydantic,
-    types.OutputFormatType.MULTI_MODAL:
-        AvailableModels._test_generate_multi_modal,
 }

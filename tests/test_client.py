@@ -107,7 +107,7 @@ def _register_mock_providers(mc_instance: model_configs.ModelConfigs) -> None:
                     json=NS, pydantic=NS),
                 output_format=types.OutputFormatConfigType(
                     text=S, json=S, pydantic=S, image=NS, audio=NS,
-                    video=NS, multi_modal=NS),
+                    video=NS),
             ),
         )
     )

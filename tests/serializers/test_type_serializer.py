@@ -136,7 +136,6 @@ def _get_output_format_config_type_options():
           'video': types.FeatureSupportType.NOT_SUPPORTED,
           'json': types.FeatureSupportType.SUPPORTED,
           'pydantic': types.FeatureSupportType.BEST_EFFORT,
-          'multi_modal': types.FeatureSupportType.NOT_SUPPORTED
       },
   ]
 
@@ -239,7 +238,6 @@ def _get_feature_config_type_options():
                   video=types.FeatureSupportType.NOT_SUPPORTED,
                   json=types.FeatureSupportType.SUPPORTED,
                   pydantic=types.FeatureSupportType.BEST_EFFORT,
-                  multi_modal=types.FeatureSupportType.NOT_SUPPORTED
               ),
           'input_format':
               types.InputFormatConfigType(

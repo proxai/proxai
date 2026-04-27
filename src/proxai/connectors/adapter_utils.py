@@ -17,7 +17,6 @@ OUTPUT_FORMAT_FIELD_MAP = {
     types.OutputFormatType.VIDEO: "video",
     types.OutputFormatType.JSON: "json",
     types.OutputFormatType.PYDANTIC: "pydantic",
-    types.OutputFormatType.MULTI_MODAL: "multi_modal",
 }
 
 
@@ -91,8 +90,6 @@ _OUTPUT_FORMAT_TYPE_TO_FIELD = {
         c.output_format.json if c.output_format else None),
     types.OutputFormatType.PYDANTIC: lambda c: (
         c.output_format.pydantic if c.output_format else None),
-    types.OutputFormatType.MULTI_MODAL: lambda c: (
-        c.output_format.multi_modal if c.output_format else None),
 }
 
 _TOOL_TAG_TO_FIELD = {

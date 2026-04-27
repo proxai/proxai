@@ -26,7 +26,7 @@ def _adapter(
     temperature=None, max_tokens=None, stop=None, n=None, thinking=None,
     web_search=None,
     text=None, image=None, audio=None, video=None,
-    json_fmt=None, pydantic_fmt=None, multi_modal=None,
+    json_fmt=None, pydantic_fmt=None,
     input_text=None, input_image=None, input_document=None,
     input_audio=None, input_video=None,
     input_json=None, input_pydantic=None,
@@ -49,7 +49,7 @@ def _adapter(
           tools=types.ToolConfigType(web_search=web_search),
           output_format=types.OutputFormatConfigType(
               text=text, image=image, audio=audio, video=video,
-              json=json_fmt, pydantic=pydantic_fmt, multi_modal=multi_modal,
+              json=json_fmt, pydantic=pydantic_fmt,
           ),
           input_format=types.InputFormatConfigType(
               text=input_text, image=input_image, document=input_document,
@@ -721,13 +721,6 @@ class TestAdaptOutputFormatSimple:
       adapter.adapt_query_record(
           _query(prompt="hi",
                  output_format_type=types.OutputFormatType.VIDEO))
-
-  def test_multi_modal_best_effort_raises_developer_error(self):
-    adapter = _adapter(prompt=S, multi_modal=BE)
-    with pytest.raises(Exception, match="cannot be best effort"):
-      adapter.adapt_query_record(
-          _query(prompt="hi",
-                 output_format_type=types.OutputFormatType.MULTI_MODAL))
 
   def test_no_output_format_does_nothing(self):
     adapter = _adapter(prompt=S)

@@ -401,9 +401,9 @@ class ModelConnector:
         model_size: Filter by model size category.
         input_format: Filter by declared input format capability.
         output_format: Output format to probe against. Defaults to TEXT.
-            Must be one of TEXT, JSON, PYDANTIC, or MULTI_MODAL — IMAGE,
-            AUDIO, and VIDEO are refused because each probe would
-            generate real media.
+            Must be one of TEXT, JSON, or PYDANTIC — IMAGE, AUDIO, and
+            VIDEO are refused because each probe would generate real
+            media.
         feature_tags: Filter by declared feature support
             (prompt, system_prompt, thinking, etc.).
         tool_tags: Filter by declared tool support (e.g. web_search).
@@ -511,9 +511,9 @@ class ModelConnector:
         model_size: Filter by model size category.
         input_format: Filter by declared input format capability.
         output_format: The output format to probe against. Must be one
-            of TEXT, JSON, PYDANTIC, or MULTI_MODAL — IMAGE, AUDIO, and
-            VIDEO are refused because each probe would generate real
-            media. Defaults to TEXT.
+            of TEXT, JSON, or PYDANTIC — IMAGE, AUDIO, and VIDEO are
+            refused because each probe would generate real media.
+            Defaults to TEXT.
         feature_tags: Filter by declared feature support
             (prompt, system_prompt, thinking, etc.).
         tool_tags: Filter by declared tool support (e.g. web_search).
@@ -1613,9 +1613,7 @@ class ProxAIClient(state_controller.StateControlled):
     if (self.proxdash_connection.status
         == types.ProxDashConnectionStatus.DISABLED):
       return
-    # TODO: Remove this once ProxDash is ready.
-    # model_registry = self.proxdash_connection.get_model_registry()
-    model_registry = None
+    model_registry = self.proxdash_connection.get_model_registry()
     if model_registry is not None:
       self.model_configs_instance.reload_from_registry(model_registry)
     self.model_configs_requested_from_proxdash = True

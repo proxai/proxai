@@ -11,7 +11,7 @@ class FeatureAdapter:
   """Adapts query records to match a provider endpoint's feature support."""
 
   _NO_BEST_EFFORT_RESPONSE_FORMATS = (
-      "text", "image", "audio", "video", "multi_modal",
+      "text", "image", "audio", "video",
   )
 
   @staticmethod

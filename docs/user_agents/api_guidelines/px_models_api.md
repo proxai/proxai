@@ -73,7 +73,7 @@ list_provider_models / list_working_models / list_working_provider_models)
 ├── output_format: OutputFormatTypeParam           # default: OutputFormatType.TEXT
 │   │                                              # OutputFormatType values:
 │   │                                              #   TEXT, IMAGE, AUDIO, VIDEO,
-│   │                                              #   JSON, PYDANTIC, MULTI_MODAL
+│   │                                              #   JSON, PYDANTIC
 │   │                                              # Working methods: refuses
 │   │                                              # IMAGE/AUDIO/VIDEO (§1.2).
 │   │
@@ -107,10 +107,10 @@ ever tested — no wasted network calls for unreachable combinations.
 ### 1.2 Probe-safe output formats
 
 Working methods send a real provider call per model. For text-shaped
-output (TEXT / JSON / PYDANTIC) and MULTI_MODAL the probe is cheap and
-allowed. For IMAGE / AUDIO / VIDEO each probe would generate real media,
-which is prohibitive for bulk probing and still costly for a single
-model — so the working methods refuse those formats up front:
+output (TEXT / JSON / PYDANTIC) the probe is cheap and allowed. For
+IMAGE / AUDIO / VIDEO each probe would generate real media, which is
+prohibitive for bulk probing and still costly for a single model — so
+the working methods refuse those formats up front:
 
 ```
 output_format                     Working methods
@@ -118,7 +118,6 @@ output_format                     Working methods
 TEXT                              ✓ allowed (default)
 JSON                              ✓ allowed
 PYDANTIC                          ✓ allowed
-MULTI_MODAL                       ✓ allowed
 IMAGE / AUDIO / VIDEO             ✗ ValueError
 ```
 
@@ -206,12 +205,6 @@ models = px.models.list_models(model_size="large")
 models = px.models.list_models(
     output_format="json",
     feature_tags=["system_prompt"],
-)
-
-# Multi-modal models that accept image input
-models = px.models.list_models(
-    output_format="multi_modal",
-    input_format="image",
 )
 
 # Models with web-search tool support

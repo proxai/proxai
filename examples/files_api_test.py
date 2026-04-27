@@ -61,7 +61,7 @@ def _get_model_config(
               json=NS, pydantic=NS),
           output_format=types.OutputFormatConfigType(
               text=S, json=NS, pydantic=NS, image=NS,
-              audio=NS, video=NS, multi_modal=NS),
+              audio=NS, video=NS),
       ))
 
 

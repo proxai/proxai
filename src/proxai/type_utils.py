@@ -131,7 +131,7 @@ def check_output_format_type_param(
   raise ValueError(
       'Output format type should be proxai.types.OutputFormatType '
       'or one of the following strings: text, image, audio, video, '
-      'json, pydantic, multi_modal\n'
+      'json, pydantic\n'
       f'Invalid output format type: {output_format_type}\n'
       f'Type: {type(output_format_type)}'
   )

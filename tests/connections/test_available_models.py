@@ -790,7 +790,7 @@ def _make_configs_with_best_effort_pydantic_model():
               ),
               output_format=types.OutputFormatConfigType(
                   text=S, json=S, pydantic=BE,  # <-- BEST_EFFORT.
-                  image=NS, audio=NS, video=NS, multi_modal=NS,
+                  image=NS, audio=NS, video=NS,
               ),
           ),
       )
