@@ -183,10 +183,6 @@ def encode_output_format_config_type(
     record['pydantic'] = encode_feature_support_type(
         output_format_config_type.pydantic
     )
-  if output_format_config_type.multi_modal is not None:
-    record['multi_modal'] = encode_feature_support_type(
-        output_format_config_type.multi_modal
-    )
   return record
 
 
@@ -214,10 +210,6 @@ def decode_output_format_config_type(
   if 'pydantic' in record:
     output_format_config_type.pydantic = decode_feature_support_type(
         record['pydantic']
-    )
-  if 'multi_modal' in record:
-    output_format_config_type.multi_modal = decode_feature_support_type(
-        record['multi_modal']
     )
   return output_format_config_type
 

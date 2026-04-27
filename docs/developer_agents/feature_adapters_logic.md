@@ -411,8 +411,8 @@ slot.
 ```
 output_format.type level  →  _adapt_output_format action  +  return value
 ────────────────────────     ──────────────────────────────────────────────
-TEXT  / IMAGE  / AUDIO  /    enforced "no best effort" — see below
-VIDEO / MULTI_MODAL
+TEXT / IMAGE / AUDIO /       enforced "no best effort" — see below
+VIDEO
   SUPPORTED                  → returns (False, None); executor handles natively
   BEST_EFFORT                → raises Exception (configuration bug)
   NOT_SUPPORTED              → raises ValueError
@@ -439,9 +439,9 @@ PYDANTIC
 Two non-obvious rules to internalize:
 
 **The "no-best-effort" set.** `_NO_BEST_EFFORT_RESPONSE_FORMATS =
-("text", "image", "audio", "video", "multi_modal")` defines five
-formats that cannot be approximated via prompt injection — there
-is no meaningful prompt for "best-effort generate an image."
+("text", "image", "audio", "video")` defines four formats that
+cannot be approximated via prompt injection — there is no
+meaningful prompt for "best-effort generate an image."
 Marking any of them `BEST_EFFORT` raises an internal `Exception`
 ("Code should never reach here") at `_adapt_output_format` time.
 This is enforced even though `merge_feature_configs` could in

@@ -79,7 +79,7 @@ def _adapter(
     temperature=None, max_tokens=None, stop=None, n=None, thinking=None,
     web_search=None,
     text=None, image=None, audio=None, video=None,
-    json_fmt=None, pydantic_fmt=None, multi_modal=None,
+    json_fmt=None, pydantic_fmt=None,
 ) -> ResultAdapter:
   """Build a ResultAdapter with the given support levels."""
   return ResultAdapter(
@@ -98,7 +98,7 @@ def _adapter(
           tools=types.ToolConfigType(web_search=web_search),
           output_format=types.OutputFormatConfigType(
               text=text, image=image, audio=audio, video=video,
-              json=json_fmt, pydantic=pydantic_fmt, multi_modal=multi_modal,
+              json=json_fmt, pydantic=pydantic_fmt,
           ),
       ),
   )

@@ -155,9 +155,6 @@ def _get_model_config(
       S if types.OutputFormatType.AUDIO in output_format else NS)
   video_supported = (
       S if types.OutputFormatType.VIDEO in output_format else NS)
-  multi_modal_supported = (
-      S if types.OutputFormatType.MULTI_MODAL in output_format
-      else NS)
   return types.ProviderModelConfig(
       provider_model=types.ProviderModelType(
           provider=provider,
@@ -201,7 +198,6 @@ def _get_model_config(
               image=image_supported,
               audio=audio_supported,
               video=video_supported,
-              multi_modal=multi_modal_supported,
           ),
       )
   )

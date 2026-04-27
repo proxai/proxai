@@ -45,30 +45,64 @@ def simple_cache_test():
 
 
 def list_models():
-  px.connect(
-      experiment_path='simple_test/run_1',
-      logging_path=f'{Path.home()}/proxai_log/',
-      cache_path=f'{Path.home()}/proxai_cache/')
-  model_status = px.models.list_models(
-      model_size='small',
-      verbose=True,
-      return_all=True)
-  pprint(model_status.working_models)
-  pprint(model_status.failed_models)
+  # client = px.Client(
+  #     provider_call_options=px.ProviderCallOptions(
+  #         feature_mapping_strategy=px.FeatureMappingStrategy.STRICT))
+  # models = client.models.list_provider_models(provider='gemini', feature_tags=['thinking'])
+  # print(len(models))
+  # for model in models:
+  #   print(model)
+
+  # client = px.Client(
+  #     provider_call_options=px.ProviderCallOptions(
+  #         feature_mapping_strategy=px.FeatureMappingStrategy.STRICT))
+  # client = px.Client()
+  # models = client.models.list_models(output_format='audio')
+  # print(len(models))
+  # for model in models:
+  #   print(model)
+
+  for provider in px.models.list_providers():
+    print(f'#### {provider} ####')
+    for size in ['small', 'medium', 'large', 'largest']:
+      models = px.models.list_provider_models(provider, model_size=size)
+      print(f'  === {size.upper()} ({len(models)}) ===')
+      for model in models:
+        print(f'    {model}')
+
+    all_models = px.models.list_provider_models(provider)
+    untagged = [
+        m for m in all_models
+        if not px.models.get_model_config(
+            m.provider, m.model).metadata.model_size_tags
+    ]
+    print(f'  === NO SIZE TAGS ({len(untagged)}) ===')
+    for model in untagged:
+      print(f'    {model}')
+    print()
+
 
 def check_health():
-  px.connect(
-      experiment_path='simple_test/run_1',
-      logging_path=f'{Path.home()}/proxai_log/',
-      cache_path=f'{Path.home()}/proxai_cache/')
-  px.check_health(verbose=True)
+  px.models.check_health(verbose=True)
+
+
+def proxdash_test():
+  client = px.Client(
+      proxdash_options=px.ProxDashOptions(
+          stdout=True,
+          base_url='http://localhost:3001',
+          api_key='yf5ak72-mogdeiah-tmui8htgtgn',
+      ),
+  )
+  client.models.list_models()
 
 
 def main():
-  simple_model_test()
+  # simple_model_test()
   # simple_cache_test()
-  # list_models()
+  list_models()
   # check_health()
+  # proxdash_test()
 
 if __name__ == '__main__':
   main()

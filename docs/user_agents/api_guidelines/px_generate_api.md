@@ -46,7 +46,7 @@ px.generate(                                    → CallRecord
 │   │                                           # "text", "json", MyModel,
 │   │                                           # or OutputFormat(...)
 │   ├── type: OutputFormatType                  # TEXT | IMAGE | AUDIO | VIDEO
-│   │                                           # | JSON | PYDANTIC | MULTI_MODAL
+│   │                                           # | JSON | PYDANTIC
 │   ├── pydantic_class: type[BaseModel] | None
 │   ├── pydantic_class_name: str | None
 │   └── pydantic_class_json_schema: dict | None
@@ -278,8 +278,7 @@ px.generate(
 )
 ```
 
-`MULTI_MODAL` has no string shortcut; use the `OutputFormat(type=...)`
-form. If `output_format` is `None` / omitted, it defaults to `TEXT`.
+If `output_format` is `None` / omitted, it defaults to `TEXT`.
 
 The convenience wrappers set this for you:
 - `generate_text()` → `OutputFormatType.TEXT`

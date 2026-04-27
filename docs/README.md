@@ -64,6 +64,7 @@ files with only a scope pointer back to
 - [`developer_agents/feature_adapters_logic.md`](./developer_agents/feature_adapters_logic.md) — `FeatureAdapter` + `ResultAdapter` mechanics — what each support level drops or injects.
 - [`developer_agents/feature_roadmap.md`](./developer_agents/feature_roadmap.md) — Planned work with status / date — tool usage, router, more providers _(placeholder)_.
 - [`developer_agents/files_internals.md`](./developer_agents/files_internals.md) — `FilesManager` lifecycle, four dispatch tables, capability split, auto-upload hook.
+- [`developer_agents/model_registry_type.md`](./developer_agents/model_registry_type.md) — `ModelRegistry` dataclass, load lifecycle (BUILT_IN / PROXDASH / user JSON), validation invariants, serializer round-trip, consumer matrix.
 - [`developer_agents/sanity_check_before_merge.md`](./developer_agents/sanity_check_before_merge.md) — Mandatory pre-merge audit organised by CI / conventions / conditional gates.
 - [`developer_agents/skills_authoring.md`](./developer_agents/skills_authoring.md) — Rules for authoring bundled Claude skills under `src/proxai/agent_skills/` _(placeholder)_.
 - [`developer_agents/state_controller.md`](./developer_agents/state_controller.md) — `StateControlled` base, `handle_changes` contract, propagation rules for nested state.

@@ -1,38 +1,38 @@
 {
-  "metadata": {
-    "version": "example-1.0",
-    "released_at": "2026-04-22T12:00:00",
-    "min_proxai_version": ">=0.2.0",
-    "config_origin": "PROXDASH",
-    "release_notes": "Reference ProxDash-style registry used by tests. See example_proxdash_model_configs.md (same directory) for the model matrix and invariants."
-  },
   "default_model_priority_list": [
     {
-      "provider": "gemini",
       "model": "gemini-3-pro",
+      "provider": "gemini",
       "provider_model_identifier": "gemini-3-pro"
     },
     {
-      "provider": "openai",
       "model": "o3",
+      "provider": "openai",
       "provider_model_identifier": "o3"
     },
     {
-      "provider": "gemini",
       "model": "gemini-2.5-pro",
+      "provider": "gemini",
       "provider_model_identifier": "gemini-2.5-pro"
     },
     {
-      "provider": "openai",
       "model": "gpt-4o",
+      "provider": "openai",
       "provider_model_identifier": "gpt-4o"
     },
     {
-      "provider": "gemini",
       "model": "gemini-2.5-flash",
+      "provider": "gemini",
       "provider_model_identifier": "gemini-2.5-flash"
     }
   ],
+  "metadata": {
+    "config_origin": "PROXDASH",
+    "min_proxai_version": ">=0.2.0",
+    "release_notes": "Reference ProxDash-style registry used by tests. See example_proxdash_model_configs.md (same directory) for the model matrix and invariants.",
+    "released_at": "2026-04-22T12:00:00",
+    "version": "example-1.0"
+  },
   "provider_model_configs": {
     "gemini": {
       "gemini-1.5-pro": {
@@ -52,7 +52,6 @@
             "audio": "NOT_SUPPORTED",
             "image": "NOT_SUPPORTED",
             "json": "SUPPORTED",
-            "multi_modal": "NOT_SUPPORTED",
             "pydantic": "BEST_EFFORT",
             "text": "SUPPORTED",
             "video": "NOT_SUPPORTED"
@@ -103,7 +102,6 @@
             "audio": "NOT_SUPPORTED",
             "image": "NOT_SUPPORTED",
             "json": "SUPPORTED",
-            "multi_modal": "NOT_SUPPORTED",
             "pydantic": "SUPPORTED",
             "text": "SUPPORTED",
             "video": "NOT_SUPPORTED"
@@ -154,7 +152,6 @@
             "audio": "NOT_SUPPORTED",
             "image": "NOT_SUPPORTED",
             "json": "BEST_EFFORT",
-            "multi_modal": "NOT_SUPPORTED",
             "pydantic": "NOT_SUPPORTED",
             "text": "SUPPORTED",
             "video": "NOT_SUPPORTED"
@@ -205,7 +202,6 @@
             "audio": "NOT_SUPPORTED",
             "image": "NOT_SUPPORTED",
             "json": "SUPPORTED",
-            "multi_modal": "NOT_SUPPORTED",
             "pydantic": "SUPPORTED",
             "text": "SUPPORTED",
             "video": "NOT_SUPPORTED"
@@ -256,7 +252,6 @@
             "audio": "NOT_SUPPORTED",
             "image": "NOT_SUPPORTED",
             "json": "SUPPORTED",
-            "multi_modal": "SUPPORTED",
             "pydantic": "SUPPORTED",
             "text": "SUPPORTED",
             "video": "NOT_SUPPORTED"
@@ -307,7 +302,6 @@
             "audio": "NOT_SUPPORTED",
             "image": "NOT_SUPPORTED",
             "json": "NOT_SUPPORTED",
-            "multi_modal": "NOT_SUPPORTED",
             "pydantic": "NOT_SUPPORTED",
             "text": "NOT_SUPPORTED",
             "video": "SUPPORTED"
@@ -356,7 +350,6 @@
             "audio": "NOT_SUPPORTED",
             "image": "SUPPORTED",
             "json": "NOT_SUPPORTED",
-            "multi_modal": "NOT_SUPPORTED",
             "pydantic": "NOT_SUPPORTED",
             "text": "NOT_SUPPORTED",
             "video": "NOT_SUPPORTED"
@@ -403,7 +396,6 @@
             "audio": "NOT_SUPPORTED",
             "image": "NOT_SUPPORTED",
             "json": "BEST_EFFORT",
-            "multi_modal": "NOT_SUPPORTED",
             "pydantic": "NOT_SUPPORTED",
             "text": "SUPPORTED",
             "video": "NOT_SUPPORTED"
@@ -453,7 +445,6 @@
             "audio": "NOT_SUPPORTED",
             "image": "NOT_SUPPORTED",
             "json": "SUPPORTED",
-            "multi_modal": "NOT_SUPPORTED",
             "pydantic": "SUPPORTED",
             "text": "SUPPORTED",
             "video": "NOT_SUPPORTED"
@@ -503,7 +494,6 @@
             "audio": "NOT_SUPPORTED",
             "image": "NOT_SUPPORTED",
             "json": "SUPPORTED",
-            "multi_modal": "NOT_SUPPORTED",
             "pydantic": "SUPPORTED",
             "text": "SUPPORTED",
             "video": "NOT_SUPPORTED"
@@ -553,7 +543,6 @@
             "audio": "NOT_SUPPORTED",
             "image": "NOT_SUPPORTED",
             "json": "BEST_EFFORT",
-            "multi_modal": "NOT_SUPPORTED",
             "pydantic": "NOT_SUPPORTED",
             "text": "SUPPORTED",
             "video": "NOT_SUPPORTED"
@@ -603,7 +592,6 @@
             "audio": "NOT_SUPPORTED",
             "image": "NOT_SUPPORTED",
             "json": "SUPPORTED",
-            "multi_modal": "NOT_SUPPORTED",
             "pydantic": "SUPPORTED",
             "text": "SUPPORTED",
             "video": "NOT_SUPPORTED"
@@ -654,7 +642,6 @@
             "audio": "SUPPORTED",
             "image": "NOT_SUPPORTED",
             "json": "NOT_SUPPORTED",
-            "multi_modal": "NOT_SUPPORTED",
             "pydantic": "NOT_SUPPORTED",
             "text": "NOT_SUPPORTED",
             "video": "NOT_SUPPORTED"

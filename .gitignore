@@ -147,3 +147,4 @@ dmypy.json
 
 # Claude Code
 CLAUDE.md
+.claude/*.lock

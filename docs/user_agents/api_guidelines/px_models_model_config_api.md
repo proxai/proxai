@@ -19,7 +19,10 @@ See also: `px_models_api.md` (the read-only discovery surface —
 `ProxAIClient` itself is constructed and hosts the underlying
 `model_configs_instance`), and `call_record.md` (the
 `ProviderModelType` shape callers pass into these methods and get
-back from the discovery surface).
+back from the discovery surface). For the internal `ModelRegistry`
+dataclass these methods write into — fields, load lifecycle,
+validation invariants, JSON serializer round-trip — see
+`../../developer_agents/model_registry_type.md`.
 
 ---
 
@@ -144,7 +147,7 @@ config = types.ProviderModelConfig(
             json=NS, pydantic=NS),
         output_format=types.OutputFormatConfigType(
             text=S, json=S, pydantic=S, image=NS, audio=NS,
-            video=NS, multi_modal=NS),
+            video=NS),
     ),
     metadata=types.ProviderModelMetadataType(
         is_recommended=False,
@@ -380,7 +383,7 @@ px.models.model_config.register_provider_model_config(
                 json=NS, pydantic=NS),
             output_format=types.OutputFormatConfigType(
                 text=S, json=S, pydantic=S, image=NS, audio=NS,
-                video=NS, multi_modal=NS)),
+                video=NS)),
         metadata=types.ProviderModelMetadataType(
             is_recommended=False,
             model_size_tags=[types.ModelSizeType.LARGE])))

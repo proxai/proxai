@@ -58,7 +58,7 @@ def _build_test_model_configs_instance() -> model_configs.ModelConfigs:
                     json=NS, pydantic=NS),
                 output_format=types.OutputFormatConfigType(
                     text=S, json=S, pydantic=S, image=NS, audio=NS,
-                    video=NS, multi_modal=NS),
+                    video=NS),
             ),
         )
     )

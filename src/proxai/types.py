@@ -35,7 +35,6 @@ class OutputFormatType(str, enum.Enum):
   VIDEO = "VIDEO"
   JSON = "JSON"
   PYDANTIC = "PYDANTIC"
-  MULTI_MODAL = "MULTI_MODAL"
 
 
 class InputFormatType(str, enum.Enum):
@@ -188,7 +187,6 @@ class OutputFormatConfigType:
   video: FeatureSupportType | None = None
   json: FeatureSupportType | None = None
   pydantic: FeatureSupportType | None = None
-  multi_modal: FeatureSupportType | None = None
 
 
 @dataclasses.dataclass
