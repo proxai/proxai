@@ -294,6 +294,10 @@ passes through for connector-side extraction).
 (`feature_adapter.py:510`). Every other media type at `BEST_EFFORT`
 without a converter is dropped.
 
+**Pick the level by conversion fidelity:** md / csv / plain text via
+`read_text_document` is lossless → `SUPPORTED`; PDF via
+`read_pdf_document` is lossy → `BEST_EFFORT`.
+
 ### 4.5 `OutputFormatConfigType` (`types.py:181-190`)
 
 | Field | Controls |
