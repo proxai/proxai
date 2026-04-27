@@ -4368,9 +4368,9 @@
             "feature_config::system_prompt=success",
             "feature_config::tools.web_search=success",
             "is_recommended::success",
-            "largest::success=69e63c4a2d2a",
             "model_size::success",
-            "pricing::success"
+            "pricing::success",
+            "largest::success=b180cb599347"
           ]
         },
         "pricing": {
@@ -4573,8 +4573,7 @@
         "metadata": {
           "is_recommended": true,
           "model_size_tags": [
-            "large",
-            "largest"
+            "large"
           ],
           "tags": [
             "best_large::success=69e63c4a2d2a",
@@ -4603,11 +4602,10 @@
             "feature_config::system_prompt=success",
             "feature_config::tools.web_search=success",
             "is_recommended::success",
-            "largest::success=69e63c4a2d2a",
             "model_size::success",
             "pricing::success",
             "rank::best_large",
-            "rank::largest"
+            "largest::success=b180cb599347"
           ]
         },
         "pricing": {
@@ -4685,9 +4683,9 @@
             "feature_config::system_prompt=success",
             "feature_config::tools.web_search=success",
             "is_recommended::success",
-            "largest::success=69e63c4a2d2a",
             "model_size::success",
-            "pricing::success"
+            "pricing::success",
+            "largest::success=b180cb599347"
           ]
         },
         "pricing": {
@@ -5039,8 +5037,11 @@
           }
         },
         "metadata": {
-          "is_recommended": false,
-          "model_size_tags": [],
+          "is_recommended": true,
+          "model_size_tags": [
+            "large",
+            "largest"
+          ],
           "tags": [
             "display::model_name=Gemini 3.1 Pro Preview",
             "display::provider_name=Gemini",
@@ -5066,8 +5067,10 @@
             "feature_config::prompt=success",
             "feature_config::system_prompt=success",
             "feature_config::tools.web_search=success",
+            "pricing::success",
             "is_recommended::success",
-            "pricing::success"
+            "rank::largest",
+            "largest::success=b180cb599347"
           ]
         },
         "pricing": {
@@ -5453,9 +5456,9 @@
             "feature_config::system_prompt=success",
             "feature_config::tools.web_search=success",
             "is_recommended::success",
-            "largest::success=69e63c4a2d2a",
             "model_size::success",
-            "pricing::failed"
+            "pricing::failed",
+            "largest::success=b180cb599347"
           ]
         },
         "pricing": {},
@@ -5530,9 +5533,9 @@
             "feature_config::system_prompt=success",
             "feature_config::tools.web_search=success",
             "is_recommended::success",
-            "largest::success=69e63c4a2d2a",
             "model_size::success",
-            "pricing::failed"
+            "pricing::failed",
+            "largest::success=b180cb599347"
           ]
         },
         "pricing": {},
@@ -5765,10 +5768,10 @@
             "feature_config::system_prompt=failed",
             "feature_config::tools.web_search=failed",
             "is_recommended::success",
-            "largest::success=69e63c4a2d2a",
             "model_size::success",
             "pricing::success",
-            "rank::best_large"
+            "rank::best_large",
+            "largest::success=b180cb599347"
           ]
         },
         "pricing": {
