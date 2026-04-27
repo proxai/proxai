@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import copy
 import pydantic
 import inspect
@@ -59,7 +61,7 @@ def output_format_param_to_output_format(
   raise ValueError(f'Invalid output format: {output_format}')
 
 
-def check_messages_type(messages: types.MessagesType):
+def check_messages_type(messages: types.MessagesParam):
   """Check if messages type is supported."""
   for message in messages:
     if not isinstance(message, dict):

@@ -17,6 +17,8 @@ See: type_utils._normalize_chat_for_comparison()
 See: _content_hash_dict() in this file
 """
 
+from __future__ import annotations
+
 import hashlib
 import json
 import os

@@ -1,4 +1,5 @@
 """Feature adapter for mapping query features to provider capabilities."""
+from __future__ import annotations
 
 import copy
 import json

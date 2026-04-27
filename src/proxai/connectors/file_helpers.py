@@ -1,4 +1,5 @@
 """Per-provider file helpers for upload, remove, list, and download."""
+from __future__ import annotations
 
 import io
 import os

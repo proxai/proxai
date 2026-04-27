@@ -26,9 +26,13 @@ user = User()
 user.name = "Alice"  # Sets name and automatically updates internal state
 print(user._user_state)  # {'name': 'Alice'}
 """
+
+from __future__ import annotations
+
 import copy
 import dataclasses
 import inspect
+import types as _builtin_types
 import typing
 from abc import abstractmethod
 from typing import Any
@@ -38,7 +42,10 @@ import proxai.types as types
 def _unwrap_optional(type_hint: Any) -> Any | None:
   """Extract the non-None type from Optional/Union annotations."""
   origin = typing.get_origin(type_hint)
-  if origin is typing.Union:
+  # On Python 3.10-3.13, `X | Y` syntax creates `types.UnionType`, distinct
+  # from `typing.Union` (returned by `Union[X, Y]`). Python 3.14 unified
+  # them, so `is typing.Union` alone is sufficient there. Accept both.
+  if origin is typing.Union or origin is _builtin_types.UnionType:
     args = [a for a in typing.get_args(type_hint) if a is not type(None)]
     return args[0] if len(args) == 1 else None
   return type_hint
