@@ -13,112 +13,77 @@ import proxai.types as types
 _TEST_ASSETS_DIR = os.path.join(
     os.path.dirname(__file__), 'refactoring_test_assets')
 
+_FAILING_MODEL = ('mock_failing_provider', 'mock_failing_model')
+
 _MODEL_CONFIGS = {
     'openai': {
         'main_model': ('openai', 'gpt-4o'),
-        'main_model_web_search_supported': True,
-        'main_model_image_input_supported': True,
-        'main_model_audio_input_supported': False,
-        'main_model_video_input_supported': False,
         'thinking_model': ('openai', 'o3'),
-        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
+        'web_search_model': ('openai', 'gpt-4o'),
         'image_model': ('openai', 'dall-e-3'),
         'audio_model': ('openai', 'tts-1'),
         'video_model': ('openai', 'sora-2'),
     },
     'gemini': {
-        'main_model': ('gemini', 'gemini-3-flash-preview'),
-        'main_model_web_search_supported': True,
-        'main_model_image_input_supported': True,
-        'main_model_audio_input_supported': True,
-        'main_model_video_input_supported': True,
+        'main_model': ('gemini', 'gemini-3-flash'),
         'thinking_model': ('gemini', 'gemini-2.5-flash'),
-        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
+        'web_search_model': ('gemini', 'gemini-3-flash'),
         'image_model': ('gemini', 'gemini-2.5-flash-image'),
-        'audio_model': ('gemini', 'gemini-2.5-flash-preview-tts'),
-        'video_model': ('gemini', 'veo-3.1-generate-preview'),
+        'audio_model': ('gemini', 'gemini-2.5-flash-tts'),
+        'video_model': ('gemini', 'veo-3.1-generate'),
     },
     'claude': {
-        'main_model': ('claude', 'claude-sonnet-4-6'),
-        'main_model_web_search_supported': True,
-        'main_model_image_input_supported': True,
-        'main_model_audio_input_supported': False,
-        'main_model_video_input_supported': False,
-        'thinking_model': ('claude', 'claude-opus-4-6'),
-        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
+        'main_model': ('claude', 'sonnet-4.6'),
+        'thinking_model': ('claude', 'opus-4.6'),
+        'web_search_model': ('claude', 'sonnet-4.6'),
         'image_model': (None, None),
         'audio_model': (None, None),
         'video_model': (None, None),
     },
     'mistral': {
         'main_model': ('mistral', 'mistral-large-latest'),
-        'main_model_web_search_supported': True,
-        'main_model_image_input_supported': True,
-        'main_model_audio_input_supported': False,
-        'main_model_video_input_supported': False,
         'thinking_model': ('mistral', 'magistral-small-latest'),
-        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
+        'web_search_model': ('mistral', 'mistral-large'),
         'image_model': (None, None),
         'audio_model': (None, None),
         'video_model': (None, None),
     },
     'grok': {
         'main_model': ('grok', 'grok-4-fast-non-reasoning'),
-        'main_model_web_search_supported': True,
-        'main_model_image_input_supported': True,
-        'main_model_audio_input_supported': False,
-        'main_model_video_input_supported': False,
         'thinking_model': ('grok', 'grok-3-mini'),
-        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
+        'web_search_model': ('grok', 'grok-4-fast-non-reasoning'),
         'image_model': (None, None),
         'audio_model': (None, None),
         'video_model': (None, None),
     },
     'deepseek': {
-        'main_model': ('deepseek', 'deepseek-chat'),
-        'main_model_web_search_supported': False,
-        'main_model_image_input_supported': False,
-        'main_model_audio_input_supported': False,
-        'main_model_video_input_supported': False,
-        'thinking_model': ('deepseek', 'deepseek-reasoner'),
-        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
+        'main_model': ('deepseek', 'deepseek-v4-flash'),
+        'thinking_model': ('deepseek', 'deepseek-v4-pro'),
+        'web_search_model': (None, None),
         'image_model': (None, None),
         'audio_model': (None, None),
         'video_model': (None, None),
     },
     'cohere': {
-        'main_model': ('cohere', 'command-r-plus-08-2024'),
-        'main_model_web_search_supported': False,
-        'main_model_image_input_supported': False,
-        'main_model_audio_input_supported': False,
-        'main_model_video_input_supported': False,
-        'thinking_model': ('cohere', 'command-a-reasoning-08-2025'),
-        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
+        'main_model': ('cohere', 'command-r-plus'),
+        'thinking_model': ('cohere', 'command-a-reasoning'),
+        'web_search_model': (None, None),
         'image_model': (None, None),
         'audio_model': (None, None),
         'video_model': (None, None),
     },
     'huggingface': {
-        'main_model': ('huggingface', 'meta-llama/Llama-3.3-70B-Instruct'),
-        'main_model_web_search_supported': False,
-        'main_model_image_input_supported': False,
-        'main_model_audio_input_supported': False,
-        'main_model_video_input_supported': False,
+        'main_model': ('huggingface', 'meta-llama/llama-3.3-70b-instruct'),
         'thinking_model': ('huggingface', 'openai/gpt-oss-120b'),
-        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
+        'web_search_model': (None, None),
         'image_model': (None, None),
         'audio_model': (None, None),
         'video_model': (None, None),
     },
     'databricks': {
-        'main_model': (
-            'databricks', 'databricks-gemma-3-12b'),
-        'main_model_web_search_supported': False,
-        'main_model_image_input_supported': True,
-        'main_model_audio_input_supported': False,
-        'main_model_video_input_supported': False,
-        'thinking_model': ('databricks', 'databricks-gpt-oss-20b'),
-        'failing_model': ('mock_failing_provider', 'mock_failing_model'),
+        'main_model': ('databricks', 'gemma-3-12b'),
+        'thinking_model': ('databricks', 'gpt-oss-20b'),
+        'web_search_model': (None, None),
         'image_model': (None, None),
         'audio_model': (None, None),
         'video_model': (None, None),
@@ -126,81 +91,6 @@ _MODEL_CONFIGS = {
 }
 
 _BANNER_WIDTH = 60
-
-
-def _get_model_config(
-    provider: str,
-    model: str,
-    provider_model_identifier: str,
-    web_search: bool = False,
-    input_format: list[str] | None = None,
-    output_format: list[types.OutputFormatType] = [types.OutputFormatType.TEXT],
-):
-  """Get a model config for given parameters."""
-  S = types.FeatureSupportType.SUPPORTED
-  NS = types.FeatureSupportType.NOT_SUPPORTED
-  if input_format is None:
-    input_format = ['text']
-
-  web_search_supported = S if web_search else NS
-  text_supported = (
-      S if types.OutputFormatType.TEXT in output_format else NS)
-  json_supported = (
-      S if types.OutputFormatType.JSON in output_format else NS)
-  pydantic_supported = (
-      S if types.OutputFormatType.PYDANTIC in output_format else NS)
-  image_supported = (
-      S if types.OutputFormatType.IMAGE in output_format else NS)
-  audio_supported = (
-      S if types.OutputFormatType.AUDIO in output_format else NS)
-  video_supported = (
-      S if types.OutputFormatType.VIDEO in output_format else NS)
-  return types.ProviderModelConfig(
-      provider_model=types.ProviderModelType(
-          provider=provider,
-          model=model,
-          provider_model_identifier=provider_model_identifier
-      ),
-      pricing=types.ProviderModelPricingType(
-          input_token_cost=1.0,
-          output_token_cost=2.0
-      ),
-      metadata=types.ProviderModelMetadataType(
-          is_recommended=True
-      ),
-      features=types.FeatureConfigType(
-          prompt=types.FeatureSupportType.SUPPORTED,
-          messages=types.FeatureSupportType.SUPPORTED,
-          system_prompt=types.FeatureSupportType.SUPPORTED,
-          parameters=types.ParameterConfigType(
-              temperature=types.FeatureSupportType.SUPPORTED,
-              max_tokens=types.FeatureSupportType.SUPPORTED,
-              stop=types.FeatureSupportType.SUPPORTED,
-              n=types.FeatureSupportType.NOT_SUPPORTED,
-              thinking=types.FeatureSupportType.SUPPORTED,
-          ),
-          tools=types.ToolConfigType(
-              web_search=web_search_supported,
-          ),
-          input_format=types.InputFormatConfigType(
-              text=S if 'text' in input_format else NS,
-              image=S if 'image' in input_format else NS,
-              document=S if 'document' in input_format else NS,
-              audio=S if 'audio' in input_format else NS,
-              video=S if 'video' in input_format else NS,
-              json=S if 'json' in input_format else NS,
-              pydantic=S if 'pydantic' in input_format else NS,
-          ),
-          output_format=types.OutputFormatConfigType(
-              text=text_supported,
-              json=json_supported,
-              pydantic=pydantic_supported,
-              image=image_supported,
-              audio=audio_supported,
-              video=video_supported,
-          ),
-      )
-  )
 
 
 def _configure_provider(provider: str) -> None:
@@ -211,88 +101,17 @@ def _configure_provider(provider: str) -> None:
   a config object through every helper.
   """
   global _PROVIDER
-  global _MAIN_MODEL, _FAILING_MODEL, _THINKING_MODEL
+  global _MAIN_MODEL, _THINKING_MODEL, _WEB_SEARCH_MODEL
   global _IMAGE_MODEL, _AUDIO_MODEL, _VIDEO_MODEL
-  global _WEB_SEARCH_SUPPORTED
-  global _MAIN_MODEL_CONFIG, _FAILING_MODEL_CONFIG, _THINKING_MODEL_CONFIG
-  global _IMAGE_MODEL_CONFIG, _AUDIO_MODEL_CONFIG, _VIDEO_MODEL_CONFIG
 
   _PROVIDER = provider
   config = _MODEL_CONFIGS[provider]
   _MAIN_MODEL = config['main_model']
-  _FAILING_MODEL = config['failing_model']
   _THINKING_MODEL = config['thinking_model']
+  _WEB_SEARCH_MODEL = config['web_search_model']
   _IMAGE_MODEL = config['image_model']
   _AUDIO_MODEL = config['audio_model']
   _VIDEO_MODEL = config['video_model']
-  _WEB_SEARCH_SUPPORTED = config.get('main_model_web_search_supported', True)
-  _IMAGE_INPUT_SUPPORTED = config.get('main_model_image_input_supported', True)
-  _AUDIO_INPUT_SUPPORTED = config.get('main_model_audio_input_supported', True)
-  _VIDEO_INPUT_SUPPORTED = config.get('main_model_video_input_supported', True)
-
-  _input_formats = ['text', 'document', 'json', 'pydantic']
-  if _IMAGE_INPUT_SUPPORTED:
-    _input_formats.append('image')
-  if _AUDIO_INPUT_SUPPORTED:
-    _input_formats.append('audio')
-  if _VIDEO_INPUT_SUPPORTED:
-    _input_formats.append('video')
-
-  _MAIN_MODEL_CONFIG = _get_model_config(
-      provider=_MAIN_MODEL[0],
-      model=_MAIN_MODEL[1],
-      provider_model_identifier=_MAIN_MODEL[1],
-      web_search=_WEB_SEARCH_SUPPORTED,
-      input_format=_input_formats,
-      output_format=[
-          types.OutputFormatType.TEXT,
-          types.OutputFormatType.JSON,
-          types.OutputFormatType.PYDANTIC],
-  )
-
-  _FAILING_MODEL_CONFIG = _get_model_config(
-      provider=_FAILING_MODEL[0],
-      model=_FAILING_MODEL[1],
-      provider_model_identifier=_FAILING_MODEL[1],
-      web_search=True,
-      input_format=['text'],
-      output_format=[
-          types.OutputFormatType.TEXT,
-          types.OutputFormatType.JSON,
-          types.OutputFormatType.PYDANTIC],
-  )
-
-  _THINKING_MODEL_CONFIG = _get_model_config(
-      provider=_THINKING_MODEL[0],
-      model=_THINKING_MODEL[1],
-      provider_model_identifier=_THINKING_MODEL[1],
-      web_search=True,
-      input_format=['text'],
-      output_format=[
-          types.OutputFormatType.TEXT,
-          types.OutputFormatType.JSON,
-          types.OutputFormatType.PYDANTIC],
-  )
-  _IMAGE_MODEL_CONFIG = _get_model_config(
-      provider=_IMAGE_MODEL[0],
-      model=_IMAGE_MODEL[1],
-      provider_model_identifier=_IMAGE_MODEL[1],
-      output_format=[types.OutputFormatType.IMAGE],
-  )
-
-  _AUDIO_MODEL_CONFIG = _get_model_config(
-      provider=_AUDIO_MODEL[0],
-      model=_AUDIO_MODEL[1],
-      provider_model_identifier=_AUDIO_MODEL[1],
-      output_format=[types.OutputFormatType.AUDIO],
-  )
-
-  _VIDEO_MODEL_CONFIG = _get_model_config(
-      provider=_VIDEO_MODEL[0],
-      model=_VIDEO_MODEL[1],
-      provider_model_identifier=_VIDEO_MODEL[1],
-      output_format=[types.OutputFormatType.VIDEO],
-  )
 
 
 def _assert_success(result: types.CallRecord):
@@ -369,50 +188,6 @@ def assert_audio_content(result: types.CallRecord):
   assert result.result.output_audio is not None
   assert result.result.output_audio.data is not None
   assert len(result.result.output_audio.data) > 10
-
-
-def register_models(client: px.Client):
-  client.models.model_config.unregister_all_models()
-
-  try:
-    client.models.get_model(_MAIN_MODEL[0], _MAIN_MODEL[1])
-  except Exception as e:
-    client.models.model_config.register_provider_model_config(
-        _MAIN_MODEL_CONFIG)
-
-
-  try:
-    client.models.get_model(_FAILING_MODEL[0], _FAILING_MODEL[1])
-  except Exception as e:
-    client.models.model_config.register_provider_model_config(
-        _FAILING_MODEL_CONFIG)
-
-  try:
-    client.models.get_model(_THINKING_MODEL[0], _THINKING_MODEL[1])
-  except Exception as e:
-    client.models.model_config.register_provider_model_config(
-        _THINKING_MODEL_CONFIG)
-
-  if _IMAGE_MODEL[0] is not None:
-    try:
-      client.models.get_model(_IMAGE_MODEL[0], _IMAGE_MODEL[1])
-    except Exception as e:
-      client.models.model_config.register_provider_model_config(
-          _IMAGE_MODEL_CONFIG)
-
-  if _AUDIO_MODEL[0] is not None:
-    try:
-      client.models.get_model(_AUDIO_MODEL[0], _AUDIO_MODEL[1])
-    except Exception as e:
-      client.models.model_config.register_provider_model_config(
-          _AUDIO_MODEL_CONFIG)
-
-  if _VIDEO_MODEL[0] is not None:
-    try:
-      client.models.get_model(_VIDEO_MODEL[0], _VIDEO_MODEL[1])
-    except Exception as e:
-      client.models.model_config.register_provider_model_config(
-          _VIDEO_MODEL_CONFIG)
 
 
 def prompt_test():
@@ -540,12 +315,12 @@ def parameters_thinking_test():
 
 def tools_web_search_test():
   print('> tools_web_search_test')
-  if not _WEB_SEARCH_SUPPORTED:
+  if not _WEB_SEARCH_MODEL[0]:
     print('> tools_web_search_test: Web search not supported, skipping test')
     return
   result = px.generate(
       prompt='What is the most important news for Jan 20th 2024?',
-      provider_model=_MAIN_MODEL,
+      provider_model=_WEB_SEARCH_MODEL,
       tools=[px.Tools.WEB_SEARCH])
   _assert_text_content(result)
   assert len(result.result.output_text) > 10
@@ -840,7 +615,6 @@ def cache_test():
           unique_response_limit=2
       )
   )
-  register_models(client)
 
   result = client.generate(
       prompt='What is 2 + 2?',
@@ -872,7 +646,6 @@ def connection_options_skip_cache_test():
   client = px.Client(
       cache_options=px.CacheOptions(
           cache_path=os.path.expanduser('~/temp/proxai_cache/')))
-  register_models(client)
 
   result = client.generate(
       prompt='What is 2 + 2?',
@@ -906,7 +679,6 @@ def connection_options_override_cache_value_test():
   client = px.Client(
       cache_options=px.CacheOptions(
           cache_path=os.path.expanduser('~/temp/proxai_cache/')))
-  register_models(client)
 
   result_1 = client.generate(
       prompt='Write me poem about karadeniz. Make it perfect.',
@@ -1000,72 +772,39 @@ def list_models_test():
   assert len(models) > 1
 
   if _IMAGE_MODEL[0]:
-    models = px.models.list_models(output_format=types.OutputFormatType.IMAGE)
+    models = px.models.list_models(
+        output_format=types.OutputFormatType.IMAGE, recommended_only=False)
     assert len(models) > 0
-    models = px.models.list_models(output_format='image')
+    models = px.models.list_models(
+        output_format='image', recommended_only=False)
     assert len(models) > 0
   if _AUDIO_MODEL[0]:
-    models = px.models.list_models(output_format=types.OutputFormatType.AUDIO)
+    models = px.models.list_models(
+        output_format=types.OutputFormatType.AUDIO, recommended_only=False)
     assert len(models) > 0
-    models = px.models.list_models(output_format='audio')
+    models = px.models.list_models(
+        output_format='audio', recommended_only=False)
     assert len(models) > 0
   if _VIDEO_MODEL[0]:
-    models = px.models.list_models(output_format=types.OutputFormatType.VIDEO)
+    models = px.models.list_models(
+        output_format=types.OutputFormatType.VIDEO, recommended_only=False)
     assert len(models) > 0
-    models = px.models.list_models(output_format='video')
+    models = px.models.list_models(
+        output_format='video', recommended_only=False)
     assert len(models) > 0
 
+  models = px.models.list_models(feature_tags=[types.FeatureTag.PROMPT])
+  assert len(models) > 0
 
-  if _PROVIDER == 'openai' or _PROVIDER == 'gemini':
-    models = px.models.list_models(
-        feature_tags=[types.FeatureTag.PROMPT])
-    assert len(models) > 0
-    models = px.models.list_models(
-        tool_tags=[types.ToolTag.WEB_SEARCH],
-        output_format=[types.OutputFormatType.PYDANTIC])
-    assert len(models) > 0
+  # STRICT mode excludes BEST_EFFORT models — must be at most as many
+  # as the default (BEST_EFFORT-as-fallback) result.
+  default_count = len(px.models.list_models())
+  strict_client = px.Client(
+      provider_call_options=px.ProviderCallOptions(
+          feature_mapping_strategy=types.FeatureMappingStrategy.STRICT))
+  strict_count = len(strict_client.models.list_models())
+  assert strict_count <= default_count
 
-    client = px.Client(
-        provider_call_options=px.ProviderCallOptions(
-            feature_mapping_strategy=types.FeatureMappingStrategy.STRICT))
-    register_models(client)
-    models = client.models.list_models(
-        tool_tags=[types.ToolTag.WEB_SEARCH],
-        output_format=[types.OutputFormatType.PYDANTIC])
-    assert len(models) == 0
-  elif _PROVIDER == 'claude':
-    models = px.models.list_models(
-        feature_tags=[types.FeatureTag.PROMPT])
-    assert len(models) > 0
-    models = px.models.list_models(
-        tool_tags=[types.ToolTag.WEB_SEARCH],
-        output_format=[types.OutputFormatType.PYDANTIC])
-    assert len(models) > 0
-
-    client = px.Client(
-        provider_call_options=px.ProviderCallOptions(
-            feature_mapping_strategy=types.FeatureMappingStrategy.STRICT))
-    register_models(client)
-    models = client.models.list_models(
-        tool_tags=[types.ToolTag.WEB_SEARCH],
-        output_format=[types.OutputFormatType.JSON])
-    assert len(models) == 0
-  elif _PROVIDER == 'mistral':
-    models = px.models.list_models(
-        feature_tags=[types.FeatureTag.PROMPT])
-    assert len(models) > 0
-    models = px.models.list_models(
-        output_format=[types.OutputFormatType.JSON])
-    assert len(models) > 0
-
-    client = px.Client(
-        provider_call_options=px.ProviderCallOptions(
-            feature_mapping_strategy=types.FeatureMappingStrategy.STRICT))
-    register_models(client)
-    models = client.models.list_models(
-        input_format=[types.InputFormatType.JSON])
-    assert len(models) == 0
-  
 
 
 TEST_SEQUENCE = [
@@ -1106,7 +845,6 @@ TEST_MAP = dict(TEST_SEQUENCE)
 
 def _run_all_tests():
   """Run the full refactoring test suite against the currently-configured provider."""
-  register_models(px.get_default_proxai_client())
   for _, test_fn in TEST_SEQUENCE:
     test_fn()
 
@@ -1188,7 +926,6 @@ def _run_provider(
   try:
     _configure_provider(provider)
     if single_test:
-      register_models(px.get_default_proxai_client())
       _run_single_test(single_test)
     else:
       _run_all_tests()

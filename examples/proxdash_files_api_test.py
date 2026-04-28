@@ -14,7 +14,6 @@ import os
 import time
 
 import proxai as px
-import proxai.types as types
 
 _ASSETS_DIR = os.path.join(os.path.dirname(__file__), 'refactoring_test_assets')
 
@@ -167,7 +166,6 @@ def test_upload_sequential():
           allow_parallel_file_operations=False,
       ),
   )
-  _register_models()
   media = px.MessageContent(
       path=_asset('cat.pdf'), media_type='application/pdf'
   )
@@ -175,7 +173,6 @@ def test_upload_sequential():
   print(f'  Sequential time: {elapsed:.2f}s')
   # Reconnect with parallel for remaining tests.
   _connect_default()
-  _register_models()
 
 
 # --- 5. List with ProxDash deduplication ---
@@ -298,60 +295,6 @@ def test_delete_proxdash_only():
 # --- Runner ---
 
 
-def _get_model_config(
-    provider,
-    model,
-    provider_model_identifier,
-    input_format=None,
-):
-  S = types.FeatureSupportType.SUPPORTED
-  NS = types.FeatureSupportType.NOT_SUPPORTED
-  if input_format is None:
-    input_format = ['text', 'document']
-  return types.ProviderModelConfig(
-      provider_model=types.ProviderModelType(
-          provider=provider, model=model,
-          provider_model_identifier=provider_model_identifier
-      ), pricing=types.ProviderModelPricingType(
-          input_token_cost=1.0, output_token_cost=2.0
-      ), metadata=types.ProviderModelMetadataType(is_recommended=True),
-      features=types.FeatureConfigType(
-          prompt=S,
-          messages=S,
-          system_prompt=S,
-          parameters=types.ParameterConfigType(
-              temperature=S, max_tokens=S, stop=S, n=NS, thinking=NS
-          ),
-          output_format=types.OutputFormatConfigType(text=S),
-          input_format=types.InputFormatConfigType(
-              text=S if 'text' in input_format else NS,
-              image=S if 'image' in input_format else NS,
-              document=S if 'document' in input_format else NS,
-              audio=S if 'audio' in input_format else NS,
-              video=S if 'video' in input_format else NS,
-          ),
-      )
-  )
-
-
-def _register_models():
-  client = px.get_default_proxai_client()
-  client.models.model_config.unregister_all_models()
-  for provider, model in [
-      ('gemini', 'gemini-2.5-flash'),
-      ('claude', 'claude-sonnet-4-6'),
-      ('openai', 'gpt-4o'),
-      ('mistral', 'mistral-small-latest'),
-  ]:
-    if provider == 'gemini':
-      fmt = ['text', 'document', 'image', 'audio', 'video']
-    else:
-      fmt = ['text', 'document', 'image']
-    client.models.model_config.register_provider_model_config(
-        _get_model_config(provider, model, model, input_format=fmt)
-    )
-
-
 def _connect_default():
   px.connect(
       proxdash_options=px.ProxDashOptions(
@@ -401,7 +344,6 @@ def main():
   args = parser.parse_args()
 
   _connect_default()
-  _register_models()
 
   if args.test == 'all':
     for _name, test_fn in TEST_SEQUENCE:

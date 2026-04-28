@@ -4355,7 +4355,7 @@
           },
           "messages": "NOT_SUPPORTED",
           "output_format": {
-            "audio": "NOT_SUPPORTED",
+            "audio": "SUPPORTED",
             "image": "NOT_SUPPORTED",
             "json": "NOT_SUPPORTED",
             "pydantic": "NOT_SUPPORTED",
@@ -4391,7 +4391,7 @@
             "feature_config::input_format.text=failed",
             "feature_config::input_format.video=failed",
             "feature_config::messages=failed",
-            "feature_config::output_format.audio=failed",
+            "feature_config::output_format.audio=success",
             "feature_config::output_format.image=failed",
             "feature_config::output_format.json=failed",
             "feature_config::output_format.pydantic=failed",
@@ -7139,7 +7139,7 @@
             "json": "NOT_SUPPORTED",
             "pydantic": "NOT_SUPPORTED",
             "text": "NOT_SUPPORTED",
-            "video": "NOT_SUPPORTED"
+            "video": "SUPPORTED"
           },
           "parameters": {
             "max_tokens": "NOT_SUPPORTED",
@@ -7175,7 +7175,7 @@
             "feature_config::output_format.json=failed",
             "feature_config::output_format.pydantic=failed",
             "feature_config::output_format.text=failed",
-            "feature_config::output_format.video=failed",
+            "feature_config::output_format.video=success",
             "feature_config::parameters.max_tokens=failed",
             "feature_config::parameters.n=failed",
             "feature_config::parameters.stop=failed",
