@@ -24,58 +24,6 @@ _ASSETS_DIR = os.path.join(os.path.dirname(__file__), 'refactoring_test_assets')
 OUTPUT_DIR = os.path.expanduser('~/temp')
 OUTPUT_FILE = os.path.join(OUTPUT_DIR, 'uploaded_media_contents.json')
 
-_PROVIDER_MODELS = {
-    'gemini': ('gemini', 'gemini-2.5-flash'),
-    'claude': ('claude', 'claude-sonnet-4-6'),
-    'openai': ('openai', 'gpt-4o'),
-    'mistral': ('mistral', 'mistral-small-latest'),
-}
-
-
-def _get_model_config(
-    provider, model, provider_model_identifier,
-    input_format=None,
-):
-  S = types.FeatureSupportType.SUPPORTED
-  NS = types.FeatureSupportType.NOT_SUPPORTED
-  if input_format is None:
-    input_format = ['text', 'document']
-  return types.ProviderModelConfig(
-      provider_model=types.ProviderModelType(
-          provider=provider, model=model,
-          provider_model_identifier=provider_model_identifier),
-      pricing=types.ProviderModelPricingType(
-          input_token_cost=1.0, output_token_cost=2.0),
-      metadata=types.ProviderModelMetadataType(is_recommended=True),
-      features=types.FeatureConfigType(
-          prompt=S, messages=S, system_prompt=S,
-          parameters=types.ParameterConfigType(
-              temperature=S, max_tokens=S, stop=S, n=NS, thinking=S),
-          tools=types.ToolConfigType(web_search=NS),
-          input_format=types.InputFormatConfigType(
-              text=S if 'text' in input_format else NS,
-              image=S if 'image' in input_format else NS,
-              document=S if 'document' in input_format else NS,
-              audio=S if 'audio' in input_format else NS,
-              video=S if 'video' in input_format else NS,
-              json=NS, pydantic=NS),
-          output_format=types.OutputFormatConfigType(
-              text=S, json=NS, pydantic=NS, image=NS,
-              audio=NS, video=NS),
-      ))
-
-
-def _register_models():
-  client = px.get_default_proxai_client()
-  client.models.model_config.unregister_all_models()
-  for provider, (prov, model) in _PROVIDER_MODELS.items():
-    if provider == 'gemini':
-      fmt = ['text', 'document', 'image', 'audio', 'video']
-    else:
-      fmt = ['text', 'document', 'image']
-    client.models.model_config.register_provider_model_config(
-        _get_model_config(prov, model, model, input_format=fmt))
-
 
 def _assert_cat_in_text(result):
   output = result.result.output_text.lower()
@@ -536,10 +484,9 @@ def test_download_mistral():
 
 # --- Generate with manual upload tests ---
 
-def _test_generate_manual(provider, asset_file, mime_type, prompt, label):
-  prov, model = _PROVIDER_MODELS[provider]
+def _test_generate_manual(provider_model, asset_file, mime_type, prompt, label):
+  provider = provider_model[0]
   print(f'\n=== Generate (manual upload): {provider} {asset_file} ===')
-  _register_models()
   media = px.MessageContent(path=_asset(asset_file), media_type=mime_type)
   px.files.upload(media=media, providers=[provider])
   _save_result(media, label)
@@ -553,7 +500,7 @@ def _test_generate_manual(provider, asset_file, mime_type, prompt, label):
               px.MessageContent(type=px.ContentType.TEXT, text=prompt),
           ],
       }],
-      provider_model=(prov, model))
+      provider_model=provider_model)
   print(f'  Response: {result.result.output_text[:80]}...')
   _assert_cat_in_text(result)
 
@@ -577,38 +524,38 @@ def _test_generate_manual_upload_fail(provider, asset_file, mime_type):
 # PDF: all 4 providers
 def test_generate_manual_gemini_pdf():
   _test_generate_manual(
-      'gemini', 'cat.pdf', 'application/pdf',
+      ('gemini', 'gemini-2.5-flash'), 'cat.pdf', 'application/pdf',
       'What is inside this document?', 'generate_manual_gemini_pdf')
 
 def test_generate_manual_claude_pdf():
   _test_generate_manual(
-      'claude', 'cat.pdf', 'application/pdf',
+      ('claude', 'sonnet-4.6'), 'cat.pdf', 'application/pdf',
       'What is inside this document?', 'generate_manual_claude_pdf')
 
 def test_generate_manual_openai_pdf():
   _test_generate_manual(
-      'openai', 'cat.pdf', 'application/pdf',
+      ('openai', 'gpt-4o'), 'cat.pdf', 'application/pdf',
       'What is inside this document?', 'generate_manual_openai_pdf')
 
 def test_generate_manual_mistral_pdf():
   _test_generate_manual(
-      'mistral', 'cat.pdf', 'application/pdf',
+      ('mistral', 'mistral-small-latest'), 'cat.pdf', 'application/pdf',
       'What is inside this document?', 'generate_manual_mistral_pdf')
 
 # Markdown: gemini, openai, mistral succeed; claude fails
 def test_generate_manual_gemini_md():
   _test_generate_manual(
-      'gemini', 'cat.md', 'text/markdown',
+      ('gemini', 'gemini-2.5-flash'), 'cat.md', 'text/markdown',
       'What is inside this document?', 'generate_manual_gemini_md')
 
 def test_generate_manual_openai_md():
   _test_generate_manual(
-      'openai', 'cat.md', 'text/markdown',
+      ('openai', 'gpt-4o'), 'cat.md', 'text/markdown',
       'What is inside this document?', 'generate_manual_openai_md')
 
 def test_generate_manual_mistral_md():
   _test_generate_manual(
-      'mistral', 'cat.md', 'text/markdown',
+      ('mistral', 'mistral-small-latest'), 'cat.md', 'text/markdown',
       'What is inside this document?', 'generate_manual_mistral_md')
 
 def test_generate_manual_claude_md_fail():
@@ -618,17 +565,17 @@ def test_generate_manual_claude_md_fail():
 # Image: gemini, claude, mistral succeed; openai fails
 def test_generate_manual_gemini_image():
   _test_generate_manual(
-      'gemini', 'cat.jpeg', 'image/jpeg',
+      ('gemini', 'gemini-2.5-flash'), 'cat.jpeg', 'image/jpeg',
       'What is in this image?', 'generate_manual_gemini_image')
 
 def test_generate_manual_claude_image():
   _test_generate_manual(
-      'claude', 'cat.jpeg', 'image/jpeg',
+      ('claude', 'sonnet-4.6'), 'cat.jpeg', 'image/jpeg',
       'What is in this image?', 'generate_manual_claude_image')
 
 def test_generate_manual_mistral_image():
   _test_generate_manual(
-      'mistral', 'cat.jpeg', 'image/jpeg',
+      ('mistral', 'mistral-small-latest'), 'cat.jpeg', 'image/jpeg',
       'What is in this image?', 'generate_manual_mistral_image')
 
 def test_generate_manual_openai_image_fail():
@@ -638,7 +585,7 @@ def test_generate_manual_openai_image_fail():
 # Audio: gemini succeeds; claude, openai, mistral fail
 def test_generate_manual_gemini_audio():
   _test_generate_manual(
-      'gemini', 'cat.mp3', 'audio/mpeg',
+      ('gemini', 'gemini-2.5-flash'), 'cat.mp3', 'audio/mpeg',
       'What is this audio about?', 'generate_manual_gemini_audio')
 
 def test_generate_manual_claude_audio_fail():
@@ -656,7 +603,7 @@ def test_generate_manual_mistral_audio_fail():
 # Video: gemini succeeds; claude, openai, mistral fail
 def test_generate_manual_gemini_video():
   _test_generate_manual(
-      'gemini', 'cat.mp4', 'video/mp4',
+      ('gemini', 'gemini-2.5-flash'), 'cat.mp4', 'video/mp4',
       'What is in this video?', 'generate_manual_gemini_video')
 
 def test_generate_manual_claude_video_fail():
@@ -674,10 +621,9 @@ def test_generate_manual_mistral_video_fail():
 
 # --- Generate with auto upload tests ---
 
-def _test_generate_auto(provider, asset_file, mime_type, prompt):
-  prov, model = _PROVIDER_MODELS[provider]
+def _test_generate_auto(provider_model, asset_file, mime_type, prompt):
+  provider = provider_model[0]
   print(f'\n=== Generate (auto upload): {provider} {asset_file} ===')
-  _register_models()
   media = px.MessageContent(path=_asset(asset_file), media_type=mime_type)
 
   result = px.generate(
@@ -688,7 +634,7 @@ def _test_generate_auto(provider, asset_file, mime_type, prompt):
               px.MessageContent(type=px.ContentType.TEXT, text=prompt),
           ],
       }],
-      provider_model=(prov, model))
+      provider_model=provider_model)
   print(f'  Response: {result.result.output_text[:80]}...')
   _assert_cat_in_text(result)
 
@@ -702,22 +648,22 @@ def _test_generate_auto(provider, asset_file, mime_type, prompt):
 
 def test_generate_auto_gemini_pdf():
   _test_generate_auto(
-      'gemini', 'cat.pdf', 'application/pdf',
+      ('gemini', 'gemini-2.5-flash'), 'cat.pdf', 'application/pdf',
       'What is inside this document?')
 
 def test_generate_auto_claude_pdf():
   _test_generate_auto(
-      'claude', 'cat.pdf', 'application/pdf',
+      ('claude', 'sonnet-4.6'), 'cat.pdf', 'application/pdf',
       'What is inside this document?')
 
 def test_generate_auto_openai_pdf():
   _test_generate_auto(
-      'openai', 'cat.pdf', 'application/pdf',
+      ('openai', 'gpt-4o'), 'cat.pdf', 'application/pdf',
       'What is inside this document?')
 
 def test_generate_auto_mistral_pdf():
   _test_generate_auto(
-      'mistral', 'cat.pdf', 'application/pdf',
+      ('mistral', 'mistral-small-latest'), 'cat.pdf', 'application/pdf',
       'What is inside this document?')
 
 
@@ -730,19 +676,14 @@ def _create_cached_client():
   if os.path.exists(_CACHE_PATH):
     shutil.rmtree(_CACHE_PATH)
   os.makedirs(_CACHE_PATH, exist_ok=True)
-  client = px.Client(
+  return px.Client(
       cache_options=px.CacheOptions(
           cache_path=_CACHE_PATH,
           unique_response_limit=1))
-  client.models.model_config.unregister_all_models()
-  for provider, (prov, model) in _PROVIDER_MODELS.items():
-    client.models.model_config.register_provider_model_config(
-        _get_model_config(prov, model, model))
-  return client
 
 
-def _test_cache_with_file_upload(provider):
-  prov, model = _PROVIDER_MODELS[provider]
+def _test_cache_with_file_upload(provider_model):
+  provider = provider_model[0]
   print(f'\n=== Cache with file upload: {provider} ===')
   client = _create_cached_client()
 
@@ -760,7 +701,7 @@ def _test_cache_with_file_upload(provider):
                   text='What is inside this document?'),
           ],
       }],
-      provider_model=(prov, model))
+      provider_model=provider_model)
   print(f'  Call 1: {result_1.result.output_text[:60]}...')
   assert result_1.connection.result_source == types.ResultSource.PROVIDER
   _assert_cat_in_text(result_1)
@@ -782,7 +723,7 @@ def _test_cache_with_file_upload(provider):
                   text='What is inside this document?'),
           ],
       }],
-      provider_model=(prov, model))
+      provider_model=provider_model)
   print(f'  Call 2: {result_2.result.output_text[:60]}...')
   assert result_2.connection.result_source == types.ResultSource.CACHE
   print('  Cache hit OK')
@@ -800,7 +741,7 @@ def _test_cache_with_file_upload(provider):
                   text='What is inside this document?'),
           ],
       }],
-      provider_model=(prov, model))
+      provider_model=provider_model)
   print(f'  Call 3 (new object): {result_3.result.output_text[:60]}...')
   assert result_3.connection.result_source == types.ResultSource.CACHE
   print('  Cache hit with new object OK')
@@ -820,16 +761,16 @@ def _test_cache_with_file_upload(provider):
 
 
 def test_cache_gemini():
-  _test_cache_with_file_upload('gemini')
+  _test_cache_with_file_upload(('gemini', 'gemini-2.5-flash'))
 
 def test_cache_claude():
-  _test_cache_with_file_upload('claude')
+  _test_cache_with_file_upload(('claude', 'sonnet-4.6'))
 
 def test_cache_openai():
-  _test_cache_with_file_upload('openai')
+  _test_cache_with_file_upload(('openai', 'gpt-4o'))
 
 def test_cache_mistral():
-  _test_cache_with_file_upload('mistral')
+  _test_cache_with_file_upload(('mistral', 'mistral-small-latest'))
 
 
 # --- Serialization round-trip test ---

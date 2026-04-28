@@ -1,268 +1,12 @@
 import argparse
 import os
 import subprocess
-from tabnanny import verbose
 import tempfile
 import urllib.request
 from pprint import pprint
 from pydantic import BaseModel
 import proxai as px
 import proxai.types as types
-
-
-def _get_model_config(
-    provider: str,
-    model: str,
-    provider_model_identifier: str,
-    web_search: bool = False,
-    input_format: list[str] | None = None,
-    output_format: list[types.OutputFormatType] = [types.OutputFormatType.TEXT],
-):
-  """Get a model config for a given parameters."""
-  S = types.FeatureSupportType.SUPPORTED
-  NS = types.FeatureSupportType.NOT_SUPPORTED
-  if input_format is None:
-    input_format = ['text']
-
-  web_search_supported = S if web_search else NS
-  text_supported = (S if types.OutputFormatType.TEXT in output_format else NS)
-  json_supported = (S if types.OutputFormatType.JSON in output_format else NS)
-  pydantic_supported = (
-      S if types.OutputFormatType.PYDANTIC in output_format else NS
-  )
-  image_supported = (S if types.OutputFormatType.IMAGE in output_format else NS)
-  audio_supported = (S if types.OutputFormatType.AUDIO in output_format else NS)
-  video_supported = (S if types.OutputFormatType.VIDEO in output_format else NS)
-  return types.ProviderModelConfig(
-      provider_model=types.ProviderModelType(
-          provider=provider, model=model,
-          provider_model_identifier=provider_model_identifier
-      ), pricing=types.ProviderModelPricingType(
-          input_token_cost=1.0, output_token_cost=2.0
-      ), metadata=types.ProviderModelMetadataType(is_recommended=True),
-      features=types.FeatureConfigType(
-          prompt=types.FeatureSupportType.SUPPORTED,
-          messages=types.FeatureSupportType.SUPPORTED,
-          system_prompt=types.FeatureSupportType.SUPPORTED,
-          parameters=types.ParameterConfigType(
-              temperature=types.FeatureSupportType.SUPPORTED,
-              max_tokens=types.FeatureSupportType.SUPPORTED,
-              stop=types.FeatureSupportType.SUPPORTED,
-              n=types.FeatureSupportType.NOT_SUPPORTED,
-              thinking=types.FeatureSupportType.SUPPORTED,
-          ),
-          tools=types.ToolConfigType(web_search=web_search_supported,),
-          input_format=types.InputFormatConfigType(
-              text=S if 'text' in input_format else NS,
-              image=S if 'image' in input_format else NS,
-              document=S if 'document' in input_format else NS,
-              audio=S if 'audio' in input_format else NS,
-              video=S if 'video' in input_format else NS,
-              json=S if 'json' in input_format else NS,
-              pydantic=S if 'pydantic' in input_format else NS,
-          ),
-          output_format=types.OutputFormatConfigType(
-              text=text_supported,
-              json=json_supported,
-              pydantic=pydantic_supported,
-              image=image_supported,
-              audio=audio_supported,
-              video=video_supported,
-          ),
-      )
-  )
-
-
-def register_models(client: px.Client):
-  client.models.model_config.unregister_all_models()
-
-  client.models.model_config.register_provider_model_config(
-      _get_model_config(
-          provider='mock_failing_provider',
-          model='mock_failing_model',
-          provider_model_identifier='mock_failing_model',
-          web_search=False,
-          output_format=[
-              types.OutputFormatType.TEXT, types.OutputFormatType.JSON,
-              types.OutputFormatType.PYDANTIC
-          ],
-      )
-  )
-
-  client.models.model_config.register_provider_model_config(
-      _get_model_config(
-          provider='openai',
-          model='gpt-4o',
-          provider_model_identifier='gpt-4o',
-          web_search=True,
-          input_format=['text', 'image', 'document'],
-          output_format=[
-              types.OutputFormatType.TEXT, types.OutputFormatType.JSON,
-              types.OutputFormatType.PYDANTIC
-          ],
-      )
-  )
-  client.models.model_config.register_provider_model_config(
-      _get_model_config(
-          provider='openai',
-          model='o3',
-          provider_model_identifier='o3',
-          web_search=False,
-          input_format=['text', 'image', 'document'],
-          output_format=[
-              types.OutputFormatType.TEXT, types.OutputFormatType.JSON,
-              types.OutputFormatType.PYDANTIC
-          ],
-      )
-  )
-
-  client.models.model_config.register_provider_model_config(
-      _get_model_config(
-          provider='openai',
-          model='dall-e-3',
-          provider_model_identifier='dall-e-3',
-          web_search=False,
-          output_format=[types.OutputFormatType.IMAGE],
-      )
-  )
-
-  client.models.model_config.register_provider_model_config(
-      _get_model_config(
-          provider='openai',
-          model='tts-1',
-          provider_model_identifier='tts-1',
-          web_search=False,
-          output_format=[types.OutputFormatType.AUDIO],
-      )
-  )
-
-  client.models.model_config.register_provider_model_config(
-      _get_model_config(
-          provider='openai',
-          model='sora-2',
-          provider_model_identifier='sora-2',
-          web_search=False,
-          output_format=[types.OutputFormatType.VIDEO],
-      )
-  )
-
-  client.models.model_config.register_provider_model_config(
-      _get_model_config(
-          provider='gemini',
-          model='gemini-3-flash-preview',
-          provider_model_identifier='gemini-3-flash-preview',
-          web_search=True,
-          input_format=['text', 'image', 'document', 'audio', 'video'],
-          output_format=[
-              types.OutputFormatType.TEXT, types.OutputFormatType.JSON,
-              types.OutputFormatType.PYDANTIC
-          ],
-      )
-  )
-
-  client.models.model_config.register_provider_model_config(
-      _get_model_config(
-          provider='gemini',
-          model='gemini-2.5-flash',
-          provider_model_identifier='gemini-2.5-flash',
-          web_search=False,
-          input_format=['text', 'image', 'document', 'audio', 'video'],
-          output_format=[
-              types.OutputFormatType.TEXT, types.OutputFormatType.JSON,
-              types.OutputFormatType.PYDANTIC
-          ],
-      )
-  )
-
-  client.models.model_config.register_provider_model_config(
-      _get_model_config(
-          provider='gemini',
-          model='gemini-2.5-flash-image',
-          provider_model_identifier='gemini-2.5-flash-image',
-          web_search=False,
-          output_format=[types.OutputFormatType.IMAGE],
-      )
-  )
-
-  client.models.model_config.register_provider_model_config(
-      _get_model_config(
-          provider='gemini',
-          model='gemini-2.5-flash-preview-tts',
-          provider_model_identifier='gemini-2.5-flash-preview-tts',
-          web_search=False,
-          output_format=[types.OutputFormatType.AUDIO],
-      )
-  )
-
-  client.models.model_config.register_provider_model_config(
-      _get_model_config(
-          provider='gemini',
-          model='veo-3.1-generate-preview',
-          provider_model_identifier='veo-3.1-generate-preview',
-          web_search=False,
-          output_format=[types.OutputFormatType.VIDEO],
-      )
-  )
-
-  client.models.model_config.register_provider_model_config(
-      _get_model_config(
-          provider='claude',
-          model='claude-sonnet-4-6',
-          provider_model_identifier='claude-sonnet-4-6',
-          web_search=True,
-          input_format=['text', 'image', 'document'],
-          output_format=[
-              types.OutputFormatType.TEXT, types.OutputFormatType.JSON,
-              types.OutputFormatType.PYDANTIC
-          ],
-      )
-  )
-
-  client.models.model_config.register_provider_model_config(
-      _get_model_config(
-          provider='claude',
-          model='claude-opus-4-6',
-          provider_model_identifier='claude-opus-4-6',
-          web_search=False,
-          input_format=['text', 'image', 'document'],
-          output_format=[
-              types.OutputFormatType.TEXT, types.OutputFormatType.JSON,
-              types.OutputFormatType.PYDANTIC
-          ],
-      )
-  )
-
-  client.models.model_config.register_provider_model_config(
-      _get_model_config(
-          provider='deepseek',
-          model='deepseek-chat',
-          provider_model_identifier='deepseek-chat',
-          web_search=False,
-          output_format=[
-              types.OutputFormatType.TEXT, types.OutputFormatType.JSON,
-              types.OutputFormatType.PYDANTIC
-          ],
-      )
-  )
-
-  client.models.model_config.register_provider_model_config(
-      _get_model_config(
-          provider='deepseek',
-          model='deepseek-reasoner',
-          provider_model_identifier='deepseek-reasoner',
-          web_search=False,
-          output_format=[
-              types.OutputFormatType.TEXT, types.OutputFormatType.JSON,
-              types.OutputFormatType.PYDANTIC
-          ],
-      )
-  )
-
-  client.models.model_config.override_default_model_priority_list([
-      px.models.get_model('gemini', 'gemini-3-flash-preview'),
-      px.models.get_model('openai', 'gpt-4o'),
-      px.models.get_model('claude', 'claude-sonnet-4-6'),
-  ])
 
 
 def list_models_examples():
@@ -283,6 +27,7 @@ def list_models_examples():
   text_names = _names(text_models)
   assert 'gpt-4o' in text_names
   assert 'gemini-2.5-flash' in text_names
+  assert 'sonnet-4.6' in text_names
   assert 'dall-e-3' not in text_names
   assert 'tts-1' not in text_names
   assert 'sora-2' not in text_names
@@ -290,7 +35,8 @@ def list_models_examples():
   print()
   print('>> px.models.list_models(output_format=...)')
   image_models = px.models.list_models(
-      output_format=types.OutputFormatType.IMAGE
+      output_format=types.OutputFormatType.IMAGE,
+      recommended_only=False,
   )
   print(f'    IMAGE:    {_model_names(image_models)}')
   image_names = _names(image_models)
@@ -299,17 +45,21 @@ def list_models_examples():
   assert 'gpt-4o' not in image_names
 
   audio_models = px.models.list_models(
-      output_format=types.OutputFormatType.AUDIO
+      output_format=types.OutputFormatType.AUDIO,
+      recommended_only=False,
   )
   print(f'    AUDIO:    {_model_names(audio_models)}')
   assert 'tts-1' in _names(audio_models)
+  assert 'gemini-2.5-flash-tts' in _names(audio_models)
   assert 'gpt-4o' not in _names(audio_models)
 
   video_models = px.models.list_models(
-      output_format=types.OutputFormatType.VIDEO
+      output_format=types.OutputFormatType.VIDEO,
+      recommended_only=False,
   )
   print(f'    VIDEO:    {_model_names(video_models)}')
   assert 'sora-2' in _names(video_models)
+  assert 'veo-3.1-generate' in _names(video_models)
   assert 'gpt-4o' not in _names(video_models)
 
   json_models = px.models.list_models(output_format=types.OutputFormatType.JSON)
@@ -317,7 +67,6 @@ def list_models_examples():
   json_names = _names(json_models)
   assert 'gpt-4o' in json_names
   assert 'dall-e-3' not in json_names
-  assert json_names == text_names
 
   # --- input_format filtering ---
   print()
@@ -326,20 +75,22 @@ def list_models_examples():
   print(f'    IMAGE:    {_model_names(image_input)}')
   image_input_names = _names(image_input)
   assert 'gpt-4o' in image_input_names
-  assert 'claude-sonnet-4-6' in image_input_names
-  assert 'gemini-3-flash-preview' in image_input_names
-  assert 'deepseek-chat' not in image_input_names
+  assert 'sonnet-4.6' in image_input_names
+  assert 'gemini-3-flash' in image_input_names
+  assert 'deepseek-v4-flash' not in image_input_names
   assert 'dall-e-3' not in image_input_names
 
   audio_input = px.models.list_models(input_format=types.InputFormatType.AUDIO)
   print(f'    AUDIO:    {_model_names(audio_input)}')
   audio_input_names = _names(audio_input)
-  assert 'gemini-3-flash-preview' in audio_input_names
+  assert 'gemini-3-flash' in audio_input_names
   assert 'gpt-4o' not in audio_input_names
 
   doc_input = px.models.list_models(input_format=types.InputFormatType.DOCUMENT)
   print(f'    DOCUMENT: {_model_names(doc_input)}')
-  assert _names(doc_input) == image_input_names
+  doc_input_names = _names(doc_input)
+  assert 'gpt-4o' in doc_input_names
+  assert 'sonnet-4.6' in doc_input_names
 
   # --- combined input + output filtering ---
   print()
@@ -352,8 +103,8 @@ def list_models_examples():
   print(f'    Result:   {_model_names(image_in_json_out)}')
   combined_names = _names(image_in_json_out)
   assert 'gpt-4o' in combined_names
-  assert 'gemini-3-flash-preview' in combined_names
-  assert 'deepseek-chat' not in combined_names
+  assert 'gemini-3-flash' in combined_names
+  assert 'deepseek-v4-flash' not in combined_names
   assert 'dall-e-3' not in combined_names
 
   # --- tool_tags filtering ---
@@ -363,10 +114,10 @@ def list_models_examples():
   print(f'    WEB_SEARCH: {_model_names(web_search_models)}')
   ws_names = _names(web_search_models)
   assert 'gpt-4o' in ws_names
-  assert 'gemini-3-flash-preview' in ws_names
-  assert 'claude-sonnet-4-6' in ws_names
-  assert 'o3' not in ws_names
-  assert 'deepseek-chat' not in ws_names
+  assert 'gemini-3-flash' in ws_names
+  assert 'sonnet-4.6' in ws_names
+  assert 'deepseek-v4-flash' not in ws_names
+  assert 'grok-3' not in ws_names
 
   # --- feature_tags filtering ---
   print()
@@ -375,8 +126,10 @@ def list_models_examples():
       feature_tags=types.FeatureTag.THINKING
   )
   print(f'    THINKING: {_model_names(thinking_models)}')
-  assert len(thinking_models) > 0
-  assert 'gpt-4o' in _names(thinking_models)
+  thinking_names = _names(thinking_models)
+  assert 'o3' in thinking_names
+  assert 'opus-4.6' in thinking_names
+  assert 'gpt-4o' not in thinking_names
 
   # --- list_providers ---
   print()
@@ -398,7 +151,7 @@ def list_models_examples():
 
   gemini_models = px.models.list_provider_models('gemini')
   print(f'    gemini: {_model_names(gemini_models)}')
-  assert 'gemini-3-flash-preview' in _names(gemini_models)
+  assert 'gemini-3-flash' in _names(gemini_models)
 
   # --- get_model ---
   print()
@@ -422,7 +175,6 @@ def check_health_use():
           timeout=1,
       ),
   )
-  register_models(client)
   client.models.check_health(verbose=True)
 
 
@@ -440,7 +192,7 @@ def plain_alias_function_use():
   print('Gemini:')
   response = px.generate_text(
       prompt='What is the capital of France and which AI provider are you?',
-      provider_model=('gemini', 'gemini-3-flash-preview')
+      provider_model=('gemini', 'gemini-3-flash')
   )
   print(response)
 
@@ -455,7 +207,7 @@ def plain_alias_function_use():
   print('Gemini:')
   response = px.generate_json(
       prompt='Give me the list of biggest cities in France.',
-      provider_model=('gemini', 'gemini-3-flash-preview')
+      provider_model=('gemini', 'gemini-3-flash')
   )
   pprint(response)
 
@@ -475,7 +227,7 @@ def plain_alias_function_use():
   response = px.generate_pydantic(
       prompt='Give me the list of biggest cities in France.',
       output_format=BiggestCities,
-      provider_model=('gemini', 'gemini-3-flash-preview')
+      provider_model=('gemini', 'gemini-3-flash')
   )
   print(response)
 
@@ -546,7 +298,7 @@ def set_model_use():
   assert 'openai' in response.lower()
 
   print('Gemini:')
-  px.set_model(('gemini', 'gemini-3-flash-preview'))
+  px.set_model(('gemini', 'gemini-3-flash'))
   response = px.generate_text(prompt='Which provider model are you?')
   print(response)
   assert 'gemini' in response.lower() or 'google' in response.lower()
@@ -580,8 +332,6 @@ def main():
       '--test', default='all',
       help=f'Test to run: {", ".join(test_names)}, or "all"')
   args = parser.parse_args()
-
-  register_models(px.get_default_proxai_client())
 
   if args.test == 'all':
     for name, test_fn in TEST_SEQUENCE:
