@@ -1,23 +1,27 @@
+from __future__ import annotations
+
+import base64
 import functools
-from collections.abc import Callable
-from typing import Any
+import os
 
 from mistralai import Mistral
-from mistralai.models import ResponseFormat
+from mistralai.models.websearchtool import WebSearchTool
 
-import proxai.connectors.model_connector as model_connector
+import proxai.connectors.provider_connector as provider_connector
 import proxai.connectors.providers.mistral_mock as mistral_mock
 import proxai.types as types
+import proxai.chat.message_content as message_content
+
+FeatureConfigType = types.FeatureConfigType
+FeatureSupportType = types.FeatureSupportType
+InputFormatConfigType = types.InputFormatConfigType
+ParameterConfigType = types.ParameterConfigType
+ToolConfigType = types.ToolConfigType
+OutputFormatConfigType = types.OutputFormatConfigType
 
 
-class MistralConnector(model_connector.ProviderModelConnector):
+class MistralConnector(provider_connector.ProviderConnector):
   """Connector for Mistral AI models."""
-
-  def get_provider_name(self):
-    return 'mistral'
-
-  def get_required_provider_token_names(self) -> list[str]:
-    return ['MISTRAL_API_KEY']
 
   def init_model(self):
     return Mistral(api_key=self.provider_token_value_map['MISTRAL_API_KEY'])
@@ -25,169 +29,446 @@ class MistralConnector(model_connector.ProviderModelConnector):
   def init_mock_model(self):
     return mistral_mock.MistralMock()
 
-  def _get_api_call_function(self, chosen_endpoint: str) -> Callable:
-    if chosen_endpoint == 'chat.complete':
-      return functools.partial(self.api.chat.complete)
-    elif chosen_endpoint == 'chat.parse':
-      return functools.partial(self.api.chat.parse)
-    else:
-      raise Exception(f'Invalid endpoint: {chosen_endpoint}')
+  PROVIDER_NAME = 'mistral'
 
-  def prompt_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    return functools.partial(
-        query_function, messages=[{
-            'role': 'user',
-            'content': query_record.prompt
-        }]
-    )
+  PROVIDER_API_KEYS = ['MISTRAL_API_KEY']
 
-  def messages_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    # Note: Mistral uses 'system', 'user', and 'assistant' as roles.
-    converted_messages = []
-    for message in query_record.messages:
-      if message['role'] == 'user':
-        converted_messages.append({
-            'role': 'user',
-            'content': message['content']
-        })
-      elif message['role'] == 'assistant':
-        converted_messages.append({
-            'role': 'assistant',
-            'content': message['content']
-        })
+  ENDPOINT_PRIORITY = [
+      'chat.complete',
+      'chat.parse',
+      'beta.conversations.start',
+  ]
 
-    messages = query_function.keywords.get('messages')
-    if messages is None:
-      return functools.partial(query_function, messages=converted_messages)
-    else:
-      messages = converted_messages + messages
-      return functools.partial(query_function, messages=messages)
+  ENDPOINT_CONFIG = {
+      'chat.complete': FeatureConfigType(
+          prompt=FeatureSupportType.SUPPORTED,
+          messages=FeatureSupportType.SUPPORTED,
+          system_prompt=FeatureSupportType.SUPPORTED,
+          add_system_to_messages=True,
+          parameters=ParameterConfigType(
+              max_tokens=FeatureSupportType.SUPPORTED,
+              temperature=FeatureSupportType.SUPPORTED,
+              stop=FeatureSupportType.SUPPORTED,
+              n=FeatureSupportType.SUPPORTED,
+              thinking=FeatureSupportType.BEST_EFFORT,
+          ),
+          tools=ToolConfigType(
+              web_search=FeatureSupportType.NOT_SUPPORTED,
+          ),
+          input_format=InputFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
+              image=FeatureSupportType.SUPPORTED,
+              document=FeatureSupportType.SUPPORTED,
+              json=FeatureSupportType.BEST_EFFORT,
+              pydantic=FeatureSupportType.BEST_EFFORT,
+          ),
+          output_format=OutputFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
+              json=FeatureSupportType.SUPPORTED,
+              pydantic=FeatureSupportType.BEST_EFFORT,
+          ),
+      ),
+      'chat.parse': FeatureConfigType(
+          prompt=FeatureSupportType.SUPPORTED,
+          messages=FeatureSupportType.SUPPORTED,
+          system_prompt=FeatureSupportType.SUPPORTED,
+          add_system_to_messages=True,
+          parameters=ParameterConfigType(
+              max_tokens=FeatureSupportType.SUPPORTED,
+              temperature=FeatureSupportType.SUPPORTED,
+              stop=FeatureSupportType.SUPPORTED,
+              n=FeatureSupportType.SUPPORTED,
+              thinking=FeatureSupportType.BEST_EFFORT,
+          ),
+          tools=ToolConfigType(
+              web_search=FeatureSupportType.NOT_SUPPORTED,
+          ),
+          input_format=InputFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
+              image=FeatureSupportType.SUPPORTED,
+              document=FeatureSupportType.SUPPORTED,
+              json=FeatureSupportType.BEST_EFFORT,
+              pydantic=FeatureSupportType.BEST_EFFORT,
+          ),
+          output_format=OutputFormatConfigType(
+              pydantic=FeatureSupportType.SUPPORTED,
+          ),
+      ),
+      'beta.conversations.start': FeatureConfigType(
+          prompt=FeatureSupportType.SUPPORTED,
+          messages=FeatureSupportType.BEST_EFFORT,
+          system_prompt=FeatureSupportType.SUPPORTED,
+          parameters=ParameterConfigType(
+              max_tokens=FeatureSupportType.SUPPORTED,
+              temperature=FeatureSupportType.SUPPORTED,
+              stop=FeatureSupportType.SUPPORTED,
+              n=FeatureSupportType.NOT_SUPPORTED,
+              thinking=FeatureSupportType.BEST_EFFORT,
+          ),
+          tools=ToolConfigType(
+              web_search=FeatureSupportType.SUPPORTED,
+          ),
+          input_format=InputFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
+          ),
+          output_format=OutputFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
+              json=FeatureSupportType.BEST_EFFORT,
+              pydantic=FeatureSupportType.BEST_EFFORT,
+          ),
+      ),
+  }
 
-  def system_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    messages = query_function.keywords.get('messages')
-    if messages is None:
-      raise Exception('Set messages parameter before adding system message.')
-    messages.insert(0, {'role': 'system', 'content': query_record.system})
-    return functools.partial(query_function, messages=messages)
+  @staticmethod
+  def _build_data_uri(part_dict):
+    """Build a ``data:<mime>;base64,...`` URI from a content block."""
+    mime_type = part_dict.get('media_type', 'application/octet-stream')
+    if 'data' in part_dict:
+      return f"data:{mime_type};base64,{part_dict['data']}"
+    if 'path' in part_dict:
+      with open(part_dict['path'], 'rb') as f:
+        encoded = base64.b64encode(f.read()).decode('utf-8')
+      return f"data:{mime_type};base64,{encoded}"
+    return None
 
-  def max_tokens_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    return functools.partial(query_function, max_tokens=query_record.max_tokens)
+  @staticmethod
+  def _to_mistral_part(part_dict):
+    """Convert a ProxAI content block to a Mistral chat content part.
 
-  def temperature_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    return functools.partial(
-        query_function, temperature=query_record.temperature
-    )
+    Type mapping:
+      text     → ``{"type": "text", "text": "..."}``
+      image    → ``{"type": "image_url", "image_url": {"url": "..."}}``
+      document → ``{"type": "document_url", "document_url": "..."}``
+                 Accepts all document types natively (PDF, markdown,
+                 CSV, etc.).
 
-  def stop_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    return functools.partial(query_function, stop=query_record.stop)
+    Returns None for unsupported content types.
+    """
+    # File API reference (pre-uploaded via px.files.upload)
+    file_ids = part_dict.get('provider_file_api_ids', {})
+    if 'mistral' in file_ids:
+      return {'type': 'file', 'file_id': file_ids['mistral']}
+    content_type = part_dict.get('type')
+    # Text
+    if content_type == 'text':
+      return {'type': 'text', 'text': part_dict['text']}
+    # Image: URL or inline data URI
+    if content_type == 'image':
+      if 'source' in part_dict:
+        url = part_dict['source']
+      else:
+        url = MistralConnector._build_data_uri(part_dict)
+      if url is None:
+        return None
+      return {'type': 'image_url', 'image_url': {'url': url}}
+    # Document: URL or inline data URI
+    if content_type == 'document':
+      if 'source' in part_dict:
+        doc_url = part_dict['source']
+      else:
+        doc_url = MistralConnector._build_data_uri(part_dict)
+      if doc_url is None:
+        return None
+      return {'type': 'document_url', 'document_url': doc_url}
+    return None
 
-  def json_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ):
-    return functools.partial(
-        query_function, response_format=ResponseFormat(type='json_object')
-    )
+  @staticmethod
+  def _convert_messages(messages):
+    """Convert ProxAI message content blocks to Mistral API format.
 
-  def json_schema_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ):
-    return functools.partial(
-        query_function, response_format=query_record.response_format.value
-    )
+    String content is passed through unchanged. List content is
+    converted block-by-block; blocks where the converter returns
+    None are dropped.
+    """
+    converted = []
+    for message in messages:
+      if isinstance(message['content'], str):
+        converted.append(message)
+        continue
+      if isinstance(message['content'], list):
+        parts = []
+        for block in message['content']:
+          part = MistralConnector._to_mistral_part(block)
+          if part is not None:
+            parts.append(part)
+        converted.append({**message, 'content': parts})
+      else:
+        converted.append(message)
+    return converted
 
-  def pydantic_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ):
-    if query_record.chosen_endpoint == 'chat.complete':
-      raise Exception(
-          'Pydantic response format is not supported for '
-          'chat.complete. Code should never reach here.'
-      )
-    elif query_record.chosen_endpoint == 'chat.parse':
-      return functools.partial(
-          query_function,
-          response_format=query_record.response_format.value.class_value
-      )
+  def _add_common_params(self, call, query_record: types.QueryRecord):
+    """Add messages, system, and parameter kwargs to a Mistral chat call."""
+    if query_record.prompt is not None:
+      call = functools.partial(
+          call, messages=[{'role': 'user', 'content': query_record.prompt}])
 
-  def web_search_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ):
-    raise Exception('Web search is not supported for Mistral.')
+    if query_record.chat is not None:
+      messages = self._convert_messages(query_record.chat['messages'])
+      call = functools.partial(call, messages=messages)
 
-  def _extract_text_from_content(self, content) -> str:
-    # If content is already a string, return it directly
+    if query_record.parameters is not None:
+      if query_record.parameters.max_tokens is not None:
+        call = functools.partial(
+            call, max_tokens=query_record.parameters.max_tokens)
+
+      if query_record.parameters.temperature is not None:
+        call = functools.partial(
+            call, temperature=query_record.parameters.temperature)
+
+      if query_record.parameters.stop is not None:
+        call = functools.partial(call, stop=query_record.parameters.stop)
+
+      if query_record.parameters.n is not None:
+        call = functools.partial(call, n=query_record.parameters.n)
+
+    return call
+
+  def _parse_message_content(self, content) -> list:
+    """Parse a Mistral message.content value into MessageContent blocks.
+
+    Magistral reasoning models return a list of ThinkChunk/TextChunk objects;
+    standard models return a plain string. Both shapes land here.
+    """
     if isinstance(content, str):
-      return content
+      return [
+          message_content.MessageContent(
+              type=message_content.ContentType.TEXT,
+              text=content,
+          )
+      ]
 
-    # If content is a list of chunks, extract text from TextChunk objects
+    parsed = []
     if isinstance(content, list):
-      text_parts = []
       for chunk in content:
-        # Check for TextChunk (has type='text' and text attribute)
         chunk_type = getattr(chunk, 'type', None)
-        if chunk_type == 'text':
-          text = getattr(chunk, 'text', None)
-          if text:
-            text_parts.append(text)
-      return '\n'.join(text_parts) if text_parts else ''
+        if chunk_type == 'thinking':
+          inner = getattr(chunk, 'thinking', None) or []
+          text_parts = []
+          for inner_chunk in inner:
+            inner_text = getattr(inner_chunk, 'text', None)
+            if inner_text:
+              text_parts.append(inner_text)
+          parsed.append(
+              message_content.MessageContent(
+                  type=message_content.ContentType.THINKING,
+                  text='\n'.join(text_parts),
+              )
+          )
+        elif chunk_type == 'text':
+          text = getattr(chunk, 'text', None) or ''
+          parsed.append(
+              message_content.MessageContent(
+                  type=message_content.ContentType.TEXT,
+                  text=text,
+              )
+          )
+    return parsed
 
-    # Fallback: try to convert to string
-    return str(content) if content else ''
+  def _chat_complete_executor(
+      self,
+      query_record: types.QueryRecord) -> types.ExecutorResult:
+    create = functools.partial(self.api.chat.complete)
+    create = functools.partial(create, model=(
+        query_record.provider_model.provider_model_identifier
+    ))
 
-  def format_text_response_from_provider(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> str:
-    return self._extract_text_from_content(response.choices[0].message.content)
+    create = self._add_common_params(create, query_record)
 
-  def format_json_response_from_provider(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> dict:
-    return self._extract_json_from_text(
-        self._extract_text_from_content(response.choices[0].message.content)
-    )
+    if query_record.output_format.type == types.OutputFormatType.JSON:
+      create = functools.partial(
+          create, response_format={'type': 'json_object'})
 
-  def format_json_schema_response_from_provider(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> dict:
-    return self._extract_json_from_text(
-        self._extract_text_from_content(response.choices[0].message.content)
-    )
+    response, result_record = self._safe_provider_query(create)
+    if result_record.error is not None:
+      return types.ExecutorResult(result_record=result_record)
 
-  def format_pydantic_response_from_provider(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> Any:
-    if query_record.chosen_endpoint == 'chat.complete':
-      raise Exception(
-          'Pydantic response format is not supported for '
-          'chat.complete. Code should never reach here.'
-      )
-    elif query_record.chosen_endpoint == 'chat.parse':
-      return response.choices[0].message.parsed
+    result_record.content = self._parse_message_content(
+        response.choices[0].message.content)
 
-  def generate_text_proc(
-      self, query_record: types.QueryRecord
-  ) -> types.Response:
-    create = self._get_api_call_function(query_record.chosen_endpoint)
+    if response.choices is not None and len(response.choices) > 1:
+      result_record.choices = []
+      for choice in response.choices[1:]:
+        result_record.choices.append(
+            types.ChoiceType(
+                content=self._parse_message_content(choice.message.content)
+            )
+        )
+    return types.ExecutorResult(
+        result_record=result_record, raw_provider_response=response)
 
-    provider_model = query_record.provider_model
+  def _chat_parse_executor(
+      self,
+      query_record: types.QueryRecord) -> types.ExecutorResult:
+    create = functools.partial(self.api.chat.parse)
+    create = functools.partial(create, model=(
+        query_record.provider_model.provider_model_identifier
+    ))
+
+    create = self._add_common_params(create, query_record)
+
     create = functools.partial(
-        create, model=provider_model.provider_model_identifier
+        create, response_format=query_record.output_format.pydantic_class)
+
+    response, result_record = self._safe_provider_query(create)
+    if result_record.error is not None:
+      return types.ExecutorResult(result_record=result_record)
+
+    result_record.content = [
+        message_content.MessageContent(
+            type=message_content.ContentType.PYDANTIC_INSTANCE,
+            pydantic_content=message_content.PydanticContent(
+                class_name=query_record.output_format.pydantic_class.__name__,
+                class_value=query_record.output_format.pydantic_class,
+                instance_value=response.choices[0].message.parsed,
+            ),
+        )
+    ]
+
+    if response.choices is not None and len(response.choices) > 1:
+      result_record.choices = []
+      for choice in response.choices[1:]:
+        result_record.choices.append(
+            types.ChoiceType(
+                content=[
+                    message_content.MessageContent(
+                        type=message_content.ContentType.PYDANTIC_INSTANCE,
+                        pydantic_content=message_content.PydanticContent(
+                            class_name=query_record.output_format.pydantic_class.__name__,
+                            class_value=query_record.output_format.pydantic_class,
+                            instance_value=choice.message.parsed,
+                        ),
+                    )
+                ]
+            )
+        )
+    return types.ExecutorResult(
+        result_record=result_record, raw_provider_response=response)
+
+  def _beta_conversations_start_executor(
+      self,
+      query_record: types.QueryRecord) -> types.ExecutorResult:
+    """Execute a Mistral beta.conversations.start call with web search.
+
+    This endpoint is structurally different from chat.complete/chat.parse:
+      - `inputs` replaces `messages` and takes a plain string prompt
+      - `instructions` is the dedicated system-prompt kwarg
+      - sampling params live inside a `completion_args` dict
+      - tools accept typed SDK objects (WebSearchTool, etc.)
+      - the response is a ConversationResponse with an `outputs` list that
+        interleaves ToolExecutionEntry (breadcrumb of a tool call) and
+        MessageOutputEntry (assistant message with inline TextChunk and
+        ToolReferenceChunk for citations)
+    The executor is intentionally self-contained; it does not share helpers
+    with _chat_complete_executor.
+    """
+    start = functools.partial(self.api.beta.conversations.start)
+    start = functools.partial(start, model=(
+        query_record.provider_model.provider_model_identifier
+    ))
+
+    if query_record.prompt is not None:
+      start = functools.partial(start, inputs=query_record.prompt)
+
+    if query_record.system_prompt is not None:
+      start = functools.partial(
+          start, instructions=query_record.system_prompt)
+
+    tool_objects = []
+    if query_record.tools is not None:
+      if types.Tools.WEB_SEARCH in query_record.tools:
+        tool_objects.append(WebSearchTool(type='web_search'))
+    if tool_objects:
+      start = functools.partial(start, tools=tool_objects)
+
+    completion_args = {}
+    if query_record.parameters is not None:
+      if query_record.parameters.max_tokens is not None:
+        completion_args['max_tokens'] = query_record.parameters.max_tokens
+      if query_record.parameters.temperature is not None:
+        completion_args['temperature'] = query_record.parameters.temperature
+      if query_record.parameters.stop is not None:
+        completion_args['stop'] = query_record.parameters.stop
+    if completion_args:
+      start = functools.partial(start, completion_args=completion_args)
+
+    response, result_record = self._safe_provider_query(start)
+    if result_record.error is not None:
+      return types.ExecutorResult(result_record=result_record)
+
+    parsed = []
+    for output in response.outputs or []:
+      output_type = getattr(output, 'type', None)
+
+      if output_type == 'message.output':
+        content = getattr(output, 'content', None)
+        # When the model doesn't invoke a tool, `content` is a plain string
+        # instead of a list of chunks. Both shapes land here.
+        if isinstance(content, str):
+          parsed.append(
+              message_content.MessageContent(
+                  type=message_content.ContentType.TEXT,
+                  text=content,
+              )
+          )
+          continue
+
+        citations = []
+        for chunk in content or []:
+          chunk_type = getattr(chunk, 'type', None)
+          if chunk_type == 'text':
+            parsed.append(
+                message_content.MessageContent(
+                    type=message_content.ContentType.TEXT,
+                    text=getattr(chunk, 'text', '') or '',
+                )
+            )
+          elif chunk_type == 'tool_reference':
+            citations.append(
+                message_content.Citation(
+                    title=getattr(chunk, 'title', None),
+                    url=getattr(chunk, 'url', None),
+                )
+            )
+        if citations:
+          parsed.append(
+              message_content.MessageContent(
+                  type=message_content.ContentType.TOOL,
+                  tool_content=message_content.ToolContent(
+                      name='web_search',
+                      kind=message_content.ToolKind.RESULT,
+                      citations=citations,
+                  ),
+              )
+          )
+
+    # Mistral's beta.conversations.start has no native JSON / pydantic mode, so
+    # json and pydantic are declared BEST_EFFORT. The framework injects schema
+    # guidance into the prompt, but the model wraps its output in markdown
+    # fences — `result_adapter`'s raw `json.loads` would fail on that. Pre-clean
+    # TEXT blocks through the base-class helper so result_adapter receives a
+    # JSON block it can pass through (for JSON) or validate (for PYDANTIC).
+    needs_json_extract = (
+        query_record.output_format is not None
+        and query_record.output_format.type in (
+            types.OutputFormatType.JSON,
+            types.OutputFormatType.PYDANTIC,
+        )
     )
+    if needs_json_extract:
+      parsed = [
+          message_content.MessageContent(
+              type=message_content.ContentType.JSON,
+              json=self._extract_json_from_text(c.text),
+          ) if c.type == message_content.ContentType.TEXT else c
+          for c in parsed
+      ]
 
-    create = self.add_features_to_query_function(create, query_record)
+    result_record.content = parsed
+    return types.ExecutorResult(
+        result_record=result_record, raw_provider_response=response)
 
-    response = create()
-
-    return self.format_response_from_providers(response, query_record)
+  ENDPOINT_EXECUTORS = {
+    'chat.complete': '_chat_complete_executor',
+    'chat.parse': '_chat_parse_executor',
+    'beta.conversations.start': '_beta_conversations_start_executor',
+  }

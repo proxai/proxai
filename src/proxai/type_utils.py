@@ -1,28 +1,67 @@
-import copy
+from __future__ import annotations
 
+import copy
 import pydantic
+import inspect
 
 import proxai.types as types
+import proxai.chat.chat_session as chat_session
+
+def messages_param_to_chat(
+    messages: types.MessagesParam | None) -> types.Chat | None:
+  if messages is None:
+    return None
+
+  if type(messages) == list:
+    return chat_session.Chat(messages=messages)
+  elif type(messages) == dict:
+    return chat_session.Chat(
+        system_prompt=messages.get('system', None),
+        messages=messages.get('messages', []))
+  elif type(messages) != chat_session.Chat:
+    raise ValueError(f'Invalid messages type: {type(messages)}')
+
+  return messages
 
 
-def _raise_invalid_response_format_value_error(
-    response_format: types.ResponseFormatParam
-) -> None:
-  raise ValueError(
-      'Please provide one of the followings:\n'
-      ' - "json" as string for JSON response format\n'
-      ' - dict for JSON schema response format\n'
-      ' - pydantic.BaseModel for Pydantic response format\n'
-      ' - proxai.types.ResponseFormat for custom more advanced response '
-      'format\n'
-      'Check https://www.proxai.co/proxai-docs/advanced/response-format '
-      'for more information.\n'
-      f'Response format type: {type(response_format)}\n'
-      f'Response format value: {response_format}'
-  )
+def output_format_param_to_output_format(
+    output_format: types.OutputFormatParam | None
+) -> types.OutputFormat:
+  if not output_format:
+    return types.OutputFormat(
+        type=types.OutputFormatType.TEXT)
+
+  if isinstance(output_format, types.OutputFormat):
+    return output_format
+
+  if type(output_format) == str:
+    if output_format == 'text':
+      return types.OutputFormat(
+          type=types.OutputFormatType.TEXT)
+    elif output_format == 'json':
+      return types.OutputFormat(
+          type=types.OutputFormatType.JSON)
+    elif output_format == 'image':
+      return types.OutputFormat(
+          type=types.OutputFormatType.IMAGE)
+    elif output_format == 'audio':
+      return types.OutputFormat(
+          type=types.OutputFormatType.AUDIO)
+    elif output_format == 'video':
+      return types.OutputFormat(
+          type=types.OutputFormatType.VIDEO)
+    else:
+      raise ValueError(f'Invalid output format: {output_format}')
+  elif (inspect.isclass(output_format) and
+        issubclass(output_format, pydantic.BaseModel)):
+    return types.OutputFormat(
+        type=types.OutputFormatType.PYDANTIC,
+        pydantic_class=output_format)
+
+  raise ValueError(f'Invalid output format: {output_format}')
 
 
-def check_messages_type(messages: types.MessagesType):
+def check_messages_type(messages: types.MessagesParam):
   """Check if messages type is supported."""
   for message in messages:
     if not isinstance(message, dict):
@@ -73,123 +112,205 @@ def check_model_size_identifier_type(
   )
 
 
-def create_response_format(
-    response_format: types.ResponseFormatParam | None = None
-) -> types.ResponseFormat:
-  """Convert various input formats to a standardized ResponseFormat."""
-  if response_format is None:
-    return types.ResponseFormat(type=types.ResponseFormatType.TEXT)
-  elif isinstance(response_format, str):
-    if response_format == 'text':
-      return types.ResponseFormat(type=types.ResponseFormatType.TEXT)
-    if response_format == 'json':
-      return types.ResponseFormat(type=types.ResponseFormatType.JSON)
-    _raise_invalid_response_format_value_error(response_format)
-  elif isinstance(response_format, dict):
-    return types.ResponseFormat(
-        value=response_format, type=types.ResponseFormatType.JSON_SCHEMA
-    )
-  elif (
-      isinstance(response_format, type) and
-      issubclass(response_format, pydantic.BaseModel)
-  ):
-    return types.ResponseFormat(
-        value=types.ResponseFormatPydanticValue(
-            class_name=response_format.__name__, class_value=response_format
-        ), type=types.ResponseFormatType.PYDANTIC
-    )
-  elif isinstance(response_format, types.StructuredResponseFormat):
-    if response_format.type == types.ResponseFormatType.TEXT:
-      return types.ResponseFormat(type=types.ResponseFormatType.TEXT)
-    elif response_format.type == types.ResponseFormatType.JSON:
-      return types.ResponseFormat(type=types.ResponseFormatType.JSON)
-    elif response_format.type == types.ResponseFormatType.JSON_SCHEMA:
-      return types.ResponseFormat(
-          value=response_format.schema,
-          type=types.ResponseFormatType.JSON_SCHEMA
+def check_output_format_type_param(
+    output_format_type: types.OutputFormatTypeParam
+) -> types.OutputFormatType:
+  """Check if output format type param is supported."""
+  if isinstance(output_format_type, types.OutputFormatType):
+    return output_format_type
+  elif isinstance(output_format_type, str):
+    normalized = output_format_type.upper()
+    valid_values = [rt.value for rt in types.OutputFormatType]
+    if normalized not in valid_values:
+      valid_strings = ', '.join(
+          rt.value.lower() for rt in types.OutputFormatType)
+      raise ValueError(
+          'Output format type should be proxai.types.OutputFormatType '
+          f'or one of the following strings: {valid_strings}\n'
+          f'Invalid output format type: {output_format_type}'
       )
-    elif response_format.type == types.ResponseFormatType.PYDANTIC:
-      return types.ResponseFormat(
-          value=types.ResponseFormatPydanticValue(
-              class_name=response_format.schema.__name__,
-              class_value=response_format.schema
-          ), type=types.ResponseFormatType.PYDANTIC
-      )
+    return types.OutputFormatType(normalized)
+  raise ValueError(
+      'Output format type should be proxai.types.OutputFormatType '
+      'or one of the following strings: text, image, audio, video, '
+      'json, pydantic\n'
+      f'Invalid output format type: {output_format_type}\n'
+      f'Type: {type(output_format_type)}'
+  )
 
-  _raise_invalid_response_format_value_error(response_format)
+
+def check_input_format_type_param(
+    input_format_type: types.InputFormatTypeParam
+) -> types.InputFormatType:
+  """Check if input format type param is supported."""
+  if isinstance(input_format_type, types.InputFormatType):
+    return input_format_type
+  elif isinstance(input_format_type, str):
+    normalized = input_format_type.upper()
+    valid_values = [it.value for it in types.InputFormatType]
+    if normalized not in valid_values:
+      valid_strings = ', '.join(
+          it.value.lower() for it in types.InputFormatType)
+      raise ValueError(
+          'Input format type should be proxai.types.InputFormatType '
+          f'or one of the following strings: {valid_strings}\n'
+          f'Invalid input format type: {input_format_type}'
+      )
+    return types.InputFormatType(normalized)
+  raise ValueError(
+      'Input format type should be proxai.types.InputFormatType '
+      'or one of the following strings: text, image, document, '
+      'audio, video, json, pydantic\n'
+      f'Invalid input format type: {input_format_type}\n'
+      f'Type: {type(input_format_type)}'
+  )
+
+
+def _normalize_chat_for_comparison(
+    query_record: types.QueryRecord
+) -> types.QueryRecord:
+  """Strip file API metadata from chat MessageContent for comparison.
+
+  Creates a shallow copy of the query record with deep-copied chat
+  where provider_file_api_ids, provider_file_api_status, and filename
+  are cleared from all MessageContent blocks. This ensures the
+  equality check mirrors the hash.
+
+  WARNING: Any field excluded here must also be excluded in
+  hash_serializer._content_hash_dict(). These two functions define
+  cache identity together — the hash finds the bucket, the equality
+  check verifies the match. If they diverge, cache lookups will
+  silently fail (hash matches but equality doesn't, or vice versa).
+
+  See: hash_serializer._content_hash_dict()
+  See: hash_serializer module docstring for full list of excluded fields
+  """
+  if query_record.chat is None:
+    return query_record
+  query_record = copy.copy(query_record)
+  query_record.chat = query_record.chat.copy()
+  for msg in query_record.chat.messages:
+    if isinstance(msg.content, str):
+      continue
+    for mc in msg.content:
+      mc.provider_file_api_ids = None
+      mc.provider_file_api_status = None
+      mc.proxdash_file_id = None
+      mc.proxdash_file_status = None
+      mc.filename = None
+  return query_record
 
 
 def is_query_record_equal(
     query_record_1: types.QueryRecord, query_record_2: types.QueryRecord
 ) -> bool:
-  """Compare two query records, handling Pydantic schemas specially."""
-  if (
-      query_record_1.response_format is not None and
-      query_record_1.response_format.type == types.ResponseFormatType.PYDANTIC
-  ):
-    pydantic_value_1 = query_record_1.response_format.value
-    if pydantic_value_1.class_value is not None:
-      query_record_1 = copy.deepcopy(query_record_1)
-      query_record_1.response_format.value = types.ResponseFormatPydanticValue(
-          class_name=pydantic_value_1.class_name, class_json_schema_value=(
-              pydantic_value_1.class_value.model_json_schema()
-          )
-      )
-      del query_record_1.response_format.value.class_value
+  """Compare two query records for cache identity.
 
-  if (
-      query_record_2.response_format is not None and
-      query_record_2.response_format.type == types.ResponseFormatType.PYDANTIC
-  ):
-    pydantic_value_2 = query_record_2.response_format.value
-    if pydantic_value_2.class_value is not None:
-      query_record_2 = copy.deepcopy(query_record_2)
-      query_record_2.response_format.value = types.ResponseFormatPydanticValue(
-          class_name=pydantic_value_2.class_name, class_json_schema_value=(
-              pydantic_value_2.class_value.model_json_schema()
-          )
-      )
-      del query_record_2.response_format.value.class_value
+  Used by the cache pipeline after hash lookup to verify against
+  hash collisions. Normalizes fields that are excluded from cache
+  identity (Pydantic class values, connection_options flags, file
+  API metadata) before comparing.
+
+  WARNING: The normalization here must stay in sync with
+  hash_serializer.get_query_record_hash(). See
+  _normalize_chat_for_comparison() and hash_serializer module
+  docstring for details.
+  """
+  def _normalize_output_format(qr: types.QueryRecord) -> types.QueryRecord:
+    """Strip live pydantic_class, keep only name + json schema.
+
+    Mirrors hash_serializer._hash_output_format: the live class is
+    transport metadata — identity comes from class_name and
+    class_json_schema which survive serialization.
+    """
+    if qr.output_format is None:
+      return qr
+    if qr.output_format.pydantic_class is None:
+      return qr
+    qr = copy.copy(qr)
+    qr.output_format = types.OutputFormat(
+        type=qr.output_format.type,
+        pydantic_class=None,
+        pydantic_class_name=qr.output_format.pydantic_class.__name__,
+        pydantic_class_json_schema=(
+            qr.output_format.pydantic_class.model_json_schema()
+        ),
+    )
+    return qr
+
+  query_record_1 = _normalize_output_format(query_record_1)
+  query_record_2 = _normalize_output_format(query_record_2)
+
+  # Normalize connection_options so equality mirrors the hash: only
+  # `endpoint` is part of the query identity (see
+  # hash_serializer._hash_connection_options). Without this, transient
+  # per-call flags like `override_cache_value` on the stored record
+  # would poison the equality check and break cache lookups after an
+  # override write.
+  if query_record_1.connection_options is not None:
+    query_record_1 = copy.copy(query_record_1)
+    query_record_1.connection_options = types.ConnectionOptions(
+        endpoint=query_record_1.connection_options.endpoint
+    )
+  if query_record_2.connection_options is not None:
+    query_record_2 = copy.copy(query_record_2)
+    query_record_2.connection_options = types.ConnectionOptions(
+        endpoint=query_record_2.connection_options.endpoint
+    )
+
+  # Normalize chat messages: strip file API metadata so equality
+  # mirrors the hash (see hash_serializer._content_hash_dict).
+  # Without this, different provider_file_api_ids on the same content
+  # would break cache lookups.
+  query_record_1 = _normalize_chat_for_comparison(query_record_1)
+  query_record_2 = _normalize_chat_for_comparison(query_record_2)
 
   return query_record_1 == query_record_2
 
 
-def create_pydantic_instance_from_response(
-    response_format: types.ResponseFormat, response: types.Response
-) -> pydantic.BaseModel:
-  """Create pydantic instance from Response.
-
-  If response.value already has the instance, return it.
-  Otherwise, recreate from pydantic_metadata.instance_json_value.
-  """
-  if response.value is not None:
-    return response.value
-  elif (
-      response.pydantic_metadata is not None and
-      response.pydantic_metadata.instance_json_value is not None
-  ):
-    return response_format.value.class_value.model_validate(
-        response.pydantic_metadata.instance_json_value
-    )
-  else:
-    raise ValueError(
-        'Response has no value (instance) or '
-        'pydantic_metadata.instance_json_value. Please create an issue at '
-        'https://github.com/proxai/proxai/issues.\n'
-        f'Response: {response}'
-    )
-
-
-def create_feature_list_type(
-    features: types.FeatureListParam
-) -> types.FeatureListType:
-  """Convert a list of feature strings or enums to FeatureListType."""
-  result_features = []
-  for feature in features:
-    if isinstance(feature, str):
-      result_features.append(types.FeatureNameType(feature))
-    elif isinstance(feature, types.FeatureNameType):
-      result_features.append(feature)
+def _normalize_tag_param(param, tag_enum):
+  """Normalize a tag param (single or list) to a list of enum values."""
+  if param is None:
+    return None
+  if isinstance(param, (str, tag_enum)):
+    param = [param]
+  result = []
+  for item in param:
+    if isinstance(item, tag_enum):
+      result.append(item)
+    elif isinstance(item, str):
+      try:
+        result.append(tag_enum(item))
+      except ValueError:
+        result.append(tag_enum(item.upper()))
     else:
-      raise ValueError(f'Invalid feature: {feature}')
-  return result_features
+      raise ValueError(f'Invalid tag: {item}')
+  return result
+
+
+def create_input_format_type_list(
+    tags: types.InputFormatTypeParam
+) -> list[types.InputFormatType] | None:
+  """Convert InputFormatTypeParam to list[InputFormatType]."""
+  return _normalize_tag_param(tags, types.InputFormatType)
+
+
+def create_output_format_type_list(
+    tags: types.OutputFormatTypeParam
+) -> list[types.OutputFormatType] | None:
+  """Convert OutputFormatTypeParam to list[OutputFormatType]."""
+  return _normalize_tag_param(tags, types.OutputFormatType)
+
+
+def create_tool_tag_list(
+    tags: types.ToolTagParam
+) -> list[types.ToolTag] | None:
+  """Convert ToolTagParam to list[ToolTag]."""
+  return _normalize_tag_param(tags, types.ToolTag)
+
+
+def create_feature_tag_list(
+    features: types.FeatureTagParam
+) -> list[types.FeatureTag] | None:
+  """Convert feature tag param to list[FeatureTag]."""
+  return _normalize_tag_param(features, types.FeatureTag)

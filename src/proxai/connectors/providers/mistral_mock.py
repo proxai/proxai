@@ -1,8 +1,12 @@
-from typing import Any
-
+from __future__ import annotations
 
 class _MockMessage:
   content: str
+  parsed: object
+
+  def __init__(self):
+    self.content = 'mock response'
+    self.parsed = None
 
 
 class _MockChoice:
@@ -10,30 +14,57 @@ class _MockChoice:
 
   def __init__(self):
     self.message = _MockMessage()
-    self.message.content = 'mock response'
 
 
-class _MockResponse:
-  choices: list[_MockChoice]
+class _MockChatResponse:
+  choices: list
 
   def __init__(self):
     self.choices = [_MockChoice()]
 
 
-class MockChat:
-  """Mock chat completion handler."""
+class _MockChat:
+  """Mock Mistral chat surface (complete + parse)."""
 
-  def complete(
-      self, model: str, messages: list[Any], max_tokens: int | None = None,
-      temperature: float | None = None, stop: list[str] | None = None
-  ) -> _MockResponse:
-    return _MockResponse()
+  def complete(self, **kwargs) -> _MockChatResponse:
+    return _MockChatResponse()
+
+  def parse(self, **kwargs) -> _MockChatResponse:
+    return _MockChatResponse()
+
+
+class _MockTextChunk:
+  def __init__(self, text: str):
+    self.type = 'text'
+    self.text = text
+
+
+class _MockMessageOutput:
+  def __init__(self):
+    self.type = 'message.output'
+    self.role = 'assistant'
+    self.content = [_MockTextChunk('mock response')]
+
+
+class _MockConversationResponse:
+  def __init__(self):
+    self.conversation_id = 'mock_conversation_id'
+    self.outputs = [_MockMessageOutput()]
+
+
+class _MockConversations:
+  def start(self, **kwargs) -> _MockConversationResponse:
+    return _MockConversationResponse()
+
+
+class _MockBeta:
+  def __init__(self):
+    self.conversations = _MockConversations()
 
 
 class MistralMock:
   """Mock Mistral API client for testing."""
 
-  chat: MockChat
-
   def __init__(self):
-    self.chat = MockChat()
+    self.chat = _MockChat()
+    self.beta = _MockBeta()

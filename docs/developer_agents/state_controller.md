@@ -538,7 +538,7 @@ class StateControlled:
 
 **Why**: `current_state` might be partial (only changed fields). You need complete state for validation.
 
-**Example** (`model_connector.py:127-159`):
+**Example** (`provider_connector.py:127-159`):
 ```python
 def handle_changes(self, old_state, current_state):
     result_state = copy.deepcopy(old_state)
@@ -711,7 +711,7 @@ def status(self, status: ProxDashConnectionStatus):
 | Class | State Type | Nested StateControlled | Key Features |
 |-------|-----------|------------------------|--------------|
 | `AvailableModels` | `AvailableModelsState` | `model_cache_manager`, `proxdash_connection` | Model availability tracking, multiprocessing |
-| `ProviderModelConnector` | `ProviderModelState` | `query_cache_manager`, `proxdash_connection` | Provider API integration, caching |
+| `ProviderConnector` | `ProviderState` | `query_cache_manager`, `proxdash_connection` | Provider API integration, caching |
 | `ProxDashConnection` | `ProxDashConnectionState` | None | API key validation, experiment tracking |
 | `QueryCacheManager` | `QueryCacheManagerState` | None | Shard-based cache, LRU eviction |
 | `ModelCacheManager` | `ModelCacheManagerState` | None | Model status caching, TTL support |
@@ -799,16 +799,16 @@ self._get_model_connector = get_model_connector
 ```
 Extensive use of getter functions for dynamic property resolution.
 
-### 2. ProviderModelConnector
+### 2. ProviderConnector
 
-**File**: `src/proxai/connectors/model_connector.py`
+**File**: `src/proxai/connectors/provider_connector.py`
 
 **Purpose**: Base class for provider-specific AI model connectors.
 
 #### State Definition
 ```python
 @dataclasses.dataclass
-class ProviderModelState(StateContainer):
+class ProviderState(StateContainer):
     provider_model: Optional[ProviderModelType] = None
     run_type: Optional[RunType] = None
     strict_feature_test: Optional[bool] = None
@@ -820,17 +820,17 @@ class ProviderModelState(StateContainer):
 #### Dependencies
 - **Nested Objects**: `query_cache_manager`, `proxdash_connection`
 - **Deserializers**:
-  - `query_cache_manager_deserializer` (`model_connector.py:205-209`)
-  - `proxdash_connection_deserializer` (`model_connector.py:227-231`)
+  - `query_cache_manager_deserializer` (`provider_connector.py:205-209`)
+  - `proxdash_connection_deserializer` (`provider_connector.py:227-231`)
 
 #### State Change Handling
-**Location**: `model_connector.py:123-159`
+**Location**: `provider_connector.py:123-159`
 
 ```python
 def handle_changes(
     self,
-    old_state: ProviderModelState,
-    current_state: ProviderModelState):
+    old_state: ProviderState,
+    current_state: ProviderState):
     # Build complete result state
     result_state = copy.deepcopy(old_state)
     if current_state.provider_model is not None:
@@ -874,7 +874,7 @@ def handle_changes(
 - `proxdash_connection`: Handles ProxDash uploads
 - `logging_options`: Logging configuration
 
-**Special Property** - `api` (`model_connector.py:160-171`):
+**Special Property** - `api` (`provider_connector.py:160-171`):
 ```python
 @property
 def api(self):
@@ -894,7 +894,7 @@ def api(self, value):
 
 #### Important Methods
 
-**Feature Checking** (`model_connector.py:251-269`):
+**Feature Checking** (`provider_connector.py:251-269`):
 ```python
 def feature_check(self, query_record: QueryRecord) -> QueryRecord:
     # Checks if model supports requested features
@@ -902,7 +902,7 @@ def feature_check(self, query_record: QueryRecord) -> QueryRecord:
     # Logs warnings or raises errors based on strict_feature_test
 ```
 
-**Stats Tracking** (`model_connector.py:301-351`):
+**Stats Tracking** (`provider_connector.py:301-351`):
 ```python
 def _update_stats(self, logging_record: LoggingRecord):
     # Updates internal statistics
@@ -1273,7 +1273,7 @@ def handle_changes(self, old_state, current_state):
 
 **When to Use**: Need complete state for validation, properties are interdependent.
 
-**Example**: `ProviderModelConnector`
+**Example**: `ProviderConnector`
 
 ```python
 def handle_changes(self, old_state, current_state):
@@ -1441,7 +1441,7 @@ if init_state:
     # handle_changes NOT called
 ```
 
-**ProviderModelConnector** (explicit call):
+**ProviderConnector** (explicit call):
 ```python
 if init_state:
     self.load_state(init_state)

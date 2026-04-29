@@ -1,40 +1,92 @@
 # read version from installed package
 from importlib.metadata import version
 
+from proxai.chat import Chat
+from proxai.chat import Message
+from proxai.chat import MessageContent
+from proxai.client import FileConnector
 from proxai.client import ModelConnector
 from proxai.proxai import (
     CacheOptions,
+    Chat,
     Client,
+    ConnectionOptions,
+    DefaultFilesConnector,
     DefaultModelsConnector,
     FeatureMappingStrategy,
     LoggingOptions,
+    Message,
+    ParameterType,
     ProviderModelType,
+    MessageRoleType,
+    ContentType,
     ProxDashOptions,
-    ResponseFormat,
-    ResponseFormatType,
-    check_health,
+    OutputFormat,
+    OutputFormatType,
+    ThinkingType,
+    Tools,
     connect,
+    generate,
+    generate_audio,
+    generate_image,
+    generate_json,
+    generate_pydantic,
     generate_text,
+    generate_video,
     get_current_options,
     get_default_proxai_client,
     reset_state,
     set_model,
 )
+from proxai.types import (
+    DebugOptions,
+    FeatureTag,
+    InputFormatType,
+    MessageRoleType,
+    ModelProbeOptions,
+    OutputFormatType,
+    ProviderCallOptions,
+    ToolTag,
+)
 
 __all__ = [
     "CacheOptions",
+    "Chat",
     "Client",
+    "ConnectionOptions",
+    "DebugOptions",
+    "DefaultFilesConnector",
     "DefaultModelsConnector",
     "FeatureMappingStrategy",
+    "FileConnector",
+    "files",
+    "FeatureTag",
+    "InputFormatType",
     "LoggingOptions",
+    "ModelProbeOptions",
+    "ParameterType",
+    "Tools",
+    "Message",
+    "MessageContent",
+    "MessageRoleType",
     "ModelConnector",
+    "MessageRoleType",
+    "ContentType",
+    "OutputFormat",
+    "OutputFormatType",
+    "ThinkingType",
     "ProxDashOptions",
+    "ProviderCallOptions",
     "ProviderModelType",
-    "ResponseFormat",
-    "ResponseFormatType",
-    "check_health",
+    "ToolTag",
     "connect",
+    "generate",
+    "generate_audio",
+    "generate_image",
+    "generate_json",
+    "generate_pydantic",
     "generate_text",
+    "generate_video",
     "get_current_options",
     "get_default_proxai_client",
     "models",
@@ -43,4 +95,5 @@ __all__ = [
 ]
 
 __version__ = version("proxai")
+files = DefaultFilesConnector()
 models = DefaultModelsConnector()

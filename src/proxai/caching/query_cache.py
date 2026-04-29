@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import collections
 import contextlib
 import copy
@@ -9,6 +11,8 @@ import os
 import shutil
 from collections.abc import Callable
 
+import proxai.logging.utils as logging_utils
+
 import proxai.serializers.hash_serializer as hash_serializer
 import proxai.serializers.type_serializer as type_serializer
 import proxai.state_controllers.state_controller as state_controller
@@ -19,12 +23,81 @@ CACHE_DIR = 'query_cache'
 LIGHT_CACHE_RECORDS_PATH = 'light_cache_records.json'
 _QUERY_CACHE_MANAGER_STATE_PROPERTY = '_query_cache_manager_state'
 
+_INLINE_BYTES_WARNING = (
+    "MessageContent in this query carries raw bytes inline (the `data` "
+    "field is set). This is an anti-pattern for the query cache:\n"
+    "  - bytes are duplicated in every cache entry that holds them\n"
+    "  - hashing and equality checks pay byte-level cost on every lookup\n"
+    "  - the cache directory grows quickly with media payloads\n"
+    "\n"
+    "  Anti-pattern (avoid):\n"
+    "    px.MessageContent(\n"
+    "        type='image', data=open('photo.png', 'rb').read())\n"
+    "\n"
+    "  Use a local path instead:\n"
+    "    px.MessageContent(type='image', path='photo.png')\n"
+    "\n"
+    "  Or upload once via the file API and reference by id:\n"
+    "    file = px.files.upload('photo.png')\n"
+    "\n"
+    "This warning is shown once per session per cache manager."
+)
+
+
+def _iter_message_content(
+    query_record: types.QueryRecord | None,
+    result_record: types.ResultRecord | None,
+):
+  """Yield every MessageContent block referenced by the given records.
+
+  Walks all known carriers of MessageContent on QueryRecord and
+  ResultRecord. Tolerates None or missing fields silently — the goal
+  is detection of inline bytes, not validation.
+  """
+  if query_record is not None and query_record.chat is not None:
+    for msg in query_record.chat.messages:
+      if isinstance(msg.content, list):
+        for mc in msg.content:
+          if isinstance(mc, types.MessageContent):
+            yield mc
+  if result_record is None:
+    return
+  for attr in ('output_image', 'output_audio', 'output_video'):
+    mc = getattr(result_record, attr, None)
+    if isinstance(mc, types.MessageContent):
+      yield mc
+  if result_record.content:
+    for mc in result_record.content:
+      if isinstance(mc, types.MessageContent):
+        yield mc
+  if result_record.choices:
+    for choice in result_record.choices:
+      for attr in ('output_image', 'output_audio', 'output_video'):
+        mc = getattr(choice, attr, None)
+        if isinstance(mc, types.MessageContent):
+          yield mc
+      if choice.content:
+        for mc in choice.content:
+          if isinstance(mc, types.MessageContent):
+            yield mc
+
+
+def _has_inline_bytes(
+    query_record: types.QueryRecord | None,
+    result_record: types.ResultRecord | None,
+) -> bool:
+  """Return True if any MessageContent in the records has inline bytes."""
+  for mc in _iter_message_content(query_record, result_record):
+    if mc.data is not None:
+      return True
+  return False
+
 
 def _to_light_cache_record(cache_record: types.CacheRecord):
   """Convert a full CacheRecord to a lightweight version."""
   return types.LightCacheRecord(
-      query_record_hash=cache_record.query_record.hash_value,
-      query_response_count=len(cache_record.query_responses),
+      query_hash=cache_record.query.hash_value,
+      results_count=len(cache_record.results),
       shard_id=cache_record.shard_id,
       last_access_time=cache_record.last_access_time,
       call_count=cache_record.call_count
@@ -36,8 +109,8 @@ def _get_cache_size(
 ) -> int:
   """Calculate the storage size of a cache record."""
   if isinstance(cache_record, types.LightCacheRecord):
-    return cache_record.query_response_count + 1
-  return len(cache_record.query_responses) + 1
+    return cache_record.results_count + 1
+  return len(cache_record.results) + 1
 
 
 def _get_hash_value(
@@ -49,18 +122,18 @@ def _get_hash_value(
   if isinstance(cache_record, str):
     return cache_record
   if isinstance(cache_record, types.CacheRecord):
-    if cache_record.query_record.hash_value:
-      return cache_record.query_record.hash_value
+    if cache_record.query.hash_value:
+      return cache_record.query.hash_value
     else:
-      cache_record.query_record.hash_value = (
-          hash_serializer.get_query_record_hash(cache_record.query_record)
+      cache_record.query.hash_value = (
+          hash_serializer.get_query_record_hash(cache_record.query)
       )
-      return cache_record.query_record.hash_value
+      return cache_record.query.hash_value
   if isinstance(cache_record, types.LightCacheRecord):
-    if cache_record.query_record_hash:
-      return cache_record.query_record_hash
+    if cache_record.query_hash:
+      return cache_record.query_hash
     else:
-      raise ValueError('LightCacheRecord doesn\'t have query_record_hash')
+      raise ValueError('LightCacheRecord doesn\'t have query_hash')
   if isinstance(cache_record, types.QueryRecord):
     query_record = cache_record
     if query_record.hash_value:
@@ -306,7 +379,7 @@ class ShardManager:
         light_cache_record = type_serializer.decode_light_cache_record(record)
       except Exception:
         continue
-      if query_record_hash != light_cache_record.query_record_hash:
+      if query_record_hash != light_cache_record.query_hash:
         continue
       if (
           isinstance(light_cache_record.shard_id, str) and
@@ -350,7 +423,7 @@ class ShardManager:
           if not self._check_cache_record_is_up_to_date(cache_record):
             continue
           cache_record.call_count = self._light_cache_records[
-              cache_record.query_record.hash_value].call_count
+              cache_record.query.hash_value].call_count
           self._update_cache_record(cache_record)
           result.append(_get_hash_value(cache_record))
     except Exception:
@@ -450,6 +523,7 @@ class QueryCacheManagerParams:
   shard_count: int | None = None
   response_per_file: int | None = None
   cache_response_size: int | None = None
+  logging_options: types.LoggingOptions | None = None
 
 
 class QueryCacheManager(state_controller.StateControlled):
@@ -459,9 +533,11 @@ class QueryCacheManager(state_controller.StateControlled):
   _shard_count: int
   _response_per_file: int
   _cache_response_size: int
+  _logging_options: types.LoggingOptions | None
   _query_cache_manager_state: types.QueryCacheManagerState
   _shard_manager: ShardManager
   _record_heap: HeapManager
+  _inline_bytes_warning_emitted: bool
 
   def __init__(
       self, init_from_params: QueryCacheManagerParams | None = None,
@@ -475,6 +551,8 @@ class QueryCacheManager(state_controller.StateControlled):
         'status', types.QueryCacheManagerStatus.INITIALIZING
     )
 
+    self._logging_options = None
+    self._inline_bytes_warning_emitted = False
     if init_from_state:
       self.load_state(init_from_state)
       self._init_dir()
@@ -488,6 +566,7 @@ class QueryCacheManager(state_controller.StateControlled):
         self.shard_count = init_from_params.shard_count
       if init_from_params.cache_response_size is not None:
         self.cache_response_size = init_from_params.cache_response_size
+      self._logging_options = init_from_params.logging_options
     self.init_status()
 
   def get_internal_state_property_name(self):
@@ -508,7 +587,28 @@ class QueryCacheManager(state_controller.StateControlled):
       self.status = types.QueryCacheManagerStatus.CACHE_PATH_NOT_FOUND
       return
 
+    try:
+      os.makedirs(self.cache_options.cache_path, exist_ok=True)
+    except OSError as e:
+      logging_utils.log_message(
+          logging_options=self._logging_options,
+          message=(
+              f'Cache path {self.cache_options.cache_path} is not '
+              f'writable: {e}'
+          ),
+          type=types.LoggingType.WARNING,
+      )
+      self.status = types.QueryCacheManagerStatus.CACHE_PATH_NOT_WRITABLE
+      return
+
     if not os.access(self.cache_options.cache_path, os.W_OK):
+      logging_utils.log_message(
+          logging_options=self._logging_options,
+          message=(
+              f'Cache path {self.cache_options.cache_path} is not writable.'
+          ),
+          type=types.LoggingType.WARNING,
+      )
       self.status = types.QueryCacheManagerStatus.CACHE_PATH_NOT_WRITABLE
       return
 
@@ -612,68 +712,99 @@ class QueryCacheManager(state_controller.StateControlled):
       update: bool = True,
       unique_response_limit: int | None = None,
   ) -> types.CacheLookResult:
-    """Look up a cached response for a query record."""
+    """Look up a cached response for a query record.
+
+    Never raises for operational failures. If the cache manager is
+    not in WORKING state (not configured, path not writable, etc.),
+    returns a CacheLookResult with fail_reason=CACHE_UNAVAILABLE so
+    callers treat it identically to a cache miss.
+    """
     if self.status != types.QueryCacheManagerStatus.WORKING:
-      raise ValueError(f'QueryCacheManager status is {self.status}')
+      return types.CacheLookResult(
+          cache_look_fail_reason=types.CacheLookFailReason.CACHE_UNAVAILABLE
+      )
 
     if not isinstance(query_record, types.QueryRecord):
       raise ValueError('query_record should be of type QueryRecord')
     cache_record = self._shard_manager.get_cache_record(query_record)
     if cache_record is None:
       return types.CacheLookResult(
-          look_fail_reason=types.CacheLookFailReason.CACHE_NOT_FOUND
+          cache_look_fail_reason=types.CacheLookFailReason.CACHE_NOT_FOUND
       )
     is_equal = type_utils.is_query_record_equal(
-        cache_record.query_record, query_record
+        cache_record.query, query_record
     )
     if not is_equal:
       return types.CacheLookResult(
-          look_fail_reason=types.CacheLookFailReason.CACHE_NOT_MATCHED
+          cache_look_fail_reason=types.CacheLookFailReason.CACHE_NOT_MATCHED
       )
     if unique_response_limit is None:
       unique_response_limit = self.cache_options.unique_response_limit
-    if len(cache_record.query_responses) < unique_response_limit:
+    if len(cache_record.results) < unique_response_limit:
       return types.CacheLookResult(
-          look_fail_reason=types.CacheLookFailReason.
+          cache_look_fail_reason=types.CacheLookFailReason.
           UNIQUE_RESPONSE_LIMIT_NOT_REACHED
       )
-    query_response: types.QueryResponseRecord = cache_record.query_responses[
-        cache_record.call_count % len(cache_record.query_responses)]
-    if (
-        query_response.error and self.cache_options.retry_if_error_cached and
-        cache_record.call_count < len(cache_record.query_responses)
-    ):
-      cache_record.last_access_time = datetime.datetime.now()
-      cache_record.call_count += 1
-      self._shard_manager.save_record(cache_record=cache_record)
-      self._push_record_heap(cache_record)
-      return types.CacheLookResult(
-          look_fail_reason=types.CacheLookFailReason.PROVIDER_ERROR_CACHED
-      )
+    result_record: types.ResultRecord = cache_record.results[
+        cache_record.call_count % len(cache_record.results)]
     if update:
       cache_record.last_access_time = datetime.datetime.now()
       cache_record.call_count += 1
       self._shard_manager.save_record(cache_record=cache_record)
       self._push_record_heap(cache_record)
-    return types.CacheLookResult(query_response=query_response)
+    return types.CacheLookResult(result=result_record)
 
   def cache(
-      self, query_record: types.QueryRecord,
-      response_record: types.QueryResponseRecord,
-      unique_response_limit: int | None = None
+      self,
+      query_record: types.QueryRecord,
+      result_record: types.ResultRecord,
+      unique_response_limit: int | None = None,
+      override_cache_value: bool = False,
   ):
-    """Store a query response in the cache."""
+    """Store a query response in the cache.
+
+    No-op with a warning log if the cache manager is not in WORKING
+    state. The cache is an optimization, so its unavailability should
+    not crash the calling code path.
+    """
     if self.status != types.QueryCacheManagerStatus.WORKING:
-      raise ValueError(f'QueryCacheManager status is {self.status}')
+      logging_utils.log_message(
+          logging_options=self._logging_options,
+          message=(
+              f'QueryCacheManager.cache() called while status={self.status}; '
+              f'skipping cache write.'
+          ),
+          type=types.LoggingType.WARNING,
+      )
+      return
+
+    if not self._inline_bytes_warning_emitted and _has_inline_bytes(
+        query_record, result_record
+    ):
+      logging_utils.log_message(
+          logging_options=self._logging_options,
+          message=_INLINE_BYTES_WARNING,
+          type=types.LoggingType.WARNING,
+      )
+      self._inline_bytes_warning_emitted = True
 
     current_time = datetime.datetime.now()
-    cache_record = self._shard_manager.get_cache_record(query_record)
+    if override_cache_value:
+      # Force a full wipe of any existing entry for this query hash and
+      # start a fresh bucket containing only result_record. save_record()
+      # calls delete_record() internally, which clears in-memory pointers
+      # and writes a tombstone to the light cache records file. Stale rows
+      # still physically present in old shard files are filtered out on
+      # read by _check_cache_record_is_up_to_date().
+      cache_record = None
+    else:
+      cache_record = self._shard_manager.get_cache_record(query_record)
     if not cache_record:
       query_record.hash_value = hash_serializer.get_query_record_hash(
           query_record
       )
       cache_record = types.CacheRecord(
-          query_record=query_record, query_responses=[response_record],
+          query=query_record, results=[result_record],
           last_access_time=current_time, call_count=0
       )
       self._shard_manager.save_record(cache_record=cache_record)
@@ -681,20 +812,9 @@ class QueryCacheManager(state_controller.StateControlled):
       return
     if unique_response_limit is None:
       unique_response_limit = self.cache_options.unique_response_limit
-    if len(cache_record.query_responses) < unique_response_limit:
-      cache_record.query_responses.append(response_record)
+    if len(cache_record.results) < unique_response_limit:
+      cache_record.results.append(result_record)
       cache_record.last_access_time = current_time
       self._shard_manager.save_record(cache_record=cache_record)
       self._push_record_heap(cache_record)
       return
-    if (
-        self.cache_options.retry_if_error_cached and
-        response_record.error is None
-    ):
-      for idx, previous_response in enumerate(cache_record.query_responses):
-        if previous_response.error:
-          cache_record.query_responses[idx] = response_record
-          cache_record.last_access_time = current_time
-          self._shard_manager.save_record(cache_record=cache_record)
-          self._push_record_heap(cache_record)
-          return

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import copy
 import json
 import os
@@ -7,7 +9,6 @@ from pprint import pprint
 import proxai.serializers.type_serializer as type_serializer
 import proxai.types as types
 
-QUERY_LOGGING_FILE_NAME = 'provider_queries.log'
 ERROR_LOGGING_FILE_NAME = 'errors.log'
 WARNING_LOGGING_FILE_NAME = 'warnings.log'
 INFO_LOGGING_FILE_NAME = 'info.log'
@@ -21,47 +22,20 @@ def _hide_sensitive_content_query_record(
 ) -> types.QueryRecord:
   """Replace sensitive fields in a query record with placeholder text."""
   query_record = copy.deepcopy(query_record)
-  if query_record.system:
-    query_record.system = _SENSITIVE_CONTENT_HIDDEN_STRING
+  if query_record.system_prompt:
+    query_record.system_prompt = _SENSITIVE_CONTENT_HIDDEN_STRING
   if query_record.prompt:
     query_record.prompt = _SENSITIVE_CONTENT_HIDDEN_STRING
-  if query_record.messages:
-    query_record.messages = [{
-        'role': 'assistant',
-        'content': _SENSITIVE_CONTENT_HIDDEN_STRING
-    }]
-  return query_record
-
-
-def _hide_sensitive_content_query_response_record(
-    query_response_record: types.QueryResponseRecord,
-) -> types.QueryResponseRecord:
-  """Replace sensitive fields in a response record with placeholder text."""
-  query_response_record = copy.deepcopy(query_response_record)
-  if query_response_record.response:
-    query_response_record.response = types.Response(
-        type=query_response_record.response.type,
-        value=_SENSITIVE_CONTENT_HIDDEN_STRING
-    )
-  return query_response_record
-
-
-def _hide_sensitive_content_logging_record(
-    logging_record: types.LoggingRecord
-) -> types.LoggingRecord:
-  """Replace sensitive fields in a logging record with placeholder text."""
-  logging_record = copy.deepcopy(logging_record)
-  if logging_record.query_record:
-    logging_record.query_record = _hide_sensitive_content_query_record(
-        logging_record.query_record
-    )
-  if logging_record.response_record:
-    logging_record.response_record = (
-        _hide_sensitive_content_query_response_record(
-            logging_record.response_record
+  if query_record.chat is not None:
+    if query_record.chat.system_prompt:
+      query_record.chat.system_prompt = _SENSITIVE_CONTENT_HIDDEN_STRING
+    query_record.chat.messages = [
+        types.Message(
+            role=types.MessageRoleType.ASSISTANT,
+            content=_SENSITIVE_CONTENT_HIDDEN_STRING,
         )
-    )
-  return logging_record
+    ]
+  return query_record
 
 
 def _write_log(
@@ -72,25 +46,6 @@ def _write_log(
   with open(file_path, 'a') as f:
     f.write(json.dumps(data) + '\n')
   f.close()
-
-
-def log_logging_record(
-    logging_options: types.LoggingOptions, logging_record: types.LoggingRecord
-):
-  """Write a query logging record to the log file."""
-  if not logging_options:
-    return
-  if logging_options.hide_sensitive_content:
-    logging_record = _hide_sensitive_content_logging_record(logging_record)
-  result = type_serializer.encode_logging_record(logging_record)
-  if logging_options.stdout:
-    pprint(result)
-  if not logging_options.logging_path:
-    return
-  _write_log(
-      logging_options=logging_options, file_name=QUERY_LOGGING_FILE_NAME,
-      data=result
-  )
 
 
 def log_message(

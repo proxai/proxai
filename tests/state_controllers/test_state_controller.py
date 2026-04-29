@@ -251,8 +251,13 @@ class TestStateControlled:
       def get_internal_state_type(self):
         return MinimalState
 
-      def handle_changes(self, old_state, current_state):
-        pass
+      @property
+      def value(self):
+        return self.get_property_value('value')
+
+      @value.setter
+      def value(self, val):
+        self.set_property_value('value', val)
 
     # If parent didn't call init_state(), this would fail
     obj = MinimalClass()
@@ -351,6 +356,19 @@ class TestStateControlled:
     ):
       ExampleStateControlledClass().load_state('test')
 
+  def test_init_from_state_incorrect_type_raises(self):
+    with pytest.raises(
+        ValueError, match='Invalid state type.\nExpected: <class'
+    ):
+      ExampleStateControlledClass(init_from_state='test')
+
+  def test_init_from_state(self):
+    state = ExampleState(
+        property_1='test', property_2='test_2', property_3='test_3'
+    )
+    example_obj = ExampleStateControlledClass(init_from_state=state)
+    assert example_obj.get_state() == state
+
   def test_load_state(self):
     example_params = ExampleStateParams(
         property_1='test', property_2='test_2', property_3='test_3'
@@ -425,6 +443,133 @@ class TestStateControlled:
     assert example_obj.get_internal_state() == ExampleState(
         property_1='test', property_2='test_2', property_3='test_3'
     )
+
+
+class TestCloneState:
+
+  def test_clone_state_returns_equal_state(self):
+    example_params = ExampleStateParams(
+        property_1='test', property_2='test_2', property_3='test_3'
+    )
+    example_obj = ExampleStateControlledClass(init_from_params=example_params)
+    cloned = example_obj.clone_state()
+    assert cloned == example_obj.get_state()
+
+  def test_clone_state_scalar_independence(self):
+    example_params = ExampleStateParams(
+        property_1='test', property_2='test_2', property_3='test_3'
+    )
+    example_obj = ExampleStateControlledClass(init_from_params=example_params)
+    cloned = example_obj.clone_state()
+    cloned.property_1 = 'modified'
+    assert example_obj.property_1 == 'test'
+
+  def test_clone_state_mutable_dict_independence(self):
+
+    @dataclass
+    class DictState(types.StateContainer):
+      data: dict | None = None
+
+    class DictStateControlledClass(state_controller.StateControlled):
+
+      def __init__(self, init_from_state=None):
+        super().__init__(init_from_state=init_from_state)
+        if init_from_state:
+          self.load_state(init_from_state)
+
+      def get_internal_state_property_name(self):
+        return '_state'
+
+      def get_internal_state_type(self):
+        return DictState
+
+      @property
+      def data(self):
+        return self.get_property_value('data')
+
+      @data.setter
+      def data(self, value):
+        self.set_property_value('data', value)
+
+    obj = DictStateControlledClass()
+    obj.data = {'key_a': 'value_a', 'nested': {'inner': 'original'}}
+    cloned = obj.clone_state()
+    cloned.data['key_a'] = 'modified'
+    cloned.data['nested']['inner'] = 'modified'
+    assert obj.data['key_a'] == 'value_a'
+    assert obj.data['nested']['inner'] == 'original'
+
+  def test_clone_state_mutable_list_independence(self):
+
+    @dataclass
+    class ListState(types.StateContainer):
+      items: list | None = None
+
+    class ListStateControlledClass(state_controller.StateControlled):
+
+      def __init__(self, init_from_state=None):
+        super().__init__(init_from_state=init_from_state)
+        if init_from_state:
+          self.load_state(init_from_state)
+
+      def get_internal_state_property_name(self):
+        return '_state'
+
+      def get_internal_state_type(self):
+        return ListState
+
+      @property
+      def items(self):
+        return self.get_property_value('items')
+
+      @items.setter
+      def items(self, value):
+        self.set_property_value('items', value)
+
+    obj = ListStateControlledClass()
+    obj.items = [1, 2, [3, 4]]
+    cloned = obj.clone_state()
+    cloned.items.append(5)
+    cloned.items[2].append(99)
+    assert obj.items == [1, 2, [3, 4]]
+
+  def test_clone_state_sub_state_independence(self):
+    example_sub_state_params = ExampleSubStateParams(
+        sub_property_1='original'
+    )
+    example_sub_state_obj = ExampleSubStateControlledClass(
+        init_from_params=example_sub_state_params
+    )
+    example_obj = ExampleStateControlledClass(
+        init_from_params=ExampleStateParams(
+            property_1='test', sub_state=example_sub_state_obj
+        )
+    )
+    cloned = example_obj.clone_state()
+    cloned.sub_state.sub_property_1 = 'modified'
+    assert example_obj.sub_state.sub_property_1 == 'original'
+
+  def test_clone_state_none_fields(self):
+    example_obj = ExampleStateControlledClass()
+    cloned = example_obj.clone_state()
+    assert cloned == ExampleState(
+        property_1=None, property_2=None, property_3=None
+    )
+
+  def test_clone_state_can_be_used_with_load_state(self):
+    example_params = ExampleStateParams(
+        property_1='test', property_2='test_2', property_3='test_3'
+    )
+    example_obj = ExampleStateControlledClass(init_from_params=example_params)
+    cloned = example_obj.clone_state()
+    cloned.property_1 = 'overridden'
+
+    example_obj_2 = ExampleStateControlledClass()
+    example_obj_2.load_state(cloned)
+    assert example_obj_2.property_1 == 'overridden'
+    assert example_obj_2.property_2 == 'test_2'
+    assert example_obj_2.property_3 == 'test_3'
+    assert example_obj.property_1 == 'test'
 
 
 class TestSubState:
@@ -506,3 +651,147 @@ class TestSubState:
         sub_state=ExampleSubState(sub_property_1='sub_property_1_value_1')
     )
     assert example_obj_2.sub_state.sub_property_1 == 'sub_property_1_value_1'
+
+  def test_set_sub_state_from_state_container(self):
+    example_obj = ExampleStateControlledClass()
+    example_obj.sub_state = ExampleSubState(sub_property_1='from_container')
+    assert isinstance(example_obj.sub_state, ExampleSubStateControlledClass)
+    assert example_obj.sub_state.sub_property_1 == 'from_container'
+
+  def test_set_sub_state_to_none_clears_state(self):
+    example_obj = ExampleStateControlledClass(
+        init_from_params=ExampleStateParams(
+            sub_state=ExampleSubStateControlledClass(
+                init_from_params=ExampleSubStateParams(sub_property_1='value')
+            )
+        )
+    )
+    example_obj.sub_state = None
+    assert example_obj.sub_state is None
+    assert example_obj.get_internal_state().sub_state is None
+
+  def test_set_sub_state_invalid_type_raises(self):
+    example_obj = ExampleStateControlledClass()
+    with pytest.raises(ValueError, match='Invalid property value'):
+      example_obj.sub_state = 'not valid'
+
+  def test_get_sub_state_invalid_internal_value_raises(self):
+    example_obj = ExampleStateControlledClass()
+    example_obj._sub_state = 'bogus'
+    with pytest.raises(ValueError, match='Invalid property value'):
+      _ = example_obj.sub_state
+
+
+class TestStateContractValidation:
+
+  def test_missing_property_raises(self):
+
+    @dataclass
+    class BadState(types.StateContainer):
+      value: str | None = None
+
+    class BadClass(state_controller.StateControlled):
+
+      def get_internal_state_property_name(self):
+        return '_state'
+
+      def get_internal_state_type(self):
+        return BadState
+
+    with pytest.raises(
+        TypeError,
+        match=r"State field 'value'.*has no @property on BadClass"
+    ):
+      BadClass()
+
+  def test_missing_deserializer_raises(self):
+
+    @dataclass
+    class InnerState(types.StateContainer):
+      data: str | None = None
+
+    @dataclass
+    class OuterState(types.StateContainer):
+      inner: InnerState | None = None
+
+    class OuterClass(state_controller.StateControlled):
+
+      def get_internal_state_property_name(self):
+        return '_state'
+
+      def get_internal_state_type(self):
+        return OuterState
+
+      @property
+      def inner(self):
+        return self.get_state_controlled_property_value('inner')
+
+      @inner.setter
+      def inner(self, value):
+        self.set_state_controlled_property_value('inner', value)
+
+    with pytest.raises(
+        TypeError,
+        match=(
+            r"State field 'inner'.*is a StateContainer but OuterClass "
+            r"has no 'inner_deserializer' method"
+        )
+    ):
+      OuterClass()
+
+  def test_valid_class_passes(self):
+    example_obj = ExampleStateControlledClass()
+    assert example_obj is not None
+
+  def test_multiple_violations_reported(self):
+
+    @dataclass
+    class InnerState(types.StateContainer):
+      data: str | None = None
+
+    @dataclass
+    class MultiState(types.StateContainer):
+      field_a: str | None = None
+      field_b: InnerState | None = None
+
+    class MultiClass(state_controller.StateControlled):
+
+      def get_internal_state_property_name(self):
+        return '_state'
+
+      def get_internal_state_type(self):
+        return MultiState
+
+    with pytest.raises(TypeError) as exc_info:
+      MultiClass()
+    msg = str(exc_info.value)
+    assert "field_a" in msg
+    assert "field_b" in msg
+    assert "has no @property" in msg
+    assert "has no 'field_b_deserializer'" in msg
+
+  def test_validation_runs_on_every_instantiation(self):
+
+    @dataclass
+    class GoodState(types.StateContainer):
+      value: str | None = None
+
+    class GoodClass(state_controller.StateControlled):
+
+      def get_internal_state_property_name(self):
+        return '_state'
+
+      def get_internal_state_type(self):
+        return GoodState
+
+      @property
+      def value(self):
+        return self.get_property_value('value')
+
+      @value.setter
+      def value(self, val):
+        self.set_property_value('value', val)
+
+    obj1 = GoodClass()
+    obj2 = GoodClass()
+    assert obj1 is not obj2

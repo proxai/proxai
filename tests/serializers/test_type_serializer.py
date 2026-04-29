@@ -1,11 +1,35 @@
 import datetime
+import json
+import uuid
+from decimal import Decimal
 
 import pydantic
 import pytest
 
+import proxai.chat.chat_session as chat_session
+import proxai.chat.message as message
+import proxai.chat.message_content as message_content
 import proxai.serializers.hash_serializer as hash_serializer
 import proxai.serializers.type_serializer as type_serializer
 import proxai.types as types
+
+_MODEL_1 = types.ProviderModelType(
+    provider='openai', model='gpt-4', provider_model_identifier='gpt-4'
+)
+_MODEL_2 = types.ProviderModelType(
+    provider='openai', model='o3-mini', provider_model_identifier='o3-mini'
+)
+_MODEL_3 = types.ProviderModelType(
+    provider='claude', model='opus-4', provider_model_identifier='claude-opus-4'
+)
+_MODEL_4 = types.ProviderModelType(
+    provider='claude', model='sonnet-4',
+    provider_model_identifier='claude-sonnet-4'
+)
+_MODEL_5 = types.ProviderModelType(
+    provider='openai', model='gpt-4o-mini',
+    provider_model_identifier='gpt-4o-mini'
+)
 
 
 def _get_provider_model_type_options():
@@ -18,119 +42,212 @@ def _get_provider_model_type_options():
   ]
 
 
-def _get_provider_model_identifier_options():
-  return [
-      pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4')),
-      pytest.model_configs_instance.get_provider_model(('claude', 'opus-4')),
-      ('openai', 'gpt-4'),
-      ('claude', 'sonnet-4'),
-  ]
-
-
 def _get_provider_model_pricing_type_options():
   return [
       {},
       {
-          'per_response_token_cost': 0.001
+          'input_token_cost': 100
       },
       {
-          'per_query_token_cost': 0.002
+          'output_token_cost': 200
       },
       {
-          'per_response_token_cost': 0.001,
-          'per_query_token_cost': 0.002
+          'input_token_cost': 100,
+          'output_token_cost': 200
       },
       {
-          'per_response_token_cost': 0.0,
-          'per_query_token_cost': 0.0
+          'input_token_cost': 3,
+          'output_token_cost': 4
       },
       {
-          'per_response_token_cost': 1.5,
-          'per_query_token_cost': 0.5
-      },
-  ]
-
-
-def _get_endpoint_feature_info_type_options():
-  return [
-      {},
-      {
-          'supported': []
-      },
-      {
-          'supported': ['feature1']
-      },
-      {
-          'supported': ['feature1', 'feature2', 'feature3']
-      },
-      {
-          'best_effort': []
-      },
-      {
-          'best_effort': ['feature1']
-      },
-      {
-          'best_effort': ['feature1', 'feature2']
-      },
-      {
-          'not_supported': []
-      },
-      {
-          'not_supported': ['feature1']
-      },
-      {
-          'not_supported': ['feature1', 'feature2', 'feature3']
-      },
-      {
-          'supported': ['feature1'],
-          'best_effort': ['feature2'],
-          'not_supported': ['feature3']
+          'input_token_cost': 15000,
+          'output_token_cost': 75000
       },
   ]
 
 
-def _get_feature_mapping_type_options():
+def _get_feature_support_type_options():
+  return [
+      types.FeatureSupportType.SUPPORTED,
+      types.FeatureSupportType.BEST_EFFORT,
+      types.FeatureSupportType.NOT_SUPPORTED,
+  ]
+
+
+def _get_parameter_config_type_options():
   return [
       {},
       {
-          types.FeatureNameType.PROMPT: types.EndpointFeatureInfoType()
+          'temperature': types.FeatureSupportType.SUPPORTED
       },
       {
-          types.FeatureNameType.PROMPT:
-              types.EndpointFeatureInfoType(supported=['value1'])
+          'max_tokens': types.FeatureSupportType.BEST_EFFORT
       },
       {
-          types.FeatureNameType.MESSAGES:
-              types.EndpointFeatureInfoType(best_effort=['value1', 'value2'])
+          'stop': types.FeatureSupportType.NOT_SUPPORTED
       },
       {
-          types.FeatureNameType.SYSTEM:
-              types.EndpointFeatureInfoType(not_supported=['value1'])
+          'n': types.FeatureSupportType.SUPPORTED
       },
       {
-          types.FeatureNameType.PROMPT:
-              types.EndpointFeatureInfoType(
-                  supported=['value1'], best_effort=['value2'],
-                  not_supported=['value3']
+          'thinking': types.FeatureSupportType.BEST_EFFORT
+      },
+      {
+          'temperature': types.FeatureSupportType.SUPPORTED,
+          'max_tokens': types.FeatureSupportType.SUPPORTED,
+          'stop': types.FeatureSupportType.BEST_EFFORT,
+          'n': types.FeatureSupportType.NOT_SUPPORTED,
+          'thinking': types.FeatureSupportType.SUPPORTED
+      },
+  ]
+
+
+def _get_tool_config_type_options():
+  return [
+      {},
+      {
+          'web_search': types.FeatureSupportType.SUPPORTED
+      },
+      {
+          'web_search': types.FeatureSupportType.NOT_SUPPORTED
+      },
+  ]
+
+
+def _get_output_format_config_type_options():
+  return [
+      {},
+      {
+          'text': types.FeatureSupportType.SUPPORTED
+      },
+      {
+          'image': types.FeatureSupportType.NOT_SUPPORTED
+      },
+      {
+          'json': types.FeatureSupportType.SUPPORTED
+      },
+      {
+          'pydantic': types.FeatureSupportType.BEST_EFFORT
+      },
+      {
+          'text': types.FeatureSupportType.SUPPORTED,
+          'image': types.FeatureSupportType.NOT_SUPPORTED,
+          'audio': types.FeatureSupportType.NOT_SUPPORTED,
+          'video': types.FeatureSupportType.NOT_SUPPORTED,
+          'json': types.FeatureSupportType.SUPPORTED,
+          'pydantic': types.FeatureSupportType.BEST_EFFORT,
+      },
+  ]
+
+
+def _get_input_format_config_type_options():
+  return [
+      {},
+      {
+          'text': types.FeatureSupportType.SUPPORTED
+      },
+      {
+          'image': types.FeatureSupportType.NOT_SUPPORTED
+      },
+      {
+          'json': types.FeatureSupportType.BEST_EFFORT
+      },
+      {
+          'pydantic': types.FeatureSupportType.BEST_EFFORT
+      },
+      {
+          'text': types.FeatureSupportType.SUPPORTED,
+          'image': types.FeatureSupportType.SUPPORTED,
+          'document': types.FeatureSupportType.SUPPORTED,
+          'audio': types.FeatureSupportType.SUPPORTED,
+          'video': types.FeatureSupportType.SUPPORTED,
+          'json': types.FeatureSupportType.BEST_EFFORT,
+          'pydantic': types.FeatureSupportType.BEST_EFFORT
+      },
+  ]
+
+
+def _get_feature_config_type_options():
+  return [
+      {},
+      {
+          'prompt': types.FeatureSupportType.SUPPORTED
+      },
+      {
+          'messages': types.FeatureSupportType.SUPPORTED
+      },
+      {
+          'system_prompt': types.FeatureSupportType.BEST_EFFORT
+      },
+      {
+          'add_system_to_messages': True
+      },
+      {
+          'add_system_to_messages': False
+      },
+      {
+          'parameters':
+              types.ParameterConfigType(
+                  temperature=types.FeatureSupportType.SUPPORTED
               )
       },
       {
-          types.FeatureNameType.PROMPT:
-              types.EndpointFeatureInfoType(supported=['value1']),
-          types.FeatureNameType.MESSAGES:
-              types.EndpointFeatureInfoType(best_effort=['value2'])
+          'tools':
+              types.ToolConfigType(
+                  web_search=types.FeatureSupportType.SUPPORTED
+              )
       },
       {
-          types.FeatureNameType.PROMPT:
-              types.EndpointFeatureInfoType(supported=['value1']),
-          types.FeatureNameType.MESSAGES:
-              types.EndpointFeatureInfoType(best_effort=['value2']),
-          types.FeatureNameType.SYSTEM:
-              types.EndpointFeatureInfoType(not_supported=['value3']),
-          types.FeatureNameType.MAX_TOKENS:
-              types.EndpointFeatureInfoType(
-                  supported=['value4'], best_effort=['value5'],
-                  not_supported=['value6']
+          'output_format':
+              types.OutputFormatConfigType(
+                  text=types.FeatureSupportType.SUPPORTED,
+                  json=types.FeatureSupportType.SUPPORTED
+              )
+      },
+      {
+          'input_format':
+              types.InputFormatConfigType(
+                  text=types.FeatureSupportType.SUPPORTED,
+                  image=types.FeatureSupportType.SUPPORTED,
+                  json=types.FeatureSupportType.BEST_EFFORT,
+                  pydantic=types.FeatureSupportType.BEST_EFFORT
+              )
+      },
+      {
+          'prompt': types.FeatureSupportType.SUPPORTED,
+          'messages': types.FeatureSupportType.SUPPORTED,
+          'system_prompt': types.FeatureSupportType.BEST_EFFORT,
+          'add_system_to_messages': True,
+          'parameters':
+              types.ParameterConfigType(
+                  temperature=types.FeatureSupportType.SUPPORTED,
+                  max_tokens=types.FeatureSupportType.SUPPORTED,
+                  stop=types.FeatureSupportType.BEST_EFFORT,
+                  n=types.FeatureSupportType.NOT_SUPPORTED,
+                  thinking=types.FeatureSupportType.SUPPORTED
+              ),
+          'tools':
+              types.ToolConfigType(
+                  web_search=types.FeatureSupportType.SUPPORTED
+              ),
+          'output_format':
+              types.OutputFormatConfigType(
+                  text=types.FeatureSupportType.SUPPORTED,
+                  image=types.FeatureSupportType.NOT_SUPPORTED,
+                  audio=types.FeatureSupportType.NOT_SUPPORTED,
+                  video=types.FeatureSupportType.NOT_SUPPORTED,
+                  json=types.FeatureSupportType.SUPPORTED,
+                  pydantic=types.FeatureSupportType.BEST_EFFORT,
+              ),
+          'input_format':
+              types.InputFormatConfigType(
+                  text=types.FeatureSupportType.SUPPORTED,
+                  image=types.FeatureSupportType.SUPPORTED,
+                  document=types.FeatureSupportType.SUPPORTED,
+                  audio=types.FeatureSupportType.SUPPORTED,
+                  video=types.FeatureSupportType.SUPPORTED,
+                  json=types.FeatureSupportType.BEST_EFFORT,
+                  pydantic=types.FeatureSupportType.BEST_EFFORT
               )
       },
   ]
@@ -139,14 +256,12 @@ def _get_feature_mapping_type_options():
 def _get_provider_model_metadata_type_options():
   return [
       {},
+      {},
       {
-          'call_type': types.CallType.GENERATE_TEXT
+          'is_recommended': True
       },
       {
-          'is_featured': True
-      },
-      {
-          'is_featured': False
+          'is_recommended': False
       },
       {
           'model_size_tags': []
@@ -174,18 +289,6 @@ def _get_provider_model_metadata_type_options():
           ]
       },
       {
-          'is_default_candidate': True
-      },
-      {
-          'is_default_candidate': False
-      },
-      {
-          'default_candidate_priority': 1
-      },
-      {
-          'default_candidate_priority': 100
-      },
-      {
           'tags': []
       },
       {
@@ -195,63 +298,65 @@ def _get_provider_model_metadata_type_options():
           'tags': ['tag1', 'tag2', 'tag3']
       },
       {
-          'call_type': types.CallType.GENERATE_TEXT,
-          'is_featured': True,
+          'is_recommended': True,
           'model_size_tags': [types.ModelSizeType.LARGE],
-          'is_default_candidate': True,
-          'default_candidate_priority': 5,
           'tags': ['tag1', 'tag2']
       },
   ]
 
 
-def _get_provider_model_config_type_options():
+def _get_provider_model_config_options():
   return [
-      {},
       {
-          'provider_model':
-              pytest.model_configs_instance.get_provider_model(
-                  ('openai', 'gpt-4')
-              )
+          'provider_model': _MODEL_1,
+          'pricing': types.ProviderModelPricingType(),
+          'features': types.FeatureConfigType(),
+          'metadata': types.ProviderModelMetadataType()
       },
       {
+          'provider_model': _MODEL_1,
           'pricing':
               types.ProviderModelPricingType(
-                  per_response_token_cost=0.001, per_query_token_cost=0.002
-              )
-      },
-      {
-          'features': {
-              types.FeatureNameType.PROMPT:
-                  types.EndpointFeatureInfoType(not_supported=['feature1'])
-          }
-      },
-      {
-          'metadata':
-              types.ProviderModelMetadataType(
-                  call_type=types.CallType.GENERATE_TEXT, is_featured=True
-              )
-      },
-      {
-          'provider_model':
-              pytest.model_configs_instance.get_provider_model(
-                  ('claude', 'opus-4')
+                  input_token_cost=100, output_token_cost=200
               ),
+          'features': types.FeatureConfigType(),
+          'metadata': types.ProviderModelMetadataType()
+      },
+      {
+          'provider_model': _MODEL_1,
+          'pricing': types.ProviderModelPricingType(),
+          'features':
+              types.FeatureConfigType(
+                  prompt=types.FeatureSupportType.SUPPORTED
+              ),
+          'metadata': types.ProviderModelMetadataType()
+      },
+      {
+          'provider_model': _MODEL_1,
+          'pricing': types.ProviderModelPricingType(),
+          'features': types.FeatureConfigType(),
+          'metadata': types.ProviderModelMetadataType(is_recommended=True)
+      },
+      {
+          'provider_model': _MODEL_3,
           'pricing':
               types.ProviderModelPricingType(
-                  per_response_token_cost=0.003, per_query_token_cost=0.001
+                  input_token_cost=300, output_token_cost=100
               ),
-          'features': {
-              types.FeatureNameType.PROMPT:
-                  types.EndpointFeatureInfoType(
-                      not_supported=['feature1', 'feature2']
+          'features':
+              types.FeatureConfigType(
+                  prompt=types.FeatureSupportType.SUPPORTED,
+                  messages=types.FeatureSupportType.SUPPORTED,
+                  system_prompt=types.FeatureSupportType.BEST_EFFORT,
+                  parameters=types.ParameterConfigType(
+                      temperature=types.FeatureSupportType.SUPPORTED,
+                      max_tokens=types.FeatureSupportType.SUPPORTED
                   )
-          },
+              ),
           'metadata':
               types.ProviderModelMetadataType(
-                  call_type=types.CallType.GENERATE_TEXT, is_featured=True,
+                  is_recommended=True,
                   model_size_tags=[types.ModelSizeType.LARGEST],
-                  is_default_candidate=True, default_candidate_priority=10,
                   tags=['production', 'recommended']
               )
       },
@@ -295,163 +400,20 @@ def _get_model_configs_schema_metadata_type_options():
   ]
 
 
-def _get_model_configs_schema_version_config_type_options():
-  return [{}, {
+def _get_model_registry_options():
+  _default_config = types.ProviderModelConfig(
+      provider_model=_MODEL_1, pricing=types.ProviderModelPricingType(),
+      features=types.FeatureConfigType(),
+      metadata=types.ProviderModelMetadataType()
+  )
+  return [{
+      'metadata': types.ModelConfigsSchemaMetadataType(version='1.0.0'),
+      'default_model_priority_list': [_MODEL_1],
       'provider_model_configs': {
           'openai': {
-              'gpt-4':
-                  types.ProviderModelConfigType(
-                      provider_model=pytest.model_configs_instance.
-                      get_provider_model(('openai', 'gpt-4'))
-                  )
+              'gpt-4': _default_config
           }
       }
-  }, {
-      'provider_model_configs': {
-          'openai': {
-              'gpt-4':
-                  types.ProviderModelConfigType(
-                      provider_model=pytest.model_configs_instance.
-                      get_provider_model(('openai', 'gpt-4')),
-                      pricing=types.ProviderModelPricingType(
-                          per_response_token_cost=0.001,
-                          per_query_token_cost=0.002
-                      )
-                  )
-          },
-          'claude': {
-              'opus-4':
-                  types.ProviderModelConfigType(
-                      provider_model=pytest.model_configs_instance.
-                      get_provider_model(('claude', 'opus-4')),
-                      metadata=types.ProviderModelMetadataType(
-                          is_featured=True
-                      )
-                  )
-          }
-      }
-  }, {
-      'featured_models': {
-          'openai': [
-              pytest.model_configs_instance.get_provider_model(
-                  ('openai', 'gpt-4')
-              )
-          ]
-      }
-  }, {
-      'featured_models': {
-          'openai': [
-              pytest.model_configs_instance.get_provider_model(
-                  ('openai', 'gpt-4')
-              )
-          ],
-          'claude': [('claude', 'opus-4')]
-      }
-  }, {
-      'models_by_call_type': {
-          types.CallType.GENERATE_TEXT: {
-              'openai': [
-                  pytest.model_configs_instance.get_provider_model(
-                      ('openai', 'gpt-4')
-                  )
-              ],
-              'claude': [('claude', 'sonnet-4')]
-          }
-      }
-  }, {
-      'models_by_size': {
-          types.ModelSizeType.SMALL: [('openai', 'gpt-4o-mini')],
-          types.ModelSizeType.LARGE: [
-              pytest.model_configs_instance.get_provider_model(
-                  ('openai', 'gpt-4')
-              ), ('claude', 'opus-4')
-          ]
-      }
-  }, {
-      'default_model_priority_list': [
-          pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4')),
-          ('claude', 'opus-4'), ('openai', 'o3-mini')
-      ]
-  }, {
-      'provider_model_configs': {
-          'openai': {
-              'gpt-4':
-                  types.ProviderModelConfigType(
-                      provider_model=pytest.model_configs_instance.
-                      get_provider_model(('openai', 'gpt-4')),
-                      pricing=types.ProviderModelPricingType(
-                          per_response_token_cost=0.001,
-                          per_query_token_cost=0.002
-                      ), features={
-                          types.FeatureNameType.PROMPT:
-                              types.EndpointFeatureInfoType(
-                                  not_supported=['feature1']
-                              )
-                      }, metadata=types.ProviderModelMetadataType(
-                          call_type=types.CallType.GENERATE_TEXT,
-                          is_featured=True,
-                          model_size_tags=[types.ModelSizeType.LARGE]
-                      )
-                  ),
-              'o3-mini':
-                  types.ProviderModelConfigType(
-                      provider_model=pytest.model_configs_instance.
-                      get_provider_model(('openai', 'o3-mini'))
-                  )
-          },
-          'claude': {
-              'opus-4':
-                  types.ProviderModelConfigType(
-                      provider_model=pytest.model_configs_instance.
-                      get_provider_model(('claude', 'opus-4')),
-                      metadata=types.ProviderModelMetadataType(
-                          is_featured=True,
-                          model_size_tags=[types.ModelSizeType.LARGEST]
-                      )
-                  ),
-              'sonnet-4':
-                  types.ProviderModelConfigType(
-                      provider_model=pytest.model_configs_instance.
-                      get_provider_model(('claude', 'sonnet-4'))
-                  )
-          }
-      },
-      'featured_models': {
-          'openai': [
-              pytest.model_configs_instance.get_provider_model(
-                  ('openai', 'gpt-4')
-              )
-          ],
-          'claude': [('claude', 'opus-4')]
-      },
-      'models_by_call_type': {
-          types.CallType.GENERATE_TEXT: {
-              'openai': [
-                  pytest.model_configs_instance.get_provider_model(
-                      ('openai', 'gpt-4')
-                  )
-              ],
-              'claude': [('claude', 'sonnet-4')]
-          }
-      },
-      'models_by_size': {
-          types.ModelSizeType.SMALL: [('openai', 'gpt-4o-mini')],
-          types.ModelSizeType.LARGE: [
-              pytest.model_configs_instance.get_provider_model(
-                  ('openai', 'gpt-4')
-              ), ('claude', 'opus-4')
-          ]
-      },
-      'default_model_priority_list': [
-          pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4')),
-          ('claude', 'opus-4'), ('openai', 'o3-mini')
-      ]
-  }]
-
-
-def _get_model_configs_schema_type_options():
-  return [{}, {
-      'metadata': types.ModelConfigsSchemaMetadataType(version='1.0.0')
   }, {
       'metadata':
           types.ModelConfigsSchemaMetadataType(
@@ -459,48 +421,33 @@ def _get_model_configs_schema_type_options():
               released_at=datetime.datetime.now(datetime.timezone.utc),
               config_origin=types.ConfigOriginType.BUILT_IN,
               release_notes='Initial release'
-          )
-  }, {
-      'version_config':
-          types.ModelConfigsSchemaVersionConfigType(
-              provider_model_configs={
-                  'openai': {
-                      'gpt-4':
-                          types.ProviderModelConfigType(
-                              provider_model=pytest.model_configs_instance.
-                              get_provider_model(('openai', 'gpt-4'))
-                          )
-                  }
-              }
-          )
-  }, {
-      'version_config':
-          types.ModelConfigsSchemaVersionConfigType(
-              featured_models={
-                  'openai': [
-                      pytest.model_configs_instance.
-                      get_provider_model(('openai', 'gpt-4'))
-                  ]
-              }
-          )
-  }, {
-      'metadata':
-          types.ModelConfigsSchemaMetadataType(
-              version='1.0.0',
-              released_at=datetime.datetime.now(datetime.timezone.utc)
           ),
-      'version_config':
-          types.ModelConfigsSchemaVersionConfigType(
-              provider_model_configs={
-                  'openai': {
-                      'gpt-4':
-                          types.ProviderModelConfigType(
-                              provider_model=pytest.model_configs_instance.
-                              get_provider_model(('openai', 'gpt-4'))
-                          )
-                  }
-              }
-          )
+      'default_model_priority_list': [_MODEL_1],
+      'provider_model_configs': {
+          'openai': {
+              'gpt-4': _default_config
+          }
+      }
+  }, {
+      'metadata': types.ModelConfigsSchemaMetadataType(version='1.0.0'),
+      'default_model_priority_list': [_MODEL_1, _MODEL_3, _MODEL_2],
+      'provider_model_configs': {
+          'openai': {
+              'gpt-4':
+                  types.ProviderModelConfig(
+                      provider_model=_MODEL_1,
+                      pricing=types.ProviderModelPricingType(
+                          input_token_cost=100, output_token_cost=200
+                      ), features=types.FeatureConfigType(
+                          prompt=types.FeatureSupportType.SUPPORTED,
+                          messages=types.FeatureSupportType.SUPPORTED
+                      ), metadata=types.ProviderModelMetadataType(
+                          is_recommended=True,
+                          model_size_tags=[types.ModelSizeType.LARGE]
+                      )
+                  )
+          }
+      }
   }, {
       'metadata':
           types.ModelConfigsSchemaMetadataType(
@@ -510,198 +457,404 @@ def _get_model_configs_schema_type_options():
               config_origin=types.ConfigOriginType.PROXDASH,
               release_notes='Added new models and updated pricing'
           ),
-      'version_config':
-          types.ModelConfigsSchemaVersionConfigType(
-              provider_model_configs={
-                  'openai': {
-                      'gpt-4':
-                          types.ProviderModelConfigType(
-                              provider_model=pytest.model_configs_instance.
-                              get_provider_model(('openai', 'gpt-4')),
-                              pricing=types.ProviderModelPricingType(
-                                  per_response_token_cost=0.001,
-                                  per_query_token_cost=0.002
-                              ), features={
-                                  types.FeatureNameType.PROMPT:
-                                      types.EndpointFeatureInfoType(
-                                          not_supported=['feature1']
-                                      )
-                              }, metadata=types.ProviderModelMetadataType(
-                                  call_type=types.CallType.GENERATE_TEXT,
-                                  is_featured=True,
-                                  model_size_tags=[types.ModelSizeType.LARGE]
-                              )
-                          ),
-                      'o3-mini':
-                          types.ProviderModelConfigType(
-                              provider_model=pytest.model_configs_instance.
-                              get_provider_model(('openai', 'o3-mini'))
+      'default_model_priority_list': [_MODEL_1, _MODEL_3, _MODEL_2],
+      'provider_model_configs': {
+          'openai': {
+              'gpt-4':
+                  types.ProviderModelConfig(
+                      provider_model=_MODEL_1,
+                      pricing=types.ProviderModelPricingType(
+                          input_token_cost=100, output_token_cost=200
+                      ), features=types.FeatureConfigType(
+                          prompt=types.FeatureSupportType.SUPPORTED,
+                          messages=types.FeatureSupportType.SUPPORTED,
+                          parameters=types.ParameterConfigType(
+                              temperature=types.FeatureSupportType.SUPPORTED,
+                              max_tokens=types.FeatureSupportType.SUPPORTED
                           )
-                  },
-                  'claude': {
-                      'opus-4':
-                          types.ProviderModelConfigType(
-                              provider_model=pytest.model_configs_instance.
-                              get_provider_model(('claude', 'opus-4')),
-                              metadata=types.ProviderModelMetadataType(
-                                  is_featured=True,
-                                  model_size_tags=[types.ModelSizeType.LARGEST]
-                              )
-                          ),
-                      'sonnet-4':
-                          types.ProviderModelConfigType(
-                              provider_model=pytest.model_configs_instance.
-                              get_provider_model(('claude', 'sonnet-4'))
-                          )
-                  }
-              }, featured_models={
-                  'openai': [
-                      pytest.model_configs_instance.get_provider_model(
-                          ('openai', 'gpt-4')
+                      ), metadata=types.ProviderModelMetadataType(
+                          is_recommended=True,
+                          model_size_tags=[types.ModelSizeType.LARGE]
                       )
-                  ],
-                  'claude': [('claude', 'opus-4')]
-              }, models_by_call_type={
-                  types.CallType.GENERATE_TEXT: {
-                      'openai': [
-                          pytest.model_configs_instance.get_provider_model(
-                              ('openai', 'gpt-4')
-                          )
-                      ],
-                      'claude': [('claude', 'sonnet-4')]
-                  }
-              }, models_by_size={
-                  types.ModelSizeType.SMALL: [('openai', 'gpt-4o-mini')],
-                  types.ModelSizeType.LARGE: [
-                      pytest.model_configs_instance.get_provider_model(
-                          ('openai', 'gpt-4')
-                      ), ('claude', 'opus-4')
-                  ]
-              }, default_model_priority_list=[
-                  pytest.model_configs_instance.get_provider_model(
-                      ('openai', 'gpt-4')
-                  ), ('claude', 'opus-4'), ('openai', 'o3-mini')
-              ]
-          )
+                  ),
+              'o3-mini':
+                  types.ProviderModelConfig(
+                      provider_model=_MODEL_2,
+                      pricing=types.ProviderModelPricingType(),
+                      features=types.FeatureConfigType(),
+                      metadata=types.ProviderModelMetadataType()
+                  )
+          },
+          'claude': {
+              'opus-4':
+                  types.ProviderModelConfig(
+                      provider_model=_MODEL_3,
+                      pricing=types.ProviderModelPricingType(),
+                      features=types.FeatureConfigType(),
+                      metadata=types.ProviderModelMetadataType(
+                          is_recommended=True,
+                          model_size_tags=[types.ModelSizeType.LARGEST]
+                      )
+                  ),
+              'sonnet-4':
+                  types.ProviderModelConfig(
+                      provider_model=_MODEL_4,
+                      pricing=types.ProviderModelPricingType(),
+                      features=types.FeatureConfigType(),
+                      metadata=types.ProviderModelMetadataType()
+                  )
+          }
+      }
   }]
 
 
-def _get_query_record_options():
+def _get_parameter_type_options():
   return [
+      {},
       {
-          'call_type': types.CallType.GENERATE_TEXT
-      },
-      {
-          'provider_model':
-              pytest.model_configs_instance.get_provider_model(
-                  ('openai', 'gpt-4')
-              )
-      },
-      {
-          'prompt': 'Hello, world!'
-      },
-      {
-          'system': 'Hello, system!'
-      },
-      {
-          'messages': [{
-              'role': 'user',
-              'content': 'Hello, user!'
-          }]
+          'temperature': 0.5
       },
       {
           'max_tokens': 100
       },
       {
-          'temperature': 0.5
+          'stop': 'stop_word'
       },
       {
-          'stop': ['stop']
+          'stop': ['stop1', 'stop2']
       },
       {
-          'token_count': 100
+          'n': 3
       },
       {
-          'web_search': True
+          'thinking': types.ThinkingType.LOW
       },
       {
-          'web_search': False
+          'thinking': types.ThinkingType.MEDIUM
       },
       {
-          'feature_mapping_strategy': types.FeatureMappingStrategy.BEST_EFFORT
+          'thinking': types.ThinkingType.HIGH
       },
       {
-          'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT
-      },
-      {
-          'hash_value': 'some_hash_value'
-      },
-      {
-          'chosen_endpoint': 'some_endpoint'
-      },
-      {
-          'response_format':
-              types.ResponseFormat(type=types.ResponseFormatType.TEXT)
-      },
-      {
-          'response_format':
-              types.ResponseFormat(type=types.ResponseFormatType.JSON)
-      },
-      {
-          'response_format':
-              types.ResponseFormat(
-                  type=types.ResponseFormatType.JSON_SCHEMA, value={
-                      'type': 'object',
-                      'properties': {
-                          'name': {
-                              'type': 'string'
-                          }
-                      }
-                  }
-              )
-      },
-      {
-          'call_type': types.CallType.GENERATE_TEXT,
-          'provider_model':
-              pytest.model_configs_instance.get_provider_model(
-                  ('openai', 'gpt-4')
-              ),
-          'prompt': 'Hello, world!',
-          'system': 'Hello, system!',
-          'messages': [{
-              'role': 'user',
-              'content': 'Hello, user!'
-          }],
-          'max_tokens': 100,
-          'temperature': 0.5,
-          'stop': ['stop'],
-          'token_count': 100,
-          'response_format':
-              types.ResponseFormat(
-                  type=types.ResponseFormatType.JSON_SCHEMA, value={
-                      'type': 'object',
-                      'properties': {
-                          'id': {
-                              'type': 'integer'
-                          }
-                      }
-                  }
-              ),
-          'web_search': True,
-          'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT,
-          'hash_value': 'test_hash',
-          'chosen_endpoint': 'test_endpoint'
+          'temperature': 0.7,
+          'max_tokens': 200,
+          'stop': ['stop1'],
+          'n': 2,
+          'thinking': types.ThinkingType.HIGH
       },
   ]
 
 
-def _get_query_response_record_options():
+def _get_connection_options_options():
+  return [
+      {},
+      {
+          'fallback_models': [_MODEL_1]
+      },
+      {
+          'fallback_models': [_MODEL_1, _MODEL_3]
+      },
+      {
+          'suppress_provider_errors': True
+      },
+      {
+          'suppress_provider_errors': False
+      },
+      {
+          'endpoint': 'some_endpoint'
+      },
+      {
+          'skip_cache': True
+      },
+      {
+          'override_cache_value': True
+      },
+      {
+          'fallback_models': [_MODEL_1, _MODEL_2],
+          'suppress_provider_errors': True,
+          'endpoint': 'test_endpoint',
+          'skip_cache': True,
+          'override_cache_value': False
+      },
+  ]
+
+
+class _UserModel(pydantic.BaseModel):
+  name: str
+  age: int
+
+
+class _EventModel(pydantic.BaseModel):
+  """Model whose fields are NOT JSON-native by default."""
+  name: str
+  when: datetime.datetime
+  id: uuid.UUID
+  amount: Decimal
+
+
+class _AddressModel(pydantic.BaseModel):
+  street: str
+  city: str
+  country: str
+
+
+class _UserWithAddressModel(pydantic.BaseModel):
+  name: str
+  email: str | None = None
+  address: _AddressModel
+  tags: list[str] = []
+
+
+def _get_output_format_options():
   return [
       {
-          'response':
-              types.Response(
-                  type=types.ResponseType.TEXT, value='Hello, world!'
+          'type': types.OutputFormatType.TEXT
+      },
+      {
+          'type': types.OutputFormatType.IMAGE
+      },
+      {
+          'type': types.OutputFormatType.JSON
+      },
+      {
+          'type': types.OutputFormatType.PYDANTIC
+      },
+      {
+          'type': types.OutputFormatType.PYDANTIC,
+          'pydantic_class': _UserModel
+      },
+      {
+          'type': types.OutputFormatType.PYDANTIC,
+          'pydantic_class': _UserWithAddressModel
+      },
+  ]
+
+
+def _get_result_media_content_type_options():
+  return [
+      {
+          'data': b'',
+          'media_type': 'image/png'
+      },
+      {
+          'data': b'\x89PNG\r\n\x1a\n',
+          'media_type': 'image/png'
+      },
+      {
+          'data': b'\xff\xd8\xff\xe0',
+          'media_type': 'image/jpeg'
+      },
+      {
+          'data': b'RIFF\x00\x00\x00\x00WAVE',
+          'media_type': 'audio/wav'
+      },
+      {
+          'data': b'\x00\x00\x00\x20ftypisom',
+          'media_type': 'video/mp4'
+      },
+  ]
+
+
+def _get_choice_type_options():
+  return [
+      {},
+      {
+          'output_text': 'Hello, world!'
+      },
+      {
+          'output_image':
+              message_content.MessageContent(
+                  type=message_content.ContentType.IMAGE,
+                  source='https://example.com/img.png'
               )
+      },
+      {
+          'output_audio':
+              message_content.MessageContent(
+                  type=message_content.ContentType.AUDIO,
+                  source='https://example.com/audio.mp3'
+              )
+      },
+      {
+          'output_video':
+              message_content.MessageContent(
+                  type=message_content.ContentType.VIDEO,
+                  source='https://example.com/video.mp4'
+              )
+      },
+      {
+          'output_json': {
+              'key': 'value'
+          }
+      },
+      {
+          'output_json': {
+              'name': 'test',
+              'items': [1, 2, 3]
+          }
+      },
+      {
+          'content': 'Hello, world!'
+      },
+      {
+          'content': ['text1', 'text2']
+      },
+      {
+          'content': [
+              message_content.MessageContent(
+                  type=message_content.ContentType.TEXT, text='hello'
+              )
+          ]
+      },
+      {
+          'content': [
+              'plain text',
+              message_content.MessageContent(
+                  type=message_content.ContentType.TEXT, text='rich text'
+              )
+          ]
+      },
+      {
+          'output_text': 'text result',
+          'output_json': {
+              'key': 'value'
+          },
+          'content': [
+              message_content.MessageContent(
+                  type=message_content.ContentType.TEXT, text='hello'
+              )
+          ]
+      },
+  ]
+
+
+def _get_usage_type_options():
+  return [
+      {},
+      {
+          'input_tokens': 100
+      },
+      {
+          'output_tokens': 200
+      },
+      {
+          'total_tokens': 300
+      },
+      {
+          'estimated_cost': 50
+      },
+      {
+          'input_tokens': 0,
+          'output_tokens': 0,
+          'total_tokens': 0,
+          'estimated_cost': 0
+      },
+      {
+          'input_tokens': 100,
+          'output_tokens': 200,
+          'total_tokens': 300,
+          'estimated_cost': 50
+      },
+  ]
+
+
+def _get_timestamp_type_options():
+  return [
+      {},
+      {
+          'start_utc_date': datetime.datetime.now(datetime.timezone.utc)
+      },
+      {
+          'end_utc_date': datetime.datetime.now(datetime.timezone.utc)
+      },
+      {
+          'local_time_offset_minute': -300
+      },
+      {
+          'response_time': datetime.timedelta(seconds=1.5)
+      },
+      {
+          'cache_response_time': datetime.timedelta(seconds=0.01)
+      },
+      {
+          'start_utc_date': datetime.datetime.now(datetime.timezone.utc),
+          'end_utc_date': datetime.datetime.now(datetime.timezone.utc),
+          'local_time_offset_minute': -300,
+          'response_time': datetime.timedelta(seconds=2.0),
+          'cache_response_time': datetime.timedelta(seconds=0.05)
+      },
+  ]
+
+
+def _get_result_record_options():
+  return [
+      {
+          'status': types.ResultStatusType.SUCCESS
+      },
+      {
+          'status': types.ResultStatusType.FAILED
+      },
+      {
+          'role': types.MessageRoleType.ASSISTANT
+      },
+      {
+          'role': types.MessageRoleType.USER
+      },
+      {
+          'output_text': 'Hello, world!'
+      },
+      {
+          'output_image':
+              message_content.MessageContent(
+                  type=message_content.ContentType.IMAGE,
+                  source='https://example.com/img.png',
+              )
+      },
+      {
+          'output_audio':
+              message_content.MessageContent(
+                  type=message_content.ContentType.AUDIO,
+                  data=b'audio_data_bytes',
+                  media_type='audio/mpeg',
+              )
+      },
+      {
+          'output_video':
+              message_content.MessageContent(
+                  type=message_content.ContentType.VIDEO,
+                  source='https://example.com/video.mp4',
+              )
+      },
+      {
+          'output_json': {
+              'key': 'value'
+          }
+      },
+      {
+          'output_json': {
+              'name': 'test',
+              'items': [1, 2, 3]
+          }
+      },
+      {
+          'content': 'Hello, world!'
+      },
+      {
+          'content': [
+              'text part',
+              message_content.MessageContent(
+                  type=message_content.ContentType.TEXT, text='rich part'
+              )
+          ]
+      },
+      {
+          'choices': [types.ChoiceType(content='choice 1')]
+      },
+      {
+          'choices': [
+              types.ChoiceType(content='choice 1'),
+              types.ChoiceType(content='choice 2')
+          ]
       },
       {
           'error': 'Error message'
@@ -710,42 +863,222 @@ def _get_query_response_record_options():
           'error_traceback': 'Traceback (most recent call last):\n  File...'
       },
       {
-          'start_utc_date': datetime.datetime.now(datetime.timezone.utc)
+          'usage': types.UsageType(input_tokens=100, output_tokens=200)
       },
       {
-          'end_utc_date': datetime.datetime.now(datetime.timezone.utc)
+          'timestamp':
+              types.TimeStampType(
+                  start_utc_date=datetime.datetime.now(datetime.timezone.utc),
+                  response_time=datetime.timedelta(seconds=1)
+              )
       },
       {
-          'local_time_offset_minute': (
-              datetime.datetime.now().astimezone().utcoffset().total_seconds()
-              // 60
-          ) * -1
-      },
-      {
-          'response_time': datetime.timedelta(seconds=1)
-      },
-      {
-          'estimated_cost': 1
-      },
-      {
-          'token_count': 100
-      },
-      {
-          'response':
-              types.Response(
-                  type=types.ResponseType.TEXT, value='Hello, world!'
+          'status': types.ResultStatusType.SUCCESS,
+          'role': types.MessageRoleType.ASSISTANT,
+          'output_text': 'Full response',
+          'output_image':
+              message_content.MessageContent(
+                  type=message_content.ContentType.IMAGE,
+                  source='https://example.com/img.png',
               ),
-          'error': 'Error message',
-          'start_utc_date': datetime.datetime.now(datetime.timezone.utc),
-          'end_utc_date': datetime.datetime.now(datetime.timezone.utc),
-          'local_time_offset_minute': (
-              datetime.datetime.now().astimezone().utcoffset().total_seconds()
-              // 60
-          ) * -1,
-          'response_time': datetime.timedelta(seconds=1),
-          'estimated_cost': 1,
-          'token_count': 100,
-          'error_traceback': 'Traceback info'
+          'output_json': {
+              'result': 'ok'
+          },
+          'content': [
+              message_content.MessageContent(
+                  type=message_content.ContentType.TEXT, text='hello'
+              )
+          ],
+          'choices': [types.ChoiceType(content='choice 1')],
+          'usage':
+              types.UsageType(
+                  input_tokens=100, output_tokens=200, total_tokens=300,
+                  estimated_cost=50
+              ),
+          'timestamp':
+              types.TimeStampType(
+                  start_utc_date=datetime.datetime.now(datetime.timezone.utc),
+                  end_utc_date=datetime.datetime.now(datetime.timezone.utc),
+                  local_time_offset_minute=-300,
+                  response_time=datetime.timedelta(seconds=1.5),
+                  cache_response_time=datetime.timedelta(seconds=0.01)
+              )
+      },
+  ]
+
+
+def _get_query_record_options():
+  return [
+      {
+          'prompt': 'Hello, world!'
+      },
+      {
+          'chat':
+              chat_session.Chat(
+                  messages=[
+                      message.Message(
+                          role=message_content.MessageRoleType.USER, content=[
+                              message_content.
+                              MessageContent(type='text', text='Hello')
+                          ]
+                      )
+                  ]
+              )
+      },
+      {
+          'system_prompt': 'You are a helpful assistant.'
+      },
+      {
+          'provider_model': _MODEL_1
+      },
+      {
+          'provider_model': _MODEL_3
+      },
+      {
+          'parameters': types.ParameterType(temperature=0.5)
+      },
+      {
+          'parameters': types.ParameterType(max_tokens=100)
+      },
+      {
+          'tools': [types.Tools.WEB_SEARCH]
+      },
+      {
+          'output_format': types.OutputFormat(type=types.OutputFormatType.TEXT)
+      },
+      {
+          'output_format': types.OutputFormat(type=types.OutputFormatType.JSON)
+      },
+      {
+          'output_format':
+              types.OutputFormat(type=types.OutputFormatType.PYDANTIC)
+      },
+      {
+          'connection_options':
+              types.ConnectionOptions(
+                  fallback_models=[_MODEL_1], suppress_provider_errors=True,
+                  endpoint='some_endpoint'
+              )
+      },
+      {
+          'hash_value': 'some_hash_value'
+      },
+      {
+          'prompt': 'Hello, world!',
+          'chat':
+              chat_session.Chat(
+                  messages=[
+                      message.Message(
+                          role=message_content.MessageRoleType.USER, content=[
+                              message_content.
+                              MessageContent(type='text', text='Hi')
+                          ]
+                      ),
+                      message.Message(
+                          role=message_content.MessageRoleType.ASSISTANT,
+                          content=[
+                              message_content.
+                              MessageContent(type='text', text='Hello!')
+                          ]
+                      )
+                  ]
+              ),
+          'system_prompt': 'Be helpful.',
+          'provider_model': _MODEL_1,
+          'parameters':
+              types.ParameterType(
+                  temperature=0.7, max_tokens=200, stop=['stop1'], n=2
+              ),
+          'tools': [types.Tools.WEB_SEARCH],
+          'output_format': types.OutputFormat(type=types.OutputFormatType.TEXT),
+          'connection_options':
+              types.ConnectionOptions(
+                  fallback_models=[_MODEL_1, _MODEL_2],
+                  suppress_provider_errors=True, endpoint='test_endpoint',
+                  skip_cache=False, override_cache_value=True
+              ),
+          'hash_value': 'test_hash'
+      },
+  ]
+
+
+def _get_connection_metadata_options():
+  return [
+      {},
+      {
+          'result_source': types.ResultSource.CACHE
+      },
+      {
+          'result_source': types.ResultSource.PROVIDER
+      },
+      {
+          'cache_look_fail_reason': types.CacheLookFailReason.CACHE_NOT_FOUND
+      },
+      {
+          'cache_look_fail_reason':
+              types.CacheLookFailReason.UNIQUE_RESPONSE_LIMIT_NOT_REACHED
+      },
+      {
+          'cache_look_fail_reason': types.CacheLookFailReason.CACHE_UNAVAILABLE
+      },
+      {
+          'endpoint_used': 'some_endpoint'
+      },
+      {
+          'failed_fallback_models': [_MODEL_1]
+      },
+      {
+          'failed_fallback_models': [_MODEL_1, _MODEL_3]
+      },
+      {
+          'feature_mapping_strategy': types.FeatureMappingStrategy.BEST_EFFORT
+      },
+      {
+          'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT
+      },
+      {
+          'result_source': types.ResultSource.PROVIDER,
+          'cache_look_fail_reason': types.CacheLookFailReason.CACHE_NOT_MATCHED,
+          'endpoint_used': 'test_endpoint',
+          'failed_fallback_models': [_MODEL_2, _MODEL_4],
+          'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT
+      },
+  ]
+
+
+def _get_call_record_options():
+  return [
+      {
+          'query': types.QueryRecord(prompt='test')
+      },
+      {
+          'result':
+              types.ResultRecord(
+                  status=types.ResultStatusType.SUCCESS, content='Hello'
+              )
+      },
+      {
+          'connection':
+              types.ConnectionMetadata(result_source=types.ResultSource.CACHE)
+      },
+      {
+          'connection':
+              types.ConnectionMetadata(
+                  result_source=types.ResultSource.PROVIDER,
+                  endpoint_used='test_endpoint',
+                  failed_fallback_models=[_MODEL_2], feature_mapping_strategy=(
+                      types.FeatureMappingStrategy.BEST_EFFORT
+                  )
+              )
+      },
+      {
+          'query': types.QueryRecord(prompt='test'),
+          'result':
+              types.ResultRecord(
+                  status=types.ResultStatusType.SUCCESS, content='Hello'
+              ),
+          'connection':
+              types.ConnectionMetadata(result_source=types.ResultSource.CACHE)
       },
   ]
 
@@ -753,14 +1086,12 @@ def _get_query_response_record_options():
 def _get_cache_record_options():
   return [
       {
-          'query_record':
-              types.QueryRecord(call_type=types.CallType.GENERATE_TEXT)
+          'query': types.QueryRecord(prompt='test')
       },
       {
-          'query_responses': [
-              types.QueryResponseRecord(
-                  response=types.
-                  Response(type=types.ResponseType.TEXT, value='Hello, world!')
+          'results': [
+              types.ResultRecord(
+                  status=types.ResultStatusType.SUCCESS, content='Hello, world!'
               )
           ]
       },
@@ -777,12 +1108,10 @@ def _get_cache_record_options():
           'call_count': 1
       },
       {
-          'query_record':
-              types.QueryRecord(call_type=types.CallType.GENERATE_TEXT),
-          'query_responses': [
-              types.QueryResponseRecord(
-                  response=types.
-                  Response(type=types.ResponseType.TEXT, value='Hello, world!')
+          'query': types.QueryRecord(prompt='test'),
+          'results': [
+              types.ResultRecord(
+                  status=types.ResultStatusType.SUCCESS, content='Hello, world!'
               )
           ],
           'shard_id': 0,
@@ -795,13 +1124,16 @@ def _get_cache_record_options():
 def _get_light_cache_record_options():
   return [
       {
-          'query_record_hash': 'hash_value'
+          'query_hash': 'hash_value'
       },
       {
-          'query_response_count': 1
+          'results_count': 1
       },
       {
           'shard_id': 0
+      },
+      {
+          'shard_id': 'backlog'
       },
       {
           'last_access_time': datetime.datetime.now()
@@ -810,8 +1142,8 @@ def _get_light_cache_record_options():
           'call_count': 1
       },
       {
-          'query_record_hash': 'hash_value',
-          'query_response_count': 1,
+          'query_hash': 'hash_value',
+          'results_count': 1,
           'shard_id': 0,
           'last_access_time': datetime.datetime.now(),
           'call_count': 1
@@ -819,35 +1151,35 @@ def _get_light_cache_record_options():
   ]
 
 
-def _get_logging_record_options():
+def _get_cache_look_result_options():
   return [
+      {},
       {
-          'query_record':
-              types.QueryRecord(call_type=types.CallType.GENERATE_TEXT)
-      },
-      {
-          'response_record':
-              types.QueryResponseRecord(
-                  response=types.
-                  Response(type=types.ResponseType.TEXT, value='Hello, world!')
+          'result':
+              types.ResultRecord(
+                  status=types.ResultStatusType.SUCCESS,
+                  output_text='cached response'
               )
       },
       {
-          'response_source': types.ResponseSource.CACHE
+          'cache_look_fail_reason': types.CacheLookFailReason.CACHE_NOT_FOUND
       },
       {
-          'look_fail_reason': types.CacheLookFailReason.CACHE_NOT_FOUND
+          'cache_look_fail_reason': types.CacheLookFailReason.CACHE_NOT_MATCHED
       },
       {
-          'query_record':
-              types.QueryRecord(call_type=types.CallType.GENERATE_TEXT),
-          'response_record':
-              types.QueryResponseRecord(
-                  response=types.
-                  Response(type=types.ResponseType.TEXT, value='Hello, world!')
+          'cache_look_fail_reason':
+              types.CacheLookFailReason.UNIQUE_RESPONSE_LIMIT_NOT_REACHED
+      },
+      {
+          'cache_look_fail_reason': types.CacheLookFailReason.CACHE_UNAVAILABLE
+      },
+      {
+          'result':
+              types.ResultRecord(
+                  status=types.ResultStatusType.FAILED, error='provider error'
               ),
-          'response_source': types.ResponseSource.CACHE,
-          'look_fail_reason': types.CacheLookFailReason.CACHE_NOT_FOUND
+          'cache_look_fail_reason': types.CacheLookFailReason.CACHE_UNAVAILABLE
       },
   ]
 
@@ -877,9 +1209,6 @@ def _get_cache_options_options():
           'unique_response_limit': 1
       },
       {
-          'retry_if_error_cached': True
-      },
-      {
           'clear_query_cache_on_connect': True
       },
       {
@@ -894,7 +1223,6 @@ def _get_cache_options_options():
       {
           'cache_path': 'cache_path',
           'unique_response_limit': 5,
-          'retry_if_error_cached': True,
           'clear_query_cache_on_connect': True,
           'clear_model_cache_on_connect': True,
           'disable_model_cache': False,
@@ -931,11 +1259,93 @@ def _get_proxdash_options_options():
   ]
 
 
+def _get_summary_options_options():
+  return [
+      {},
+      {
+          'json': True
+      },
+      {
+          'json': False
+      },
+  ]
+
+
+def _get_provider_call_options_options():
+  return [
+      {},
+      {
+          'feature_mapping_strategy': types.FeatureMappingStrategy.BEST_EFFORT
+      },
+      {
+          'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT
+      },
+      {
+          'suppress_provider_errors': True
+      },
+      {
+          'suppress_provider_errors': False
+      },
+      {
+          'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT,
+          'suppress_provider_errors': True
+      },
+      {
+          'allow_parallel_file_operations': True
+      },
+      {
+          'allow_parallel_file_operations': False
+      },
+      {
+          'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT,
+          'suppress_provider_errors': True,
+          'allow_parallel_file_operations': False,
+      },
+  ]
+
+
+def _get_model_probe_options_options():
+  return [
+      {},
+      {
+          'allow_multiprocessing': True
+      },
+      {
+          'allow_multiprocessing': False
+      },
+      {
+          'timeout': 10
+      },
+      {
+          'timeout': 60
+      },
+      {
+          'allow_multiprocessing': False,
+          'timeout': 30
+      },
+  ]
+
+
+def _get_debug_options_options():
+  return [
+      {},
+      {
+          'keep_raw_provider_response': True
+      },
+      {
+          'keep_raw_provider_response': False
+      },
+  ]
+
+
 def _get_run_options_options():
   return [
       {},
       {
           'run_type': types.RunType.TEST
+      },
+      {
+          'run_type': types.RunType.PRODUCTION
       },
       {
           'hidden_run_key': 'hidden_run_key'
@@ -960,7 +1370,7 @@ def _get_run_options_options():
           'cache_options':
               types.CacheOptions(
                   cache_path='cache_path', unique_response_limit=1,
-                  retry_if_error_cached=True, clear_query_cache_on_connect=True,
+                  clear_query_cache_on_connect=True,
                   clear_model_cache_on_connect=True
               )
       },
@@ -972,19 +1382,27 @@ def _get_run_options_options():
               )
       },
       {
-          'allow_multiprocessing': True
+          'provider_call_options':
+              types.ProviderCallOptions(
+                  feature_mapping_strategy=(
+                      types.FeatureMappingStrategy.BEST_EFFORT
+                  )
+              )
       },
       {
-          'model_test_timeout': 25
+          'provider_call_options':
+              types.ProviderCallOptions(
+                  feature_mapping_strategy=(
+                      types.FeatureMappingStrategy.STRICT
+                  ), suppress_provider_errors=True
+              )
       },
       {
-          'feature_mapping_strategy': types.FeatureMappingStrategy.BEST_EFFORT
+          'model_probe_options':
+              types.ModelProbeOptions(allow_multiprocessing=False, timeout=30)
       },
       {
-          'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT
-      },
-      {
-          'suppress_provider_errors': True
+          'debug_options': types.DebugOptions(keep_raw_provider_response=True)
       },
       {
           'run_type': types.RunType.TEST,
@@ -1000,7 +1418,7 @@ def _get_run_options_options():
           'cache_options':
               types.CacheOptions(
                   cache_path='cache_path', unique_response_limit=1,
-                  retry_if_error_cached=True, clear_query_cache_on_connect=True,
+                  clear_query_cache_on_connect=True,
                   clear_model_cache_on_connect=True
               ),
           'proxdash_options':
@@ -1008,104 +1426,94 @@ def _get_run_options_options():
                   stdout=True, hide_sensitive_content=True,
                   disable_proxdash=True
               ),
-          'allow_multiprocessing': True,
-          'model_test_timeout': 25,
-          'feature_mapping_strategy': types.FeatureMappingStrategy.STRICT
+          'provider_call_options':
+              types.ProviderCallOptions(
+                  feature_mapping_strategy=(
+                      types.FeatureMappingStrategy.STRICT
+                  ), suppress_provider_errors=True
+              ),
+          'model_probe_options':
+              types.ModelProbeOptions(allow_multiprocessing=False, timeout=30),
+          'debug_options': types.DebugOptions(keep_raw_provider_response=True)
       },
   ]
 
 
 def _get_model_status_options():
-  model_1 = pytest.model_configs_instance.get_provider_model(
-      ('openai', 'gpt-4')
-  )
-  model_2 = pytest.model_configs_instance.get_provider_model(
-      ('openai', 'o3-mini')
-  )
-  model_3 = pytest.model_configs_instance.get_provider_model(
-      ('claude', 'opus-4')
-  )
-  model_4 = pytest.model_configs_instance.get_provider_model(
-      ('claude', 'sonnet-4')
-  )
   return [{}, {
-      'unprocessed_models': {model_1}
+      'unprocessed_models': {_MODEL_1}
   }, {
-      'working_models': {model_1, model_2}
+      'working_models': {_MODEL_1, _MODEL_2}
   }, {
-      'failed_models': {model_1, model_2, model_3}
+      'failed_models': {_MODEL_1, _MODEL_2, _MODEL_3}
   }, {
-      'filtered_models': {model_1, model_2, model_3, model_4}
+      'filtered_models': {_MODEL_1, _MODEL_2, _MODEL_3, _MODEL_4}
   }, {
       'provider_queries': {
-          model_1:
-              types.LoggingRecord(
-                  query_record=types.QueryRecord(
-                      call_type=types.CallType.GENERATE_TEXT,
-                      provider_model=model_1
-                  ), response_record=types.QueryResponseRecord(
-                      response=types.Response(
-                          type=types.ResponseType.TEXT, value='Hello, world!'
-                      )
+          _MODEL_1:
+              types.CallRecord(
+                  query=types.QueryRecord(prompt='Hello'),
+                  result=types.ResultRecord(
+                      status=types.ResultStatusType.SUCCESS,
+                      content='Hello, world!'
                   )
               )
       }
   }, {
-      'unprocessed_models': {model_1},
-      'working_models': {model_2},
-      'failed_models': {model_3},
-      'filtered_models': {model_4}
+      'unprocessed_models': {_MODEL_1},
+      'working_models': {_MODEL_2},
+      'failed_models': {_MODEL_3},
+      'filtered_models': {_MODEL_4}
   }, {
-      'unprocessed_models': {model_1, model_2},
-      'working_models': {model_2, model_3},
-      'failed_models': {model_3, model_4},
-      'filtered_models': {model_4, model_1},
+      'unprocessed_models': {_MODEL_1, _MODEL_2},
+      'working_models': {_MODEL_2, _MODEL_3},
+      'failed_models': {_MODEL_3, _MODEL_4},
+      'filtered_models': {_MODEL_4, _MODEL_1},
       'provider_queries': {
-          model_1:
-              types.LoggingRecord(
-                  query_record=types.QueryRecord(
-                      call_type=types.CallType.GENERATE_TEXT,
-                      provider_model=model_1
-                  ), response_record=types.QueryResponseRecord(
-                      response=types.Response(
-                          type=types.ResponseType.TEXT, value='Hello, world!'
-                      )
+          _MODEL_1:
+              types.CallRecord(
+                  query=types.QueryRecord(prompt='Hello'),
+                  result=types.ResultRecord(
+                      status=types.ResultStatusType.SUCCESS,
+                      content='Hello, world!'
                   )
               )
       }
   }]
 
 
-def _get_provider_model_configs_type_options():
+def _get_provider_model_configs_mapping_type_options():
   return [
       {
           'openai': {
               'gpt-4':
-                  types.ProviderModelConfigType(
-                      provider_model=pytest.model_configs_instance.
-                      get_provider_model(('openai', 'gpt-4'))
+                  types.ProviderModelConfig(
+                      provider_model=_MODEL_1,
+                      pricing=types.ProviderModelPricingType(),
+                      features=types.FeatureConfigType(),
+                      metadata=types.ProviderModelMetadataType()
                   )
           }
       },
       {
           'openai': {
               'gpt-4':
-                  types.ProviderModelConfigType(
-                      provider_model=pytest.model_configs_instance.
-                      get_provider_model(('openai', 'gpt-4')),
+                  types.ProviderModelConfig(
+                      provider_model=_MODEL_1,
                       pricing=types.ProviderModelPricingType(
-                          per_response_token_cost=0.001,
-                          per_query_token_cost=0.002
-                      )
+                          input_token_cost=100, output_token_cost=200
+                      ), features=types.FeatureConfigType(),
+                      metadata=types.ProviderModelMetadataType()
                   )
           },
           'claude': {
               'opus-4':
-                  types.ProviderModelConfigType(
-                      provider_model=pytest.model_configs_instance.
-                      get_provider_model(('claude', 'opus-4')),
+                  types.ProviderModelConfig(
+                      provider_model=_MODEL_3,
+                      pricing=types.ProviderModelPricingType(),
+                      features=types.FeatureConfigType(),
                       metadata=types.ProviderModelMetadataType(
-                          is_featured=True
+                          is_recommended=True
                       )
                   )
           }
@@ -1113,285 +1521,43 @@ def _get_provider_model_configs_type_options():
   ]
 
 
-def _get_featured_models_type_options():
+def _get_recommended_models_mapping_type_options():
   return [{
-      'openai': [
-          pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4'))
-      ]
+      'openai': [_MODEL_1]
   }, {
-      'openai': [
-          pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4'))
-      ],
-      'claude': [('claude', 'opus-4')]
+      'openai': [_MODEL_1],
+      'claude': [_MODEL_3]
   }, {
-      'openai': [
-          pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4')),
-          ('openai', 'o3-mini')
-      ],
-      'claude': [('claude', 'opus-4'),
-                 pytest.model_configs_instance.get_provider_model(
-                     ('claude', 'sonnet-4')
-                 )]
+      'openai': [_MODEL_1, _MODEL_2],
+      'claude': [_MODEL_3, _MODEL_4]
   }]
 
 
-def _get_models_by_call_type_type_options():
+def _get_output_format_type_mapping_type_options():
   return [{
-      types.CallType.GENERATE_TEXT: {
-          'openai': [
-              pytest.model_configs_instance.get_provider_model(
-                  ('openai', 'gpt-4')
-              )
-          ]
-      }
+      types.OutputFormatType.TEXT: [_MODEL_1]
   }, {
-      types.CallType.GENERATE_TEXT: {
-          'openai': [
-              pytest.model_configs_instance.get_provider_model(
-                  ('openai', 'gpt-4')
-              )
-          ],
-          'claude': [('claude', 'sonnet-4')]
-      }
+      types.OutputFormatType.TEXT: [_MODEL_1, _MODEL_4]
   }, {
-      types.CallType.GENERATE_TEXT: {
-          'openai': [
-              pytest.model_configs_instance.get_provider_model(
-                  ('openai', 'gpt-4')
-              ), ('openai', 'o3-mini')
-          ],
-          'claude': [('claude', 'sonnet-4'),
-                     pytest.model_configs_instance.get_provider_model(
-                         ('claude', 'opus-4')
-                     )]
-      }
+      types.OutputFormatType.TEXT: [_MODEL_1, _MODEL_2],
+      types.OutputFormatType.IMAGE: [_MODEL_3, _MODEL_4]
   }]
 
 
-def _get_models_by_size_type_options():
+def _get_model_size_mapping_type_options():
   return [{
-      types.ModelSizeType.SMALL: [('openai', 'gpt-4o-mini')]
+      types.ModelSizeType.SMALL: [_MODEL_5]
   }, {
-      types.ModelSizeType.SMALL: [('openai', 'gpt-4o-mini')],
-      types.ModelSizeType.LARGE: [
-          pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4'))
-      ]
+      types.ModelSizeType.SMALL: [_MODEL_5],
+      types.ModelSizeType.LARGE: [_MODEL_1]
   }, {
-      types.ModelSizeType.SMALL: [('openai', 'gpt-4o-mini')],
-      types.ModelSizeType.LARGE: [
-          pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4')),
-          ('claude', 'opus-4')
-      ]
+      types.ModelSizeType.SMALL: [_MODEL_5],
+      types.ModelSizeType.LARGE: [_MODEL_1, _MODEL_3]
   }]
 
 
-def _get_default_model_priority_list_type_options():
-  return [
-      [pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4'))],
-      [
-          pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4')),
-          ('claude', 'opus-4')
-      ],
-      [
-          pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4')),
-          ('claude', 'opus-4'),
-          pytest.model_configs_instance.get_provider_model(
-              ('openai', 'o3-mini')
-          )
-      ]
-  ]
-
-
-class _UserModel(pydantic.BaseModel):
-  name: str
-  age: int
-
-
-class _AddressModel(pydantic.BaseModel):
-  street: str
-  city: str
-  country: str
-
-
-class _UserWithAddressModel(pydantic.BaseModel):
-  name: str
-  email: str | None = None
-  address: _AddressModel
-  tags: list[str] = []
-
-
-def _get_response_format_pydantic_value_options():
-  return [
-      {
-          'class_name': 'UserModel',
-          'class_value': _UserModel
-      },
-      {
-          'class_name': 'AddressModel',
-          'class_value': _AddressModel
-      },
-      {
-          'class_name': 'UserWithAddressModel',
-          'class_value': _UserWithAddressModel
-      },
-      {
-          'class_value': _UserModel
-      },
-      {
-          'class_name': 'UserModel'
-      },
-      {
-          'class_json_schema_value': {
-              'type': 'object',
-              'properties': {
-                  'name': {
-                      'type': 'string'
-                  }
-              }
-          }
-      },
-      {
-          'class_name': 'CustomModel',
-          'class_json_schema_value': {
-              'type': 'object',
-              'properties': {
-                  'id': {
-                      'type': 'integer'
-                  }
-              }
-          }
-      },
-  ]
-
-
-def _get_response_format_options():
-  return [
-      {
-          'type': types.ResponseFormatType.TEXT
-      },
-      {
-          'type': types.ResponseFormatType.JSON
-      },
-      {
-          'type': types.ResponseFormatType.JSON_SCHEMA,
-          'value': {
-              'type': 'object',
-              'properties': {
-                  'name': {
-                      'type': 'string'
-                  }
-              }
-          }
-      },
-      {
-          'type': types.ResponseFormatType.JSON_SCHEMA,
-          'value': {
-              'type': 'object',
-              'properties': {
-                  'name': {
-                      'type': 'string'
-                  },
-                  'age': {
-                      'type': 'integer'
-                  },
-                  'tags': {
-                      'type': 'array',
-                      'items': {
-                          'type': 'string'
-                      }
-                  }
-              },
-              'required': ['name', 'age']
-          }
-      },
-      {
-          'type': types.ResponseFormatType.PYDANTIC,
-          'value':
-              types.ResponseFormatPydanticValue(
-                  class_name='UserModel', class_value=_UserModel
-              )
-      },
-      {
-          'type': types.ResponseFormatType.PYDANTIC,
-          'value':
-              types.ResponseFormatPydanticValue(
-                  class_name='UserWithAddressModel',
-                  class_value=_UserWithAddressModel
-              )
-      },
-  ]
-
-
-def _get_pydantic_metadata_options():
-  return [
-      {
-          'class_name': 'UserModel'
-      },
-      {
-          'class_name': 'AddressModel'
-      },
-      {
-          'instance_json_value': {
-              'name': 'Bob',
-              'age': 40
-          }
-      },
-      {
-          'class_name': 'CustomModel',
-          'instance_json_value': {
-              'id': 123,
-              'data': 'test'
-          }
-      },
-      {
-          'class_name': 'UserModel',
-          'instance_json_value': {
-              'name': 'John',
-              'age': 30
-          }
-      },
-  ]
-
-
-def _get_response_options():
-  return [
-      {
-          'type': types.ResponseType.TEXT,
-          'value': 'Hello, world!'
-      },
-      {
-          'type': types.ResponseType.JSON,
-          'value': {
-              'key': 'value',
-              'number': 42
-          }
-      },
-      {
-          'type': types.ResponseType.JSON,
-          'value': {
-              'nested': {
-                  'data': [1, 2, 3]
-              }
-          }
-      },
-      {
-          'type': types.ResponseType.PYDANTIC,
-          'value': _UserModel(name='John', age=30),
-          'pydantic_metadata':
-              types.PydanticMetadataType(class_name='UserModel')
-      },
-      {
-          'type': types.ResponseType.PYDANTIC,
-          'value': None,
-          'pydantic_metadata':
-              types.PydanticMetadataType(
-                  class_name='UserModel', instance_json_value={
-                      'name': 'Jane',
-                      'age': 25
-                  }
-              )
-      },
-  ]
+def _get_default_model_priority_list_options():
+  return [[_MODEL_1], [_MODEL_1, _MODEL_3], [_MODEL_1, _MODEL_3, _MODEL_2]]
 
 
 class TestTypeSerializer:
@@ -1401,10 +1567,7 @@ class TestTypeSerializer:
   )
   def test_encode_decode_provider_model_type(self, provider_model_type_options):
     # Test successful encode/decode round-trip
-    provider_model_type = pytest.model_configs_instance.get_provider_model((
-        provider_model_type_options['provider'],
-        provider_model_type_options['model']
-    ))
+    provider_model_type = types.ProviderModelType(**provider_model_type_options)
     encoded_provider_model_type = type_serializer.encode_provider_model_type(
         provider_model_type=provider_model_type
     )
@@ -1433,23 +1596,472 @@ class TestTypeSerializer:
     ):
       type_serializer.decode_provider_model_type(record=invalid_record)
 
-  @pytest.mark.parametrize('query_record_options', _get_query_record_options())
-  def test_get_query_record_hash(self, query_record_options):
-    query_record = types.QueryRecord(**query_record_options)
-    query_hash_value = hash_serializer.get_query_record_hash(
-        query_record=query_record
+  @pytest.mark.parametrize(
+      'provider_model_pricing_type_options',
+      _get_provider_model_pricing_type_options()
+  )
+  def test_encode_decode_provider_model_pricing_type(
+      self, provider_model_pricing_type_options
+  ):
+    provider_model_pricing_type = types.ProviderModelPricingType(
+        **provider_model_pricing_type_options
+    )
+    encoded_provider_model_pricing_type = (
+        type_serializer.encode_provider_model_pricing_type(
+            provider_model_pricing_type=provider_model_pricing_type
+        )
+    )
+    decoded_provider_model_pricing_type = (
+        type_serializer.decode_provider_model_pricing_type(
+            record=encoded_provider_model_pricing_type
+        )
+    )
+    assert provider_model_pricing_type == decoded_provider_model_pricing_type
+
+  @pytest.mark.parametrize(
+      'feature_support_type_option', _get_feature_support_type_options()
+  )
+  def test_encode_decode_feature_support_type(
+      self, feature_support_type_option
+  ):
+    encoded_feature_support_type = (
+        type_serializer.encode_feature_support_type(
+            feature_support_type=feature_support_type_option
+        )
+    )
+    decoded_feature_support_type = (
+        type_serializer.decode_feature_support_type(
+            value=encoded_feature_support_type
+        )
+    )
+    assert feature_support_type_option == decoded_feature_support_type
+
+  @pytest.mark.parametrize(
+      'parameter_config_type_options', _get_parameter_config_type_options()
+  )
+  def test_encode_decode_parameter_config_type(
+      self, parameter_config_type_options
+  ):
+    parameter_config_type = types.ParameterConfigType(
+        **parameter_config_type_options
+    )
+    encoded_parameter_config_type = (
+        type_serializer.encode_parameter_config_type(
+            parameter_config_type=parameter_config_type
+        )
+    )
+    decoded_parameter_config_type = (
+        type_serializer.decode_parameter_config_type(
+            record=encoded_parameter_config_type
+        )
+    )
+    assert parameter_config_type == decoded_parameter_config_type
+
+  @pytest.mark.parametrize(
+      'tool_config_type_options', _get_tool_config_type_options()
+  )
+  def test_encode_decode_tool_config_type(self, tool_config_type_options):
+    tool_config_type = types.ToolConfigType(**tool_config_type_options)
+    encoded_tool_config_type = (
+        type_serializer.encode_tool_config_type(
+            tool_config_type=tool_config_type
+        )
+    )
+    decoded_tool_config_type = (
+        type_serializer.decode_tool_config_type(
+            record=encoded_tool_config_type
+        )
+    )
+    assert tool_config_type == decoded_tool_config_type
+
+  @pytest.mark.parametrize(
+      'output_format_config_type_options',
+      _get_output_format_config_type_options()
+  )
+  def test_encode_decode_output_format_config_type(
+      self, output_format_config_type_options
+  ):
+    output_format_config_type = types.OutputFormatConfigType(
+        **output_format_config_type_options
+    )
+    encoded_output_format_config_type = (
+        type_serializer.encode_output_format_config_type(
+            output_format_config_type=output_format_config_type
+        )
+    )
+    decoded_output_format_config_type = (
+        type_serializer.decode_output_format_config_type(
+            record=encoded_output_format_config_type
+        )
+    )
+    assert output_format_config_type == decoded_output_format_config_type
+
+  @pytest.mark.parametrize(
+      'input_format_config_type_options',
+      _get_input_format_config_type_options()
+  )
+  def test_encode_decode_input_format_config_type(
+      self, input_format_config_type_options
+  ):
+    input_format_config_type = types.InputFormatConfigType(
+        **input_format_config_type_options
+    )
+    encoded_input_format_config_type = (
+        type_serializer.encode_input_format_config_type(
+            input_format_config_type=input_format_config_type
+        )
+    )
+    decoded_input_format_config_type = (
+        type_serializer.decode_input_format_config_type(
+            record=encoded_input_format_config_type
+        )
+    )
+    assert input_format_config_type == decoded_input_format_config_type
+
+  @pytest.mark.parametrize(
+      'feature_config_type_options', _get_feature_config_type_options()
+  )
+  def test_encode_decode_feature_config_type(self, feature_config_type_options):
+    feature_config_type = types.FeatureConfigType(**feature_config_type_options)
+    encoded_feature_config_type = (
+        type_serializer.encode_feature_config_type(
+            feature_config_type=feature_config_type
+        )
+    )
+    decoded_feature_config_type = (
+        type_serializer.decode_feature_config_type(
+            record=encoded_feature_config_type
+        )
+    )
+    assert feature_config_type == decoded_feature_config_type
+
+  @pytest.mark.parametrize(
+      'provider_model_metadata_type_options',
+      _get_provider_model_metadata_type_options()
+  )
+  def test_encode_decode_provider_model_metadata_type(
+      self, provider_model_metadata_type_options
+  ):
+    provider_model_metadata_type = types.ProviderModelMetadataType(
+        **provider_model_metadata_type_options
+    )
+    encoded_provider_model_metadata_type = (
+        type_serializer.encode_provider_model_metadata_type(
+            provider_model_metadata_type=provider_model_metadata_type
+        )
+    )
+    decoded_provider_model_metadata_type = (
+        type_serializer.decode_provider_model_metadata_type(
+            record=encoded_provider_model_metadata_type
+        )
+    )
+    assert provider_model_metadata_type == decoded_provider_model_metadata_type
+
+  @pytest.mark.parametrize(
+      'provider_model_config_options', _get_provider_model_config_options()
+  )
+  def test_encode_decode_provider_model_config(
+      self, provider_model_config_options
+  ):
+    provider_model_config = types.ProviderModelConfig(
+        **provider_model_config_options
+    )
+    encoded_provider_model_config = (
+        type_serializer.encode_provider_model_config(
+            provider_model_config=provider_model_config
+        )
+    )
+    decoded_provider_model_config = (
+        type_serializer.decode_provider_model_config(
+            record=encoded_provider_model_config
+        )
+    )
+    assert provider_model_config == decoded_provider_model_config
+
+  @pytest.mark.parametrize(
+      'model_configs_schema_metadata_type_options',
+      _get_model_configs_schema_metadata_type_options()
+  )
+  def test_encode_decode_model_configs_schema_metadata_type(
+      self, model_configs_schema_metadata_type_options
+  ):
+    model_configs_schema_metadata_type = types.ModelConfigsSchemaMetadataType(
+        **model_configs_schema_metadata_type_options
+    )
+    encoded_model_configs_schema_metadata_type = (
+        type_serializer.encode_model_configs_schema_metadata_type(
+            model_configs_schema_metadata_type=(
+                model_configs_schema_metadata_type
+            )
+        )
+    )
+    decoded_model_configs_schema_metadata_type = (
+        type_serializer.decode_model_configs_schema_metadata_type(
+            record=encoded_model_configs_schema_metadata_type
+        )
+    )
+    assert model_configs_schema_metadata_type == (
+        decoded_model_configs_schema_metadata_type
     )
 
-    query_record_options['max_tokens'] = 222
-    query_record_2 = types.QueryRecord(**query_record_options)
-    query_hash_value_2 = hash_serializer.get_query_record_hash(
-        query_record=query_record_2
+  @pytest.mark.parametrize(
+      'model_registry_options', _get_model_registry_options()
+  )
+  def test_encode_decode_model_registry(self, model_registry_options):
+    model_registry = types.ModelRegistry(**model_registry_options)
+    encoded_model_registry = (
+        type_serializer.encode_model_registry(model_registry=model_registry)
+    )
+    decoded_model_registry = (
+        type_serializer.decode_model_registry(record=encoded_model_registry)
+    )
+    assert model_registry == decoded_model_registry
+
+  @pytest.mark.parametrize(
+      'provider_model_configs_mapping_type_options',
+      _get_provider_model_configs_mapping_type_options()
+  )
+  def test_encode_decode_provider_model_configs_mapping_type(
+      self, provider_model_configs_mapping_type_options
+  ):
+    encoded_provider_model_configs_mapping_type = (
+        type_serializer.encode_provider_model_configs_mapping_type(
+            provider_model_configs=provider_model_configs_mapping_type_options
+        )
+    )
+    decoded_provider_model_configs_mapping_type = (
+        type_serializer.decode_provider_model_configs_mapping_type(
+            record=encoded_provider_model_configs_mapping_type
+        )
+    )
+    assert provider_model_configs_mapping_type_options == (
+        decoded_provider_model_configs_mapping_type
     )
 
-    assert query_hash_value != query_hash_value_2
-    assert query_hash_value == (
-        hash_serializer.get_query_record_hash(query_record=query_record)
+  @pytest.mark.parametrize(
+      'recommended_models_mapping_type_options',
+      _get_recommended_models_mapping_type_options()
+  )
+  def test_encode_decode_recommended_models_mapping_type(
+      self, recommended_models_mapping_type_options
+  ):
+    encoded_recommended_models_mapping_type = (
+        type_serializer.encode_recommended_models_mapping_type(
+            recommended_models=recommended_models_mapping_type_options
+        )
     )
+    decoded_recommended_models_mapping_type = (
+        type_serializer.decode_recommended_models_mapping_type(
+            record=encoded_recommended_models_mapping_type
+        )
+    )
+    assert recommended_models_mapping_type_options == (
+        decoded_recommended_models_mapping_type
+    )
+
+  @pytest.mark.parametrize(
+      'output_format_type_mapping_type_options',
+      _get_output_format_type_mapping_type_options()
+  )
+  def test_encode_decode_output_format_type_mapping_type(
+      self, output_format_type_mapping_type_options
+  ):
+    encoded_output_format_type_mapping_type = (
+        type_serializer.encode_output_format_type_mapping_type(
+            output_format_type_mapping=output_format_type_mapping_type_options
+        )
+    )
+    decoded_output_format_type_mapping_type = (
+        type_serializer.decode_output_format_type_mapping_type(
+            record=encoded_output_format_type_mapping_type
+        )
+    )
+    assert output_format_type_mapping_type_options == decoded_output_format_type_mapping_type
+
+  @pytest.mark.parametrize(
+      'model_size_mapping_type_options', _get_model_size_mapping_type_options()
+  )
+  def test_encode_decode_model_size_mapping_type(
+      self, model_size_mapping_type_options
+  ):
+    encoded_model_size_mapping_type = (
+        type_serializer.encode_model_size_mapping_type(
+            model_size_mapping=model_size_mapping_type_options
+        )
+    )
+    decoded_model_size_mapping_type = (
+        type_serializer.decode_model_size_mapping_type(
+            record=encoded_model_size_mapping_type
+        )
+    )
+    assert model_size_mapping_type_options == decoded_model_size_mapping_type
+
+  @pytest.mark.parametrize(
+      'default_model_priority_list_options',
+      _get_default_model_priority_list_options()
+  )
+  def test_encode_decode_default_model_priority_list(
+      self, default_model_priority_list_options
+  ):
+    encoded_default_model_priority_list = (
+        type_serializer.encode_default_model_priority_list(
+            default_model_priority_list=default_model_priority_list_options
+        )
+    )
+    decoded_default_model_priority_list = (
+        type_serializer.decode_default_model_priority_list(
+            record=encoded_default_model_priority_list
+        )
+    )
+    assert default_model_priority_list_options == (
+        decoded_default_model_priority_list
+    )
+
+  @pytest.mark.parametrize(
+      'parameter_type_options', _get_parameter_type_options()
+  )
+  def test_encode_decode_parameter_type(self, parameter_type_options):
+    parameter_type = types.ParameterType(**parameter_type_options)
+    encoded_parameter_type = type_serializer.encode_parameter_type(
+        parameter_type=parameter_type
+    )
+    decoded_parameter_type = type_serializer.decode_parameter_type(
+        record=encoded_parameter_type
+    )
+    assert parameter_type == decoded_parameter_type
+
+  @pytest.mark.parametrize(
+      'connection_options_options', _get_connection_options_options()
+  )
+  def test_encode_decode_connection_options(self, connection_options_options):
+    connection_options = types.ConnectionOptions(**connection_options_options)
+    encoded_connection_options = type_serializer.encode_connection_options(
+        connection_options=connection_options
+    )
+    decoded_connection_options = type_serializer.decode_connection_options(
+        record=encoded_connection_options
+    )
+    assert connection_options == decoded_connection_options
+
+  @pytest.mark.parametrize(
+      'output_format_options', _get_output_format_options()
+  )
+  def test_encode_decode_output_format(self, output_format_options):
+    output_format = types.OutputFormat(**output_format_options)
+    encoded = type_serializer.encode_output_format(output_format=output_format)
+    decoded = type_serializer.decode_output_format(record=encoded)
+    assert decoded.type == output_format.type
+    # pydantic_class cannot be reconstructed from serialized form
+    assert decoded.pydantic_class is None
+    if output_format.pydantic_class is not None:
+      assert 'pydantic_class_name' in encoded
+      assert encoded['pydantic_class_name'] == (
+          output_format.pydantic_class.__name__
+      )
+      assert 'pydantic_class_json_schema' in encoded
+      # Verify metadata survives round-trip
+      assert decoded.pydantic_class_name == (
+          output_format.pydantic_class.__name__
+      )
+      assert decoded.pydantic_class_json_schema == (
+          output_format.pydantic_class.model_json_schema()
+      )
+
+  @pytest.mark.parametrize(
+      'result_media_content_type_options',
+      _get_result_media_content_type_options()
+  )
+  def test_encode_decode_result_media_content_type(
+      self, result_media_content_type_options
+  ):
+    # Test successful encode/decode round-trip
+    result_media_content_type = types.ResultMediaContentType(
+        **result_media_content_type_options
+    )
+    encoded_result_media_content_type = (
+        type_serializer.encode_result_media_content_type(
+            result_media_content_type=result_media_content_type
+        )
+    )
+    decoded_result_media_content_type = (
+        type_serializer.decode_result_media_content_type(
+            record=encoded_result_media_content_type
+        )
+    )
+    assert result_media_content_type == decoded_result_media_content_type
+
+    # Test validation: missing data
+    invalid_record = encoded_result_media_content_type.copy()
+    del invalid_record['data']
+    with pytest.raises(ValueError, match='Data not found in record'):
+      type_serializer.decode_result_media_content_type(record=invalid_record)
+
+    # Test validation: missing media_type
+    invalid_record = encoded_result_media_content_type.copy()
+    del invalid_record['media_type']
+    with pytest.raises(ValueError, match='Media type not found in record'):
+      type_serializer.decode_result_media_content_type(record=invalid_record)
+
+  @pytest.mark.parametrize('choice_type_options', _get_choice_type_options())
+  def test_encode_decode_choice_type(self, choice_type_options):
+    choice_type = types.ChoiceType(**choice_type_options)
+    encoded_choice_type = type_serializer.encode_choice_type(
+        choice_type=choice_type
+    )
+    decoded_choice_type = type_serializer.decode_choice_type(
+        record=encoded_choice_type
+    )
+    assert choice_type == decoded_choice_type
+
+  @pytest.mark.parametrize('usage_type_options', _get_usage_type_options())
+  def test_encode_decode_usage_type(self, usage_type_options):
+    usage_type = types.UsageType(**usage_type_options)
+    encoded_usage_type = type_serializer.encode_usage_type(
+        usage_type=usage_type
+    )
+    decoded_usage_type = type_serializer.decode_usage_type(
+        record=encoded_usage_type
+    )
+    assert usage_type == decoded_usage_type
+
+  def test_legacy_tool_usage_key_is_ignored(self):
+    """Records persisted before ToolUsageType was removed must still load."""
+    legacy = {
+        'status': types.ResultStatusType.SUCCESS.value,
+        'tool_usage': {
+            'web_search_count': 2,
+            'web_search_citations': ['https://example.com'],
+        },
+    }
+    decoded = type_serializer.decode_result_record(record=legacy)
+    assert decoded.status == types.ResultStatusType.SUCCESS
+    assert not hasattr(decoded, 'tool_usage')
+
+  @pytest.mark.parametrize(
+      'timestamp_type_options', _get_timestamp_type_options()
+  )
+  def test_encode_decode_timestamp_type(self, timestamp_type_options):
+    timestamp_type = types.TimeStampType(**timestamp_type_options)
+    encoded_timestamp_type = type_serializer.encode_timestamp_type(
+        timestamp_type=timestamp_type
+    )
+    decoded_timestamp_type = type_serializer.decode_timestamp_type(
+        record=encoded_timestamp_type
+    )
+    assert timestamp_type == decoded_timestamp_type
+
+  @pytest.mark.parametrize(
+      'result_record_options', _get_result_record_options()
+  )
+  def test_encode_decode_result_record(self, result_record_options):
+    result_record = types.ResultRecord(**result_record_options)
+    encoded_result_record = type_serializer.encode_result_record(
+        result_record=result_record
+    )
+    decoded_result_record = type_serializer.decode_result_record(
+        record=encoded_result_record
+    )
+    assert result_record == decoded_result_record
 
   @pytest.mark.parametrize('query_record_options', _get_query_record_options())
   def test_encode_decode_query_record(self, query_record_options):
@@ -1463,25 +2075,48 @@ class TestTypeSerializer:
     assert query_record == decoded_query_record
 
   @pytest.mark.parametrize(
-      'query_response_record_options', _get_query_response_record_options()
+      'connection_metadata_options', _get_connection_metadata_options()
   )
-  def test_encode_decode_query_response_record(
-      self, query_response_record_options
-  ):
-    query_response_record = types.QueryResponseRecord(
-        **query_response_record_options
+  def test_encode_decode_connection_metadata(self, connection_metadata_options):
+    connection_metadata = types.ConnectionMetadata(
+        **connection_metadata_options
     )
-    encoded_query_response_record = (
-        type_serializer.encode_query_response_record(
-            query_response_record=query_response_record
+    encoded_connection_metadata = (
+        type_serializer.encode_connection_metadata(
+            connection_metadata=connection_metadata
         )
     )
-    decoded_query_response_record = (
-        type_serializer.decode_query_response_record(
-            record=encoded_query_response_record
+    decoded_connection_metadata = (
+        type_serializer.decode_connection_metadata(
+            record=encoded_connection_metadata
         )
     )
-    assert query_response_record == decoded_query_response_record
+    assert connection_metadata == decoded_connection_metadata
+
+  @pytest.mark.parametrize('call_record_options', _get_call_record_options())
+  def test_encode_decode_call_record(self, call_record_options):
+    call_record = types.CallRecord(**call_record_options)
+    encoded_call_record = type_serializer.encode_call_record(
+        call_record=call_record
+    )
+    decoded_call_record = type_serializer.decode_call_record(
+        record=encoded_call_record
+    )
+    assert call_record == decoded_call_record
+
+  def test_encode_call_record_drops_debug_field(self):
+    # The debug sidecar holds a live provider SDK object that is
+    # intentionally NOT serialized to the cache or ProxDash. Any
+    # round-trip through the serializer must zero the debug field, even
+    # when the source CallRecord had a populated raw_provider_response.
+    sentinel = object()
+    call_record = types.CallRecord(
+        debug=types.DebugInfo(raw_provider_response=sentinel),
+    )
+    encoded = type_serializer.encode_call_record(call_record=call_record)
+    assert 'debug' not in encoded
+    decoded = type_serializer.decode_call_record(record=encoded)
+    assert decoded.debug is None
 
   @pytest.mark.parametrize('cache_record_options', _get_cache_record_options())
   def test_encode_decode_cache_record(self, cache_record_options):
@@ -1512,17 +2147,17 @@ class TestTypeSerializer:
     assert light_cache_record == decoded_light_cache_record
 
   @pytest.mark.parametrize(
-      'logging_record_options', _get_logging_record_options()
+      'cache_look_result_options', _get_cache_look_result_options()
   )
-  def test_encode_decode_logging_record(self, logging_record_options):
-    logging_record = types.LoggingRecord(**logging_record_options)
-    encoded_logging_record = type_serializer.encode_logging_record(
-        logging_record=logging_record
+  def test_encode_decode_cache_look_result(self, cache_look_result_options):
+    cache_look_result = types.CacheLookResult(**cache_look_result_options)
+    encoded_cache_look_result = type_serializer.encode_cache_look_result(
+        cache_look_result=cache_look_result
     )
-    decoded_logging_record = type_serializer.decode_logging_record(
-        record=encoded_logging_record
+    decoded_cache_look_result = type_serializer.decode_cache_look_result(
+        record=encoded_cache_look_result
     )
-    assert logging_record == decoded_logging_record
+    assert cache_look_result == decoded_cache_look_result
 
   @pytest.mark.parametrize(
       'logging_options_options', _get_logging_options_options()
@@ -1563,6 +2198,70 @@ class TestTypeSerializer:
     )
     assert proxdash_options == decoded_proxdash_options
 
+  @pytest.mark.parametrize(
+      'summary_options_options', _get_summary_options_options()
+  )
+  def test_encode_decode_summary_options(self, summary_options_options):
+    summary_options = types.SummaryOptions(**summary_options_options)
+    encoded_summary_options = type_serializer.encode_summary_options(
+        summary_options=summary_options
+    )
+    decoded_summary_options = type_serializer.decode_summary_options(
+        record=encoded_summary_options
+    )
+    assert summary_options == decoded_summary_options
+
+  @pytest.mark.parametrize(
+      'provider_call_options_options', _get_provider_call_options_options()
+  )
+  def test_encode_decode_provider_call_options(
+      self, provider_call_options_options
+  ):
+    provider_call_options = types.ProviderCallOptions(
+        **provider_call_options_options
+    )
+    encoded_provider_call_options = (
+        type_serializer.encode_provider_call_options(
+            provider_call_options=provider_call_options
+        )
+    )
+    decoded_provider_call_options = (
+        type_serializer.decode_provider_call_options(
+            record=encoded_provider_call_options
+        )
+    )
+    assert provider_call_options == decoded_provider_call_options
+
+  @pytest.mark.parametrize(
+      'model_probe_options_options', _get_model_probe_options_options()
+  )
+  def test_encode_decode_model_probe_options(self, model_probe_options_options):
+    model_probe_options = types.ModelProbeOptions(**model_probe_options_options)
+    encoded_model_probe_options = (
+        type_serializer.encode_model_probe_options(
+            model_probe_options=model_probe_options
+        )
+    )
+    decoded_model_probe_options = (
+        type_serializer.decode_model_probe_options(
+            record=encoded_model_probe_options
+        )
+    )
+    assert model_probe_options == decoded_model_probe_options
+
+  @pytest.mark.parametrize(
+      'debug_options_options', _get_debug_options_options()
+  )
+  def test_encode_decode_debug_options(self, debug_options_options):
+    debug_options = types.DebugOptions(**debug_options_options)
+    encoded_debug_options = type_serializer.encode_debug_options(
+        debug_options=debug_options
+    )
+    decoded_debug_options = type_serializer.decode_debug_options(
+        record=encoded_debug_options
+    )
+    assert debug_options == decoded_debug_options
+
   @pytest.mark.parametrize('run_options_options', _get_run_options_options())
   def test_encode_decode_run_options(self, run_options_options):
     run_options = types.RunOptions(**run_options_options)
@@ -1573,6 +2272,9 @@ class TestTypeSerializer:
         record=encoded_run_options
     )
     assert run_options == decoded_run_options
+    if run_options.provider_call_options is not None:
+      encoded_pco = encoded_run_options['provider_call_options']
+      assert isinstance(encoded_pco['feature_mapping_strategy'], str)
 
   @pytest.mark.parametrize('model_status_options', _get_model_status_options())
   def test_encode_decode_model_status(self, model_status_options):
@@ -1585,406 +2287,166 @@ class TestTypeSerializer:
     )
     assert model_status == decoded_model_status
 
-  @pytest.mark.parametrize(
-      'provider_model_identifier', _get_provider_model_identifier_options()
-  )
-  def test_encode_decode_provider_model_identifier(
-      self, provider_model_identifier
-  ):
-    encoded_provider_model_identifier = (
-        type_serializer.encode_provider_model_identifier(
-            provider_model_identifier=provider_model_identifier
-        )
-    )
-    decoded_provider_model_identifier = (
-        type_serializer.decode_provider_model_identifier(
-            record=encoded_provider_model_identifier
-        )
-    )
-    assert provider_model_identifier == decoded_provider_model_identifier
-
-  @pytest.mark.parametrize(
-      'provider_model_pricing_type_options',
-      _get_provider_model_pricing_type_options()
-  )
-  def test_encode_decode_provider_model_pricing_type(
-      self, provider_model_pricing_type_options
-  ):
-    provider_model_pricing_type = types.ProviderModelPricingType(
-        **provider_model_pricing_type_options
-    )
-    encoded_provider_model_pricing_type = (
-        type_serializer.encode_provider_model_pricing_type(
-            provider_model_pricing_type=provider_model_pricing_type
-        )
-    )
-    decoded_provider_model_pricing_type = (
-        type_serializer.decode_provider_model_pricing_type(
-            record=encoded_provider_model_pricing_type
-        )
-    )
-    assert provider_model_pricing_type == decoded_provider_model_pricing_type
-
-  @pytest.mark.parametrize(
-      'endpoint_feature_info_type_options',
-      _get_endpoint_feature_info_type_options()
-  )
-  def test_encode_decode_endpoint_feature_info_type(
-      self, endpoint_feature_info_type_options
-  ):
-    endpoint_feature_info_type = types.EndpointFeatureInfoType(
-        **endpoint_feature_info_type_options
-    )
-    encoded_endpoint_feature_info_type = (
-        type_serializer.encode_endpoint_feature_info_type(
-            endpoint_feature_info_type=endpoint_feature_info_type
-        )
-    )
-    decoded_endpoint_feature_info_type = (
-        type_serializer.decode_endpoint_feature_info_type(
-            record=encoded_endpoint_feature_info_type
-        )
-    )
-    assert endpoint_feature_info_type == decoded_endpoint_feature_info_type
-
-  @pytest.mark.parametrize(
-      'feature_mapping_type_options', _get_feature_mapping_type_options()
-  )
-  def test_encode_decode_feature_mapping_type(
-      self, feature_mapping_type_options
-  ):
-    encoded_feature_mapping_type = (
-        type_serializer.encode_feature_mapping_type(
-            feature_mapping=feature_mapping_type_options
-        )
-    )
-    decoded_feature_mapping_type = (
-        type_serializer.decode_feature_mapping_type(
-            record=encoded_feature_mapping_type
-        )
-    )
-    assert feature_mapping_type_options == decoded_feature_mapping_type
-
-  @pytest.mark.parametrize(
-      'provider_model_metadata_type_options',
-      _get_provider_model_metadata_type_options()
-  )
-  def test_encode_decode_provider_model_metadata_type(
-      self, provider_model_metadata_type_options
-  ):
-    provider_model_metadata_type = types.ProviderModelMetadataType(
-        **provider_model_metadata_type_options
-    )
-    encoded_provider_model_metadata_type = (
-        type_serializer.encode_provider_model_metadata_type(
-            provider_model_metadata_type=provider_model_metadata_type
-        )
-    )
-    decoded_provider_model_metadata_type = (
-        type_serializer.decode_provider_model_metadata_type(
-            record=encoded_provider_model_metadata_type
-        )
-    )
-    assert provider_model_metadata_type == decoded_provider_model_metadata_type
-
-  @pytest.mark.parametrize(
-      'provider_model_config_type_options',
-      _get_provider_model_config_type_options()
-  )
-  def test_encode_decode_provider_model_config_type(
-      self, provider_model_config_type_options
-  ):
-    provider_model_config_type = types.ProviderModelConfigType(
-        **provider_model_config_type_options
-    )
-    encoded_provider_model_config_type = (
-        type_serializer.encode_provider_model_config_type(
-            provider_model_config_type=provider_model_config_type
-        )
-    )
-    decoded_provider_model_config_type = (
-        type_serializer.decode_provider_model_config_type(
-            record=encoded_provider_model_config_type
-        )
-    )
-    assert provider_model_config_type == decoded_provider_model_config_type
-
-  @pytest.mark.parametrize(
-      'model_configs_schema_metadata_type_options',
-      _get_model_configs_schema_metadata_type_options()
-  )
-  def test_encode_decode_model_configs_schema_metadata_type(
-      self, model_configs_schema_metadata_type_options
-  ):
-    model_configs_schema_metadata_type = types.ModelConfigsSchemaMetadataType(
-        **model_configs_schema_metadata_type_options
-    )
-    encoded_model_configs_schema_metadata_type = (
-        type_serializer.encode_model_configs_schema_metadata_type(
-            model_configs_schema_metadata_type=(
-                model_configs_schema_metadata_type
-            )
-        )
-    )
-    decoded_model_configs_schema_metadata_type = (
-        type_serializer.decode_model_configs_schema_metadata_type(
-            record=encoded_model_configs_schema_metadata_type
-        )
-    )
-    assert model_configs_schema_metadata_type == (
-        decoded_model_configs_schema_metadata_type
+  @pytest.mark.parametrize('query_record_options', _get_query_record_options())
+  def test_get_query_record_hash(self, query_record_options):
+    query_record = types.QueryRecord(**query_record_options)
+    query_hash_value = hash_serializer.get_query_record_hash(
+        query_record=query_record
     )
 
-  @pytest.mark.parametrize(
-      'model_configs_schema_version_config_type_options',
-      _get_model_configs_schema_version_config_type_options()
-  )
-  def test_encode_decode_model_configs_schema_version_config_type(
-      self, model_configs_schema_version_config_type_options
-  ):
-    model_configs_schema_version_config_type = (
-        types.ModelConfigsSchemaVersionConfigType(
-            **model_configs_schema_version_config_type_options
-        )
-    )
-    encoded_model_configs_schema_version_config_type = (
-        type_serializer.encode_model_configs_schema_version_config_type(
-            model_configs_schema_version_config_type=(
-                model_configs_schema_version_config_type
-            )
-        )
-    )
-    decoded_model_configs_schema_version_config_type = (
-        type_serializer.decode_model_configs_schema_version_config_type(
-            record=encoded_model_configs_schema_version_config_type
-        )
-    )
-    assert model_configs_schema_version_config_type == (
-        decoded_model_configs_schema_version_config_type
+    query_record_options_copy = query_record_options.copy()
+    query_record_options_copy['prompt'] = 'different_prompt_for_hash_test'
+    query_record_2 = types.QueryRecord(**query_record_options_copy)
+    query_hash_value_2 = hash_serializer.get_query_record_hash(
+        query_record=query_record_2
     )
 
-  @pytest.mark.parametrize(
-      'model_configs_schema_type_options',
-      _get_model_configs_schema_type_options()
-  )
-  def test_encode_decode_model_configs_schema_type(
-      self, model_configs_schema_type_options
-  ):
-    model_configs_schema_type = types.ModelConfigsSchemaType(
-        **model_configs_schema_type_options
-    )
-    encoded_model_configs_schema_type = (
-        type_serializer.encode_model_configs_schema_type(
-            model_configs_schema_type=model_configs_schema_type
-        )
-    )
-    decoded_model_configs_schema_type = (
-        type_serializer.decode_model_configs_schema_type(
-            record=encoded_model_configs_schema_type
-        )
-    )
-    assert model_configs_schema_type == decoded_model_configs_schema_type
-
-  @pytest.mark.parametrize(
-      'provider_model_configs_type_options',
-      _get_provider_model_configs_type_options()
-  )
-  def test_encode_decode_provider_model_configs_type(
-      self, provider_model_configs_type_options
-  ):
-    encoded_provider_model_configs_type = (
-        type_serializer.encode_provider_model_configs_type(
-            provider_model_configs=provider_model_configs_type_options
-        )
-    )
-    decoded_provider_model_configs_type = (
-        type_serializer.decode_provider_model_configs_type(
-            record=encoded_provider_model_configs_type
-        )
-    )
-    assert provider_model_configs_type_options == (
-        decoded_provider_model_configs_type
+    assert query_hash_value != query_hash_value_2
+    assert query_hash_value == (
+        hash_serializer.get_query_record_hash(query_record=query_record)
     )
 
-  @pytest.mark.parametrize(
-      'featured_models_type_options', _get_featured_models_type_options()
-  )
-  def test_encode_decode_featured_models_type(
-      self, featured_models_type_options
-  ):
-    encoded_featured_models_type = (
-        type_serializer.encode_featured_models_type(
-            featured_models=featured_models_type_options
-        )
+  def test_encode_decode_output_format_hash_consistency(self):
+    output_format = types.OutputFormat(
+        type=types.OutputFormatType.PYDANTIC, pydantic_class=_UserModel
     )
-    decoded_featured_models_type = (
-        type_serializer.decode_featured_models_type(
-            record=encoded_featured_models_type
-        )
-    )
-    assert featured_models_type_options == decoded_featured_models_type
-
-  @pytest.mark.parametrize(
-      'models_by_call_type_type_options',
-      _get_models_by_call_type_type_options()
-  )
-  def test_encode_decode_models_by_call_type_type(
-      self, models_by_call_type_type_options
-  ):
-    encoded_models_by_call_type_type = (
-        type_serializer.encode_models_by_call_type_type(
-            models_by_call_type=models_by_call_type_type_options
-        )
-    )
-    decoded_models_by_call_type_type = (
-        type_serializer.decode_models_by_call_type_type(
-            record=encoded_models_by_call_type_type
-        )
-    )
-    assert models_by_call_type_type_options == decoded_models_by_call_type_type
-
-  @pytest.mark.parametrize(
-      'models_by_size_type_options', _get_models_by_size_type_options()
-  )
-  def test_encode_decode_models_by_size_type(self, models_by_size_type_options):
-    encoded_models_by_size_type = (
-        type_serializer.encode_models_by_size_type(
-            models_by_size=models_by_size_type_options
-        )
-    )
-    decoded_models_by_size_type = (
-        type_serializer.decode_models_by_size_type(
-            record=encoded_models_by_size_type
-        )
-    )
-    assert models_by_size_type_options == decoded_models_by_size_type
-
-  @pytest.mark.parametrize(
-      'default_model_priority_list_type_options',
-      _get_default_model_priority_list_type_options()
-  )
-  def test_encode_decode_default_model_priority_list_type(
-      self, default_model_priority_list_type_options
-  ):
-    encoded_default_model_priority_list_type = (
-        type_serializer.encode_default_model_priority_list_type(
-            default_model_priority_list=(
-                default_model_priority_list_type_options
-            )
-        )
-    )
-    decoded_default_model_priority_list_type = (
-        type_serializer.decode_default_model_priority_list_type(
-            record=encoded_default_model_priority_list_type
-        )
-    )
-    assert default_model_priority_list_type_options == (
-        decoded_default_model_priority_list_type
-    )
-
-  @pytest.mark.parametrize(
-      'response_format_pydantic_value_options',
-      _get_response_format_pydantic_value_options()
-  )
-  def test_encode_decode_response_format_pydantic_value(
-      self, response_format_pydantic_value_options
-  ):
-    pydantic_value = types.ResponseFormatPydanticValue(
-        **response_format_pydantic_value_options
-    )
-    encoded = type_serializer.encode_response_format_pydantic_value(
-        pydantic_value=pydantic_value
-    )
-    decoded = type_serializer.decode_response_format_pydantic_value(
-        record=encoded
-    )
-    assert decoded.class_name == pydantic_value.class_name
-    if pydantic_value.class_value is not None:
-      assert decoded.class_json_schema_value == (
-          pydantic_value.class_value.model_json_schema()
-      )
-    elif pydantic_value.class_json_schema_value is not None:
-      assert decoded.class_json_schema_value == (
-          pydantic_value.class_json_schema_value
-      )
-
-  def test_encode_response_format_pydantic_value_both_set_raises_error(self):
-    pydantic_value = types.ResponseFormatPydanticValue(
-        class_value=_UserModel, class_json_schema_value={'type': 'object'}
-    )
-    with pytest.raises(ValueError, match='cannot have both'):
-      type_serializer.encode_response_format_pydantic_value(
-          pydantic_value=pydantic_value
-      )
-
-  @pytest.mark.parametrize(
-      'response_format_options', _get_response_format_options()
-  )
-  def test_encode_decode_response_format(self, response_format_options):
-    response_format = types.ResponseFormat(**response_format_options)
-    encoded = type_serializer.encode_response_format(
-        response_format=response_format
-    )
-    decoded = type_serializer.decode_response_format(record=encoded)
-    assert decoded.type == response_format.type
-    if response_format.type == types.ResponseFormatType.JSON_SCHEMA:
-      assert decoded.value == response_format.value
-    elif response_format.type == types.ResponseFormatType.PYDANTIC:
-      assert decoded.value.class_name == response_format.value.class_name
-      assert decoded.value.class_json_schema_value == (
-          response_format.value.class_value.model_json_schema()
-      )
-
-  def test_encode_decode_response_format_hash_consistency(self):
-    response_format = types.ResponseFormat(
-        type=types.ResponseFormatType.PYDANTIC,
-        value=types.ResponseFormatPydanticValue(
-            class_name='UserModel', class_value=_UserModel
-        )
-    )
-    query_record = types.QueryRecord(
-        prompt='test', response_format=response_format
-    )
+    query_record = types.QueryRecord(prompt='test', output_format=output_format)
     hash_before = hash_serializer.get_query_record_hash(query_record)
-    encoded = type_serializer.encode_query_record(query_record=query_record)
-    decoded = type_serializer.decode_query_record(record=encoded)
-    hash_after = hash_serializer.get_query_record_hash(decoded)
+
+    encoded = type_serializer.encode_query_record(query_record)
+    decoded_query_record = type_serializer.decode_query_record(encoded)
+
+    hash_after = hash_serializer.get_query_record_hash(decoded_query_record)
     assert hash_before == hash_after
 
-  @pytest.mark.parametrize(
-      'pydantic_metadata_options', _get_pydantic_metadata_options()
-  )
-  def test_encode_decode_pydantic_metadata(self, pydantic_metadata_options):
-    pydantic_metadata = types.PydanticMetadataType(**pydantic_metadata_options)
-    encoded = type_serializer.encode_pydantic_metadata(
-        pydantic_metadata=pydantic_metadata
+  def test_encode_decode_choice_type_with_pydantic(self):
+    user = _UserModel(name='John', age=30)
+    choice_type = types.ChoiceType(
+        output_text='John is 30', output_pydantic=user, content=[
+            message_content.MessageContent(
+                type=message_content.ContentType.TEXT, text='John is 30'
+            )
+        ]
     )
-    decoded = type_serializer.decode_pydantic_metadata(record=encoded)
-    assert decoded.class_name == pydantic_metadata.class_name
-    assert decoded.instance_json_value == pydantic_metadata.instance_json_value
+    encoded = type_serializer.encode_choice_type(choice_type=choice_type)
+    decoded = type_serializer.decode_choice_type(record=encoded)
+    # output_pydantic cannot be reconstructed from serialized form
+    assert decoded.output_pydantic is None
+    assert decoded.output_text == choice_type.output_text
+    assert decoded.content == choice_type.content
+    # Verify pydantic metadata was encoded
+    assert 'output_pydantic' in encoded
+    assert encoded['output_pydantic']['class_name'] == '_UserModel'
+    assert encoded['output_pydantic']['instance_json_value'] == {
+        'name': 'John',
+        'age': 30
+    }
 
-  @pytest.mark.parametrize('response_options', _get_response_options())
-  def test_encode_decode_response(self, response_options):
-    response = types.Response(**response_options)
-    encoded = type_serializer.encode_response(response=response)
-    decoded = type_serializer.decode_response(record=encoded)
-    assert decoded.type == response.type
-    if response.type == types.ResponseType.TEXT or response.type == types.ResponseType.JSON:
-      assert decoded.value == response.value
-    elif response.type == types.ResponseType.PYDANTIC:
-      # After decode, value is None (instance not serialized)
-      # pydantic_metadata contains class_name and instance_json_value
-      assert decoded.value is None
-      assert decoded.pydantic_metadata is not None
-      assert decoded.pydantic_metadata.class_name == (
-          response.pydantic_metadata.class_name
-      )
-      # Check instance_json_value - either from original or converted from value
-      if response.value is not None:
-        assert decoded.pydantic_metadata.instance_json_value == (
-            response.value.model_dump()
-        )
-      elif response.pydantic_metadata.instance_json_value is not None:
-        assert decoded.pydantic_metadata.instance_json_value == (
-            response.pydantic_metadata.instance_json_value
-        )
+  def test_encode_decode_result_record_with_pydantic(self):
+    user = _UserModel(name='Jane', age=25)
+    result_record = types.ResultRecord(
+        status=types.ResultStatusType.SUCCESS, output_text='Jane is 25',
+        output_pydantic=user
+    )
+    encoded = type_serializer.encode_result_record(result_record=result_record)
+    decoded = type_serializer.decode_result_record(record=encoded)
+    # output_pydantic cannot be reconstructed from serialized form
+    assert decoded.output_pydantic is None
+    assert decoded.status == result_record.status
+    assert decoded.output_text == result_record.output_text
+    # Verify pydantic metadata was encoded
+    assert 'output_pydantic' in encoded
+    assert encoded['output_pydantic']['class_name'] == '_UserModel'
+    assert encoded['output_pydantic']['instance_json_value'] == {
+        'name': 'Jane',
+        'age': 25
+    }
+
+
+class TestPydanticDatetimeRoundTrip:
+  """Verify mode='json' fix: pydantic models with datetime/UUID/Decimal
+  fields survive cache hashing and encode/decode round-trips, and native
+  instances can be recovered via model_validate.
+  """
+
+  def _build_event(self):
+    return _EventModel(
+        name='launch',
+        when=datetime.datetime(2024, 1, 1, 12, 0, tzinfo=datetime.timezone.utc),
+        id=uuid.UUID('12345678-1234-5678-1234-567812345678'),
+        amount=Decimal('1.5'),
+    )
+
+  def _build_chat_with_event(self, event):
+    return chat_session.Chat(
+        messages=[
+            message.Message(
+                role=message_content.MessageRoleType.ASSISTANT,
+                content=[
+                    message_content.MessageContent(
+                        type=message_content.ContentType.PYDANTIC_INSTANCE,
+                        pydantic_content=message_content.PydanticContent(
+                            class_value=_EventModel, instance_value=event
+                        ),
+                    ),
+                ],
+            )
+        ]
+    )
+
+  def test_hash_does_not_crash_on_datetime_pydantic(self):
+    chat = self._build_chat_with_event(self._build_event())
+    qr = types.QueryRecord(chat=chat)
+    # Must not raise TypeError from json.dumps.
+    hash_value = hash_serializer.get_query_record_hash(qr)
+    assert len(hash_value) == hash_serializer._HASH_LENGTH
+
+  def test_hash_deterministic_and_differentiating(self):
+    event_1 = self._build_event()
+    event_2 = _EventModel(
+        name='launch',
+        # One second later.
+        when=datetime.datetime(
+            2024, 1, 1, 12, 0, 1, tzinfo=datetime.timezone.utc
+        ),
+        id=uuid.UUID('12345678-1234-5678-1234-567812345678'),
+        amount=Decimal('1.5'),
+    )
+    qr_1 = types.QueryRecord(chat=self._build_chat_with_event(event_1))
+    qr_1_again = types.QueryRecord(chat=self._build_chat_with_event(event_1))
+    qr_2 = types.QueryRecord(chat=self._build_chat_with_event(event_2))
+    h_1 = hash_serializer.get_query_record_hash(qr_1)
+    h_1_again = hash_serializer.get_query_record_hash(qr_1_again)
+    h_2 = hash_serializer.get_query_record_hash(qr_2)
+    assert h_1 == h_1_again
+    assert h_1 != h_2
+
+  def test_result_record_encode_round_trip_recovers_instance(self):
+    event = self._build_event()
+    result_record = types.ResultRecord(
+        status=types.ResultStatusType.SUCCESS,
+        output_pydantic=event,
+    )
+    encoded = type_serializer.encode_result_record(result_record=result_record)
+    # Must be json.dumps-safe for cache storage.
+    serialized = json.dumps(encoded)
+    loaded = json.loads(serialized)
+    # Instance can be recovered from the wire-stable form.
+    recovered = _EventModel.model_validate(
+        loaded['output_pydantic']['instance_json_value']
+    )
+    assert recovered == event
+    assert isinstance(recovered.when, datetime.datetime)
+    assert isinstance(recovered.id, uuid.UUID)
+    assert isinstance(recovered.amount, Decimal)
+
+  def test_choice_type_encode_round_trip_recovers_instance(self):
+    event = self._build_event()
+    choice = types.ChoiceType(output_pydantic=event)
+    encoded = type_serializer.encode_choice_type(choice_type=choice)
+    serialized = json.dumps(encoded)
+    loaded = json.loads(serialized)
+    recovered = _EventModel.model_validate(
+        loaded['output_pydantic']['instance_json_value']
+    )
+    assert recovered == event

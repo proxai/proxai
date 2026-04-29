@@ -1,0 +1,3 @@
+# ProxAI — llms-full.txt
+
+Placeholder. CI-generated from `docs/user_agents/` contents. See `docs/skill_analyses.md` §5 Layer C.

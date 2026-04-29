@@ -1,22 +1,29 @@
+from __future__ import annotations
+
+import base64
 import functools
-from collections.abc import Callable
-from typing import Any
+import os
+import time
+import datetime
 
 from openai import OpenAI
 
-import proxai.connectors.model_connector as model_connector
+import proxai.connectors.content_utils as content_utils
+import proxai.connectors.provider_connector as provider_connector
 import proxai.connectors.providers.openai_mock as openai_mock
 import proxai.types as types
+import proxai.chat.message_content as message_content
+
+FeatureConfigType = types.FeatureConfigType
+FeatureSupportType = types.FeatureSupportType
+InputFormatConfigType = types.InputFormatConfigType
+ParameterConfigType = types.ParameterConfigType
+ToolConfigType = types.ToolConfigType
+OutputFormatConfigType = types.OutputFormatConfigType
 
 
-class OpenAIConnector(model_connector.ProviderModelConnector):
+class OpenAIConnector(provider_connector.ProviderConnector):
   """Connector for OpenAI models."""
-
-  def get_provider_name(self):
-    return 'openai'
-
-  def get_required_provider_token_names(self) -> list[str]:
-    return ['OPENAI_API_KEY']
 
   def init_model(self):
     return OpenAI(api_key=self.provider_token_value_map['OPENAI_API_KEY'])
@@ -24,240 +31,739 @@ class OpenAIConnector(model_connector.ProviderModelConnector):
   def init_mock_model(self):
     return openai_mock.OpenAIMock()
 
-  def _get_api_call_function(self, chosen_endpoint: str) -> Callable:
-    if chosen_endpoint == 'chat.completions.create':
-      return functools.partial(self.api.chat.completions.create)
-    elif chosen_endpoint == 'beta.chat.completions.parse':
-      return functools.partial(self.api.beta.chat.completions.parse)
-    elif chosen_endpoint == 'responses.create':
-      return functools.partial(self.api.responses.create)
-    else:
-      raise Exception(f'Invalid endpoint: {chosen_endpoint}')
+  PROVIDER_NAME = 'openai'
 
-  def prompt_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    if (
-        query_record.chosen_endpoint == 'chat.completions.create' or
-        query_record.chosen_endpoint == 'beta.chat.completions.parse'
-    ):
-      return functools.partial(
-          query_function, messages=[{
-              'role': 'user',
-              'content': query_record.prompt
-          }]
-      )
-    elif query_record.chosen_endpoint == 'responses.create':
-      return functools.partial(query_function, input=query_record.prompt)
+  PROVIDER_API_KEYS = ['OPENAI_API_KEY']
 
-  def messages_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    if (
-        query_record.chosen_endpoint == 'chat.completions.create' or
-        query_record.chosen_endpoint == 'beta.chat.completions.parse'
-    ):
-      messages = query_function.keywords.get('messages')
-      if messages is None:
-        return functools.partial(query_function, messages=query_record.messages)
+  ENDPOINT_PRIORITY = [
+      'responses.create',
+      'chat.completions.create',
+      'beta.chat.completions.parse',
+      'images.generate',
+      'audio.speech.create',
+      'videos.create',
+  ]
+
+  ENDPOINT_CONFIG = {
+      'chat.completions.create': FeatureConfigType(
+          prompt=FeatureSupportType.SUPPORTED,
+          messages=FeatureSupportType.SUPPORTED,
+          system_prompt=FeatureSupportType.SUPPORTED,
+          add_system_to_messages=True,
+          parameters=ParameterConfigType(
+              max_tokens=FeatureSupportType.SUPPORTED,
+              temperature=FeatureSupportType.SUPPORTED,
+              stop=FeatureSupportType.SUPPORTED,
+              n=FeatureSupportType.SUPPORTED,
+              thinking=FeatureSupportType.SUPPORTED,
+          ),
+          tools=ToolConfigType(
+              web_search=FeatureSupportType.NOT_SUPPORTED,
+          ),
+          input_format=InputFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
+              image=FeatureSupportType.SUPPORTED,
+              document=FeatureSupportType.SUPPORTED,
+              audio=FeatureSupportType.SUPPORTED,
+              json=FeatureSupportType.BEST_EFFORT,
+              pydantic=FeatureSupportType.BEST_EFFORT,
+          ),
+          output_format=OutputFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
+              json=FeatureSupportType.SUPPORTED,
+              pydantic=FeatureSupportType.BEST_EFFORT,
+          ),
+      ),
+      'beta.chat.completions.parse': FeatureConfigType(
+          prompt=FeatureSupportType.SUPPORTED,
+          messages=FeatureSupportType.SUPPORTED,
+          system_prompt=FeatureSupportType.SUPPORTED,
+          add_system_to_messages=True,
+          parameters=ParameterConfigType(
+              max_tokens=FeatureSupportType.SUPPORTED,
+              temperature=FeatureSupportType.SUPPORTED,
+              stop=FeatureSupportType.SUPPORTED,
+              n=FeatureSupportType.SUPPORTED,
+              thinking=FeatureSupportType.SUPPORTED,
+          ),
+          tools=ToolConfigType(
+              web_search=FeatureSupportType.NOT_SUPPORTED,
+          ),
+          input_format=InputFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
+              image=FeatureSupportType.SUPPORTED,
+              document=FeatureSupportType.SUPPORTED,
+              audio=FeatureSupportType.SUPPORTED,
+              json=FeatureSupportType.BEST_EFFORT,
+              pydantic=FeatureSupportType.BEST_EFFORT,
+          ),
+          output_format=OutputFormatConfigType(
+              text=FeatureSupportType.NOT_SUPPORTED,
+              json=FeatureSupportType.NOT_SUPPORTED,
+              pydantic=FeatureSupportType.SUPPORTED,
+          ),
+      ),
+      'responses.create': FeatureConfigType(
+          prompt=FeatureSupportType.SUPPORTED,
+          messages=FeatureSupportType.SUPPORTED,
+          system_prompt=FeatureSupportType.SUPPORTED,
+          parameters=ParameterConfigType(
+              max_tokens=FeatureSupportType.SUPPORTED,
+              temperature=FeatureSupportType.SUPPORTED,
+              stop=FeatureSupportType.BEST_EFFORT,
+              thinking=FeatureSupportType.SUPPORTED,
+          ),
+          tools=ToolConfigType(
+              web_search=FeatureSupportType.SUPPORTED,
+          ),
+          input_format=InputFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
+              image=FeatureSupportType.SUPPORTED,
+              document=FeatureSupportType.SUPPORTED,
+              json=FeatureSupportType.BEST_EFFORT,
+              pydantic=FeatureSupportType.BEST_EFFORT,
+          ),
+          output_format=OutputFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
+              json=FeatureSupportType.SUPPORTED,
+              pydantic=FeatureSupportType.BEST_EFFORT,
+          ),
+      ),
+      'images.generate': FeatureConfigType(
+          prompt=FeatureSupportType.SUPPORTED,
+          input_format=InputFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
+          ),
+          output_format=OutputFormatConfigType(
+              image=FeatureSupportType.SUPPORTED,
+          ),
+      ),
+      'audio.speech.create': FeatureConfigType(
+          prompt=FeatureSupportType.SUPPORTED,
+          input_format=InputFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
+          ),
+          output_format=OutputFormatConfigType(
+              audio=FeatureSupportType.SUPPORTED,
+          ),
+      ),
+      'videos.create': FeatureConfigType(
+          prompt=FeatureSupportType.SUPPORTED,
+          input_format=InputFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
+          ),
+          output_format=OutputFormatConfigType(
+              video=FeatureSupportType.SUPPORTED,
+          ),
+      ),
+  }
+
+  _MIME_TO_AUDIO_FORMAT = {
+      'audio/mpeg': 'mp3',
+      'audio/wav': 'wav',
+      'audio/flac': 'flac',
+      'audio/aac': 'aac',
+      'audio/ogg': 'ogg',
+  }
+
+  @staticmethod
+  def _build_data_uri(part_dict):
+    """Build a ``data:<mime>;base64,...`` URI from a content block.
+
+    Reads from the ``data`` field (already base64-encoded) or the
+    ``path`` field (reads and encodes the file). Returns None if
+    neither field is present.
+    """
+    mime_type = part_dict.get('media_type', 'application/octet-stream')
+    if 'data' in part_dict:
+      return f"data:{mime_type};base64,{part_dict['data']}"
+    if 'path' in part_dict:
+      with open(part_dict['path'], 'rb') as f:
+        encoded = base64.b64encode(f.read()).decode('utf-8')
+      return f"data:{mime_type};base64,{encoded}"
+    return None
+
+  @staticmethod
+  def _to_chat_completions_part(part_dict):
+    """Convert a ProxAI content block to a chat.completions content part.
+
+    Used by ``chat.completions.create`` and
+    ``beta.chat.completions.parse`` endpoints.
+
+    Type mapping:
+      text     → ``{"type": "text", "text": "..."}``
+      image    → ``{"type": "image_url", "image_url": {"url": "..."}}``
+      audio    → ``{"type": "input_audio", "input_audio":
+                 {"data": "...", "format": "wav"|"mp3"|...}}``
+      document → Text-based docs (md, csv, txt) are read and sent as
+                 text blocks. PDF is sent as a native file block
+                 ``{"type": "file", "file": {...}}``. Other binary
+                 formats (docx, xlsx) are dropped because this
+                 endpoint only accepts PDF for file blocks.
+
+    Returns None for unsupported content types.
+    """
+    # File API reference (pre-uploaded via px.files.upload)
+    # chat.completions only accepts PDF via file_id reference.
+    _CHAT_COMPLETIONS_FILE_REF_TYPES = frozenset({
+        'application/pdf',
+    })
+    file_ids = part_dict.get('provider_file_api_ids', {})
+    if ('openai' in file_ids
+        and part_dict.get('media_type') in _CHAT_COMPLETIONS_FILE_REF_TYPES):
+      return {'type': 'file', 'file': {
+          'file_id': file_ids['openai']}}
+    content_type = part_dict.get('type')
+    # Text
+    if content_type == 'text':
+      return {'type': 'text', 'text': part_dict['text']}
+    # Image: URL or inline data URI
+    if content_type == 'image':
+      if 'source' in part_dict:
+        url = part_dict['source']
       else:
-        messages = query_record.messages + messages
-        return functools.partial(query_function, messages=messages)
-    elif query_record.chosen_endpoint == 'responses.create':
-      raise Exception(
-          'Responses.create does not support messages parameter. Code should '
-          'never reach here.'
-      )
+        url = OpenAIConnector._build_data_uri(part_dict)
+      if url is None:
+        return None
+      return {'type': 'image_url', 'image_url': {'url': url}}
+    # Audio: inline base64 with format mapping
+    if content_type == 'audio':
+      audio_data = part_dict.get('data')
+      if audio_data is None and 'path' in part_dict:
+        with open(part_dict['path'], 'rb') as f:
+          audio_data = base64.b64encode(f.read()).decode('utf-8')
+      if audio_data is None:
+        return None
+      mime_type = part_dict.get('media_type', '')
+      audio_format = OpenAIConnector._MIME_TO_AUDIO_FORMAT.get(
+          mime_type, 'wav')
+      return {'type': 'input_audio', 'input_audio': {
+          'data': audio_data, 'format': audio_format}}
+    # Document: text-based → text block, PDF → native file block
+    if content_type == 'document':
+      text_content = content_utils.read_text_document(part_dict)
+      if text_content is not None:
+        return {'type': 'text', 'text': text_content}
+      if part_dict.get('media_type') != 'application/pdf':
+        return None
+      data_uri = OpenAIConnector._build_data_uri(part_dict)
+      if data_uri is None:
+        return None
+      filename = 'document'
+      if 'path' in part_dict:
+        filename = os.path.basename(part_dict['path'])
+      return {'type': 'file', 'file': {
+          'file_data': data_uri, 'filename': filename}}
+    return None
 
-  def system_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    if (
-        query_record.chosen_endpoint == 'chat.completions.create' or
-        query_record.chosen_endpoint == 'beta.chat.completions.parse'
+  @staticmethod
+  def _to_responses_part(part_dict, role='user'):
+    """Convert a ProxAI content block to a responses.create content part.
+
+    Used by the ``responses.create`` endpoint. The OpenAI Responses API
+    requires different content type names based on the message role:
+
+      role='user' (or any non-assistant role):
+        text     → ``{"type": "input_text", "text": "..."}``
+        image    → ``{"type": "input_image", "image_url": "..."}``
+        document → ``{"type": "input_file", "file_data": "...", ...}``
+                   Accepts all document types natively (PDF, docx,
+                   xlsx, csv, markdown, txt, etc.).
+        file_id  → ``{"type": "input_file", "file_id": "..."}``
+      role='assistant':
+        text     → ``{"type": "output_text", "text": "..."}``
+        Other content types are not valid for assistant role per
+        OpenAI's spec (assistants emit only text, refusals, or
+        tool calls). Returns None.
+
+    Returns None for unsupported content types or invalid
+    role / type combos.
+    """
+    is_assistant = role == 'assistant'
+
+    # File API reference (pre-uploaded via px.files.upload). Only valid
+    # on non-assistant roles per the spec.
+    if not is_assistant:
+      file_ids = part_dict.get('provider_file_api_ids', {})
+      if 'openai' in file_ids:
+        return {'type': 'input_file', 'file_id': file_ids['openai']}
+
+    content_type = part_dict.get('type')
+    # Text — both roles supported with different content type names.
+    if content_type == 'text':
+      type_name = 'output_text' if is_assistant else 'input_text'
+      return {'type': type_name, 'text': part_dict['text']}
+
+    # Non-text content blocks (image / document) are not valid for the
+    # assistant role per OpenAI's Responses API spec.
+    if is_assistant:
+      return None
+
+    # Image: URL or inline data URI
+    if content_type == 'image':
+      if 'source' in part_dict:
+        url = part_dict['source']
+      else:
+        url = OpenAIConnector._build_data_uri(part_dict)
+      if url is None:
+        return None
+      return {'type': 'input_image', 'image_url': url}
+    # Document: all types natively via data URI
+    if content_type == 'document':
+      data_uri = OpenAIConnector._build_data_uri(part_dict)
+      if data_uri is None:
+        return None
+      filename = 'document'
+      if 'path' in part_dict:
+        filename = os.path.basename(part_dict['path'])
+      return {
+          'type': 'input_file',
+          'file_data': data_uri,
+          'filename': filename}
+    return None
+
+  @staticmethod
+  def _convert_messages(messages, converter):
+    """Walk messages and convert content blocks using the given converter.
+
+    String content is passed through unchanged. List content is
+    converted block-by-block; blocks where the converter returns
+    None are dropped.
+    """
+    converted = []
+    for message in messages:
+      if isinstance(message['content'], str):
+        converted.append(message)
+        continue
+      if isinstance(message['content'], list):
+        parts = []
+        for block in message['content']:
+          part = converter(block)
+          if part is not None:
+            parts.append(part)
+        converted.append({**message, 'content': parts})
+      else:
+        converted.append(message)
+    return converted
+
+  def _build_responses_input(self, chat):
+    """Convert an exported chat dict to responses.create input format.
+
+    Wraps each message in ``{"type": "message", "role": ...,
+    "content": [...]}`` and converts content blocks using
+    ``_to_responses_part``. Content type names are role-aware:
+    assistant turns emit ``output_text`` while user turns emit
+    ``input_text`` per OpenAI's Responses API spec.
+
+    System-role messages (when ``add_system_to_messages=True`` was used
+    during ``Chat.export()``) are skipped here — they are routed to
+    ``responses.create``'s ``instructions=`` parameter by
+    ``_responses_create_executor`` instead.
+    """
+    input_messages = []
+    for msg in chat['messages']:
+      role = msg['role']
+      # System messages bypass the input list — handled via instructions=.
+      if role == 'system':
+        continue
+      if isinstance(msg['content'], str):
+        type_name = 'output_text' if role == 'assistant' else 'input_text'
+        input_messages.append({
+            'type': 'message', 'role': role,
+            'content': [{'type': type_name, 'text': msg['content']}]})
+      elif isinstance(msg['content'], list):
+        parts = []
+        for block in msg['content']:
+          part = self._to_responses_part(block, role=role)
+          if part is not None:
+            parts.append(part)
+        input_messages.append({
+            'type': 'message', 'role': role,
+            'content': parts})
+    return input_messages
+
+  def _chat_completions_create_executor(
+      self,
+      query_record: types.QueryRecord) -> types.ExecutorResult:
+    create = functools.partial(self.api.chat.completions.create)
+    create = functools.partial(create, model=(
+        query_record.provider_model.provider_model_identifier
+    ))
+
+    if query_record.prompt is not None:
+      create = functools.partial(
+          create, messages=[
+              {'role': 'user', 'content': query_record.prompt}])
+
+    if query_record.chat is not None:
+      messages = self._convert_messages(
+          query_record.chat['messages'], self._to_chat_completions_part)
+      create = functools.partial(create, messages=messages)
+
+    if query_record.parameters is not None:
+      if query_record.parameters.max_tokens is not None:
+        create = functools.partial(
+            create, max_completion_tokens=query_record.parameters.max_tokens)
+
+      if query_record.parameters.temperature is not None:
+        create = functools.partial(
+            create, temperature=query_record.parameters.temperature)
+
+      if query_record.parameters.stop is not None:
+        create = functools.partial(create, stop=query_record.parameters.stop)
+
+      if query_record.parameters.n is not None:
+        create = functools.partial(create, n=query_record.parameters.n)
+
+      if query_record.parameters.thinking is not None:
+        create = functools.partial(
+            create,
+            reasoning_effort=query_record.parameters.thinking.value.lower())
+
+    if query_record.output_format.type == types.OutputFormatType.JSON:
+      create = functools.partial(
+          create, response_format={'type': 'json_object'})
+
+    if query_record.output_format.type == types.OutputFormatType.PYDANTIC:
+      create = functools.partial(
+          create, response_format={'type': 'json_object'})
+
+    response, result_record = self._safe_provider_query(create)
+    if result_record.error is not None:
+      return types.ExecutorResult(result_record=result_record)
+    
+    result_record.content = [
+        message_content.MessageContent(
+            type=message_content.ContentType.TEXT,
+            text=response.choices[0].message.content,
+        )
+    ]
+    if response.choices is not None and len(response.choices) > 1:
+      result_record.choices = []
+      for choice in response.choices[1:]:
+        result_record.choices.append(
+            types.ChoiceType(
+                content=[
+                    message_content.MessageContent(
+                        type=message_content.ContentType.TEXT,
+                        text=choice.message.content,
+                    )
+                ]
+            )
+        )
+    return types.ExecutorResult(
+        result_record=result_record, raw_provider_response=response)
+
+  def _beta_chat_completions_parse_executor(
+      self,
+      query_record: types.QueryRecord) -> types.ExecutorResult:
+    create = functools.partial(self.api.beta.chat.completions.parse)
+    create = functools.partial(create, model=(
+        query_record.provider_model.provider_model_identifier
+    ))
+
+    if query_record.prompt is not None:
+      create = functools.partial(
+          create, messages=[
+              {'role': 'user', 'content': query_record.prompt}])
+
+    if query_record.chat is not None:
+      messages = self._convert_messages(
+          query_record.chat['messages'], self._to_chat_completions_part)
+      create = functools.partial(create, messages=messages)
+
+    if query_record.parameters is not None:
+      if query_record.parameters.max_tokens is not None:
+        create = functools.partial(
+            create, max_completion_tokens=query_record.parameters.max_tokens)
+
+      if query_record.parameters.temperature is not None:
+        create = functools.partial(
+            create, temperature=query_record.parameters.temperature)
+
+      if query_record.parameters.stop is not None:
+        create = functools.partial(create, stop=query_record.parameters.stop)
+
+      if query_record.parameters.n is not None:
+        create = functools.partial(create, n=query_record.parameters.n)
+      
+      if query_record.parameters.thinking is not None:
+        create = functools.partial(
+            create,
+            reasoning_effort=query_record.parameters.thinking.value.lower())
+      
+    if query_record.output_format.type == types.OutputFormatType.PYDANTIC:
+      create = functools.partial(
+          create, response_format=query_record.output_format.pydantic_class)
+
+    response, result_record = self._safe_provider_query(create)
+    if result_record.error is not None:
+      return types.ExecutorResult(result_record=result_record)
+    
+    result_record.content = [
+        message_content.MessageContent(
+            type=message_content.ContentType.PYDANTIC_INSTANCE,
+            pydantic_content=message_content.PydanticContent(
+                class_name=query_record.output_format.pydantic_class.__name__,
+                class_value=query_record.output_format.pydantic_class,
+                instance_value=response.choices[0].message.parsed,
+            ),
+        )
+    ]
+    if response.choices is not None and len(response.choices) > 1:
+      result_record.choices = []
+      for choice in response.choices[1:]:
+        pydantic_content = message_content.PydanticContent(
+            class_name=query_record.output_format.pydantic_class.__name__,
+            class_value=query_record.output_format.pydantic_class,
+            instance_value=choice.message.parsed,
+        )
+        result_record.choices.append(
+            types.ChoiceType(
+                content=[
+                    message_content.MessageContent(
+                        type=message_content.ContentType.PYDANTIC_INSTANCE,
+                        pydantic_content=pydantic_content,
+                    )
+                ]
+            )
+        )
+    return types.ExecutorResult(
+        result_record=result_record, raw_provider_response=response)
+
+  @staticmethod
+  def _native_json_mode_blocked(
+      query_record: types.QueryRecord) -> bool:
+    """responses.create rejects text.format=json_object with web_search.
+
+    On this path FeatureAdapter has already injected JSON / pydantic-schema
+    guidance into the prompt, and ResultAdapter parses the returned text
+    back into the requested structure — so declining native JSON mode here
+    is a lossless degradation.
+    """
+    return bool(
+        query_record.tools
+        and types.Tools.WEB_SEARCH in query_record.tools)
+
+  def _responses_create_executor(
+      self,
+      query_record: types.QueryRecord) -> types.ExecutorResult:
+    create = functools.partial(self.api.responses.create)
+    create = functools.partial(create, model=(
+        query_record.provider_model.provider_model_identifier
+    ))
+
+    if query_record.prompt is not None:
+      create = functools.partial(create, input=query_record.prompt)
+
+    if query_record.chat is not None:
+      input_messages = self._build_responses_input(
+          query_record.chat)
+      create = functools.partial(create, input=input_messages)
+      # Prefer the dedicated system_prompt field; fall back to any
+      # role='system' message (in case the chat was exported with
+      # add_system_to_messages=True). responses.create takes system
+      # content via the instructions= parameter, not as a message.
+      chat_instructions = query_record.chat.get('system_prompt')
+      if chat_instructions is None:
+        for msg in query_record.chat.get('messages', []):
+          if (msg.get('role') == 'system' and
+              isinstance(msg.get('content'), str)):
+            chat_instructions = msg['content']
+            break
+      if chat_instructions is not None:
+        create = functools.partial(create, instructions=chat_instructions)
+
+    if query_record.system_prompt is not None:
+      create = functools.partial(
+          create, instructions=query_record.system_prompt)
+
+    if query_record.parameters is not None:
+      if query_record.parameters.max_tokens is not None:
+        create = functools.partial(
+            create, max_output_tokens=query_record.parameters.max_tokens)
+
+      if query_record.parameters.temperature is not None:
+        create = functools.partial(
+            create, temperature=query_record.parameters.temperature)
+
+      if query_record.parameters.thinking is not None:
+        create = functools.partial(
+            create,
+            reasoning={
+                'effort': query_record.parameters.thinking.value.lower(),
+                'summary': 'auto'})
+    
+    if query_record.tools is not None:
+      if types.Tools.WEB_SEARCH in query_record.tools:
+        create = functools.partial(create, tools=[{"type": "web_search"}])
+  
+    if query_record.output_format.type in (
+        types.OutputFormatType.JSON,
+        types.OutputFormatType.PYDANTIC,
     ):
-      messages = query_function.keywords.get('messages')
-      if messages is None:
-        raise Exception('Set messages parameter before adding system message.')
-      messages.insert(0, {'role': 'system', 'content': query_record.system})
-      return functools.partial(query_function, messages=messages)
-    elif query_record.chosen_endpoint == 'responses.create':
-      return functools.partial(query_function, instructions=query_record.system)
+      if not self._native_json_mode_blocked(query_record):
+        create = functools.partial(
+            create, text={'format': {
+                'type': 'json_object'
+            }})
 
-  def max_tokens_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    if (
-        query_record.chosen_endpoint == 'chat.completions.create' or
-        query_record.chosen_endpoint == 'beta.chat.completions.parse'
+    response, result_record = self._safe_provider_query(create)
+    if result_record.error is not None:
+      return types.ExecutorResult(result_record=result_record)
+    
+    parsed_response = []
+    for output in response.output:
+      if output.type == 'message':
+        for content in output.content:
+          if content.annotations and len(content.annotations) > 0:
+            tool_message = message_content.MessageContent(
+                type=message_content.ContentType.TOOL,
+                tool_content=message_content.ToolContent(
+                    name='web_search',
+                    kind=message_content.ToolKind.RESULT,
+                    citations=[],
+                ),
+            )
+            for annotation in content.annotations:
+              tool_message.tool_content.citations.append(
+                  message_content.Citation(
+                      title=annotation.title,
+                      url=annotation.url))
+            parsed_response.append(tool_message)
+          
+          parsed_response.append(message_content.MessageContent(
+              type=message_content.ContentType.TEXT,
+              text=content.text,
+          ))
+      elif output.type == 'reasoning':
+        for summary in output.summary:
+          if summary.type == 'summary_text':
+            parsed_response.append(
+                message_content.MessageContent(
+                    type=message_content.ContentType.THINKING,
+                    text=summary.text))
+
+    if query_record.output_format.type in (
+        types.OutputFormatType.JSON,
+        types.OutputFormatType.PYDANTIC,
     ):
-      return functools.partial(
-          query_function, max_completion_tokens=query_record.max_tokens
-      )
-    elif query_record.chosen_endpoint == 'responses.create':
-      return functools.partial(
-          query_function, max_output_tokens=query_record.max_tokens
-      )
+      parsed_response = [
+          message_content.MessageContent(
+              type=message_content.ContentType.JSON,
+              json=self._extract_json_from_text(c.text),
+          ) if c.type == message_content.ContentType.TEXT else c
+          for c in parsed_response
+      ]
 
-  def temperature_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    return functools.partial(
-        query_function, temperature=query_record.temperature
-    )
+    result_record.content = parsed_response
+    return types.ExecutorResult(
+        result_record=result_record, raw_provider_response=response)
 
-  def stop_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    if (
-        query_record.chosen_endpoint == 'chat.completions.create' or
-        query_record.chosen_endpoint == 'beta.chat.completions.parse'
-    ):
-      return functools.partial(query_function, stop=query_record.stop)
-    elif query_record.chosen_endpoint == 'responses.create':
-      raise Exception(
-          'Responses.create does not support stop parameter. Code should '
-          'never reach here.'
-      )
+  def _images_generate_executor(
+      self,
+      query_record: types.QueryRecord) -> types.ExecutorResult:
+    generate = functools.partial(self.api.images.generate)
+    generate = functools.partial(generate, model=(
+        query_record.provider_model.provider_model_identifier
+    ))
 
-  def json_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ):
-    if query_record.chosen_endpoint == 'chat.completions.create':
-      return functools.partial(
-          query_function, response_format={'type': 'json_object'}
-      )
-    elif query_record.chosen_endpoint == 'beta.chat.completions.parse':
-      raise Exception(
-          'JSON response format is not supported for '
-          'beta.chat.completions.parse. Code should never reach here.'
-      )
-    elif query_record.chosen_endpoint == 'responses.create':
-      return functools.partial(
-          query_function, text={'format': {
-              'type': 'json_object'
-          }}
-      )
+    if query_record.prompt is not None:
+      generate = functools.partial(generate, prompt=query_record.prompt)
 
-  def json_schema_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ):
-    if query_record.chosen_endpoint == 'chat.completions.create':
-      return functools.partial(
-          query_function, response_format=query_record.response_format.value
-      )
-    elif query_record.chosen_endpoint == 'beta.chat.completions.parse':
-      raise Exception(
-          'JSON schema response format is not supported for '
-          'beta.chat.completions.parse. Code should never reach here.'
-      )
-    elif query_record.chosen_endpoint == 'responses.create':
-      raise Exception(
-          'JSON schema response format is not supported for '
-          'responses.create yet in ProxAI. It uses different json_schema '
-          'format and requires a different mapping. Code should never reach '
-          'here. Please reach out to ProxAI team if you need this feature.\n'
-          'GitHub: https://github.com/proxai/'
-      )
+    # TODO: Add support for other image sizes and qualities
+    generate = functools.partial(
+        generate,
+        size="1024x1024",
+        quality="standard",
+        n=1)
+    
+    response, result_record = self._safe_provider_query(generate)
+    if result_record.error is not None:
+      return types.ExecutorResult(result_record=result_record)
 
-  def pydantic_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ):
-    if query_record.chosen_endpoint == 'chat.completions.create':
-      raise Exception(
-          'Pydantic response format is not supported for '
-          'chat.completions.create. Code should never reach here.'
-      )
-    elif query_record.chosen_endpoint == 'beta.chat.completions.parse':
-      return functools.partial(
-          query_function,
-          response_format=query_record.response_format.value.class_value
-      )
-    elif query_record.chosen_endpoint == 'responses.create':
-      raise Exception(
-          'Pydantic response format is not supported for '
-          'responses.create. Code should never reach here.'
-      )
+    result_record.content = [
+        message_content.MessageContent(
+            type=message_content.ContentType.IMAGE,
+            source=response.data[0].url,
+        )
+    ]
+    return types.ExecutorResult(
+        result_record=result_record, raw_provider_response=response)
 
-  def web_search_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ):
-    if (
-        query_record.chosen_endpoint == 'chat.completions.create' or
-        query_record.chosen_endpoint == 'beta.chat.completions.parse'
-    ):
-      raise Exception(
-          'Web search is not supported for '
-          'chat.completions.create or beta.chat.completions.parse. '
-          'Code should never reach here.'
-      )
-    elif query_record.chosen_endpoint == 'responses.create':
-      return functools.partial(query_function, tools=[{"type": "web_search"}])
+  def _audio_speech_create_executor(
+      self,
+      query_record: types.QueryRecord) -> types.ExecutorResult:
+    create = functools.partial(self.api.audio.speech.create)
+    create = functools.partial(create, model=(
+        query_record.provider_model.provider_model_identifier
+    ))
+    
+    if query_record.prompt is not None:
+      create = functools.partial(create, input=query_record.prompt)
 
-  def format_text_response_from_provider(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> str:
-    if query_record.chosen_endpoint == 'chat.completions.create':
-      return response.choices[0].message.content
-    elif query_record.chosen_endpoint == 'beta.chat.completions.parse':
-      raise Exception(
-          'Text response format is not supported for '
-          'beta.chat.completions.parse. Code should never reach here.'
-      )
-    elif query_record.chosen_endpoint == 'responses.create':
-      return response.output_text
+    # TODO: Add support for other voices
+    create = functools.partial(create, voice='alloy')
 
-  def format_json_response_from_provider(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> dict:
-    if query_record.chosen_endpoint == 'chat.completions.create':
-      return self._extract_json_from_text(response.choices[0].message.content)
-    elif query_record.chosen_endpoint == 'beta.chat.completions.parse':
-      raise Exception(
-          'JSON response format is not supported for '
-          'beta.chat.completions.parse. Code should never reach here.'
-      )
-    elif query_record.chosen_endpoint == 'responses.create':
-      return self._extract_json_from_text(response.output_text)
+    response, result_record = self._safe_provider_query(create)
+    if result_record.error is not None:
+      return types.ExecutorResult(result_record=result_record)
 
-  def format_json_schema_response_from_provider(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> dict:
-    if query_record.chosen_endpoint == 'chat.completions.create':
-      return self._extract_json_from_text(response.choices[0].message.content)
-    elif query_record.chosen_endpoint == 'beta.chat.completions.parse':
-      raise Exception(
-          'JSON schema response format is not supported for '
-          'beta.chat.completions.parse. Code should never reach here.'
-      )
-    elif query_record.chosen_endpoint == 'responses.create':
-      return self._extract_json_from_text(response.output_text)
+    result_record.content = [
+        message_content.MessageContent(
+            type=message_content.ContentType.AUDIO,
+            data=response.content,
+        )
+    ]
+    
+    return types.ExecutorResult(
+        result_record=result_record, raw_provider_response=response)
 
-  def format_pydantic_response_from_provider(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> Any:
-    if query_record.chosen_endpoint == 'chat.completions.create':
-      raise Exception(
-          'Pydantic response format is not supported for '
-          'chat.completions.create. Code should never reach here.'
-      )
-    elif query_record.chosen_endpoint == 'beta.chat.completions.parse':
-      return response.choices[0].message.parsed
-    elif query_record.chosen_endpoint == 'responses.create':
-      return response.output_parsed
+  def _videos_create_executor(
+      self,
+      query_record: types.QueryRecord) -> types.ExecutorResult:
+    create = functools.partial(self.api.videos.create)
+    create = functools.partial(create, model=(
+        query_record.provider_model.provider_model_identifier
+    ))
+    
+    if query_record.prompt is not None:
+      create = functools.partial(create, prompt=query_record.prompt)
+    
+    response, result_record = self._safe_provider_query(create)
+    if result_record.error is not None:
+      return types.ExecutorResult(result_record=result_record)
+    
+    while response.status not in ("completed", "failed"):
+      time.sleep(5)
+      response = self.api.videos.retrieve(response.id)
+      print(
+          f'Status: {response.status}, '
+          f'progress: {response.progress}%, '
+          f'date: {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
+    
+    if response.status == "completed":
+      video_bytes = self.api.videos.download_content(
+          response.id, variant="video").content
+      result_record.content = [
+        message_content.MessageContent(
+            type=message_content.ContentType.VIDEO,
+            data=video_bytes,
+        )
+      ]
+    else:
+      result_record.error = Exception(
+          f"Video generation failed: {response.error}")
 
-  def generate_text_proc(
-      self, query_record: types.QueryRecord
-  ) -> types.Response:
-    create = self._get_api_call_function(query_record.chosen_endpoint)
+    return types.ExecutorResult(
+        result_record=result_record, raw_provider_response=response)
 
-    provider_model = query_record.provider_model
-    create = functools.partial(
-        create, model=provider_model.provider_model_identifier
-    )
 
-    create = self.add_features_to_query_function(create, query_record)
-
-    response = create()
-
-    return self.format_response_from_providers(response, query_record)
+  ENDPOINT_EXECUTORS = {
+    'chat.completions.create': '_chat_completions_create_executor',
+    'beta.chat.completions.parse': '_beta_chat_completions_parse_executor',
+    'responses.create': '_responses_create_executor',
+    'images.generate': '_images_generate_executor',
+    'audio.speech.create': '_audio_speech_create_executor',
+    'videos.create': '_videos_create_executor',
+  }

@@ -16,23 +16,23 @@ def _get_path_dir(temp_path: str):
   return path, temp_dir
 
 
-def _get_example_logging_record(
+def _get_example_call_record(
     model: types.ProviderModelType, response: str | None = None,
     error: str | None = None, long: bool = False
 ):
   end_utc_date = datetime.datetime.now(datetime.timezone.utc)
   if long:
     end_utc_date = end_utc_date - datetime.timedelta(days=1)
-  response_obj = None
-  if response is not None:
-    response_obj = types.Response(type=types.ResponseType.TEXT, value=response)
-  return types.LoggingRecord(
-      query_record=types.QueryRecord(
-          call_type=types.CallType.GENERATE_TEXT, prompt='hello',
+  return types.CallRecord(
+      query=types.QueryRecord(
+          prompt='hello',
           provider_model=model
-      ), response_record=types.QueryResponseRecord(
-          response=response_obj, error=error, end_utc_date=end_utc_date
-      )
+      ),
+      result=types.ResultRecord(
+          output_text=response,
+          error=error,
+          timestamp=types.TimeStampType(end_utc_date=end_utc_date),
+      ),
   )
 
 
@@ -40,19 +40,19 @@ def _get_example_model_status():
   data = types.ModelStatus()
   models = [
       pytest.model_configs_instance.get_provider_model(
-          ('openai', 'gpt-3.5-turbo')
+          ('mock_provider', 'mock_model')
       ),
-      pytest.model_configs_instance.get_provider_model(('claude', 'haiku-4.5')),
-      pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4')),
-      pytest.model_configs_instance.get_provider_model(('claude', 'opus-4')),
       pytest.model_configs_instance.get_provider_model(
-          ('openai', 'gpt-4.1-mini')
+          ('mock_failing_provider', 'mock_failing_model')
       ),
-      pytest.model_configs_instance.get_provider_model(('claude', 'sonnet-4')),
       pytest.model_configs_instance.get_provider_model(
-          ('gemini', 'gemini-3-pro')
+          ('mock_slow_provider', 'mock_slow_model')
       ),
-      pytest.model_configs_instance.get_provider_model(('cohere', 'command-r'))
+      pytest.model_configs_instance.get_provider_model(('openai', 'gpt-4o')),
+      pytest.model_configs_instance.get_provider_model(('openai', 'o3')),
+      pytest.model_configs_instance.get_provider_model(('openai', 'dall-e-3')),
+      pytest.model_configs_instance.get_provider_model(('openai', 'gpt-5-nano')),
+      pytest.model_configs_instance.get_provider_model(('openai', 'tts-1')),
   ]
 
   data.unprocessed_models.add(models[0])
@@ -66,14 +66,14 @@ def _get_example_model_status():
 
   data.provider_queries = {
       models[2]:
-          _get_example_logging_record(models[2], response='model_2 response'),
+          _get_example_call_record(models[2], response='model_2 response'),
       models[3]:
-          _get_example_logging_record(
+          _get_example_call_record(
               models[3], response='model_3 response', long=True
           ),
-      models[4]: _get_example_logging_record(models[4], error='model_4 error'),
+      models[4]: _get_example_call_record(models[4], error='model_4 error'),
       models[5]:
-          _get_example_logging_record(
+          _get_example_call_record(
               models[5], error='model_5 error', long=True
           ),
   }
@@ -145,7 +145,7 @@ class TestModelCacheManagerGettersSetters:
         types.CacheOptions(cache_path=cache_path, model_cache_duration=20)
     )
 
-  def test_model_status_by_call_type(self):
+  def test_model_status_by_output_format_type(self):
     cache_path, _ = _get_path_dir('test_cache')
     cache_manager_params = model_cache.ModelCacheManagerParams(
         cache_options=types.CacheOptions(cache_path=cache_path)
@@ -153,17 +153,17 @@ class TestModelCacheManagerGettersSetters:
     cache_manager = model_cache.ModelCacheManager(
         init_from_params=cache_manager_params
     )
-    assert cache_manager.model_status_by_call_type == {}
+    assert cache_manager.model_status_by_output_format_type == {}
 
-    cache_manager.model_status_by_call_type = {
-        types.CallType.GENERATE_TEXT: types.ModelStatus()
+    cache_manager.model_status_by_output_format_type = {
+        types.OutputFormatType.TEXT: types.ModelStatus()
     }
-    assert cache_manager.model_status_by_call_type == {
-        types.CallType.GENERATE_TEXT: types.ModelStatus()
+    assert cache_manager.model_status_by_output_format_type == {
+        types.OutputFormatType.TEXT: types.ModelStatus()
     }
 
-    cache_manager.model_status_by_call_type = None
-    assert cache_manager.model_status_by_call_type == {}
+    cache_manager.model_status_by_output_format_type = None
+    assert cache_manager.model_status_by_output_format_type == {}
 
 
 class TestModelCacheManagerInit:
@@ -179,7 +179,7 @@ class TestModelCacheManagerInit:
     assert cache_manager.cache_options == types.CacheOptions(
         cache_path=cache_path
     )
-    assert cache_manager.model_status_by_call_type == {}
+    assert cache_manager.model_status_by_output_format_type == {}
 
   def test_init_with_all_options(self):
     cache_path, _ = _get_path_dir('test_cache')
@@ -196,7 +196,7 @@ class TestModelCacheManagerInit:
         cache_path=cache_path, disable_model_cache=False,
         clear_model_cache_on_connect=True, model_cache_duration=20
     )
-    assert cache_manager.model_status_by_call_type == {}
+    assert cache_manager.model_status_by_output_format_type == {}
 
   def test_init_invalid_combinations(self):
     cache_path, _ = _get_path_dir('test_cache')
@@ -264,7 +264,7 @@ class TestModelCacheManagerInit:
         cache_path=cache_path, model_cache_duration=20
     )
     assert cache_manager.status == types.ModelCacheManagerStatus.WORKING
-    assert cache_manager.model_status_by_call_type == {}
+    assert cache_manager.model_status_by_output_format_type == {}
 
   def test_init_corrupted_cache_file(self):
     cache_path, _ = _get_path_dir('test_cache')
@@ -293,7 +293,7 @@ class TestModelCacheManager:
         init_from_params=model_cache_manager_params
     )
     data, _ = _get_example_model_status()
-    save_cache.update(data, types.CallType.GENERATE_TEXT)
+    save_cache.update(data, types.OutputFormatType.TEXT)
 
     model_cache_manager_params = model_cache.ModelCacheManagerParams(
         cache_options=types.CacheOptions(cache_path=cache_path)
@@ -301,7 +301,7 @@ class TestModelCacheManager:
     load_cache = model_cache.ModelCacheManager(
         init_from_params=model_cache_manager_params
     )
-    loaded_data = load_cache.get(types.CallType.GENERATE_TEXT)
+    loaded_data = load_cache.get(types.OutputFormatType.TEXT)
     assert loaded_data == data
 
   def test_duration_filter(self):
@@ -313,7 +313,7 @@ class TestModelCacheManager:
         init_from_params=model_cache_manager_params
     )
     data, _ = _get_example_model_status()
-    save_cache.update(data, types.CallType.GENERATE_TEXT)
+    save_cache.update(data, types.OutputFormatType.TEXT)
 
     model_cache_manager_params = model_cache.ModelCacheManagerParams(
         cache_options=types.
@@ -322,7 +322,7 @@ class TestModelCacheManager:
     load_cache = model_cache.ModelCacheManager(
         init_from_params=model_cache_manager_params
     )
-    loaded_data = load_cache.get(types.CallType.GENERATE_TEXT)
+    loaded_data = load_cache.get(types.OutputFormatType.TEXT)
 
     new_data, models = _get_example_model_status()
     new_data.working_models.remove(models[3])
@@ -346,7 +346,7 @@ class TestModelCacheManager:
         init_from_params=model_cache_manager_params
     )
     data, _ = _get_example_model_status()
-    save_cache.update(data, types.CallType.GENERATE_TEXT)
+    save_cache.update(data, types.OutputFormatType.TEXT)
 
     model_cache_manager_params = model_cache.ModelCacheManagerParams(
         cache_options=types.CacheOptions(cache_path=cache_path)
@@ -354,10 +354,10 @@ class TestModelCacheManager:
     load_cache = model_cache.ModelCacheManager(
         init_from_params=model_cache_manager_params
     )
-    assert load_cache.get(types.CallType.GENERATE_TEXT) == data
+    assert load_cache.get(types.OutputFormatType.TEXT) == data
 
     load_cache.clear_cache()
-    assert load_cache.get(types.CallType.GENERATE_TEXT) == types.ModelStatus()
+    assert load_cache.get(types.OutputFormatType.TEXT) == types.ModelStatus()
 
     model_cache_manager_params = model_cache.ModelCacheManagerParams(
         cache_options=types.CacheOptions(cache_path=cache_path)
@@ -365,7 +365,7 @@ class TestModelCacheManager:
     load_cache_2 = model_cache.ModelCacheManager(
         init_from_params=model_cache_manager_params
     )
-    assert load_cache_2.get(types.CallType.GENERATE_TEXT) == types.ModelStatus()
+    assert load_cache_2.get(types.OutputFormatType.TEXT) == types.ModelStatus()
 
   def test_update(self):
     cache_path, temp_dir = _get_path_dir('test_cache')
@@ -376,7 +376,7 @@ class TestModelCacheManager:
         init_from_params=model_cache_manager_params
     )
     data, models = _get_example_model_status()
-    cache_manager.update(data, types.CallType.GENERATE_TEXT)
+    cache_manager.update(data, types.OutputFormatType.TEXT)
 
     # Round Robin update for even models
     updates = types.ModelStatus()
@@ -386,34 +386,34 @@ class TestModelCacheManager:
     updates.filtered_models.add(models[4])
     updates.provider_queries[
         models[0]
-    ] = _get_example_logging_record(models[0], response='model_0 response')
+    ] = _get_example_call_record(models[0], response='model_0 response')
     updates.provider_queries[
         models[2]
-    ] = _get_example_logging_record(models[2], error='model_2 error')
+    ] = _get_example_call_record(models[2], error='model_2 error')
 
-    cache_manager.update(updates, types.CallType.GENERATE_TEXT)
+    cache_manager.update(updates, types.OutputFormatType.TEXT)
     result_data = types.ModelStatus(
         unprocessed_models={models[1],
                             models[6]}, working_models={models[0], models[3]},
         failed_models={models[2], models[5]},
         filtered_models={models[4], models[7]}, provider_queries={
             models[0]:
-                _get_example_logging_record(
+                _get_example_call_record(
                     models[0], response='model_0 response'
                 ),
             models[2]:
-                _get_example_logging_record(models[2], error='model_2 error'),
+                _get_example_call_record(models[2], error='model_2 error'),
             models[3]:
-                _get_example_logging_record(
+                _get_example_call_record(
                     models[3], response='model_4 response', long=True
                 ),
             models[5]:
-                _get_example_logging_record(
+                _get_example_call_record(
                     models[5], error='model_6 error', long=True
                 ),
         }
     )
-    updated_data = cache_manager.get(types.CallType.GENERATE_TEXT)
+    updated_data = cache_manager.get(types.OutputFormatType.TEXT)
     assert updated_data.unprocessed_models == result_data.unprocessed_models
     assert updated_data.working_models == result_data.working_models
     assert updated_data.failed_models == result_data.failed_models
@@ -422,7 +422,7 @@ class TestModelCacheManager:
               ) == set(result_data.provider_queries.keys())
     # Check model 2 provider query is updated
     assert updated_data.provider_queries[
-        models[2]].response_record.error == 'model_2 error'
+        models[2]].result.error == 'model_2 error'
 
   def test_update_invalid_provider_query(self):
     cache_path, temp_dir = _get_path_dir('test_cache')
@@ -433,11 +433,15 @@ class TestModelCacheManager:
         init_from_params=model_cache_manager_params
     )
     data, models = _get_example_model_status()
-    cache_manager.update(data, types.CallType.GENERATE_TEXT)
+    cache_manager.update(data, types.OutputFormatType.TEXT)
 
+    invalid_model = types.ProviderModelType(
+        provider='nonexistent', model='nonexistent-model',
+        provider_model_identifier='nonexistent-model'
+    )
     with pytest.raises(
         ValueError, match=re.escape(
-            'Model (mistral, open-mistral-7b) is not in any of the '
+            f'Model {invalid_model} is not in any of the '
             'unprocessed, working, failed, or filtered models. Please provide '
             'the provider model in one of the sets when updating '
             'provider_queries.'
@@ -446,14 +450,44 @@ class TestModelCacheManager:
       cache_manager.update(
           types.ModelStatus(
               provider_queries={
-                  pytest.model_configs_instance.get_provider_model((
-                      'mistral', 'open-mistral-7b'
-                  )):
-                      _get_example_logging_record(
-                          pytest.model_configs_instance.get_provider_model((
-                              'mistral', 'open-mistral-7b'
-                          )), response='model_1 response'
+                  invalid_model:
+                      _get_example_call_record(
+                          invalid_model, response='model_1 response'
                       )
               }
-          ), types.CallType.GENERATE_TEXT
+          ), types.OutputFormatType.TEXT
       )
+
+  def test_save_replaces_existing(self):
+    cache_path, temp_dir = _get_path_dir('test_cache')
+    params = model_cache.ModelCacheManagerParams(
+        cache_options=types.CacheOptions(cache_path=cache_path)
+    )
+    cache_manager = model_cache.ModelCacheManager(init_from_params=params)
+
+    first, models = _get_example_model_status()
+    cache_manager.update(first, types.OutputFormatType.TEXT)
+
+    replacement = types.ModelStatus()
+    replacement.working_models.add(models[0])
+    cache_manager.save(replacement, types.OutputFormatType.TEXT)
+
+    result = cache_manager.get(types.OutputFormatType.TEXT)
+    assert result.working_models == {models[0]}
+    assert result.failed_models == set()
+    assert result.unprocessed_models == set()
+    assert result.filtered_models == set()
+    assert result.provider_queries == {}
+
+  def test_output_format_types_are_isolated(self):
+    cache_path, temp_dir = _get_path_dir('test_cache')
+    params = model_cache.ModelCacheManagerParams(
+        cache_options=types.CacheOptions(cache_path=cache_path)
+    )
+    cache_manager = model_cache.ModelCacheManager(init_from_params=params)
+
+    text_data, _ = _get_example_model_status()
+    cache_manager.update(text_data, types.OutputFormatType.TEXT)
+
+    assert cache_manager.get(types.OutputFormatType.TEXT) == text_data
+    assert cache_manager.get(types.OutputFormatType.JSON) == types.ModelStatus()

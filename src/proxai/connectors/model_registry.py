@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import functools
 from collections.abc import Callable
 
-import proxai.connectors.model_connector as model_connector
+import proxai.connectors.provider_connector as provider_connector
 import proxai.connectors.providers.claude as claude_provider
-import proxai.connectors.providers.cohere_api as cohere_api_provider
+import proxai.connectors.providers.cohere as cohere_provider
 import proxai.connectors.providers.databricks as databricks_provider
 import proxai.connectors.providers.deepseek as deepseek_provider
 import proxai.connectors.providers.gemini as gemini_provider
@@ -12,13 +14,12 @@ import proxai.connectors.providers.huggingface as huggingface_provider
 import proxai.connectors.providers.mistral as mistral_provider
 import proxai.connectors.providers.mock_provider as mock_provider
 import proxai.connectors.providers.openai as openai_provider
-import proxai.types as types
 
 _MODEL_CONNECTOR_MAP = {
     'openai': openai_provider.OpenAIConnector,
     'claude': claude_provider.ClaudeConnector,
     'gemini': gemini_provider.GeminiConnector,
-    'cohere': cohere_api_provider.CohereConnector,
+    'cohere': cohere_provider.CohereConnector,
     'databricks': databricks_provider.DatabricksConnector,
     'mistral': mistral_provider.MistralConnector,
     'huggingface': huggingface_provider.HuggingFaceConnector,
@@ -31,19 +32,16 @@ _MODEL_CONNECTOR_MAP = {
 
 
 def get_model_connector(
-    provider_model_config: types.ProviderModelConfigsType,
+    provider: str,
     without_additional_args: bool = False
-) -> Callable[[], model_connector.ProviderModelConnector]:
-  """Return a connector factory for the given provider model config."""
-  provider_model = provider_model_config.provider_model
-  if provider_model.provider not in _MODEL_CONNECTOR_MAP:
-    raise ValueError(f'Provider not supported. {provider_model.provider}')
-  connector = _MODEL_CONNECTOR_MAP[provider_model.provider]
+) -> Callable[[], provider_connector.ProviderConnector]:
+  """Return a connector factory for the given provider."""
+  if provider not in _MODEL_CONNECTOR_MAP:
+    raise ValueError(f'Provider not supported. {provider}')
+  connector_cls = _MODEL_CONNECTOR_MAP[provider]
   if without_additional_args:
-    return connector
+    return connector_cls
   return functools.partial(
-      connector, init_from_params=model_connector.ProviderModelConnectorParams(
-          provider_model=provider_model,
-          provider_model_config=provider_model_config
-      )
+      connector_cls,
+      init_from_params=provider_connector.ProviderConnectorParams()
   )

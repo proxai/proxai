@@ -1,24 +1,28 @@
+from __future__ import annotations
+
+import base64
 import functools
-from collections.abc import Callable
-from typing import Any
 
 from xai_sdk import Client
-from xai_sdk.chat import assistant, system, user
-from xai_sdk.tools import web_search
+from xai_sdk.chat import assistant, image, system, text, user
+from xai_sdk.proto import chat_pb2
 
-import proxai.connectors.model_connector as model_connector
+import proxai.connectors.content_utils as content_utils
+import proxai.connectors.provider_connector as provider_connector
 import proxai.connectors.providers.grok_mock as grok_mock
 import proxai.types as types
+import proxai.chat.message_content as message_content
+
+FeatureConfigType = types.FeatureConfigType
+FeatureSupportType = types.FeatureSupportType
+InputFormatConfigType = types.InputFormatConfigType
+ParameterConfigType = types.ParameterConfigType
+ToolConfigType = types.ToolConfigType
+OutputFormatConfigType = types.OutputFormatConfigType
 
 
-class GrokConnector(model_connector.ProviderModelConnector):
+class GrokConnector(provider_connector.ProviderConnector):
   """Connector for xAI Grok models."""
-
-  def get_provider_name(self):
-    return 'grok'
-
-  def get_required_provider_token_names(self) -> list[str]:
-    return ['XAI_API_KEY']
 
   def init_model(self):
     return Client(api_key=self.provider_token_value_map['XAI_API_KEY'])
@@ -26,211 +30,251 @@ class GrokConnector(model_connector.ProviderModelConnector):
   def init_mock_model(self):
     return grok_mock.GrokMock()
 
-  def _get_api_call_function(self, chosen_endpoint: str) -> Callable:
-    if chosen_endpoint == 'chat.create':
-      return functools.partial(self.api.chat.create)
-    else:
-      raise Exception(f'Invalid endpoint: {chosen_endpoint}')
+  PROVIDER_NAME = 'grok'
 
-  def prompt_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    params_after_construction = query_function.keywords.get(
-        'params_after_construction', {}
-    )
-    messages = params_after_construction.get('messages', [])
-    messages.append(user(query_record.prompt))
-    params_after_construction['messages'] = messages
-    return functools.partial(
-        query_function, params_after_construction=params_after_construction
-    )
+  PROVIDER_API_KEYS = ['XAI_API_KEY']
 
-  def messages_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    params_after_construction = query_function.keywords.get(
-        'params_after_construction', {}
-    )
-    existing_messages = params_after_construction.get('messages', [])
+  ENDPOINT_PRIORITY = [
+      'chat.create',
+  ]
 
+  # The xAI SDK only exposes `'low'` and `'high'` reasoning effort levels, so
+  # MEDIUM is mapped to `'high'` instead of being dropped silently.
+  _REASONING_EFFORT = {
+      types.ThinkingType.LOW: 'low',
+      types.ThinkingType.MEDIUM: 'high',
+      types.ThinkingType.HIGH: 'high',
+  }
+
+  ENDPOINT_CONFIG = {
+      'chat.create': FeatureConfigType(
+          prompt=FeatureSupportType.SUPPORTED,
+          messages=FeatureSupportType.SUPPORTED,
+          system_prompt=FeatureSupportType.SUPPORTED,
+          parameters=ParameterConfigType(
+              max_tokens=FeatureSupportType.SUPPORTED,
+              temperature=FeatureSupportType.SUPPORTED,
+              stop=FeatureSupportType.SUPPORTED,
+              n=FeatureSupportType.NOT_SUPPORTED,
+              thinking=FeatureSupportType.SUPPORTED,
+          ),
+          tools=ToolConfigType(
+              web_search=FeatureSupportType.SUPPORTED,
+          ),
+          input_format=InputFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
+              image=FeatureSupportType.SUPPORTED,
+              document=FeatureSupportType.BEST_EFFORT,
+              json=FeatureSupportType.BEST_EFFORT,
+              pydantic=FeatureSupportType.BEST_EFFORT,
+          ),
+          output_format=OutputFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
+              json=FeatureSupportType.SUPPORTED,
+              pydantic=FeatureSupportType.SUPPORTED,
+          ),
+      ),
+  }
+
+  def _build_create_kwargs(
+      self, query_record: types.QueryRecord) -> dict:
+    """Build the keyword arguments for `client.chat.create`."""
+    kwargs = {
+        'model': query_record.provider_model.provider_model_identifier,
+    }
+
+    if query_record.parameters is not None:
+      if query_record.parameters.max_tokens is not None:
+        kwargs['max_tokens'] = query_record.parameters.max_tokens
+
+      if query_record.parameters.temperature is not None:
+        kwargs['temperature'] = query_record.parameters.temperature
+
+      if query_record.parameters.stop is not None:
+        if isinstance(query_record.parameters.stop, str):
+          kwargs['stop'] = [query_record.parameters.stop]
+        else:
+          kwargs['stop'] = query_record.parameters.stop
+
+      if query_record.parameters.thinking is not None:
+        kwargs['reasoning_effort'] = self._REASONING_EFFORT[
+            query_record.parameters.thinking]
+
+    if query_record.tools is not None:
+      if types.Tools.WEB_SEARCH in query_record.tools:
+        kwargs['tools'] = [chat_pb2.Tool(web_search=chat_pb2.WebSearch())]
+        kwargs['include'] = ['web_search_call_output', 'inline_citations']
+
+    if query_record.output_format.type == types.OutputFormatType.JSON:
+      kwargs['response_format'] = 'json_object'
+
+    return kwargs
+
+  @staticmethod
+  def _to_grok_content(part_dict):
+    """Convert a ProxAI content block to an xAI SDK Content proto.
+
+    Type mapping:
+      text     → ``text()`` proto
+      image    → ``image()`` proto with URL or data URI.
+                 Supports PNG and JPEG only.
+      document → Text-based docs (md, csv, txt) are read and sent
+                 as ``text()`` protos via ``content_utils``. Binary
+                 formats (PDF, docx, xlsx) are dropped because the
+                 SDK only supports file references by pre-uploaded
+                 file_id, not inline data.
+
+    Returns None for unsupported content types.
+    """
+    content_type = part_dict.get('type')
+    if content_type == 'text':
+      return text(part_dict['text'])
+    if content_type == 'image':
+      if 'source' in part_dict:
+        return image(part_dict['source'])
+      mime_type = part_dict.get('media_type', 'image/png')
+      if 'data' in part_dict:
+        return image(f"data:{mime_type};base64,{part_dict['data']}")
+      if 'path' in part_dict:
+        with open(part_dict['path'], 'rb') as f:
+          encoded = base64.b64encode(f.read()).decode('utf-8')
+        return image(f"data:{mime_type};base64,{encoded}")
+      return None
+    if content_type == 'document':
+      text_content = content_utils.read_text_document(part_dict)
+      if text_content is not None:
+        return text(text_content)
+      pdf_content = content_utils.read_pdf_document(part_dict)
+      if pdf_content is not None:
+        return text(pdf_content)
+      return None
+    return None
+
+  def _build_messages(
+      self, query_record: types.QueryRecord) -> list:
+    """Translate the query record into xAI SDK message protos."""
     messages = []
-    for message in query_record.messages:
-      if message['role'] == 'user':
-        messages.append(user(message['content']))
-      elif message['role'] == 'assistant':
-        messages.append(assistant(message['content']))
-      elif message['role'] == 'system':
-        messages.append(system(message['content']))
 
-    params_after_construction['messages'] = existing_messages + messages
-    return functools.partial(
-        query_function, params_after_construction=params_after_construction
-    )
+    if query_record.system_prompt is not None:
+      messages.append(system(query_record.system_prompt))
 
-  def system_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    params_after_construction = query_function.keywords.get(
-        'params_after_construction', {}
-    )
-    messages = params_after_construction.get('messages', None)
-    if messages is None:
-      raise Exception('Set messages parameter before adding system message.')
-    messages.append(system(query_record.system))
-    params_after_construction['messages'] = messages
-    return functools.partial(
-        query_function, params_after_construction=params_after_construction
-    )
+    if query_record.chat is not None:
+      if 'system_prompt' in query_record.chat:
+        messages.append(system(query_record.chat['system_prompt']))
+      for msg in query_record.chat['messages']:
+        role = msg['role']
+        content = msg['content']
+        if isinstance(content, str):
+          parts = [text(content)]
+        elif isinstance(content, list):
+          parts = []
+          for block in content:
+            part = self._to_grok_content(block)
+            if part is not None:
+              parts.append(part)
+        else:
+          parts = [text(str(content))]
+        if role == 'user':
+          messages.append(user(*parts))
+        elif role == 'assistant':
+          messages.append(assistant(*parts))
+        elif role == 'system':
+          messages.append(system(*parts))
 
-  def max_tokens_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    params_at_construction = query_function.keywords.get(
-        'params_at_construction', {}
-    )
-    params_at_construction['max_tokens'] = query_record.max_tokens
-    return functools.partial(
-        query_function, params_at_construction=params_at_construction
-    )
+    if query_record.prompt is not None:
+      messages.append(user(query_record.prompt))
 
-  def temperature_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    params_at_construction = query_function.keywords.get(
-        'params_at_construction', {}
-    )
-    params_at_construction['temperature'] = query_record.temperature
-    return functools.partial(
-        query_function, params_at_construction=params_at_construction
-    )
+    return messages
 
-  def stop_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    params_at_construction = query_function.keywords.get(
-        'params_at_construction', {}
-    )
-    params_at_construction['stop'] = query_record.stop
-    return functools.partial(
-        query_function, params_at_construction=params_at_construction
-    )
+  def _run_chat(
+      self,
+      kwargs: dict,
+      messages: list,
+      pydantic_class):
+    """Open a chat, append messages, and run sample/parse."""
+    chat = self.api.chat.create(**kwargs)
+    for message in messages:
+      chat.append(message)
+    if pydantic_class is not None:
+      response, parsed = chat.parse(pydantic_class)
+      return (response, parsed)
+    return (chat.sample(), None)
 
-  def json_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ):
-    raise Exception(
-        'JSON response format is not supported for Grok. '
-        'Code should never reach here.'
-    )
+  def _chat_create_executor(
+      self,
+      query_record: types.QueryRecord) -> types.ExecutorResult:
+    kwargs = self._build_create_kwargs(query_record)
+    messages = self._build_messages(query_record)
 
-  def json_schema_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ):
-    raise Exception(
-        'JSON schema response format is not supported for Grok. '
-        'Code should never reach here.'
-    )
+    pydantic_class = None
+    if (query_record.output_format is not None
+        and query_record.output_format.type
+        == types.OutputFormatType.PYDANTIC):
+      pydantic_class = query_record.output_format.pydantic_class
 
-  def pydantic_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ):
-    return query_function
+    response, result_record = self._safe_provider_query(
+        functools.partial(
+            self._run_chat, kwargs, messages, pydantic_class))
+    if result_record.error is not None:
+      return types.ExecutorResult(result_record=result_record)
 
-  def web_search_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ):
-    params_at_construction = query_function.keywords.get(
-        'params_at_construction', {}
-    )
-    params_at_construction['tools'] = [web_search()]
-    return functools.partial(
-        query_function, params_at_construction=params_at_construction
-    )
+    sample_response, parsed = response
 
-  def format_text_response_from_provider(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> str:
-    return response.content
+    parsed_content = []
 
-  def format_json_response_from_provider(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> dict:
-    raise Exception(
-        'JSON response format is not supported for Grok. '
-        'Code should never reach here.'
-    )
-
-  def format_json_schema_response_from_provider(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> dict:
-    raise Exception(
-        'JSON schema response format is not supported for Grok. '
-        'Code should never reach here.'
-    )
-
-  def format_pydantic_response_from_provider(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> Any:
-    return response[1]
-
-  def _grok_chat_api_mapping(
-      self, create: Callable, query_record: types.QueryRecord
-  ) -> dict:
-
-    params_at_construction = None
-    params_after_construction = None
-
-    if 'params_at_construction' in create.keywords:
-      params_at_construction = create.keywords.get('params_at_construction')
-      del create.keywords['params_at_construction']
-
-    if 'params_after_construction' in create.keywords:
-      params_after_construction = create.keywords.get(
-          'params_after_construction'
+    if (sample_response.reasoning_content is not None
+        and len(sample_response.reasoning_content) > 0):
+      parsed_content.append(
+          message_content.MessageContent(
+              type=message_content.ContentType.THINKING,
+              text=sample_response.reasoning_content,
+          )
       )
-      del create.keywords['params_after_construction']
 
-    # Responsible for temperature, stop, tools.
-    if params_at_construction:
-      create = functools.partial(create, **params_at_construction)
-    create = create()
-
-    # Responsible for messages, prompt, system.
-    if params_after_construction:
-      messages = params_after_construction.get('messages', [])
-      if messages:
-        for message in messages:
-          create.append(message)
-      del params_after_construction['messages']
-
-    # Responsible for response format text, json, json schema, pydantic.
-    if query_record.response_format.type == types.ResponseFormatType.PYDANTIC:
-      create = functools.partial(
-          create.parse, query_record.response_format.value.class_value
+    if pydantic_class is not None:
+      parsed_content.append(
+          message_content.MessageContent(
+              type=message_content.ContentType.PYDANTIC_INSTANCE,
+              pydantic_content=message_content.PydanticContent(
+                  class_name=pydantic_class.__name__,
+                  class_value=pydantic_class,
+                  instance_value=parsed,
+              ),
+          )
       )
     else:
-      create = functools.partial(create.sample)
+      parsed_content.append(
+          message_content.MessageContent(
+              type=message_content.ContentType.TEXT,
+              text=sample_response.content,
+          )
+      )
 
-    # Responsible for max_tokens.
-    if params_after_construction:
-      create = functools.partial(create, **params_after_construction)
+    if (query_record.tools is not None
+        and types.Tools.WEB_SEARCH in query_record.tools):
+      citations = []
+      for citation_url in (sample_response.citations or []):
+        citations.append(
+            message_content.Citation(
+                title=None,
+                url=citation_url,
+            )
+        )
+      parsed_content.append(
+          message_content.MessageContent(
+              type=message_content.ContentType.TOOL,
+              tool_content=message_content.ToolContent(
+                  name='web_search',
+                  kind=message_content.ToolKind.RESULT,
+                  citations=citations,
+              ),
+          )
+      )
 
-    return create
+    result_record.content = parsed_content
+    return types.ExecutorResult(
+        result_record=result_record, raw_provider_response=response)
 
-  def generate_text_proc(
-      self, query_record: types.QueryRecord
-  ) -> types.Response:
-    create = self._get_api_call_function(query_record.chosen_endpoint)
-
-    provider_model = query_record.provider_model
-    create = functools.partial(
-        create, model=provider_model.provider_model_identifier
-    )
-
-    create = self.add_features_to_query_function(create, query_record)
-
-    create = self._grok_chat_api_mapping(create, query_record)
-
-    response = create()
-
-    return self.format_response_from_providers(response, query_record)
+  ENDPOINT_EXECUTORS = {
+      'chat.create': '_chat_create_executor',
+  }
