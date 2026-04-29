@@ -103,6 +103,16 @@ For full details on installation, all features, and advanced usage, please visit
 
 Enhance your ProxAI experience with [ProxDash](https://www.proxai.co/pricing), our optional monitoring platform for usage tracking, analytics, and experiment management. The ProxAI library works perfectly standalone.
 
+## Local development setup
+
+After cloning, run this once so on-disk file-permission changes don't surface as spurious modifications in `git status`:
+
+```bash
+git config --local core.fileMode false
+```
+
+All files in this repo are committed with the executable bit set so individual run scripts work directly. Files arrive on your disk as `0755` after `git pull`. If you prefer broader perms (e.g. `0777`) for your local workflow, `chmod -R 777 .` is safe — with `core.fileMode false` set, the change stays invisible to git.
+
 ## 🤝 Contribute & Connect
 
 * **Community:** [Learn how to contribute](https://www.proxai.co/resources/community)
