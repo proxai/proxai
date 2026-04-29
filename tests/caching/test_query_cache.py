@@ -8,6 +8,9 @@ import tempfile
 import pytest
 
 import proxai.caching.query_cache as query_cache
+import proxai.chat.chat_session as chat_session
+import proxai.chat.message as message
+import proxai.chat.message_content as message_content
 import proxai.serializers.hash_serializer as hash_serializer
 import proxai.serializers.type_serializer as type_serializer
 import proxai.types as types
@@ -28,22 +31,26 @@ def _save_shard_manager(path, records=None):
 
 def _create_response_record(
     response_id, error=None
-) -> types.QueryResponseRecord:
-  query_response_record = types.QueryResponseRecord(
-      response=types.Response(
-          type=types.ResponseType.TEXT, value=f'r{response_id}'
-      ), start_utc_date=(
-          datetime.datetime.now(datetime.timezone.utc) -
-          datetime.timedelta(seconds=response_id)
-      ), end_utc_date=datetime.datetime.now(datetime.timezone.utc),
-      local_time_offset_minute=(
-          datetime.datetime.now().astimezone().utcoffset().total_seconds() // 60
-      ) * -1, response_time=datetime.timedelta(seconds=response_id)
+) -> types.ResultRecord:
+  result_record = types.ResultRecord(
+      output_text=f'r{response_id}',
+      timestamp=types.TimeStampType(
+          start_utc_date=(
+              datetime.datetime.now(datetime.timezone.utc) -
+              datetime.timedelta(seconds=response_id)
+          ),
+          end_utc_date=datetime.datetime.now(datetime.timezone.utc),
+          local_time_offset_minute=int(
+              datetime.datetime.now().astimezone().utcoffset().total_seconds()
+              // 60
+          ) * -1,
+          response_time=datetime.timedelta(seconds=response_id),
+      ),
   )
   if error:
-    query_response_record.response = None
-    query_response_record.error = error
-  return query_response_record
+    result_record.output_text = None
+    result_record.error = error
+  return result_record
 
 
 def _create_cache_record(
@@ -54,11 +61,9 @@ def _create_cache_record(
       hash_serializer.get_query_record_hash(query_record=query_record)
   )
   cache_record = types.CacheRecord(
-      query_record=query_record, query_responses=[
-          types.QueryResponseRecord(
-              response=types.
-              Response(type=types.ResponseType.TEXT, value=response)
-          ) for response in responses
+      query=query_record, results=[
+          types.ResultRecord(output_text=response)
+          for response in responses
       ], shard_id=shard_id, last_access_time=datetime.datetime.now(),
       call_count=call_count
   )
@@ -86,11 +91,11 @@ def _get_example_records(shard_dir=None, shard_count=None):
     enc_light_cache_records = {}
     for record in records:
       if isinstance(record, types.CacheRecord):
-        hash_value = record.query_record.hash_value
+        hash_value = record.query.hash_value
       else:
         record, new_hash_value = record
-        hash_value = record.query_record.hash_value
-        record.query_record.hash_value = new_hash_value
+        hash_value = record.query.hash_value
+        record.query.hash_value = new_hash_value
       cache_records[hash_value] = record
       light_cache_records[hash_value] = (
           query_cache._to_light_cache_record(record)
@@ -252,7 +257,7 @@ def _get_cache_record_from_prompt(prompts, records):
   enc_light_cache_records = []
   for prompt in prompts:
     for hash, cache_record in records['cache_records'].items():
-      if cache_record.query_record.prompt == prompt:
+      if cache_record.query.prompt == prompt:
         cache_records.append(copy.deepcopy(cache_record))
         enc_cache_records.append(
             copy.deepcopy(records['enc_cache_records'][hash])
@@ -273,7 +278,7 @@ def _get_cache_record_from_prompt(prompts, records):
 
 def _get_hash_from_prompt(prompt, records):
   for hash, cache_record in records['cache_records'].items():
-    if cache_record.query_record.prompt == prompt:
+    if cache_record.query.prompt == prompt:
       return hash
 
 
@@ -320,41 +325,33 @@ def _print_state(shard_manager: query_cache.ShardManager, records):
 class TestBaseQueryCache:
 
   def test_to_light_cache_record(self):
-    query_record = types.QueryRecord(call_type=types.CallType.GENERATE_TEXT)
+    query_record = types.QueryRecord(prompt='test')
     query_record.hash_value = (
         hash_serializer.get_query_record_hash(query_record=query_record)
     )
     cache_record = types.CacheRecord(
-        query_record=query_record, query_responses=[
-            types.QueryResponseRecord(
-                response=types.Response(
-                    type=types.ResponseType.TEXT, value='Hello, world! - 1'
-                )
-            ),
-            types.QueryResponseRecord(
-                response=types.Response(
-                    type=types.ResponseType.TEXT, value='Hello, world! - 2'
-                )
-            ),
+        query=query_record, results=[
+            types.ResultRecord(output_text='Hello, world! - 1'),
+            types.ResultRecord(output_text='Hello, world! - 2'),
         ], shard_id=5, last_access_time=datetime.datetime.now(), call_count=7
     )
 
     light_cache_record = query_cache._to_light_cache_record(
         cache_record=cache_record
     )
-    assert light_cache_record.query_record_hash == (
+    assert light_cache_record.query_hash == (
         hash_serializer.get_query_record_hash(
-            query_record=cache_record.query_record
+            query_record=cache_record.query
         )
     )
-    assert light_cache_record.query_response_count == 2
+    assert light_cache_record.results_count == 2
     assert light_cache_record.shard_id == 5
     assert light_cache_record.last_access_time == cache_record.last_access_time
     assert light_cache_record.call_count == 7
 
   def test_get_cache_size(self):
     cache_record = types.CacheRecord(
-        query_record=types.QueryRecord(call_type=types.CallType.GENERATE_TEXT)
+        query=types.QueryRecord(prompt='test')
     )
     light_cache_record = query_cache._to_light_cache_record(
         cache_record=cache_record
@@ -364,18 +361,10 @@ class TestBaseQueryCache:
     assert cache_record_size == light_cache_record_size == 1
 
     cache_record = types.CacheRecord(
-        query_record=types.QueryRecord(call_type=types.CallType.GENERATE_TEXT),
-        query_responses=[
-            types.QueryResponseRecord(
-                response=types.Response(
-                    type=types.ResponseType.TEXT, value='Hello, world! - 1'
-                )
-            ),
-            types.QueryResponseRecord(
-                response=types.Response(
-                    type=types.ResponseType.TEXT, value='Hello, world! - 2'
-                )
-            ),
+        query=types.QueryRecord(prompt='test'),
+        results=[
+            types.ResultRecord(output_text='Hello, world! - 1'),
+            types.ResultRecord(output_text='Hello, world! - 2'),
         ]
     )
     light_cache_record = query_cache._to_light_cache_record(
@@ -406,19 +395,19 @@ class TestBaseQueryCache:
 
       # Add some records
       query_cache_manager.cache(
-          query_record=query_record_1, response_record=response_record_1
+          query_record=query_record_1, result_record=response_record_1
       )
       query_cache_manager.cache(
-          query_record=query_record_2, response_record=response_record_2
+          query_record=query_record_2, result_record=response_record_2
       )
 
       # Verify records exist
       assert query_cache_manager.look(
           query_record_1
-      ).query_response == response_record_1
+      ).result == response_record_1
       assert query_cache_manager.look(
           query_record_2
-      ).query_response == response_record_2
+      ).result == response_record_2
 
       # Create new cache manager with clear_cache_on_connect=False
       query_cache_manager_params = query_cache.QueryCacheManagerParams(
@@ -434,10 +423,10 @@ class TestBaseQueryCache:
       # Verify records still exist
       assert query_cache_manager_2.look(
           query_record_1
-      ).query_response == response_record_1
+      ).result == response_record_1
       assert query_cache_manager_2.look(
           query_record_2
-      ).query_response == response_record_2
+      ).result == response_record_2
 
       # Create new cache manager with clear_cache_on_connect=True
       query_cache_manager_params = query_cache.QueryCacheManagerParams(
@@ -452,8 +441,8 @@ class TestBaseQueryCache:
       query_cache_manager_3.clear_cache()
 
       # Verify records are cleared
-      assert query_cache_manager_3.look(query_record_1).look_fail_reason
-      assert query_cache_manager_3.look(query_record_2).look_fail_reason
+      assert query_cache_manager_3.look(query_record_1).cache_look_fail_reason
+      assert query_cache_manager_3.look(query_record_2).cache_look_fail_reason
 
       # Check internal state
       _check_record_heap(query_cache_manager_3, [])
@@ -935,7 +924,7 @@ class TestShardManager:
       ) is False
 
       # Different query_response_count check
-      record_1.query_responses = ['r1', 'r2', 'r3', 'r4', 'r5']
+      record_1.results = ['r1', 'r2', 'r3', 'r4', 'r5']
       assert shard_manager._check_cache_record_is_up_to_date(
           cache_record=record_1
       ) is False
@@ -1202,14 +1191,14 @@ class TestShardManager:
 
       # Test with hash value
       query_record = records['cache_records'][
-          _get_hash_from_prompt(prompt='p2', records=records)].query_record
+          _get_hash_from_prompt(prompt='p2', records=records)].query
       assert shard_manager.get_cache_record(query_record) == records[
           'cache_records'][_get_hash_from_prompt(prompt='p2', records=records)]
 
       # Test from backlog
       query_record = _get_cache_record_from_prompt(
           prompts=['p4'], records=records
-      )['cache_records'][0].query_record
+      )['cache_records'][0].query
       assert shard_manager.get_cache_record(query_record) == records[
           'cache_records'][_get_hash_from_prompt(prompt='p4', records=records)]
 
@@ -1262,13 +1251,13 @@ class TestShardManager:
 
       # Test simple remove via query record
       cache_record = types.CacheRecord(
-          query_record=types.QueryRecord(prompt='p2')
+          query=types.QueryRecord(prompt='p2')
       )
       assert shard_manager.get_cache_record(
-          cache_record.query_record
+          cache_record.query
       ) is not None
       shard_manager.delete_record(cache_record)
-      assert shard_manager.get_cache_record(cache_record.query_record) is None
+      assert shard_manager.get_cache_record(cache_record.query) is None
       _check_shard_manager_state(
           shard_manager, light_cache_records={
               hash_3: light_3,
@@ -1513,7 +1502,7 @@ class TestQueryCache:
           prompt='p1', responses=[], shard_id='not_important', call_count=0
       )
       hash_1 = hash_serializer.get_query_record_hash(
-          query_record=record_1.query_record
+          query_record=record_1.query
       )
       query_cache_manager._push_record_heap(cache_record=record_1)
       _check_record_heap(query_cache_manager, [hash_1])
@@ -1656,7 +1645,7 @@ class TestQueryCache:
           prompt='p1', responses=['r1', 'r2', 'r3'], shard_id=0, call_count=0
       )
       hash_1 = hash_serializer.get_query_record_hash(
-          query_record=record_1.query_record
+          query_record=record_1.query
       )
       query_cache_manager._push_record_heap(cache_record=record_1)
       query_cache_manager._shard_manager.save_record(record_1)
@@ -1667,7 +1656,7 @@ class TestQueryCache:
           prompt='p2', responses=['r1', 'r2', 'r3'], shard_id=0, call_count=0
       )
       hash_2 = hash_serializer.get_query_record_hash(
-          query_record=record_2.query_record
+          query_record=record_2.query
       )
       query_cache_manager._push_record_heap(cache_record=record_2)
       query_cache_manager._shard_manager.save_record(record_2)
@@ -1678,7 +1667,7 @@ class TestQueryCache:
           prompt='p3', responses=['r1', 'r2', 'r3'], shard_id=0, call_count=0
       )
       hash_3 = hash_serializer.get_query_record_hash(
-          query_record=record_3.query_record
+          query_record=record_3.query
       )
       query_cache_manager._push_record_heap(cache_record=record_3)
       query_cache_manager._shard_manager.save_record(record_3)
@@ -1693,7 +1682,7 @@ class TestQueryCache:
           prompt='p4', responses=['r1'], shard_id=0, call_count=0
       )
       hash_4 = hash_serializer.get_query_record_hash(
-          query_record=record_4.query_record
+          query_record=record_4.query
       )
       query_cache_manager._push_record_heap(cache_record=record_4)
       query_cache_manager._shard_manager.save_record(record_4)
@@ -1747,7 +1736,7 @@ class TestQueryCache:
       record_3: types.CacheRecord = records['cache_records'][hash_3]
       record_4: types.CacheRecord = records['cache_records'][hash_4]
 
-      assert query_cache_manager.look(record_1.query_record).look_fail_reason
+      assert query_cache_manager.look(record_1.query).cache_look_fail_reason
       _check_record_heap(query_cache_manager, [hash_1, hash_2, hash_3, hash_4])
       _check_shard_manager_state(
           query_cache_manager._shard_manager, light_cache_records={
@@ -1773,7 +1762,7 @@ class TestQueryCache:
           }, shard_heap=[(1, 0), (2, 1), (3, 2)]
       )
 
-      assert query_cache_manager.look(record_1.query_record).look_fail_reason
+      assert query_cache_manager.look(record_1.query).cache_look_fail_reason
       _check_record_heap(query_cache_manager, [hash_1, hash_2, hash_3, hash_4])
       _check_shard_manager_state(
           query_cache_manager._shard_manager, light_cache_records={
@@ -1800,8 +1789,8 @@ class TestQueryCache:
       )
 
       assert query_cache_manager.look(
-          record_2.query_record
-      ).query_response.response.value == 'r1'
+          record_2.query
+      ).result.output_text == 'r1'
       _check_record_heap(query_cache_manager, [hash_1, hash_3, hash_4, hash_2])
       _check_shard_manager_state(
           query_cache_manager._shard_manager, map_shard_to_cache={
@@ -1817,8 +1806,8 @@ class TestQueryCache:
       )
 
       assert query_cache_manager.look(
-          record_2.query_record
-      ).query_response.response.value == 'r1'
+          record_2.query
+      ).result.output_text == 'r1'
       _check_record_heap(query_cache_manager, [hash_1, hash_3, hash_4, hash_2])
       _check_shard_manager_state(
           query_cache_manager._shard_manager, map_shard_to_cache={
@@ -1834,8 +1823,8 @@ class TestQueryCache:
       )
 
       assert query_cache_manager.look(
-          record_3.query_record
-      ).query_response.response.value == 'r2'
+          record_3.query
+      ).result.output_text == 'r2'
       _check_record_heap(query_cache_manager, [hash_1, hash_4, hash_2, hash_3])
       _check_shard_manager_state(
           query_cache_manager._shard_manager, map_shard_to_cache={
@@ -1851,8 +1840,8 @@ class TestQueryCache:
       )
 
       assert query_cache_manager.look(
-          record_3.query_record
-      ).query_response.response.value == 'r3'
+          record_3.query
+      ).result.output_text == 'r3'
       _check_record_heap(query_cache_manager, [hash_1, hash_4, hash_2, hash_3])
       _check_shard_manager_state(
           query_cache_manager._shard_manager, map_shard_to_cache={
@@ -1868,8 +1857,8 @@ class TestQueryCache:
       )
 
       assert query_cache_manager.look(
-          record_3.query_record
-      ).query_response.response.value == 'r2'
+          record_3.query
+      ).result.output_text == 'r2'
       _check_record_heap(query_cache_manager, [hash_1, hash_4, hash_2, hash_3])
       _check_shard_manager_state(
           query_cache_manager._shard_manager, map_shard_to_cache={
@@ -1885,8 +1874,8 @@ class TestQueryCache:
       )
 
       assert query_cache_manager.look(
-          record_3.query_record
-      ).query_response.response.value == 'r3'
+          record_3.query
+      ).result.output_text == 'r3'
       _check_record_heap(query_cache_manager, [hash_1, hash_4, hash_2, hash_3])
       _check_shard_manager_state(
           query_cache_manager._shard_manager, map_shard_to_cache={
@@ -1902,8 +1891,8 @@ class TestQueryCache:
       )
 
       assert query_cache_manager.look(
-          record_4.query_record
-      ).query_response.response.value == 'r4'
+          record_4.query
+      ).result.output_text == 'r4'
       _check_record_heap(query_cache_manager, [hash_1, hash_2, hash_3, hash_4])
       _check_shard_manager_state(
           query_cache_manager._shard_manager, map_shard_to_cache={
@@ -1933,8 +1922,8 @@ class TestQueryCache:
       )
 
       assert query_cache_manager.look(
-          record_4.query_record
-      ).query_response.response.value == 'r4'
+          record_4.query
+      ).result.output_text == 'r4'
       _check_record_heap(query_cache_manager, [hash_1, hash_2, hash_3, hash_4])
       _check_shard_manager_state(
           query_cache_manager._shard_manager, map_shard_to_cache={
@@ -1971,7 +1960,7 @@ class TestQueryCache:
       )
 
       # Initial state validation
-      assert query_cache_manager.look(query_record_1).look_fail_reason
+      assert query_cache_manager.look(query_record_1).cache_look_fail_reason
       _check_record_heap(query_cache_manager, [])
       _check_shard_manager_state(
           query_cache_manager._shard_manager, light_cache_records={},
@@ -1986,7 +1975,7 @@ class TestQueryCache:
 
       # Cache (query_1, response_1)
       query_cache_manager.cache(
-          query_record=query_record_1, response_record=response_record_1
+          query_record=query_record_1, result_record=response_record_1
       )
       _check_record_heap(query_cache_manager, [query_record_1.hash_value])
       _check_shard_manager_state(
@@ -1997,11 +1986,11 @@ class TestQueryCache:
               'backlog': 2
           }, shard_heap=[(0, 0), (0, 1), (0, 2)]
       )
-      assert query_cache_manager.look(query_record_1).look_fail_reason
+      assert query_cache_manager.look(query_record_1).cache_look_fail_reason
 
       # Cache (query_1, response_2)
       query_cache_manager.cache(
-          query_record=query_record_1, response_record=response_record_2
+          query_record=query_record_1, result_record=response_record_2
       )
       _check_record_heap(query_cache_manager, [query_record_1.hash_value])
       _check_shard_manager_state(
@@ -2012,13 +2001,13 @@ class TestQueryCache:
               'backlog': 3
           }, shard_heap=[(0, 0), (0, 1), (0, 2)]
       )
-      assert query_cache_manager.look(query_record_1).look_fail_reason
+      assert query_cache_manager.look(query_record_1).cache_look_fail_reason
       # Check if returning None changes call count
-      assert query_cache_manager.look(query_record_1).look_fail_reason
+      assert query_cache_manager.look(query_record_1).cache_look_fail_reason
 
       # Cache (query_1, response_3)
       query_cache_manager.cache(
-          query_record=query_record_1, response_record=response_record_3
+          query_record=query_record_1, result_record=response_record_3
       )
       _check_record_heap(query_cache_manager, [query_record_1.hash_value])
       _check_shard_manager_state(
@@ -2032,20 +2021,20 @@ class TestQueryCache:
       # Check first cache record starts with first cached response
       assert query_cache_manager.look(
           query_record_1
-      ).query_response.response.value == 'r1'
+      ).result.output_text == 'r1'
       assert query_cache_manager.look(
           query_record_1
-      ).query_response.response.value == 'r2'
+      ).result.output_text == 'r2'
       assert query_cache_manager.look(
           query_record_1
-      ).query_response.response.value == 'r3'
+      ).result.output_text == 'r3'
       assert query_cache_manager.look(
           query_record_1
-      ).query_response.response.value == 'r1'
+      ).result.output_text == 'r1'
 
       # Cache (query_2, response_1)
       query_cache_manager.cache(
-          query_record=query_record_2, response_record=response_record_1
+          query_record=query_record_2, result_record=response_record_1
       )
       _check_record_heap(
           query_cache_manager,
@@ -2059,12 +2048,12 @@ class TestQueryCache:
               'backlog': 2
           }, shard_heap=[(0, 1), (0, 2), (4, 0)]
       )
-      assert query_cache_manager.look(query_record_2).look_fail_reason
+      assert query_cache_manager.look(query_record_2).cache_look_fail_reason
 
       # Check look correctly changes heap and shard manager state
       assert query_cache_manager.look(
           query_record_1
-      ).query_response.response.value == 'r2'
+      ).result.output_text == 'r2'
       _check_record_heap(
           query_cache_manager,
           [query_record_2.hash_value, query_record_1.hash_value]
@@ -2080,7 +2069,7 @@ class TestQueryCache:
 
       # Cache (query_3, response_1)
       query_cache_manager.cache(
-          query_record=query_record_3, response_record=response_record_1
+          query_record=query_record_3, result_record=response_record_1
       )
       _check_record_heap(
           query_cache_manager, [
@@ -2096,11 +2085,11 @@ class TestQueryCache:
               'backlog': 2
           }, shard_heap=[(0, 2), (2, 0), (4, 1)]
       )
-      assert query_cache_manager.look(query_record_3).look_fail_reason
+      assert query_cache_manager.look(query_record_3).cache_look_fail_reason
 
       # Cache (query_3, response_2)
       query_cache_manager.cache(
-          query_record=query_record_3, response_record=response_record_2
+          query_record=query_record_3, result_record=response_record_2
       )
       _check_record_heap(
           query_cache_manager, [
@@ -2116,11 +2105,11 @@ class TestQueryCache:
               'backlog': 3
           }, shard_heap=[(0, 2), (2, 0), (4, 1)]
       )
-      assert query_cache_manager.look(query_record_3).look_fail_reason
+      assert query_cache_manager.look(query_record_3).cache_look_fail_reason
 
       # Cache (query_3, response_3)
       query_cache_manager.cache(
-          query_record=query_record_3, response_record=response_record_3
+          query_record=query_record_3, result_record=response_record_3
       )
       _check_record_heap(
           query_cache_manager, [
@@ -2138,21 +2127,21 @@ class TestQueryCache:
       )
       assert query_cache_manager.look(
           query_record_3
-      ).query_response.response.value == 'r1'
+      ).result.output_text == 'r1'
       assert query_cache_manager.look(
           query_record_3
-      ).query_response.response.value == 'r2'
+      ).result.output_text == 'r2'
       assert query_cache_manager.look(
           query_record_3
-      ).query_response.response.value == 'r3'
+      ).result.output_text == 'r3'
       assert query_cache_manager.look(
           query_record_3
-      ).query_response.response.value == 'r1'
+      ).result.output_text == 'r1'
 
       # Cache (query_4, response_1)
       # This will overflow the backlog and deletes query_2
       query_cache_manager.cache(
-          query_record=query_record_4, response_record=response_record_1
+          query_record=query_record_4, result_record=response_record_1
       )
       _check_record_heap(
           query_cache_manager, [
@@ -2168,12 +2157,12 @@ class TestQueryCache:
               'backlog': 2
           }, shard_heap=[(0, 0), (4, 1), (4, 2)]
       )
-      assert query_cache_manager.look(query_record_4).look_fail_reason
+      assert query_cache_manager.look(query_record_4).cache_look_fail_reason
 
       # Check look correctly changes heap and shard manager state
       assert query_cache_manager.look(
           query_record_1
-      ).query_response.response.value == 'r3'
+      ).result.output_text == 'r3'
       _check_record_heap(
           query_cache_manager, [
               query_record_3.hash_value,
@@ -2193,7 +2182,7 @@ class TestQueryCache:
       # Cache (query_4, response_2)
       # This will overflow the backlog and deletes query_3
       query_cache_manager.cache(
-          query_record=query_record_4, response_record=response_record_2
+          query_record=query_record_4, result_record=response_record_2
       )
       _check_record_heap(
           query_cache_manager, [
@@ -2209,11 +2198,11 @@ class TestQueryCache:
               'backlog': 3
           }, shard_heap=[(0, 1), (0, 2), (4, 0)]
       )
-      assert query_cache_manager.look(query_record_4).look_fail_reason
+      assert query_cache_manager.look(query_record_4).cache_look_fail_reason
 
       # Cache (query_4, response_3)
       query_cache_manager.cache(
-          query_record=query_record_4, response_record=response_record_3
+          query_record=query_record_4, result_record=response_record_3
       )
       _check_record_heap(
           query_cache_manager, [
@@ -2231,28 +2220,28 @@ class TestQueryCache:
       )
       assert query_cache_manager.look(
           query_record_4
-      ).query_response.response.value == 'r1'
+      ).result.output_text == 'r1'
 
       # Final checks
       assert query_cache_manager.look(
           query_record_1
-      ).query_response.response.value == 'r1'
-      assert query_cache_manager.look(query_record_2).look_fail_reason
-      assert query_cache_manager.look(query_record_3).look_fail_reason
+      ).result.output_text == 'r1'
+      assert query_cache_manager.look(query_record_2).cache_look_fail_reason
+      assert query_cache_manager.look(query_record_3).cache_look_fail_reason
       assert query_cache_manager.look(
           query_record_4
-      ).query_response.response.value == 'r2'
+      ).result.output_text == 'r2'
       assert query_cache_manager.look(
           query_record_1
-      ).query_response.response.value == 'r2'
-      assert query_cache_manager.look(query_record_2).look_fail_reason
-      assert query_cache_manager.look(query_record_3).look_fail_reason
+      ).result.output_text == 'r2'
+      assert query_cache_manager.look(query_record_2).cache_look_fail_reason
+      assert query_cache_manager.look(query_record_3).cache_look_fail_reason
       assert query_cache_manager.look(
           query_record_4
-      ).query_response.response.value == 'r3'
+      ).result.output_text == 'r3'
       assert query_cache_manager.look(
           query_record_1
-      ).query_response.response.value == 'r3'
+      ).result.output_text == 'r3'
 
   def test_one_shard(self):
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -2275,7 +2264,7 @@ class TestQueryCache:
       )
 
       # Initial state validation
-      assert query_cache_manager.look(query_record_1).look_fail_reason
+      assert query_cache_manager.look(query_record_1).cache_look_fail_reason
       _check_record_heap(query_cache_manager, [])
       _check_shard_manager_state(
           query_cache_manager._shard_manager, light_cache_records={},
@@ -2288,7 +2277,7 @@ class TestQueryCache:
 
       # Cache (query_1, response_1)
       query_cache_manager.cache(
-          query_record=query_record_1, response_record=response_record_1
+          query_record=query_record_1, result_record=response_record_1
       )
       _check_record_heap(query_cache_manager, [query_record_1.hash_value])
       _check_shard_manager_state(
@@ -2297,11 +2286,11 @@ class TestQueryCache:
               'backlog': 2
           }, shard_heap=[(0, 0)]
       )
-      assert query_cache_manager.look(query_record_1).look_fail_reason
+      assert query_cache_manager.look(query_record_1).cache_look_fail_reason
 
       # Cache (query_1, response_2)
       query_cache_manager.cache(
-          query_record=query_record_1, response_record=response_record_2
+          query_record=query_record_1, result_record=response_record_2
       )
       _check_record_heap(query_cache_manager, [query_record_1.hash_value])
       _check_shard_manager_state(
@@ -2310,11 +2299,11 @@ class TestQueryCache:
               'backlog': 3
           }, shard_heap=[(0, 0)]
       )
-      assert query_cache_manager.look(query_record_1).look_fail_reason
+      assert query_cache_manager.look(query_record_1).cache_look_fail_reason
 
       # Cache (query_1, response_3)
       query_cache_manager.cache(
-          query_record=query_record_1, response_record=response_record_3
+          query_record=query_record_1, result_record=response_record_3
       )
       _check_record_heap(query_cache_manager, [query_record_1.hash_value])
       _check_shard_manager_state(
@@ -2325,11 +2314,11 @@ class TestQueryCache:
       )
       assert query_cache_manager.look(
           query_record_1
-      ).query_response.response.value == 'r1'
+      ).result.output_text == 'r1'
 
       # Cache (query_2, response_1)
       query_cache_manager.cache(
-          query_record=query_record_2, response_record=response_record_1
+          query_record=query_record_2, result_record=response_record_1
       )
       _check_record_heap(
           query_cache_manager,
@@ -2341,11 +2330,11 @@ class TestQueryCache:
               'backlog': 2
           }, shard_heap=[(4, 0)]
       )
-      assert query_cache_manager.look(query_record_2).look_fail_reason
+      assert query_cache_manager.look(query_record_2).cache_look_fail_reason
 
       # Cache (query_3, response_1)
       query_cache_manager.cache(
-          query_record=query_record_3, response_record=response_record_1
+          query_record=query_record_3, result_record=response_record_1
       )
       _check_record_heap(
           query_cache_manager, [
@@ -2360,19 +2349,19 @@ class TestQueryCache:
               'backlog': 2
           }, shard_heap=[(6, 0)]
       )
-      assert query_cache_manager.look(query_record_3).look_fail_reason
+      assert query_cache_manager.look(query_record_3).cache_look_fail_reason
 
-  def test_retry_if_error_cached_1(self):
+  def test_override_cache_value_basic(self):
+    """Override a single-entry bucket and confirm the new value fully
+    replaces the old one (reads return the new value, not the stale)."""
     with tempfile.TemporaryDirectory() as temp_dir:
       query_record_1 = types.QueryRecord(prompt='p1')
       response_record_1 = _create_response_record(response_id=1)
-      error_record_2 = _create_response_record(response_id=2, error='e1')
-      response_record_3 = _create_response_record(response_id=3)
+      response_record_2 = _create_response_record(response_id=2)
 
       query_cache_manager_params = query_cache.QueryCacheManagerParams(
           cache_options=types.CacheOptions(
-              cache_path=temp_dir, unique_response_limit=2,
-              retry_if_error_cached=True
+              cache_path=temp_dir, unique_response_limit=1
           ), shard_count=_SHARD_COUNT, response_per_file=_RESPONSE_PER_FILE,
           cache_response_size=10
       )
@@ -2381,43 +2370,186 @@ class TestQueryCache:
       )
 
       query_cache_manager.cache(
-          query_record=query_record_1, response_record=response_record_1
-      )
-      assert query_cache_manager.look(query_record_1).look_fail_reason
-      query_cache_manager.cache(
-          query_record=query_record_1, response_record=error_record_2
+          query_record=query_record_1, result_record=response_record_1
       )
       assert query_cache_manager.look(
           query_record_1
-      ).query_response == response_record_1
-      assert query_cache_manager.look(query_record_1).look_fail_reason
-      assert query_cache_manager.look(
-          query_record_1
-      ).query_response == response_record_1
-      assert query_cache_manager.look(
-          query_record_1
-      ).query_response == error_record_2
-      query_cache_manager.cache(
-          query_record=query_record_1, response_record=response_record_3
-      )
-      assert query_cache_manager.look(
-          query_record_1
-      ).query_response == response_record_1
-      assert query_cache_manager.look(
-          query_record_1
-      ).query_response == response_record_3
+      ).result.output_text == 'r1'
 
-  def test_retry_if_error_cached_2(self):
+      # Override with a new value.
+      query_cache_manager.cache(
+          query_record=query_record_1, result_record=response_record_2,
+          override_cache_value=True
+      )
+
+      # Look now returns the new value, not the stale one.
+      assert query_cache_manager.look(
+          query_record_1
+      ).result.output_text == 'r2'
+      # A second look confirms the bucket holds only the new value
+      # (unique_response_limit=1, so round-robin cycles over a single
+      # slot — if the old value were still around, it would surface).
+      assert query_cache_manager.look(
+          query_record_1
+      ).result.output_text == 'r2'
+
+      # Heap still has exactly one entry; shard state is unchanged in
+      # size (single response in backlog, _get_cache_size = 1 + 1 = 2).
+      _check_record_heap(query_cache_manager, [query_record_1.hash_value])
+      _check_shard_manager_state(
+          query_cache_manager._shard_manager, shard_active_count={
+              0: 0,
+              1: 0,
+              2: 0,
+              'backlog': 2
+          }, shard_heap=[(0, 0), (0, 1), (0, 2)]
+      )
+
+  def test_override_cache_value_wipes_multi_response_bucket(self):
+    """With unique_response_limit > 1, override must wipe every entry in
+    the bucket and reset call_count, not replace a single slot."""
     with tempfile.TemporaryDirectory() as temp_dir:
       query_record_1 = types.QueryRecord(prompt='p1')
       response_record_1 = _create_response_record(response_id=1)
-      error_record_2 = _create_response_record(response_id=2, error='e1')
+      response_record_2 = _create_response_record(response_id=2)
       response_record_3 = _create_response_record(response_id=3)
+      response_record_4 = _create_response_record(response_id=4)
+      response_record_5 = _create_response_record(response_id=5)
+      response_record_6 = _create_response_record(response_id=6)
 
       query_cache_manager_params = query_cache.QueryCacheManagerParams(
           cache_options=types.CacheOptions(
-              cache_path=temp_dir, unique_response_limit=2,
-              retry_if_error_cached=True
+              cache_path=temp_dir, unique_response_limit=3
+          ), shard_count=_SHARD_COUNT, response_per_file=_RESPONSE_PER_FILE,
+          cache_response_size=10
+      )
+      query_cache_manager = query_cache.QueryCacheManager(
+          init_from_params=query_cache_manager_params
+      )
+
+      # Fill the bucket to unique_response_limit=3.
+      query_cache_manager.cache(
+          query_record=query_record_1, result_record=response_record_1
+      )
+      query_cache_manager.cache(
+          query_record=query_record_1, result_record=response_record_2
+      )
+      query_cache_manager.cache(
+          query_record=query_record_1, result_record=response_record_3
+      )
+
+      # Round-robin confirms the bucket is fully populated.
+      assert query_cache_manager.look(
+          query_record_1
+      ).result.output_text == 'r1'
+      assert query_cache_manager.look(
+          query_record_1
+      ).result.output_text == 'r2'
+      assert query_cache_manager.look(
+          query_record_1
+      ).result.output_text == 'r3'
+      _check_shard_manager_state(
+          query_cache_manager._shard_manager, shard_active_count={
+              0: 0,
+              1: 0,
+              2: 0,
+              'backlog': 4
+          }
+      )
+
+      # Override with a fresh value. This must collapse the bucket to
+      # exactly [r4] with call_count=0.
+      query_cache_manager.cache(
+          query_record=query_record_1, result_record=response_record_4,
+          override_cache_value=True
+      )
+
+      # The bucket is no longer full — look() should report
+      # UNIQUE_RESPONSE_LIMIT_NOT_REACHED. This is the strongest signal
+      # that the wipe was complete; if even one stale entry survived,
+      # len(results) would still be >= 3 and look would return it.
+      look_result = query_cache_manager.look(query_record_1)
+      assert look_result.result is None
+      assert look_result.cache_look_fail_reason == (
+          types.CacheLookFailReason.UNIQUE_RESPONSE_LIMIT_NOT_REACHED
+      )
+
+      # Backlog shrank from 4 (three responses + 1) to 2 (one + 1).
+      _check_shard_manager_state(
+          query_cache_manager._shard_manager, shard_active_count={
+              0: 0,
+              1: 0,
+              2: 0,
+              'backlog': 2
+          }
+      )
+      _check_record_heap(query_cache_manager, [query_record_1.hash_value])
+
+      # Refill the bucket with two more responses. If call_count was
+      # correctly reset to 0, the next round-robin will start at r4
+      # (index 0), not wrap around from a stale offset.
+      query_cache_manager.cache(
+          query_record=query_record_1, result_record=response_record_5
+      )
+      query_cache_manager.cache(
+          query_record=query_record_1, result_record=response_record_6
+      )
+
+      assert query_cache_manager.look(
+          query_record_1
+      ).result.output_text == 'r4'
+      assert query_cache_manager.look(
+          query_record_1
+      ).result.output_text == 'r5'
+      assert query_cache_manager.look(
+          query_record_1
+      ).result.output_text == 'r6'
+      # Wraps back to r4, not to anything from the old pre-override bucket.
+      assert query_cache_manager.look(
+          query_record_1
+      ).result.output_text == 'r4'
+
+  def test_override_cache_value_on_empty_cache(self):
+    """Override on an empty cache is a no-op wipe followed by a normal
+    insert (no prior entry to clean up)."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+      query_record_1 = types.QueryRecord(prompt='p1')
+      response_record_1 = _create_response_record(response_id=1)
+
+      query_cache_manager_params = query_cache.QueryCacheManagerParams(
+          cache_options=types.CacheOptions(
+              cache_path=temp_dir, unique_response_limit=1
+          ), shard_count=_SHARD_COUNT, response_per_file=_RESPONSE_PER_FILE,
+          cache_response_size=10
+      )
+      query_cache_manager = query_cache.QueryCacheManager(
+          init_from_params=query_cache_manager_params
+      )
+
+      # No prior entry for query_1 — override should behave identically
+      # to a normal cache() call in this case.
+      query_cache_manager.cache(
+          query_record=query_record_1, result_record=response_record_1,
+          override_cache_value=True
+      )
+      assert query_cache_manager.look(
+          query_record_1
+      ).result.output_text == 'r1'
+      _check_record_heap(query_cache_manager, [query_record_1.hash_value])
+
+  def test_override_cache_value_sequential_overrides(self):
+    """Repeated overrides of the same query must each fully replace the
+    previous value and leave heap/shard state bounded."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+      query_record_1 = types.QueryRecord(prompt='p1')
+      response_record_1 = _create_response_record(response_id=1)
+      response_record_2 = _create_response_record(response_id=2)
+      response_record_3 = _create_response_record(response_id=3)
+      response_record_4 = _create_response_record(response_id=4)
+
+      query_cache_manager_params = query_cache.QueryCacheManagerParams(
+          cache_options=types.CacheOptions(
+              cache_path=temp_dir, unique_response_limit=1
           ), shard_count=_SHARD_COUNT, response_per_file=_RESPONSE_PER_FILE,
           cache_response_size=10
       )
@@ -2426,27 +2558,177 @@ class TestQueryCache:
       )
 
       query_cache_manager.cache(
-          query_record=query_record_1, response_record=response_record_1
+          query_record=query_record_1, result_record=response_record_1
       )
-      assert query_cache_manager.look(query_record_1).look_fail_reason
       query_cache_manager.cache(
-          query_record=query_record_1, response_record=error_record_2
+          query_record=query_record_1, result_record=response_record_2,
+          override_cache_value=True
       )
-      assert query_cache_manager.look(
-          query_record_1
-      ).query_response == response_record_1
       query_cache_manager.cache(
-          query_record=query_record_1, response_record=response_record_3
+          query_record=query_record_1, result_record=response_record_3,
+          override_cache_value=True
       )
+      query_cache_manager.cache(
+          query_record=query_record_1, result_record=response_record_4,
+          override_cache_value=True
+      )
+
+      # Only the last override survives.
       assert query_cache_manager.look(
           query_record_1
-      ).query_response == response_record_3
+      ).result.output_text == 'r4'
       assert query_cache_manager.look(
           query_record_1
-      ).query_response == response_record_1
+      ).result.output_text == 'r4'
+
+      # Heap is still a single entry — sequential overrides did not
+      # grow the heap (HeapManager.push is idempotent on key).
+      _check_record_heap(query_cache_manager, [query_record_1.hash_value])
+      # Backlog still holds exactly one record of size 2.
+      _check_shard_manager_state(
+          query_cache_manager._shard_manager, shard_active_count={
+              0: 0,
+              1: 0,
+              2: 0,
+              'backlog': 2
+          }, shard_heap=[(0, 0), (0, 1), (0, 2)]
+      )
+
+  def test_lookup_ignores_transient_connection_options(self):
+    """A query cached with one ConnectionOptions must be found by a
+    lookup with a different ConnectionOptions, as long as the fields
+    that make up query identity (currently only `endpoint`) match. This
+    mirrors what hash_serializer._hash_connection_options considers. It
+    is the regression test for the bug where override_cache_value=True
+    stored on the cached query_record poisoned subsequent equality
+    checks against plain lookups."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+      # Same prompt, different transient per-call flags on the store
+      # side and the lookup side.
+      query_at_store = types.QueryRecord(
+          prompt='p1', connection_options=types.ConnectionOptions(
+              override_cache_value=True
+          )
+      )
+      query_at_look = types.QueryRecord(
+          prompt='p1', connection_options=types.ConnectionOptions()
+      )
+      response_record_1 = _create_response_record(response_id=1)
+
+      query_cache_manager_params = query_cache.QueryCacheManagerParams(
+          cache_options=types.CacheOptions(
+              cache_path=temp_dir, unique_response_limit=1
+          ), shard_count=_SHARD_COUNT, response_per_file=_RESPONSE_PER_FILE,
+          cache_response_size=10
+      )
+      query_cache_manager = query_cache.QueryCacheManager(
+          init_from_params=query_cache_manager_params
+      )
+
+      query_cache_manager.cache(
+          query_record=query_at_store, result_record=response_record_1
+      )
+      look_result = query_cache_manager.look(query_at_look)
+      assert look_result.result is not None
+      assert look_result.result.output_text == 'r1'
+
+      # Conversely, mismatch on `endpoint` (which IS part of identity
+      # per the hash) must still fail the lookup. This guards against
+      # an over-eager normalization that strips endpoint too.
+      query_at_store_ep = types.QueryRecord(
+          prompt='p2', connection_options=types.ConnectionOptions(
+              endpoint='messages.create'
+          )
+      )
+      query_at_look_ep = types.QueryRecord(
+          prompt='p2', connection_options=types.ConnectionOptions(
+              endpoint='beta.messages.stream'
+          )
+      )
+      query_cache_manager.cache(
+          query_record=query_at_store_ep, result_record=response_record_1
+      )
+      # Different endpoint → lookup returns a fail reason, not the
+      # stored result. (Hash also differs here because endpoint is
+      # hashed, so CACHE_NOT_FOUND — what matters is that look() does
+      # not return the stored record.)
+      look_ep_result = query_cache_manager.look(query_at_look_ep)
+      assert look_ep_result.result is None
+
+  def test_override_cache_value_on_committed_shard_entry(self):
+    """Override must correctly wipe a bucket that lives in a committed
+    shard (not in the backlog). This exercises the full delete path
+    through the freshness invariant — the stale row left on disk must
+    be filtered out on subsequent reads, and other buckets in the same
+    shard must remain intact."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+      query_record_1 = types.QueryRecord(prompt='p1')
+      query_record_2 = types.QueryRecord(prompt='p2')
+      query_record_3 = types.QueryRecord(prompt='p3')
+      response_record_1 = _create_response_record(response_id=1)
+      response_record_2 = _create_response_record(response_id=2)
+      response_record_3 = _create_response_record(response_id=3)
+      response_record_4 = _create_response_record(response_id=4)
+
+      query_cache_manager_params = query_cache.QueryCacheManagerParams(
+          cache_options=types.CacheOptions(
+              cache_path=temp_dir, unique_response_limit=1
+          ), shard_count=_SHARD_COUNT, response_per_file=_RESPONSE_PER_FILE,
+          cache_response_size=10
+      )
+      query_cache_manager = query_cache.QueryCacheManager(
+          init_from_params=query_cache_manager_params
+      )
+
+      # Cache three distinct entries. The third triggers a backlog flush
+      # that promotes query_1 and query_2 into shard 0 (they now live in
+      # a committed shard file, not in the backlog).
+      query_cache_manager.cache(
+          query_record=query_record_1, result_record=response_record_1
+      )
+      query_cache_manager.cache(
+          query_record=query_record_2, result_record=response_record_2
+      )
+      query_cache_manager.cache(
+          query_record=query_record_3, result_record=response_record_3
+      )
+      _check_shard_manager_state(
+          query_cache_manager._shard_manager, shard_active_count={
+              0: 4,
+              1: 0,
+              2: 0,
+              'backlog': 2
+          }, shard_heap=[(0, 1), (0, 2), (4, 0)]
+      )
+      assert query_record_1.hash_value in (
+          query_cache_manager._shard_manager._map_shard_to_cache[0]
+      )
+      assert query_record_2.hash_value in (
+          query_cache_manager._shard_manager._map_shard_to_cache[0]
+      )
+
+      # Override query_1 — its authoritative entry lives in shard 0. The
+      # cache manager must update the in-memory index so the stale row
+      # in shard 0 is filtered out, while leaving query_2 in shard 0
+      # untouched and query_3 in the backlog untouched.
+      query_cache_manager.cache(
+          query_record=query_record_1, result_record=response_record_4,
+          override_cache_value=True
+      )
+
+      # query_1 now returns the overridden value; the stale row in
+      # shard 0 is invisible to reads via the freshness invariant.
       assert query_cache_manager.look(
           query_record_1
-      ).query_response == response_record_3
+      ).result.output_text == 'r4'
+      # query_2 (still backed by its original row in shard 0) and
+      # query_3 (still in the backlog) are unaffected.
+      assert query_cache_manager.look(
+          query_record_2
+      ).result.output_text == 'r2'
+      assert query_cache_manager.look(
+          query_record_3
+      ).result.output_text == 'r3'
 
 
 class TestQueryCacheState:
@@ -2539,6 +2821,13 @@ class TestQueryCacheState:
       )
 
   def test_not_working_state_calls(self):
+    """Operational failures produce structured results, never raise.
+
+    A cache is an optimization: when it can't service a request
+    (no path configured, not writable, etc.) callers get a
+    CACHE_UNAVAILABLE lookup result and cache() is a silent no-op.
+    clear_cache() is user-facing and still raises.
+    """
     with tempfile.TemporaryDirectory():
       query_cache_manager_params = query_cache.QueryCacheManagerParams(
           cache_options=types.CacheOptions()
@@ -2551,23 +2840,258 @@ class TestQueryCacheState:
           types.QueryCacheManagerStatus.CACHE_PATH_NOT_FOUND
       )
 
+      # clear_cache() is user-facing — still raises.
       with pytest.raises(
           ValueError, match='QueryCacheManager status is .*CACHE_PATH_NOT_FOUND'
       ):
         query_cache_manager.clear_cache()
 
-      with pytest.raises(
-          ValueError, match='QueryCacheManager status is .*CACHE_PATH_NOT_FOUND'
-      ):
-        query_cache_manager.look(types.QueryRecord(prompt='p1'))
+      # look() returns CACHE_UNAVAILABLE instead of raising.
+      look_result = query_cache_manager.look(types.QueryRecord(prompt='p1'))
+      assert look_result.result is None
+      assert (
+          look_result.cache_look_fail_reason ==
+          types.CacheLookFailReason.CACHE_UNAVAILABLE
+      )
 
-      with pytest.raises(
-          ValueError, match='QueryCacheManager status is .*CACHE_PATH_NOT_FOUND'
-      ):
-        query_cache_manager.cache(
-            types.QueryRecord(prompt='p1'),
-            types.QueryResponseRecord(
-                response=types.
-                Response(type=types.ResponseType.TEXT, value='r1')
-            )
+      # cache() is a silent no-op (does not raise, does not store).
+      query_cache_manager.cache(
+          types.QueryRecord(prompt='p1'),
+          types.ResultRecord(output_text='r1')
+      )
+      query_cache_manager.cache(
+          types.QueryRecord(prompt='p1'),
+          types.ResultRecord(output_text='r1'),
+          override_cache_value=True
+      )
+
+  def test_init_creates_missing_cache_directory(self):
+    """A missing cache directory is created automatically on init.
+
+    Previously, if the cache path didn't exist, status would be
+    CACHE_PATH_NOT_WRITABLE because os.access() fails on missing
+    paths. Now init creates the directory first.
+    """
+    with tempfile.TemporaryDirectory() as parent:
+      nonexistent = os.path.join(parent, 'does_not_exist_yet')
+      assert not os.path.exists(nonexistent)
+
+      query_cache_manager_params = query_cache.QueryCacheManagerParams(
+          cache_options=types.CacheOptions(cache_path=nonexistent)
+      )
+      query_cache_manager = query_cache.QueryCacheManager(
+          init_from_params=query_cache_manager_params
+      )
+
+      assert os.path.exists(nonexistent)
+      assert (
+          query_cache_manager.status ==
+          types.QueryCacheManagerStatus.WORKING
+      )
+
+
+class TestInlineBytesWarning:
+  """QueryCacheManager warns once when MessageContent carries raw bytes.
+
+  Inline bytes in the query cache are an anti-pattern (duplicated
+  across entries, slow hashing/equality, cache directory bloat). The
+  warning is emitted via logging_utils on the first cache() call that
+  contains inline bytes and never again for the rest of the manager's
+  lifetime.
+
+  These tests pin:
+    - the warning fires for inline bytes in QueryRecord
+    - the warning fires for inline bytes in ResultRecord
+    - path-only or source-only content does NOT trigger the warning
+    - the warning is deduplicated (one warning per manager instance)
+  """
+
+  def _make_manager(self, temp_dir):
+    return query_cache.QueryCacheManager(
+        init_from_params=query_cache.QueryCacheManagerParams(
+            cache_options=types.CacheOptions(cache_path=temp_dir),
+            shard_count=_SHARD_COUNT,
+            response_per_file=_RESPONSE_PER_FILE,
+            cache_response_size=10,
         )
+    )
+
+  def _capture_warnings(self, monkeypatch):
+    """Replace logging_utils.log_message and return the list of calls."""
+    calls = []
+
+    def fake_log(*, logging_options, message, type):
+      calls.append({'message': message, 'type': type})
+
+    monkeypatch.setattr(query_cache.logging_utils, 'log_message', fake_log)
+    return calls
+
+  @staticmethod
+  def _query_with_inline_bytes():
+    return types.QueryRecord(
+        prompt='p',
+        chat=chat_session.Chat(messages=[
+            message.Message(
+                role=message_content.MessageRoleType.USER,
+                content=[
+                    message_content.MessageContent(
+                        type=message_content.ContentType.IMAGE,
+                        data=b'\x89PNG\r\n\x1a\nbody',
+                    ),
+                ],
+            )
+        ]),
+    )
+
+  @staticmethod
+  def _query_with_path_only(tmp_path):
+    file_path = tmp_path / 'img.png'
+    file_path.write_bytes(b'\x89PNG\r\n\x1a\nbody')
+    return types.QueryRecord(
+        prompt='p',
+        chat=chat_session.Chat(messages=[
+            message.Message(
+                role=message_content.MessageRoleType.USER,
+                content=[
+                    message_content.MessageContent(
+                        type=message_content.ContentType.IMAGE,
+                        path=str(file_path),
+                    ),
+                ],
+            )
+        ]),
+    )
+
+  @staticmethod
+  def _query_with_source_only():
+    return types.QueryRecord(
+        prompt='p',
+        chat=chat_session.Chat(messages=[
+            message.Message(
+                role=message_content.MessageRoleType.USER,
+                content=[
+                    message_content.MessageContent(
+                        type=message_content.ContentType.IMAGE,
+                        source='https://example.com/a.png',
+                    ),
+                ],
+            )
+        ]),
+    )
+
+  def test_warning_fires_on_inline_bytes_in_query_record(self, monkeypatch):
+    with tempfile.TemporaryDirectory() as temp_dir:
+      mgr = self._make_manager(temp_dir)
+      warnings = self._capture_warnings(monkeypatch)
+
+      mgr.cache(
+          self._query_with_inline_bytes(),
+          types.ResultRecord(output_text='r'),
+      )
+
+      inline_warnings = [
+          w for w in warnings if 'raw bytes inline' in w['message']
+      ]
+      assert len(inline_warnings) == 1
+      assert inline_warnings[0]['type'] == types.LoggingType.WARNING
+
+  def test_warning_fires_on_inline_bytes_in_result_record(self, monkeypatch):
+    with tempfile.TemporaryDirectory() as temp_dir:
+      mgr = self._make_manager(temp_dir)
+      warnings = self._capture_warnings(monkeypatch)
+
+      mgr.cache(
+          types.QueryRecord(prompt='p'),
+          types.ResultRecord(
+              output_image=message_content.MessageContent(
+                  type=message_content.ContentType.IMAGE,
+                  data=b'\x89PNG\r\n\x1a\nresult',
+              )
+          ),
+      )
+
+      inline_warnings = [
+          w for w in warnings if 'raw bytes inline' in w['message']
+      ]
+      assert len(inline_warnings) == 1
+
+  def test_warning_does_not_fire_for_path_only(self, monkeypatch, tmp_path):
+    with tempfile.TemporaryDirectory() as temp_dir:
+      mgr = self._make_manager(temp_dir)
+      warnings = self._capture_warnings(monkeypatch)
+
+      mgr.cache(
+          self._query_with_path_only(tmp_path),
+          types.ResultRecord(output_text='r'),
+      )
+
+      inline_warnings = [
+          w for w in warnings if 'raw bytes inline' in w['message']
+      ]
+      assert inline_warnings == []
+
+  def test_warning_does_not_fire_for_source_only(self, monkeypatch):
+    with tempfile.TemporaryDirectory() as temp_dir:
+      mgr = self._make_manager(temp_dir)
+      warnings = self._capture_warnings(monkeypatch)
+
+      mgr.cache(
+          self._query_with_source_only(),
+          types.ResultRecord(output_text='r'),
+      )
+
+      inline_warnings = [
+          w for w in warnings if 'raw bytes inline' in w['message']
+      ]
+      assert inline_warnings == []
+
+  def test_warning_deduplicated_within_session(self, monkeypatch):
+    with tempfile.TemporaryDirectory() as temp_dir:
+      mgr = self._make_manager(temp_dir)
+      warnings = self._capture_warnings(monkeypatch)
+
+      for i in range(3):
+        mgr.cache(
+            types.QueryRecord(
+                prompt=f'p{i}',
+                chat=chat_session.Chat(messages=[
+                    message.Message(
+                        role=message_content.MessageRoleType.USER,
+                        content=[
+                            message_content.MessageContent(
+                                type=message_content.ContentType.IMAGE,
+                                data=b'bytes_' + str(i).encode(),
+                            ),
+                        ],
+                    )
+                ]),
+            ),
+            types.ResultRecord(output_text=f'r{i}'),
+        )
+
+      inline_warnings = [
+          w for w in warnings if 'raw bytes inline' in w['message']
+      ]
+      assert len(inline_warnings) == 1, (
+          f'expected 1 inline-bytes warning across 3 writes, '
+          f'got {len(inline_warnings)}'
+      )
+
+  def test_warning_text_contains_examples(self, monkeypatch):
+    with tempfile.TemporaryDirectory() as temp_dir:
+      mgr = self._make_manager(temp_dir)
+      warnings = self._capture_warnings(monkeypatch)
+
+      mgr.cache(
+          self._query_with_inline_bytes(),
+          types.ResultRecord(output_text='r'),
+      )
+
+      msg = next(
+          w['message'] for w in warnings if 'raw bytes inline' in w['message']
+      )
+      # Anti-pattern + good-pattern + once-per-session note all present.
+      assert 'Anti-pattern' in msg
+      assert 'path=' in msg
+      assert 'files.upload' in msg
+      assert 'once per session' in msg

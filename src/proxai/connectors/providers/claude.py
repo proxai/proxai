@@ -1,25 +1,31 @@
+from __future__ import annotations
+
+import base64
 import functools
-from collections.abc import Callable
-from typing import Any
+import os
 
 import anthropic
 
-import proxai.connectors.model_connector as model_connector
+import proxai.connectors.content_utils as content_utils
+import proxai.connectors.provider_connector as provider_connector
 import proxai.connectors.providers.claude_mock as claude_mock
 import proxai.types as types
+import proxai.chat.message_content as message_content
 
-# Beta header required for structured outputs feature
+# Beta headers
 STRUCTURED_OUTPUTS_BETA = "structured-outputs-2025-11-13"
+FILES_API_BETA = "files-api-2025-04-14"
+
+FeatureConfigType = types.FeatureConfigType
+FeatureSupportType = types.FeatureSupportType
+InputFormatConfigType = types.InputFormatConfigType
+ParameterConfigType = types.ParameterConfigType
+ToolConfigType = types.ToolConfigType
+OutputFormatConfigType = types.OutputFormatConfigType
 
 
-class ClaudeConnector(model_connector.ProviderModelConnector):
+class ClaudeConnector(provider_connector.ProviderConnector):
   """Connector for Anthropic Claude models."""
-
-  def get_provider_name(self):
-    return 'claude'
-
-  def get_required_provider_token_names(self) -> list[str]:
-    return ['ANTHROPIC_API_KEY']
 
   def init_model(self):
     return anthropic.Anthropic(
@@ -29,155 +35,372 @@ class ClaudeConnector(model_connector.ProviderModelConnector):
   def init_mock_model(self):
     return claude_mock.ClaudeMock()
 
-  def _get_api_call_function(self, chosen_endpoint: str) -> Callable:
-    if chosen_endpoint == 'messages.create':
-      return functools.partial(self.api.messages.create)
-    elif chosen_endpoint == 'beta.messages.create':
-      return functools.partial(
-          self.api.beta.messages.create, betas=[STRUCTURED_OUTPUTS_BETA]
-      )
-    elif chosen_endpoint == 'beta.messages.parse':
-      return functools.partial(
-          self.api.beta.messages.parse, betas=[STRUCTURED_OUTPUTS_BETA]
-      )
+  PROVIDER_NAME = 'claude'
+
+  PROVIDER_API_KEYS = ['ANTHROPIC_API_KEY']
+
+  ENDPOINT_PRIORITY = [
+      'beta.messages.stream',
+  ]
+
+  _THINKING_BUDGETS = {
+      types.ThinkingType.LOW: 1024,
+      types.ThinkingType.MEDIUM: 8192,
+      types.ThinkingType.HIGH: 24576,
+  }
+  _DEFAULT_MAX_TOKENS = 32768
+
+  ENDPOINT_CONFIG = {
+      'beta.messages.stream': FeatureConfigType(
+          prompt=FeatureSupportType.SUPPORTED,
+          messages=FeatureSupportType.SUPPORTED,
+          system_prompt=FeatureSupportType.SUPPORTED,
+          parameters=ParameterConfigType(
+              max_tokens=FeatureSupportType.SUPPORTED,
+              temperature=FeatureSupportType.SUPPORTED,
+              stop=FeatureSupportType.SUPPORTED,
+              n=FeatureSupportType.NOT_SUPPORTED,
+              thinking=FeatureSupportType.SUPPORTED,
+          ),
+          tools=ToolConfigType(
+              web_search=FeatureSupportType.SUPPORTED,
+          ),
+          input_format=InputFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
+              image=FeatureSupportType.SUPPORTED,
+              document=FeatureSupportType.SUPPORTED,
+              json=FeatureSupportType.BEST_EFFORT,
+              pydantic=FeatureSupportType.BEST_EFFORT,
+          ),
+          output_format=OutputFormatConfigType(
+              text=FeatureSupportType.SUPPORTED,
+              json=FeatureSupportType.BEST_EFFORT,
+              pydantic=FeatureSupportType.SUPPORTED,
+          ),
+      ),
+  }
+
+  @staticmethod
+  def _to_claude_part(part_dict):
+    """Convert a ProxAI content block to a Claude API content part.
+
+    Type mapping:
+      text     → ``{"type": "text", "text": "..."}``
+      image    → ``{"type": "image", "source": {"type": "base64"|"url", ...}}``
+      document → Text-based docs (md, csv, txt) are read and sent as
+                 text blocks via ``content_utils.read_text_document``.
+                 PDF is sent as a native document block
+                 ``{"type": "document", "source": {...}}``. Other
+                 binary formats (docx, xlsx) are dropped.
+
+    Returns None for unsupported content types.
+    """
+    # File API reference (pre-uploaded via px.files.upload)
+    file_ids = part_dict.get('provider_file_api_ids', {})
+    if 'claude' in file_ids:
+      content_type = part_dict.get('type')
+      if content_type in ('image', 'document', 'audio', 'video'):
+        return {'type': content_type, 'source': {
+            'type': 'file', 'file_id': file_ids['claude']}}
+    content_type = part_dict.get('type')
+    # Text
+    if content_type == 'text':
+      return {'type': 'text', 'text': part_dict['text']}
+    # Image: URL or inline base64
+    if content_type == 'image':
+      if 'source' in part_dict:
+        return {'type': 'image', 'source': {
+            'type': 'url', 'url': part_dict['source']}}
+      mime_type = part_dict.get('media_type', 'image/png')
+      if 'data' in part_dict:
+        data = part_dict['data']
+      elif 'path' in part_dict:
+        with open(part_dict['path'], 'rb') as f:
+          data = base64.b64encode(f.read()).decode('utf-8')
+      else:
+        return None
+      return {'type': 'image', 'source': {
+          'type': 'base64', 'media_type': mime_type, 'data': data}}
+    # Document: text-based → text block, PDF → native document block
+    if content_type == 'document':
+      text_content = content_utils.read_text_document(part_dict)
+      if text_content is not None:
+        return {'type': 'text', 'text': text_content}
+      if part_dict.get('media_type') != 'application/pdf':
+        return None
+      if 'source' in part_dict:
+        return {'type': 'document', 'source': {
+            'type': 'url', 'url': part_dict['source']}}
+      if 'data' in part_dict:
+        data = part_dict['data']
+      elif 'path' in part_dict:
+        with open(part_dict['path'], 'rb') as f:
+          data = base64.b64encode(f.read()).decode('utf-8')
+      else:
+        return None
+      return {'type': 'document', 'source': {
+          'type': 'base64', 'media_type': 'application/pdf', 'data': data}}
+    return None
+
+  @staticmethod
+  def _convert_messages(messages):
+    """Convert ProxAI message content blocks to Claude API format.
+
+    String content is passed through unchanged. List content is
+    converted block-by-block; blocks where the converter returns
+    None are dropped.
+    """
+    converted = []
+    for message in messages:
+      if isinstance(message['content'], str):
+        converted.append(message)
+        continue
+      if isinstance(message['content'], list):
+        parts = []
+        for block in message['content']:
+          part = ClaudeConnector._to_claude_part(block)
+          if part is not None:
+            parts.append(part)
+        converted.append({**message, 'content': parts})
+      else:
+        converted.append(message)
+    return converted
+
+  def _add_common_params(
+      self, partial_call, query_record: types.QueryRecord):
+    """Add prompt, messages, system, and parameters to the streaming call."""
+    if query_record.prompt is not None:
+      partial_call = functools.partial(
+          partial_call, messages=[
+              {'role': 'user', 'content': query_record.prompt}])
+
+    if query_record.chat is not None:
+      messages = self._convert_messages(query_record.chat['messages'])
+      partial_call = functools.partial(
+          partial_call, messages=messages)
+      if 'system_prompt' in query_record.chat:
+        partial_call = functools.partial(
+            partial_call, system=query_record.chat['system_prompt'])
+
+    if query_record.system_prompt is not None:
+      partial_call = functools.partial(
+          partial_call, system=query_record.system_prompt)
+
+    if query_record.parameters is not None:
+      if query_record.parameters.max_tokens is not None:
+        partial_call = functools.partial(
+            partial_call, max_tokens=query_record.parameters.max_tokens)
+
+      if query_record.parameters.temperature is not None:
+        partial_call = functools.partial(
+            partial_call, temperature=query_record.parameters.temperature)
+
+      if query_record.parameters.stop is not None:
+        if isinstance(query_record.parameters.stop, str):
+          partial_call = functools.partial(
+              partial_call, stop_sequences=[query_record.parameters.stop])
+        else:
+          partial_call = functools.partial(
+              partial_call, stop_sequences=query_record.parameters.stop)
+
+    thinking_budget = None
+    if (query_record.parameters is not None
+        and query_record.parameters.thinking is not None):
+      thinking_budget = self._THINKING_BUDGETS[
+          query_record.parameters.thinking]
+      partial_call = functools.partial(
+          partial_call, thinking={
+              'type': 'enabled', 'budget_tokens': thinking_budget})
+
+    # Claude API requires max_tokens to be set, and when thinking is enabled
+    # it must be strictly greater than thinking.budget_tokens.
+    if 'max_tokens' in partial_call.keywords:
+      if (thinking_budget is not None
+          and partial_call.keywords['max_tokens'] <= thinking_budget):
+        raise ValueError(
+            'Claude requires max_tokens > thinking budget_tokens. '
+            f'Got max_tokens={partial_call.keywords["max_tokens"]}, '
+            f'thinking budget={thinking_budget} '
+            f'(ThinkingType.{query_record.parameters.thinking.value}). '
+            'Increase max_tokens or lower the thinking level.')
     else:
-      raise Exception(f'Invalid endpoint: {chosen_endpoint}')
+      partial_call = functools.partial(
+          partial_call, max_tokens=self._DEFAULT_MAX_TOKENS)
 
-  def prompt_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    return functools.partial(
-        query_function, messages=[{
-            'role': 'user',
-            'content': query_record.prompt
-        }]
-    )
+    return partial_call
 
-  def messages_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    messages = query_function.keywords.get('messages')
-    if messages is None:
-      return functools.partial(query_function, messages=query_record.messages)
+  def _run_stream(self, stream_partial):
+    """Open a streaming SDK call and return the accumulated final message.
+
+    Anthropic requires streaming for any request that may take longer than
+    ~10 min (large `max_tokens`, extended thinking). We always stream and
+    accumulate so the rest of the connector can work with the same final
+    Message shape as the non-streaming path.
+    """
+    with stream_partial() as stream:
+      return stream.get_final_message()
+
+  def _parse_content_blocks(self, response) -> list:
+    """Parse Claude response content blocks into MessageContent list."""
+    parsed = []
+    for block in response.content:
+      if hasattr(block, 'type') and block.type == 'thinking':
+        parsed.append(
+            message_content.MessageContent(
+                type=message_content.ContentType.THINKING,
+                text=block.thinking,
+            )
+        )
+      elif hasattr(block, 'type') and block.type == 'web_search_tool_result':
+        citations = []
+        if isinstance(block.content, list):
+          for result in block.content:
+            citations.append(
+                message_content.Citation(
+                    title=result.title,
+                    url=result.url,
+                ))
+        parsed.append(
+            message_content.MessageContent(
+                type=message_content.ContentType.TOOL,
+                tool_content=message_content.ToolContent(
+                    name='web_search',
+                    kind=message_content.ToolKind.RESULT,
+                    citations=citations,
+                ),
+            )
+        )
+      elif hasattr(block, 'text'):
+        if getattr(block, 'citations', None):
+          citations = []
+          for citation in block.citations:
+            if getattr(citation, 'type', None) == 'web_search_result_location':
+              citations.append(
+                  message_content.Citation(
+                      title=citation.title,
+                      url=citation.url,
+                  ))
+          if citations:
+            parsed.append(
+                message_content.MessageContent(
+                    type=message_content.ContentType.TOOL,
+                    tool_content=message_content.ToolContent(
+                        name='web_search',
+                        kind=message_content.ToolKind.RESULT,
+                        citations=citations,
+                    ),
+                )
+            )
+        parsed.append(
+            message_content.MessageContent(
+                type=message_content.ContentType.TEXT,
+                text=block.text,
+            )
+        )
+    return parsed
+
+  def _collect_betas(self, query_record, needs_pydantic):
+    """Collect required beta headers based on query features.
+
+    Claude's beta features require explicit headers per request:
+    - files-api-2025-04-14: Required when any message content
+      references a file_id uploaded via the Files API.
+    - structured-outputs-2025-11-13: Required when output format
+      is Pydantic (structured outputs).
+
+    Returns an empty list if no beta headers are needed.
+    """
+    betas = []
+    if (query_record.chat is not None
+        and isinstance(query_record.chat, dict)):
+      for msg in query_record.chat.get('messages', []):
+        if not isinstance(msg.get('content'), list):
+          continue
+        for block in msg['content']:
+          if (isinstance(block, dict)
+              and 'claude' in block.get('provider_file_api_ids', {})):
+            betas.append(FILES_API_BETA)
+            break
+        if FILES_API_BETA in betas:
+          break
+    if needs_pydantic:
+      betas.append(STRUCTURED_OUTPUTS_BETA)
+    return betas
+
+  def _beta_messages_stream_executor(
+      self,
+      query_record: types.QueryRecord) -> types.ExecutorResult:
+    stream = functools.partial(self.api.beta.messages.stream)
+    stream = functools.partial(stream, model=(
+        query_record.provider_model.provider_model_identifier
+    ))
+
+    stream = self._add_common_params(stream, query_record)
+
+    if query_record.tools is not None:
+      if types.Tools.WEB_SEARCH in query_record.tools:
+        stream = functools.partial(
+            stream, tools=[{
+                "type": "web_search_20250305",
+                "name": "web_search",
+                "max_uses": 5,
+            }])
+
+    needs_pydantic = (
+        query_record.output_format is not None
+        and query_record.output_format.type
+        == types.OutputFormatType.PYDANTIC)
+    needs_json = (
+        query_record.output_format is not None
+        and query_record.output_format.type
+        == types.OutputFormatType.JSON)
+
+    betas = self._collect_betas(query_record, needs_pydantic)
+    if needs_pydantic:
+      stream = functools.partial(
+          stream,
+          output_format=query_record.output_format.pydantic_class)
+    if betas:
+      stream = functools.partial(stream, betas=betas)
+
+    response, result_record = self._safe_provider_query(
+        functools.partial(self._run_stream, stream))
+    if result_record.error is not None:
+      return types.ExecutorResult(result_record=result_record)
+
+    if needs_pydantic:
+      result_record.content = [
+          message_content.MessageContent(
+              type=message_content.ContentType.PYDANTIC_INSTANCE,
+              pydantic_content=message_content.PydanticContent(
+                  class_name=query_record.output_format.pydantic_class.__name__,
+                  class_value=query_record.output_format.pydantic_class,
+                  instance_value=response.parsed_output,
+              ),
+          )
+      ]
+      for block in response.content:
+        if hasattr(block, 'type') and block.type == 'thinking':
+          result_record.content.insert(0,
+              message_content.MessageContent(
+                  type=message_content.ContentType.THINKING,
+                  text=block.thinking,
+              )
+          )
     else:
-      messages = query_record.messages + messages
-      return functools.partial(query_function, messages=messages)
+      result_record.content = self._parse_content_blocks(response)
+      if needs_json:
+        result_record.content = [
+            message_content.MessageContent(
+                type=message_content.ContentType.JSON,
+                json=self._extract_json_from_text(c.text),
+            ) if c.type == message_content.ContentType.TEXT else c
+            for c in result_record.content
+        ]
 
-  def system_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    return functools.partial(query_function, system=query_record.system)
+    return types.ExecutorResult(
+        result_record=result_record, raw_provider_response=response)
 
-  def max_tokens_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    return functools.partial(query_function, max_tokens=query_record.max_tokens)
-
-  def temperature_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    return functools.partial(
-        query_function, temperature=query_record.temperature
-    )
-
-  def stop_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ) -> Callable:
-    if isinstance(query_record.stop, str):
-      return functools.partial(
-          query_function, stop_sequences=[query_record.stop]
-      )
-    else:
-      return functools.partial(query_function, stop_sequences=query_record.stop)
-
-  def json_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ):
-    raise Exception(
-        'JSON response format is not supported for Claude. Code should '
-        'never reach here.'
-    )
-
-  def json_schema_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ):
-    schema_value = query_record.response_format.value
-    json_schema_obj = schema_value['json_schema']
-    output_format = {
-        'type': 'json_schema',
-        'schema': json_schema_obj.get('schema', json_schema_obj)
-    }
-    return functools.partial(query_function, output_format=output_format)
-
-  def pydantic_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ):
-    return functools.partial(
-        query_function,
-        output_format=query_record.response_format.value.class_value
-    )
-
-  def web_search_feature_mapping(
-      self, query_function: Callable, query_record: types.QueryRecord
-  ):
-    return functools.partial(
-        query_function, tools=[{
-            "type": "web_search_20250305",
-            "name": "web_search",
-            "max_uses": 5
-        }]
-    )
-
-  def _extract_text_from_content(self, content_blocks) -> str:
-    # Extract text from content blocks
-    # When web_search or other tools are used, response may contain multiple
-    # block types (ServerToolUseBlock, TextBlock, etc). Find TextBlocks.
-    text_parts = []
-    for block in content_blocks:
-      if hasattr(block, 'text'):
-        text_parts.append(block.text)
-    return '\n'.join(text_parts) if text_parts else ''
-
-  def format_text_response_from_provider(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> str:
-    return self._extract_text_from_content(response.content)
-
-  def format_json_response_from_provider(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> dict:
-    return self._extract_json_from_text(
-        self._extract_text_from_content(response.content)
-    )
-
-  def format_json_schema_response_from_provider(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> dict:
-    return self._extract_json_from_text(
-        self._extract_text_from_content(response.content)
-    )
-
-  def format_pydantic_response_from_provider(
-      self, response: Any, query_record: types.QueryRecord
-  ) -> Any:
-    return response.parsed_output
-
-  def generate_text_proc(
-      self, query_record: types.QueryRecord
-  ) -> types.Response:
-    create = self._get_api_call_function(query_record.chosen_endpoint)
-
-    provider_model = query_record.provider_model
-    create = functools.partial(
-        create, model=provider_model.provider_model_identifier
-    )
-
-    create = self.add_features_to_query_function(create, query_record)
-
-    # NOTE: Claude API requires max_tokens to be set.
-    if create.keywords.get('max_tokens') is None:
-      create = functools.partial(create, max_tokens=4096)
-
-    response = create()
-
-    return self.format_response_from_providers(response, query_record)
+  ENDPOINT_EXECUTORS = {
+    'beta.messages.stream': '_beta_messages_stream_executor',
+  }

@@ -1,17 +1,25 @@
+from __future__ import annotations
+
 class _MockMessage:
   content: str
+  parsed: object
+
+  def __init__(self):
+    self.content = 'mock response'
+    self.parsed = None
 
 
 class _MockChoice:
   message: _MockMessage
+  finish_reason: str
 
   def __init__(self):
     self.message = _MockMessage()
-    self.message.content = 'mock response'
+    self.finish_reason = 'stop'
 
 
 class _MockResponse:
-  choices: list[_MockChoice]
+  choices: list
 
   def __init__(self):
     self.choices = [_MockChoice()]
@@ -19,10 +27,10 @@ class _MockResponse:
 
 class _MockCompletions:
 
-  def create(self, *args, **kwargs) -> _MockResponse:
+  def create(self, **kwargs) -> _MockResponse:
     return _MockResponse()
 
-  def parse(self, *args, **kwargs) -> _MockResponse:
+  def parse(self, **kwargs) -> _MockResponse:
     return _MockResponse()
 
 

@@ -1,7 +1,11 @@
+from __future__ import annotations
+
 import copy
 import dataclasses
 import json
 import os
+import traceback
+from concurrent.futures import ThreadPoolExecutor
 from importlib.metadata import version
 from typing import Union
 
@@ -16,6 +20,16 @@ import proxai.types as types
 _PROXDASH_STATE_PROPERTY = '_proxdash_connection_state'
 _NOT_SET_EXPERIMENT_PATH_VALUE = '(not set)'
 _SENSITIVE_CONTENT_HIDDEN_STRING = '<SENSITIVE CONTENT HIDDEN>'
+_RESPONSE_LOG_MAX_CHARS = 500
+
+
+def _truncate_for_log(text: str) -> str:
+  if len(text) <= _RESPONSE_LOG_MAX_CHARS:
+    return text
+  return (
+      f'{text[:_RESPONSE_LOG_MAX_CHARS]}... '
+      f'(truncated, {len(text)} chars total)'
+  )
 
 
 @dataclasses.dataclass
@@ -30,6 +44,13 @@ class ProxDashConnectionParams:
 
 class ProxDashConnection(state_controller.StateControlled):
   """Manages connection and data upload to the ProxDash service."""
+
+  _UPLOADABLE_MEDIA_TYPES = (
+      types.ContentType.IMAGE,
+      types.ContentType.DOCUMENT,
+      types.ContentType.AUDIO,
+      types.ContentType.VIDEO,
+  )
 
   _status: types.ProxDashConnectionStatus | None
   _hidden_run_key: str | None
@@ -337,253 +358,151 @@ class ProxDashConnection(state_controller.StateControlled):
     except Exception:
       return types.ProxDashConnectionStatus.PROXDASH_INVALID_RETURN, None
 
-  def _hide_sensitive_content_logging_record(
-      self, logging_record: types.LoggingRecord
-  ) -> types.LoggingRecord:
-    logging_record = copy.deepcopy(logging_record)
-    if logging_record.query_record and logging_record.query_record.prompt:
-      logging_record.query_record.prompt = _SENSITIVE_CONTENT_HIDDEN_STRING
-    if logging_record.query_record and logging_record.query_record.system:
-      logging_record.query_record.system = _SENSITIVE_CONTENT_HIDDEN_STRING
-    if logging_record.query_record and logging_record.query_record.messages:
-      logging_record.query_record.messages = [{
-          'role': 'assistant',
-          'content': _SENSITIVE_CONTENT_HIDDEN_STRING
-      }]
-    if (
-        logging_record.response_record and
-        logging_record.response_record.response
-    ):
-      logging_record.response_record.response.value = (
-          _SENSITIVE_CONTENT_HIDDEN_STRING
-      )
+  def _hide_sensitive_content(
+      self, call_record: types.CallRecord
+  ) -> types.CallRecord:
+    call_record = copy.deepcopy(call_record)
+    if call_record.query:
+      if call_record.query.prompt:
+        call_record.query.prompt = _SENSITIVE_CONTENT_HIDDEN_STRING
+      if call_record.query.system_prompt:
+        call_record.query.system_prompt = _SENSITIVE_CONTENT_HIDDEN_STRING
+      if call_record.query.chat:
+        call_record.query.chat = None
+    if call_record.result:
+      if call_record.result.output_text:
+        call_record.result.output_text = _SENSITIVE_CONTENT_HIDDEN_STRING
+      call_record.result.output_image = None
+      call_record.result.output_audio = None
+      call_record.result.output_video = None
+      call_record.result.output_json = None
+      call_record.result.output_pydantic = None
+      call_record.result.content = None
+      call_record.result.choices = None
+    return call_record
 
-    return logging_record
+  def _collect_media_contents(
+      self, call_record: types.CallRecord
+  ) -> list[types.MessageContent]:
+    """Collect all media MessageContent blocks from a CallRecord."""
+    media_contents = []
+    if call_record.query and call_record.query.chat:
+      for msg in call_record.query.chat.messages:
+        if isinstance(msg.content, list):
+          media_contents.extend(msg.content)
+    if call_record.result:
+      for field in ('output_image', 'output_audio', 'output_video'):
+        mc = getattr(call_record.result, field, None)
+        if mc is not None:
+          media_contents.append(mc)
+      if call_record.result.content:
+        media_contents.extend(call_record.result.content)
+      if call_record.result.choices:
+        for choice in call_record.result.choices:
+          for field in ('output_image', 'output_audio', 'output_video'):
+            mc = getattr(choice, field, None)
+            if mc is not None:
+              media_contents.append(mc)
+          if choice.content:
+            media_contents.extend(choice.content)
+    seen = set()
+    unique = []
+    for mc in media_contents:
+      if mc.type not in self._UPLOADABLE_MEDIA_TYPES:
+        continue
+      if id(mc) in seen:
+        continue
+      seen.add(id(mc))
+      unique.append(mc)
+    return unique
 
-  def _format_messages(self, logging_record: types.LoggingRecord) -> str:
-    if not logging_record.query_record.messages:
-      return None
-    return json.dumps(
-        logging_record.query_record.messages, indent=2, sort_keys=True
-    )
-
-  def _format_stop(self, logging_record: types.LoggingRecord) -> str:
-    if logging_record.query_record.stop is not None:
-      stop = logging_record.query_record.stop
-      if isinstance(stop, str):
-        stop = [stop]
-      return json.dumps(stop, indent=2, sort_keys=True)
-    return None
-
-  def _format_response(self, logging_record: types.LoggingRecord) -> str:
-    if logging_record.response_record.response is None:
-      return None
-    response_type = logging_record.response_record.response.type
-
-    if logging_record.response_record.response.value is None:
-      return None
-
-    if (
-        logging_record.response_record.response.value ==
-        _SENSITIVE_CONTENT_HIDDEN_STRING
-    ):
-      return _SENSITIVE_CONTENT_HIDDEN_STRING
-
-    if response_type == types.ResponseType.TEXT:
-      return str(logging_record.response_record.response.value)
-
-    if response_type == types.ResponseType.JSON:
-      try:
-        return json.dumps(
-            logging_record.response_record.response.value, indent=2,
-            sort_keys=True
-        )
-      except Exception:
-        logging_utils.log_proxdash_message(
-            logging_options=self.logging_options,
-            proxdash_options=self.proxdash_options, message=(
-                'Response is not a JSON object. Please create an issue at '
-                'https://github.com/proxai/proxai/issues.\n'
-                f'Response: {logging_record.response_record.response}'
-            ), type=types.LoggingType.WARNING
-        )
-        return None
-
-    if response_type == types.ResponseType.PYDANTIC:
-      return None
-
-    logging_utils.log_proxdash_message(
-        logging_options=self.logging_options,
-        proxdash_options=self.proxdash_options, message=(
-            'Unknown response type. Please create an issue at '
-            'https://github.com/proxai/proxai/issues.\n'
-            f'Response: {logging_record.response_record.response}'
-        ), type=types.LoggingType.WARNING
-    )
-    return None
-
-  def _format_response_pydantic_json_value(
-      self, logging_record: types.LoggingRecord
-  ) -> str:
-    if logging_record.response_record.response is None:
-      return None
-    if (
-        logging_record.response_record.response.type
-        != types.ResponseType.PYDANTIC
-    ):
-      return None
-    if (
-        logging_record.response_record.response.value ==
-        _SENSITIVE_CONTENT_HIDDEN_STRING
-    ):
-      return _SENSITIVE_CONTENT_HIDDEN_STRING
-
-    if logging_record.response_record.response.pydantic_metadata is not None:
-      instance_json_value = (
-          logging_record.response_record.response.pydantic_metadata.
-          instance_json_value
-      )
-    elif logging_record.response_record.response.value is not None:
-      try:
-        instance_json_value = (
-            logging_record.response_record.response.value.model_dump()
-        )
-      except Exception:
-        logging_utils.log_proxdash_message(
-            logging_options=self.logging_options,
-            proxdash_options=self.proxdash_options, message=(
-                'Response value is not a pydantic instance. Please report '
-                'this issue to the https://github.com/proxai/proxai/issues.\n'
-                f'Response: {logging_record.response_record.response}'
-            ), type=types.LoggingType.WARNING
-        )
-        return None
+  def _upload_pending_media(
+      self,
+      media_contents: list[types.MessageContent],
+      allow_parallel_file_upload: bool = True,
+  ):
+    """Upload media contents that don't have a proxdash_file_id yet."""
+    pending = [
+        mc for mc in media_contents if mc.proxdash_file_id is None
+        and (mc.data is not None or mc.path is not None)
+    ]
+    if not pending:
+      return
+    if allow_parallel_file_upload and len(pending) > 1:
+      with ThreadPoolExecutor(max_workers=len(pending)) as pool:
+        futures = [pool.submit(self.upload_file, mc) for mc in pending]
+        for future in futures:
+          try:
+            future.result()
+          except Exception:
+            pass
     else:
-      logging_utils.log_proxdash_message(
-          logging_options=self.logging_options,
-          proxdash_options=self.proxdash_options, message=(
-              'Response has no pydantic_metadata or value. Please report '
-              'this issue to the https://github.com/proxai/proxai/issues.\n'
-              f'Response: {logging_record.response_record.response}'
-          ), type=types.LoggingType.WARNING
-      )
-      return None
+      for mc in pending:
+        try:
+          self.upload_file(mc)
+        except Exception:
+          pass
 
-    try:
-      return json.dumps(instance_json_value, indent=2, sort_keys=True)
-    except Exception:
-      logging_utils.log_proxdash_message(
-          logging_options=self.logging_options,
-          proxdash_options=self.proxdash_options, message=(
-              'Response pydantic_metadata.instance_json_value is not a JSON '
-              'object. Please report this issue to the '
-              'https://github.com/proxai/proxai/issues.\n'
-              f'Response: {instance_json_value}'
-          ), type=types.LoggingType.WARNING
-      )
-      return None
+  def _strip_media_bytes_from_encoded(self, data: dict):
+    """Remove data and path from media content blocks in encoded dict."""
+    def strip_content_list(content_list):
+      if not content_list:
+        return
+      for item in content_list:
+        if not isinstance(item, dict):
+          continue
+        if item.get('type') in ('image', 'document', 'audio', 'video'):
+          item.pop('data', None)
+          item.pop('path', None)
 
-  def _get_formatted_query_pydantic_values(
-      self, logging_record: types.LoggingRecord
-  ) -> tuple[str | None, str | None]:
-    response_format = logging_record.query_record.response_format
-    if (
-        response_format and
-        response_format.type == types.ResponseFormatType.PYDANTIC and
-        response_format.value.class_name
-    ):
-      query_pydantic_class_name = response_format.value.class_name
-      try:
-        query_pydantic_class_json_schema = (
-            response_format.value.class_value.model_json_schema()
-        )
-        return query_pydantic_class_name, query_pydantic_class_json_schema
-      except Exception:
-        logging_utils.log_proxdash_message(
-            logging_options=self.logging_options,
-            proxdash_options=self.proxdash_options, message=(
-                'Failed to get formatted query pydantic values. Please create '
-                'an issue at https://github.com/proxai/proxai/issues.\n'
-                f'Response: {logging_record.query_record.response_format}'
-            ), type=types.LoggingType.WARNING
-        )
-        return query_pydantic_class_name, str(response_format.value.class_value)
-    return None, None
+    if 'query' in data and 'chat' in data['query']:
+      chat = data['query']['chat']
+      for msg in chat.get('messages', []):
+        strip_content_list(msg.get('content'))
 
-  def upload_logging_record(self, logging_record: types.LoggingRecord):
-    """Upload a logging record to ProxDash."""
+    if 'result' in data:
+      result = data['result']
+      for field in ('output_image', 'output_audio', 'output_video'):
+        if field in result and isinstance(result[field], dict):
+          result[field].pop('data', None)
+          result[field].pop('path', None)
+      strip_content_list(result.get('content'))
+      for choice in result.get('choices', []):
+        for field in ('output_image', 'output_audio', 'output_video'):
+          if field in choice and isinstance(choice[field], dict):
+            choice[field].pop('data', None)
+            choice[field].pop('path', None)
+        strip_content_list(choice.get('content'))
+
+  def upload_call_record(
+      self,
+      call_record: types.CallRecord,
+      allow_parallel_file_upload: bool = True,
+  ):
+    """Upload a call record to ProxDash."""
     if self.status != types.ProxDashConnectionStatus.CONNECTED:
       return
     if ((
         self.proxdash_options and self.proxdash_options.hide_sensitive_content
     ) or self._key_info_from_proxdash['permission'] == 'NO_PROMPT'):
-      logging_record = self._hide_sensitive_content_logging_record(
-          logging_record
-      )
+      call_record = self._hide_sensitive_content(call_record)
 
-    messages = self._format_messages(logging_record)
-    response = self._format_response(logging_record)
-    stop = self._format_stop(logging_record)
-    query_pydantic_class_name = None
-    query_pydantic_class_json_schema = None
-    response_pydantic_json_value = None
-    if (
-        logging_record.query_record.response_format and
-        logging_record.query_record.response_format.type
-        == types.ResponseFormatType.PYDANTIC
-    ):
-      query_pydantic_class_name, query_pydantic_class_json_schema = (
-          self._get_formatted_query_pydantic_values(logging_record)
-      )
-      response_pydantic_json_value = (
-          self._format_response_pydantic_json_value(logging_record)
-      )
+    media_contents = self._collect_media_contents(call_record)
+    self._upload_pending_media(media_contents, allow_parallel_file_upload)
 
-    data = {
-        'hiddenRunKey': self.hidden_run_key,
-        'experimentPath': self.experiment_path,
-        'callType': logging_record.query_record.call_type,
-        'provider': logging_record.query_record.provider_model.provider,
-        'model': logging_record.query_record.provider_model.model,
-        'providerModelIdentifier': (
-            logging_record.query_record.provider_model.provider_model_identifier
-        ),
-        'prompt': logging_record.query_record.prompt,
-        'system': logging_record.query_record.system,
-        'messages': messages,
-        'maxTokens': logging_record.query_record.max_tokens,
-        'temperature': logging_record.query_record.temperature,
-        'stop': stop,
-        'webSearch': logging_record.query_record.web_search,
-        'queryPydanticClassName': query_pydantic_class_name,
-        'queryPydanticJsonSchema': query_pydantic_class_json_schema,
-        'hashValue': logging_record.query_record.hash_value,
-        'queryTokens': logging_record.query_record.token_count,
-        'response': response,
-        'error': logging_record.response_record.error,
-        'errorTraceback': logging_record.response_record.error_traceback,
-        'responsePydanticJsonValue': response_pydantic_json_value,
-        'startUTCDate':
-            logging_record.response_record.start_utc_date.isoformat(),
-        'endUTCDate': logging_record.response_record.end_utc_date.isoformat(),
-        'localTimeOffsetMinute':
-            (logging_record.response_record.local_time_offset_minute),
-        'responseTime': (
-            int(
-                logging_record.response_record.response_time.total_seconds() *
-                1000
-            )
-        ),
-        'estimatedCost': logging_record.response_record.estimated_cost,
-        'responseTokens': logging_record.response_record.token_count,
-        'responseSource': logging_record.response_source,
-        'lookFailReason': logging_record.look_fail_reason,
-    }
+    data = type_serializer.encode_call_record(call_record)
+    data['schema_version'] = 2
+    data['experiment_path'] = self.experiment_path
+    data.setdefault('connection', {})['caller_type'] = 'SDK'
+    data.setdefault('connection', {})['caller_app'] = 'PYTHON_SDK'
+    if 'result' in data and 'role' in data['result']:
+      data['result']['role'] = data['result']['role'].upper()
+    self._strip_media_bytes_from_encoded(data)
 
     try:
       response = requests.post(
-          f'{self.proxdash_options.base_url}/ingestion/logging-records',
-          json=data, headers={'X-API-Key': self.proxdash_options.api_key}
+          f'{self.proxdash_options.base_url}/ingestion/call-records', json=data,
+          headers={'X-API-Key': self.proxdash_options.api_key}
       )
     except Exception as e:
       logging_utils.log_proxdash_message(
@@ -625,8 +544,339 @@ class ProxDashConnection(state_controller.StateControlled):
           ), type=types.LoggingType.ERROR
       )
 
-  def get_model_configs_schema(self,) -> types.ModelConfigsSchemaType | None:
-    """Fetch the latest model configurations from ProxDash."""
+  def _resolve_file_bytes(self, media: types.MessageContent) -> bytes | None:
+    if media.data is not None:
+      return media.data
+    if media.path is not None:
+      with open(media.path, 'rb') as f:
+        return f.read()
+    return None
+
+  def _request_presigned_upload_url(
+      self, filename: str, mime_type: str, size_bytes: int
+  ) -> tuple[str, str, str] | None:
+    """Returns (file_id, presigned_url, s3_key) or None on failure."""
+    try:
+      resp = requests.post(
+          f'{self.proxdash_options.base_url}/files/upload', json={
+              'filename': filename,
+              'mimeType': mime_type,
+              'sizeBytes': size_bytes,
+          }, headers={'X-API-Key': self.proxdash_options.api_key}
+      )
+    except Exception as e:
+      logging_utils.log_proxdash_message(
+          logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
+          message=f'ProxDash file upload request failed. Error: {e}',
+          type=types.LoggingType.ERROR
+      )
+      return None
+
+    if resp.status_code != 201:
+      logging_utils.log_proxdash_message(
+          logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options, message=(
+              'ProxDash file upload request failed. '
+              f'Status: {resp.status_code}, Response: {resp.text}'
+          ), type=types.LoggingType.ERROR
+      )
+      return None
+
+    try:
+      upload_result = json.loads(resp.text)
+      if not upload_result.get('success'):
+        logging_utils.log_proxdash_message(
+            logging_options=self.logging_options,
+            proxdash_options=self.proxdash_options, message=(
+                'ProxDash file upload request failed. '
+                f'Response: {resp.text}'
+            ), type=types.LoggingType.ERROR
+        )
+        return None
+      data = upload_result['data']
+      return data['id'], data['presignedUploadUrl'], data['s3Key']
+    except Exception as e:
+      logging_utils.log_proxdash_message(
+          logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options, message=(
+              'ProxDash file upload response parse failed. '
+              f'Error: {e}'
+          ), type=types.LoggingType.ERROR
+      )
+      return None
+
+  def _put_file_to_s3(
+      self, presigned_url: str, file_bytes: bytes, mime_type: str
+  ) -> bool:
+    try:
+      resp = requests.put(
+          presigned_url, data=file_bytes, headers={'Content-Type': mime_type}
+      )
+      if resp.status_code not in (200, 204):
+        logging_utils.log_proxdash_message(
+            logging_options=self.logging_options,
+            proxdash_options=self.proxdash_options, message=(
+                'ProxDash S3 upload failed. '
+                f'Status: {resp.status_code}'
+            ), type=types.LoggingType.ERROR
+        )
+        return False
+      return True
+    except Exception as e:
+      logging_utils.log_proxdash_message(
+          logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
+          message=f'ProxDash S3 upload failed. Error: {e}',
+          type=types.LoggingType.ERROR
+      )
+      return False
+
+  def _confirm_file_upload(self, file_id: str):
+    try:
+      resp = requests.patch(
+          f'{self.proxdash_options.base_url}/files/{file_id}',
+          json={'uploadConfirmed': True},
+          headers={'X-API-Key': self.proxdash_options.api_key}
+      )
+      if resp.status_code not in (200, 201):
+        logging_utils.log_proxdash_message(
+            logging_options=self.logging_options,
+            proxdash_options=self.proxdash_options, message=(
+                'ProxDash file confirm failed. '
+                f'Status: {resp.status_code}, '
+                f'Response: {resp.text}'
+            ), type=types.LoggingType.ERROR
+        )
+    except Exception as e:
+      logging_utils.log_proxdash_message(
+          logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
+          message=f'ProxDash file confirm failed. Error: {e}',
+          type=types.LoggingType.ERROR
+      )
+
+  def upload_file(self, media: types.MessageContent) -> str | None:
+    """Upload a file to ProxDash via presigned S3 URL.
+
+    Returns the ProxDash file ID on success, None on failure.
+    Sets media.proxdash_file_id and media.proxdash_file_status.
+    """
+    if self.status != types.ProxDashConnectionStatus.CONNECTED:
+      return None
+    if media.type not in self._UPLOADABLE_MEDIA_TYPES:
+      return None
+
+    file_bytes = self._resolve_file_bytes(media)
+    if file_bytes is None:
+      return None
+
+    filename = (
+        media.filename or
+        (os.path.basename(media.path) if media.path else None) or
+        '(no_filename_set)'
+    )
+    mime_type = media.media_type or 'application/octet-stream'
+
+    upload_info = self._request_presigned_upload_url(
+        filename, mime_type, len(file_bytes)
+    )
+    if upload_info is None:
+      return None
+    file_id, presigned_url, s3_key = upload_info
+
+    if not self._put_file_to_s3(presigned_url, file_bytes, mime_type):
+      return None
+
+    self._confirm_file_upload(file_id)
+
+    media.proxdash_file_id = file_id
+    media.proxdash_file_status = types.ProxDashFileStatus(
+        file_id=file_id,
+        s3_key=s3_key,
+        upload_confirmed=True,
+    )
+    return file_id
+
+  def update_file(self, media: types.MessageContent):
+    """Update a ProxDash file record with provider metadata."""
+    if self.status != types.ProxDashConnectionStatus.CONNECTED:
+      return
+    if media.proxdash_file_id is None:
+      return
+    update_data = {}
+    if media.provider_file_api_ids:
+      update_data['providerFileApiIds'] = media.provider_file_api_ids
+    if media.provider_file_api_status:
+      update_data['providerFileApiStatus'] = {
+          prov: meta.to_dict()
+          for prov, meta in media.provider_file_api_status.items()
+      }
+    if not update_data:
+      return
+    file_id = media.proxdash_file_id
+
+    try:
+      resp = requests.patch(
+          f'{self.proxdash_options.base_url}/files/{file_id}',
+          json=update_data,
+          headers={'X-API-Key': self.proxdash_options.api_key}
+      )
+      if resp.status_code not in (200, 201):
+        logging_utils.log_proxdash_message(
+            logging_options=self.logging_options,
+            proxdash_options=self.proxdash_options, message=(
+                'ProxDash file update failed. '
+                f'Status: {resp.status_code}, '
+                f'Response: {resp.text}'
+            ), type=types.LoggingType.ERROR
+        )
+    except Exception as e:
+      logging_utils.log_proxdash_message(
+          logging_options=self.logging_options,
+          proxdash_options=self.proxdash_options,
+          message=f'ProxDash file update failed. Error: {e}',
+          type=types.LoggingType.ERROR
+      )
+
+  def _file_info_to_message_content(
+      self, info: dict
+  ) -> types.MessageContent | None:
+    """Convert a ProxDash FileInfo response to a MessageContent.
+
+    Maps camelCase backend keys to the snake_case dict that
+    MessageContent.from_dict() expects.
+    """
+    try:
+      data = {
+          'type': info.get('type', 'document'),
+          'filename': info.get('filename'),
+          'provider_file_api_ids': info.get('providerFileApiIds'),
+          'provider_file_api_status': info.get('providerFileApiStatus'),
+          'proxdash_file_id': info.get('id'),
+          'proxdash_file_status': {
+              'file_id': info.get('id', ''),
+              'upload_confirmed': info.get('uploadConfirmed', False),
+              'source': info.get('source'),
+              'created_at': (
+                  str(info['createdAt'])
+                  if info.get('createdAt') else None
+              ),
+              'updated_at': (
+                  str(info['updatedAt'])
+                  if info.get('updatedAt') else None
+              ),
+          },
+      }
+      if info.get('mimeType'):
+        data['media_type'] = info['mimeType']
+      if info.get('source'):
+        data['source'] = info['source']
+      return types.MessageContent.from_dict(data)
+    except Exception:
+      return None
+
+  def get_file(
+      self, file_id: str
+  ) -> types.MessageContent | None:
+    """Get file info from ProxDash as a MessageContent."""
+    if self.status != types.ProxDashConnectionStatus.CONNECTED:
+      return None
+    try:
+      resp = requests.get(
+          f'{self.proxdash_options.base_url}/files/{file_id}',
+          headers={'X-API-Key': self.proxdash_options.api_key}
+      )
+      if resp.status_code != 200:
+        return None
+      result = json.loads(resp.text)
+      if result.get('success') and result.get('data'):
+        return self._file_info_to_message_content(result['data'])
+      return None
+    except Exception:
+      return None
+
+  def delete_file(self, file_id: str) -> bool:
+    """Delete a file from ProxDash (S3 + DB record).
+
+    Returns True on success, False on failure.
+    """
+    if self.status != types.ProxDashConnectionStatus.CONNECTED:
+      return False
+    try:
+      resp = requests.delete(
+          f'{self.proxdash_options.base_url}/files/{file_id}',
+          headers={'X-API-Key': self.proxdash_options.api_key}
+      )
+      return resp.status_code == 200
+    except Exception:
+      return False
+
+  def download_file(self, file_id: str) -> bytes | None:
+    """Download file bytes from ProxDash via presigned S3 URL.
+
+    Returns the file bytes on success, None on failure.
+    """
+    if self.status != types.ProxDashConnectionStatus.CONNECTED:
+      return None
+    try:
+      resp = requests.get(
+          f'{self.proxdash_options.base_url}/files/download/{file_id}',
+          headers={'X-API-Key': self.proxdash_options.api_key}
+      )
+      if resp.status_code != 200:
+        return None
+      result = json.loads(resp.text)
+      if not result.get('success') or not result.get('data'):
+        return None
+      presigned_url = result['data'].get('url')
+      if not presigned_url:
+        return None
+    except Exception:
+      return None
+
+    try:
+      download_resp = requests.get(presigned_url)
+      if download_resp.status_code != 200:
+        return None
+      return download_resp.content
+    except Exception:
+      return None
+
+  def list_files(
+      self, limit: int = 100
+  ) -> list[types.MessageContent]:
+    """List files from ProxDash as MessageContent objects.
+
+    Returns a list of MessageContent with proxdash_file_id,
+    proxdash_file_status, and any synced provider metadata.
+    Empty list on failure.
+    """
+    if self.status != types.ProxDashConnectionStatus.CONNECTED:
+      return []
+    try:
+      resp = requests.get(
+          f'{self.proxdash_options.base_url}/files/list', params={
+              'pageSize': limit,
+              'includeSource': 'true',
+          }, headers={'X-API-Key': self.proxdash_options.api_key}
+      )
+      if resp.status_code != 200:
+        return []
+      result = json.loads(resp.text)
+      if not result.get('success') or not result.get('data'):
+        return []
+      results = []
+      for info in result['data'].get('items', []):
+        mc = self._file_info_to_message_content(info)
+        if mc is not None:
+          results.append(mc)
+      return results
+    except Exception:
+      return []
+
+  def get_model_registry(self) -> types.ModelRegistry | None:
+    """Fetch the latest model registry from ProxDash."""
     current_version = version("proxai")
     request_url = (
         f'{self.proxdash_options.base_url}' +
@@ -643,10 +893,10 @@ class ProxDashConnection(state_controller.StateControlled):
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
           proxdash_options=self.proxdash_options, message=(
-              'Failed to get model configs from ProxDash.\n'
+              'Failed to get model registry from ProxDash.\n'
               f'ProxAI version: {current_version}\n'
               f'Status code: {response.status_code}\n'
-              f'Response: {response.text}'
+              f'Response: {_truncate_for_log(response.text)}'
           ), type=types.LoggingType.ERROR
       )
       return None
@@ -656,45 +906,45 @@ class ProxDashConnection(state_controller.StateControlled):
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
           proxdash_options=self.proxdash_options, message=(
-              'Failed to get model configs from ProxDash.\n'
+              'Failed to get model registry from ProxDash.\n'
               f'ProxAI version: {current_version}\n'
-              f'Response: {response.text}'
+              f'Response: {_truncate_for_log(response.text)}'
           ), type=types.LoggingType.ERROR
       )
       return None
 
     try:
-      model_configs_schema = type_serializer.decode_model_configs_schema_type(
+      model_registry = type_serializer.decode_model_registry(
           response_data['data']
       )
     except Exception as e:
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
           proxdash_options=self.proxdash_options, message=(
-              'Failed to decode model configs from ProxDash response.\n'
+              'Failed to decode model registry from ProxDash response.\n'
               'Please report this issue to the '
               'https://github.com/proxai/proxai.\n'
               'Also, please check latest stable version of ProxAI.\n'
               f'ProxAI version: {current_version}\n'
-              f'Error: {str(e)}'
+              f'Error: {e}\n'
+              f'Traceback: {traceback.format_exc()}'
           ), type=types.LoggingType.ERROR
       )
       return None
 
     if (
-        model_configs_schema.metadata is None or
-        model_configs_schema.version_config is None or
-        model_configs_schema.version_config.provider_model_configs is None or
-        len(model_configs_schema.version_config.provider_model_configs) < 2
+        model_registry.metadata is None or
+        model_registry.provider_model_configs is None or
+        len(model_registry.provider_model_configs) < 2
     ):
       logging_utils.log_proxdash_message(
           logging_options=self.logging_options,
           proxdash_options=self.proxdash_options, message=(
-              'Model configs schema is invalid. Please report this '
+              'Model registry is invalid. Please report this '
               'issue to the https://github.com/proxai/proxai.\n'
               'Also, please check latest stable version of ProxAI. '
               f'Request URL: {request_url}'
-              f'Response: {response.text}'
+              f'Response: {_truncate_for_log(response.text)}'
           ), type=types.LoggingType.ERROR
       )
       return None
@@ -702,12 +952,12 @@ class ProxDashConnection(state_controller.StateControlled):
     logging_utils.log_proxdash_message(
         logging_options=self.logging_options,
         proxdash_options=self.proxdash_options, message=(
-            f'Model configs schema (v{model_configs_schema.metadata.version}) '
+            f'Model registry (v{model_registry.metadata.version}) '
             'fetched from ProxDash.'
         ), type=types.LoggingType.INFO
     )
 
-    return model_configs_schema
+    return model_registry
 
   def get_provider_api_keys(self) -> types.ProviderTokenValueMap:
     if self.status != types.ProxDashConnectionStatus.CONNECTED:

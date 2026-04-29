@@ -1,453 +1,390 @@
-"""Tests for user-facing proxai API (px.*).
+"""Tests for the `px.*` module facade.
 
-These tests focus on user workflows and use cases, testing the public API
-that users interact with (px.connect, px.generate_text, px.set_model, etc.).
+Focus: thin-forwarding smoke + singleton lifecycle + user-pattern integration
+tests. Deep coverage of the `ProxAIClient` surface itself lives in
+`test_client.py`; this file proves that the module-level `px.foo(...)`
+entry points reach the default client and that the common user flows
+(connect → generate → reset) work end-to-end.
+
+Tests are organized by responsibility:
+
+  - TestFacadeForwarding: each public `px.*` forwards to the default client.
+  - TestSingletonLifecycle: `_DEFAULT_CLIENT` idempotent / reset / replace.
+  - TestModelsFilesSingletons: `px.models` and `px.files` identity.
+  - TestUserPatterns: the seven load-bearing user flows:
+      1. zero-config generate_text
+      2. set_model → generate
+      3. alias dispatch (per-format defaults)
+      4. connect → cache hit
+      5. client-wide suppress via provider_call_options
+      6. per-call suppress via connection_options
+      7. reset_state lifecycle
 """
-
-import os
-import tempfile
 
 import pytest
 
 import proxai as px
+import proxai.client as client
 import proxai.connectors.model_configs as model_configs
 import proxai.types as types
 
+# =============================================================================
+# Fixtures + helpers
+# =============================================================================
+
+
+_MOCK_KEYS = {
+    'MOCK_PROVIDER_API_KEY': 'k1',
+    'MOCK_FAILING_PROVIDER': 'k2',
+}
+
 
 @pytest.fixture(autouse=True)
-def setup_test(monkeypatch):
-  monkeypatch.delenv("PROXDASH_API_KEY", raising=False)
+def clean_state(monkeypatch):
+  """Strip provider keys, set fast mocks, reset the px singleton each test.
+
+  The module-level `_DEFAULT_CLIENT` must not leak between tests — otherwise
+  a `px.connect()` in test A would colour test B's default client.
+  """
+  monkeypatch.delenv('PROXDASH_API_KEY', raising=False)
   for api_key_list in model_configs.PROVIDER_KEY_MAP.values():
     for api_key in api_key_list:
-      monkeypatch.setenv(api_key, "test_api_key")
+      monkeypatch.delenv(api_key, raising=False)
+  for k, v in _MOCK_KEYS.items():
+    monkeypatch.setenv(k, v)
   px.reset_state()
-  _set_test_mode()
-  px.set_model(("mock_provider", "mock_model"))
   yield
   px.reset_state()
 
 
-def _set_test_mode():
-  """Set RunType.TEST on available_models_instance to use mock providers."""
-  px.get_default_proxai_client(
-  )._available_models_instance.run_type = (types.RunType.TEST)
+def _wire_default_client_for_mocks(*, with_mock_model: bool = True) -> None:
+  """Prepare the default client to run against mock providers.
 
-
-def _get_temp_dir(name: str):
-  temp_dir = tempfile.TemporaryDirectory()
-  path = os.path.join(temp_dir.name, name)
-  os.makedirs(path, exist_ok=True)
-  return path, temp_dir
-
-
-class TestGenerateText:
-  """Test px.generate_text() - the core user workflow."""
-
-  def test_generate_text_with_prompt(self):
-    response = px.generate_text("hello")
-    assert response == "mock response"
-
-  def test_generate_text_with_messages(self):
-    response = px.generate_text(messages=[{"role": "user", "content": "hello"}])
-    assert response == "mock response"
-
-  def test_generate_text_with_system_prompt(self):
-    response = px.generate_text(
-        prompt="hello", system="You are a helpful assistant."
-    )
-    assert response == "mock response"
-
-  def test_generate_text_with_provider_model(self):
-    response = px.generate_text(
-        prompt="hello", provider_model=("mock_provider", "mock_model")
-    )
-    assert response == "mock response"
-
-  def test_generate_text_with_extensive_return(self):
-    response = px.generate_text(prompt="hello", extensive_return=True)
-    assert isinstance(response, types.LoggingRecord)
-    assert response.response_record.response.value == "mock response"
-    assert response.response_source == types.ResponseSource.PROVIDER
-
-  def test_generate_text_error_raises_exception(self):
-    with pytest.raises(Exception, match="Temp Error"):
-      px.generate_text(
-          prompt="hello",
-          provider_model=("mock_failing_provider", "mock_failing_model"),
-      )
-
-  def test_generate_text_with_suppress_provider_errors(self):
-    response = px.generate_text(
-        prompt="hello",
-        provider_model=("mock_failing_provider", "mock_failing_model"),
-        suppress_provider_errors=True,
-    )
-    assert response == "Temp Error"
-
-
-class TestSetModel:
-  """Test px.set_model() - setting default model for subsequent calls."""
-
-  def test_set_model_with_tuple(self):
-    px.set_model(("mock_provider", "mock_model"))
-    response = px.generate_text("hello", extensive_return=True)
-    assert response.query_record.provider_model.provider == "mock_provider"
-    assert response.query_record.provider_model.model == "mock_model"
-
-  def test_set_model_with_provider_model_param(self):
-    px.set_model(provider_model=("mock_provider", "mock_model"))
-    response = px.generate_text("hello", extensive_return=True)
-    assert response.query_record.provider_model.provider == "mock_provider"
-
-  def test_set_model_with_generate_text_param(self):
-    px.set_model(generate_text=("mock_provider", "mock_model"))
-    response = px.generate_text("hello", extensive_return=True)
-    assert response.query_record.provider_model.provider == "mock_provider"
-
-  def test_set_model_persists_for_subsequent_calls(self):
-    px.set_model(("mock_provider", "mock_model"))
-    response1 = px.generate_text("hello", extensive_return=True)
-    response2 = px.generate_text("world", extensive_return=True)
-    assert response1.query_record.provider_model.model == "mock_model"
-    assert response2.query_record.provider_model.model == "mock_model"
-
-  def test_set_model_can_be_changed(self):
-    px.set_model(("mock_provider", "mock_model"))
-    response1 = px.generate_text("hello", extensive_return=True)
-    assert response1.query_record.provider_model.model == "mock_model"
-
-    px.set_model(("mock_failing_provider", "mock_failing_model"))
-    response2 = px.generate_text(
-        "hello", suppress_provider_errors=True, extensive_return=True
-    )
-    assert response2.query_record.provider_model.model == "mock_failing_model"
-
-
-class TestConnect:
-  """Test px.connect() - connection and configuration."""
-
-  def test_connect_with_cache_options_enables_caching(self):
-    cache_path, _ = _get_temp_dir("cache")
-    px.connect(cache_options=types.CacheOptions(cache_path=cache_path))
-    px.get_default_proxai_client(
-    )._available_models_instance.run_type = (types.RunType.TEST)
-    px.set_model(("mock_provider", "mock_model"))
-
-    response1 = px.generate_text("hello", extensive_return=True)
-    response2 = px.generate_text("hello", extensive_return=True)
-
-    assert response1.response_source == types.ResponseSource.PROVIDER
-    assert response2.response_source == types.ResponseSource.CACHE
-
-  def test_connect_with_experiment_path(self):
-    logging_path, _ = _get_temp_dir("logs")
-    px.connect(
-        experiment_path="my/experiment",
-        logging_options=types.LoggingOptions(logging_path=logging_path),
-    )
-
-    options = px.get_current_options()
-    assert options.experiment_path == "my/experiment"
-    assert options.logging_options.logging_path == os.path.join(
-        logging_path, "my/experiment"
-    )
-
-  def test_connect_resets_previous_configuration(self):
-    cache_path1, _ = _get_temp_dir("cache1")
-    px.connect(cache_options=types.CacheOptions(cache_path=cache_path1))
-    options1 = px.get_current_options()
-
-    cache_path2, _ = _get_temp_dir("cache2")
-    px.connect(cache_options=types.CacheOptions(cache_path=cache_path2))
-    options2 = px.get_current_options()
-
-    assert options1.cache_options.cache_path == cache_path1
-    assert options2.cache_options.cache_path == cache_path2
-
-  def test_connect_with_suppress_provider_errors(self):
-    px.connect(suppress_provider_errors=True)
-    px.get_default_proxai_client(
-    )._available_models_instance.run_type = (types.RunType.TEST)
-
-    response = px.generate_text(
-        prompt="hello",
-        provider_model=("mock_failing_provider", "mock_failing_model"),
-    )
-    assert response == "Temp Error"
-
-  def test_connect_with_feature_mapping_strategy(self):
-    px.connect(feature_mapping_strategy=types.FeatureMappingStrategy.STRICT)
-    options = px.get_current_options()
-    assert (
-        options.feature_mapping_strategy == types.FeatureMappingStrategy.STRICT
-    )
-
-
-class TestModelsApiListModels:
-  """Test px.models.list_models() and related functions."""
-
-  def test_list_models_returns_available_models(self):
-    models = px.models.list_models()
-    assert len(models) > 0
-    assert all(hasattr(m, "provider") for m in models)
-    assert all(hasattr(m, "model") for m in models)
-
-  def test_list_models_with_model_size_filter(self):
-    small_models = px.models.list_models(model_size="small")
-    large_models = px.models.list_models(model_size="large")
-    assert len(small_models) > 0
-    assert len(large_models) > 0
-    assert len(small_models) != len(large_models)
-
-  def test_list_models_with_model_size_enum(self):
-    models = px.models.list_models(model_size=types.ModelSizeType.MEDIUM)
-    assert len(models) > 0
-
-  def test_get_model_returns_specific_model(self):
-    model = px.models.get_model(provider="mock_provider", model="mock_model")
-    assert model.provider == "mock_provider"
-    assert model.model == "mock_model"
-
-  def test_list_providers_returns_providers(self):
-    providers = px.models.list_providers()
-    assert len(providers) > 0
-    assert any(p in providers for p in ["openai", "claude", "gemini"])
-
-  def test_list_provider_models_returns_models_for_provider(self):
-    models = px.models.list_provider_models("openai")
-    assert len(models) > 0
-    assert all(m.provider == "openai" for m in models)
-
-
-class TestDefaultModelsConnector:
-  """Test px.models as DefaultModelsConnector and compatibility with client.models."""
-
-  def test_px_models_is_default_models_connector(self):
-    assert isinstance(px.models, px.DefaultModelsConnector)
-
-  def test_default_models_connector_is_model_connector(self):
-    assert isinstance(px.models, px.ModelConnector)
-
-  def test_px_models_uses_default_client(self):
-    default_client = px.get_default_proxai_client()
-    assert px.models._client_getter() is default_client
-
-  def test_px_models_and_client_models_same_results(self):
-    default_client = px.get_default_proxai_client()
-    px_models = px.models.list_models()
-    client_models = default_client.models.list_models()
-    assert px_models == client_models
-
-
-class TestModelsApiListWorkingModels:
-  """Test px.models.list_working_models() and related functions.
-
-  Note: list_working_models() tests all configured models, which takes time.
-  Tests are designed to minimize redundant calls by caching results.
+  - Forces run_type=TEST on AvailableModels.
+  - Registers mock_provider + mock_failing_provider configs.
+  - Optionally sets the TEXT default to mock_provider.
   """
-
-  def test_list_working_models_and_related_apis(self):
-    # Call list_working_models once with return_all to get full ModelStatus
-    result = px.models.list_working_models(return_all=True)
-
-    # Verify list_working_models returns working models
-    assert hasattr(result, "working_models")
-    assert hasattr(result, "failed_models")
-    assert len(result.working_models) > 0
-
-    # Verify list_working_providers returns providers
-    providers = px.models.list_working_providers()
-    assert len(providers) > 0
-    all_providers = px.models.list_providers()
-    assert all(p in all_providers for p in providers)
-
-    # Verify get_working_model works for a known working model
-    first_model = list(result.working_models)[0]
-    model = px.models.get_working_model(
-        provider=first_model.provider, model=first_model.model
-    )
-    assert model.provider == first_model.provider
-    assert model.model == first_model.model
-
-    # Verify list_working_provider_models returns models for provider
-    provider = providers[0]
-    provider_models = px.models.list_working_provider_models(provider)
-    assert len(provider_models) > 0
-    assert all(m.provider == provider for m in provider_models)
-
-  def test_list_working_models_with_model_size_filter(self):
-    # Test model_size filter - only needs to test filtered results
-    small_models = px.models.list_working_models(model_size="small")
-    assert len(small_models) > 0
-
-  def test_list_working_provider_models_with_model_size_filter(self):
-    providers = px.models.list_working_providers()
-    if len(providers) > 0:
-      provider = providers[0]
-      small_models = px.models.list_working_provider_models(
-          provider, model_size="small"
-      )
-      # Just verify it returns a list (may be empty for some providers)
-      assert isinstance(small_models, list)
+  # Import the registration helper from test_client.py's approach, inline.
+  px_client = px.get_default_proxai_client()
+  px_client.available_models_instance.run_type = types.RunType.TEST
+  _register_mock_providers(px_client.model_configs_instance)
+  if with_mock_model:
+    px.set_model(('mock_provider', 'mock_model'))
 
 
-class TestQueryCache:
-  """Test query caching behavior."""
-
-  def test_cache_hit_on_second_call(self):
-    cache_path, _ = _get_temp_dir("cache")
-    px.connect(cache_options=types.CacheOptions(cache_path=cache_path))
-    px.get_default_proxai_client(
-    )._available_models_instance.run_type = (types.RunType.TEST)
-    px.set_model(("mock_provider", "mock_model"))
-
-    response1 = px.generate_text("hello", extensive_return=True)
-    response2 = px.generate_text("hello", extensive_return=True)
-
-    assert response1.response_source == types.ResponseSource.PROVIDER
-    assert response2.response_source == types.ResponseSource.CACHE
-
-  def test_use_cache_false_skips_cache(self):
-    cache_path, _ = _get_temp_dir("cache")
-    px.connect(cache_options=types.CacheOptions(cache_path=cache_path))
-    px.get_default_proxai_client(
-    )._available_models_instance.run_type = (types.RunType.TEST)
-    px.set_model(("mock_provider", "mock_model"))
-
-    response1 = px.generate_text("hello", extensive_return=True)
-    response2 = px.generate_text(
-        "hello", use_cache=False, extensive_return=True
+def _register_mock_providers(mc_instance: model_configs.ModelConfigs) -> None:
+  """Register mock_provider + mock_failing_provider into mc_instance."""
+  S = types.FeatureSupportType.SUPPORTED
+  NS = types.FeatureSupportType.NOT_SUPPORTED
+  existing = mc_instance.model_registry.provider_model_configs
+  for provider, model in [
+      ('mock_provider', 'mock_model'),
+      ('mock_failing_provider', 'mock_failing_model'),
+  ]:
+    if provider in existing and model in existing[provider]:
+      continue
+    mc_instance.register_provider_model_config(
+        types.ProviderModelConfig(
+            provider_model=types.ProviderModelType(
+                provider=provider, model=model,
+                provider_model_identifier=model),
+            pricing=types.ProviderModelPricingType(
+                input_token_cost=1, output_token_cost=2),
+            metadata=types.ProviderModelMetadataType(
+                is_recommended=False,
+                model_size_tags=[types.ModelSizeType.SMALL]),
+            features=types.FeatureConfigType(
+                prompt=S, messages=S, system_prompt=S,
+                parameters=types.ParameterConfigType(
+                    temperature=S, max_tokens=S, stop=NS, n=NS, thinking=NS),
+                tools=types.ToolConfigType(web_search=NS),
+                input_format=types.InputFormatConfigType(
+                    text=S, image=NS, document=NS, audio=NS, video=NS,
+                    json=NS, pydantic=NS),
+                output_format=types.OutputFormatConfigType(
+                    text=S, json=S, pydantic=S, image=NS, audio=NS,
+                    video=NS),
+            ),
+        )
     )
 
-    assert response1.response_source == types.ResponseSource.PROVIDER
-    assert response2.response_source == types.ResponseSource.PROVIDER
 
-  def test_unique_response_limit_controls_cache(self):
-    cache_path, _ = _get_temp_dir("cache")
-    px.connect(
-        cache_options=types.
-        CacheOptions(cache_path=cache_path, unique_response_limit=2)
-    )
-    px.get_default_proxai_client(
-    )._available_models_instance.run_type = (types.RunType.TEST)
-    px.set_model(("mock_provider", "mock_model"))
-
-    r1 = px.generate_text("hello", extensive_return=True)
-    r2 = px.generate_text("hello", extensive_return=True)
-    r3 = px.generate_text("hello", extensive_return=True)
-
-    assert r1.response_source == types.ResponseSource.PROVIDER
-    assert r2.response_source == types.ResponseSource.PROVIDER
-    assert r3.response_source == types.ResponseSource.CACHE
-
-  def test_use_cache_true_without_cache_raises_error(self):
-    with pytest.raises(
-        ValueError, match="use_cache is True but query cache is not working"
-    ):
-      px.generate_text("hello", use_cache=True)
-
-  def test_retry_if_error_cached_false_returns_cached_error(self):
-    cache_path, _ = _get_temp_dir("cache")
-    px.connect(cache_options=types.CacheOptions(cache_path=cache_path))
-    px.get_default_proxai_client(
-    )._available_models_instance.run_type = (types.RunType.TEST)
-
-    r1 = px.generate_text(
-        "hello",
-        provider_model=("mock_failing_provider", "mock_failing_model"),
-        suppress_provider_errors=True,
-        extensive_return=True,
-    )
-    r2 = px.generate_text(
-        "hello",
-        provider_model=("mock_failing_provider", "mock_failing_model"),
-        suppress_provider_errors=True,
-        extensive_return=True,
-    )
-
-    assert r1.response_source == types.ResponseSource.PROVIDER
-    assert r1.response_record.error == "Temp Error"
-    assert r2.response_source == types.ResponseSource.CACHE
-    assert r2.response_record.error == "Temp Error"
-
-  def test_retry_if_error_cached_true_retries_from_provider(self):
-    cache_path, _ = _get_temp_dir("cache")
-    px.connect(
-        cache_options=types.
-        CacheOptions(cache_path=cache_path, retry_if_error_cached=True)
-    )
-    px.get_default_proxai_client(
-    )._available_models_instance.run_type = (types.RunType.TEST)
-
-    r1 = px.generate_text(
-        "hello",
-        provider_model=("mock_failing_provider", "mock_failing_model"),
-        suppress_provider_errors=True,
-        extensive_return=True,
-    )
-    r2 = px.generate_text(
-        "hello",
-        provider_model=("mock_failing_provider", "mock_failing_model"),
-        suppress_provider_errors=True,
-        extensive_return=True,
-    )
-
-    assert r1.response_source == types.ResponseSource.PROVIDER
-    assert r1.response_record.error == "Temp Error"
-    assert r2.response_source == types.ResponseSource.PROVIDER
-    assert r2.response_record.error == "Temp Error"
+def _px_connect_disable_proxdash(**kwargs) -> None:
+  """px.connect() wrapper that defaults to proxdash_options=disabled."""
+  kwargs.setdefault(
+      'proxdash_options', types.ProxDashOptions(disable_proxdash=True),
+  )
+  px.connect(**kwargs)
 
 
-class TestGetCurrentOptions:
-  """Test px.get_current_options() - configuration inspection."""
+# =============================================================================
+# Facade forwarding — each px.foo(...) reaches the default client
+# =============================================================================
 
-  def test_get_current_options_returns_run_options(self):
+
+class TestFacadeForwarding:
+
+  def test_connect_creates_default_client(self):
+    import proxai.proxai as proxai_module
+
+    assert proxai_module._DEFAULT_CLIENT is None
+    _px_connect_disable_proxdash()
+    assert proxai_module._DEFAULT_CLIENT is not None
+    assert isinstance(proxai_module._DEFAULT_CLIENT, client.ProxAIClient)
+
+  def test_get_default_client_lazy_creates(self):
+    """First call builds the singleton even without connect()."""
+    c = px.get_default_proxai_client()
+    assert isinstance(c, client.ProxAIClient)
+
+  def test_set_model_forwards(self):
+    _px_connect_disable_proxdash()
+    _wire_default_client_for_mocks(with_mock_model=False)
+    px.set_model(('mock_provider', 'mock_model'))
+    registered = px.get_default_proxai_client().registered_models
+    assert types.OutputFormatType.TEXT in registered
+
+  def test_generate_forwards_returns_call_record(self):
+    _px_connect_disable_proxdash()
+    _wire_default_client_for_mocks()
+    result = px.generate(prompt='hi')
+    assert isinstance(result, types.CallRecord)
+    assert result.result.status == types.ResultStatusType.SUCCESS
+
+  def test_generate_text_forwards_returns_string(self):
+    _px_connect_disable_proxdash()
+    _wire_default_client_for_mocks()
+    assert px.generate_text(prompt='hi') == 'mock response'
+
+  def test_generate_json_forwards_returns_dict(self):
+    _px_connect_disable_proxdash()
+    _wire_default_client_for_mocks()
+    result = px.generate_json(prompt='hi')
+    assert isinstance(result, dict)
+    assert result == {'name': 'John Doe', 'age': 30}
+
+  def test_get_current_options_forwards(self):
+    _px_connect_disable_proxdash(experiment_path='facade/exp')
     options = px.get_current_options()
     assert isinstance(options, types.RunOptions)
+    assert options.experiment_path == 'facade/exp'
 
-  def test_get_current_options_reflects_connect_settings(self):
-    cache_path, _ = _get_temp_dir("cache")
-    px.connect(
-        cache_options=types.CacheOptions(cache_path=cache_path),
-        allow_multiprocessing=False,
-        model_test_timeout=30,
+
+# =============================================================================
+# Singleton lifecycle — reset_state / idempotent / replace
+# =============================================================================
+
+
+class TestSingletonLifecycle:
+
+  def test_get_default_client_is_idempotent(self):
+    """Repeated calls return the same singleton object."""
+    a = px.get_default_proxai_client()
+    b = px.get_default_proxai_client()
+    assert a is b
+
+  def test_reset_state_clears_singleton(self):
+    import proxai.proxai as proxai_module
+
+    _px_connect_disable_proxdash()
+    assert proxai_module._DEFAULT_CLIENT is not None
+    px.reset_state()
+    assert proxai_module._DEFAULT_CLIENT is None
+
+  def test_connect_replaces_existing_client(self):
+    """Second connect() builds a fresh client with new config."""
+    _px_connect_disable_proxdash(experiment_path='before')
+    first = px.get_default_proxai_client()
+    _px_connect_disable_proxdash(experiment_path='after')
+    second = px.get_default_proxai_client()
+    assert first is not second
+    assert second.experiment_path == 'after'
+
+
+# =============================================================================
+# px.models / px.files — singleton identity
+# =============================================================================
+
+
+class TestModelsFilesSingletons:
+
+  def test_px_models_delegates_to_default_client(self):
+    _px_connect_disable_proxdash()
+    _wire_default_client_for_mocks(with_mock_model=False)
+    # list_models with recommended_only=False reaches the client's AvailableModels.
+    results = px.models.list_models(recommended_only=False)
+    providers = {m.provider for m in results}
+    assert 'mock_provider' in providers
+
+  def test_px_files_delegates_to_default_client(self):
+    _px_connect_disable_proxdash()
+    # is_download_supported forwards to files_manager — no network needed.
+    assert px.files.is_download_supported('gemini') is False
+
+
+# =============================================================================
+# px.models.model_config — module-level facade for registry mutation
+# =============================================================================
+
+
+def _make_provider_model_config(
+    provider: str,
+    model: str,
+    identifier: str | None = None,
+) -> types.ProviderModelConfig:
+  """Minimal valid ProviderModelConfig for registry-mutation tests."""
+  return types.ProviderModelConfig(
+      provider_model=types.ProviderModelType(
+          provider=provider, model=model,
+          provider_model_identifier=identifier or model),
+      pricing=types.ProviderModelPricingType(
+          input_token_cost=1, output_token_cost=1),
+      features=types.FeatureConfigType(),
+      metadata=types.ProviderModelMetadataType(),
+  )
+
+
+class TestModelConfigFacade:
+
+  def test_px_model_config_bound_to_default_client(self):
+    _px_connect_disable_proxdash()
+    px_client = px.get_default_proxai_client()
+    assert px.models.model_config._client_getter() is px_client
+
+  def test_register_reaches_default_client(self):
+    _px_connect_disable_proxdash()
+    config = _make_provider_model_config('testp', 'testm')
+    px.models.model_config.register_provider_model_config(config)
+    default_client = px.get_default_proxai_client()
+    assert default_client.model_configs_instance.get_provider_model(
+        ('testp', 'testm')).model == 'testm'
+
+  def test_unregister_all_reaches_default_client(self):
+    _px_connect_disable_proxdash()
+    px.models.model_config.unregister_all_models()
+    registry = (
+        px.get_default_proxai_client().model_configs_instance.model_registry)
+    assert registry.provider_model_configs == {}
+    assert registry.default_model_priority_list == []
+
+  def test_get_default_model_priority_list_reaches_default_client(self):
+    _px_connect_disable_proxdash()
+    via_facade = px.models.model_config.get_default_model_priority_list()
+    via_client = (
+        px.get_default_proxai_client().model_configs_instance
+        .get_default_model_priority_list())
+    assert via_facade is via_client
+
+
+# =============================================================================
+# TestUserPatterns — seven load-bearing user flows.
+#
+# Each test mirrors a real user journey that a common tutorial / README /
+# integration example exercises. A regression in any of these would surface
+# the very first time a user tried the corresponding pattern.
+# =============================================================================
+
+
+class TestUserPatterns:
+
+  def test_pattern_1_zero_config_generate_text(self):
+    """A user calls px.generate_text() after set_model() with no connect().
+
+    No connect() needed — the default client is built lazily. This is
+    the simplest hello-world flow in the README.
+    """
+    _wire_default_client_for_mocks()
+    result = px.generate_text(prompt='hello')
+    assert result == 'mock response'
+
+  def test_pattern_2_set_model_then_generate_propagates_default(self):
+    """User sets a default model once, then generate() uses it implicitly.
+
+    This is the most common config pattern. The test asserts the CallRecord's
+    provider_model matches the set default — proving the default flows all
+    the way through generate() without being passed per-call.
+    """
+    _wire_default_client_for_mocks(with_mock_model=False)
+    px.set_model(('mock_provider', 'mock_model'))
+    result = px.generate(prompt='hi')
+    assert result.query.provider_model.provider == 'mock_provider'
+    assert result.query.provider_model.model == 'mock_model'
+
+  def test_pattern_3_alias_dispatch_per_format(self):
+    """Per-format set_model — generate_text vs generate_json route separately.
+
+    User configures different models for different output formats. Each alias
+    must route to its format-specific default.
+    """
+    _wire_default_client_for_mocks(with_mock_model=False)
+    px.set_model(
+        generate_text=('mock_provider', 'mock_model'),
+        generate_json=('mock_provider', 'mock_model'),
     )
+    assert px.generate_text(prompt='hi') == 'mock response'
+    assert px.generate_json(prompt='hi') == {'name': 'John Doe', 'age': 30}
 
-    options = px.get_current_options()
+  def test_pattern_4_connect_cache_hit(self, tmp_path):
+    """User configures a cache via px.connect() → second call hits cache.
 
-    assert options.cache_options.cache_path == cache_path
-    assert not options.allow_multiprocessing
-    assert options.model_test_timeout == 30
+    The second call must return `result_source == CACHE`. This proves the
+    cache wiring flows from px.connect() through to the connector layer.
+    """
+    _px_connect_disable_proxdash(
+        cache_options=types.CacheOptions(cache_path=str(tmp_path)),
+    )
+    _wire_default_client_for_mocks()
+    first = px.generate(prompt='cache me')
+    second = px.generate(prompt='cache me')
+    assert first.connection.result_source == types.ResultSource.PROVIDER
+    assert second.connection.result_source == types.ResultSource.CACHE
 
-  def test_get_current_options_json_format(self):
-    options = px.get_current_options(json=True)
-    assert isinstance(options, dict)
-    assert "run_type" in options
-    assert "allow_multiprocessing" in options
+  def test_pattern_5_suppress_errors_via_provider_call_options(self):
+    """Client-wide error suppression via provider_call_options.
 
+    User sets suppress_provider_errors=True at connect time → a failing
+    provider returns a stringified error instead of raising.
+    """
+    _px_connect_disable_proxdash(
+        provider_call_options=types.ProviderCallOptions(
+            suppress_provider_errors=True,
+        ),
+    )
+    _wire_default_client_for_mocks(with_mock_model=False)
+    result = px.generate_text(
+        prompt='hi',
+        provider_model=('mock_failing_provider', 'mock_failing_model'),
+    )
+    # With suppression, the alias returns the error string, not a raise.
+    assert isinstance(result, str)
+    assert 'Mock failing provider query' in result
 
-class TestResetState:
-  """Test px.reset_state() - state management."""
+  def test_pattern_6_suppress_errors_via_connection_options(self):
+    """Per-call error suppression via connection_options overrides the default.
 
-  def test_reset_state_clears_default_client(self):
-    px.set_model(("mock_provider", "mock_model"))
+    User defaults to strict errors but allows one call to be forgiving.
+    """
+    # No client-wide suppression.
+    _px_connect_disable_proxdash()
+    _wire_default_client_for_mocks(with_mock_model=False)
+    result = px.generate(
+        prompt='hi',
+        provider_model=('mock_failing_provider', 'mock_failing_model'),
+        connection_options=types.ConnectionOptions(
+            suppress_provider_errors=True,
+        ),
+    )
+    assert result.result.status == types.ResultStatusType.FAILED
+    assert 'Mock failing provider query' in result.result.error
+
+  def test_pattern_7_reset_state_lifecycle(self):
+    """User sets experiment, then reset_state → fresh client with no experiment.
+
+    Covers the full lifecycle of the module singleton.
+    """
+    _px_connect_disable_proxdash(experiment_path='exp/one')
+    assert px.get_current_options().experiment_path == 'exp/one'
     px.reset_state()
-
-    # After reset, a new client should be created
-    assert px.get_default_proxai_client() is not None
-
-  def test_reset_state_allows_fresh_connect(self):
-    cache_path1, _ = _get_temp_dir("cache1")
-    px.connect(cache_options=types.CacheOptions(cache_path=cache_path1))
-    options1 = px.get_current_options()
-
-    px.reset_state()
-
-    cache_path2, _ = _get_temp_dir("cache2")
-    px.connect(cache_options=types.CacheOptions(cache_path=cache_path2))
-    px.get_default_proxai_client(
-    )._available_models_instance.run_type = (types.RunType.TEST)
-    options2 = px.get_current_options()
-
-    assert options1.cache_options.cache_path == cache_path1
-    assert options2.cache_options.cache_path == cache_path2
+    # After reset, get_current_options builds a fresh default client.
+    # The new client has no experiment_path.
+    assert px.get_current_options().experiment_path is None

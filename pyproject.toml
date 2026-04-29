@@ -20,16 +20,17 @@ include = [
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0"
 urllib3 = "<2.0.0"
-openai = "^1.14.3"
+openai = "^2.21.0"
 anthropic = "^0.75.0"
-cohere = "^5.20.0"
+cohere = "^6.1.0"
 mistralai = "^1.9.11"
-google-genai = ">=1.8.0,<2.0.0"
+google-genai = ">=1.57.0,<2.0.0"
 databricks-sdk = {extras = ["openai"], version = "^0.73.0"}
 platformdirs = "^4.0.0"
 packaging = "^25.0"
 xai-sdk = "^1.5.0"
 huggingface-hub = "^1.2.3"
+pypdf = "^6.10.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.1.1"

@@ -1,770 +1,355 @@
+"""Tests for ModelConfigs."""
+
+from importlib import resources
+
 import pytest
 
 import proxai.connectors.model_configs as model_configs
 import proxai.types as types
 
+
 # =============================================================================
-# Test Helpers
+# Fixtures and helpers
 # =============================================================================
-
-
-def create_provider_model_config(
-    provider: str, model: str, is_featured: bool = True,
-    call_type: types.CallType = types.CallType.GENERATE_TEXT,
-    model_size_tags: list = None, features: dict = None
-) -> types.ProviderModelConfigType:
-  """Create a ProviderModelConfigType for testing."""
-  return types.ProviderModelConfigType(
-      provider_model=types.ProviderModelType(
-          provider=provider, model=model,
-          provider_model_identifier=f'{model}-identifier'
-      ), pricing=types.ProviderModelPricingType(
-          per_response_token_cost=1.0, per_query_token_cost=1.0
-      ), features=features or {}, metadata=types.ProviderModelMetadataType(
-          call_type=call_type, is_featured=is_featured,
-          model_size_tags=model_size_tags
-      )
-  )
-
-
-def create_feature_config(
-    supported: list = None, best_effort: list = None, not_supported: list = None
-) -> types.EndpointFeatureInfoType:
-  """Create an EndpointFeatureInfoType for testing."""
-  return types.EndpointFeatureInfoType(
-      supported=supported or [], best_effort=best_effort or [],
-      not_supported=not_supported or []
-  )
-
-
-def create_version_config(
-    provider_model_configs: dict, featured_models: dict = None,
-    models_by_call_type: dict = None, models_by_size: dict = None,
-    default_model_priority_list: list = None
-) -> types.ModelConfigsSchemaVersionConfigType:
-  """Create a ModelConfigsSchemaVersionConfigType for testing."""
-  return types.ModelConfigsSchemaVersionConfigType(
-      provider_model_configs=provider_model_configs,
-      featured_models=featured_models or {},
-      models_by_call_type=models_by_call_type or {},
-      models_by_size=models_by_size or {},
-      default_model_priority_list=default_model_priority_list or []
-  )
-
-
-def create_schema(
-    version_config: types.ModelConfigsSchemaVersionConfigType
-) -> types.ModelConfigsSchemaType:
-  """Create a ModelConfigsSchemaType for testing."""
-  return types.ModelConfigsSchemaType(
-      metadata=types.ModelConfigsSchemaMetadataType(version='1.0.0'),
-      version_config=version_config
-  )
 
 
 @pytest.fixture
-def model_configs_instance():
-  """Fixture to provide a ModelConfigs instance."""
+def shared_configs():
+  """Read-only shared instance from conftest.
+
+  Loaded from example_proxdash_model_configs.json (openai + gemini providers)
+  plus the three mock_* providers registered programmatically in conftest.
+  """
+  return pytest.model_configs_instance
+
+
+@pytest.fixture
+def fresh_configs():
+  """Fresh ModelConfigs for tests that mutate the registry."""
   return model_configs.ModelConfigs()
 
 
+def _make_config(provider, model, identifier=None):
+  """Minimal valid ProviderModelConfig."""
+  return types.ProviderModelConfig(
+      provider_model=types.ProviderModelType(
+          provider=provider, model=model,
+          provider_model_identifier=identifier or model),
+      pricing=types.ProviderModelPricingType(
+          input_token_cost=1, output_token_cost=1),
+      features=types.FeatureConfigType(),
+      metadata=types.ProviderModelMetadataType(),
+  )
+
+
 # =============================================================================
-# Basic Utility Tests
+# Helpers
 # =============================================================================
 
 
 class TestIsProviderModelTuple:
 
-  def test_valid_tuple(self, model_configs_instance):
-    assert model_configs_instance._is_provider_model_tuple(('openai', 'gpt-4')
-                                                          ) is True
+  def test_valid_tuple(self, shared_configs):
+    assert shared_configs._is_provider_model_tuple(
+        ('openai', 'gpt-4o')) is True
 
-  def test_invalid_length(self, model_configs_instance):
-    assert model_configs_instance._is_provider_model_tuple(('openai',)) is False
-
-  def test_invalid_types(self, model_configs_instance):
-    assert model_configs_instance._is_provider_model_tuple((1, 'gpt-4')
-                                                          ) is False
-
-  def test_not_tuple(self, model_configs_instance):
-    assert model_configs_instance._is_provider_model_tuple(['openai',
-                                                            'gpt-4']) is False
-
-
-class TestGetProviderModelKey:
-
-  def test_with_provider_model_type(self, model_configs_instance):
-    pm = types.ProviderModelType(
-        provider='openai', model='gpt-4', provider_model_identifier='id'
-    )
-    assert model_configs_instance._get_provider_model_key(pm) == (
-        'openai', 'gpt-4'
-    )
-
-  def test_with_tuple(self, model_configs_instance):
-    assert model_configs_instance._get_provider_model_key(
-        ('claude', 'opus')
-    ) == ('claude', 'opus')
-
-  def test_invalid_type_raises(self, model_configs_instance):
-    with pytest.raises(ValueError):
-      model_configs_instance._get_provider_model_key('invalid')
+  def test_invalid_inputs(self, shared_configs):
+    # Wrong length.
+    assert shared_configs._is_provider_model_tuple(('openai',)) is False
+    # Non-string items.
+    assert shared_configs._is_provider_model_tuple((1, 'gpt-4')) is False
+    # Not a tuple.
+    assert shared_configs._is_provider_model_tuple(
+        ['openai', 'gpt-4']) is False
 
 
 # =============================================================================
-# Provider Model Identifier Tests
+# check_provider_model_identifier_type
 # =============================================================================
 
 
 class TestCheckProviderModelIdentifierType:
 
-  def test_unsupported_provider_raises(self, model_configs_instance):
-    with pytest.raises(ValueError):
-      model_configs_instance.check_provider_model_identifier_type(
-          types.ProviderModelType(
-              provider='invalid', model='model', provider_model_identifier='id'
-          )
-      )
+  def test_valid_passes(self, shared_configs):
+    pm = shared_configs.get_provider_model(('openai', 'gpt-4o'))
+    shared_configs.check_provider_model_identifier_type(pm)
+    shared_configs.check_provider_model_identifier_type(('openai', 'gpt-4o'))
 
-  def test_unsupported_model_raises(self, model_configs_instance):
-    with pytest.raises(ValueError):
-      model_configs_instance.check_provider_model_identifier_type(
-          types.ProviderModelType(
-              provider='openai', model='invalid', provider_model_identifier='id'
-          )
-      )
+  def test_unknown_provider_raises(self, shared_configs):
+    with pytest.raises(ValueError, match='Provider not supported'):
+      shared_configs.check_provider_model_identifier_type(('unknown', 'x'))
 
-  def test_valid_model_passes(self, model_configs_instance):
-    provider_model = model_configs_instance.get_provider_model(
-        ('claude', 'opus-4')
-    )
-    model_configs_instance.check_provider_model_identifier_type(provider_model)
-
-  def test_valid_tuple_passes(self, model_configs_instance):
-    model_configs_instance.check_provider_model_identifier_type(
-        ('claude', 'opus-4')
-    )
+  def test_unknown_model_raises(self, shared_configs):
+    with pytest.raises(ValueError, match='Model not supported'):
+      shared_configs.check_provider_model_identifier_type(
+          ('openai', 'unknown'))
 
 
 # =============================================================================
-# Config Extraction Tests
-# =============================================================================
-
-
-class TestGetAllFeaturedModelsFromConfigs:
-
-  def test_returns_featured_models(self, model_configs_instance):
-    configs = {
-        'openai': {
-            'gpt-4':
-                create_provider_model_config(
-                    'openai', 'gpt-4', is_featured=True
-                ),
-            'gpt-3':
-                create_provider_model_config(
-                    'openai', 'gpt-3', is_featured=False
-                ),
-        }
-    }
-    result = model_configs_instance._get_all_featured_models_from_configs(
-        configs
-    )
-    assert result == {('openai', 'gpt-4')}
-
-  def test_empty_configs(self, model_configs_instance):
-    result = model_configs_instance._get_all_featured_models_from_configs({})
-    assert result == set()
-
-
-class TestGetAllModelsByCallTypeFromConfigs:
-
-  def test_groups_by_call_type(self, model_configs_instance):
-    configs = {
-        'openai': {
-            'gpt-4':
-                create_provider_model_config(
-                    'openai', 'gpt-4', call_type=types.CallType.GENERATE_TEXT
-                ),
-        }
-    }
-    result = model_configs_instance._get_all_models_by_call_type_from_configs(
-        configs
-    )
-    assert result[types.CallType.GENERATE_TEXT] == {('openai', 'gpt-4')}
-
-
-class TestGetAllModelsBySizeFromConfigs:
-
-  def test_groups_by_size(self, model_configs_instance):
-    configs = {
-        'openai': {
-            'gpt-4':
-                create_provider_model_config(
-                    'openai', 'gpt-4',
-                    model_size_tags=[types.ModelSizeType.LARGE]
-                ),
-        }
-    }
-    result = model_configs_instance._get_all_models_by_size_from_configs(
-        configs
-    )
-    assert result[types.ModelSizeType.LARGE] == {('openai', 'gpt-4')}
-
-  def test_model_with_multiple_size_tags(self, model_configs_instance):
-    """Model with multiple size tags appears in all corresponding groups."""
-    configs = {
-        'openai': {
-            'gpt-4':
-                create_provider_model_config(
-                    'openai', 'gpt-4', model_size_tags=[
-                        types.ModelSizeType.LARGE, types.ModelSizeType.LARGEST
-                    ]
-                ),
-        }
-    }
-    result = model_configs_instance._get_all_models_by_size_from_configs(
-        configs
-    )
-    assert ('openai', 'gpt-4') in result[types.ModelSizeType.LARGE]
-    assert ('openai', 'gpt-4') in result[types.ModelSizeType.LARGEST]
-
-
-# =============================================================================
-# Validation Tests
-# =============================================================================
-
-
-class TestValidateProviderModelKeyMatchesConfig:
-
-  def test_valid_config(self, model_configs_instance):
-    config = create_provider_model_config('openai', 'gpt-4')
-    model_configs_instance._validate_provider_model_key_matches_config(
-        'openai', 'gpt-4', config
-    )
-
-  def test_provider_mismatch_raises(self, model_configs_instance):
-    config = create_provider_model_config('claude', 'gpt-4')
-    with pytest.raises(ValueError, match='Provider mismatch'):
-      model_configs_instance._validate_provider_model_key_matches_config(
-          'openai', 'gpt-4', config
-      )
-
-  def test_model_mismatch_raises(self, model_configs_instance):
-    config = create_provider_model_config('openai', 'gpt-3')
-    with pytest.raises(ValueError, match='Model mismatch'):
-      model_configs_instance._validate_provider_model_key_matches_config(
-          'openai', 'gpt-4', config
-      )
-
-
-class TestValidatePricing:
-
-  def test_valid_pricing(self, model_configs_instance):
-    pricing = types.ProviderModelPricingType(
-        per_query_token_cost=1.0, per_response_token_cost=2.0
-    )
-    model_configs_instance._validate_pricing('openai', 'gpt-4', pricing)
-
-  def test_none_pricing_raises(self, model_configs_instance):
-    with pytest.raises(ValueError, match='pricing is None'):
-      model_configs_instance._validate_pricing('openai', 'gpt-4', None)
-
-  def test_negative_cost_raises(self, model_configs_instance):
-    pricing = types.ProviderModelPricingType(
-        per_query_token_cost=-1.0, per_response_token_cost=2.0
-    )
-    with pytest.raises(ValueError, match='negative'):
-      model_configs_instance._validate_pricing('openai', 'gpt-4', pricing)
-
-
-class TestValidateModelSizeTags:
-
-  def test_valid_size_tags(self, model_configs_instance):
-    model_configs_instance._validate_model_size_tags(
-        'openai', 'gpt-4', [types.ModelSizeType.LARGE]
-    )
-
-  def test_invalid_size_tag_raises(self, model_configs_instance):
-    with pytest.raises(ValueError, match='Invalid model_size_tag'):
-      model_configs_instance._validate_model_size_tags(
-          'openai', 'gpt-4', ['invalid_size']
-      )
-
-
-class TestValidateFeatures:
-  """Tests for _validate_features - validates endpoint lists are disjoint per feature."""
-
-  def test_none_features_valid(self, model_configs_instance):
-    model_configs_instance._validate_features('openai', 'gpt-4', None)
-
-  def test_empty_features_valid(self, model_configs_instance):
-    model_configs_instance._validate_features('openai', 'gpt-4', {})
-
-  def test_disjoint_endpoints_valid(self, model_configs_instance):
-    features = {
-        'prompt':
-            create_feature_config(
-                supported=['chat'], best_effort=['completion'],
-                not_supported=['legacy']
-            )
-    }
-    model_configs_instance._validate_features('openai', 'gpt-4', features)
-
-  def test_supported_best_effort_overlap_raises(self, model_configs_instance):
-    features = {
-        'prompt':
-            create_feature_config(
-                supported=['chat', 'completion'], best_effort=['completion']
-            )  # 'completion' overlaps
-    }
-    with pytest.raises(ValueError, match='SUPPORTED and BEST_EFFORT'):
-      model_configs_instance._validate_features('openai', 'gpt-4', features)
-
-  def test_supported_not_supported_overlap_raises(self, model_configs_instance):
-    features = {
-        'prompt':
-            create_feature_config(supported=['chat'],
-                                  not_supported=['chat'])  # 'chat' overlaps
-    }
-    with pytest.raises(ValueError, match='SUPPORTED and NOT_SUPPORTED'):
-      model_configs_instance._validate_features('openai', 'gpt-4', features)
-
-  def test_best_effort_not_supported_overlap_raises(
-      self, model_configs_instance
-  ):
-    features = {
-        'prompt':
-            create_feature_config(best_effort=['chat'],
-                                  not_supported=['chat'])  # 'chat' overlaps
-    }
-    with pytest.raises(ValueError, match='BEST_EFFORT and NOT_SUPPORTED'):
-      model_configs_instance._validate_features('openai', 'gpt-4', features)
-
-
-class TestValidateFeaturedModels:
-
-  def test_valid_featured_models(self, model_configs_instance):
-    configs = {
-        'openai': {
-            'gpt-4':
-                create_provider_model_config(
-                    'openai', 'gpt-4', is_featured=True
-                )
-        }
-    }
-    featured = {
-        'openai': [
-            types.ProviderModelType(
-                provider='openai', model='gpt-4', provider_model_identifier='id'
-            )
-        ]
-    }
-    model_configs_instance._validate_featured_models(configs, featured)
-
-  def test_missing_in_list_raises(self, model_configs_instance):
-    configs = {
-        'openai': {
-            'gpt-4':
-                create_provider_model_config(
-                    'openai', 'gpt-4', is_featured=True
-                )
-        }
-    }
-    with pytest.raises(ValueError, match='missing from featured_models'):
-      model_configs_instance._validate_featured_models(configs, {})
-
-  def test_extra_in_list_raises(self, model_configs_instance):
-    """Detects when featured_models has entries not marked is_featured=True in config."""
-    configs = {
-        'openai': {
-            'gpt-4':
-                create_provider_model_config(
-                    'openai', 'gpt-4', is_featured=False
-                )
-        }
-    }
-    featured = {
-        'openai': [
-            types.ProviderModelType(
-                provider='openai', model='gpt-4', provider_model_identifier='id'
-            )
-        ]
-    }
-    with pytest.raises(ValueError, match='not marked as is_featured=True'):
-      model_configs_instance._validate_featured_models(configs, featured)
-
-
-class TestValidateModelsByCallType:
-
-  def test_valid_models_by_call_type(self, model_configs_instance):
-    configs = {
-        'openai': {
-            'gpt-4':
-                create_provider_model_config(
-                    'openai', 'gpt-4', call_type=types.CallType.GENERATE_TEXT
-                )
-        }
-    }
-    by_call_type = {
-        types.CallType.GENERATE_TEXT: {
-            'openai': [
-                types.ProviderModelType(
-                    provider='openai', model='gpt-4',
-                    provider_model_identifier='id'
-                )
-            ]
-        }
-    }
-    model_configs_instance._validate_models_by_call_type(configs, by_call_type)
-
-  def test_missing_in_list_raises(self, model_configs_instance):
-    configs = {
-        'openai': {
-            'gpt-4':
-                create_provider_model_config(
-                    'openai', 'gpt-4', call_type=types.CallType.GENERATE_TEXT
-                )
-        }
-    }
-    with pytest.raises(ValueError, match='missing from models_by_call_type'):
-      model_configs_instance._validate_models_by_call_type(configs, {})
-
-
-class TestValidateModelsBySize:
-
-  def test_valid_models_by_size(self, model_configs_instance):
-    configs = {
-        'openai': {
-            'gpt-4':
-                create_provider_model_config(
-                    'openai', 'gpt-4',
-                    model_size_tags=[types.ModelSizeType.LARGE]
-                )
-        }
-    }
-    by_size = {
-        types.ModelSizeType.LARGE: [
-            types.ProviderModelType(
-                provider='openai', model='gpt-4', provider_model_identifier='id'
-            )
-        ]
-    }
-    model_configs_instance._validate_models_by_size(configs, by_size)
-
-  def test_missing_in_list_raises(self, model_configs_instance):
-    configs = {
-        'openai': {
-            'gpt-4':
-                create_provider_model_config(
-                    'openai', 'gpt-4',
-                    model_size_tags=[types.ModelSizeType.LARGE]
-                )
-        }
-    }
-    with pytest.raises(ValueError, match='missing from models_by_size'):
-      model_configs_instance._validate_models_by_size(configs, {})
-
-  def test_model_with_multiple_sizes_must_appear_in_all(
-      self, model_configs_instance
-  ):
-    """Model with multiple size tags must appear in all corresponding size lists."""
-    pm = types.ProviderModelType(
-        provider='openai', model='gpt-4', provider_model_identifier='id'
-    )
-    configs = {
-        'openai': {
-            'gpt-4':
-                create_provider_model_config(
-                    'openai', 'gpt-4', model_size_tags=[
-                        types.ModelSizeType.LARGE, types.ModelSizeType.LARGEST
-                    ]
-                )
-        }
-    }
-    by_size = {
-        types.ModelSizeType.LARGE: [pm],
-        types.ModelSizeType.LARGEST: [pm]
-    }
-    model_configs_instance._validate_models_by_size(configs, by_size)
-
-
-class TestValidateDefaultModelPriorityList:
-
-  def test_valid_priority_list(self, model_configs_instance):
-    configs = {
-        'openai': {
-            'gpt-4': create_provider_model_config('openai', 'gpt-4')
-        }
-    }
-    priority_list = [
-        types.ProviderModelType(
-            provider='openai', model='gpt-4', provider_model_identifier='id'
-        )
-    ]
-    model_configs_instance._validate_default_model_priority_list(
-        configs, priority_list
-    )
-
-  def test_invalid_provider_raises(self, model_configs_instance):
-    configs = {
-        'openai': {
-            'gpt-4': create_provider_model_config('openai', 'gpt-4')
-        }
-    }
-    priority_list = [
-        types.ProviderModelType(
-            provider='invalid', model='model', provider_model_identifier='id'
-        )
-    ]
-    with pytest.raises(ValueError, match='not found'):
-      model_configs_instance._validate_default_model_priority_list(
-          configs, priority_list
-      )
-
-
-class TestValidateVersionConfig:
-
-  def test_valid_complete_config(self, model_configs_instance):
-    pm = types.ProviderModelType(
-        provider='openai', model='gpt-4', provider_model_identifier='id'
-    )
-    configs = {
-        'openai': {
-            'gpt-4':
-                create_provider_model_config(
-                    'openai', 'gpt-4', is_featured=True,
-                    call_type=types.CallType.GENERATE_TEXT,
-                    model_size_tags=[types.ModelSizeType.LARGE]
-                )
-        }
-    }
-    version_config = create_version_config(
-        provider_model_configs=configs, featured_models={'openai': [pm]},
-        models_by_call_type={types.CallType.GENERATE_TEXT: {
-            'openai': [pm]
-        }}, models_by_size={types.ModelSizeType.LARGE: [pm]},
-        default_model_priority_list=[pm]
-    )
-    model_configs_instance._validate_version_config(version_config)
-
-  def test_empty_configs(self, model_configs_instance):
-    version_config = create_version_config(provider_model_configs=None)
-    model_configs_instance._validate_version_config(version_config)
-
-
-class TestValidateProviderModelConfigs:
-
-  def test_valid_configs(self, model_configs_instance):
-    configs = {
-        'openai': {
-            'gpt-4': create_provider_model_config('openai', 'gpt-4')
-        },
-        'claude': {
-            'opus': create_provider_model_config('claude', 'opus')
-        }
-    }
-    model_configs_instance._validate_provider_model_configs(configs)
-
-  def test_provider_mismatch_raises(self, model_configs_instance):
-    configs = {
-        'openai': {
-            'gpt-4': create_provider_model_config('wrong', 'gpt-4')
-        }
-    }
-    with pytest.raises(ValueError, match='Provider mismatch'):
-      model_configs_instance._validate_provider_model_configs(configs)
-
-
-class TestValidateProviderModelConfig:
-
-  def test_valid_config(self, model_configs_instance):
-    config = create_provider_model_config(
-        'openai', 'gpt-4', model_size_tags=[types.ModelSizeType.LARGE]
-    )
-    model_configs_instance._validate_provider_model_config(
-        'openai', 'gpt-4', config
-    )
-
-  def test_config_without_metadata(self, model_configs_instance):
-    config = types.ProviderModelConfigType(
-        provider_model=types.ProviderModelType(
-            provider='openai', model='gpt-4', provider_model_identifier='id'
-        ), pricing=types.ProviderModelPricingType(
-            per_query_token_cost=1.0, per_response_token_cost=1.0
-        ), metadata=None
-    )
-    model_configs_instance._validate_provider_model_config(
-        'openai', 'gpt-4', config
-    )
-
-
-# =============================================================================
-# Get Methods Tests
+# Query methods
 # =============================================================================
 
 
 class TestGetProviderModel:
 
-  def test_with_tuple(self, model_configs_instance):
-    result = model_configs_instance.get_provider_model(('openai', 'gpt-4o'))
-    assert isinstance(result, types.ProviderModelType)
-    assert result.provider == 'openai'
+  def test_with_tuple(self, shared_configs):
+    pm = shared_configs.get_provider_model(('openai', 'gpt-4o'))
+    assert isinstance(pm, types.ProviderModelType)
+    assert pm.provider == 'openai'
+    assert pm.model == 'gpt-4o'
 
-  def test_with_provider_model_type(self, model_configs_instance):
-    pm = model_configs_instance.get_provider_model(('claude', 'opus-4'))
-    result = model_configs_instance.get_provider_model(pm)
-    assert result == pm
+  def test_with_provider_model_type_returns_same(self, shared_configs):
+    pm = shared_configs.get_provider_model(('openai', 'gpt-4o'))
+    assert shared_configs.get_provider_model(pm) == pm
 
 
 class TestGetProviderModelConfig:
 
-  def test_returns_config(self, model_configs_instance):
-    result = model_configs_instance.get_provider_model_config(
-        ('openai', 'gpt-4o')
-    )
-    assert isinstance(result, types.ProviderModelConfigType)
-    assert result.provider_model.provider == 'openai'
-
-
-class TestGetProviderModelCost:
-
-  def test_calculates_cost(self, model_configs_instance):
-    cost = model_configs_instance.get_provider_model_cost(('openai', 'gpt-4o'),
-                                                          100, 200)
-    assert isinstance(cost, int)
-    assert cost >= 0
-
-  def test_zero_tokens(self, model_configs_instance):
-    cost = model_configs_instance.get_provider_model_cost(('openai', 'gpt-4o'),
-                                                          0, 0)
-    assert cost == 0
-
-
-# =============================================================================
-# GetAllModels Filter Tests
-# =============================================================================
+  def test_returns_config(self, shared_configs):
+    config = shared_configs.get_provider_model_config(('openai', 'gpt-4o'))
+    assert isinstance(config, types.ProviderModelConfig)
+    assert config.provider_model.provider == 'openai'
+    assert config.provider_model.model == 'gpt-4o'
 
 
 class TestGetAllModels:
 
-  @pytest.fixture
-  def custom_configs(self):
-    """Create ModelConfigs with controlled test data."""
-    pm_featured = types.ProviderModelType(
-        provider='test', model='featured', provider_model_identifier='id1'
-    )
-    pm_not_featured = types.ProviderModelType(
-        provider='test', model='not_featured', provider_model_identifier='id2'
-    )
+  def test_recommended_only_default(self, shared_configs):
+    result = shared_configs.get_all_models()
+    assert len(result) > 0
+    for pm in result:
+      config = shared_configs.get_provider_model_config(pm)
+      assert config.metadata.is_recommended is True
 
-    configs = {
-        'test': {
-            'featured':
-                create_provider_model_config(
-                    'test', 'featured', is_featured=True,
-                    call_type=types.CallType.GENERATE_TEXT,
-                    model_size_tags=[types.ModelSizeType.LARGE]
-                ),
-            'not_featured':
-                create_provider_model_config(
-                    'test', 'not_featured', is_featured=False,
-                    call_type=types.CallType.GENERATE_TEXT,
-                    model_size_tags=[types.ModelSizeType.SMALL]
-                ),
-        }
-    }
-    version_config = create_version_config(
-        provider_model_configs=configs, featured_models={'test': [pm_featured]},
-        models_by_call_type={
-            types.CallType.GENERATE_TEXT: {
-                'test': [pm_featured, pm_not_featured]
-            }
-        }, models_by_size={
-            types.ModelSizeType.LARGE: [pm_featured],
-            types.ModelSizeType.SMALL: [pm_not_featured]
-        }, default_model_priority_list=[pm_featured]
-    )
-    schema = create_schema(version_config)
-    model_configs_params = model_configs.ModelConfigsParams(
-        model_configs_schema=schema
-    )
-    return model_configs.ModelConfigs(init_from_params=model_configs_params)
+  def test_model_size_filter(self, shared_configs):
+    # Mock providers have SMALL tag, so the result is non-empty.
+    result = shared_configs.get_all_models(
+        model_size=types.ModelSizeType.SMALL, recommended_only=False)
+    assert len(result) > 0
+    for pm in result:
+      config = shared_configs.get_provider_model_config(pm)
+      assert types.ModelSizeType.SMALL in config.metadata.model_size_tags
 
-  def test_only_featured_filter(self, custom_configs):
-    result = custom_configs.get_all_models(call_type=None, only_featured=True)
-    model_names = [m.model for m in result]
-    assert 'featured' in model_names
-    assert 'not_featured' not in model_names
-
-  def test_model_size_filter(self, custom_configs):
-    result = custom_configs.get_all_models(
-        model_size=types.ModelSizeType.LARGE, call_type=None,
-        only_featured=False
-    )
-    model_names = [m.model for m in result]
-    assert 'featured' in model_names
-    assert 'not_featured' not in model_names
-
-  def test_invalid_provider_raises(self, custom_configs):
+  def test_invalid_provider_raises(self, shared_configs):
     with pytest.raises(ValueError, match='Provider not supported'):
-      custom_configs.get_all_models(provider='invalid')
+      shared_configs.get_all_models(provider='nonexistent')
+
+
+class TestGetDefaultModelPriorityList:
+
+  def test_returns_list(self, shared_configs):
+    result = shared_configs.get_default_model_priority_list()
+    assert isinstance(result, list)
+    for pm in result:
+      assert isinstance(pm, types.ProviderModelType)
 
 
 # =============================================================================
-# Load Config Tests
+# Registry mutation
 # =============================================================================
 
 
-class TestLoadModelConfigFromJsonString:
+class TestRegisterProviderModelConfig:
 
-  def test_load_example_proxdash_config(self, model_configs_instance):
-    """Test loading the example proxdash config file."""
-    from importlib import resources
-    config_data = (
-        resources.files("proxai.connectors.model_configs_data").
-        joinpath("example_proxdash_model_configs.json").read_text(
-            encoding="utf-8"
-        )
-    )
-    model_configs_instance.load_model_config_from_json_string(config_data)
+  def test_registers_new_model(self, fresh_configs):
+    config = _make_config('testp', 'testm')
+    fresh_configs.register_provider_model_config(config)
+    assert fresh_configs.get_provider_model(
+        ('testp', 'testm')).model == 'testm'
 
-    provider_configs = model_configs_instance.model_configs_schema.version_config.provider_model_configs
-    assert 'openai' in provider_configs
-    assert 'gemini' in provider_configs
+  def test_duplicate_raises(self, fresh_configs):
+    config = _make_config('testp', 'testm')
+    fresh_configs.register_provider_model_config(config)
+    with pytest.raises(ValueError, match='already registered'):
+      fresh_configs.register_provider_model_config(config)
+
+
+class TestUnregisterModel:
+
+  def test_removes_registered_model(self, fresh_configs):
+    config = _make_config('testp', 'testm')
+    fresh_configs.register_provider_model_config(config)
+    fresh_configs.unregister_model(config.provider_model)
+    provider_models = (
+        fresh_configs.model_registry.provider_model_configs.get('testp', {}))
+    assert 'testm' not in provider_models
+
+  def test_unknown_provider_raises(self, fresh_configs):
+    pm = types.ProviderModelType(
+        provider='nonexistent', model='x', provider_model_identifier='x')
+    with pytest.raises(ValueError, match='Provider .* not registered'):
+      fresh_configs.unregister_model(pm)
+
+  def test_identifier_mismatch_raises(self, fresh_configs):
+    config = _make_config('testp', 'testm', identifier='id-1')
+    fresh_configs.register_provider_model_config(config)
+    wrong = types.ProviderModelType(
+        provider='testp', model='testm', provider_model_identifier='id-2')
+    with pytest.raises(
+        ValueError, match='Provider model identifier mismatch'):
+      fresh_configs.unregister_model(wrong)
+
+
+class TestUnregisterAllModels:
+
+  def test_clears_all_and_priority_list(self, fresh_configs):
+    fresh_configs.unregister_all_models()
+    assert fresh_configs.model_registry.provider_model_configs == {}
+    assert fresh_configs.model_registry.default_model_priority_list == []
+
+
+class TestOverrideDefaultModelPriorityList:
+
+  def test_replaces_priority_list(self, fresh_configs):
+    config = _make_config('testp', 'testm')
+    fresh_configs.register_provider_model_config(config)
+    fresh_configs.override_default_model_priority_list([config.provider_model])
+    assert fresh_configs.get_default_model_priority_list() == [
+        config.provider_model]
+
+  def test_unknown_model_raises(self, fresh_configs):
+    unknown = types.ProviderModelType(
+        provider='openai', model='nonexistent-model',
+        provider_model_identifier='x')
+    with pytest.raises(ValueError, match='not registered'):
+      fresh_configs.override_default_model_priority_list([unknown])
 
 
 # =============================================================================
-# Built-in Config Validation Tests
+# Validation
 # =============================================================================
 
 
-class TestBuiltInConfigValidation:
+class TestValidateProviderModelConfigs:
 
-  def test_built_in_config_loads(self):
-    mc = model_configs.ModelConfigs()
-    assert mc.model_configs_schema is not None
+  def test_valid_passes(self, shared_configs):
+    model_configs.ModelConfigs._validate_provider_model_configs(
+        shared_configs.model_registry)
 
-  def test_provider_model_configs_valid(self, model_configs_instance):
-    configs = model_configs_instance.model_configs_schema.version_config.provider_model_configs
-    model_configs_instance._validate_provider_model_configs(configs)
+  def test_provider_key_mismatch_raises(self):
+    registry = types.ModelRegistry(
+        metadata=None, default_model_priority_list=[],
+        provider_model_configs={
+            'openai': {'gpt-4': _make_config('wrong_provider', 'gpt-4')},
+        })
+    with pytest.raises(ValueError, match='Provider key mismatch'):
+      model_configs.ModelConfigs._validate_provider_model_configs(registry)
 
-  def test_featured_models_consistent(self, model_configs_instance):
-    schema = model_configs_instance.model_configs_schema
-    model_configs_instance._validate_featured_models(
-        schema.version_config.provider_model_configs,
-        schema.version_config.featured_models
-    )
+  def test_negative_pricing_raises(self):
+    config = types.ProviderModelConfig(
+        provider_model=types.ProviderModelType(
+            provider='openai', model='gpt-4',
+            provider_model_identifier='gpt-4'),
+        pricing=types.ProviderModelPricingType(input_token_cost=-1),
+        features=types.FeatureConfigType(),
+        metadata=types.ProviderModelMetadataType())
+    registry = types.ModelRegistry(
+        metadata=None, default_model_priority_list=[],
+        provider_model_configs={'openai': {'gpt-4': config}})
+    with pytest.raises(ValueError, match='input_token_cost is negative'):
+      model_configs.ModelConfigs._validate_provider_model_configs(registry)
 
-  def test_models_by_call_type_consistent(self, model_configs_instance):
-    schema = model_configs_instance.model_configs_schema
-    model_configs_instance._validate_models_by_call_type(
-        schema.version_config.provider_model_configs,
-        schema.version_config.models_by_call_type
-    )
 
-  def test_models_by_size_consistent(self, model_configs_instance):
-    schema = model_configs_instance.model_configs_schema
-    model_configs_instance._validate_models_by_size(
-        schema.version_config.provider_model_configs,
-        schema.version_config.models_by_size
-    )
+class TestValidateDefaultModelPriorityList:
+
+  def test_valid_passes(self, shared_configs):
+    model_configs.ModelConfigs._validate_default_model_priority_list(
+        shared_configs.model_registry)
+
+  def test_unknown_model_raises(self):
+    registry = types.ModelRegistry(
+        metadata=None,
+        default_model_priority_list=[
+            types.ProviderModelType(
+                provider='openai', model='nonexistent',
+                provider_model_identifier='x'),
+        ],
+        provider_model_configs={'openai': {}})
+    with pytest.raises(
+        ValueError, match='default_model_priority_list not found'):
+      model_configs.ModelConfigs._validate_default_model_priority_list(
+          registry)
+
+
+class TestValidateMinProxaiVersion:
+
+  def test_none_skips(self):
+    model_configs.ModelConfigs._validate_min_proxai_version(None)
+
+  def test_satisfied_passes(self):
+    model_configs.ModelConfigs._validate_min_proxai_version('>=0.0.1')
+
+  def test_not_satisfied_raises(self):
+    with pytest.raises(ValueError, match='does not satisfy'):
+      model_configs.ModelConfigs._validate_min_proxai_version('>=999.0.0')
+
+
+# =============================================================================
+# reload_from_registry / load_model_registry_from_json_string
+# =============================================================================
+
+
+class TestReloadFromRegistry:
+
+  def test_happy_path_replaces_registry(self, fresh_configs):
+    new_registry = types.ModelRegistry(
+        metadata=None, default_model_priority_list=[],
+        provider_model_configs={
+            'myp': {'mym': _make_config('myp', 'mym')},
+        })
+    fresh_configs.reload_from_registry(new_registry)
+    assert set(fresh_configs.model_registry.provider_model_configs.keys()) == {
+        'myp'}
+
+  def test_validation_error_wrapped(self, fresh_configs):
+    bad = types.ModelRegistry(
+        metadata=None, default_model_priority_list=[],
+        provider_model_configs={
+            'openai': {'gpt-4': _make_config('wrong', 'gpt-4')},
+        })
+    with pytest.raises(ValueError, match='Failed to load model registry'):
+      fresh_configs.reload_from_registry(bad)
+
+
+class TestLoadModelRegistryFromJsonString:
+
+  def test_loads_example_proxdash_config(self, fresh_configs):
+    data = resources.files(
+        "proxai.connectors.model_configs_data"
+    ).joinpath("example_proxdash_model_configs.json").read_text(
+        encoding="utf-8")
+    fresh_configs.load_model_registry_from_json_string(data)
+    configs = fresh_configs.model_registry.provider_model_configs
+    assert 'openai' in configs
+    assert 'gemini' in configs
+
+
+# =============================================================================
+# export_to_json
+# =============================================================================
+
+
+class TestExportToJson:
+
+  def test_round_trip(self, fresh_configs, tmp_path):
+    file_path = tmp_path / 'export.json'
+    fresh_configs.export_to_json(str(file_path))
+
+    restored = model_configs.ModelConfigs()
+    restored.load_model_registry_from_json_string(
+        file_path.read_text(encoding='utf-8'))
+    assert restored.model_registry == fresh_configs.model_registry
+
+
+# =============================================================================
+# Built-in config
+# =============================================================================
+
+
+class TestBuiltInConfigLoads:
+
+  def test_bundled_config_passes_validators(self, fresh_configs):
+    model_configs.ModelConfigs._validate_provider_model_configs(
+        fresh_configs.model_registry)
+    model_configs.ModelConfigs._validate_default_model_priority_list(
+        fresh_configs.model_registry)

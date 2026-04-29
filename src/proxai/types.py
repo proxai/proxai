@@ -1,9 +1,24 @@
+from __future__ import annotations
+
 import dataclasses
 import datetime
 import enum
-from typing import Any
+from typing import Any, Dict, List
 
 import pydantic
+
+import proxai.chat.message_content as message_content
+import proxai.chat.message as message
+import proxai.chat.chat_session as chat_session
+
+ContentType = message_content.ContentType
+MessageRoleType = message_content.MessageRoleType
+PydanticContent = message_content.PydanticContent
+ProxDashFileStatus = message_content.ProxDashFileStatus
+MessageContent = message_content.MessageContent
+Message = message.Message
+Chat = chat_session.Chat
+SUPPORTED_MEDIA_TYPES = message_content.SUPPORTED_MEDIA_TYPES
 
 
 class RunType(enum.Enum):
@@ -13,12 +28,31 @@ class RunType(enum.Enum):
   TEST = "TEST"
 
 
-class CallType(str, enum.Enum):
-  """Type of API call being made to the provider."""
+class OutputFormatType(str, enum.Enum):
+  """Output formats for capability filtering and model registration."""
 
-  GENERATE_TEXT = "GENERATE_TEXT"
-  OTHER = "OTHER"
+  TEXT = "TEXT"
+  IMAGE = "IMAGE"
+  AUDIO = "AUDIO"
+  VIDEO = "VIDEO"
+  JSON = "JSON"
+  PYDANTIC = "PYDANTIC"
 
+
+class InputFormatType(str, enum.Enum):
+  """Input formats for capability filtering."""
+
+  TEXT = "TEXT"
+  IMAGE = "IMAGE"
+  DOCUMENT = "DOCUMENT"
+  AUDIO = "AUDIO"
+  VIDEO = "VIDEO"
+  JSON = "JSON"
+  PYDANTIC = "PYDANTIC"
+
+
+OutputFormatTypeParam = OutputFormatType | str
+InputFormatTypeParam = InputFormatType | str
 
 ProviderNameType = str
 ModelNameType = str
@@ -89,49 +123,128 @@ class ProviderModelType:
     return str(self) >= str(other)
 
 
-# (provider, model) without model_signature
 ProviderModelTupleType = tuple[ProviderNameType, ModelNameType]
 ProviderModelIdentifierType = ProviderModelType | ProviderModelTupleType
 StopType = str | list[str]
-MessagesType = list[dict[str, str]]
 
 
 @dataclasses.dataclass
 class ProviderModelPricingType:
-  """Cost information for a model's token usage."""
+  """Cost information for a model's token usage.
 
-  per_response_token_cost: float | None = None
-  per_query_token_cost: float | None = None
+  Unit convention (authoritative):
+    - Both cost fields are quoted in nano-USD (10^-9 USD) per token.
+      Example: Claude Haiku input list price is $0.80 per 1M tokens, i.e.
+      $0.0000008 per token, i.e. 800 nano-USD per token, so the field
+      value is 800.
+    - `ResultRecord.usage.estimated_cost` is also integer nano-USD.
+      `get_estimated_cost` simply computes
+        floor(input_tokens * input_token_cost +
+              output_tokens * output_token_cost)
+      which stays in nano-USD because the pricing scalars already are.
+    - To display in USD: divide by 1_000_000_000.
+      To display in µ-USD: divide by 1_000.
+
+  This avoids floating-point drift in the cache and telemetry, and is
+  precise enough for per-token accounting even on the cheapest models.
+  """
+
+  input_token_cost: int | None = None
+  output_token_cost: int | None = None
+
+
+class FeatureSupportType(str, enum.Enum):
+  """Support level for a feature."""
+
+  SUPPORTED = "SUPPORTED"
+  BEST_EFFORT = "BEST_EFFORT"
+  NOT_SUPPORTED = "NOT_SUPPORTED"
 
 
 @dataclasses.dataclass
-class EndpointFeatureInfoType:
-  """Feature support levels for a provider endpoint."""
+class ParameterConfigType:
+  """Parameter configuration for a provider endpoint."""
 
-  supported: list[str] = dataclasses.field(default_factory=list)
-  best_effort: list[str] = dataclasses.field(default_factory=list)
-  not_supported: list[str] = dataclasses.field(default_factory=list)
+  temperature: FeatureSupportType | None = None
+  max_tokens: FeatureSupportType | None = None
+  stop: FeatureSupportType | None = None
+  n: FeatureSupportType | None = None
+  thinking: FeatureSupportType | None = None
 
 
-class FeatureNameType(str, enum.Enum):
-  """Available features that can be used with model queries."""
+@dataclasses.dataclass
+class ToolConfigType:
+  """Tool configuration for a provider endpoint."""
+
+  web_search: FeatureSupportType | None = None
+
+
+@dataclasses.dataclass
+class OutputFormatConfigType:
+  """Output format configuration for a provider endpoint."""
+
+  text: FeatureSupportType | None = None
+  image: FeatureSupportType | None = None
+  audio: FeatureSupportType | None = None
+  video: FeatureSupportType | None = None
+  json: FeatureSupportType | None = None
+  pydantic: FeatureSupportType | None = None
+
+
+@dataclasses.dataclass
+class InputFormatConfigType:
+  """Input format configuration for a provider endpoint."""
+
+  text: FeatureSupportType | None = None
+  image: FeatureSupportType | None = None
+  document: FeatureSupportType | None = None
+  audio: FeatureSupportType | None = None
+  video: FeatureSupportType | None = None
+  json: FeatureSupportType | None = None
+  pydantic: FeatureSupportType | None = None
+
+
+@dataclasses.dataclass
+class FeatureConfigType:
+  """Feature configuration for a provider endpoint."""
+
+  prompt: FeatureSupportType | None = None
+  messages: FeatureSupportType | None = None
+  system_prompt: FeatureSupportType | None = None
+  add_system_to_messages: bool | None = None
+  parameters: ParameterConfigType | None = None
+  tools: ToolConfigType | None = None
+  output_format: OutputFormatConfigType | None = None
+  input_format: InputFormatConfigType | None = None
+
+
+class ToolTag(str, enum.Enum):
+  """What tools the model supports."""
+
+  WEB_SEARCH = "web_search"
+
+
+class FeatureTag(str, enum.Enum):
+  """General model features and parameters."""
 
   PROMPT = "prompt"
   MESSAGES = "messages"
-  SYSTEM = "system"
-  MAX_TOKENS = "max_tokens"
+  SYSTEM_PROMPT = "system_prompt"
   TEMPERATURE = "temperature"
+  MAX_TOKENS = "max_tokens"
   STOP = "stop"
-  WEB_SEARCH = "web_search"
-  RESPONSE_FORMAT_TEXT = "response_format::text"
-  RESPONSE_FORMAT_JSON = "response_format::json"
-  RESPONSE_FORMAT_JSON_SCHEMA = "response_format::json_schema"
-  RESPONSE_FORMAT_PYDANTIC = "response_format::pydantic"
+  N = "n"
+  THINKING = "thinking"
 
 
-FeatureListType = list[FeatureNameType]
-
-FeatureListParam = list[str | FeatureNameType]
+InputFormatTypeParam = (
+    list[InputFormatType] | list[str] | InputFormatType | str | None
+)
+OutputFormatTypeParam = (
+    list[OutputFormatType] | list[str] | OutputFormatType | str | None
+)
+ToolTagParam = list[ToolTag] | list[str] | ToolTag | str | None
+FeatureTagParam = list[FeatureTag] | list[str] | FeatureTag | str | None
 
 
 class ModelSizeType(str, enum.Enum):
@@ -150,25 +263,10 @@ ModelSizeIdentifierType = ModelSizeType | str
 class ProviderModelMetadataType:
   """Metadata describing a model's characteristics and capabilities."""
 
-  call_type: CallType | None = None
-  is_featured: bool | None = None
+  is_recommended: bool | None = None
   model_size_tags: list[ModelSizeType] | None = None
-  is_default_candidate: bool | None = None
-  default_candidate_priority: int | None = None
+  # Reserved for unstructured notes about the model. Not used for filtering.
   tags: list[str] | None = None
-
-
-FeatureMappingType = dict[FeatureNameType, EndpointFeatureInfoType]
-
-
-@dataclasses.dataclass
-class ProviderModelConfigType:
-  """Complete configuration for a provider model."""
-
-  provider_model: ProviderModelType | None = None
-  pricing: ProviderModelPricingType | None = None
-  features: FeatureMappingType | None = None
-  metadata: ProviderModelMetadataType | None = None
 
 
 class ConfigOriginType(enum.Enum):
@@ -178,15 +276,10 @@ class ConfigOriginType(enum.Enum):
   PROXDASH = "PROXDASH"
 
 
-ProviderModelsIdentifierDictType = dict[ProviderNameType,
-                                        tuple[ProviderModelIdentifierType]]
-
-ProviderModelConfigsType = dict[ProviderNameType, dict[ModelNameType,
-                                                       ProviderModelConfigType]]
-FeaturedModelsType = ProviderModelsIdentifierDictType
-ModelsByCallTypeType = dict[CallType, ProviderModelsIdentifierDictType]
-ModelsBySizeType = dict[ModelSizeType, tuple[ProviderModelIdentifierType]]
-DefaultModelPriorityListType = tuple[ProviderModelIdentifierType]
+# (provider, model) without model_signature
+ProviderModelTupleParam = tuple[ProviderNameType, ModelNameType]
+ProviderModelParam = ProviderModelTupleParam | ProviderModelType
+MessagesParam = Dict[str, Any] | List[Dict[str, Any]] | chat_session.Chat
 
 
 @dataclasses.dataclass
@@ -201,23 +294,25 @@ class ModelConfigsSchemaMetadataType:
 
 
 @dataclasses.dataclass
-class ModelConfigsSchemaVersionConfigType:
-  """Model configurations grouped by various categorizations."""
+class ProviderModelConfig:
+  provider_model: ProviderModelType
+  pricing: ProviderModelPricingType
+  features: FeatureConfigType
+  metadata: ProviderModelMetadataType
 
-  provider_model_configs: ProviderModelConfigsType | None = None
 
-  featured_models: FeaturedModelsType | None = None
-  models_by_call_type: ModelsByCallTypeType | None = None
-  models_by_size: ModelsBySizeType | None = None
-  default_model_priority_list: DefaultModelPriorityListType | None = None
+OutputFormatTypeMappingType = dict[OutputFormatType, list[ProviderModelType]]
+ModelSizeMappingType = dict[ModelSizeType, list[ProviderModelType]]
+RecommendedModelsMappingType = dict[ProviderNameType, list[ProviderModelType]]
+ProviderModelConfigsMappingType = dict[ProviderNameType,
+                                       dict[ModelNameType, ProviderModelConfig]]
 
 
 @dataclasses.dataclass
-class ModelConfigsSchemaType:
-  """Complete schema containing all model configurations."""
-
-  metadata: ModelConfigsSchemaMetadataType | None = None
-  version_config: ModelConfigsSchemaVersionConfigType | None = None
+class ModelRegistry:
+  metadata: ModelConfigsSchemaMetadataType
+  default_model_priority_list: list[ProviderModelType]
+  provider_model_configs: ProviderModelConfigsMappingType
 
 
 @dataclasses.dataclass
@@ -264,8 +359,6 @@ class CacheOptions:
     unique_response_limit: Number of unique responses to collect for
       the same query before returning from cache. Useful for getting
       diverse outputs. Defaults to 1.
-    retry_if_error_cached: If True, retries the API call when the
-      cached response was an error. Defaults to False.
     clear_query_cache_on_connect: If True, clears the query cache
       when connect() is called. Defaults to False.
     disable_model_cache: If True, disables caching of model availability
@@ -285,7 +378,6 @@ class CacheOptions:
   cache_path: str | None = None
 
   unique_response_limit: int | None = 1
-  retry_if_error_cached: bool = False
   clear_query_cache_on_connect: bool = False
 
   disable_model_cache: bool = False
@@ -345,17 +437,41 @@ class FeatureMappingStrategy(str, enum.Enum):
 
   Example:
     >>> import proxai as px
-    >>> # Use strict mode to ensure full feature support
-    >>> px.connect(feature_mapping_strategy=px.FeatureMappingStrategy.STRICT)
-    >>> # Or per-request
-    >>> px.generate_text(
-    ...   prompt="Hello",
-    ...   feature_mapping_strategy=px.FeatureMappingStrategy.STRICT,
+    >>> px.connect(
+    ...   provider_call_options=px.ProviderCallOptions(
+    ...     feature_mapping_strategy=px.FeatureMappingStrategy.STRICT,
+    ...   ),
     ... )
   """
 
   BEST_EFFORT = "BEST_EFFORT"
   STRICT = "STRICT"
+
+
+@dataclasses.dataclass
+class ProviderCallOptions:
+  """Client-wide defaults for provider call behaviour."""
+
+  feature_mapping_strategy: FeatureMappingStrategy = (
+      FeatureMappingStrategy.BEST_EFFORT
+  )
+  suppress_provider_errors: bool = False
+  allow_parallel_file_operations: bool = True
+
+
+@dataclasses.dataclass
+class ModelProbeOptions:
+  """Configuration for model probing (health checks, model discovery)."""
+
+  allow_multiprocessing: bool = True
+  timeout: int = 25
+
+
+@dataclasses.dataclass
+class DebugOptions:
+  """Developer-only diagnostic options."""
+
+  keep_raw_provider_response: bool = False
 
 
 @dataclasses.dataclass
@@ -370,183 +486,174 @@ class RunOptions:
   logging_options: LoggingOptions | None = None
   cache_options: CacheOptions | None = None
   proxdash_options: ProxDashOptions | None = None
-  allow_multiprocessing: bool | None = None
-  model_test_timeout: int | None = None
-  feature_mapping_strategy: FeatureMappingStrategy | None = None
-  suppress_provider_errors: bool | None = None
+  provider_call_options: ProviderCallOptions | None = None
+  model_probe_options: ModelProbeOptions | None = None
+  debug_options: DebugOptions | None = None
 
 
 @dataclasses.dataclass
-class ResponseFormatPydanticValue:
-  """Pydantic model information for structured response parsing."""
+class OutputFormat:
+  """Specification for the desired output format."""
 
-  class_name: str | None = None
-  class_value: type[pydantic.BaseModel] | None = None
-  class_json_schema_value: dict[str, Any] | None = None
-
-
-ResponseFormatValueType = str | dict[str, Any] | ResponseFormatPydanticValue
+  type: OutputFormatType | None = None
+  pydantic_class: type[pydantic.BaseModel] | None = None
+  pydantic_class_name: str | None = None
+  pydantic_class_json_schema: dict | None = None
 
 
-class ResponseFormatType(str, enum.Enum):
-  """Expected format of the model response.
+OutputFormatParam = str | type[pydantic.BaseModel] | OutputFormat
 
-  Specifies how the AI model's response should be formatted
-  and parsed.
+
+@dataclasses.dataclass
+class ResultMediaContentType:
+  """Media content returned by a provider in a result.
 
   Attributes:
-    TEXT: Plain text response (default).
-    JSON: Response parsed as JSON object.
-    JSON_SCHEMA: Response validated against a JSON schema.
-    PYDANTIC: Response parsed into a Pydantic model instance.
-
-  Example:
-    >>> import proxai as px
-    >>> # Usually inferred automatically, but can be explicit:
-    >>> fmt = px.ResponseFormat(
-    ...   schema={"type": "object"}, type=px.ResponseFormatType.JSON_SCHEMA
-    ... )
+    data: Raw media bytes.
+    media_type: MIME type (e.g., "image/png", "audio/wav").
   """
 
-  TEXT = "TEXT"
-  JSON = "JSON"
-  JSON_SCHEMA = "JSON_SCHEMA"
-  PYDANTIC = "PYDANTIC"
+  data: bytes
+  media_type: str
+
+
+class ThinkingType(str, enum.Enum):
+  """Type of thinking for a query to a provider."""
+
+  LOW = "LOW"
+  MEDIUM = "MEDIUM"
+  HIGH = "HIGH"
 
 
 @dataclasses.dataclass
-class ResponseFormat:
-  """Specification for the desired response format."""
+class ParameterType:
+  """Parameters for a query to a provider."""
 
-  value: ResponseFormatValueType | None = None
-  type: ResponseFormatType | None = None
+  temperature: float | None = None
+  max_tokens: int | None = None
+  stop: StopType | None = None
+  n: int | None = None
+  thinking: ThinkingType | None = None
 
 
-ResponseFormatSchema = str | dict[str, Any] | type[pydantic.BaseModel]
+class Tools(enum.Enum):
+  """Tools for a query to a provider."""
+
+  WEB_SEARCH = "WEB_SEARCH"
 
 
 @dataclasses.dataclass
-class StructuredResponseFormat:
-  """User-facing structured response format specification.
+class ConnectionOptions:
+  """Connection options for a query to a provider.
 
-  Defines the expected format for structured model responses,
-  enabling automatic parsing into JSON or Pydantic models.
-
-  Args:
-    schema: The response schema. Can be a JSON schema dict,
-      a JSON schema string, or a Pydantic model class.
-    type: The response format type (TEXT, JSON, JSON_SCHEMA,
-      or PYDANTIC). Usually inferred from the schema.
-
-  Example:
-    >>> from pydantic import BaseModel
-    >>> import proxai as px
-    >>>
-    >>> class Person(BaseModel):
-    ...   name: str
-    ...   age: int
-    >>>
-    >>> # Using Pydantic model directly (preferred)
-    >>> response = px.generate_text(
-    ...   prompt="Generate a person", response_format=Person
-    ... )
-    >>>
-    >>> # Using StructuredResponseFormat explicitly
-    >>> fmt = px.ResponseFormat(schema=Person)
+  `fallback_models` accepts either a resolved `ProviderModelType` or
+  the shorthand `(provider, model)` tuple form for each entry; the
+  client resolves tuples via `ModelConfigs.get_provider_model()` before
+  dispatch.
   """
 
-  schema: ResponseFormatSchema | None = None
-  type: ResponseFormatType | None = None
-
-
-ResponseFormatParam = ResponseFormatSchema | StructuredResponseFormat
+  fallback_models: list[ProviderModelIdentifierType] | None = None
+  suppress_provider_errors: bool | None = None
+  endpoint: str | None = None
+  skip_cache: bool | None = None
+  override_cache_value: bool | None = None
 
 
 @dataclasses.dataclass
 class QueryRecord:
   """Complete record of a query sent to a provider."""
 
-  call_type: CallType | None = None
-  provider_model: ProviderModelType | None = None
   prompt: str | None = None
-  system: str | None = None
-  messages: MessagesType | None = None
-  max_tokens: int | None = None
-  temperature: float | None = None
-  stop: StopType | None = None
-  token_count: int | None = None
-  response_format: ResponseFormat | None = None
-  web_search: bool | None = None
-  feature_mapping_strategy: FeatureMappingStrategy | None = None
-  chosen_endpoint: str | None = None
+  chat: Chat | None = None
+  system_prompt: str | None = None
+  provider_model: ProviderModelType | None = None
+  parameters: ParameterType | None = None
+  tools: list[Tools] | None = None
+  output_format: OutputFormat | None = None
+  connection_options: ConnectionOptions | None = None
   hash_value: str | None = None
 
 
-@dataclasses.dataclass
-class PydanticMetadataType:
-  """Metadata for serializing and deserializing Pydantic instances."""
+class ResultStatusType(str, enum.Enum):
+  """Status of a query to a provider."""
 
-  class_name: str | None = None
-  instance_json_value: dict[str, Any] | None = None
-
-
-ResponseValue = str | dict[str, Any] | pydantic.BaseModel
-
-
-class ResponseType(str, enum.Enum):
-  """Type of the response value returned by the model."""
-
-  TEXT = "TEXT"
-  JSON = "JSON"
-  PYDANTIC = "PYDANTIC"
+  SUCCESS = "SUCCESS"
+  FAILED = "FAILED"
 
 
 @dataclasses.dataclass
-class Response:
-  """Response data returned from a model query."""
+class ChoiceType:
+  """Choice of a query to a provider."""
 
-  value: ResponseValue | None = None
-  type: ResponseType | None = None
-  pydantic_metadata: PydanticMetadataType | None = None
+  output_text: str | None = None
+  output_image: message_content.MessageContent | None = None
+  output_audio: message_content.MessageContent | None = None
+  output_video: message_content.MessageContent | None = None
+  output_json: dict | None = None
+  output_pydantic: pydantic.BaseModel | None = None
+
+  content: list[MessageContent] | None = None
 
 
 @dataclasses.dataclass
-class QueryResponseRecord:
-  """Complete response record including timing and error information."""
+class UsageType:
+  """Usage of a query to a provider."""
 
-  response: Response | None = None
-  error: str | None = None
-  error_traceback: str | None = None
+  input_tokens: int | None = None
+  output_tokens: int | None = None
+  total_tokens: int | None = None
+  estimated_cost: int | None = None
+
+
+@dataclasses.dataclass
+class TimeStampType:
+  """Timestamp information for a query to a provider."""
+
   start_utc_date: datetime.datetime | None = None
   end_utc_date: datetime.datetime | None = None
   local_time_offset_minute: int | None = None
   response_time: datetime.timedelta | None = None
-  estimated_cost: int | None = None
-  token_count: int | None = None
+  cache_response_time: datetime.timedelta | None = None
 
 
 @dataclasses.dataclass
-class CacheRecord:
-  """Cached query and its associated responses."""
+class ResultRecord:
+  """Result of a query to a provider."""
 
-  query_record: QueryRecord | None = None
-  query_responses: list[QueryResponseRecord] = dataclasses.field(
-      default_factory=list
-  )
-  shard_id: str | None = None
-  last_access_time: datetime.datetime | None = None
-  call_count: int | None = None
+  status: ResultStatusType | None = None
+
+  role: MessageRoleType | None = None
+
+  output_text: str | None = None
+  output_image: message_content.MessageContent | None = None
+  output_audio: message_content.MessageContent | None = None
+  output_video: message_content.MessageContent | None = None
+  output_json: dict | None = None
+  output_pydantic: pydantic.BaseModel | None = None
+
+  content: list[MessageContent] | None = None
+  choices: list[ChoiceType] | None = None
+
+  error: str | None = None
+  error_traceback: str | None = None
+
+  usage: UsageType | None = None
+  timestamp: TimeStampType | None = None
 
 
 @dataclasses.dataclass
-class LightCacheRecord:
-  """Lightweight cache metadata without full response data."""
+class ExecutorResult:
+  """Return type for provider endpoint executors."""
 
-  query_record_hash: str | None = None
-  query_response_count: int | None = None
-  shard_id: int | None = None
-  last_access_time: datetime.datetime | None = None
-  call_count: int | None = None
+  result_record: ResultRecord
+  raw_provider_response: Any | None = None
+
+
+class ResultSource(str, enum.Enum):
+  """Origin of the response data."""
+
+  CACHE = "CACHE"
+  PROVIDER = "PROVIDER"
 
 
 class CacheLookFailReason(str, enum.Enum):
@@ -555,32 +662,71 @@ class CacheLookFailReason(str, enum.Enum):
   CACHE_NOT_FOUND = "CACHE_NOT_FOUND"
   CACHE_NOT_MATCHED = "CACHE_NOT_MATCHED"
   UNIQUE_RESPONSE_LIMIT_NOT_REACHED = "UNIQUE_RESPONSE_LIMIT_NOT_REACHED"
-  PROVIDER_ERROR_CACHED = "PROVIDER_ERROR_CACHED"
+  CACHE_UNAVAILABLE = "CACHE_UNAVAILABLE"
+
+
+@dataclasses.dataclass
+class ConnectionMetadata:
+  """Metadata for a cached query."""
+
+  result_source: ResultSource | None = None
+  cache_look_fail_reason: CacheLookFailReason | None = None
+  endpoint_used: str | None = None
+  failed_fallback_models: list[ProviderModelType] | None = None
+  feature_mapping_strategy: FeatureMappingStrategy | None = None
+
+
+@dataclasses.dataclass
+class DebugInfo:
+  """Debug-only sidecar fields attached to a CallRecord.
+
+  None of the fields here are part of ProxAI's stable contract. They exist
+  as escape hatches for ad-hoc debugging and may change shape or disappear
+  without notice. They are intentionally never serialized to the query
+  cache or to ProxDash.
+  """
+
+  raw_provider_response: Any | None = None
+
+
+@dataclasses.dataclass
+class CallRecord:
+  """Complete record of a call to a provider."""
+
+  query: QueryRecord | None = None
+  result: ResultRecord | None = None
+  connection: ConnectionMetadata | None = None
+  debug: DebugInfo | None = None
+
+
+@dataclasses.dataclass
+class CacheRecord:
+  """Cached query and its associated responses."""
+
+  query: QueryRecord | None = None
+  results: list[ResultRecord] = dataclasses.field(default_factory=list)
+  shard_id: int | str | None = None
+  last_access_time: datetime.datetime | None = None
+  call_count: int | None = None
+
+
+@dataclasses.dataclass
+class LightCacheRecord:
+  """Lightweight cache metadata without full response data."""
+
+  query_hash: str | None = None
+  results_count: int | None = None
+  shard_id: int | str | None = None
+  last_access_time: datetime.datetime | None = None
+  call_count: int | None = None
 
 
 @dataclasses.dataclass
 class CacheLookResult:
   """Result of a cache lookup operation."""
 
-  query_response: QueryResponseRecord | None = None
-  look_fail_reason: CacheLookFailReason | None = None
-
-
-class ResponseSource(str, enum.Enum):
-  """Origin of the response data."""
-
-  CACHE = "CACHE"
-  PROVIDER = "PROVIDER"
-
-
-@dataclasses.dataclass
-class LoggingRecord:
-  """Complete log entry for a query and its response."""
-
-  query_record: QueryRecord | None = None
-  response_record: QueryResponseRecord | None = None
-  response_source: ResponseSource | None = None
-  look_fail_reason: CacheLookFailReason | None = None
+  result: ResultRecord | None = None
+  cache_look_fail_reason: CacheLookFailReason | None = None
 
 
 @dataclasses.dataclass
@@ -597,12 +743,11 @@ class ModelStatus:
   filtered_models: set[ProviderModelType] = dataclasses.field(
       default_factory=set
   )
-  provider_queries: dict[ProviderModelType, LoggingRecord] = dataclasses.field(
-      default_factory=dict
-  )
+  provider_queries: dict[ProviderModelType,
+                         CallRecord] = dataclasses.field(default_factory=dict)
 
 
-ModelStatusByCallType = dict[CallType, ModelStatus]
+ModelStatusByOutputFormatType = dict[OutputFormatType, ModelStatus]
 
 
 class ModelCacheManagerStatus(str, enum.Enum):
@@ -651,7 +796,7 @@ class StateContainer:
 class ModelConfigsState(StateContainer):
   """Persisted state for model configuration data."""
 
-  model_configs_schema: ModelConfigsSchemaType | None = None
+  model_registry: ModelRegistry | None = None
 
 
 @dataclasses.dataclass
@@ -687,17 +832,27 @@ class ProxDashConnectionState(StateContainer):
 
 
 @dataclasses.dataclass
-class ProviderModelState(StateContainer):
-  """Persisted state for a specific provider model connector."""
+class ProviderState(StateContainer):
+  """Persisted state for a provider connector (provider-scoped, not per model)."""
 
-  provider_model: ProviderModelType | None = None
   run_type: RunType | None = None
-  provider_model_config: ProviderModelConfigType | None = None
-  feature_mapping_strategy: FeatureMappingStrategy | None = None
+  provider_call_options: ProviderCallOptions | None = None
   query_cache_manager: QueryCacheManagerState | None = None
   logging_options: LoggingOptions | None = None
   proxdash_connection: ProxDashConnectionState | None = None
   provider_token_value_map: ProviderTokenValueMap | None = None
+  debug_options: DebugOptions | None = None
+  files_manager_instance: FilesManagerState | None = None
+
+
+@dataclasses.dataclass
+class ApiKeyManagerState(StateContainer):
+  """Persisted state for API key management."""
+
+  proxdash_connection: ProxDashConnectionState | None = None
+  proxdash_provider_api_keys: ProviderTokenValueMap | None = None
+  providers_with_key: dict[ProviderNameType,
+                           ProviderTokenValueMap] | None = None
 
 
 @dataclasses.dataclass
@@ -705,17 +860,28 @@ class AvailableModelsState(StateContainer):
   """Persisted state for available models discovery."""
 
   run_type: RunType | None = None
+  provider_call_options: ProviderCallOptions | None = None
   model_configs_instance: ModelConfigsState | None = None
   model_cache_manager: ModelCacheManagerState | None = None
+  query_cache_manager: QueryCacheManagerState | None = None
   logging_options: LoggingOptions | None = None
   proxdash_connection: ProxDashConnectionState | None = None
-  proxdash_provider_api_keys: ProviderTokenValueMap | None = None
-  allow_multiprocessing: bool | None = None
-  model_test_timeout: int | None = None
-  providers_with_key: dict[ProviderNameType,
-                           ProviderTokenValueMap] | None = (None)
-  has_fetched_all_models: bool | None = None
+  api_key_manager: ApiKeyManagerState | None = None
+  files_manager_instance: FilesManagerState | None = None
+  model_probe_options: ModelProbeOptions | None = None
+  debug_options: DebugOptions | None = None
   latest_model_cache_path_used_for_update: str | None = None
+
+
+@dataclasses.dataclass
+class FilesManagerState(StateContainer):
+  """Persisted state for the files manager."""
+
+  run_type: RunType | None = None
+  logging_options: LoggingOptions | None = None
+  proxdash_connection: ProxDashConnectionState | None = None
+  provider_call_options: ProviderCallOptions | None = None
+  api_key_manager: ApiKeyManagerState | None = None
 
 
 @dataclasses.dataclass
@@ -733,19 +899,20 @@ class ProxAIClientState(StateContainer):
   cache_options: CacheOptions | None = None
   proxdash_options: ProxDashOptions | None = None
 
-  model_configs: ModelConfigsState | None = None
+  model_configs_instance: ModelConfigsState | None = None
   model_configs_requested_from_proxdash: bool | None = None
 
-  registered_model_connectors: dict[CallType, ProviderModelState] | None = None
-  model_connectors: dict[ProviderModelType, ProviderModelState] | None = None
+  registered_model_connectors: dict[OutputFormatType,
+                                    ProviderState] | None = None
   default_model_cache_manager: ModelCacheManagerState | None = None
   model_cache_manager: ModelCacheManagerState | None = None
   query_cache_manager: QueryCacheManagerState | None = None
   proxdash_connection: ProxDashConnectionState | None = None
 
-  feature_mapping_strategy: FeatureMappingStrategy | None = None
-  suppress_provider_errors: bool | None = None
-  allow_multiprocessing: bool | None = None
-  model_test_timeout: int | None = None
+  provider_call_options: ProviderCallOptions | None = None
+  model_probe_options: ModelProbeOptions | None = None
+  debug_options: DebugOptions | None = None
 
-  available_models: AvailableModelsState | None = None
+  api_key_manager_instance: ApiKeyManagerState | None = None
+  available_models_instance: AvailableModelsState | None = None
+  files_manager_instance: FilesManagerState | None = None

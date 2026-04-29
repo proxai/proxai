@@ -8,6 +8,9 @@ import pytest
 import requests
 import requests_mock as requests_mock_module
 
+import proxai.chat.chat_session as chat_session
+import proxai.chat.message as message
+import proxai.chat.message_content as message_content
 import proxai.connections.proxdash as proxdash
 import proxai.connectors.model_configs as model_configs
 import proxai.types as types
@@ -48,48 +51,59 @@ def _get_path_dir(temp_path: str):
   return path, temp_dir
 
 
-def _create_test_logging_record(
-    prompt: str = "test prompt", system: str = "test system",
-    messages: list[dict[str, str]] | None | object = _UNSET,
-    response: str | dict | pydantic.BaseModel = "test response",
-    response_type: types.ResponseType = types.ResponseType.TEXT,
-    response_format: types.ResponseFormat | None = None,
-    error: str | None = None, error_traceback: str | None = None,
-    stop: str | list[str] | None = None, hash_value: str = "test_hash"
-) -> types.LoggingRecord:
-  """Creates a test logging record with default values."""
-  if messages is _UNSET:
-    messages = [{
-        "role": "user",
-        "content": "test user message"
-    }, {
-        "role": "assistant",
-        "content": "test assistant message"
-    }]
-
+def _create_test_call_record(
+    prompt: str | None = 'test prompt',
+    system_prompt: str | None = 'test system',
+    output_text: str | None = 'test response',
+    output_format: types.OutputFormat | None = None,
+    output_json: dict | None = None,
+    output_pydantic: pydantic.BaseModel | None = None,
+    error: str | None = None,
+    error_traceback: str | None = None,
+    stop: str | list[str] | None = None,
+    hash_value: str = 'test_hash',
+    result_source: types.ResultSource = types.ResultSource.PROVIDER,
+    cache_look_fail_reason: types.CacheLookFailReason | None = None,
+) -> types.CallRecord:
+  """Creates a test call record with default values."""
   model_configs_instance = model_configs.ModelConfigs()
-  query_record = types.QueryRecord(
-      prompt=prompt, system=system, messages=messages,
+  query = types.QueryRecord(
+      prompt=prompt,
+      system_prompt=system_prompt,
       provider_model=model_configs_instance.get_provider_model(
           ('mock_provider', 'mock_model')
-      ), call_type=types.CallType.GENERATE_TEXT, max_tokens=100,
-      temperature=0.7, stop=stop, hash_value=hash_value,
-      response_format=response_format
+      ),
+      parameters=types.ParameterType(
+          max_tokens=100, temperature=0.7, stop=stop
+      ),
+      output_format=output_format,
+      hash_value=hash_value,
   )
 
-  response_record = types.QueryResponseRecord(
-      response=types.Response(value=response, type=response_type), error=error,
+  result = types.ResultRecord(
+      status=types.ResultStatusType.SUCCESS,
+      output_text=output_text,
+      output_json=output_json,
+      output_pydantic=output_pydantic,
+      error=error,
       error_traceback=error_traceback,
-      start_utc_date=datetime.datetime(2024, 1, 1, 12, 0),
-      end_utc_date=datetime.datetime(2024, 1, 1, 12,
-                                     1), local_time_offset_minute=0,
-      response_time=datetime.timedelta(seconds=1), estimated_cost=0.0
+      timestamp=types.TimeStampType(
+          start_utc_date=datetime.datetime(2024, 1, 1, 12, 0),
+          end_utc_date=datetime.datetime(2024, 1, 1, 12, 1),
+          local_time_offset_minute=0,
+          response_time=datetime.timedelta(seconds=1),
+      ),
+      usage=types.UsageType(
+          input_tokens=10, output_tokens=20, total_tokens=30, estimated_cost=5
+      ),
   )
 
-  return types.LoggingRecord(
-      query_record=query_record, response_record=response_record,
-      response_source=types.ResponseSource.PROVIDER, look_fail_reason=None
+  connection = types.ConnectionMetadata(
+      result_source=result_source,
+      cache_look_fail_reason=cache_look_fail_reason,
   )
+
+  return types.CallRecord(query=query, result=result, connection=connection)
 
 
 def _create_connection(
@@ -125,7 +139,7 @@ def _verify_proxdash_request(
   """Verifies that the request to ProxDash was made with expected data."""
   logging_record_requests = [
       request for request in requests_mock.request_history if request.url ==
-      'https://proxainest-production.up.railway.app/ingestion/logging-records'
+      'https://proxainest-production.up.railway.app/ingestion/call-records'
   ]
   if expected_data is None:
     assert len(logging_record_requests) == 0
@@ -659,7 +673,7 @@ class TestProxDashConnectionGetState:
 
 class TestProxDashConnectionHideSensitiveContent:
 
-  def test_hide_sensitive_content_logging_record(self, model_configs_instance):
+  def test_hide_sensitive_content(self, model_configs_instance):
     proxdash_connection_params = proxdash.ProxDashConnectionParams(
         logging_options=types.LoggingOptions(),
         proxdash_options=types.ProxDashOptions(),
@@ -668,126 +682,56 @@ class TestProxDashConnectionHideSensitiveContent:
         init_from_params=proxdash_connection_params
     )
 
-    # Create a sample logging record with all fields populated
-    query_record = types.QueryRecord(
-        prompt="sensitive prompt", system="sensitive system message",
-        messages=[{
-            "role": "user",
-            "content": "sensitive user message"
-        }, {
-            "role": "assistant",
-            "content": "sensitive assistant message"
-        }], provider_model=model_configs_instance.get_provider_model(
-            ('mock_provider', 'mock_model')
-        ), call_type="completion", max_tokens=100, temperature=0.7, stop=None,
-        hash_value="test_hash"
+    call_record = _create_test_call_record(
+        prompt='sensitive prompt',
+        system_prompt='sensitive system',
+        output_text='sensitive response',
     )
 
-    response_record = types.QueryResponseRecord(
-        response=types.Response(
-            value="sensitive response", type=types.ResponseType.TEXT
-        ), error=None, error_traceback=None,
-        start_utc_date=datetime.datetime.now(datetime.timezone.utc),
-        end_utc_date=datetime.datetime.now(datetime.timezone.utc),
-        local_time_offset_minute=0, response_time=datetime.timedelta(seconds=1),
-        estimated_cost=0.0
-    )
-
-    logging_record = types.LoggingRecord(
-        query_record=query_record, response_record=response_record,
-        response_source=types.ResponseSource.PROVIDER, look_fail_reason=None
-    )
-
-    # Hide sensitive content
-    hidden_record = connection._hide_sensitive_content_logging_record(
-        logging_record
-    )
+    hidden_record = connection._hide_sensitive_content(call_record)
 
     # Original record should not be modified
-    assert logging_record.query_record.prompt == "sensitive prompt"
-    assert logging_record.query_record.system == "sensitive system message"
-    assert logging_record.query_record.messages == [{
-        "role": "user",
-        "content": "sensitive user message"
-    }, {
-        "role": "assistant",
-        "content": "sensitive assistant message"
-    }]
-    assert logging_record.response_record.response.value == "sensitive response"
+    assert call_record.query.prompt == 'sensitive prompt'
+    assert call_record.query.system_prompt == 'sensitive system'
+    assert call_record.result.output_text == 'sensitive response'
 
     # Hidden record should have sensitive content replaced
     hidden_str = proxdash._SENSITIVE_CONTENT_HIDDEN_STRING
-    assert hidden_record.query_record.prompt == hidden_str
-    assert hidden_record.query_record.system == hidden_str
-    assert hidden_record.query_record.messages == [{
-        "role": "assistant",
-        "content": hidden_str
-    }]
-    assert hidden_record.response_record.response.value == hidden_str
+    assert hidden_record.query.prompt == hidden_str
+    assert hidden_record.query.system_prompt == hidden_str
+    assert hidden_record.query.chat is None
+    assert hidden_record.result.output_text == hidden_str
+    assert hidden_record.result.output_image is None
+    assert hidden_record.result.output_audio is None
+    assert hidden_record.result.output_video is None
+    assert hidden_record.result.output_json is None
+    assert hidden_record.result.output_pydantic is None
+    assert hidden_record.result.content is None
+    assert hidden_record.result.choices is None
 
     # Non-sensitive fields should remain unchanged
+    assert hidden_record.query.provider_model == call_record.query.provider_model
+    assert hidden_record.query.parameters == call_record.query.parameters
+    assert hidden_record.query.hash_value == call_record.query.hash_value
+    assert hidden_record.result.error == call_record.result.error
     assert (
-        hidden_record.query_record.provider_model ==
-        logging_record.query_record.provider_model
+        hidden_record.result.error_traceback ==
+        call_record.result.error_traceback
     )
-    assert (
-        hidden_record.query_record.call_type ==
-        logging_record.query_record.call_type
-    )
-    assert (
-        hidden_record.query_record.max_tokens ==
-        logging_record.query_record.max_tokens
-    )
-    assert (
-        hidden_record.query_record.temperature ==
-        logging_record.query_record.temperature
-    )
-    assert (hidden_record.query_record.stop == logging_record.query_record.stop)
-    assert (
-        hidden_record.query_record.hash_value ==
-        logging_record.query_record.hash_value
-    )
-    assert (
-        hidden_record.response_record.error ==
-        logging_record.response_record.error
-    )
-    assert (
-        hidden_record.response_record.error_traceback ==
-        logging_record.response_record.error_traceback
-    )
-    assert (
-        hidden_record.response_record.start_utc_date ==
-        logging_record.response_record.start_utc_date
-    )
-    assert (
-        hidden_record.response_record.end_utc_date ==
-        logging_record.response_record.end_utc_date
-    )
-    assert (
-        hidden_record.response_record.local_time_offset_minute ==
-        logging_record.response_record.local_time_offset_minute
-    )
-    assert (
-        hidden_record.response_record.response_time ==
-        logging_record.response_record.response_time
-    )
-    assert (
-        hidden_record.response_record.estimated_cost ==
-        logging_record.response_record.estimated_cost
-    )
-    assert (hidden_record.response_source == logging_record.response_source)
-    assert (hidden_record.look_fail_reason == logging_record.look_fail_reason)
+    assert hidden_record.result.timestamp == call_record.result.timestamp
+    assert hidden_record.result.usage == call_record.result.usage
+    assert hidden_record.connection == call_record.connection
 
 
-class TestProxDashConnectionUploadLoggingRecord:
+class TestProxDashConnectionUploadCallRecord:
 
   def test_upload_when_not_connected(self, requests_mock):
     """Tests that nothing happens when connection status is not CONNECTED."""
     connection, temp_dir, temp_dir_obj = _create_connection(
         status=types.ProxDashConnectionStatus.API_KEY_NOT_FOUND
     )
-    logging_record = _create_test_logging_record()
-    connection.upload_logging_record(logging_record)
+    call_record = _create_test_call_record()
+    connection.upload_call_record(call_record)
     _verify_proxdash_request(requests_mock)
     _verify_log_messages(temp_dir, [])
 
@@ -796,236 +740,220 @@ class TestProxDashConnectionUploadLoggingRecord:
     connection, temp_dir, temp_dir_obj = _create_connection(
         hide_sensitive_content=True
     )
-    logging_record = _create_test_logging_record(
-        prompt="sensitive prompt", system="sensitive system", messages=[{
-            "role": "user",
-            "content": "sensitive user message"
-        }, {
-            "role": "assistant",
-            "content": "sensitive assistant message"
-        }], response="sensitive response"
+    call_record = _create_test_call_record(
+        prompt='sensitive prompt', system_prompt='sensitive system',
+        output_text='sensitive response'
     )
     requests_mock.post(
-        'https://proxainest-production.up.railway.app/ingestion/logging-records',
+        'https://proxainest-production.up.railway.app/ingestion/call-records',
         text='{"success": true}', status_code=201
     )
-    connection.upload_logging_record(logging_record)
+    connection.upload_call_record(call_record)
     hidden_str = proxdash._SENSITIVE_CONTENT_HIDDEN_STRING
     _verify_proxdash_request(
         requests_mock, {
-            'prompt': hidden_str,
-            'system': hidden_str,
-            'messages': [{
-                "role": "assistant",
-                "content": hidden_str
-            }],
-            'response': hidden_str
+            'query': {
+                'prompt': hidden_str,
+                'system_prompt': hidden_str,
+            },
+            'result': {
+                'output_text': hidden_str,
+            },
         }
     )
     _verify_log_messages(temp_dir, [])
 
   def test_upload_without_hide_sensitive_content(self, requests_mock):
-    """Tests that sensitive content is preserved when hide_sensitive_content is False."""
+    """Tests that content is preserved when hide_sensitive_content is False."""
     connection, temp_dir, temp_dir_obj = _create_connection()
-    logging_record = _create_test_logging_record(
-        prompt="test prompt", system="test system", messages=[{
-            "role": "user",
-            "content": "test user message"
-        }, {
-            "role": "assistant",
-            "content": "test assistant message"
-        }], response="test response"
+    call_record = _create_test_call_record(
+        prompt='test prompt', system_prompt='test system',
+        output_text='test response'
     )
     requests_mock.post(
-        'https://proxainest-production.up.railway.app/ingestion/logging-records',
+        'https://proxainest-production.up.railway.app/ingestion/call-records',
         text='{"success": true}', status_code=201
     )
-    connection.upload_logging_record(logging_record)
+    connection.upload_call_record(call_record)
     _verify_proxdash_request(
         requests_mock, {
-            'prompt': 'test prompt',
-            'system': 'test system',
-            'messages': [{
-                "role": "user",
-                "content": "test user message"
-            }, {
-                "role": "assistant",
-                "content": "test assistant message"
-            }],
-            'response': 'test response'
+            'query': {
+                'prompt': 'test prompt',
+                'system_prompt': 'test system',
+            },
+            'result': {
+                'output_text': 'test response',
+            },
         }
     )
     _verify_log_messages(temp_dir, [])
 
-  def test_upload_with_stop_parameter_conversion(self, requests_mock):
-    """Tests that stop parameter is properly converted to string."""
+  def test_upload_with_stop_parameter(self, requests_mock):
+    """Tests that stop parameter is properly serialized."""
     connection, temp_dir, temp_dir_obj = _create_connection()
     test_cases = [
-        ("stop string", ["stop string"]),  # String
-        (["stop1", "stop2"], ["stop1", "stop2"]),  # List of strings
-        (None, None),  # None value
+        ('stop string', 'stop string'),
+        (['stop1', 'stop2'], ['stop1', 'stop2']),
     ]
     for idx, (stop_input, expected_stop) in enumerate(test_cases):
-      logging_record = _create_test_logging_record(stop=stop_input)
+      call_record = _create_test_call_record(stop=stop_input)
       requests_mock.post(
-          'https://proxainest-production.up.railway.app/ingestion/logging-records',
+          'https://proxainest-production.up.railway.app/ingestion/call-records',
           text='{"success": true}', status_code=201
       )
-      connection.upload_logging_record(logging_record)
+      connection.upload_call_record(call_record)
       _verify_proxdash_request(
-          requests_mock, {'stop': expected_stop}, request_id=idx
+          requests_mock, {'query': {
+              'parameters': {
+                  'stop': expected_stop
+              }
+          }}, request_id=idx
       )
     _verify_log_messages(temp_dir, [])
 
   def test_upload_with_all_permission(self, requests_mock):
-    """Tests that all fields including sensitive ones are uploaded when permission is 'ALL'."""
-    connection, temp_dir, temp_dir_obj = _create_connection(permission="ALL")
-    logging_record = _create_test_logging_record(
-        prompt="test prompt", system="test system", messages=[{
-            "role": "user",
-            "content": "test user message"
-        }, {
-            "role": "assistant",
-            "content": "test assistant message"
-        }], response="test response"
+    """Tests that all fields are uploaded when permission is 'ALL'."""
+    connection, temp_dir, temp_dir_obj = _create_connection(permission='ALL')
+    call_record = _create_test_call_record(
+        prompt='test prompt', system_prompt='test system',
+        output_text='test response'
     )
     requests_mock.post(
-        'https://proxainest-production.up.railway.app/ingestion/logging-records',
+        'https://proxainest-production.up.railway.app/ingestion/call-records',
         text='{"success": true}', status_code=201
     )
-    connection.upload_logging_record(logging_record)
+    connection.upload_call_record(call_record)
     _verify_proxdash_request(
         requests_mock, {
-            'prompt': 'test prompt',
-            'system': 'test system',
-            'messages': [{
-                "role": "user",
-                "content": "test user message"
-            }, {
-                "role": "assistant",
-                "content": "test assistant message"
-            }],
-            'response': 'test response',
-            'provider': 'mock_provider',
-            'model': 'mock_model',
-            'callType': 'GENERATE_TEXT',
-            'maxTokens': 100,
-            'temperature': 0.7,
-            'hashValue': 'test_hash'
+            'schema_version': 2,
+            'query': {
+                'prompt': 'test prompt',
+                'system_prompt': 'test system',
+                'provider_model': {
+                    'provider': 'mock_provider',
+                    'model': 'mock_model',
+                },
+                'parameters': {
+                    'max_tokens': 100,
+                    'temperature': 0.7,
+                },
+                'hash_value': 'test_hash',
+            },
+            'result': {
+                'output_text': 'test response',
+            },
+            'connection': {
+                'result_source': 'PROVIDER',
+                'caller_type': 'SDK',
+                'caller_app': 'PYTHON_SDK',
+            },
         }
     )
     _verify_log_messages(temp_dir, [])
 
   def test_upload_with_limited_permission(self, requests_mock):
-    """Tests that sensitive fields are excluded when permission is not 'ALL'."""
+    """Tests that sensitive fields are hidden when permission is 'NO_PROMPT'."""
     connection, temp_dir, temp_dir_obj = _create_connection(
-        permission="NO_PROMPT"
+        permission='NO_PROMPT'
     )
-    logging_record = _create_test_logging_record(
-        prompt="sensitive prompt", system="sensitive system", messages=[{
-            "role": "user",
-            "content": "sensitive user message"
-        }, {
-            "role": "assistant",
-            "content": "sensitive assistant message"
-        }], response="sensitive response"
+    call_record = _create_test_call_record(
+        prompt='sensitive prompt', system_prompt='sensitive system',
+        output_text='sensitive response'
     )
     requests_mock.post(
-        'https://proxainest-production.up.railway.app/ingestion/logging-records',
+        'https://proxainest-production.up.railway.app/ingestion/call-records',
         text='{"success": true}', status_code=201
     )
-    connection.upload_logging_record(logging_record)
+    connection.upload_call_record(call_record)
     hidden_str = proxdash._SENSITIVE_CONTENT_HIDDEN_STRING
     _verify_proxdash_request(
         requests_mock, {
-            'prompt': hidden_str,
-            'system': hidden_str,
-            'messages': [{
-                "role": "assistant",
-                "content": hidden_str
-            }],
-            'response': hidden_str
+            'query': {
+                'prompt': hidden_str,
+                'system_prompt': hidden_str,
+            },
+            'result': {
+                'output_text': hidden_str,
+            },
         }
     )
     _verify_log_messages(temp_dir, [])
 
   def test_upload_failed_response(self, requests_mock):
-    """Tests error logging when upload fails (non-201 status or non-success response)."""
+    """Tests error logging when upload fails."""
     connection, temp_dir, temp_dir_obj = _create_connection()
-    logging_record = _create_test_logging_record()
-    # Test cases for failed responses
+    call_record = _create_test_call_record()
     test_cases = [
         (
-            400, "Bad Request",
-            "ProxDash could not log the record. Status code: 400, Response: Bad Request"
+            400, 'Bad Request',
+            'ProxDash could not log the record. Status code: 400, '
+            'Response: Bad Request'
         ),
         (
-            201, "error",
-            "ProxDash could not log the record. Invalid JSON response: error"
+            201, 'error',
+            'ProxDash could not log the record. Invalid JSON response: error'
         ),
         (
-            500, "Internal Server Error",
-            "ProxDash could not log the record. Status code: 500, Response: Internal Server Error"
+            500, 'Internal Server Error',
+            'ProxDash could not log the record. Status code: 500, '
+            'Response: Internal Server Error'
         ),
     ]
     for status_code, response_text, expected_error in test_cases:
       if os.path.exists(os.path.join(temp_dir, 'merged.log')):
         os.remove(os.path.join(temp_dir, 'merged.log'))
       requests_mock.post(
-          'https://proxainest-production.up.railway.app/ingestion/logging-records',
+          'https://proxainest-production.up.railway.app/ingestion/call-records',
           text=response_text, status_code=status_code
       )
-      connection.upload_logging_record(logging_record)
+      connection.upload_call_record(call_record)
       _verify_log_messages(
           temp_dir, [(expected_error, types.LoggingType.ERROR)]
       )
 
   def test_upload_with_none_values(self, requests_mock):
-    """Tests handling of None values in various fields of the logging record."""
+    """Tests handling of None values in various fields."""
     connection, temp_dir, temp_dir_obj = _create_connection()
-    logging_record = _create_test_logging_record(
-        prompt=None, system=None, messages=None, response=None, error=None,
+    call_record = _create_test_call_record(
+        prompt=None, system_prompt=None, output_text=None, error=None,
         error_traceback=None, stop=None
     )
     requests_mock.post(
-        'https://proxainest-production.up.railway.app/ingestion/logging-records',
+        'https://proxainest-production.up.railway.app/ingestion/call-records',
         text='{"success": true}', status_code=201
     )
-    connection.upload_logging_record(logging_record)
-    _verify_proxdash_request(
-        requests_mock, {
-            'prompt': None,
-            'system': None,
-            'messages': None,
-            'response': None,
-            'error': None,
-            'errorTraceback': None,
-            'stop': None
-        }
-    )
+    connection.upload_call_record(call_record)
+    actual_data = json.loads([
+        r for r in requests_mock.request_history if 'call-records' in r.url
+    ][0].text)
+    assert 'prompt' not in actual_data.get('query', {})
+    assert 'system_prompt' not in actual_data.get('query', {})
+    assert 'output_text' not in actual_data.get('result', {})
     _verify_log_messages(temp_dir, [])
 
   def test_upload_with_datetime_conversion(self, requests_mock):
     """Tests proper conversion of datetime objects to ISO format."""
     connection, temp_dir, temp_dir_obj = _create_connection()
-    test_start_time = datetime.datetime(
+    call_record = _create_test_call_record()
+    call_record.result.timestamp.start_utc_date = datetime.datetime(
         2024, 1, 1, 12, 0, tzinfo=datetime.timezone.utc
     )
-    test_end_time = datetime.datetime(
+    call_record.result.timestamp.end_utc_date = datetime.datetime(
         2024, 1, 1, 12, 1, tzinfo=datetime.timezone.utc
     )
-    logging_record = _create_test_logging_record()
-    logging_record.response_record.start_utc_date = test_start_time
-    logging_record.response_record.end_utc_date = test_end_time
     requests_mock.post(
-        'https://proxainest-production.up.railway.app/ingestion/logging-records',
+        'https://proxainest-production.up.railway.app/ingestion/call-records',
         text='{"success": true}', status_code=201
     )
-    connection.upload_logging_record(logging_record)
+    connection.upload_call_record(call_record)
     _verify_proxdash_request(
         requests_mock, {
-            'startUTCDate': '2024-01-01T12:00:00+00:00',
-            'endUTCDate': '2024-01-01T12:01:00+00:00'
+            'result': {
+                'timestamp': {
+                    'start_utc_date': '2024-01-01T12:00:00+00:00',
+                    'end_utc_date': '2024-01-01T12:01:00+00:00',
+                }
+            }
         }
     )
     _verify_log_messages(temp_dir, [])
@@ -1034,94 +962,99 @@ class TestProxDashConnectionUploadLoggingRecord:
     """Tests conversion of timedelta to milliseconds for response_time."""
     connection, temp_dir, temp_dir_obj = _create_connection()
     test_cases = [
-        (datetime.timedelta(seconds=1), 1000),  # 1 second = 1000ms
-        (datetime.timedelta(milliseconds=500), 500),  # 500ms
-        (datetime.timedelta(microseconds=1500), 1),  # 1.5ms truncated to 1ms
-        (datetime.timedelta(minutes=1), 60000),  # 1 minute = 60000ms
+        (datetime.timedelta(seconds=1), 1000),
+        (datetime.timedelta(milliseconds=500), 500),
+        (datetime.timedelta(microseconds=1500), 1),
+        (datetime.timedelta(minutes=1), 60000),
     ]
     for idx, (delta, expected_ms) in enumerate(test_cases):
-      logging_record = _create_test_logging_record()
-      logging_record.response_record.response_time = delta
+      call_record = _create_test_call_record()
+      call_record.result.timestamp.response_time = delta
       requests_mock.post(
-          'https://proxainest-production.up.railway.app/ingestion/logging-records',
+          'https://proxainest-production.up.railway.app/ingestion/call-records',
           text='{"success": true}', status_code=201
       )
-      connection.upload_logging_record(logging_record)
+      connection.upload_call_record(call_record)
       _verify_proxdash_request(
-          requests_mock, {'responseTime': expected_ms}, request_id=idx
+          requests_mock,
+          {'result': {
+              'timestamp': {
+                  'response_time': expected_ms
+              }
+          }}, request_id=idx
       )
     _verify_log_messages(temp_dir, [])
 
-  def test_upload_with_complete_logging_record(
+  def test_upload_with_complete_call_record(
       self, requests_mock, model_configs_instance
   ):
-    """Tests upload with a fully populated logging record containing all possible fields."""
+    """Tests upload with a fully populated call record."""
     connection, temp_dir, temp_dir_obj = _create_connection()
-    logging_record = types.LoggingRecord(
-        query_record=types.QueryRecord(
-            prompt="test prompt", system="test system", messages=[{
-                "role": "user",
-                "content": "test user message"
-            }, {
-                "role": "assistant",
-                "content": "test assistant message"
-            }], provider_model=model_configs_instance.get_provider_model(
-                ('mock_provider', 'mock_model')
-            ), call_type=types.CallType.GENERATE_TEXT, max_tokens=100,
-            temperature=0.7, stop=["stop1", "stop2"], hash_value="test_hash"
-        ),
-        response_record=types.QueryResponseRecord(
-            response=types.Response(
-                value="test response", type=types.ResponseType.TEXT
-            ),
-            error="test error",
-            error_traceback="test error traceback",
-            start_utc_date=datetime.datetime(
-                2024, 1, 1, 12, 0, tzinfo=datetime.timezone.utc
-            ),
-            end_utc_date=datetime.datetime(
-                2024, 1, 1, 12, 1, tzinfo=datetime.timezone.utc
-            ),
-            local_time_offset_minute=120,  # UTC+2
-            response_time=datetime.timedelta(seconds=1),
-            estimated_cost=0.001
-        ),
-        response_source=types.ResponseSource.PROVIDER,
-        look_fail_reason=types.CacheLookFailReason.CACHE_NOT_FOUND
+    call_record = _create_test_call_record(
+        prompt='test prompt',
+        system_prompt='test system',
+        output_text='test response',
+        error='test error',
+        error_traceback='test error traceback',
+        stop=['stop1', 'stop2'],
+        hash_value='test_hash',
+        result_source=types.ResultSource.PROVIDER,
+        cache_look_fail_reason=types.CacheLookFailReason.CACHE_NOT_FOUND,
     )
+    call_record.result.timestamp.start_utc_date = datetime.datetime(
+        2024, 1, 1, 12, 0, tzinfo=datetime.timezone.utc
+    )
+    call_record.result.timestamp.end_utc_date = datetime.datetime(
+        2024, 1, 1, 12, 1, tzinfo=datetime.timezone.utc
+    )
+    call_record.result.timestamp.local_time_offset_minute = 120
+    call_record.result.timestamp.response_time = (datetime.timedelta(seconds=1))
     requests_mock.post(
-        'https://proxainest-production.up.railway.app/ingestion/logging-records',
+        'https://proxainest-production.up.railway.app/ingestion/call-records',
         text='{"success": true}', status_code=201
     )
-    connection.upload_logging_record(logging_record)
+    connection.upload_call_record(call_record)
     _verify_proxdash_request(
         requests_mock, {
-            'prompt': 'test prompt',
-            'system': 'test system',
-            'messages': [{
-                "role": "user",
-                "content": "test user message"
-            }, {
-                "role": "assistant",
-                "content": "test assistant message"
-            }],
-            'provider': 'mock_provider',
-            'model': 'mock_model',
-            'callType': 'GENERATE_TEXT',
-            'maxTokens': 100,
-            'temperature': 0.7,
-            'stop': ['stop1', 'stop2'],
-            'hashValue': 'test_hash',
-            'response': 'test response',
-            'error': 'test error',
-            'errorTraceback': 'test error traceback',
-            'startUTCDate': '2024-01-01T12:00:00+00:00',
-            'endUTCDate': '2024-01-01T12:01:00+00:00',
-            'localTimeOffsetMinute': 120,
-            'responseTime': 1000.0,
-            'estimatedCost': 0.001,
-            'responseSource': 'PROVIDER',
-            'lookFailReason': 'CACHE_NOT_FOUND'
+            'schema_version': 2,
+            'query': {
+                'prompt': 'test prompt',
+                'system_prompt': 'test system',
+                'provider_model': {
+                    'provider': 'mock_provider',
+                    'model': 'mock_model',
+                },
+                'parameters': {
+                    'max_tokens': 100,
+                    'temperature': 0.7,
+                    'stop': ['stop1', 'stop2'],
+                },
+                'hash_value': 'test_hash',
+            },
+            'result': {
+                'status': 'SUCCESS',
+                'output_text': 'test response',
+                'error': 'test error',
+                'error_traceback': 'test error traceback',
+                'timestamp': {
+                    'start_utc_date': '2024-01-01T12:00:00+00:00',
+                    'end_utc_date': '2024-01-01T12:01:00+00:00',
+                    'local_time_offset_minute': 120,
+                    'response_time': 1000,
+                },
+                'usage': {
+                    'input_tokens': 10,
+                    'output_tokens': 20,
+                    'total_tokens': 30,
+                    'estimated_cost': 5,
+                },
+            },
+            'connection': {
+                'result_source': 'PROVIDER',
+                'cache_look_fail_reason': 'CACHE_NOT_FOUND',
+                'caller_type': 'SDK',
+                'caller_app': 'PYTHON_SDK',
+            },
         }
     )
     _verify_log_messages(temp_dir, [])
@@ -1129,20 +1062,20 @@ class TestProxDashConnectionUploadLoggingRecord:
   def test_upload_with_network_error(self, requests_mock):
     """Tests handling of network errors during upload."""
     connection, temp_dir, temp_dir_obj = _create_connection()
-    logging_record = _create_test_logging_record()
+    call_record = _create_test_call_record()
     test_cases = [
-        (requests.exceptions.ConnectionError, "Connection error"),
-        (requests.exceptions.Timeout, "Request timed out"),
-        (requests.exceptions.RequestException, "General request error"),
+        (requests.exceptions.ConnectionError, 'Connection error'),
+        (requests.exceptions.Timeout, 'Request timed out'),
+        (requests.exceptions.RequestException, 'General request error'),
     ]
     for _idx, (exception_class, error_message) in enumerate(test_cases):
       if os.path.exists(os.path.join(temp_dir, 'merged.log')):
         os.remove(os.path.join(temp_dir, 'merged.log'))
       requests_mock.post(
-          'https://proxainest-production.up.railway.app/ingestion/logging-records',
+          'https://proxainest-production.up.railway.app/ingestion/call-records',
           exc=exception_class(error_message)
       )
-      connection.upload_logging_record(logging_record)
+      connection.upload_call_record(call_record)
       _verify_log_messages(
           temp_dir, [(
               f'ProxDash could not log the record. Error: {error_message}',
@@ -1154,167 +1087,142 @@ class TestProxDashConnectionUploadLoggingRecord:
     """Tests behavior when API key is invalid or expired."""
     connection, temp_dir, temp_dir_obj = _create_connection()
     connection.status = types.ProxDashConnectionStatus.API_KEY_NOT_VALID
-
-    logging_record = _create_test_logging_record()
-    connection.upload_logging_record(logging_record)
+    call_record = _create_test_call_record()
+    connection.upload_call_record(call_record)
     _verify_proxdash_request(requests_mock)
     _verify_log_messages(temp_dir, [])
 
 
-class TestProxDashConnectionGetModelConfigsSchema:
+def _valid_registry_config():
+  """Valid ModelRegistry payload (flat shape, ≥2 providers for validation)."""
+  return json.dumps({
+      'metadata': {
+          'version': '1.0.0',
+          'config_origin': 'PROXDASH',
+          'release_notes': 'TEST CONFIG',
+      },
+      'default_model_priority_list': [],
+      'provider_model_configs': {
+          'openai': {
+              'gpt-4': {
+                  'provider_model': {
+                      'provider': 'openai',
+                      'model': 'gpt-4',
+                      'provider_model_identifier': 'gpt-4',
+                  },
+              },
+          },
+          'claude': {
+              'claude-3': {
+                  'provider_model': {
+                      'provider': 'claude',
+                      'model': 'claude-3',
+                      'provider_model_identifier': 'claude-3',
+                  },
+              },
+          },
+      },
+  })
 
-  @pytest.fixture(autouse=True)
-  def setup_get_model_configs_schema(self, monkeypatch):
-    monkeypatch.delenv('PROXDASH_API_KEY', raising=False)
-    self.base_url = 'https://proxainest-production.up.railway.app'
-    # Create a valid config with 4+ providers for validation
-    self.valid_config = json.dumps({
-        "metadata": {
-            "version": "1.0.0",
-            "config_origin": "PROXDASH",
-            "release_notes": "TEST CONFIG"
-        },
-        "version_config": {
-            "provider_model_configs": {
-                "openai": {
-                    "gpt-4": {}
-                },
-                "claude": {
-                    "claude-3": {}
-                },
-                "gemini": {
-                    "gemini-pro": {}
-                },
-                "mistral": {
-                    "mistral-large": {}
-                }
-            }
-        }
-    })
-    yield
+
+class TestGetModelRegistry:
+  """Tests for get_model_registry — fetches ModelRegistry from ProxDash.
+
+  Single HTTP GET; validates response (200, success=true, decodes to
+  ModelRegistry, at least 2 providers). Returns None on any failure.
+  """
+
+  base_url = 'https://proxainest-production.up.railway.app'
 
   def _create_connection(
-      self, connected: bool = True, requests_mock=None
+      self, connected: bool = True,
   ) -> proxdash.ProxDashConnection:
-    if connected and requests_mock:
-      requests_mock.get(
-          f'{self.base_url}/ingestion/verify-key',
-          text='{"success": true, "data": {"permission": "ALL"}}',
-          status_code=200
-      )
     connection_params = proxdash.ProxDashConnectionParams(
         logging_options=types.LoggingOptions(),
         proxdash_options=types.ProxDashOptions(
             api_key='test_api_key' if connected else None,
-            disable_proxdash=not connected
-        )
+            disable_proxdash=not connected,
+        ),
     )
     return proxdash.ProxDashConnection(init_from_params=connection_params)
 
   def test_successful_fetch_when_connected(self, requests_mock):
-    """Tests successful fetch with API key authentication."""
-    requests_mock.get(
-        f'{self.base_url}/ingestion/verify-key',
-        text='{"success": true, "data": {"permission": "ALL"}}', status_code=200
-    )
-    connection = self._create_connection(
-        connected=True, requests_mock=requests_mock
-    )
-
+    connection = self._create_connection(connected=True)
     requests_mock.get(
         requests_mock_module.ANY,
-        text='{"success": true, "data": ' + self.valid_config + '}',
-        status_code=200
+        text='{"success": true, "data": ' + _valid_registry_config() + '}',
+        status_code=200,
     )
 
-    result = connection.get_model_configs_schema()
-
+    result = connection.get_model_registry()
     assert result is not None
+    assert isinstance(result, types.ModelRegistry)
     assert result.metadata.config_origin == types.ConfigOriginType.PROXDASH
     assert result.metadata.release_notes == 'TEST CONFIG'
+    # API key header must be sent when connected.
+    assert requests_mock.last_request.headers.get('X-API-Key') == 'test_api_key'
 
   def test_successful_fetch_when_not_connected(self, requests_mock):
-    """Tests successful fetch without API key (public endpoint)."""
     connection = self._create_connection(connected=False)
-
     requests_mock.get(
         requests_mock_module.ANY,
-        text='{"success": true, "data": ' + self.valid_config + '}',
-        status_code=200
+        text='{"success": true, "data": ' + _valid_registry_config() + '}',
+        status_code=200,
     )
 
-    result = connection.get_model_configs_schema()
-
+    result = connection.get_model_registry()
     assert result is not None
-    assert result.metadata.config_origin == types.ConfigOriginType.PROXDASH
+    # Public-endpoint path — no API-key header.
+    assert 'X-API-Key' not in requests_mock.last_request.headers
 
   def test_returns_none_on_non_200_status(self, requests_mock):
-    """Tests that None is returned when API returns non-200 status."""
     connection = self._create_connection(connected=False)
-
     requests_mock.get(
-        requests_mock_module.ANY, text='Server Error', status_code=500
+        requests_mock_module.ANY, text='Server Error', status_code=500,
     )
-
-    result = connection.get_model_configs_schema()
-
-    assert result is None
+    assert connection.get_model_registry() is None
 
   def test_returns_none_on_unsuccessful_response(self, requests_mock):
-    """Tests that None is returned when success is false."""
     connection = self._create_connection(connected=False)
-
     requests_mock.get(
         requests_mock_module.ANY,
-        text='{"success": false, "error": "Some error"}', status_code=200
+        text='{"success": false, "error": "Some error"}', status_code=200,
     )
-
-    result = connection.get_model_configs_schema()
-
-    assert result is None
+    assert connection.get_model_registry() is None
 
   def test_returns_none_on_decode_error(self, requests_mock):
-    """Tests that None is returned when response data cannot be decoded."""
     connection = self._create_connection(connected=False)
-
-    # Use invalid enum value for config_origin to trigger decode error
+    # Invalid enum value for config_origin → decode error in type_serializer.
     invalid_config = '{"metadata": {"config_origin": "INVALID_ORIGIN"}}'
     requests_mock.get(
         requests_mock_module.ANY,
         text='{"success": true, "data": ' + invalid_config + '}',
-        status_code=200
+        status_code=200,
     )
-
-    result = connection.get_model_configs_schema()
-
-    assert result is None
+    assert connection.get_model_registry() is None
 
   def test_returns_none_on_insufficient_providers(self, requests_mock):
-    """Tests that None is returned when schema has fewer than 4 providers."""
     connection = self._create_connection(connected=False)
-
-    # Config with only 2 providers (less than required 4)
-    insufficient_config = json.dumps({
-        "metadata": {
-            "config_origin": "PROXDASH"
-        },
-        "version_config": {
-            "provider_model_configs": {
-                "openai": {
-                    "gpt-4": {}
+    insufficient = json.dumps({
+        'metadata': {'config_origin': 'PROXDASH'},
+        'default_model_priority_list': [],
+        'provider_model_configs': {
+            'openai': {
+                'gpt-4': {
+                    'provider_model': {
+                        'provider': 'openai', 'model': 'gpt-4',
+                        'provider_model_identifier': 'gpt-4',
+                    },
                 },
-            }
-        }
+            },
+        },
     })
     requests_mock.get(
         requests_mock_module.ANY,
-        text='{"success": true, "data": ' + insufficient_config + '}',
-        status_code=200
+        text='{"success": true, "data": ' + insufficient + '}',
+        status_code=200,
     )
-
-    result = connection.get_model_configs_schema()
-
-    assert result is None
+    assert connection.get_model_registry() is None
 
 
 class TestProxDashConnectionGetProviderApiKeys:
@@ -1424,400 +1332,622 @@ class TestProxDashConnectionGetProviderApiKeys:
     assert provider_key_requests[0].headers['X-API-Key'] == 'test_api_key'
 
 
-class TestProxDashConnectionFormatMessages:
-  """Tests for _format_messages method."""
+class TestFileInfoToMessageContent:
 
-  def test_format_messages_with_valid_messages(self):
-    """Tests that messages are formatted as JSON string."""
+  def test_converts_backend_response_to_message_content(self):
+    """Backend FileInfo (camelCase) converts to MessageContent correctly."""
     connection, _, _ = _create_connection()
-    logging_record = _create_test_logging_record(
-        messages=[{
-            "role": "user",
-            "content": "hello"
-        }, {
-            "role": "assistant",
-            "content": "hi"
-        }]
-    )
-    result = connection._format_messages(logging_record)
-
-    assert result is not None
-    parsed = json.loads(result)
-    assert len(parsed) == 2
-    assert parsed[0]["role"] == "user"
-    assert parsed[0]["content"] == "hello"
-    assert parsed[1]["role"] == "assistant"
-    assert parsed[1]["content"] == "hi"
-
-  def test_format_messages_with_none_messages(self):
-    """Tests that None is returned when messages is None."""
-    connection, _, _ = _create_connection()
-    logging_record = _create_test_logging_record(messages=None)
-    result = connection._format_messages(logging_record)
-
-    assert result is None
-
-  def test_format_messages_with_empty_messages(self):
-    """Tests that None is returned when messages is empty list."""
-    connection, _, _ = _create_connection()
-    logging_record = _create_test_logging_record(messages=[])
-    result = connection._format_messages(logging_record)
-
-    assert result is None
-
-
-class TestProxDashConnectionFormatStop:
-  """Tests for _format_stop method."""
-
-  def test_format_stop_with_string(self):
-    """Tests that string stop is converted to JSON list."""
-    connection, _, _ = _create_connection()
-    logging_record = _create_test_logging_record(stop="STOP")
-    result = connection._format_stop(logging_record)
-
-    assert result is not None
-    parsed = json.loads(result)
-    assert parsed == ["STOP"]
-
-  def test_format_stop_with_list(self):
-    """Tests that list stop is converted to JSON."""
-    connection, _, _ = _create_connection()
-    logging_record = _create_test_logging_record(stop=["STOP1", "STOP2"])
-    result = connection._format_stop(logging_record)
-
-    assert result is not None
-    parsed = json.loads(result)
-    assert parsed == ["STOP1", "STOP2"]
-
-  def test_format_stop_with_none(self):
-    """Tests that None is returned when stop is None."""
-    connection, _, _ = _create_connection()
-    logging_record = _create_test_logging_record(stop=None)
-    result = connection._format_stop(logging_record)
-
-    assert result is None
-
-
-class TestProxDashConnectionFormatResponse:
-  """Tests for _format_response method."""
-
-  def test_format_response_text_type(self):
-    """Tests formatting of TEXT response type."""
-    connection, _, _ = _create_connection()
-    logging_record = _create_test_logging_record(
-        response="test text response", response_type=types.ResponseType.TEXT
-    )
-    result = connection._format_response(logging_record)
-
-    assert result == "test text response"
-
-  def test_format_response_json_type(self):
-    """Tests formatting of JSON response type."""
-    connection, _, _ = _create_connection()
-    json_response = {"key": "value", "number": 42}
-    logging_record = _create_test_logging_record(
-        response=json_response, response_type=types.ResponseType.JSON
-    )
-    result = connection._format_response(logging_record)
-
-    assert result is not None
-    parsed = json.loads(result)
-    assert parsed == json_response
-
-  def test_format_response_pydantic_type(self):
-    """Tests formatting of PYDANTIC response type returns None.
-
-    For PYDANTIC type, _format_response returns None because the JSON
-    representation is handled separately by _format_response_pydantic_json_value.
-    """
-    connection, _, _ = _create_connection()
-    pydantic_response = SamplePydanticModel(name="test", value=123, active=True)
-    logging_record = _create_test_logging_record(
-        response=pydantic_response, response_type=types.ResponseType.PYDANTIC
-    )
-    result = connection._format_response(logging_record)
-
-    assert result is None
-
-  def test_format_response_with_none_response(self):
-    """Tests that None is returned when response is None."""
-    connection, _, _ = _create_connection()
-    logging_record = _create_test_logging_record(response="dummy")
-    logging_record.response_record.response = None
-    result = connection._format_response(logging_record)
-
-    assert result is None
-
-  def test_format_response_with_hidden_sensitive_content(self):
-    """Tests that hidden content string is returned as-is."""
-    connection, _, _ = _create_connection()
-    logging_record = _create_test_logging_record(
-        response=proxdash._SENSITIVE_CONTENT_HIDDEN_STRING,
-        response_type=types.ResponseType.TEXT
-    )
-    result = connection._format_response(logging_record)
-
-    assert result == proxdash._SENSITIVE_CONTENT_HIDDEN_STRING
-
-
-class TestProxDashConnectionFormatResponsePydanticJsonValue:
-  """Tests for _format_response_pydantic_json_value method."""
-
-  def test_format_pydantic_json_value_with_pydantic_response(self):
-    """Tests that pydantic response is converted to JSON."""
-    connection, _, _ = _create_connection()
-    pydantic_response = SamplePydanticModel(name="test", value=456)
-    logging_record = _create_test_logging_record(
-        response=pydantic_response, response_type=types.ResponseType.PYDANTIC
-    )
-    result = connection._format_response_pydantic_json_value(logging_record)
-
-    assert result is not None
-    parsed = json.loads(result)
-    assert parsed["name"] == "test"
-    assert parsed["value"] == 456
-
-  def test_format_pydantic_json_value_with_non_pydantic_response(self):
-    """Tests that None is returned for non-pydantic response types."""
-    connection, _, _ = _create_connection()
-    logging_record = _create_test_logging_record(
-        response="text response", response_type=types.ResponseType.TEXT
-    )
-    result = connection._format_response_pydantic_json_value(logging_record)
-
-    assert result is None
-
-  def test_format_pydantic_json_value_with_json_response(self):
-    """Tests that None is returned for JSON response type."""
-    connection, _, _ = _create_connection()
-    logging_record = _create_test_logging_record(
-        response={"key": "value"}, response_type=types.ResponseType.JSON
-    )
-    result = connection._format_response_pydantic_json_value(logging_record)
-
-    assert result is None
-
-  def test_format_pydantic_json_value_with_none_response(self):
-    """Tests that None is returned when response is None."""
-    connection, _, _ = _create_connection()
-    logging_record = _create_test_logging_record(response="dummy")
-    logging_record.response_record.response = None
-    result = connection._format_response_pydantic_json_value(logging_record)
-
-    assert result is None
-
-  def test_format_pydantic_json_value_with_hidden_content(self):
-    """Tests that hidden content is returned for pydantic type with hidden value."""
-    connection, _, _ = _create_connection()
-    logging_record = _create_test_logging_record(
-        response=proxdash._SENSITIVE_CONTENT_HIDDEN_STRING,
-        response_type=types.ResponseType.PYDANTIC
-    )
-    result = connection._format_response_pydantic_json_value(logging_record)
-
-    assert result == proxdash._SENSITIVE_CONTENT_HIDDEN_STRING
-
-
-class TestProxDashConnectionGetFormattedQueryPydanticValues:
-  """Tests for _get_formatted_query_pydantic_values method."""
-
-  def test_get_pydantic_values_with_pydantic_format(self):
-    """Tests extraction of pydantic class name and schema."""
-    connection, _, _ = _create_connection()
-    response_format = types.ResponseFormat(
-        type=types.ResponseFormatType.PYDANTIC,
-        value=types.ResponseFormatPydanticValue(
-            class_name="SamplePydanticModel", class_value=SamplePydanticModel
-        )
-    )
-    logging_record = _create_test_logging_record(
-        response_format=response_format
-    )
-    class_name, json_schema = connection._get_formatted_query_pydantic_values(
-        logging_record
+    info = {
+        'id': 'pd-123',
+        'type': 'image',
+        'filename': 'cat.jpeg',
+        'mimeType': 'image/jpeg',
+        'sizeBytes': 5000,
+        'uploadConfirmed': True,
+        'providerFileApiIds': {
+            'gemini': 'files/g-1',
+            'openai': 'file-o-1',
+        },
+        'providerFileApiStatus': {
+            'gemini': {
+                'file_id': 'files/g-1',
+                'provider': 'gemini',
+                'state': 'active',
+            },
+        },
+        'source': 'https://s3.example.com/presigned-url',
+        'createdAt': '2024-01-01T00:00:00Z',
+        'updatedAt': '2024-01-01T00:01:00Z',
+    }
+    mc = connection._file_info_to_message_content(info)
+    assert mc is not None
+    assert mc.type == message_content.ContentType.IMAGE
+    assert mc.media_type == 'image/jpeg'
+    assert mc.filename == 'cat.jpeg'
+    assert mc.source == 'https://s3.example.com/presigned-url'
+    assert mc.proxdash_file_id == 'pd-123'
+    assert mc.proxdash_file_status.file_id == 'pd-123'
+    assert mc.proxdash_file_status.upload_confirmed is True
+    assert mc.provider_file_api_ids == {
+        'gemini': 'files/g-1',
+        'openai': 'file-o-1',
+    }
+    assert mc.provider_file_api_status['gemini'].file_id == 'files/g-1'
+    assert mc.provider_file_api_status['gemini'].state == (
+        message_content.FileUploadState.ACTIVE
     )
 
-    assert class_name == "SamplePydanticModel"
-    assert json_schema is not None
-    assert "properties" in json_schema
-    assert "name" in json_schema["properties"]
-    assert "value" in json_schema["properties"]
 
-  def test_get_pydantic_values_with_non_pydantic_format(self):
-    """Tests that None is returned for non-pydantic response format."""
-    connection, _, _ = _create_connection()
-    response_format = types.ResponseFormat(
-        type=types.ResponseFormatType.JSON, value=None
-    )
-    logging_record = _create_test_logging_record(
-        response_format=response_format
-    )
-    class_name, json_schema = connection._get_formatted_query_pydantic_values(
-        logging_record
-    )
+class TestUploadCallRecordMediaHandling:
 
-    assert class_name is None
-    assert json_schema is None
+  def test_media_uploaded_and_bytes_stripped(self, requests_mock):
+    """Media content is uploaded to ProxDash file API before the call
+    record is sent, and data/path are stripped from the payload."""
+    connection, temp_dir, temp_dir_obj = _create_connection()
 
-  def test_get_pydantic_values_with_no_response_format(self):
-    """Tests that None is returned when response_format is None."""
-    connection, _, _ = _create_connection()
-    logging_record = _create_test_logging_record(response_format=None)
-    class_name, json_schema = connection._get_formatted_query_pydantic_values(
-        logging_record
+    # Build a call record with an image in query chat.
+    img = message_content.MessageContent(
+        type=message_content.ContentType.IMAGE,
+        data=b'\x89PNG-fake-image-bytes',
+        media_type='image/png',
     )
-
-    assert class_name is None
-    assert json_schema is None
-
-  def test_get_pydantic_values_with_no_class_name(self):
-    """Tests that None is returned when class_name is None."""
-    connection, _, _ = _create_connection()
-    response_format = types.ResponseFormat(
-        type=types.ResponseFormatType.PYDANTIC,
-        value=types.ResponseFormatPydanticValue(
-            class_name=None, class_value=SamplePydanticModel
-        )
-    )
-    logging_record = _create_test_logging_record(
-        response_format=response_format
-    )
-    class_name, json_schema = connection._get_formatted_query_pydantic_values(
-        logging_record
+    model_configs_instance = model_configs.ModelConfigs()
+    call_record = types.CallRecord(
+        query=types.QueryRecord(
+            chat=chat_session.Chat(messages=[
+                message.Message(
+                    role='user',
+                    content=[
+                        img,
+                        message_content.MessageContent(
+                            type='text', text='What is this?'),
+                    ])
+            ]),
+            provider_model=model_configs_instance.get_provider_model(
+                ('mock_provider', 'mock_model')),
+        ),
+        result=types.ResultRecord(
+            status=types.ResultStatusType.SUCCESS,
+            output_text='A cat.',
+            timestamp=types.TimeStampType(
+                start_utc_date=datetime.datetime(2024, 1, 1, 12, 0),
+                end_utc_date=datetime.datetime(2024, 1, 1, 12, 1),
+                response_time=datetime.timedelta(seconds=1),
+            ),
+        ),
+        connection=types.ConnectionMetadata(
+            result_source=types.ResultSource.PROVIDER),
     )
 
-    assert class_name is None
-    assert json_schema is None
-
-
-class TestProxDashConnectionUploadLoggingRecordResponseTypes:
-  """Tests for upload_logging_record with different response types."""
-
-  def test_upload_with_json_response_type(self, requests_mock):
-    """Tests upload with JSON response type."""
-    connection, temp_dir, _ = _create_connection()
-    json_response = {"result": "success", "count": 5}
-    logging_record = _create_test_logging_record(
-        response=json_response, response_type=types.ResponseType.JSON
-    )
+    # Mock ProxDash file upload (3 requests: upload, S3 PUT, confirm).
     requests_mock.post(
-        'https://proxainest-production.up.railway.app/ingestion/logging-records',
-        text='{"success": true}', status_code=201
-    )
-    connection.upload_logging_record(logging_record)
-    _verify_proxdash_request(requests_mock, {'response': json_response})
-
-  def test_upload_with_pydantic_response_type(self, requests_mock):
-    """Tests upload with PYDANTIC response type.
-
-    When response_type is PYDANTIC but no response_format is set,
-    both response and responsePydanticJsonValue are None because
-    _format_response returns None for PYDANTIC type.
-    """
-    connection, temp_dir, _ = _create_connection()
-    pydantic_response = SamplePydanticModel(name="test_name", value=789)
-    logging_record = _create_test_logging_record(
-        response=pydantic_response, response_type=types.ResponseType.PYDANTIC
-    )
-    requests_mock.post(
-        'https://proxainest-production.up.railway.app/ingestion/logging-records',
-        text='{"success": true}', status_code=201
-    )
-    connection.upload_logging_record(logging_record)
-    _verify_proxdash_request(
-        requests_mock, {
-            'response': None,
-            'responsePydanticJsonValue': None
-        }
-    )
-
-  def test_upload_with_pydantic_query_format_and_response(self, requests_mock):
-    """Tests upload with pydantic response_format and pydantic response.
-
-    When response_format.type is PYDANTIC, the response field is None
-    (because _format_response returns None for PYDANTIC type), but
-    responsePydanticJsonValue contains the JSON representation.
-    """
-    connection, temp_dir, _ = _create_connection()
-    pydantic_response = SamplePydanticModel(name="result", value=100)
-    response_format = types.ResponseFormat(
-        type=types.ResponseFormatType.PYDANTIC,
-        value=types.ResponseFormatPydanticValue(
-            class_name="SamplePydanticModel", class_value=SamplePydanticModel
-        )
-    )
-    logging_record = _create_test_logging_record(
-        response=pydantic_response, response_type=types.ResponseType.PYDANTIC,
-        response_format=response_format
-    )
-    requests_mock.post(
-        'https://proxainest-production.up.railway.app/ingestion/logging-records',
-        text='{"success": true}', status_code=201
-    )
-    connection.upload_logging_record(logging_record)
-    _verify_proxdash_request(
-        requests_mock, {
-            'queryPydanticClassName': 'SamplePydanticModel',
-            'response': None,
-            'responsePydanticJsonValue': {
-                "name": "result",
-                "value": 100,
-                "active": True
+        'https://proxainest-production.up.railway.app/files/upload',
+        json={
+            'success': True,
+            'data': {
+                'id': 'pd-img-1',
+                'presignedUploadUrl': 'https://s3.example.com/put-here',
+                's3Key': 'files/user1/pd-img-1',
             }
-        }
+        },
+        status_code=201,
     )
-
-  def test_upload_with_pydantic_format_hidden_content(self, requests_mock):
-    """Tests upload with pydantic format when sensitive content is hidden."""
-    connection, temp_dir, _ = _create_connection(hide_sensitive_content=True)
-    pydantic_response = SamplePydanticModel(name="secret", value=999)
-    response_format = types.ResponseFormat(
-        type=types.ResponseFormatType.PYDANTIC,
-        value=types.ResponseFormatPydanticValue(
-            class_name="SamplePydanticModel", class_value=SamplePydanticModel
-        )
-    )
-    logging_record = _create_test_logging_record(
-        response=pydantic_response, response_type=types.ResponseType.PYDANTIC,
-        response_format=response_format
-    )
+    requests_mock.put('https://s3.example.com/put-here', status_code=200)
     requests_mock.post(
-        'https://proxainest-production.up.railway.app/ingestion/logging-records',
-        text='{"success": true}', status_code=201
+        'https://proxainest-production.up.railway.app/files/update/pd-img-1',
+        json={'success': True},
+        status_code=200,
     )
-    connection.upload_logging_record(logging_record)
-    hidden_str = proxdash._SENSITIVE_CONTENT_HIDDEN_STRING
-    _verify_proxdash_request(
-        requests_mock, {
-            'prompt': hidden_str,
-            'system': hidden_str,
-            'response': hidden_str,
-            'responsePydanticJsonValue': hidden_str,
-            'queryPydanticClassName': 'SamplePydanticModel'
-        }
+    # Mock call record upload.
+    requests_mock.post(
+        'https://proxainest-production.up.railway.app/ingestion/call-records',
+        json={'success': True},
+        status_code=201,
     )
 
-  def test_upload_with_json_response_format(self, requests_mock):
-    """Tests upload with JSON response_format (not pydantic)."""
+    connection.upload_call_record(call_record)
+
+    # Verify: image got a proxdash_file_id.
+    assert img.proxdash_file_id == 'pd-img-1'
+
+    # Verify: call record payload has no data/path on the image block.
+    call_record_requests = [
+        r for r in requests_mock.request_history
+        if 'call-records' in r.url
+    ]
+    assert len(call_record_requests) == 1
+    payload = json.loads(call_record_requests[0].text)
+    chat_messages = payload['query']['chat']['messages']
+    img_block = [
+        c for c in chat_messages[0]['content']
+        if c.get('type') == 'image'
+    ][0]
+    assert 'data' not in img_block
+    assert 'path' not in img_block
+    assert img_block.get('proxdash_file_id') == 'pd-img-1'
+
+
+class TestProxDashConnectionUploadCallRecordResponseTypes:
+  """Tests for upload_call_record with different response types."""
+
+  def test_upload_with_json_response(self, requests_mock):
+    """Tests upload with JSON output."""
     connection, temp_dir, _ = _create_connection()
-    json_response = {"data": "value"}
-    response_format = types.ResponseFormat(
-        type=types.ResponseFormatType.JSON, value=None
-    )
-    logging_record = _create_test_logging_record(
-        response=json_response, response_type=types.ResponseType.JSON,
-        response_format=response_format
+    call_record = _create_test_call_record(
+        output_text=None,
+        output_json={
+            'result': 'success',
+            'count': 5
+        },
     )
     requests_mock.post(
-        'https://proxainest-production.up.railway.app/ingestion/logging-records',
+        'https://proxainest-production.up.railway.app/ingestion/call-records',
         text='{"success": true}', status_code=201
     )
-    connection.upload_logging_record(logging_record)
+    connection.upload_call_record(call_record)
+    _verify_proxdash_request(
+        requests_mock,
+        {'result': {
+            'output_json': {
+                'result': 'success',
+                'count': 5
+            },
+        }}
+    )
+
+  def test_upload_with_pydantic_response(self, requests_mock):
+    """Tests upload with pydantic output."""
+    connection, temp_dir, _ = _create_connection()
+    pydantic_instance = SamplePydanticModel(name='test_name', value=789)
+    call_record = _create_test_call_record(
+        output_text=None,
+        output_pydantic=pydantic_instance,
+        output_format=types.OutputFormat(
+            type=types.OutputFormatType.PYDANTIC,
+            pydantic_class=SamplePydanticModel,
+        ),
+    )
+    requests_mock.post(
+        'https://proxainest-production.up.railway.app/ingestion/call-records',
+        text='{"success": true}', status_code=201
+    )
+    connection.upload_call_record(call_record)
     _verify_proxdash_request(
         requests_mock, {
-            'response': json_response,
-            'queryPydanticClassName': None,
-            'queryPydanticJsonSchema': None,
-            'responsePydanticJsonValue': None
+            'result': {
+                'output_pydantic': {
+                    'class_name': 'SamplePydanticModel',
+                    'instance_json_value': {
+                        'name': 'test_name',
+                        'value': 789,
+                        'active': True,
+                    },
+                },
+            },
+            'query': {
+                'output_format': {
+                    'type': 'PYDANTIC',
+                    'pydantic_class_name': 'SamplePydanticModel',
+                },
+            },
         }
     )
+
+  def test_upload_with_pydantic_hidden_content(self, requests_mock):
+    """Tests upload with pydantic output when sensitive content is hidden."""
+    connection, temp_dir, _ = _create_connection(hide_sensitive_content=True)
+    pydantic_instance = SamplePydanticModel(name='secret', value=999)
+    call_record = _create_test_call_record(
+        output_text='sensitive response',
+        output_pydantic=pydantic_instance,
+        output_format=types.OutputFormat(
+            type=types.OutputFormatType.PYDANTIC,
+            pydantic_class=SamplePydanticModel,
+        ),
+    )
+    requests_mock.post(
+        'https://proxainest-production.up.railway.app/ingestion/call-records',
+        text='{"success": true}', status_code=201
+    )
+    connection.upload_call_record(call_record)
+    hidden_str = proxdash._SENSITIVE_CONTENT_HIDDEN_STRING
+    actual_data = json.loads([
+        r for r in requests_mock.request_history if 'call-records' in r.url
+    ][0].text)
+    assert actual_data['query']['prompt'] == hidden_str
+    assert actual_data['query']['system_prompt'] == hidden_str
+    assert actual_data['result']['output_text'] == hidden_str
+    assert 'output_pydantic' not in actual_data['result']
+
+  def test_upload_with_json_output_format(self, requests_mock):
+    """Tests upload with JSON output_format."""
+    connection, temp_dir, _ = _create_connection()
+    call_record = _create_test_call_record(
+        output_text=None,
+        output_json={'data': 'value'},
+        output_format=types.OutputFormat(type=types.OutputFormatType.JSON),
+    )
+    requests_mock.post(
+        'https://proxainest-production.up.railway.app/ingestion/call-records',
+        text='{"success": true}', status_code=201
+    )
+    connection.upload_call_record(call_record)
+    _verify_proxdash_request(
+        requests_mock, {
+            'result': {
+                'output_json': {
+                    'data': 'value'
+                },
+            },
+            'query': {
+                'output_format': {
+                    'type': 'JSON',
+                },
+            },
+        }
+    )
+
+
+# =============================================================================
+# File API — public methods (upload_file, update_file, download_file,
+# delete_file, get_file, list_files)
+#
+# Each method is tested for its happy path plus its relevant HTTP failure
+# modes. Multi-step methods (upload_file, download_file) get one test per
+# step's failure, since the orchestrator's behavior differs by which step
+# failed.
+# =============================================================================
+
+
+_BASE_URL = 'https://proxainest-production.up.railway.app'
+
+
+def _make_connected_proxdash(api_key='test_api_key'):
+  """Construct a CONNECTED ProxDashConnection. Assumes the autouse fixture
+  has already stubbed /ingestion/verify-key."""
+  return proxdash.ProxDashConnection(
+      init_from_params=proxdash.ProxDashConnectionParams(
+          logging_options=types.LoggingOptions(),
+          proxdash_options=types.ProxDashOptions(api_key=api_key),
+      )
+  )
+
+
+def _make_disconnected_proxdash():
+  return proxdash.ProxDashConnection(
+      init_from_params=proxdash.ProxDashConnectionParams(
+          logging_options=types.LoggingOptions(),
+          proxdash_options=types.ProxDashOptions(disable_proxdash=True),
+      )
+  )
+
+
+def _make_upload_media(data=b'test_file_bytes', media_type='application/pdf'):
+  return message_content.MessageContent(
+      type=message_content.ContentType.DOCUMENT,
+      data=data, media_type=media_type, filename='test.pdf',
+  )
+
+
+# -----------------------------------------------------------------------------
+# upload_file — 3 HTTP steps: request presigned URL → PUT S3 → confirm.
+# -----------------------------------------------------------------------------
+
+
+_PRESIGNED_URL = 'https://s3.example.com/presigned-upload?token=abc'
+
+
+def _stub_presigned_upload_success(requests_mock, file_id='file-123'):
+  """Step 1 success: POST /files/upload returns 201 with presigned URL."""
+  requests_mock.post(
+      f'{_BASE_URL}/files/upload',
+      text=json.dumps({
+          'success': True,
+          'data': {
+              'id': file_id,
+              'presignedUploadUrl': _PRESIGNED_URL,
+              's3Key': f'files/{file_id}',
+          },
+      }),
+      status_code=201,
+  )
+
+
+def _stub_s3_put_success(requests_mock, status_code=200):
+  requests_mock.put(_PRESIGNED_URL, status_code=status_code)
+
+
+def _stub_confirm_success(requests_mock, file_id='file-123'):
+  requests_mock.patch(f'{_BASE_URL}/files/{file_id}', status_code=200)
+
+
+class TestUploadFile:
+
+  def test_happy_path_all_three_steps_succeed(self, requests_mock):
+    _stub_presigned_upload_success(requests_mock, file_id='file-abc')
+    _stub_s3_put_success(requests_mock)
+    _stub_confirm_success(requests_mock, file_id='file-abc')
+
+    connection = _make_connected_proxdash()
+    media = _make_upload_media()
+    file_id = connection.upload_file(media)
+
+    assert file_id == 'file-abc'
+    assert media.proxdash_file_id == 'file-abc'
+    assert media.proxdash_file_status.upload_confirmed is True
+    assert media.proxdash_file_status.s3_key == 'files/file-abc'
+
+  def test_returns_none_when_not_connected(self, requests_mock):
+    connection = _make_disconnected_proxdash()
+    media = _make_upload_media()
+    assert connection.upload_file(media) is None
+
+  def test_returns_none_when_media_type_not_uploadable(self, requests_mock):
+    connection = _make_connected_proxdash()
+    # TEXT is not an uploadable content type.
+    media = message_content.MessageContent(
+        type=message_content.ContentType.TEXT, text='hello',
+    )
+    assert connection.upload_file(media) is None
+
+  def test_step1_presigned_url_500_returns_none(self, requests_mock):
+    # Step 1 fails → no S3 upload attempted, no orphan state.
+    requests_mock.post(
+        f'{_BASE_URL}/files/upload', text='Server Error', status_code=500,
+    )
+    connection = _make_connected_proxdash()
+    media = _make_upload_media()
+    assert connection.upload_file(media) is None
+    assert media.proxdash_file_id is None
+
+  def test_step2_s3_upload_500_returns_none(self, requests_mock):
+    # Step 1 succeeds, step 2 (S3 PUT) fails → return None, media
+    # fields NOT set because confirm step never ran.
+    _stub_presigned_upload_success(requests_mock)
+    requests_mock.put(_PRESIGNED_URL, status_code=500)
+
+    connection = _make_connected_proxdash()
+    media = _make_upload_media()
+    assert connection.upload_file(media) is None
+    assert media.proxdash_file_id is None
+
+  def test_step3_confirm_fails_still_returns_file_id(self, requests_mock):
+    # Subtle: confirm is best-effort. Step 3 failing logs an error but
+    # upload_file still returns the file_id and populates media fields,
+    # because the file IS in S3 — just not marked confirmed on the
+    # backend. This is a real invariant users rely on.
+    _stub_presigned_upload_success(requests_mock, file_id='file-xyz')
+    _stub_s3_put_success(requests_mock)
+    requests_mock.patch(
+        f'{_BASE_URL}/files/file-xyz', text='Server Error', status_code=500,
+    )
+
+    connection = _make_connected_proxdash()
+    media = _make_upload_media()
+    file_id = connection.upload_file(media)
+    assert file_id == 'file-xyz'
+    assert media.proxdash_file_id == 'file-xyz'
+    # Status still marked confirmed client-side — source does this
+    # unconditionally after PUT succeeds.
+    assert media.proxdash_file_status.upload_confirmed is True
+
+
+# -----------------------------------------------------------------------------
+# update_file — single PATCH to /files/{id} with provider metadata.
+# -----------------------------------------------------------------------------
+
+
+class TestUpdateFile:
+
+  def test_happy_path_sends_provider_metadata(self, requests_mock):
+    requests_mock.patch(f'{_BASE_URL}/files/file-123', status_code=200)
+
+    connection = _make_connected_proxdash()
+    media = message_content.MessageContent(
+        type=message_content.ContentType.DOCUMENT,
+        data=b'x', media_type='application/pdf',
+        proxdash_file_id='file-123',
+        provider_file_api_ids={'gemini': 'files/abc'},
+    )
+    connection.update_file(media)
+
+    assert requests_mock.last_request.method == 'PATCH'
+    body = requests_mock.last_request.json()
+    assert body['providerFileApiIds'] == {'gemini': 'files/abc'}
+
+  def test_noop_when_no_proxdash_file_id(self, requests_mock):
+    connection = _make_connected_proxdash()
+    media = message_content.MessageContent(
+        type=message_content.ContentType.DOCUMENT,
+        data=b'x', media_type='application/pdf',
+        proxdash_file_id=None,
+        provider_file_api_ids={'gemini': 'files/abc'},
+    )
+    # No HTTP call; doesn't raise.
+    connection.update_file(media)
+    # Only the autouse verify-key call was recorded — no PATCH.
+    assert all(r.method != 'PATCH' for r in requests_mock.request_history)
+
+  def test_500_is_silent_no_raise(self, requests_mock):
+    # update_file swallows errors and logs. Users rely on it never breaking
+    # the upload pipeline.
+    requests_mock.patch(
+        f'{_BASE_URL}/files/file-123', text='Server Error', status_code=500,
+    )
+    connection = _make_connected_proxdash()
+    media = message_content.MessageContent(
+        type=message_content.ContentType.DOCUMENT,
+        data=b'x', media_type='application/pdf',
+        proxdash_file_id='file-123',
+        provider_file_api_ids={'gemini': 'files/abc'},
+    )
+    # Does not raise.
+    connection.update_file(media)
+
+
+# -----------------------------------------------------------------------------
+# download_file — 2 HTTP steps: get presigned download URL → GET S3.
+# -----------------------------------------------------------------------------
+
+
+_DOWNLOAD_PRESIGNED_URL = 'https://s3.example.com/presigned-download?token=xyz'
+
+
+class TestDownloadFile:
+
+  def test_happy_path_both_steps_succeed(self, requests_mock):
+    requests_mock.get(
+        f'{_BASE_URL}/files/download/file-123',
+        text=json.dumps({
+            'success': True, 'data': {'url': _DOWNLOAD_PRESIGNED_URL},
+        }),
+        status_code=200,
+    )
+    requests_mock.get(
+        _DOWNLOAD_PRESIGNED_URL, content=b'file_content_bytes',
+        status_code=200,
+    )
+
+    connection = _make_connected_proxdash()
+    result = connection.download_file('file-123')
+    assert result == b'file_content_bytes'
+
+  def test_returns_none_when_not_connected(self, requests_mock):
+    connection = _make_disconnected_proxdash()
+    assert connection.download_file('file-123') is None
+
+  def test_step1_500_returns_none(self, requests_mock):
+    requests_mock.get(
+        f'{_BASE_URL}/files/download/file-123',
+        text='Server Error', status_code=500,
+    )
+    connection = _make_connected_proxdash()
+    assert connection.download_file('file-123') is None
+
+  def test_step2_s3_500_returns_none(self, requests_mock):
+    # Step 1 succeeds (presigned URL returned), step 2 fails (S3 500).
+    requests_mock.get(
+        f'{_BASE_URL}/files/download/file-123',
+        text=json.dumps({
+            'success': True, 'data': {'url': _DOWNLOAD_PRESIGNED_URL},
+        }),
+        status_code=200,
+    )
+    requests_mock.get(_DOWNLOAD_PRESIGNED_URL, status_code=500)
+
+    connection = _make_connected_proxdash()
+    assert connection.download_file('file-123') is None
+
+
+# -----------------------------------------------------------------------------
+# delete_file — single DELETE to /files/{id}.
+# -----------------------------------------------------------------------------
+
+
+class TestDeleteFile:
+
+  def test_happy_path_returns_true_on_200(self, requests_mock):
+    requests_mock.delete(f'{_BASE_URL}/files/file-123', status_code=200)
+    connection = _make_connected_proxdash()
+    assert connection.delete_file('file-123') is True
+
+  def test_returns_false_when_not_connected(self, requests_mock):
+    connection = _make_disconnected_proxdash()
+    assert connection.delete_file('file-123') is False
+
+  def test_returns_false_on_500(self, requests_mock):
+    requests_mock.delete(
+        f'{_BASE_URL}/files/file-123', text='Error', status_code=500,
+    )
+    connection = _make_connected_proxdash()
+    assert connection.delete_file('file-123') is False
+
+
+# -----------------------------------------------------------------------------
+# get_file — single GET to /files/{id}, returns MessageContent.
+# -----------------------------------------------------------------------------
+
+
+class TestGetFile:
+
+  def test_happy_path_returns_message_content(self, requests_mock):
+    requests_mock.get(
+        f'{_BASE_URL}/files/file-123',
+        text=json.dumps({
+            'success': True,
+            'data': {
+                'id': 'file-123',
+                'type': 'document',
+                'filename': 'report.pdf',
+                'mimeType': 'application/pdf',
+                'uploadConfirmed': True,
+                'providerFileApiIds': {'gemini': 'files/abc'},
+            },
+        }),
+        status_code=200,
+    )
+    connection = _make_connected_proxdash()
+    mc = connection.get_file('file-123')
+    assert isinstance(mc, message_content.MessageContent)
+    assert mc.proxdash_file_id == 'file-123'
+    assert mc.filename == 'report.pdf'
+
+  def test_returns_none_when_not_connected(self, requests_mock):
+    connection = _make_disconnected_proxdash()
+    assert connection.get_file('file-123') is None
+
+  def test_returns_none_on_500(self, requests_mock):
+    requests_mock.get(
+        f'{_BASE_URL}/files/file-123', text='Error', status_code=500,
+    )
+    connection = _make_connected_proxdash()
+    assert connection.get_file('file-123') is None
+
+
+# -----------------------------------------------------------------------------
+# list_files — single GET to /files/list, returns list[MessageContent].
+# -----------------------------------------------------------------------------
+
+
+class TestListFiles:
+
+  def test_happy_path_returns_list_of_message_content(self, requests_mock):
+    requests_mock.get(
+        f'{_BASE_URL}/files/list',
+        text=json.dumps({
+            'success': True,
+            'data': {
+                'items': [
+                    {
+                        'id': 'file-1', 'type': 'document',
+                        'filename': 'a.pdf', 'mimeType': 'application/pdf',
+                        'uploadConfirmed': True,
+                        'source': 'https://example.com/a.pdf',
+                    },
+                    {
+                        'id': 'file-2', 'type': 'image',
+                        'filename': 'b.png', 'mimeType': 'image/png',
+                        'uploadConfirmed': True,
+                        'source': 'https://example.com/b.png',
+                    },
+                ],
+            },
+        }),
+        status_code=200,
+    )
+    connection = _make_connected_proxdash()
+    results = connection.list_files(limit=50)
+    assert len(results) == 2
+    assert results[0].proxdash_file_id == 'file-1'
+    assert results[1].proxdash_file_id == 'file-2'
+
+  def test_returns_empty_when_not_connected(self, requests_mock):
+    connection = _make_disconnected_proxdash()
+    assert connection.list_files() == []
+
+  def test_returns_empty_on_500(self, requests_mock):
+    requests_mock.get(
+        f'{_BASE_URL}/files/list', text='Error', status_code=500,
+    )
+    connection = _make_connected_proxdash()
+    assert connection.list_files() == []
