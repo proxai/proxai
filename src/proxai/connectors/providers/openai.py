@@ -257,28 +257,48 @@ class OpenAIConnector(provider_connector.ProviderConnector):
     return None
 
   @staticmethod
-  def _to_responses_part(part_dict):
+  def _to_responses_part(part_dict, role='user'):
     """Convert a ProxAI content block to a responses.create content part.
 
-    Used by the ``responses.create`` endpoint.
+    Used by the ``responses.create`` endpoint. The OpenAI Responses API
+    requires different content type names based on the message role:
 
-    Type mapping:
-      text     → ``{"type": "input_text", "text": "..."}``
-      image    → ``{"type": "input_image", "image_url": "..."}``
-      document → ``{"type": "input_file", "file_data": "...", ...}``
-                 Accepts all document types natively (PDF, docx,
-                 xlsx, csv, markdown, txt, etc.).
+      role='user' (or any non-assistant role):
+        text     → ``{"type": "input_text", "text": "..."}``
+        image    → ``{"type": "input_image", "image_url": "..."}``
+        document → ``{"type": "input_file", "file_data": "...", ...}``
+                   Accepts all document types natively (PDF, docx,
+                   xlsx, csv, markdown, txt, etc.).
+        file_id  → ``{"type": "input_file", "file_id": "..."}``
+      role='assistant':
+        text     → ``{"type": "output_text", "text": "..."}``
+        Other content types are not valid for assistant role per
+        OpenAI's spec (assistants emit only text, refusals, or
+        tool calls). Returns None.
 
-    Returns None for unsupported content types.
+    Returns None for unsupported content types or invalid
+    role / type combos.
     """
-    # File API reference (pre-uploaded via px.files.upload)
-    file_ids = part_dict.get('provider_file_api_ids', {})
-    if 'openai' in file_ids:
-      return {'type': 'input_file', 'file_id': file_ids['openai']}
+    is_assistant = role == 'assistant'
+
+    # File API reference (pre-uploaded via px.files.upload). Only valid
+    # on non-assistant roles per the spec.
+    if not is_assistant:
+      file_ids = part_dict.get('provider_file_api_ids', {})
+      if 'openai' in file_ids:
+        return {'type': 'input_file', 'file_id': file_ids['openai']}
+
     content_type = part_dict.get('type')
-    # Text
+    # Text — both roles supported with different content type names.
     if content_type == 'text':
-      return {'type': 'input_text', 'text': part_dict['text']}
+      type_name = 'output_text' if is_assistant else 'input_text'
+      return {'type': type_name, 'text': part_dict['text']}
+
+    # Non-text content blocks (image / document) are not valid for the
+    # assistant role per OpenAI's Responses API spec.
+    if is_assistant:
+      return None
+
     # Image: URL or inline data URI
     if content_type == 'image':
       if 'source' in part_dict:
@@ -331,23 +351,34 @@ class OpenAIConnector(provider_connector.ProviderConnector):
 
     Wraps each message in ``{"type": "message", "role": ...,
     "content": [...]}`` and converts content blocks using
-    ``_to_responses_part``.
+    ``_to_responses_part``. Content type names are role-aware:
+    assistant turns emit ``output_text`` while user turns emit
+    ``input_text`` per OpenAI's Responses API spec.
+
+    System-role messages (when ``add_system_to_messages=True`` was used
+    during ``Chat.export()``) are skipped here — they are routed to
+    ``responses.create``'s ``instructions=`` parameter by
+    ``_responses_create_executor`` instead.
     """
     input_messages = []
     for msg in chat['messages']:
+      role = msg['role']
+      # System messages bypass the input list — handled via instructions=.
+      if role == 'system':
+        continue
       if isinstance(msg['content'], str):
+        type_name = 'output_text' if role == 'assistant' else 'input_text'
         input_messages.append({
-            'type': 'message', 'role': msg['role'],
-            'content': [
-                {'type': 'input_text', 'text': msg['content']}]})
+            'type': 'message', 'role': role,
+            'content': [{'type': type_name, 'text': msg['content']}]})
       elif isinstance(msg['content'], list):
         parts = []
         for block in msg['content']:
-          part = self._to_responses_part(block)
+          part = self._to_responses_part(block, role=role)
           if part is not None:
             parts.append(part)
         input_messages.append({
-            'type': 'message', 'role': msg['role'],
+            'type': 'message', 'role': role,
             'content': parts})
     return input_messages
 
@@ -529,9 +560,19 @@ class OpenAIConnector(provider_connector.ProviderConnector):
       input_messages = self._build_responses_input(
           query_record.chat)
       create = functools.partial(create, input=input_messages)
-      if 'system_prompt' in query_record.chat:
-        create = functools.partial(
-            create, instructions=query_record.chat['system_prompt'])
+      # Prefer the dedicated system_prompt field; fall back to any
+      # role='system' message (in case the chat was exported with
+      # add_system_to_messages=True). responses.create takes system
+      # content via the instructions= parameter, not as a message.
+      chat_instructions = query_record.chat.get('system_prompt')
+      if chat_instructions is None:
+        for msg in query_record.chat.get('messages', []):
+          if (msg.get('role') == 'system' and
+              isinstance(msg.get('content'), str)):
+            chat_instructions = msg['content']
+            break
+      if chat_instructions is not None:
+        create = functools.partial(create, instructions=chat_instructions)
 
     if query_record.system_prompt is not None:
       create = functools.partial(

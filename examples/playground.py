@@ -182,21 +182,24 @@ def text_cache_test():
   client = px.Client(
       cache_options=px.CacheOptions(
           cache_path=f'{Path.home()}/proxai_cache/'),
-      proxdash_options=px.ProxDashOptions(
-          stdout=True,
-          # base_url='http://localhost:3001',
-          api_key='hbk83g1-mohrw4rl-37x007op9r2',
-      ))
+      # proxdash_options=px.ProxDashOptions(
+      #     stdout=True,
+      #     # base_url='http://localhost:3001',
+      #     api_key='hbk83g1-mohrw4rl-37x007op9r2',
+      # )
+  )
 
   # client = px.Client()
-
-  for i in range(100):
-    result = client.generate(
-        _LONG_TECHNICAL_PROMPT,
-        # provider_model=('openai', 'gpt-5.5-pro')
-        provider_model=('gemini', 'gemini-3-flash')
-    )
-    print(i, result.connection.result_source)
+  provider_models = client.models.list_models()
+  for model in provider_models:
+    print(f'#### {model} ####')
+    for i in range(5):
+      result = client.generate(
+          _LONG_TECHNICAL_PROMPT,
+          # provider_model=('openai', 'gpt-5.5-pro')
+          provider_model=(model.provider, model.model)
+      )
+      print(i, result.connection.result_source, len(result.result.output_text))
 
 
 def image_cache_test():
