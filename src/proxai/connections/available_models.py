@@ -180,6 +180,30 @@ class AvailableModels(state_controller.StateControlled):
     self.provider_connectors[provider] = connector()
     return self.provider_connectors[provider]
 
+  def close(self) -> None:
+    """Close every cached provider connector and clear the cache.
+
+    Idempotent. The instance remains usable: subsequent
+    ``get_model_connector`` calls lazily rebuild connectors.
+    """
+    for provider, connector in list(self.provider_connectors.items()):
+      try:
+        connector.close()
+      except Exception as e:  # noqa: BLE001
+        logging_utils.log_message(
+            logging_options=self.logging_options,
+            message=f'Error closing connector for {provider}: {e}',
+            type=types.LoggingType.WARNING,
+        )
+    self.provider_connectors.clear()
+
+  def __enter__(self):
+    return self
+
+  def __exit__(self, exc_type, exc_val, exc_tb):
+    self.close()
+    return False
+
   @property
   def run_type(self) -> types.RunType:
     return self.get_property_value('run_type')
@@ -604,6 +628,8 @@ class AvailableModels(state_controller.StateControlled):
               result_source=types.ResultSource.PROVIDER
           ),
       )
+    finally:
+      connector.close()
 
   @staticmethod
   def _test_generate_json(
@@ -669,6 +695,8 @@ class AvailableModels(state_controller.StateControlled):
               result_source=types.ResultSource.PROVIDER
           ),
       )
+    finally:
+      connector.close()
 
   @staticmethod
   def _test_generate_pydantic(
@@ -736,6 +764,8 @@ class AvailableModels(state_controller.StateControlled):
               result_source=types.ResultSource.PROVIDER
           ),
       )
+    finally:
+      connector.close()
 
   def _get_timeout_call_record(self, provider_model: types.ProviderModelType):
     end_utc_date = datetime.datetime.now(datetime.timezone.utc)

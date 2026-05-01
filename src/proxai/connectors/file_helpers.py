@@ -1,6 +1,7 @@
 """Per-provider file helpers for upload, remove, list, and download."""
 from __future__ import annotations
 
+import contextlib
 import io
 import os
 import time
@@ -17,6 +18,15 @@ import proxai.chat.message_content as message_content
 import proxai.types as types
 
 
+def _close_silent(client) -> None:
+  """Best-effort close of an SDK client. Silences any error."""
+  close_fn = getattr(client, 'close', None)
+  if not callable(close_fn):
+    return
+  with contextlib.suppress(Exception):
+    close_fn()
+
+
 def upload_to_claude(
     file_path: str | None,
     file_data: bytes | None,
@@ -25,20 +35,22 @@ def upload_to_claude(
     token_map: types.ProviderTokenValueMap,
 ) -> message_content.FileUploadMetadata:
   client = anthropic.Anthropic(api_key=token_map['ANTHROPIC_API_KEY'])
-  if file_path:
-    with open(file_path, 'rb') as f:
-      result = client.beta.files.upload(file=f)
-  else:
-    result = client.beta.files.upload(
-        file=(filename, io.BytesIO(file_data)))
-  return message_content.FileUploadMetadata(
-      file_id=result.id,
-      filename=result.filename,
-      size_bytes=result.size_bytes,
-      mime_type=result.mime_type,
-      created_at=str(result.created_at) if result.created_at else None,
-      state=message_content.FileUploadState.ACTIVE,
-  )
+  try:
+    if file_path:
+      with open(file_path, 'rb') as f:
+        result = client.beta.files.upload(file=f)
+    else:
+      result = client.beta.files.upload(file=(filename, io.BytesIO(file_data)))
+    return message_content.FileUploadMetadata(
+        file_id=result.id,
+        filename=result.filename,
+        size_bytes=result.size_bytes,
+        mime_type=result.mime_type,
+        created_at=str(result.created_at) if result.created_at else None,
+        state=message_content.FileUploadState.ACTIVE,
+    )
+  finally:
+    _close_silent(client)
 
 
 def upload_to_openai(
@@ -49,21 +61,27 @@ def upload_to_openai(
     token_map: types.ProviderTokenValueMap,
 ) -> message_content.FileUploadMetadata:
   client = openai.OpenAI(api_key=token_map['OPENAI_API_KEY'])
-  if file_path:
-    with open(file_path, 'rb') as f:
-      result = client.files.create(file=f, purpose="user_data")
-  else:
-    result = client.files.create(
-        file=(filename, io.BytesIO(file_data)), purpose="user_data")
-  return message_content.FileUploadMetadata(
-      file_id=result.id,
-      filename=result.filename,
-      size_bytes=result.bytes,
-      created_at=str(result.created_at) if result.created_at else None,
-      expires_at=(str(result.expires_at)
-                  if getattr(result, 'expires_at', None) else None),
-      state=message_content.FileUploadState.ACTIVE,
-  )
+  try:
+    if file_path:
+      with open(file_path, 'rb') as f:
+        result = client.files.create(file=f, purpose="user_data")
+    else:
+      result = client.files.create(
+          file=(filename, io.BytesIO(file_data)), purpose="user_data"
+      )
+    return message_content.FileUploadMetadata(
+        file_id=result.id,
+        filename=result.filename,
+        size_bytes=result.bytes,
+        created_at=str(result.created_at) if result.created_at else None,
+        expires_at=(
+            str(result.expires_at)
+            if getattr(result, 'expires_at', None) else None
+        ),
+        state=message_content.FileUploadState.ACTIVE,
+    )
+  finally:
+    _close_silent(client)
 
 
 def upload_to_gemini(
@@ -76,40 +94,45 @@ def upload_to_gemini(
     max_poll_seconds: float = 300.0,
 ) -> message_content.FileUploadMetadata:
   client = genai.Client(api_key=token_map['GEMINI_API_KEY'])
-  config = genai_types.UploadFileConfig(
-      display_name=filename, mime_type=mime_type)
-  if file_path:
-    result = client.files.upload(file=file_path, config=config)
-  else:
-    result = client.files.upload(
-        file=io.BytesIO(file_data), config=config)
+  try:
+    config = genai_types.UploadFileConfig(
+        display_name=filename, mime_type=mime_type
+    )
+    if file_path:
+      result = client.files.upload(file=file_path, config=config)
+    else:
+      result = client.files.upload(file=io.BytesIO(file_data), config=config)
 
-  elapsed = 0.0
-  while (result.state
-         and result.state.name == "PROCESSING"
-         and elapsed < max_poll_seconds):
-    time.sleep(poll_interval)
-    elapsed += poll_interval
-    result = client.files.get(name=result.name)
+    elapsed = 0.0
+    while (
+        result.state and result.state.name == "PROCESSING" and
+        elapsed < max_poll_seconds
+    ):
+      time.sleep(poll_interval)
+      elapsed += poll_interval
+      result = client.files.get(name=result.name)
 
-  if result.state and result.state.name == "ACTIVE":
-    state = message_content.FileUploadState.ACTIVE
-  elif result.state and result.state.name == "PROCESSING":
-    state = message_content.FileUploadState.PENDING
-  else:
-    state = message_content.FileUploadState.FAILED
+    if result.state and result.state.name == "ACTIVE":
+      state = message_content.FileUploadState.ACTIVE
+    elif result.state and result.state.name == "PROCESSING":
+      state = message_content.FileUploadState.PENDING
+    else:
+      state = message_content.FileUploadState.FAILED
 
-  return message_content.FileUploadMetadata(
-      file_id=result.name,
-      filename=result.display_name,
-      size_bytes=result.size_bytes,
-      mime_type=result.mime_type,
-      uri=result.uri,
-      state=state,
-      expires_at=(str(result.expiration_time)
-                  if result.expiration_time else None),
-      sha256_hash=result.sha256_hash,
-  )
+    return message_content.FileUploadMetadata(
+        file_id=result.name,
+        filename=result.display_name,
+        size_bytes=result.size_bytes,
+        mime_type=result.mime_type,
+        uri=result.uri,
+        state=state,
+        expires_at=(
+            str(result.expiration_time) if result.expiration_time else None
+        ),
+        sha256_hash=result.sha256_hash,
+    )
+  finally:
+    _close_silent(client)
 
 
 def upload_to_mistral(
@@ -120,26 +143,30 @@ def upload_to_mistral(
     token_map: types.ProviderTokenValueMap,
 ) -> message_content.FileUploadMetadata:
   client = mistralai.Mistral(api_key=token_map['MISTRAL_API_KEY'])
-  if file_path:
-    with open(file_path, 'rb') as f:
-      content = f.read()
-  else:
-    content = file_data
-  result = client.files.upload(
-      file=mistral_models.File(
-          file_name=filename,
-          content=content,
-      ),
-      purpose='ocr',
-  )
-  return message_content.FileUploadMetadata(
-      file_id=result.id,
-      filename=result.filename,
-      size_bytes=result.size_bytes,
-      mime_type=(result.mimetype
-                if getattr(result, 'mimetype', None) else mime_type),
-      state=message_content.FileUploadState.ACTIVE,
-  )
+  try:
+    if file_path:
+      with open(file_path, 'rb') as f:
+        content = f.read()
+    else:
+      content = file_data
+    result = client.files.upload(
+        file=mistral_models.File(
+            file_name=filename,
+            content=content,
+        ),
+        purpose='ocr',
+    )
+    return message_content.FileUploadMetadata(
+        file_id=result.id,
+        filename=result.filename,
+        size_bytes=result.size_bytes,
+        mime_type=(
+            result.mimetype if getattr(result, 'mimetype', None) else mime_type
+        ),
+        state=message_content.FileUploadState.ACTIVE,
+    )
+  finally:
+    _close_silent(client)
 
 
 UPLOAD_DISPATCH = {
@@ -155,7 +182,10 @@ def remove_from_claude(
     token_map: types.ProviderTokenValueMap,
 ):
   client = anthropic.Anthropic(api_key=token_map['ANTHROPIC_API_KEY'])
-  client.beta.files.delete(file_id=file_id)
+  try:
+    client.beta.files.delete(file_id=file_id)
+  finally:
+    _close_silent(client)
 
 
 def remove_from_openai(
@@ -163,7 +193,10 @@ def remove_from_openai(
     token_map: types.ProviderTokenValueMap,
 ):
   client = openai.OpenAI(api_key=token_map['OPENAI_API_KEY'])
-  client.files.delete(file_id=file_id)
+  try:
+    client.files.delete(file_id=file_id)
+  finally:
+    _close_silent(client)
 
 
 def remove_from_gemini(
@@ -171,7 +204,10 @@ def remove_from_gemini(
     token_map: types.ProviderTokenValueMap,
 ):
   client = genai.Client(api_key=token_map['GEMINI_API_KEY'])
-  client.files.delete(name=file_id)
+  try:
+    client.files.delete(name=file_id)
+  finally:
+    _close_silent(client)
 
 
 def remove_from_mistral(
@@ -179,7 +215,10 @@ def remove_from_mistral(
     token_map: types.ProviderTokenValueMap,
 ):
   client = mistralai.Mistral(api_key=token_map['MISTRAL_API_KEY'])
-  client.files.delete(file_id=file_id)
+  try:
+    client.files.delete(file_id=file_id)
+  finally:
+    _close_silent(client)
 
 
 REMOVE_DISPATCH = {
@@ -195,18 +234,23 @@ def list_from_claude(
     limit: int = 100,
 ) -> list[message_content.FileUploadMetadata]:
   client = anthropic.Anthropic(api_key=token_map['ANTHROPIC_API_KEY'])
-  page = client.beta.files.list(limit=limit)
-  results = []
-  for f in page.data:
-    results.append(message_content.FileUploadMetadata(
-        file_id=f.id,
-        filename=f.filename,
-        size_bytes=f.size_bytes,
-        mime_type=f.mime_type,
-        created_at=str(f.created_at) if f.created_at else None,
-        state=message_content.FileUploadState.ACTIVE,
-    ))
-  return results
+  try:
+    page = client.beta.files.list(limit=limit)
+    results = []
+    for f in page.data:
+      results.append(
+          message_content.FileUploadMetadata(
+              file_id=f.id,
+              filename=f.filename,
+              size_bytes=f.size_bytes,
+              mime_type=f.mime_type,
+              created_at=str(f.created_at) if f.created_at else None,
+              state=message_content.FileUploadState.ACTIVE,
+          )
+      )
+    return results
+  finally:
+    _close_silent(client)
 
 
 def list_from_openai(
@@ -214,19 +258,25 @@ def list_from_openai(
     limit: int = 100,
 ) -> list[message_content.FileUploadMetadata]:
   client = openai.OpenAI(api_key=token_map['OPENAI_API_KEY'])
-  page = client.files.list(limit=limit, purpose='user_data')
-  results = []
-  for f in page.data:
-    results.append(message_content.FileUploadMetadata(
-        file_id=f.id,
-        filename=f.filename,
-        size_bytes=f.bytes,
-        created_at=str(f.created_at) if f.created_at else None,
-        expires_at=(str(f.expires_at)
-                    if getattr(f, 'expires_at', None) else None),
-        state=message_content.FileUploadState.ACTIVE,
-    ))
-  return results
+  try:
+    page = client.files.list(limit=limit, purpose='user_data')
+    results = []
+    for f in page.data:
+      results.append(
+          message_content.FileUploadMetadata(
+              file_id=f.id,
+              filename=f.filename,
+              size_bytes=f.bytes,
+              created_at=str(f.created_at) if f.created_at else None,
+              expires_at=(
+                  str(f.expires_at) if getattr(f, 'expires_at', None) else None
+              ),
+              state=message_content.FileUploadState.ACTIVE,
+          )
+      )
+    return results
+  finally:
+    _close_silent(client)
 
 
 def list_from_gemini(
@@ -234,29 +284,36 @@ def list_from_gemini(
     limit: int = 100,
 ) -> list[message_content.FileUploadMetadata]:
   client = genai.Client(api_key=token_map['GEMINI_API_KEY'])
-  pager = client.files.list(
-      config=genai_types.ListFilesConfig(page_size=limit))
-  results = []
-  for f in pager:
-    if len(results) >= limit:
-      break
-    state = message_content.FileUploadState.ACTIVE
-    if f.state and f.state.name == 'PROCESSING':
-      state = message_content.FileUploadState.PENDING
-    elif f.state and f.state.name != 'ACTIVE':
-      state = message_content.FileUploadState.FAILED
-    results.append(message_content.FileUploadMetadata(
-        file_id=f.name,
-        filename=f.display_name,
-        size_bytes=f.size_bytes,
-        mime_type=f.mime_type,
-        uri=f.uri,
-        state=state,
-        expires_at=(str(f.expiration_time)
-                    if f.expiration_time else None),
-        sha256_hash=f.sha256_hash,
-    ))
-  return results
+  try:
+    pager = client.files.list(
+        config=genai_types.ListFilesConfig(page_size=limit)
+    )
+    results = []
+    for f in pager:
+      if len(results) >= limit:
+        break
+      state = message_content.FileUploadState.ACTIVE
+      if f.state and f.state.name == 'PROCESSING':
+        state = message_content.FileUploadState.PENDING
+      elif f.state and f.state.name != 'ACTIVE':
+        state = message_content.FileUploadState.FAILED
+      results.append(
+          message_content.FileUploadMetadata(
+              file_id=f.name,
+              filename=f.display_name,
+              size_bytes=f.size_bytes,
+              mime_type=f.mime_type,
+              uri=f.uri,
+              state=state,
+              expires_at=(
+                  str(f.expiration_time) if f.expiration_time else None
+              ),
+              sha256_hash=f.sha256_hash,
+          )
+      )
+    return results
+  finally:
+    _close_silent(client)
 
 
 def list_from_mistral(
@@ -264,18 +321,22 @@ def list_from_mistral(
     limit: int = 100,
 ) -> list[message_content.FileUploadMetadata]:
   client = mistralai.Mistral(api_key=token_map['MISTRAL_API_KEY'])
-  response = client.files.list(page_size=limit, page=0, purpose='ocr')
-  results = []
-  for f in response.data:
-    results.append(message_content.FileUploadMetadata(
-        file_id=f.id,
-        filename=f.filename,
-        size_bytes=f.size_bytes,
-        mime_type=(f.mimetype
-                   if getattr(f, 'mimetype', None) else None),
-        state=message_content.FileUploadState.ACTIVE,
-    ))
-  return results
+  try:
+    response = client.files.list(page_size=limit, page=0, purpose='ocr')
+    results = []
+    for f in response.data:
+      results.append(
+          message_content.FileUploadMetadata(
+              file_id=f.id,
+              filename=f.filename,
+              size_bytes=f.size_bytes,
+              mime_type=(f.mimetype if getattr(f, 'mimetype', None) else None),
+              state=message_content.FileUploadState.ACTIVE,
+          )
+      )
+    return results
+  finally:
+    _close_silent(client)
 
 
 LIST_DISPATCH = {
@@ -291,15 +352,17 @@ def download_from_mistral(
     token_map: types.ProviderTokenValueMap,
 ) -> bytes:
   client = mistralai.Mistral(api_key=token_map['MISTRAL_API_KEY'])
-  response = client.files.download(file_id=file_id)
-  response.read()
-  return response.content
+  try:
+    response = client.files.download(file_id=file_id)
+    response.read()
+    return response.content
+  finally:
+    _close_silent(client)
 
 
 DOWNLOAD_DISPATCH = {
     'mistral': download_from_mistral,
 }
-
 
 # --- File API upload support (what the File API accepts) ---
 # See docs/development/multimodal_large_file_analysis.md §6
@@ -364,79 +427,80 @@ UPLOAD_SUPPORTED_MEDIA_TYPES = {
 # See docs/development/multimodal_large_file_analysis.md §8
 
 REFERENCE_SUPPORTED_MEDIA_TYPES = {
-    'gemini': frozenset({
-        'application/pdf',
-        'application/vnd.openxmlformats-officedocument'
-        '.wordprocessingml.document',
-        'application/vnd.openxmlformats-officedocument'
-        '.spreadsheetml.sheet',
-        'text/csv',
-        'text/plain',
-        'text/markdown',
-        'image/png',
-        'image/jpeg',
-        'image/gif',
-        'image/webp',
-        'image/heic',
-        'image/heif',
-        'audio/mpeg',
-        'audio/wav',
-        'audio/flac',
-        'audio/aac',
-        'audio/ogg',
-        'audio/aiff',
-        'video/mp4',
-        'video/webm',
-        'video/quicktime',
-        'video/x-msvideo',
-        'video/mpeg',
-        'video/x-matroska',
-    }),
-    'claude': frozenset({
-        'application/pdf',
-        'text/plain',
-        'image/png',
-        'image/jpeg',
-        'image/gif',
-        'image/webp',
-        'image/heic',
-        'image/heif',
-    }),
-    'openai': frozenset({
-        'application/pdf',
-        'application/vnd.openxmlformats-officedocument'
-        '.wordprocessingml.document',
-        'application/vnd.openxmlformats-officedocument'
-        '.spreadsheetml.sheet',
-        'text/csv',
-        'text/plain',
-        'text/markdown',
-    }),
-    'mistral': frozenset({
-        'application/pdf',
-        'text/plain',
-        'text/markdown',
-        'text/csv',
-        'image/png',
-        'image/jpeg',
-        'image/gif',
-        'image/webp',
-        'image/heic',
-        'image/heif',
-    }),
+    'gemini':
+        frozenset({
+            'application/pdf',
+            'application/vnd.openxmlformats-officedocument'
+            '.wordprocessingml.document',
+            'application/vnd.openxmlformats-officedocument'
+            '.spreadsheetml.sheet',
+            'text/csv',
+            'text/plain',
+            'text/markdown',
+            'image/png',
+            'image/jpeg',
+            'image/gif',
+            'image/webp',
+            'image/heic',
+            'image/heif',
+            'audio/mpeg',
+            'audio/wav',
+            'audio/flac',
+            'audio/aac',
+            'audio/ogg',
+            'audio/aiff',
+            'video/mp4',
+            'video/webm',
+            'video/quicktime',
+            'video/x-msvideo',
+            'video/mpeg',
+            'video/x-matroska',
+        }),
+    'claude':
+        frozenset({
+            'application/pdf',
+            'text/plain',
+            'image/png',
+            'image/jpeg',
+            'image/gif',
+            'image/webp',
+            'image/heic',
+            'image/heif',
+        }),
+    'openai':
+        frozenset({
+            'application/pdf',
+            'application/vnd.openxmlformats-officedocument'
+            '.wordprocessingml.document',
+            'application/vnd.openxmlformats-officedocument'
+            '.spreadsheetml.sheet',
+            'text/csv',
+            'text/plain',
+            'text/markdown',
+        }),
+    'mistral':
+        frozenset({
+            'application/pdf',
+            'text/plain',
+            'text/markdown',
+            'text/csv',
+            'image/png',
+            'image/jpeg',
+            'image/gif',
+            'image/webp',
+            'image/heic',
+            'image/heif',
+        }),
 }
 
 DOWNLOAD_SUPPORTED_PROVIDERS = frozenset({'mistral'})
-
 
 # --- Mock dispatches for run_type=TEST ---
 
 _MOCK_PROVIDERS = ['gemini', 'claude', 'openai', 'mistral']
 
 
-def mock_upload(
-    file_path, file_data, filename, mime_type, token_map
-):
+def mock_upload(file_path, file_data, filename, mime_type, token_map):
   return message_content.FileUploadMetadata(
       file_id=f'mock-file-{uuid.uuid4().hex[:8]}',
       filename=filename,

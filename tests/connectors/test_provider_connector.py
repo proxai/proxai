@@ -18,6 +18,7 @@ responsibility:
 
 import datetime
 import json
+from unittest import mock
 
 import pydantic
 import pytest
@@ -78,9 +79,7 @@ def _build_connector(
   match the current ProviderConnectorParams shape.
   """
   if provider_token_value_map is None:
-    provider_token_value_map = {
-        k: 'unused' for k in connector_cls.PROVIDER_API_KEYS
-    }
+    provider_token_value_map = dict.fromkeys(connector_cls.PROVIDER_API_KEYS, 'unused')
   pco_kwargs = {'suppress_provider_errors': suppress_provider_errors}
   if feature_mapping_strategy is not None:
     pco_kwargs['feature_mapping_strategy'] = feature_mapping_strategy
@@ -272,7 +271,8 @@ class TestExecutorResultContract:
 class TestInitSubclassContract:
   """Every ProviderConnector subclass must declare the 5 required attrs
   and ENDPOINT_PRIORITY must key-match both ENDPOINT_CONFIG and
-  ENDPOINT_EXECUTORS. These checks fire at class-definition time."""
+  ENDPOINT_EXECUTORS. These checks fire at class-definition time.
+  """
 
   def test_missing_provider_name(self):
     with pytest.raises(TypeError, match='must define PROVIDER_NAME'):
@@ -543,7 +543,8 @@ class TestSafeProviderQuery:
 class _TextContentConnector(provider_connector.ProviderConnector):
   """Connector whose executor returns a TEXT content block — used to
   verify that _execute_call runs ResultAdapter when the query asks for
-  JSON output."""
+  JSON output.
+  """
 
   PROVIDER_NAME = 'text_content_provider'
   PROVIDER_API_KEYS = []
@@ -610,7 +611,8 @@ _NS = types.FeatureSupportType.NOT_SUPPORTED
 
 def _endpoint_config(prompt_support):
   """A FeatureConfigType with the given prompt support and fully-enabled
-  output format (so the only support variable is prompt)."""
+  output format (so the only support variable is prompt).
+  """
   return types.FeatureConfigType(
       prompt=prompt_support,
       output_format=types.OutputFormatConfigType(text=_S),
@@ -625,7 +627,8 @@ def _all_supported_features():
 
 def _make_connector_with_endpoints(endpoint_support_map):
   """Build a ProviderConnector subclass where each endpoint's prompt
-  support is as specified. Insertion order = ENDPOINT_PRIORITY order."""
+  support is as specified. Insertion order = ENDPOINT_PRIORITY order.
+  """
   priority = list(endpoint_support_map.keys())
   endpoint_config = {
       ep: _endpoint_config(support)
@@ -637,7 +640,7 @@ def _make_connector_with_endpoints(endpoint_support_map):
     PROVIDER_API_KEYS = []
     ENDPOINT_PRIORITY = priority
     ENDPOINT_CONFIG = endpoint_config
-    ENDPOINT_EXECUTORS = {ep: '_noop_exec' for ep in priority}
+    ENDPOINT_EXECUTORS = dict.fromkeys(priority, '_noop_exec')
 
     def init_model(self):
       return None
@@ -750,7 +753,8 @@ class TestPrepareExecution:
 
 def _make_result_record(output_text='cached', content=None):
   """A ResultRecord with timestamp populated (required by _get_cached_result
-  timestamp-refresh logic)."""
+  timestamp-refresh logic).
+  """
   now = datetime.datetime.now(datetime.timezone.utc)
   return types.ResultRecord(
       status=types.ResultStatusType.SUCCESS,
@@ -936,7 +940,8 @@ class _StubFilesManager(state_controller.BaseStateControlled):
 
 def _make_chat_with_image_data():
   """Build a chat with one user message containing one IMAGE block with
-  inline data. Suitable for upload (has local content)."""
+  inline data. Suitable for upload (has local content).
+  """
   mc = message_content.MessageContent(
       type=message_content.ContentType.IMAGE,
       data=b'\x89PNG\r\n\x1a\n',
@@ -1540,8 +1545,8 @@ class TestOpenAIResponsesCreateNativeJsonModeBlocked:
     # returns markdown-fenced JSON text. The executor must extract the JSON
     # so ResultAdapter sees a clean JSON block (contract: output_format JSON
     # => content is a JSON block, never TEXT).
-    from proxai.connectors.providers import openai as openai_connector
     import proxai.chat.message_content as message_content
+    from proxai.connectors.providers import openai as openai_connector
     c = _build_connector(openai_connector.OpenAIConnector)
     self._install_scripted_responses_create(
         c, '```json\n{"a": 1, "b": "two"}\n```')
@@ -1563,8 +1568,8 @@ class TestOpenAIResponsesCreateNativeJsonModeBlocked:
   def test_executor_wraps_clean_json_text_into_json_block(self):
     # The native JSON mode path also emits a JSON block (not TEXT), so the
     # contract with ResultAdapter is uniform across degraded and native.
-    from proxai.connectors.providers import openai as openai_connector
     import proxai.chat.message_content as message_content
+    from proxai.connectors.providers import openai as openai_connector
     c = _build_connector(openai_connector.OpenAIConnector)
     self._install_scripted_responses_create(c, '{"a": 1, "b": "two"}')
 
@@ -1580,3 +1585,64 @@ class TestOpenAIResponsesCreateNativeJsonModeBlocked:
     assert len(content) == 1
     assert content[0].type == message_content.ContentType.JSON
     assert content[0].json == {'a': 1, 'b': 'two'}
+
+
+class TestClose:
+  """Lifecycle: close() releases the SDK client; client stays usable."""
+
+  def test_close_calls_api_close_and_clears_attribute(self):
+    c = _build_connector(_CaptureTestConnector)
+    fake_api = mock.MagicMock()
+    c._api = fake_api
+    c.close()
+    fake_api.close.assert_called_once_with()
+    assert c._api is None
+
+  def test_close_when_api_never_initialized_is_noop(self):
+    c = _build_connector(_CaptureTestConnector)
+    assert getattr(c, '_api', None) is None
+    c.close()  # must not raise.
+    assert getattr(c, '_api', None) is None
+
+  def test_close_idempotent(self):
+    c = _build_connector(_CaptureTestConnector)
+    c._api = mock.MagicMock()
+    c.close()
+    c.close()  # second call must not raise.
+
+  def test_close_tolerates_missing_close_method(self):
+    c = _build_connector(_CaptureTestConnector)
+    c._api = object()  # plain object — no .close attribute.
+    c.close()  # must not raise.
+    assert c._api is None
+
+  def test_close_swallows_close_exception(self):
+    c = _build_connector(_CaptureTestConnector)
+    fake_api = mock.MagicMock()
+    fake_api.close.side_effect = RuntimeError('boom')
+    c._api = fake_api
+    c.close()  # must not propagate.
+    assert c._api is None
+
+  def test_context_manager_calls_close_on_exit(self):
+    c = _build_connector(_CaptureTestConnector)
+    fake_api = mock.MagicMock()
+    c._api = fake_api
+    with c as ctx:
+      assert ctx is c
+    fake_api.close.assert_called_once_with()
+    assert c._api is None
+
+  def test_close_then_reuse_relazy_inits(self):
+    # init_mock_model returns None for _CaptureTestConnector, so we patch
+    # it to fresh sentinels and verify close → next access triggers
+    # another build.
+    c = _build_connector(_CaptureTestConnector)
+    sentinels = [mock.MagicMock(), mock.MagicMock()]
+    with mock.patch.object(
+        c, 'init_mock_model', side_effect=sentinels) as init_spy:
+      _ = c.api  # first lazy init.
+      assert init_spy.call_count == 1
+      c.close()
+      _ = c.api  # second lazy init after close.
+      assert init_spy.call_count == 2

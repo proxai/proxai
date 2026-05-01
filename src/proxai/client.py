@@ -1181,6 +1181,25 @@ class ProxAIClient(state_controller.StateControlled):
     self.available_models_instance = None
     self.files_manager_instance = None
 
+  def close(self) -> None:
+    """Release every SDK client held under this ProxAI client.
+
+    Idempotent. The client remains usable: subsequent calls lazily
+    rebuild connectors and SDK pools. Use this between consensus
+    rounds (or per worker shutdown) to drop file descriptors. Do not
+    call while a request is in flight on this client.
+    """
+    if self.available_models_instance is not None:
+      self.available_models_instance.close()
+    self.registered_model_connectors = {}
+
+  def __enter__(self):
+    return self
+
+  def __exit__(self, exc_type, exc_val, exc_tb):
+    self.close()
+    return False
+
   def _validate_raw_provider_response_options(self):
     """Reject keep_raw_provider_response=True while a query cache is set.
 
