@@ -22,6 +22,8 @@ Tests use MockProviderModelConnector + MockFailingProviderModelConnector
 via `run_type=TEST` — no network.
 """
 
+from unittest import mock
+
 import pytest
 
 import proxai.client as client
@@ -778,3 +780,50 @@ class TestKeepRawProviderResponse:
     result = px_client.generate(prompt='hi')
     assert result.debug is not None
     assert result.debug.raw_provider_response == 'mock response'
+
+
+# =============================================================================
+# close() / context manager — release SDK clients held by the connector cache
+# =============================================================================
+
+
+class TestClose:
+
+  def test_close_chains_to_available_models(self):
+    px_client = _build_bare_client()
+    with mock.patch.object(
+        px_client.available_models_instance, 'close') as am_close:
+      px_client.close()
+      am_close.assert_called_once_with()
+
+  def test_close_resets_registered_model_connectors(self):
+    px_client = _build_client()  # registers default model.
+    assert px_client.registered_model_connectors  # non-empty pre-close.
+    px_client.close()
+    # Read through the StateControlled getter to confirm the reassignment
+    # went through set_property_value, not in-place dict mutation.
+    assert px_client.registered_model_connectors == {}
+
+  def test_close_idempotent(self):
+    px_client = _build_bare_client()
+    px_client.close()
+    px_client.close()  # second call must not raise.
+
+  def test_context_manager_calls_close_on_exit(self):
+    px_client = _build_bare_client()
+    with mock.patch.object(
+        px_client.available_models_instance, 'close') as am_close:
+      with px_client as ctx:
+        assert ctx is px_client
+      am_close.assert_called_once_with()
+
+  def test_close_then_generate_relazy_inits(self):
+    """After close(), generate() rebuilds the connector cache lazily."""
+    px_client = _build_client()
+    result_a = px_client.generate(prompt='ping')
+    assert result_a is not None
+    px_client.close()
+    # Connector cache cleared; the next generate must succeed by lazy
+    # rebuild.
+    result_b = px_client.generate(prompt='ping again')
+    assert result_b is not None

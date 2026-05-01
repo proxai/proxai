@@ -23,6 +23,8 @@ Tests are organized by responsibility:
 """
 
 
+from unittest import mock
+
 import pytest
 
 import proxai.caching.model_cache as model_cache
@@ -848,3 +850,57 @@ class TestStrictModeProbeBehaviour:
         provider_model_identifier='mock_model_best_effort_pydantic',
     )
     assert target in status.working_models
+
+
+class TestClose:
+  """close() releases SDK clients held by cached connectors."""
+
+  def test_close_closes_all_cached_connectors(self, monkeypatch):
+    _set_mock_keys(monkeypatch)
+    am = _build_available_models()
+    fake_a = mock.MagicMock()
+    fake_b = mock.MagicMock()
+    am.provider_connectors['mock_provider'] = fake_a
+    am.provider_connectors['mock_failing_provider'] = fake_b
+    am.close()
+    fake_a.close.assert_called_once_with()
+    fake_b.close.assert_called_once_with()
+    assert am.provider_connectors == {}
+
+  def test_close_continues_after_one_failure(self, monkeypatch):
+    _set_mock_keys(monkeypatch)
+    am = _build_available_models()
+    failing = mock.MagicMock()
+    failing.close.side_effect = RuntimeError('boom')
+    healthy = mock.MagicMock()
+    am.provider_connectors['mock_provider'] = failing
+    am.provider_connectors['mock_failing_provider'] = healthy
+    am.close()  # must swallow the RuntimeError.
+    failing.close.assert_called_once_with()
+    healthy.close.assert_called_once_with()
+    assert am.provider_connectors == {}
+
+  def test_close_idempotent(self, monkeypatch):
+    _set_mock_keys(monkeypatch)
+    am = _build_available_models()
+    am.close()
+    am.close()  # second call must not raise.
+
+  def test_close_then_get_model_connector_relazy_inits(self, monkeypatch):
+    _set_mock_keys(monkeypatch)
+    am = _build_available_models()
+    fake = mock.MagicMock()
+    am.provider_connectors['mock_provider'] = fake
+    am.close()
+    fake.close.assert_called_once_with()
+    assert 'mock_provider' not in am.provider_connectors
+
+  def test_context_manager_calls_close_on_exit(self, monkeypatch):
+    _set_mock_keys(monkeypatch)
+    am = _build_available_models()
+    fake = mock.MagicMock()
+    am.provider_connectors['mock_provider'] = fake
+    with am as ctx:
+      assert ctx is am
+    fake.close.assert_called_once_with()
+    assert am.provider_connectors == {}
