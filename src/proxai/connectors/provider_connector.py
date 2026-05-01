@@ -154,6 +154,35 @@ class ProviderConnector(state_controller.StateControlled):
   def api(self, value: Any) -> None:
     raise ValueError('api should not be set directly.')
 
+  def close(self) -> None:
+    """Release the underlying SDK client and its connection pool.
+
+    Idempotent. The connector remains usable: subsequent ``api`` access
+    re-creates the SDK client lazily. Do not call while a request is in
+    flight on this connector.
+    """
+    api = getattr(self, '_api', None)
+    if api is None:
+      return
+    close_fn = getattr(api, 'close', None)
+    if callable(close_fn):
+      try:
+        close_fn()
+      except Exception as e:  # noqa: BLE001
+        logging_utils.log_message(
+            logging_options=self.logging_options,
+            message=f'Error closing {self.PROVIDER_NAME} SDK client: {e}',
+            type=types.LoggingType.WARNING,
+        )
+    self._api = None
+
+  def __enter__(self):
+    return self
+
+  def __exit__(self, exc_type, exc_val, exc_tb):
+    self.close()
+    return False
+
   @property
   def run_type(self) -> types.RunType | None:
     return self.get_property_value('run_type')

@@ -191,6 +191,43 @@ class TestSingletonLifecycle:
     px.reset_state()
     assert proxai_module._DEFAULT_CLIENT is None
 
+  def test_reset_state_closes_before_nulling(self):
+    """reset_state must close the client before discarding it.
+
+    Otherwise SDK clients leak their httpx pools until GC.
+    """
+    from unittest import mock as _mock
+
+    import proxai.proxai as proxai_module
+
+    _px_connect_disable_proxdash()
+    with _mock.patch.object(
+        proxai_module._DEFAULT_CLIENT, 'close') as close_spy:
+      px.reset_state()
+      close_spy.assert_called_once_with()
+    assert proxai_module._DEFAULT_CLIENT is None
+
+  def test_module_close_releases_default_client(self):
+    """px.close() chains to client.close() but keeps the singleton alive."""
+    from unittest import mock as _mock
+
+    import proxai.proxai as proxai_module
+
+    _px_connect_disable_proxdash()
+    default = proxai_module._DEFAULT_CLIENT
+    with _mock.patch.object(default, 'close') as close_spy:
+      px.close()
+      close_spy.assert_called_once_with()
+    # Singleton remains — close() is release-only, not teardown.
+    assert proxai_module._DEFAULT_CLIENT is default
+
+  def test_module_close_when_no_default_client_is_noop(self):
+    import proxai.proxai as proxai_module
+
+    px.reset_state()  # ensures _DEFAULT_CLIENT is None.
+    assert proxai_module._DEFAULT_CLIENT is None
+    px.close()  # must not raise.
+
   def test_connect_replaces_existing_client(self):
     """Second connect() builds a fresh client with new config."""
     _px_connect_disable_proxdash(experiment_path='before')

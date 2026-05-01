@@ -96,6 +96,8 @@ def connect(
       model_probe_options=model_probe_options,
       debug_options=debug_options,
   )
+  if _DEFAULT_CLIENT is not None:
+    _DEFAULT_CLIENT.close()
   _DEFAULT_CLIENT = client.ProxAIClient(init_from_params=proxai_client_params)
 
 
@@ -442,7 +444,23 @@ def reset_state() -> None:
     return
   if _DEFAULT_CLIENT.platform_used_for_default_model_cache:
     _DEFAULT_CLIENT.model_cache_manager.clear_cache()
+  _DEFAULT_CLIENT.close()
   _DEFAULT_CLIENT = None
+
+
+def close() -> None:
+  """Release SDK connection pools held by the default client.
+
+  The default client remains configured and usable; subsequent calls
+  lazily rebuild SDK pools. Use this when you want to drop file
+  descriptors without reconfiguring (for example, between consensus
+  rounds in long-running workers). For full teardown including cache
+  clearing, use ``reset_state()`` instead.
+  """
+  global _DEFAULT_CLIENT
+  if _DEFAULT_CLIENT is None:
+    return
+  _DEFAULT_CLIENT.close()
 
 
 class DefaultModelsConnector(client.ModelConnector):
