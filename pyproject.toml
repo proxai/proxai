@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "proxai"
-version = "0.3.0"
+version = "0.3.1"
 description = "ProxAI is a lightweight abstraction layer for foundational AI model connections."
 authors = ["proxai"]
 license = "MIT"
