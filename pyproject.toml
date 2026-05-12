@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "proxai"
-version = "0.3.1"
+version = "0.3.2"
 description = "ProxAI is a lightweight abstraction layer for foundational AI model connections."
 authors = ["proxai"]
 license = "MIT"
@@ -23,7 +23,11 @@ urllib3 = "<2.0.0"
 openai = "^2.21.0"
 anthropic = "^0.75.0"
 cohere = "^6.1.0"
-mistralai = "^1.9.11"
+# NOTE: `mistralai` was removed from runtime deps in 0.3.2 because the
+# upstream package was quarantined on PyPI, breaking every fresh install of
+# proxai. The Mistral connector remains in the codebase with guarded
+# imports; users who want Mistral support can `pip install mistralai`
+# themselves. Restore as a hard dep once PyPI clears the quarantine.
 google-genai = ">=1.57.0,<2.0.0"
 databricks-sdk = {extras = ["openai"], version = "^0.73.0"}
 platformdirs = "^4.0.0"
@@ -41,6 +45,17 @@ jupyter = "^1.0.0"
 requests-mock = "^1.12.1"
 ruff = "^0.14.11"
 yapf = "^0.43.0"
+
+# Optional group so that `poetry install` works while mistralai is still
+# unavailable on PyPI. The five Mistral-specific tests in
+# tests/connectors/test_file_helpers.py auto-skip when mistralai isn't
+# importable; opt back in once the SDK is reachable with:
+#   poetry install --with mistral-test
+[tool.poetry.group.mistral-test]
+optional = true
+
+[tool.poetry.group.mistral-test.dependencies]
+mistralai = "^1.9.11"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

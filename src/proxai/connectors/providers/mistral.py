@@ -4,13 +4,36 @@ import base64
 import functools
 import os
 
-from mistralai import Mistral
-from mistralai.models.websearchtool import WebSearchTool
-
+import proxai.chat.message_content as message_content
 import proxai.connectors.provider_connector as provider_connector
 import proxai.connectors.providers.mistral_mock as mistral_mock
 import proxai.types as types
-import proxai.chat.message_content as message_content
+
+# `mistralai` is an optional runtime dependency as of proxai 0.3.2. Importing
+# the connector module must succeed even when the SDK is missing so that the
+# rest of proxai (registry lookups, list_models, other providers) keeps
+# working; only actual Mistral calls fail, with a clear install hint.
+try:
+  from mistralai import Mistral
+  from mistralai.models.websearchtool import WebSearchTool
+  _MISTRAL_AVAILABLE = True
+except ImportError:
+  Mistral = None
+  WebSearchTool = None
+  _MISTRAL_AVAILABLE = False
+
+_MISTRAL_INSTALL_HINT = (
+    "The 'mistralai' package is required to use Mistral models with proxai "
+    "but is not installed. Install it with: pip install mistralai\n"
+    "Note: mistralai was removed from proxai's required dependencies in "
+    "v0.3.2 because the package was temporarily unavailable on PyPI; see "
+    "pypi.org/project/mistralai/ for current status."
+)
+
+
+def _require_mistralai():
+  if not _MISTRAL_AVAILABLE:
+    raise ImportError(_MISTRAL_INSTALL_HINT)
 
 FeatureConfigType = types.FeatureConfigType
 FeatureSupportType = types.FeatureSupportType
@@ -24,6 +47,7 @@ class MistralConnector(provider_connector.ProviderConnector):
   """Connector for Mistral AI models."""
 
   def init_model(self):
+    _require_mistralai()
     return Mistral(api_key=self.provider_token_value_map['MISTRAL_API_KEY'])
 
   def init_mock_model(self):
@@ -376,6 +400,7 @@ class MistralConnector(provider_connector.ProviderConnector):
     tool_objects = []
     if query_record.tools is not None:
       if types.Tools.WEB_SEARCH in query_record.tools:
+        _require_mistralai()
         tool_objects.append(WebSearchTool(type='web_search'))
     if tool_objects:
       start = functools.partial(start, tools=tool_objects)

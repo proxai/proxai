@@ -10,12 +10,40 @@ import uuid
 import anthropic
 import google.genai as genai
 import google.genai.types as genai_types
-import mistralai
-import mistralai.models as mistral_models
 import openai
 
 import proxai.chat.message_content as message_content
 import proxai.types as types
+
+# `mistralai` is an optional runtime dependency as of proxai 0.3.2 (the
+# package was quarantined on PyPI and the hard dep was blocking installs).
+# Module must import cleanly without it; each *_mistral function gates on
+# `_require_mistralai()` and raises a clear install hint if it's missing.
+# We keep `mistralai` and `mistral_models` as module attributes (None when
+# absent) so tests that monkeypatch `file_helpers.mistralai.Mistral` keep
+# their existing attribute target when the SDK is installed.
+try:
+  import mistralai
+  import mistralai.models as mistral_models
+  _MISTRAL_AVAILABLE = True
+except ImportError:
+  mistralai = None
+  mistral_models = None
+  _MISTRAL_AVAILABLE = False
+
+
+_MISTRAL_INSTALL_HINT = (
+    "The 'mistralai' package is required to use Mistral file operations "
+    "with proxai but is not installed. Install it with: pip install mistralai"
+    "\nNote: mistralai was removed from proxai's required dependencies in "
+    "v0.3.2 because the package was temporarily unavailable on PyPI; see "
+    "pypi.org/project/mistralai/ for current status."
+)
+
+
+def _require_mistralai():
+  if not _MISTRAL_AVAILABLE:
+    raise ImportError(_MISTRAL_INSTALL_HINT)
 
 
 def _close_silent(client) -> None:
@@ -142,6 +170,7 @@ def upload_to_mistral(
     mime_type: str,
     token_map: types.ProviderTokenValueMap,
 ) -> message_content.FileUploadMetadata:
+  _require_mistralai()
   client = mistralai.Mistral(api_key=token_map['MISTRAL_API_KEY'])
   try:
     if file_path:
@@ -214,6 +243,7 @@ def remove_from_mistral(
     file_id: str,
     token_map: types.ProviderTokenValueMap,
 ):
+  _require_mistralai()
   client = mistralai.Mistral(api_key=token_map['MISTRAL_API_KEY'])
   try:
     client.files.delete(file_id=file_id)
@@ -320,6 +350,7 @@ def list_from_mistral(
     token_map: types.ProviderTokenValueMap,
     limit: int = 100,
 ) -> list[message_content.FileUploadMetadata]:
+  _require_mistralai()
   client = mistralai.Mistral(api_key=token_map['MISTRAL_API_KEY'])
   try:
     response = client.files.list(page_size=limit, page=0, purpose='ocr')
@@ -351,6 +382,7 @@ def download_from_mistral(
     file_id: str,
     token_map: types.ProviderTokenValueMap,
 ) -> bytes:
+  _require_mistralai()
   client = mistralai.Mistral(api_key=token_map['MISTRAL_API_KEY'])
   try:
     response = client.files.download(file_id=file_id)

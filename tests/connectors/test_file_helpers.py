@@ -13,6 +13,15 @@ import pytest
 
 import proxai.connectors.file_helpers as file_helpers
 
+# Mistral-specific helpers monkeypatch `file_helpers.mistralai.Mistral`, which
+# only exists when the optional `mistralai` SDK is installed. The SDK was
+# moved to an optional poetry group in proxai 0.3.2 (quarantine on PyPI);
+# install it via `poetry install --with mistral-test` to run these locally.
+mistralai_required = pytest.mark.skipif(
+    not file_helpers._MISTRAL_AVAILABLE,
+    reason="mistralai SDK not installed (optional 'mistral-test' poetry group)",
+)
+
 # -----------------------------------------------------------------------------
 # Helper: build a mock SDK client whose internal call returns a result with
 # all attributes the helpers expect (we keep MagicMock auto-spec generous).
@@ -75,6 +84,7 @@ class TestUploadCloses:
         mime_type='text/plain', token_map=_mock_token_map())
     sdk_client.close.assert_called_once_with()
 
+  @mistralai_required
   def test_upload_to_mistral_closes_on_exception(self, monkeypatch):
     sdk_client = mock.MagicMock()
     sdk_client.files.upload.side_effect = RuntimeError('boom')
@@ -124,6 +134,7 @@ class TestRemoveCloses:
         file_id='files/abc', token_map=_mock_token_map())
     sdk_client.close.assert_called_once_with()
 
+  @mistralai_required
   def test_remove_from_mistral_closes_on_success(self, monkeypatch):
     sdk_client = mock.MagicMock()
     monkeypatch.setattr(
@@ -160,6 +171,7 @@ class TestListCloses:
       file_helpers.list_from_openai(token_map=_mock_token_map())
     sdk_client.close.assert_called_once_with()
 
+  @mistralai_required
   def test_list_from_mistral_closes_on_success(self, monkeypatch):
     sdk_client = mock.MagicMock()
     sdk_client.files.list.return_value = mock.MagicMock(data=[])
@@ -177,6 +189,7 @@ class TestListCloses:
 
 class TestDownloadCloses:
 
+  @mistralai_required
   def test_download_from_mistral_closes_on_success(self, monkeypatch):
     response = mock.MagicMock()
     response.content = b'data'
@@ -189,6 +202,7 @@ class TestDownloadCloses:
         file_id='abc', token_map=_mock_token_map())
     sdk_client.close.assert_called_once_with()
 
+  @mistralai_required
   def test_download_from_mistral_closes_on_exception(self, monkeypatch):
     sdk_client = mock.MagicMock()
     sdk_client.files.download.side_effect = RuntimeError('boom')
